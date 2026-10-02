@@ -7,7 +7,10 @@
       "web/src/**",
       "*.ts",
       "!server/db/migrations",
-      "!web/src/engenty"
+      "!web/src/engenty",
+      "!server/engenty/**",
+      "server/engenty/shims/**",
+      "!shared/engenty"
     ]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },

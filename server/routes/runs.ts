@@ -5,12 +5,23 @@ import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { FORMATS } from "../../shared/definition.js";
+import { FORMATS, LIST_FORMATS } from "../../shared/definition.js";
+import { TableColumnValueError } from "../../shared/engenty/data-tables/index.js";
 import type { PublicWizard } from "../../shared/run.js";
 import { sessionUser } from "../auth.js";
+import {
+  ConnectError,
+  connectionViews,
+  connectWithCredentials,
+  disconnect,
+  finishOAuth,
+  startOAuth,
+} from "../connectors/index.js";
 import { db, schema } from "../db/client.js";
-import { renderDownload, stepHtml } from "../downloads.js";
-import { subscribe } from "../engine/events.js";
+import { listDownload, renderDownload, stepHtml } from "../downloads.js";
+import { answerAsk, pendingAsk } from "../engine/asks.js";
+import { signalChanged, subscribe } from "../engine/events.js";
+import { liveResources } from "../engine/resources.js";
 import {
   cancel,
   createRun,
@@ -30,6 +41,18 @@ import { ServiceError } from "../services/errors.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
 import { verifySignedUrl } from "../signing.js";
 import { loadAsset, saveAsset } from "../storage.js";
+import {
+  clearStore,
+  deleteRows,
+  listRows,
+  listSecrets,
+  readStoreFile,
+  StoreError,
+  saveRows,
+  scopeOf,
+  storeFiles,
+  updateRow,
+} from "../store/index.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -329,6 +352,236 @@ export const runRoutes = new Hono()
     }
     return serveDownload(c, run, c.req.param("stepId"), c.req.query("format"));
   })
+  // --- a running step waits for the person ------------------------------------
+  .post("/:id/ask/:askId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const answer = z
+      .discriminatedUnion("type", [
+        z.object({
+          type: z.literal("fill"),
+          values: z.record(z.string(), z.string().max(500)),
+          remember: z.boolean().optional(),
+        }),
+        z.object({ type: z.literal("done"), remember: z.boolean().optional() }),
+        z.object({ type: z.literal("skip") }),
+      ])
+      .parse(await c.req.json());
+    if (!answerAsk(run.id, c.req.param("askId"), answer)) {
+      return c.json({ error: "Diese Frage ist nicht mehr offen." }, 409);
+    }
+    return c.json({ ok: true });
+  })
+  // The page the wizard's browser shows: the person sees what they are asked to sign in to.
+  .get("/:id/browser/screen", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const page = run?.status === "running" ? liveResources(run.id)?.openPage() : null;
+    if (!page) {
+      return c.notFound();
+    }
+    const jpeg = await page.screenshot({ type: "jpeg", quality: 70 }).catch(() => null);
+    if (!jpeg) {
+      return c.notFound();
+    }
+    const size = page.viewportSize() ?? { width: 1280, height: 900 };
+    return c.body(new Uint8Array(jpeg), 200, {
+      "content-type": "image/jpeg",
+      "cache-control": "no-store",
+      "x-page-width": String(size.width),
+      "x-page-height": String(size.height),
+    });
+  })
+  // While the wizard waits for a sign-in, the person can use its page: click, type, scroll.
+  .post("/:id/browser/act", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const page = run && pendingAsk(run.id) ? liveResources(run.id)?.openPage() : null;
+    if (!page) {
+      return c.json({ error: "Der Wizard wartet gerade nicht auf dich." }, 409);
+    }
+    const act = z
+      .discriminatedUnion("type", [
+        z.object({ type: z.literal("click"), x: z.number().min(0), y: z.number().min(0) }),
+        z.object({ type: z.literal("type"), text: z.string().max(500) }),
+        z.object({ type: z.literal("key"), key: z.enum(["Enter", "Tab", "Backspace", "Escape"]) }),
+        z.object({ type: z.literal("scroll"), dy: z.number().min(-2000).max(2000) }),
+      ])
+      .parse(await c.req.json());
+    try {
+      if (act.type === "click") {
+        // A click may open the sign-in in a new tab; the wizard then goes on there.
+        const popup = page.context().waitForEvent("page", { timeout: 1500 }).catch(() => null);
+        await page.mouse.click(act.x, act.y);
+        const opened = await popup;
+        if (opened) {
+          liveResources(run!.id)?.adopt(opened);
+        }
+      } else if (act.type === "type") {
+        await page.keyboard.type(act.text);
+      } else if (act.type === "key") {
+        await page.keyboard.press(act.key);
+      } else {
+        await page.mouse.wheel(0, act.dy);
+      }
+      await page.waitForLoadState("domcontentloaded", { timeout: 3000 }).catch(() => undefined);
+    } catch {
+      return c.json({ error: "Das hat auf der Seite nicht geklappt." }, 422);
+    }
+    return c.json({ ok: true });
+  })
+  // --- the person's accounts ----------------------------------------------------
+  .post("/:id/connections/:connectionId/oauth/:connectorId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const connection = run?.definition.connections?.find(
+      (x) => x.id === c.req.param("connectionId"),
+    );
+    if (!run || !connection) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const url = await startOAuth(scopeOf(run), run.id, connection, c.req.param("connectorId"));
+    return c.json({ url });
+  })
+  .post("/:id/connections/:connectionId/credentials/:connectorId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const connection = run?.definition.connections?.find(
+      (x) => x.id === c.req.param("connectionId"),
+    );
+    if (!run || !connection) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const { values } = z
+      .object({ values: z.record(z.string(), z.string().max(500)) })
+      .parse(await c.req.json());
+    try {
+      const label = await connectWithCredentials(
+        scopeOf(run),
+        connection,
+        c.req.param("connectorId"),
+        values,
+      );
+      signalChanged(run.id);
+      return c.json({ ok: true, label });
+    } catch (err) {
+      if (err instanceof ConnectError) {
+        return c.json({ error: err.message }, 422);
+      }
+      throw err;
+    }
+  })
+  .delete("/:id/connections/:connectionId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await disconnect(scopeOf(run), c.req.param("connectionId"));
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  // --- the wizard's lists and files for this person -------------------------------
+  .post("/:id/lists/:list/rows", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    if (!run || !def) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const { cells } = z.object({ cells: z.record(z.string(), z.unknown()) }).parse(await c.req.json());
+    try {
+      await saveRows(scopeOf(run), def, [cells]);
+    } catch (err) {
+      return listError(c, err);
+    }
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  .patch("/:id/lists/:list/rows/:rowId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    if (!run || !def) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const { cells } = z.object({ cells: z.record(z.string(), z.unknown()) }).parse(await c.req.json());
+    try {
+      if (!(await updateRow(scopeOf(run), def, c.req.param("rowId"), cells))) {
+        return c.json({ error: "not found" }, 404);
+      }
+    } catch (err) {
+      return listError(c, err);
+    }
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  .delete("/:id/lists/:list/rows/:rowId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    if (!run || !def) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await deleteRows(scopeOf(run), def, [c.req.param("rowId")]);
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  .get("/:id/lists/:list/download", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    const format = z.enum(FORMATS).safeParse(c.req.query("format"));
+    if (!run || !def || !format.success || !LIST_FORMATS.includes(format.data)) {
+      return c.notFound();
+    }
+    const download = await listDownload(
+      def,
+      await listRows(scopeOf(run), def.id),
+      format.data,
+      `${run.definition.title} ${def.title}`,
+    );
+    return download ? sendDownload(c, download) : c.notFound();
+  })
+  .get("/:id/store", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const scope = scopeOf(run);
+    const lists = await Promise.all(
+      (run.definition.lists ?? []).map(async (def) => ({
+        id: def.id,
+        title: def.title,
+        rows: (await listRows(scope, def.id)).length,
+      })),
+    );
+    const secrets = await listSecrets(scope);
+    return c.json({
+      lists,
+      files: await storeFiles(scope),
+      connections: (await connectionViews(run.definition.connections ?? [], scope)).filter(
+        (x) => x.account,
+      ),
+      keepsSignIns: secrets.some((s) => s.slot === "browser"),
+    });
+  })
+  .get("/:id/store/files/:path{.+}", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const found = run ? await readStoreFile(scopeOf(run), c.req.param("path")) : null;
+    if (!found) {
+      return c.notFound();
+    }
+    const name = found.file.path.split("/").pop() ?? "file";
+    return c.body(new Uint8Array(found.data), 200, {
+      // Stored files come from mail and the web: always a download, never a page of ours.
+      "content-type": "application/octet-stream",
+      "content-disposition": `attachment; filename="${name.replace(/"/g, "")}"`,
+      "x-content-type-options": "nosniff",
+    });
+  })
+  .delete("/:id/store", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await clearStore(scopeOf(run));
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
   .post("/:id/share", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
@@ -353,6 +606,59 @@ export const runRoutes = new Hono()
   });
 
 type RunRow = typeof schema.run.$inferSelect;
+
+function listError(c: Context, err: unknown) {
+  if (err instanceof TableColumnValueError || err instanceof StoreError) {
+    return c.json({ error: err.message }, 422);
+  }
+  throw err;
+}
+
+function sendDownload(
+  c: Context,
+  download: { data: Uint8Array | string; mime: string; filename: string },
+) {
+  const data = new Uint8Array(
+    typeof download.data === "string" ? new TextEncoder().encode(download.data) : download.data,
+  );
+  return c.body(data, 200, {
+    "content-type": download.mime.startsWith("text/")
+      ? `${download.mime}; charset=utf-8`
+      : download.mime,
+    "content-disposition": `attachment; filename="${download.filename}"`,
+  });
+}
+
+/**
+ * Where an OAuth provider sends the person back after connecting an account. The page tells the
+ * wizard's window and closes itself.
+ */
+export const connectCallback = new Hono().get("/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  let ok = false;
+  let message = "Verbinden wurde abgebrochen.";
+  if (code && state) {
+    try {
+      const done = await finishOAuth(code, state);
+      signalChanged(done.runId);
+      ok = true;
+      message = "Verbunden. Du kannst dieses Fenster schließen.";
+    } catch (err) {
+      console.error("[connect]", err);
+      message = "Verbinden hat nicht geklappt. Bitte noch einmal versuchen.";
+    }
+  }
+  return c.html(
+    `<!doctype html><meta charset="utf-8"><title>engenty wizards</title>
+<body style="font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#333">
+<p>${message}</p>
+<script>
+  try { window.opener && window.opener.postMessage({ type: "wizards:connected", ok: ${ok} }, ${JSON.stringify(env.appUrl)}); } catch (e) {}
+  setTimeout(function () { window.close(); }, ${ok ? 300 : 4000});
+</script>`,
+  );
+});
 
 async function serveAsset(c: Context, run: RunRow, assetId: string) {
   const found = await loadAsset(assetId);
@@ -396,15 +702,7 @@ async function serveDownload(c: Context, run: RunRow, stepId: string, rawFormat?
   if (!download) {
     return c.notFound();
   }
-  const data = new Uint8Array(
-    typeof download.data === "string" ? new TextEncoder().encode(download.data) : download.data,
-  );
-  return c.body(data, 200, {
-    "content-type": download.mime.startsWith("text/")
-      ? `${download.mime}; charset=utf-8`
-      : download.mime,
-    "content-disposition": `attachment; filename="${download.filename}"`,
-  });
+  return sendDownload(c, download);
 }
 
 /** Steps a shared link shows: the result's deliverables — never uploads or in-between steps. */

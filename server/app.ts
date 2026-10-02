@@ -12,7 +12,7 @@ import { linkPreview } from "./link-preview.js";
 import { mcpHandler } from "./mcp/handler.js";
 import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { connections } from "./routes/connections.js";
-import { publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
+import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
 import { ServiceError } from "./services/errors.js";
@@ -102,6 +102,7 @@ app.route("/api/billing", billingRoutes);
 app.route("/api/public", publicRoutes);
 app.route("/api/runs", runRoutes);
 app.route("/api/shares", shareRoutes);
+app.route("/api/connect", connectCallback);
 
 // The Claude Code plugin of this deployment: `claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json`.
 app.get("/api/claude-plugin/marketplace.json", async (c) => c.json(await pluginMarketplace()));

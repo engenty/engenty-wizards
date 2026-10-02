@@ -23,6 +23,13 @@ export const wizardOpSchema = z.discriminatedUnion("op", [
     step: z.looseObject({ id: z.string(), type: z.string() }),
     ...position,
   }),
+  /** The wizard's lists, all of them: what it keeps between runs. An empty array removes them. */
+  z.object({ op: z.literal("set_lists"), lists: z.array(z.looseObject({ id: z.string() })) }),
+  /** The wizard's connections, all of them: accounts the person connects. */
+  z.object({
+    op: z.literal("set_connections"),
+    connections: z.array(z.looseObject({ id: z.string() })),
+  }),
   z.object({ op: z.literal("remove_step"), stepId: z.string() }),
   z.object({ op: z.literal("move_step"), stepId: z.string(), ...position }),
 ]);
@@ -70,6 +77,12 @@ export function applyOps(def: WizardDefinition, ops: WizardOp[]): unknown {
         }
         return;
       }
+      case "set_lists":
+        Object.assign(next, { lists: op.lists.length ? op.lists : undefined });
+        return;
+      case "set_connections":
+        Object.assign(next, { connections: op.connections.length ? op.connections : undefined });
+        return;
       case "upsert_step": {
         const existing = steps.findIndex((s) => s.id === op.step.id);
         const anchor = anchorIndex(steps, op, at);

@@ -34,6 +34,8 @@ const FIELD_KIND_LABEL: Record<string, string> = {
   image: "Bild-Upload",
   file: "Datei-Upload",
   items: "Positionen (Tabelle)",
+  connection: "Konto verbinden",
+  list: "Gespeicherte Liste",
 };
 
 function Section({ title, children }: { title?: string; children: React.ReactNode }) {
@@ -64,11 +66,13 @@ function uniqueId(def: WizardDefinition, base: string): string {
 }
 
 function FieldEditor({
+  def,
   field,
   onChange,
   onRemove,
   onMove,
 }: {
+  def: WizardDefinition;
   field: Field;
   onChange: (f: Field) => void;
   onRemove: () => void;
@@ -116,6 +120,43 @@ function FieldEditor({
                 })
               }
             />
+          ) : null}
+          {field.kind === "connection" ? (
+            <Select
+              value={field.connection ?? ""}
+              placeholder="Welches Konto?"
+              onChange={(v) => onChange({ ...field, connection: v })}
+              options={(def.connections ?? []).map((c) => ({
+                value: c.id,
+                label: c.title ?? c.id,
+              }))}
+            />
+          ) : null}
+          {field.kind === "list" ? (
+            <Select
+              value={field.list ?? ""}
+              placeholder="Welche Liste?"
+              onChange={(v) => onChange({ ...field, list: v })}
+              options={(def.lists ?? []).map((l) => ({ value: l.id, label: l.title }))}
+            />
+          ) : null}
+          {field.kind === "image" || field.kind === "file" ? (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-ink-2">Mehrere Dateien</span>
+              <Switch
+                checked={Boolean(field.multiple)}
+                onChange={(v) => onChange({ ...field, multiple: v || undefined })}
+              />
+            </div>
+          ) : null}
+          {field.kind === "file" ? (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-ink-2">Auch mit der Kamera aufnehmen</span>
+              <Switch
+                checked={Boolean(field.camera)}
+                onChange={(v) => onChange({ ...field, camera: v || undefined })}
+              />
+            </div>
           ) : null}
           {["text", "textarea", "number", "email", "url"].includes(field.kind) ? (
             <Input
@@ -331,6 +372,7 @@ function StepBody({
             {step.fields.map((f, i) => (
               <FieldEditor
                 key={f.id}
+                def={def}
                 field={f}
                 onChange={(nf) =>
                   set({ ...step, fields: step.fields.map((x, j) => (j === i ? nf : x)) })
@@ -398,6 +440,21 @@ function StepBody({
                 </span>
               ))}
             </div>
+            {def.connections?.length ? (
+              <>
+                <Label hint="Konten, die die Person im Durchlauf verbindet. Der Schritt liest darin, er schreibt nie.">
+                  Konten der Person
+                </Label>
+                <Segmented
+                  multi
+                  value={step.connections ?? []}
+                  options={def.connections.map((c) => c.id)}
+                  onChange={(v: string[]) =>
+                    set({ ...step, connections: v.length ? v : undefined })
+                  }
+                />
+              </>
+            ) : null}
             {mcpServers.length ? (
               <>
                 <Label hint="Nur freigegebene Systeme sind in diesem Schritt erreichbar.">
@@ -628,6 +685,29 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
           ))}
         </div>
       </Section>
+      {def.lists?.length || def.connections?.length ? (
+        <Section title="Merkt sich für jede Person">
+          <p className="text-[13px] text-ink-3">
+            Bleibt zwischen den Durchläufen erhalten – getrennt für jede Person, die den Wizard
+            nutzt. Ändern kannst du das im Gespräch.
+          </p>
+          {(def.connections ?? []).map((c) => (
+            <div key={c.id} className="rounded-xl bg-paper px-3 py-2.5 ring-1 ring-border-soft">
+              <div className="text-[14px]">{c.title ?? c.id}</div>
+              <div className="text-[12px] text-ink-4">Konto · {c.kind}</div>
+            </div>
+          ))}
+          {(def.lists ?? []).map((l) => (
+            <div key={l.id} className="rounded-xl bg-paper px-3 py-2.5 ring-1 ring-border-soft">
+              <div className="text-[14px]">{l.title}</div>
+              <div className="text-[12px] text-ink-4">
+                Liste · {l.columns.map((c) => c.name).join(", ")}
+              </div>
+              <div className="mt-1 font-mono text-[11px] text-ink-4">{`{{lists.${l.id}}}`}</div>
+            </div>
+          ))}
+        </Section>
+      ) : null}
     </div>
   );
 }

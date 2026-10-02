@@ -6,8 +6,10 @@ import { Mascot } from "../brand";
 import { t } from "../lib/i18n";
 import { ShareResultButton } from "../share/ShareSheet";
 import { Button, Card, cn, Spinner, Textarea } from "../ui";
+import { AskPanel } from "./AskPanel";
 import { FieldInput, type Values } from "./fields";
 import { DownloadButtons, OutputView } from "./outputs";
+import { ListDownloads, ListTable, StoreButton } from "./store";
 import { useRun } from "./useRun";
 
 type Run = ReturnType<typeof useRun>;
@@ -82,6 +84,7 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
             value={values[f.id]}
             values={values}
             runId={view.id}
+            view={view}
             error={run.fieldErrors[f.id]}
             onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
           />
@@ -238,6 +241,14 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
             </section>
           );
         })}
+        {view.lists.map((list) => (
+          <section key={list.def.id}>
+            <h3 className="mb-2 font-medium text-[13px] text-ink-3 uppercase tracking-[0.06em]">
+              {list.def.title}
+            </h3>
+            <ListTable runId={view.id} list={list} editable />
+          </section>
+        ))}
       </div>
       <Footer view={view} run={run}>
         <Button
@@ -273,7 +284,7 @@ function Result({
           </h1>
           {step.message ? <p className="mt-1 text-[15px] text-ink-3">{step.message}</p> : null}
         </div>
-        {view.shown.length ? (
+        {view.shown.some((x) => x.output) ? (
           <ShareResultButton
             runId={view.id}
             title={`${step.title} · ${view.wizard.title}`}
@@ -289,6 +300,17 @@ function Result({
               <DownloadButtons base={`/api/runs/${view.id}`} stepId={s.id} formats={formats} />
             </div>
             <OutputView base={`/api/runs/${view.id}`} step={s} output={output} />
+          </Card>
+        ))}
+        {view.lists.map((list) => (
+          <Card key={list.def.id} className="p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display font-semibold text-[17px]">
+                {list.label ?? list.def.title}
+              </h3>
+              <ListDownloads runId={view.id} list={list} />
+            </div>
+            <ListTable runId={view.id} list={list} editable />
           </Card>
         ))}
       </div>
@@ -353,7 +375,9 @@ export function RunnerBody({
   }
   const step = view.step;
   let body: React.ReactNode = null;
-  if (view.status === "running") {
+  if (view.status === "running" && view.ask) {
+    body = <AskPanel key={view.ask.id} runId={view.id} ask={view.ask} />;
+  } else if (view.status === "running") {
     body = <Working view={view} compact={compact} />;
   } else if (view.status === "failed") {
     body = <Failed view={view} run={run} />;
@@ -381,6 +405,11 @@ export function RunnerBody({
         {run.error && view.status !== "failed" ? (
           <div className="mt-4 rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">
             {run.error}
+          </div>
+        ) : null}
+        {view.keeps && view.status !== "running" ? (
+          <div className="mt-10 flex justify-center">
+            <StoreButton runId={view.id} />
           </div>
         ) : null}
       </div>

@@ -8,7 +8,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import type { WizardDefinition } from "../../shared/definition.js";
-import type { RunState } from "../../shared/run.js";
+import type { RunAsk, RunState } from "../../shared/run.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
 
 const now = sql`(unixepoch() * 1000)`;
@@ -274,6 +274,8 @@ export const run = sqliteTable(
     cursor: text("cursor"),
     state: text("state", { mode: "json" }).$type<RunState>().notNull(),
     error: text("error"),
+    /** What a running step is asking the person right now (a login, a code); null = nothing. */
+    ask: text("ask", { mode: "json" }).$type<RunAsk | null>(),
     costMicros: integer("cost_micros").notNull().default(0),
     /** Set once the result is shared: `/s/<token>` shows it read-only. */
     shareToken: text("share_token"),
@@ -322,6 +324,84 @@ export const asset = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index("asset_run").on(t.runId)],
+);
+
+// --- The wizard's store ------------------------------------------------------
+// What a wizard keeps between runs for one person. `holder` is that person: "u:<userId>" for a
+// signed-in admin, "v:<visitorId>" for an end user on a shared link.
+
+/** One (wizard, person) pair that has stored something; `usedAt` drives the clean-up. */
+export const storeHolder = sqliteTable(
+  "store_holder",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }).notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.holder] }), index("store_holder_used").on(t.usedAt)],
+);
+
+/** A row of one of the wizard's lists. Columns are defined in the wizard, values live here. */
+export const storeRow = sqliteTable(
+  "store_row",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    list: text("list").notNull(),
+    /** The key column's value, normalised; saving a row with a known key updates that row. */
+    key: text("key"),
+    cells: text("cells", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("store_row_key").on(t.wizardId, t.holder, t.list, t.key),
+    index("store_row_list").on(t.wizardId, t.holder, t.list, t.createdAt),
+  ],
+);
+
+/** A file the wizard keeps (a downloaded invoice, a scan). Content lives in the blob store. */
+export const storeFile = sqliteTable(
+  "store_file",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    path: text("path").notNull(),
+    hash: text("hash").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    source: text("source"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.holder, t.path] })],
+);
+
+/** A connected account or a kept browser session. `data` is encrypted. */
+export const storeSecret = sqliteTable(
+  "store_secret",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    /** "connection:<id>" or "browser:<host>". */
+    slot: text("slot").notNull(),
+    provider: text("provider").notNull(),
+    /** Shown to the person: the account's address or the site's name. */
+    label: text("label").notNull(),
+    data: text("data").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("store_secret_slot").on(t.wizardId, t.holder, t.slot)],
 );
 
 // --- OAuth for MCP clients (Better Auth jwt + mcp/oauth-provider) ------------

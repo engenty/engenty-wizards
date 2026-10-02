@@ -1,7 +1,7 @@
 import type { Format, Step } from "@shared/definition";
 import type { StepOutput } from "@shared/run";
 import DOMPurify from "dompurify";
-import { Check, Copy, Download, Maximize2 } from "lucide-react";
+import { Check, Copy, Download, FileText, Maximize2 } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../lib/i18n";
@@ -245,7 +245,9 @@ export function OutputView({
     );
   }
   if (step.type === "agent") {
-    const images = output.assets?.filter((a) => a.mime.startsWith("image/")) ?? [];
+    const images =
+      output.assets?.filter((a) => a.kind !== "file" && a.mime.startsWith("image/")) ?? [];
+    const files = output.assets?.filter((a) => a.kind === "file") ?? [];
     return (
       <div className="flex flex-col gap-4">
         {step.output.format === "json" && output.json !== undefined ? (
@@ -270,6 +272,22 @@ export function OutputView({
             className="w-full rounded-2xl ring-1 ring-border-soft"
           />
         ))}
+        {files.length ? (
+          <ul className="overflow-hidden rounded-xl ring-1 ring-border-soft">
+            {files.map((f) => (
+              <li key={f.id} className="border-border-soft border-b last:border-0">
+                <a
+                  href={assetUrl(f.id)}
+                  download={f.name}
+                  className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2"
+                >
+                  <FileText className="size-3.5 shrink-0 text-ink-3" />
+                  <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {step.output.format !== "json" && !editable && output.text ? (
           <div>
             <CopyButton text={output.text} />
@@ -292,6 +310,7 @@ const FORMAT_LABEL: Record<Format, string> = {
   csv: "CSV",
   xlsx: "Excel",
   json: "JSON",
+  zip: "ZIP",
 };
 
 export function DownloadButtons({

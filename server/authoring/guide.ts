@@ -11,8 +11,24 @@ type Wizard = {
   description: string           // one sentence
   avatar: "round"|"drop"|"dome"|"flame"|"oval"|"bean"|"pebble"|"sprout"|"tower"|"wedge"  // the engenty mascot shown to end users
   intro?: string                // one friendly sentence above the first page
+  lists?: List[]                // tabular data the wizard KEEPS between runs — separately for each person who runs it
+  connections?: Connection[]    // accounts the PERSON connects during a run (their mailbox); kept for their next run
   steps: Step[]                 // run top to bottom; the LAST step is always a "result"
 }
+
+type List = {
+  id, title, description?,
+  key?: columnId                // rows are matched on this column: saving a row with a known key updates that row
+  columns: Column[]             // { id (lowercase_slug), name (shown to the person), type, format?, required? }
+}
+//   type "text":    format? { style: "single"|"multiline" }
+//   type "number":  format  { style: "integer"|"decimal"|"percent"|"currency", currency?: "EUR" }   // currency only with style "currency"
+//   type "date":    format  { kind: "date"|"datetime" }          // values are YYYY-MM-DD
+//   type "select":  format  { options: { id, label }[], allowCustom: boolean }
+//   type "boolean"
+
+type Connection = { id, kind: "mail", title?, description? }
+// the person picks how to connect (Gmail, Outlook, or any mailbox over IMAP); steps only ever READ it
 
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
 // Branch = { when: { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty", value? }, goto: stepId | "end" }
@@ -26,19 +42,30 @@ type Field = {
   columns?: { id, label, kind: "text"|"number"|"money" }[]   // items only; row amount = product of number/money columns
   vat?: { rate?: number, field?: fieldId }                    // items only; VAT % fixed or read from a field
   currency?: "EUR"|...                                        // items only
+  multiple?: boolean            // image / file: several files
+  camera?: boolean              // file: also offer the camera, for papers the person has not scanned (image always offers it)
+  connection?: connectionId     // kind "connection": the page shows "connect your account"; with required the person must connect
+  list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
 }
-// kinds: text textarea number select multiselect date email url toggle color image file items
+// kinds: text textarea number select multiselect date email url toggle color image file items connection list
 
 type AgentStep = {
   type: "agent"
   instructions: string          // the task, with {{templates}}
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
+  connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
   output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description, columns?: string[] }[] }
                                 // a table with columns gives rows as objects with exactly those keys — what widgets read
   model?: "fast"|"smart"        // fast for short copy, smart for research/reasoning
   working?: string              // shown while it runs ("Recherchiert im Web …")
 }
+// Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
+//   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once).
+// "browser" brings: browser_open/click/type, browser_screenshot (the model looks at the page),
+//   browser_request_credentials (the PERSON types a login into the page — the model never sees it; sign-ins can be remembered),
+//   browser_request_user (the person solves a captcha or "continue with Google" in a picture of the page),
+//   browser_download (keeps a file from a signed-in site).
 
 type GenerateStep = {
   type: "generate"
@@ -60,16 +87,20 @@ type WidgetStep = {
 }
 // an interactive HTML app written ONCE into the workspace; every run only brings new data (no model call, no cost)
 
-type ReviewStep = { type: "review", show: stepId[], edit?: boolean, regenerate?: boolean }
+type ReviewStep = { type: "review", show: (stepId | "lists.<listId>")[], edit?: boolean, regenerate?: boolean }
 // shows earlier outputs; the person accepts, edits text outputs (edit), or asks for a new version with a note (regenerate)
+// a shown list is edited in place by the person
 
-type ResultStep = { type: "result", message?: string, deliverables: { from: stepId, label?, formats: Format[] }[] }
+type ResultStep = { type: "result", message?: string, deliverables: { from: stepId | "lists.<listId>", label?, formats: Format[] }[] }
 // formats per source: image→png · video→mp4 · document→pdf docx html md png · dashboard→html pdf png
 //                     widget→html png pdf mp4 json (mp4 only when the widget registers a timeline)
-//                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md
+//                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md (xlsx: one sheet per table)
+//                     agent, any format→zip: the FILES the step kept with mail_save / browser_download
+//                     lists.<id>→xlsx csv json md
 
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{brand.name}} {{brand.details}} · {{today}}
+  · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)
 A template may only use fields asked and steps run EARLIER.`;
 
 export const PRINCIPLES = `
@@ -82,6 +113,11 @@ How good wizards look:
 - Live data with a free public JSON API (weather and wind: api.open-meteo.com; sunrise/sunset is in it too) → an agent step with the http tool and model "fast" that calls the API and returns json. Far cheaper and more exact than web research; use web research only when no API exists.
 - Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
 - The sandbox runs code (python/node) for calculations, charts or file conversion; export_file hands files to the person.
+- Remembering between runs ("merke dir", "führe eine Liste"): declare a list and let an agent step save into it with list_write; a later run reads it as {{lists.id}} or list_read. Give it a key column so known rows are updated, not duplicated. Never make the person re-upload last time's result.
+- The person's mail: one connection of kind "mail", a page field of kind "connection" early in the wizard, and the agent step lists it in "connections". Do not ask for the provider or the address in other fields — the connect field does that.
+- Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.
+- Papers and scans: a "file" field with multiple and camera. Agent steps read uploads with read_document; for invoices and receipts scan_documents returns the fields (vendor, number, date, totals, currency) exactly as printed.
+- Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
 - Every step a person sees later (review/result) must come from an earlier step id.
 - Write all wizard texts in the admin's language.`;
 

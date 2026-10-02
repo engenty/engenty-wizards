@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { tableColumnsSchema } from "./engenty/data-tables/index.js";
+import { CONNECTION_KINDS } from "./store.js";
 
 /** The engenty avatars a wizard can wear. Same cast as engenty's ui-core. */
 export const ENGENTY_KINDS = [
@@ -29,6 +31,8 @@ export const FIELD_KINDS = [
   "image",
   "file",
   "items",
+  "connection",
+  "list",
 ] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
@@ -49,6 +53,7 @@ export const FORMATS = [
   "csv",
   "xlsx",
   "json",
+  "zip",
 ] as const;
 export type Format = (typeof FORMATS)[number];
 
@@ -79,6 +84,14 @@ export const fieldSchema = z.object({
   /** VAT for `items`: a fixed rate in percent, or the id of a number/select field holding it. */
   vat: z.object({ rate: z.number().optional(), field: z.string().optional() }).optional(),
   currency: z.string().optional(),
+  /** image / file: several files; the value is then a list. */
+  multiple: z.boolean().optional(),
+  /** file: also offer the camera, for documents the person only has on paper. Images always offer it. */
+  camera: z.boolean().optional(),
+  /** connection: id of the wizard connection the person connects here. */
+  connection: z.string().optional(),
+  /** list: id of the wizard list shown here for the person to check and correct. */
+  list: z.string().optional(),
 });
 export type Field = z.infer<typeof fieldSchema>;
 
@@ -123,6 +136,8 @@ export const agentStepSchema = z.object({
   tools: z.array(z.enum(TOOL_IDS)).default([]),
   /** Ids of project MCP servers this step may use. */
   mcp: z.array(z.string()).optional(),
+  /** Ids of wizard connections (the person's accounts) this step may use. */
+  connections: z.array(z.string()).optional(),
   output: z
     .object({
       format: z.enum(["text", "markdown", "json"]),
@@ -213,6 +228,23 @@ export type ReviewStep = z.infer<typeof reviewStepSchema>;
 export type ResultStep = z.infer<typeof resultStepSchema>;
 export type StepType = Step["type"];
 
+export const listSchema = z.object({
+  id,
+  title: z.string().min(1),
+  description: z.string().optional(),
+  /** engenty data-table columns: `{ id, name, type, format }`. */
+  columns: tableColumnsSchema,
+  /** Column that identifies a row; saving a row with a known key updates it. */
+  key: z.string().optional(),
+});
+
+export const connectionSchema = z.object({
+  id,
+  kind: z.enum(CONNECTION_KINDS),
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+
 export const wizardSchema = z.object({
   version: z.literal(1).default(1),
   title: z.string().min(1),
@@ -220,6 +252,10 @@ export const wizardSchema = z.object({
   avatar: z.enum(ENGENTY_KINDS).default("round"),
   /** Shown on the first page above the first question. */
   intro: z.string().optional(),
+  /** Tabular data the wizard keeps between runs, per person. */
+  lists: z.array(listSchema).max(12).optional(),
+  /** Accounts the person connects; kept between runs, per person. */
+  connections: z.array(connectionSchema).max(6).optional(),
   steps: z.array(stepSchema).min(1),
 });
 export type WizardDefinition = z.infer<typeof wizardSchema>;
@@ -249,11 +285,21 @@ export function formatsFor(step: Step): Format[] {
   }
   if (step.type === "agent") {
     if (step.output.format === "json") {
-      return ["json", "csv", "xlsx", "md"];
+      return ["json", "csv", "xlsx", "md", "zip"];
     }
-    return ["md", "txt", "docx", "pdf", "html"];
+    return ["md", "txt", "docx", "pdf", "html", "zip"];
   }
   return [];
+}
+
+/** Formats a stored list can be downloaded in. */
+export const LIST_FORMATS: Format[] = ["xlsx", "csv", "json", "md"];
+
+const LIST_REF = /^lists\.([a-zA-Z][a-zA-Z0-9_]*)$/;
+
+/** "lists.providers" → "providers"; anything else → null. */
+export function listRef(ref: string): string | null {
+  return ref.match(LIST_REF)?.[1] ?? null;
 }
 
 export const DEFAULT_WIDGET_SIZE = { width: 1280, height: 720 };
@@ -291,6 +337,24 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
   const fieldIds = new Set<string>();
   const seenSteps = new Set<string>();
   const seenFields = new Set<string>();
+  const listIds = new Set<string>();
+  const connectionIds = new Set<string>();
+
+  for (const list of def.lists ?? []) {
+    if (listIds.has(list.id)) {
+      issues.push({ message: `Duplicate list id "${list.id}".` });
+    }
+    listIds.add(list.id);
+    if (list.key && !list.columns.some((c) => c.id === list.key)) {
+      issues.push({ message: `List "${list.id}": key "${list.key}" is not one of its columns.` });
+    }
+  }
+  for (const connection of def.connections ?? []) {
+    if (connectionIds.has(connection.id)) {
+      issues.push({ message: `Duplicate connection id "${connection.id}".` });
+    }
+    connectionIds.add(connection.id);
+  }
 
   for (const step of def.steps) {
     if (stepIds.has(step.id)) {
@@ -308,6 +372,18 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         }
         if (field.kind === "items" && !field.columns?.length) {
           issues.push({ stepId: step.id, message: `Field "${field.id}" needs columns.` });
+        }
+        if (field.kind === "connection" && !connectionIds.has(field.connection ?? "")) {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}" needs "connection": the id of one of the wizard's connections.`,
+          });
+        }
+        if (field.kind === "list" && !listIds.has(field.list ?? "")) {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}" needs "list": the id of one of the wizard's lists.`,
+          });
         }
       }
     }
@@ -330,6 +406,10 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         }
       } else if (head === "brand" || head === "today" || head === "notes") {
         // provided by the runner
+      } else if (head === "lists") {
+        if (!second || !listIds.has(second)) {
+          issues.push({ stepId: step.id, message: `"{{${ref}}}" refers to an unknown list.` });
+        }
       } else if (!seenFields.has(head)) {
         issues.push({
           stepId: step.id,
@@ -348,6 +428,11 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         break;
       case "agent":
         checkTemplate(step, step.instructions);
+        for (const c of step.connections ?? []) {
+          if (!connectionIds.has(c)) {
+            issues.push({ stepId: step.id, message: `Step uses unknown connection "${c}".` });
+          }
+        }
         break;
       case "generate":
         checkTemplate(step, step.prompt);
@@ -383,15 +468,23 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         break;
       case "review":
         for (const ref of step.show) {
-          if (!seenSteps.has(ref)) {
-            issues.push({ stepId: step.id, message: `Review shows unknown step "${ref}".` });
+          const list = listRef(ref);
+          if (list ? !listIds.has(list) : !seenSteps.has(ref)) {
+            issues.push({
+              stepId: step.id,
+              message: `Review shows unknown ${list ? "list" : "step"} "${ref}".`,
+            });
           }
         }
         break;
       case "result":
         for (const d of step.deliverables) {
-          if (!seenSteps.has(d.from)) {
-            issues.push({ stepId: step.id, message: `Deliverable from unknown step "${d.from}".` });
+          const list = listRef(d.from);
+          if (list ? !listIds.has(list) : !seenSteps.has(d.from)) {
+            issues.push({
+              stepId: step.id,
+              message: `Deliverable from unknown ${list ? "list" : "step"} "${d.from}".`,
+            });
           }
         }
         break;

@@ -1,5 +1,6 @@
 import { type Browser, type BrowserContext, chromium } from "playwright-core";
 import { env } from "../env.js";
+import { assertPublicUrl } from "../tools/net-guard.js";
 
 /**
  * One Chromium for the whole server: the engenty-browser container over CDP when
@@ -37,6 +38,48 @@ export async function newContext(
 ): Promise<BrowserContext> {
   const browser = await getBrowser();
   return browser.newContext({ viewport: { width: 1280, height: 900 }, ...options });
+}
+
+const hostChecks = new Map<string, Promise<boolean>>();
+
+function publicHost(url: string): Promise<boolean> {
+  let host: string;
+  try {
+    host = new URL(url).host;
+  } catch {
+    return Promise.resolve(false);
+  }
+  let check = hostChecks.get(host);
+  if (!check) {
+    check = assertPublicUrl(url).then(
+      () => true,
+      () => false,
+    );
+    hostChecks.set(host, check);
+    if (hostChecks.size > 2000) {
+      hostChecks.clear();
+    }
+  }
+  return check;
+}
+
+/**
+ * A context for browsing the web on a person's behalf: every request, whoever started it (the
+ * agent, a redirect, the person clicking), may only reach public hosts.
+ */
+export async function webContext(
+  options: Parameters<Browser["newContext"]>[0] = {},
+): Promise<BrowserContext> {
+  const context = await newContext({ acceptDownloads: true, ...options });
+  await context.route("**/*", async (route) => {
+    const url = route.request().url();
+    if (!/^https?:/i.test(url) || (await publicHost(url))) {
+      await route.continue();
+    } else {
+      await route.abort("blockedbyclient");
+    }
+  });
+  return context;
 }
 
 /**

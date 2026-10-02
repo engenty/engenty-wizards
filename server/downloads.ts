@@ -1,8 +1,12 @@
 import { and, eq } from "drizzle-orm";
+import { zipSync } from "fflate";
 import { type Format, formatsFor, type Step, widgetSize } from "../shared/definition.js";
 import type { AssetRef, StepOutput } from "../shared/run.js";
+import type { ListDef, ListRow } from "../shared/store.js";
+import { listAsMarkdown } from "../shared/store.js";
 import { db, schema } from "./db/client.js";
 import {
+  allTables,
   firstTable,
   htmlToDocx,
   htmlToMarkdown,
@@ -11,8 +15,8 @@ import {
   jsonToMarkdown,
   MIME,
   markdownToHtml,
+  tablesToXlsx,
   tableToCsv,
-  tableToXlsx,
 } from "./render/convert.js";
 import { guardHtml } from "./render/guard.js";
 import { extFor, inlineAssetRefs, loadAsset, loadAssetText, saveAsset } from "./storage.js";
@@ -167,9 +171,14 @@ export async function renderDownload(
   }
 
   if (step.type === "agent") {
+    if (format === "zip") {
+      const zip = await zipAssets(output.assets?.filter((a) => a.kind === "file") ?? []);
+      return zip ? { data: zip, mime: MIME.zip, filename: file("zip") } : null;
+    }
     const text = output.text ?? "";
     if (step.output.format === "json") {
       const rows = firstTable(output.json);
+      const tables = allTables(output.json);
       switch (format) {
         case "json":
           return {
@@ -180,8 +189,8 @@ export async function renderDownload(
         case "csv":
           return rows ? { data: tableToCsv(rows), mime: MIME.csv, filename: file("csv") } : null;
         case "xlsx":
-          return rows
-            ? { data: await tableToXlsx(rows), mime: MIME.xlsx, filename: file("xlsx") }
+          return tables.length
+            ? { data: await tablesToXlsx(tables), mime: MIME.xlsx, filename: file("xlsx") }
             : null;
         case "md":
           return { data: jsonAsMarkdown(output.json), mime: MIME.md, filename: file("md") };
@@ -216,6 +225,58 @@ export async function renderDownload(
 }
 
 /** A structured result as readable Markdown: text fields as paragraphs, tables as tables. */
+/** The files a step collected, as one archive. Two files of the same name both stay. */
+async function zipAssets(assets: AssetRef[]): Promise<Uint8Array | null> {
+  const entries: Record<string, Uint8Array> = {};
+  for (const asset of assets) {
+    const found = await loadAsset(asset.id);
+    if (!found) {
+      continue;
+    }
+    let name = asset.name;
+    for (let n = 2; name in entries; n++) {
+      name = asset.name.replace(/(\.[^.]+)?$/, (ext) => `-${n}${ext}`);
+    }
+    entries[name] = new Uint8Array(found.data);
+  }
+  return Object.keys(entries).length ? zipSync(entries, { level: 6 }) : null;
+}
+
+/** A stored list in one format. Column labels head the spreadsheet; ids stay the JSON keys. */
+export async function listDownload(
+  def: ListDef,
+  rows: ListRow[],
+  format: Format,
+  baseName: string,
+): Promise<Download | null> {
+  const name = slug(baseName);
+  const cells = rows.map((r) => r.cells);
+  const headers = Object.fromEntries(def.columns.map((c) => [c.id, c.name]));
+  const labelled = cells.map((row) =>
+    Object.fromEntries(def.columns.map((c) => [c.name, row[c.id] ?? null])),
+  );
+  switch (format) {
+    case "xlsx":
+      return {
+        data: await tablesToXlsx([{ name: def.title, rows: cells, headers }]),
+        mime: MIME.xlsx,
+        filename: `${name}.xlsx`,
+      };
+    case "csv":
+      return { data: tableToCsv(labelled), mime: MIME.csv, filename: `${name}.csv` };
+    case "json":
+      return { data: JSON.stringify(cells, null, 2), mime: MIME.json, filename: `${name}.json` };
+    case "md":
+      return {
+        data: `# ${def.title}\n\n${listAsMarkdown(def, rows, 5000)}`,
+        mime: MIME.md,
+        filename: `${name}.md`,
+      };
+    default:
+      return null;
+  }
+}
+
 export function jsonAsMarkdown(value: unknown): string {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return jsonToMarkdown(value);

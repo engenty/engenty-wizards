@@ -3,18 +3,24 @@ import { nanoid } from "nanoid";
 import {
   type Format,
   formatsFor,
+  LIST_FORMATS,
+  listRef,
   nextStepId,
   type Step,
   type WizardDefinition,
 } from "../../shared/definition.js";
-import type { RunState, RunView } from "../../shared/run.js";
+import type { RunState, RunView, ShownList } from "../../shared/run.js";
+import type { ListDef, ListRow } from "../../shared/store.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
 import { canSpend, charge, usdToMicros } from "../billing/credits.js";
+import { connectionViews } from "../connectors/index.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { ModelUnavailableError } from "../models.js";
 import { saveAsset } from "../storage.js";
+import { listRows, scopeOf } from "../store/index.js";
 import { hasFfmpeg } from "../widgets/render.js";
+import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
 import { releaseResources, resourcesFor } from "./resources.js";
@@ -137,15 +143,31 @@ export function kick(runId: string) {
     });
 }
 
-function makeContext(
+/** The wizard's lists with the person's rows, by list id. */
+async function storedLists(run: RunRow): Promise<Record<string, { def: ListDef; rows: ListRow[] }>> {
+  const scope = scopeOf(run);
+  const out: Record<string, { def: ListDef; rows: ListRow[] }> = {};
+  for (const def of run.definition.lists ?? []) {
+    out[def.id] = { def, rows: await listRows(scope, def.id) };
+  }
+  return out;
+}
+
+async function makeContext(
   run: RunRow,
   project: ProjectRow,
   state: RunState,
   signal: AbortSignal,
-): StepContext {
+): Promise<StepContext> {
+  const store = scopeOf(run);
+  const resources = resourcesFor(run.id);
+  resources.bind(store);
+  const stepId = run.cursor ?? "";
   return {
     runId: run.id,
     ownerId: run.ownerId,
+    stepId,
+    store,
     def: run.definition,
     files: run.files,
     state,
@@ -153,10 +175,15 @@ function makeContext(
       def: run.definition,
       state,
       brand: { name: project.brand.name, details: project.brand.details },
+      lists: await storedLists(run),
     },
     project,
     signal,
-    resources: resourcesFor(run.id),
+    resources,
+    ask: (ask) =>
+      unattended.has(run.id)
+        ? Promise.resolve(null)
+        : askPerson(run.id, { ...ask, stepId }, signal),
     emit: (type, message) => emitEvent(run.id, run.cursor, type, message),
     chargeUsd: async (usd, reason) => {
       const micros = usdToMicros(usd);
@@ -180,6 +207,7 @@ function makeContext(
 }
 
 async function drive(runId: string, signal: AbortSignal) {
+  await clearStaleAsk(runId);
   while (!signal.aborted) {
     const run = await loadRun(runId);
     if (run?.status !== "running") {
@@ -209,7 +237,7 @@ async function drive(runId: string, signal: AbortSignal) {
     const project = await loadProject(run);
     const state = structuredClone(run.state);
     try {
-      const output = await runAutomaticStep(step, makeContext(run, project, state, signal));
+      const output = await runAutomaticStep(step, await makeContext(run, project, state, signal));
       if (signal.aborted) {
         return;
       }
@@ -268,13 +296,26 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
   if (errors.length) {
     throw new RunInputError(errors);
   }
+  const connections = step.fields.some((f) => f.kind === "connection")
+    ? await connectionViews(run.definition.connections ?? [], scopeOf(run))
+    : [];
   for (const field of step.fields) {
-    if ((field.kind === "image" || field.kind === "file") && typeof values[field.id] === "string") {
-      const asset = await db.query.asset.findFirst({
-        where: eq(schema.asset.id, values[field.id] as string),
-      });
-      if (asset?.runId !== runId) {
-        throw new RunInputError([{ field: field.id, message: "Datei nicht gefunden" }]);
+    if (field.kind === "image" || field.kind === "file") {
+      const value = values[field.id];
+      for (const id of Array.isArray(value) ? value : value ? [value] : []) {
+        const asset = await db.query.asset.findFirst({ where: eq(schema.asset.id, String(id)) });
+        if (asset?.runId !== runId) {
+          throw new RunInputError([{ field: field.id, message: "Datei nicht gefunden" }]);
+        }
+      }
+    }
+    if (field.kind === "connection") {
+      // What the step later reads as {{field}} is the connected account, as the server knows it.
+      const account = connections.find((c) => c.id === field.connection)?.account;
+      if (account) {
+        values[field.id] = account.label;
+      } else if (field.required) {
+        throw new RunInputError([{ field: field.id, message: "Bitte zuerst verbinden" }]);
       }
     }
   }
@@ -366,6 +407,10 @@ export async function availableFormats(step: Step, run: RunRow, wanted?: Format[
       formats = formats.filter((f) => f !== "mp4");
     }
   }
+  // A zip holds the files a step collected; without any there is nothing to zip.
+  if (formats.includes("zip") && !run.state.outputs[step.id]?.assets?.some((a) => a.kind === "file")) {
+    formats = formats.filter((f) => f !== "zip");
+  }
   return formats;
 }
 
@@ -373,12 +418,29 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
   const def = run.definition;
   const step = stepOf(def, run.cursor) ?? null;
   const index = step ? def.steps.indexOf(step) : def.steps.length;
-  const shownIds =
+  const refs =
     step?.type === "review"
       ? step.show
       : step?.type === "result"
         ? [...new Set(step.deliverables.map((d) => d.from))]
         : [];
+  const shownIds = refs.filter((ref) => !listRef(ref));
+  const listIds = [
+    ...refs.map(listRef),
+    ...(step?.type === "page" ? step.fields.map((f) => (f.kind === "list" ? f.list : null)) : []),
+  ].filter((id): id is string => Boolean(id));
+  const stored = listIds.length ? await storedLists(run) : {};
+  const lists: ShownList[] = [...new Set(listIds)]
+    .filter((id) => stored[id])
+    .map((id) => {
+      const deliverable =
+        step?.type === "result" ? step.deliverables.find((d) => listRef(d.from) === id) : undefined;
+      return {
+        ...stored[id],
+        formats: deliverable ? deliverable.formats.filter((f) => LIST_FORMATS.includes(f)) : [],
+        label: deliverable?.label ?? null,
+      };
+    });
   const shown = await Promise.all(
     shownIds
       .map((id) => stepOf(def, id))
@@ -415,6 +477,13 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     error: run.error,
     events: await recentEvents(run.id, 0, 30),
     brand,
+    ask: run.status === "running" ? run.ask : null,
+    lists,
+    connections:
+      step?.type === "page" && step.fields.some((f) => f.kind === "connection")
+        ? await connectionViews(def.connections ?? [], scopeOf(run))
+        : [],
+    keeps: Boolean(def.lists?.length || def.connections?.length),
     shareUrl: run.shareToken ? `${env.appUrl}/s/${run.shareToken}` : null,
     expiresAt: run.expiresAt?.toISOString() ?? null,
   };

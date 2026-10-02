@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { formatsFor, type Step } from "../../shared/definition.js";
 import { MICROS_PER_CREDIT } from "../billing/credits.js";
 import { db, schema } from "../db/client.js";
+import { unattended } from "../engine/asks.js";
 import { emitEvent, recentEvents, subscribe } from "../engine/events.js";
 import { createRun, RunInputError, reviewStep, submitPage } from "../engine/runner.js";
 import { signedUrl } from "../signing.js";
@@ -39,10 +40,12 @@ export async function startTestRun(
 
 function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boolean) {
   autopilots.add(runId);
+  unattended.add(runId);
   let busy = false;
   let again = false;
   const land = () => {
     autopilots.delete(runId);
+    unattended.delete(runId);
     unsubscribe();
     clearTimeout(timeout);
   };

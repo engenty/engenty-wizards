@@ -24,6 +24,7 @@ export const MIME: Record<Format, string> = {
   csv: "text/csv",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   json: "application/json",
+  zip: "application/zip",
 };
 
 /** A calm print stylesheet for documents written as Markdown. */
@@ -134,22 +135,49 @@ export function tableToCsv(rows: Record<string, unknown>[]): string {
   ].join("\n");
 }
 
-export async function tableToXlsx(rows: Record<string, unknown>[]): Promise<Uint8Array> {
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("Data");
-  const cols = tableColumns(rows);
-  ws.columns = cols.map((c) => ({
-    header: c,
-    key: c,
-    width: Math.min(40, Math.max(12, c.length + 4)),
-  }));
-  for (const r of rows) {
-    ws.addRow(
-      Object.fromEntries(cols.map((c) => [c, typeof r[c] === "number" ? r[c] : cell(r[c])])),
-    );
+/** Every table of a step's JSON result, by its key; a bare array is the one table "Data". */
+export function allTables(value: unknown): { name: string; rows: Record<string, unknown>[] }[] {
+  const isTable = (v: unknown): v is Record<string, unknown>[] =>
+    Array.isArray(v) && v.length > 0 && v.every((r) => r && typeof r === "object" && !Array.isArray(r));
+  if (isTable(value)) {
+    return [{ name: "Data", rows: value }];
   }
-  ws.getRow(1).font = { bold: true };
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  return Object.entries(value).flatMap(([name, v]) =>
+    isTable(v)
+      ? [{ name, rows: v }]
+      : Array.isArray(v) && v.length && v.every((x) => typeof x !== "object")
+        ? [{ name, rows: v.map((x) => ({ [name]: x })) }]
+        : [],
+  );
+}
+
+/** A workbook with one sheet per table. `headers` renames columns (column id → label). */
+export async function tablesToXlsx(
+  tables: { name: string; rows: Record<string, unknown>[]; headers?: Record<string, string> }[],
+): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook();
+  for (const [index, table] of tables.entries()) {
+    const ws = wb.addWorksheet(table.name.replace(/[\\/*?:[\]]/g, " ").slice(0, 31) || `Sheet${index + 1}`);
+    const cols = table.headers ? Object.keys(table.headers) : tableColumns(table.rows);
+    ws.columns = cols.map((c) => {
+      const header = table.headers?.[c] ?? c;
+      return { header, key: c, width: Math.min(40, Math.max(12, header.length + 4)) };
+    });
+    for (const r of table.rows) {
+      ws.addRow(
+        Object.fromEntries(cols.map((c) => [c, typeof r[c] === "number" ? r[c] : cell(r[c])])),
+      );
+    }
+    ws.getRow(1).font = { bold: true };
+  }
   return new Uint8Array(await wb.xlsx.writeBuffer());
+}
+
+export function tableToXlsx(rows: Record<string, unknown>[]): Promise<Uint8Array> {
+  return tablesToXlsx([{ name: "Data", rows }]);
 }
 
 export function jsonToMarkdown(value: unknown): string {

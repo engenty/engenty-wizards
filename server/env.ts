@@ -34,6 +34,10 @@ export const env = {
   databaseUrl: str("DATABASE_URL", ""),
   databaseAuthToken: str("DATABASE_AUTH_TOKEN"),
   authSecret: str("BETTER_AUTH_SECRET", "dev-only-secret-change-me-dev-only-secret"),
+  /** Where OAuth providers send people back after connecting an account; default <APP_URL>/api/connect/callback. */
+  connectRedirectUrl: str("CONNECT_REDIRECT_URL"),
+  /** Encrypts connected accounts and kept browser sessions; falls back to the auth secret. */
+  storeKey: str("STORE_ENC_KEY"),
   devLogin: process.env.NODE_ENV !== "production" && str("DEV_LOGIN") === "1",
   devEmail: str("DEV_LOGIN_EMAIL", "dev@wizards.local"),
 
@@ -49,6 +53,8 @@ export const env = {
     architect: str("MODEL_ARCHITECT", "anthropic/claude-sonnet-5.5"),
     smart: str("MODEL_SMART", "anthropic/claude-sonnet-5.5"),
     fast: str("MODEL_FAST", "anthropic/claude-haiku-4.5"),
+    /** Reads scans and photos; must take PDFs and images. */
+    vision: str("MODEL_VISION", str("MODEL_FAST", "anthropic/claude-haiku-4.5")),
     image: str("MODEL_IMAGE", "google/gemini-3.1-flash-image"),
     video: str("MODEL_VIDEO", "google/veo-3.1-fast-generate-001"),
   },
@@ -84,6 +90,8 @@ export const env = {
     defaultDailyRuns: num("LIMIT_DEFAULT_DAILY_RUNS", 50),
     /** End-user runs (no account) and their shared links are deleted after this many days. */
     resultTtlDays: num("RESULT_TTL_DAYS", 7),
+    /** What a wizard keeps for a person (lists, files, accounts) goes when unused this long. */
+    storeTtlDays: num("STORE_TTL_DAYS", 400),
   },
 };
 

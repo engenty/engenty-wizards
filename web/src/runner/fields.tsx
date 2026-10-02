@@ -1,9 +1,12 @@
 import { type Field, itemsTotals } from "@shared/definition";
-import { ImagePlus, Paperclip, Plus, Trash2, X } from "lucide-react";
+import type { RunView } from "@shared/run";
+import { Camera, ImagePlus, Paperclip, Plus, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../ui";
+import { CameraDialog, hasNativeCamera, shrinkImage } from "./camera";
+import { ConnectionField, ListTable } from "./store";
 
 export type Values = Record<string, unknown>;
 
@@ -116,72 +119,147 @@ function UploadField({
   runId: string;
   onChange: (v: unknown) => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const nativeCamera = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [name, setName] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string, { name: string; image: boolean }>>({});
   const [error, setError] = useState<string | null>(null);
+  const [camera, setCamera] = useState(false);
   const image = field.kind === "image";
-  const upload = async (file: File | undefined) => {
-    if (!file) {
+  const multiple = Boolean(field.multiple);
+  const withCamera = image || Boolean(field.camera);
+  const ids = Array.isArray(value)
+    ? (value as string[])
+    : typeof value === "string" && value
+      ? [value]
+      : [];
+  // The list as it is now, not as it was when an upload started: several can finish in a row.
+  const current = useRef(ids);
+  current.current = ids;
+
+  const add = async (files: File[]) => {
+    if (!files.length) {
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const ref = await api.upload<{ id: string; name: string }>(
-        `/api/runs/${runId}/uploads`,
-        file,
-      );
-      setName(ref.name);
-      onChange(ref.id);
+      for (const raw of multiple ? files : files.slice(0, 1)) {
+        const file = await shrinkImage(raw);
+        const ref = await api.upload<{ id: string; name: string; mime: string }>(
+          `/api/runs/${runId}/uploads`,
+          file,
+        );
+        setNames((n) => ({
+          ...n,
+          [ref.id]: { name: ref.name, image: ref.mime.startsWith("image/") },
+        }));
+        const next = multiple ? [...current.current, ref.id] : ref.id;
+        current.current = multiple ? (next as string[]) : [ref.id];
+        onChange(next);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
     }
   };
-  const id = typeof value === "string" && value ? value : null;
+  const remove = (id: string) => {
+    const left = ids.filter((x) => x !== id);
+    onChange(multiple ? left : undefined);
+  };
+
   return (
     <div>
-      {id ? (
-        <div className="flex items-center gap-3 rounded-2xl bg-card p-2 ring-1 ring-input">
-          {image ? (
-            <img
-              src={`/api/runs/${runId}/assets/${id}`}
-              alt=""
-              className="size-16 rounded-xl object-cover"
-            />
-          ) : (
-            <div className="flex size-12 items-center justify-center rounded-xl bg-paper-2">
-              <Paperclip className="size-5 text-ink-3" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1 truncate text-[14px]">{name ?? "✓"}</div>
-          <IconButton label="Remove" onClick={() => onChange(undefined)}>
-            <X className="size-4" />
-          </IconButton>
+      {ids.length ? (
+        <div className="mb-2 flex flex-col gap-2">
+          {ids.map((id) => {
+            const known = names[id];
+            return (
+              <div
+                key={id}
+                className="flex items-center gap-3 rounded-2xl bg-card p-2 ring-1 ring-input"
+              >
+                {(known ? known.image : image) ? (
+                  <img
+                    src={`/api/runs/${runId}/assets/${id}`}
+                    alt=""
+                    className="size-14 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="flex size-12 items-center justify-center rounded-xl bg-paper-2">
+                    <Paperclip className="size-5 text-ink-3" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 truncate text-[14px]">{known?.name ?? "✓"}</div>
+                <IconButton label="Remove" onClick={() => remove(id)}>
+                  <X className="size-4" />
+                </IconButton>
+              </div>
+            );
+          })}
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            void upload(e.dataTransfer.files[0]);
-          }}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-input border-dashed bg-card px-4 py-8 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink"
-        >
-          {image ? <ImagePlus className="size-6" /> : <Paperclip className="size-6" />}
-          {busy ? t("run.uploading") : t("run.upload")}
-        </button>
-      )}
+      ) : null}
+      {multiple || !ids.length ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => picker.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              void add(Array.from(e.dataTransfer.files));
+            }}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-input border-dashed bg-card px-4 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
+              ids.length ? "py-4" : "py-8",
+            )}
+          >
+            {image ? <ImagePlus className="size-6" /> : <Paperclip className="size-6" />}
+            {busy ? t("run.uploading") : ids.length ? t("run.uploadMore") : t("run.upload")}
+          </button>
+          {withCamera ? (
+            <button
+              type="button"
+              onClick={() => (hasNativeCamera ? nativeCamera.current?.click() : setCamera(true))}
+              className={cn(
+                "flex w-32 flex-col items-center justify-center gap-2 rounded-2xl border border-input border-dashed bg-card px-3 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
+                ids.length ? "py-4" : "py-8",
+              )}
+            >
+              <Camera className="size-6" />
+              {t("run.camera")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <input
-        ref={input}
+        ref={picker}
         type="file"
         hidden
+        multiple={multiple}
         accept={image ? "image/*" : undefined}
-        onChange={(e) => void upload(e.target.files?.[0])}
+        onChange={(e) => {
+          void add(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={nativeCamera}
+        type="file"
+        hidden
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => {
+          void add(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <CameraDialog
+        open={camera}
+        multiple={multiple}
+        onClose={() => setCamera(false)}
+        onCapture={(file) => add([file])}
       />
       {error ? <div className="mt-2 text-[13px] text-rose">{error}</div> : null}
     </div>
@@ -193,6 +271,7 @@ export function FieldInput({
   value,
   values,
   runId,
+  view,
   onChange,
   error,
 }: {
@@ -200,6 +279,8 @@ export function FieldInput({
   value: unknown;
   values: Values;
   runId: string;
+  /** The run as the server sees it: connections and stored lists come from there. */
+  view?: Pick<RunView, "connections" | "lists">;
   onChange: (v: unknown) => void;
   error?: string;
 }) {
@@ -308,6 +389,19 @@ export function FieldInput({
     case "items":
       control = <ItemsField field={field} value={value} values={values} onChange={onChange} />;
       break;
+    case "connection":
+      control = (
+        <ConnectionField
+          runId={runId}
+          connection={view?.connections.find((c) => c.id === field.connection)}
+        />
+      );
+      break;
+    case "list": {
+      const list = view?.lists.find((l) => l.def.id === field.list);
+      control = list ? <ListTable runId={runId} list={list} editable /> : null;
+      break;
+    }
     default:
       control = (
         <Input

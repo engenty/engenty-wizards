@@ -29,6 +29,13 @@
       "when": 1790930325457,
       "tag": "0003_silky_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790936810148,
+      "tag": "0004_slim_the_watchers",
+      "breakpoints": true
     }
   ]
 }

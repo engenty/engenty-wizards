@@ -5,11 +5,14 @@ import {
   type WizardDefinition,
 } from "../../shared/definition.js";
 import type { RunState } from "../../shared/run.js";
+import { type ListDef, type ListRow, listAsMarkdown } from "../../shared/store.js";
 
 export interface TemplateScope {
   def: WizardDefinition;
   state: RunState;
   brand: { name?: string; details?: string };
+  /** The wizard's stored lists as they are when the step starts. */
+  lists?: Record<string, { def: ListDef; rows: ListRow[] }>;
 }
 
 const TEMPLATE_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
@@ -69,6 +72,10 @@ function stringify(v: unknown): string {
 export function resolveRef(ref: string, scope: TemplateScope): unknown {
   const { def, state, brand } = scope;
   const [head, ...rest] = ref.split(".");
+  if (head === "lists") {
+    const list = scope.lists?.[rest[0] ?? ""];
+    return list ? listAsMarkdown(list.def, list.rows) : "";
+  }
   if (head === "today") {
     return new Date().toISOString().slice(0, 10);
   }
@@ -99,7 +106,15 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
     return totals[rest[0]];
   }
   if (field?.kind === "image" || field?.kind === "file") {
-    return value ? "[attached file]" : "";
+    // The files themselves are read with read_document / scan_documents by these names.
+    const ids = (Array.isArray(value) ? value : [value]).filter(
+      (v): v is string => typeof v === "string" && v.length > 0,
+    );
+    return ids.map((id) => `upload:${id}`).join(", ");
+  }
+  if (field?.kind === "list") {
+    const list = scope.lists?.[field.list ?? ""];
+    return list ? listAsMarkdown(list.def, list.rows) : "";
   }
   if (field?.kind === "toggle") {
     return value ? "yes" : "no";

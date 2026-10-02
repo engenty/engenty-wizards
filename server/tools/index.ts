@@ -11,13 +11,11 @@ import { generateImageMedia } from "../media/generate.js";
 import { gatewayTools } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { snapshotFile } from "../services/files.js";
+import { browserTools } from "./browser.js";
+import { mailTools } from "./mail.js";
 import { assertPublicUrl, safeFetch } from "./net-guard.js";
-
-const TEXT_LIMIT = 8000;
-
-function clip(s: string, limit = TEXT_LIMIT): string {
-  return s.length > limit ? `${s.slice(0, limit)}\n…[truncated ${s.length - limit} chars]` : s;
-}
+import { clip, FileKeeper } from "./shared.js";
+import { storeTools, type UploadRef } from "./store.js";
 
 export interface StepTools {
   tools: Record<string, any>;
@@ -31,6 +29,7 @@ export async function buildStepTools(
   step: AgentStep,
   ctx: StepContext,
   modelRef: string,
+  uploads: UploadRef[],
 ): Promise<StepTools> {
   const tools: Record<string, any> = {};
   const assets: AssetRef[] = [];
@@ -94,103 +93,15 @@ export async function buildStepTools(
     });
   }
 
+  const files = new FileKeeper(ctx, assets);
+
   if (allowed.has("browser")) {
-    const snapshot = async () => {
-      const page = await ctx.resources.browserPage();
-      const data = await page.evaluate(() => {
-        const els = Array.from(
-          document.querySelectorAll<HTMLElement>(
-            "a[href], button, input, textarea, select, [role=button], [role=link], [contenteditable=true]",
-          ),
-        ).filter((el) => {
-          const r = el.getBoundingClientRect();
-          return r.width > 0 && r.height > 0;
-        });
-        const items = els.slice(0, 80).map((el, i) => {
-          el.setAttribute("data-wz-ref", String(i));
-          const label =
-            el.getAttribute("aria-label") ||
-            (el as HTMLInputElement).placeholder ||
-            el.innerText ||
-            (el as HTMLInputElement).value ||
-            el.getAttribute("name") ||
-            "";
-          return `[${i}] ${el.tagName.toLowerCase()} ${label.trim().replace(/\s+/g, " ").slice(0, 80)}`;
-        });
-        return { text: document.body?.innerText ?? "", items };
-      });
-      return {
-        url: page.url(),
-        title: await page.title(),
-        text: clip(data.text, 8000),
-        elements: data.items.join("\n"),
-      };
-    };
-    tools.browser_open = createTool({
-      id: "browser_open",
-      description:
-        "Open a URL in the browser and return its text plus numbered interactive elements.",
-      inputSchema: z.object({ url: z.string() }),
-      execute: async ({ url }) => {
-        const safe = await assertPublicUrl(url);
-        await ctx.emit("tool", `Öffnet ${safe.hostname}`);
-        const page = await ctx.resources.browserPage();
-        await page.goto(safe.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
-        await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
-        return snapshot();
-      },
-    });
-    tools.browser_click = createTool({
-      id: "browser_click",
-      description: "Click an element by its [number] from the last snapshot.",
-      inputSchema: z.object({ ref: z.number() }),
-      execute: async ({ ref }) => {
-        const page = await ctx.resources.browserPage();
-        await ctx.emit("tool", "Klickt im Browser");
-        await page.locator(`[data-wz-ref="${ref}"]`).first().click({ timeout: 10_000 });
-        await page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
-        if (page.url()) {
-          await assertPublicUrl(page.url());
-        }
-        return snapshot();
-      },
-    });
-    tools.browser_type = createTool({
-      id: "browser_type",
-      description: "Type text into an input by its [number]; set submit to press Enter afterwards.",
-      inputSchema: z.object({ ref: z.number(), text: z.string(), submit: z.boolean().optional() }),
-      execute: async ({ ref, text, submit }) => {
-        const page = await ctx.resources.browserPage();
-        await ctx.emit("tool", "Tippt im Browser");
-        const el = page.locator(`[data-wz-ref="${ref}"]`).first();
-        await el.fill(text, { timeout: 10_000 });
-        if (submit) {
-          await el.press("Enter");
-          await page
-            .waitForLoadState("domcontentloaded", { timeout: 10_000 })
-            .catch(() => undefined);
-        }
-        return snapshot();
-      },
-    });
-    tools.browser_screenshot = createTool({
-      id: "browser_screenshot",
-      description: "Save a screenshot of the current page as a result image for the person.",
-      inputSchema: z.object({ name: z.string().optional() }),
-      execute: async ({ name }) => {
-        const page = await ctx.resources.browserPage();
-        const png = await page.screenshot({ type: "png" });
-        const ref = await ctx.saveAsset({
-          kind: "image",
-          mime: "image/png",
-          name: name ?? "screenshot.png",
-          data: png,
-        });
-        assets.push(ref);
-        return { saved: true, assetId: ref.id };
-      },
-    });
+    Object.assign(tools, browserTools(ctx, assets, files));
   }
+
+  // The wizard's lists and files, and the documents the person gave, are always at hand.
+  Object.assign(tools, storeTools(ctx, uploads));
+  Object.assign(tools, mailTools(step, ctx, files));
 
   if (allowed.has("sandbox") && env.sandboxEnabled) {
     tools.run_command = createTool({

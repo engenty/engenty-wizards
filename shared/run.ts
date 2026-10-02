@@ -1,4 +1,5 @@
 import type { Format, Step, WizardDefinition } from "./definition.js";
+import type { ConnectionView, ListDef, ListRow } from "./store.js";
 
 export type RunStatus = "waiting_input" | "running" | "done" | "failed" | "cancelled";
 
@@ -32,6 +33,42 @@ export interface RunState {
   notes: Record<string, string>;
 }
 
+/**
+ * A running step asks the person to sign in on a page the wizard's browser has open. What the
+ * person types goes into that page; the model never sees it.
+ */
+export interface RunAsk {
+  id: string;
+  stepId: string;
+  kind: "login";
+  /** Why the wizard asks, in the person's language. */
+  reason: string;
+  site: { host: string; title: string };
+  /** Inputs found on the page, to fill here instead of clicking into the picture. */
+  fields: { id: string; label: string; secret: boolean }[];
+  at: string;
+}
+
+export type AskAnswer =
+  | { type: "fill"; values: Record<string, string>; remember?: boolean }
+  | { type: "done"; remember?: boolean }
+  | { type: "skip" };
+
+/** One thing the person does in the wizard's browser while it waits for them. */
+export type BrowserAct =
+  | { type: "click"; x: number; y: number }
+  | { type: "type"; text: string }
+  | { type: "key"; key: "Enter" | "Tab" | "Backspace" | "Escape" }
+  | { type: "scroll"; dy: number };
+
+/** A stored list the current step shows. */
+export interface ShownList {
+  def: ListDef;
+  rows: ListRow[];
+  formats: Format[];
+  label: string | null;
+}
+
 export interface RunEvent {
   id: number;
   at: string;
@@ -56,6 +93,14 @@ export interface RunView {
   error: string | null;
   events: RunEvent[];
   brand: BrandView;
+  /** What the running step asks the person right now. */
+  ask: RunAsk | null;
+  /** Stored lists the current step shows (a page's list fields, a review, the result). */
+  lists: ShownList[];
+  /** The wizard's connections with what the person has connected. */
+  connections: ConnectionView[];
+  /** The wizard keeps things for the person between runs (lists, files, accounts). */
+  keeps: boolean;
   /** Set once the result is shared. */
   shareUrl: string | null;
   /** When the run and its shared link are deleted; null = kept. */

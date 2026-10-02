@@ -27,6 +27,20 @@ function coerce(field: Field, raw: unknown): unknown {
       return (Array.isArray(raw) ? raw : [raw])
         .map(String)
         .filter((v) => field.options?.includes(v));
+    case "image":
+    case "file": {
+      const ids = (Array.isArray(raw) ? raw : [raw])
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+        .slice(0, 20);
+      if (!ids.length) {
+        return undefined;
+      }
+      return field.multiple ? ids : ids[0];
+    }
+    // The account and the list live in the wizard's store, not in the page's answers.
+    case "connection":
+    case "list":
+      return undefined;
     case "items": {
       if (!Array.isArray(raw)) {
         return [];
@@ -63,6 +77,9 @@ export function readPageInput(
   const errors: InputError[] = [];
   for (const field of step.fields) {
     const v = coerce(field, input[field.id]);
+    if (field.kind === "connection" || field.kind === "list") {
+      continue;
+    }
     if (field.required && empty(v) && field.kind !== "toggle") {
       errors.push({ field: field.id, message: "Pflichtfeld" });
       continue;
