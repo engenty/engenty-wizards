@@ -3,7 +3,9 @@
 # Manage-App is compose.cloud.yaml.
 services:
   wizards:
-    build: .
+    build:
+      context: .
+      dockerfile: apps/runtime/Dockerfile
     image: engenty-wizards:latest
     restart: unless-stopped
     env_file:

@@ -3,7 +3,9 @@
 # Put a TLS proxy (Coolify/Traefik) in front of port 8891 and Cloudflare in front of that.
 services:
   runtime:
-    build: .
+    build:
+      context: .
+      dockerfile: apps/runtime/Dockerfile
     image: engenty-wizards:latest
     restart: unless-stopped
     env_file:

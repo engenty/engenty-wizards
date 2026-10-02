@@ -1,6 +1,7 @@
-// Assembles what the desktop app brings along: the runtime (built SPA, built server, migrations,
-// plugin template, production node_modules) in desktop/src-tauri/resources/server/ and a Node
-// binary in desktop/src-tauri/binaries/node-<target-triple>. Run it before `tauri build`:
+// Assembles what the desktop app brings along: the runtime (built server, built SPA, the shared
+// package, plugin template, production node_modules) in apps/desktop/src-tauri/resources/server/
+// and a Node binary in apps/desktop/src-tauri/binaries/node-<target-triple>. Run it before
+// `tauri build`:
 //
 //   node scripts/desktop-bundle.mjs [--target aarch64-apple-darwin] [--node /path/to/node]
 //                                   [--skip-build]
@@ -10,7 +11,10 @@
 //               CI fetches the official one for the target instead:
 //               https://nodejs.org/dist/v<version>/node-v<version>-darwin-<arm64|x64>.tar.gz
 //               (verify against SHASUMS256.txt), unpack, pass bin/node here.
-// --skip-build  reuse dist-web/ and dist-server/ of the checkout instead of building
+// --skip-build  reuse the dist/ folders of the checkout instead of building
+//
+// The folder keeps the checkout's layout (apps/runtime/dist, apps/web/dist, plugin/), so the
+// runtime finds the SPA and the plugin template the same way everywhere.
 //
 // With APPLE_SIGNING_IDENTITY set, every Mach-O file in the runtime folder (native addons) is
 // signed with it, hardened runtime and timestamp included — notarization asks for that.
@@ -33,7 +37,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const tauriDir = join(root, "desktop", "src-tauri");
+const tauriDir = join(root, "apps", "desktop", "src-tauri");
 const out = join(tauriDir, "resources", "server");
 
 const args = process.argv.slice(2);
@@ -88,75 +92,46 @@ const sizeOf = (path) => {
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 // --- 1. the runtime itself -------------------------------------------------------------
-rmSync(out, { recursive: true, force: true });
-mkdirSync(out, { recursive: true });
-
+const BUILT = ["apps/runtime/dist", "apps/web/dist", "packages/shared/dist"];
 if (flag("skip-build")) {
-  for (const dir of ["dist-web", "dist-server"]) {
+  for (const dir of BUILT) {
     if (!existsSync(join(root, dir))) {
       throw new Error(`${dir}/ is missing — run without --skip-build.`);
     }
-    cpSync(join(root, dir), join(out, dir), { recursive: true });
   }
 } else {
-  // The root build (`pnpm build`), written straight into the bundle: a clean output without
-  // files of earlier builds, and the checkout's own dist folders stay as they are.
-  run("pnpm", ["exec", "vite", "build", "--outDir", join(out, "dist-web"), "--emptyOutDir"]);
-  run("pnpm", [
-    "exec",
-    "tsc",
-    "-p",
-    "tsconfig.server.json",
-    "--outDir",
-    join(out, "dist-server"),
-    "--sourceMap",
-    "false",
-    "--declaration",
-    "false",
-  ]);
+  // tsc leaves files of deleted sources behind: build into empty folders.
+  for (const dir of BUILT) {
+    rmSync(join(root, dir), { recursive: true, force: true });
+  }
+  run("pnpm", ["-r", "build"]);
 }
-cpSync(join(root, "server", "db", "migrations"), join(out, "server", "db", "migrations"), {
-  recursive: true,
-});
-cpSync(join(root, "plugin"), join(out, "plugin"), { recursive: true });
+rmSync(out, { recursive: true, force: true });
+mkdirSync(out, { recursive: true });
+for (const dir of ["apps/runtime/dist", "apps/web/dist", "plugin"]) {
+  cpSync(join(root, dir), join(out, dir), { recursive: true });
+}
 
 // --- 2. production node_modules ----------------------------------------------------------
-// Only what the built server imports: the SPA's packages are already inside dist-web.
-const IMPORTS = [
-  /^\s*(?:import|export)\b[^"';]*?\bfrom\s*["']([^"']+)["']/gm,
-  /^\s*import\s*["']([^"']+)["']/gm,
-  /\bimport\(\s*["']([^"']+)["']\s*\)/g,
-];
-const PACKAGE = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*/;
-const imported = new Set();
-for (const file of walk(join(out, "dist-server"))) {
-  if (!file.endsWith(".js")) {
-    continue;
-  }
-  const source = readFileSync(file, "utf8");
-  for (const pattern of IMPORTS) {
-    for (const [, spec] of source.matchAll(pattern)) {
-      const name = spec.startsWith("node:") ? null : spec.match(PACKAGE)?.[0];
-      if (name) {
-        imported.add(name);
-      }
+// The runtime's dependencies; a workspace package comes along as its built files, its own
+// dependencies join the list. The agentOS sandbox (a devDependency, loaded only with
+// SANDBOX=agentos) weighs over a gigabyte and stays out.
+const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
+const pkg = readJson("package.json");
+const dependencies = {};
+const workspace = [];
+const collect = (dir) => {
+  for (const [name, range] of Object.entries(readJson(`${dir}/package.json`).dependencies ?? {})) {
+    if (range.startsWith("workspace:")) {
+      const from = `packages/${name.split("/").pop()}`;
+      workspace.push([name, from]);
+      collect(from);
+    } else {
+      dependencies[name] = range;
     }
   }
-}
-const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-const dependencies = Object.fromEntries(
-  Object.entries(pkg.dependencies).filter(([name]) => imported.has(name)),
-);
-// The agentOS sandbox is loaded only when SANDBOX=agentos and weighs over a gigabyte: the app
-// ships without it. Every other package the server imports must be a dependency.
-const OPTIONAL = new Set(["@rivet-dev/agentos-core", "@rivet-dev/agentos-runtime-core"]);
-for (const name of imported) {
-  if (!(name in dependencies) && !OPTIONAL.has(name)) {
-    throw new Error(
-      `The server imports "${name}", which package.json does not list under dependencies.`,
-    );
-  }
-}
+};
+collect("apps/runtime");
 writeFileSync(
   join(out, "package.json"),
   `${JSON.stringify(
@@ -184,6 +159,12 @@ run(
 );
 for (const name of [".npmrc", "pnpm-lock.yaml"]) {
   rmSync(join(out, name), { force: true });
+}
+for (const [name, from] of workspace) {
+  const to = join(out, "node_modules", name);
+  mkdirSync(to, { recursive: true });
+  cpSync(join(root, from, "package.json"), join(to, "package.json"));
+  cpSync(join(root, from, "dist"), join(to, "dist"), { recursive: true });
 }
 
 const native = join(out, "node_modules", "@libsql", `${targetOs}-${targetCpu}`);
@@ -258,7 +239,7 @@ const files = [...walk(out)].length;
 console.log(`
 desktop bundle for ${target}
   runtime        ${mb(sizeOf(out))} in ${files} files  (${dirname(out)}/server)
-  node_modules   ${mb(sizeOf(modules))} (${mb(before)} before pruning), ${Object.keys(dependencies).length} of ${Object.keys(pkg.dependencies).length} dependencies
+  node_modules   ${mb(sizeOf(modules))} (${mb(before)} before pruning), ${Object.keys(dependencies).length} dependencies
   node           ${mb(sizeOf(nodeTarget))}  (${nodeBinary})
   native code    ${machO.length ? machO.map((f) => f.slice(out.length + 1)).join(", ") : "none"}${
     identity && identity !== "-" ? `\n  signed with    ${identity}` : ""

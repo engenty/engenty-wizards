@@ -1,0 +1,315 @@
+import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import type { RunAsk, RunState } from "@engenty-wizards/shared/run";
+import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
+import { sql } from "drizzle-orm";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+import type { ImportedConnectorRecord } from "../engenty/connections-external/types.js";
+
+const now = sql`(unixepoch() * 1000)`;
+const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
+const updatedAt = () => integer("updated_at", { mode: "timestamp_ms" }).notNull().default(now);
+
+// One database per tenant holds these tables; `tenant_id` stays in every row so a tenant's
+// rows can be moved or merged. Users and tenants themselves live outside (Manage-App).
+
+export interface McpServerConfig {
+  id: string;
+  name: string;
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface BrandConfig {
+  name?: string;
+  /** Free text: address, VAT id, bank details, tone — offered to every step as {{brand.details}}. */
+  details?: string;
+  accent?: string;
+  logoAssetId?: string;
+}
+
+export const project = sqliteTable(
+  "project",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    name: text("name").notNull(),
+    brand: text("brand", { mode: "json" }).$type<BrandConfig>().notNull().default({}),
+    mcpServers: text("mcp_servers", { mode: "json" })
+      .$type<McpServerConfig[]>()
+      .notNull()
+      .default([]),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("project_tenant").on(t.tenantId)],
+);
+
+export const wizard = sqliteTable(
+  "wizard",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id").notNull(),
+    title: text("title").notNull(),
+    draft: text("draft", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    publishedVersion: integer("published_version"),
+    shareToken: text("share_token").notNull(),
+    shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(true),
+    dailyRunLimit: integer("daily_run_limit").notNull().default(50),
+    starter: text("starter"),
+    /** Bumped on every draft write; a write carrying an older one is refused. */
+    revision: integer("revision").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("wizard_share_token").on(t.shareToken),
+    index("wizard_project").on(t.projectId),
+  ],
+);
+
+export const wizardVersion = sqliteTable(
+  "wizard_version",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    definition: text("definition", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    /** The workspace as it was at publish time. */
+    files: text("files", { mode: "json" }).$type<WorkspaceFile[]>().notNull().default([]),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("wizard_version_n").on(t.wizardId, t.version)],
+);
+
+/** The draft's workspace: widget code, libraries, reference data. Content lives in the blob store. */
+export const wizardFile = sqliteTable(
+  "wizard_file",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    hash: text("hash").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.path] })],
+);
+
+export const wizardMessage = sqliteTable(
+  "wizard_message",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    /** Set on assistant turns that changed the wizard. */
+    changed: integer("changed", { mode: "boolean" }).notNull().default(false),
+    /** "mcp": written by an admin's own client (Claude Code, Cursor …) named in `client`. */
+    source: text("source", { enum: ["studio", "mcp"] })
+      .notNull()
+      .default("studio"),
+    client: text("client"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("wizard_message_wizard").on(t.wizardId, t.createdAt)],
+);
+
+export const run = sqliteTable(
+  "run",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id").notNull(),
+    /** The definition the run started on — edits never reach a running wizard. */
+    definition: text("definition", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    /** The workspace the run started with. */
+    files: text("files", { mode: "json" }).$type<WorkspaceFile[]>().notNull().default([]),
+    version: integer("version"),
+    mode: text("mode", { enum: ["test", "live"] }).notNull(),
+    visitorId: text("visitor_id"),
+    userId: text("user_id"),
+    ipHash: text("ip_hash"),
+    status: text("status", {
+      enum: ["waiting_input", "running", "done", "failed", "cancelled"],
+    }).notNull(),
+    cursor: text("cursor"),
+    state: text("state", { mode: "json" }).$type<RunState>().notNull(),
+    error: text("error"),
+    /** What a running step is asking the person right now (a login, a code); null = nothing. */
+    ask: text("ask", { mode: "json" }).$type<RunAsk | null>(),
+    costMicros: integer("cost_micros").notNull().default(0),
+    /** Set once the result is shared: `/s/<token>` shows it read-only. */
+    shareToken: text("share_token"),
+    sharedAt: integer("shared_at", { mode: "timestamp_ms" }),
+    /** Runs without an account are deleted after this; null keeps the run. */
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("run_share_token").on(t.shareToken),
+    index("run_expires").on(t.expiresAt),
+    index("run_wizard").on(t.wizardId, t.createdAt),
+    index("run_visitor").on(t.visitorId, t.createdAt),
+    index("run_status").on(t.status),
+  ],
+);
+
+export const runEvent = sqliteTable(
+  "run_event",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => run.id, { onDelete: "cascade" }),
+    stepId: text("step_id"),
+    type: text("type", { enum: ["step_started", "step_done", "tool", "info", "error"] }).notNull(),
+    message: text("message").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("run_event_run").on(t.runId, t.id)],
+);
+
+/** What each step of a run cost, in credit micros: the measurements estimates are made from. */
+export const runCost = sqliteTable(
+  "run_cost",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => run.id, { onDelete: "cascade" }),
+    stepId: text("step_id").notNull(),
+    micros: integer("micros").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.runId, t.stepId] })],
+);
+
+export const asset = sqliteTable(
+  "asset",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    runId: text("run_id"),
+    stepId: text("step_id"),
+    kind: text("kind").notNull(),
+    mime: text("mime").notNull(),
+    name: text("name").notNull(),
+    path: text("path").notNull(),
+    size: integer("size").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("asset_run").on(t.runId)],
+);
+
+/**
+ * A service imported as a connector, from the integrations registry or a pasted OpenAPI spec /
+ * MCP endpoint. The record is engenty's: actions, auth and source, normalised at import time.
+ */
+export const projectConnector = sqliteTable(
+  "project_connector",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    id: text("id").notNull(),
+    record: text("record", { mode: "json" }).$type<ImportedConnectorRecord>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.id] })],
+);
+
+// --- The wizard's store ------------------------------------------------------
+// What a wizard keeps between runs for one person. `holder` is that person: "u:<userId>" for a
+// signed-in admin, "v:<visitorId>" for an end user on a shared link.
+
+/** One (wizard, person) pair that has stored something; `usedAt` drives the clean-up. */
+export const storeHolder = sqliteTable(
+  "store_holder",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }).notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.holder] }), index("store_holder_used").on(t.usedAt)],
+);
+
+/** A row of one of the wizard's lists. Columns are defined in the wizard, values live here. */
+export const storeRow = sqliteTable(
+  "store_row",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    list: text("list").notNull(),
+    /** The key column's value, normalised; saving a row with a known key updates that row. */
+    key: text("key"),
+    cells: text("cells", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("store_row_key").on(t.wizardId, t.holder, t.list, t.key),
+    index("store_row_list").on(t.wizardId, t.holder, t.list, t.createdAt),
+  ],
+);
+
+/** A file the wizard keeps (a downloaded invoice, a scan). Content lives in the blob store. */
+export const storeFile = sqliteTable(
+  "store_file",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    path: text("path").notNull(),
+    hash: text("hash").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    source: text("source"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.holder, t.path] })],
+);
+
+/** A connected account or a kept browser session. `data` is encrypted. */
+export const storeSecret = sqliteTable(
+  "store_secret",
+  {
+    id: text("id").primaryKey(),
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    holder: text("holder").notNull(),
+    /** "connection:<id>" or "browser:<host>". */
+    slot: text("slot").notNull(),
+    provider: text("provider").notNull(),
+    /** Shown to the person: the account's address or the site's name. */
+    label: text("label").notNull(),
+    data: text("data").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("store_secret_slot").on(t.wizardId, t.holder, t.slot)],
+);

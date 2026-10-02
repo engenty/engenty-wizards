@@ -1,11 +1,10 @@
-node_modules
-dist-web
-dist-server
+**/node_modules
+**/dist
 data
 .env
 .env.local
 .git
-desktop
 .claude
 docs
-test
+apps/desktop
+apps/runtime/test

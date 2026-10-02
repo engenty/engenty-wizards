@@ -13,17 +13,17 @@ const source = resolve(root, process.env.ENGENTY_DIR ?? "../engenty-pro");
 const SETS = [
   [
     "packages/ai-core/src/data-tables",
-    "shared/engenty/data-tables",
+    "packages/shared/src/engenty/data-tables",
     ["columns.ts", "columns-value.ts", "columns-format.ts", "index.ts"],
   ],
   [
     "packages/connections-sdk/src",
-    "server/engenty/connections-sdk",
+    "apps/runtime/src/engenty/connections-sdk",
     ["types.ts", "oauth2.ts", "registry.ts", "files-capability.ts", "storage-capability.ts"],
   ],
   [
     "modules/connections/providers/external/src",
-    "server/engenty/connections-external",
+    "apps/runtime/src/engenty/connections-external",
     [
       "types.ts",
       "errors.ts",
@@ -41,10 +41,10 @@ const SETS = [
       "net/guarded-fetch.ts",
     ],
   ],
-  ["packages/web-ingest/src/lib", "server/engenty/web-ingest", ["ssrf.ts"]],
+  ["packages/web-ingest/src/lib", "apps/runtime/src/engenty/web-ingest", ["ssrf.ts"]],
   [
     "modules/connections/providers/google/src",
-    "server/engenty/connections-google",
+    "apps/runtime/src/engenty/connections-google",
     [
       "shared.ts",
       "definitions.ts",
@@ -56,34 +56,34 @@ const SETS = [
   ],
   [
     "modules/connections/providers/microsoft/src",
-    "server/engenty/connections-microsoft",
+    "apps/runtime/src/engenty/connections-microsoft",
     ["graph.ts", "action.ts", "outlook.ts", "onedrive.ts"],
   ],
-  ["modules/connections/providers/slack/src", "server/engenty/connections-slack", ["connector.ts"]],
+  ["modules/connections/providers/slack/src", "apps/runtime/src/engenty/connections-slack", ["connector.ts"]],
   [
     "modules/connections/providers/github/src",
-    "server/engenty/connections-github",
+    "apps/runtime/src/engenty/connections-github",
     ["connector.ts"],
   ],
   [
     "modules/connections/providers/hubspot/src",
-    "server/engenty/connections-hubspot",
+    "apps/runtime/src/engenty/connections-hubspot",
     ["connector.ts"],
   ],
-  ["modules/connections/providers/s3/src", "server/engenty/connections-s3", ["s3.ts"]],
+  ["modules/connections/providers/s3/src", "apps/runtime/src/engenty/connections-s3", ["s3.ts"]],
   [
     "packages/doc-converter/src",
-    "server/engenty/doc-converter",
+    "apps/runtime/src/engenty/doc-converter",
     ["interface.ts", "page-break.ts", "providers/local/index.ts"],
   ],
   [
     "packages/document-scanner/src/schemas",
-    "server/engenty/document-scanner/schemas",
+    "apps/runtime/src/engenty/document-scanner/schemas",
     ["classifier.ts", "invoice.ts", "receipt.ts", "shared.ts", "index.ts"],
   ],
   [
     "packages/csv-import/src",
-    "server/engenty/csv-import",
+    "apps/runtime/src/engenty/csv-import",
     [
       "parse-csv.ts",
       "xlsx-workbook.ts",
@@ -97,9 +97,9 @@ const SETS = [
 
 /** Where an `@engenty/*` package lives in this tree (a file, relative to the repo root). */
 const PACKAGES = {
-  "@engenty/connections-sdk": "server/engenty/shims/connections-sdk.ts",
-  "@engenty/plugin-sdk": "server/engenty/shims/plugin-sdk.ts",
-  "@engenty/web-ingest": "server/engenty/shims/web-ingest.ts",
+  "@engenty/connections-sdk": "apps/runtime/src/engenty/shims/connections-sdk.ts",
+  "@engenty/plugin-sdk": "apps/runtime/src/engenty/shims/plugin-sdk.ts",
+  "@engenty/web-ingest": "apps/runtime/src/engenty/shims/web-ingest.ts",
 };
 
 function rewrite(text, file) {
@@ -128,10 +128,10 @@ for (const [from, to, files] of SETS) {
 }
 
 writeFileSync(
-  join(root, "server/engenty/README.md"),
+  join(root, "apps/runtime/src/engenty/README.md"),
   `# engenty framework code
 
-Files under \`server/engenty\` and \`shared/engenty\` are copies from the engenty monorepo
+Files under \`apps/runtime/src/engenty\` and \`packages/shared/src/engenty\` are copies from the engenty monorepo
 (commit \`${commit}\`). They are not edited here: change them upstream, then run
 \`node scripts/sync-engenty.mjs\`. Only \`shims/\` is written for this product — it stands in for
 the engenty packages the copies import.

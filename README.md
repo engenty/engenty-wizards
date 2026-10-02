@@ -26,6 +26,22 @@ A step names a **model class** — `classifier`, `standard`, `high`, `highest`, 
 `video`, `audio` — and an optional effort hint, never a model. Which model serves a class is
 bound outside the wizard: in the model-gateway, or under Settings → "Modelle & Konto".
 
+## Layout
+
+A pnpm workspace:
+
+| | |
+|---|---|
+| `apps/runtime/` | the server: API, step runner, databases, models (`src/`), its tests (`test/`) |
+| `apps/web/` | the SPA: studio, public runner, share page |
+| `apps/desktop/` | the desktop app (Tauri 2) around both |
+| `packages/shared/` | types and schemas the server and the SPA both use |
+| `plugin/` | the Claude Code plugin template |
+| `deploy/` | the Chromium container of the cloud runtime |
+
+`.env.local` and the data folder (`data/`) stay in the repo root; `pnpm dev` and `pnpm start`
+run from there.
+
 ## Run locally
 
 ```bash
@@ -44,7 +60,7 @@ Local Chrome renders PDFs/PNGs (`CHROME_PATH`), ffmpeg encodes widget animations
 [agentOS](https://rivet.dev/agentos/) VM inside the server process (macOS and glibc Linux, no
 Docker) with a smaller toolset — sh, coreutils, node, npm, and Python as a separate tool without
 pandas, pillow or matplotlib; `off` removes the tool. The agent is told what the chosen sandbox
-runs (`server/sandbox`).
+runs (`apps/runtime/src/sandbox`).
 
 A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
 the first start; the old file stays.
@@ -56,8 +72,9 @@ pnpm fix && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to end via the API
 ```
 
-`test/tenants.test.ts` is the leak test: two tenants, two databases, nothing of one visible to
-the other. `test/managed.test.ts` runs the runtime against a stand-in Manage-App.
+`apps/runtime/test/tenants.test.ts` is the leak test: two tenants, two databases, nothing of one
+visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
+Manage-App.
 
 ## Deploy
 
@@ -78,17 +95,17 @@ start; a new one migrates when it is first opened.
 
 ## Desktop app
 
-`desktop/` is a Tauri 2 app (macOS first) that brings this runtime along as a Node sidecar on
+`apps/desktop/` is a Tauri 2 app (macOS first) that brings this runtime along as a Node sidecar on
 the loopback interface and shows the studio in its window. Data lives in the app's data folder,
 keys in the Keychain. An account is optional; sign-in runs in the system browser.
 
 ```bash
 node scripts/desktop-bundle.mjs          # the runtime + production node_modules + Node
-cd desktop && pnpm install && pnpm tauri build --bundles app
+cd apps/desktop && pnpm tauri build --bundles app
 ```
 
 Signing, notarization and the app's rules for what a page in its window may do:
-[desktop/README.md](desktop/README.md).
+[apps/desktop/README.md](apps/desktop/README.md).
 
 ## On a phone
 
@@ -144,7 +161,8 @@ claude mcp add --transport http --scope user engenty-wizards <APP_URL>/api/mcp
 codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty-wizards
 ```
 
-The plugin is built from `plugin/` with this deployment's `APP_URL` filled in (`server/plugin.ts`).
+The plugin is built from `plugin/` with this deployment's `APP_URL` filled in
+(`apps/runtime/src/plugin.ts`).
 Test runs that a client starts spend the tenant's credits. Writes from a client show up live in an
 open editor.
 
@@ -152,37 +170,37 @@ open editor.
 
 | Part | Where |
 |---|---|
-| Wizard definition (zod) + validator | `shared/definition.ts` |
-| Step runner (cursor over the definition, pages / back / regenerate / branches) | `server/engine/runner.ts` |
-| Agent + generate steps (Mastra Agent, AI SDK media) | `server/engine/steps.ts` |
-| Agent tools: web search/fetch, sandbox, HTTP, image, MCP | `server/tools/index.ts` |
-| Sandbox engines (Docker, agentOS) and what each runs | `server/sandbox/` |
-| Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `server/tools/browser.ts`, `server/engine/asks.ts` |
-| What a wizard keeps per person: lists, files, connected accounts, sign-ins | `shared/store.ts`, `server/store/`, `server/tools/store.ts` |
-| Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `server/connectors/`, `server/tools/mail.ts` |
-| engenty's built-in connectors (Google, Microsoft, Slack, GitHub, HubSpot, S3), copied unchanged | `server/engenty/connections-*`, `server/connectors/builtin.ts` |
-| Imported connectors: any service from the integrations.sh registry, by its OpenAPI spec or MCP server | `server/connectors/external.ts`, `server/tools/connector.ts`, `web/src/studio/Connectors.tsx` |
-| Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `server/documents/parse.ts` |
-| engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `server/engenty/`, `shared/engenty/` |
-| Architect (prompt → wizard, self-repairing) | `server/agents/architect.ts` |
-| Widgets: bundle (code + data → one HTML), `window.wizard` runtime, PNG/PDF/MP4 export | `server/widgets/` |
-| Workspace files (content-addressed blobs, snapshots per version and run) | `server/services/files.ts`, `server/blobs.ts` |
-| Shared results, link previews, 7-day retention | `server/services/shares.ts`, `server/link-preview.ts` |
-| Starter wizards | `server/starters/index.ts` |
-| Tenants: context, one database each, the control database | `server/tenant.ts`, `server/db/client.ts`, `server/control.ts` |
-| Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `server/auth/`, `server/manage.ts` |
-| Model classes: gateway, own keys, local model | `server/models.ts` |
-| Credits: balance, reservation, cost per step; estimate before a run | `server/credits.ts`, `server/estimate.ts` |
-| Studio chat on the Claude subscription | `server/agents/subscription.ts` |
-| Publish to the cloud, import API | `server/services/cloud.ts`, `server/routes/api.ts` |
-| Files in the data folder or a bucket, per tenant | `server/objects.ts` |
-| Studio (editor, diagram, chat, inspector) | `web/src/studio/` |
-| Public runner | `web/src/runner/` |
-| Phone inputs: camera and clips, code scan, location, voice note, signature; wake lock, notify, install | `web/src/runner/{camera,scan,location,voice,signature,device}.*`, `web/public/{sw.js,manifest.webmanifest}` |
-| Voice notes to text before a step reads them; address of a position (`GEOCODER_URL`) | `server/media/transcribe.ts`, `server/engine/prepare.ts`, `server/geocode.ts` |
-| MCP server for authoring (tools, token/API-key gate) | `server/mcp/` |
-| Live editor (SSE stream, merge of concurrent edits) | `server/routes/wizard-stream.ts`, `web/src/studio/live.tsx` |
-| Claude Code plugin template | `plugin/`, `server/plugin.ts` |
-| Share sheet and shared result page | `web/src/share/` |
+| Wizard definition (zod) + validator | `packages/shared/src/definition.ts` |
+| Step runner (cursor over the definition, pages / back / regenerate / branches) | `apps/runtime/src/engine/runner.ts` |
+| Agent + generate steps (Mastra Agent, AI SDK media) | `apps/runtime/src/engine/steps.ts` |
+| Agent tools: web search/fetch, sandbox, HTTP, image, MCP | `apps/runtime/src/tools/index.ts` |
+| Sandbox engines (Docker, agentOS) and what each runs | `apps/runtime/src/sandbox/` |
+| Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `apps/runtime/src/tools/browser.ts`, `apps/runtime/src/engine/asks.ts` |
+| What a wizard keeps per person: lists, files, connected accounts, sign-ins | `packages/shared/src/store.ts`, `apps/runtime/src/store/`, `apps/runtime/src/tools/store.ts` |
+| Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `apps/runtime/src/connectors/`, `apps/runtime/src/tools/mail.ts` |
+| engenty's built-in connectors (Google, Microsoft, Slack, GitHub, HubSpot, S3), copied unchanged | `apps/runtime/src/engenty/connections-*`, `apps/runtime/src/connectors/builtin.ts` |
+| Imported connectors: any service from the integrations.sh registry, by its OpenAPI spec or MCP server | `apps/runtime/src/connectors/external.ts`, `apps/runtime/src/tools/connector.ts`, `apps/web/src/studio/Connectors.tsx` |
+| Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `apps/runtime/src/documents/parse.ts` |
+| engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `apps/runtime/src/engenty/`, `packages/shared/src/engenty/` |
+| Architect (prompt → wizard, self-repairing) | `apps/runtime/src/agents/architect.ts` |
+| Widgets: bundle (code + data → one HTML), `window.wizard` runtime, PNG/PDF/MP4 export | `apps/runtime/src/widgets/` |
+| Workspace files (content-addressed blobs, snapshots per version and run) | `apps/runtime/src/services/files.ts`, `apps/runtime/src/files/blobs.ts` |
+| Shared results, link previews, 7-day retention | `apps/runtime/src/services/shares.ts`, `apps/runtime/src/link-preview.ts` |
+| Starter wizards | `apps/runtime/src/starters/index.ts` |
+| Tenants: context, one database each, the control database | `apps/runtime/src/tenants/tenant.ts`, `apps/runtime/src/db/client.ts`, `apps/runtime/src/tenants/control.ts` |
+| Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `apps/runtime/src/auth/`, `apps/runtime/src/manage.ts` |
+| Model classes: gateway, own keys, local model | `apps/runtime/src/models.ts` |
+| Credits: balance, reservation, cost per step; estimate before a run | `apps/runtime/src/credits/credits.ts`, `apps/runtime/src/credits/estimate.ts` |
+| Studio chat on the Claude subscription | `apps/runtime/src/agents/subscription.ts` |
+| Publish to the cloud, import API | `apps/runtime/src/services/cloud.ts`, `apps/runtime/src/routes/api.ts` |
+| Files in the data folder or a bucket, per tenant | `apps/runtime/src/files/objects.ts` |
+| Studio (editor, diagram, chat, inspector) | `apps/web/src/studio/` |
+| Public runner | `apps/web/src/runner/` |
+| Phone inputs: camera and clips, code scan, location, voice note, signature; wake lock, notify, install | `apps/web/src/runner/{camera,scan,location,voice,signature,device}.*`, `apps/web/public/{sw.js,manifest.webmanifest}` |
+| Voice notes to text before a step reads them; address of a position (`GEOCODER_URL`) | `apps/runtime/src/media/transcribe.ts`, `apps/runtime/src/engine/prepare.ts`, `apps/runtime/src/geocode.ts` |
+| MCP server for authoring (tools, token/API-key gate) | `apps/runtime/src/mcp/` |
+| Live editor (SSE stream, merge of concurrent edits) | `apps/runtime/src/routes/wizard-stream.ts`, `apps/web/src/studio/live.tsx` |
+| Claude Code plugin template | `plugin/`, `apps/runtime/src/plugin.ts` |
+| Share sheet and shared result page | `apps/web/src/share/` |
 
 License: [FSL-1.1-MIT](LICENSE).
