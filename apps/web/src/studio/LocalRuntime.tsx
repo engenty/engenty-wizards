@@ -79,7 +79,7 @@ function Account({ me }: { me: Me }) {
           {me.account.signedIn
             ? me.account.credits === null
               ? me.account.email
-              : `${me.account.email} · ${t("nav.credits", { n: me.account.credits.toLocaleString() })}`
+              : `${me.account.email} · ${t("nav.credits", { n: Math.floor(me.account.credits).toLocaleString() })}`
             : t("local.accountExpired")}
         </div>
       </div>

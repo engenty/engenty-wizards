@@ -6,9 +6,12 @@ import { t } from "../lib/i18n";
 import { type Me, signOut, spendableCredits } from "../lib/session";
 import { cn } from "../ui";
 
-/** Where credits are bought: the Manage-App of the runtime, or of the linked account. */
+/** Where the account lives: the Manage-App of the runtime, or of the linked account. */
+const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
+
+/** Where credits are bought. */
 function billingUrl(me: Me): string | null {
-  const base = me.manageUrl ?? me.account?.url ?? null;
+  const base = accountBase(me);
   return base ? `${base}/billing` : null;
 }
 
@@ -28,7 +31,8 @@ export function CreditsPill({ me }: { me: Me }) {
         credits < 50 ? "bg-amber-tint text-ink" : "bg-paper-2 text-ink-2 hover:text-ink",
       )}
     >
-      {t("nav.credits", { n: credits.toLocaleString() })}
+      {/* Whole credits, rounded down: the pill never shows more than there is. */}
+      {t("nav.credits", { n: Math.floor(credits).toLocaleString() })}
     </a>
   );
 }
@@ -106,11 +110,41 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   );
 }
 
+/** One quiet line at the foot of a page: the places around the account. */
+function Footer({ me }: { me: Me }) {
+  const base = accountBase(me);
+  const links = base
+    ? [
+        { href: `${base}/billing`, label: t("footer.billing") },
+        { href: `${base}/billing/usage`, label: t("footer.usage") },
+        { href: `${base}/billing/invoices`, label: t("footer.invoices") },
+        { href: `${base}/`, label: t("footer.account") },
+      ]
+    : [];
+  return (
+    <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-6 text-[12px] text-ink-4 sm:px-6">
+      <span>© {new Date().getFullYear()} engenty</span>
+      {links.map((link) => (
+        <a
+          key={link.href}
+          href={link.href}
+          target="_blank"
+          rel="noreferrer"
+          className="transition hover:text-ink-2"
+        >
+          {link.label}
+        </a>
+      ))}
+    </footer>
+  );
+}
+
 export function AppFrame({ me, children }: { me: Me; children: ReactNode }) {
   return (
-    <div className="min-h-dvh">
+    <div className="flex min-h-dvh flex-col">
       <TopBar me={me} />
-      <main className="mx-auto w-full max-w-5xl px-4 pt-6 pb-24 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-12 sm:px-6">{children}</main>
+      <Footer me={me} />
     </div>
   );
 }
