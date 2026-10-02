@@ -1,16 +1,9 @@
-/**
- * WebGL2 lifecycle for the fur shader: one program, one fullscreen triangle,
- * a flat uniform record per frame. Deliberately framework-free so the same
- * renderer can drive a React component, a landing-page hero, or an offscreen
- * canvas used to bake a still.
- */
-
-import { FUR_FRAGMENT_SHADER, FUR_SHELL_MAX, FUR_VERTEX_SHADER } from "./fur-shader";
-
+// Shared WebGL lifecycle for depth-tested body, fur and accessory passes.
+import { JELLY_DEFAULTS } from "./jelly-defaults";
 export interface FurUniforms {
   blobs: Float32Array;
   body: [number, number, number];
-  /** How see-through the jelly coat is: 1 as designed, 0 opaque. */
+  /** How see-through the jelly coat is: 1 maximum, 0 opaque. */
   clarity: number;
   deep: [number, number, number];
   density: number;
@@ -21,15 +14,18 @@ export interface FurUniforms {
   falloff: number;
   fur: number;
   gaze: [number, number];
+  goggles?: boolean;
   inflate: number;
   lean: [number, number];
   light: [number, number, number];
   period: number;
+  pull?: [number, number, number, number];
   scale: number;
-  shells: number;
+  softness?: number;
   thick: number;
   time: number;
   tip: [number, number, number];
+  turn?: [number, number];
   wind: number;
   /** Spring overshoot past the lean, form units; the jelly coat's jiggle. */
   wobble: [number, number];
@@ -53,7 +49,6 @@ const UNIFORM_NAMES = [
   "uInflate",
   "uDensity",
   "uThick",
-  "uShells",
   "uLean",
   "uLight",
   "uBody",
@@ -62,15 +57,23 @@ const UNIFORM_NAMES = [
   "uEye",
   "uWind",
   "uGaze",
+  "uTurn",
+  "uGoggles",
   "uExtras",
   "uExtraMeta",
   "uWobble",
   "uClarity",
+  "uSoftness",
+  "uPull",
 ] as const;
 
 type UniformName = (typeof UNIFORM_NAMES)[number];
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
+function compile(
+  gl: WebGL2RenderingContext,
+  type: number,
+  source: string
+): WebGLShader {
   const shader = gl.createShader(type);
   if (!shader) {
     throw new Error("engenty fur: could not create shader");
@@ -89,14 +92,28 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string): WebG
  * Returns `null` when WebGL2 is unavailable (older Safari, blocklisted GPUs,
  * headless test runners) so callers can fall back to the flat engenty.
  */
+export interface FurGeometry {
+  dispose: () => void;
+  draw: (uniforms: FurUniforms) => void;
+}
+
+interface FurPass {
+  clear?: boolean;
+  depthWrite?: boolean;
+  doubleSided?: boolean;
+  geometry: (gl: WebGL2RenderingContext, program: WebGLProgram) => FurGeometry;
+  vertex: string;
+}
+
 export function createFurRenderer(
   canvas: HTMLCanvasElement,
-  fragment: string = FUR_FRAGMENT_SHADER,
+  fragment: string,
+  pass: FurPass
 ): FurRenderer | null {
   const gl = canvas.getContext("webgl2", {
     alpha: true,
-    antialias: false,
-    depth: false,
+    antialias: true,
+    depth: true,
     premultipliedAlpha: true,
     // The canvas is redrawn every frame; not preserving it lets the driver
     // skip a copy, and lets a paused rAF keep the last frame on screen anyway.
@@ -108,9 +125,8 @@ export function createFurRenderer(
   }
 
   let program: WebGLProgram | null = null;
-  let buffer: WebGLBuffer | null = null;
   try {
-    const vert = compile(gl, gl.VERTEX_SHADER, FUR_VERTEX_SHADER);
+    const vert = compile(gl, gl.VERTEX_SHADER, pass.vertex);
     const frag = compile(gl, gl.FRAGMENT_SHADER, fragment);
     program = gl.createProgram();
     if (!program) {
@@ -122,7 +138,9 @@ export function createFurRenderer(
     gl.deleteShader(vert);
     gl.deleteShader(frag);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new Error(`engenty fur: link failed — ${gl.getProgramInfoLog(program)}`);
+      throw new Error(
+        `engenty fur: link failed — ${gl.getProgramInfoLog(program)}`
+      );
     }
   } catch (error) {
     if (program) {
@@ -140,13 +158,9 @@ export function createFurRenderer(
     loc[name] = gl.getUniformLocation(program, name);
   }
 
-  // One oversized triangle covers the viewport with no index buffer.
-  buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-  const aPos = gl.getAttribLocation(program, "aPos");
-  gl.enableVertexAttribArray(aPos);
-  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const geometry = pass.geometry(gl, program);
 
   // `gl.useProgram` matches the React hook naming rule, which then objects to
   // it being called inside a branch. Alias it once, here at the top level.
@@ -165,7 +179,8 @@ export function createFurRenderer(
         return;
       }
       disposed = true;
-      gl.deleteBuffer(buffer);
+      geometry.dispose();
+      gl.deleteVertexArray(vao);
       gl.deleteProgram(program);
       // Deliberately NOT `loseContext()`: `getContext` hands back the *same*
       // context object for a canvas, so poisoning it here would leave any
@@ -175,6 +190,7 @@ export function createFurRenderer(
     render(u) {
       if (!disposed) {
         bindProgram(program);
+        gl.bindVertexArray(vao);
         gl.uniform2f(loc.uResolution, viewportPx, viewportPx);
         gl.uniform1f(loc.uTime, u.time);
         gl.uniform4fv(loc.uBlobs, u.blobs);
@@ -186,7 +202,8 @@ export function createFurRenderer(
         gl.uniform1f(loc.uDensity, u.density);
         gl.uniform1f(loc.uThick, u.thick);
         gl.uniform1f(loc.uClarity, u.clarity);
-        gl.uniform1i(loc.uShells, Math.min(u.shells, FUR_SHELL_MAX));
+        gl.uniform1f(loc.uSoftness, u.softness ?? JELLY_DEFAULTS.softness);
+        gl.uniform4fv(loc.uPull, u.pull ?? [60, 60, 0, 0]);
         gl.uniform2fv(loc.uLean, u.lean);
         gl.uniform3fv(loc.uLight, u.light);
         gl.uniform3fv(loc.uBody, u.body);
@@ -195,14 +212,30 @@ export function createFurRenderer(
         gl.uniform3fv(loc.uEye, u.eye);
         gl.uniform1f(loc.uWind, u.wind);
         gl.uniform2fv(loc.uGaze, u.gaze);
+        gl.uniform2fv(loc.uTurn, u.turn ?? [0, 0]);
+        gl.uniform1f(loc.uGoggles, u.goggles ? 1 : 0);
         gl.uniform4fv(loc.uExtras, u.extras);
         gl.uniform4fv(loc.uExtraMeta, u.extraMeta);
         gl.uniform2fv(loc.uWobble, u.wobble);
         gl.enable(gl.SCISSOR_TEST);
         gl.scissor(0, 0, viewportPx, viewportPx);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(true);
+        gl.frontFace(gl.CW);
+        if (pass.doubleSided) {
+          gl.disable(gl.CULL_FACE);
+        } else {
+          gl.enable(gl.CULL_FACE);
+          gl.cullFace(gl.BACK);
+        }
+        if (pass.clear !== false) {
+          gl.clearColor(0, 0, 0, 0);
+          // biome-ignore lint/suspicious/noBitwiseOperators: WebGL clear accepts a bit mask.
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        }
+        gl.depthMask(pass.depthWrite !== false);
+        geometry.draw(u);
       }
     },
     viewport(px) {

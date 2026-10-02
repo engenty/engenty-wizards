@@ -1,0 +1,98 @@
+// A closed body is drawn before depth-tested hair and separate accessories.
+// The face belongs to the body surface, so the fur can overlap its outer rim.
+import { createAccentGeometry } from "./accent-geometry";
+import { ACCENT_FRAGMENT_SHADER, ACCENT_VERTEX_SHADER } from "./accent-shaders";
+import { createFurRenderer, type FurRenderer } from "./fur-renderer";
+import type { EngentyCoat } from "./fur-stage";
+import { createGoggleGeometry } from "./goggle-geometry";
+import { GOGGLE_FRAGMENT_SHADER, GOGGLE_VERTEX_SHADER } from "./goggle-shaders";
+import { JELLY_FRAGMENT_SHADER } from "./jelly-shader";
+import { createStrandGeometry } from "./strand-geometry";
+import { STRAND_FRAGMENT_SHADER, STRAND_VERTEX_SHADER } from "./strand-shaders";
+import { createBodyGeometry } from "./volume-geometry";
+import { BODY_VERTEX_SHADER, FUR_BODY_SHADER } from "./volume-shaders";
+
+export function createStrandRenderer(
+  canvas: HTMLCanvasElement,
+  coat: EngentyCoat
+): FurRenderer | null {
+  const body = createFurRenderer(
+    canvas,
+    coat === "fur" ? FUR_BODY_SHADER : JELLY_FRAGMENT_SHADER,
+    {
+      vertex:
+        coat === "fur"
+          ? BODY_VERTEX_SHADER
+          : BODY_VERTEX_SHADER.replace(
+              "#version 300 es",
+              "#version 300 es\n#define JELLY_COAT"
+            ),
+      geometry: createBodyGeometry,
+    }
+  );
+  if (!body) {
+    return null;
+  }
+  const passes = [body];
+  if (coat === "fur") {
+    const hair = createFurRenderer(canvas, STRAND_FRAGMENT_SHADER, {
+      vertex: STRAND_VERTEX_SHADER,
+      geometry: createStrandGeometry,
+      clear: false,
+      doubleSided: true,
+      depthWrite: false,
+    });
+    if (!hair) {
+      body.dispose();
+      return null;
+    }
+    passes.push(hair);
+  }
+  const accents = createFurRenderer(canvas, ACCENT_FRAGMENT_SHADER, {
+    vertex: ACCENT_VERTEX_SHADER,
+    geometry: createAccentGeometry,
+    clear: false,
+  });
+  if (!accents) {
+    for (const pass of passes) {
+      pass.dispose();
+    }
+    return null;
+  }
+  passes.push(accents);
+  const goggles = createFurRenderer(canvas, GOGGLE_FRAGMENT_SHADER, {
+    vertex:
+      coat === "jelly"
+        ? GOGGLE_VERTEX_SHADER.replace(
+            "#version 300 es",
+            "#version 300 es\n#define JELLY_COAT"
+          )
+        : GOGGLE_VERTEX_SHADER,
+    geometry: createGoggleGeometry,
+    clear: false,
+  });
+  if (!goggles) {
+    for (const pass of passes) {
+      pass.dispose();
+    }
+    return null;
+  }
+  passes.push(goggles);
+  return {
+    render(u) {
+      for (const pass of passes) {
+        pass.render(u);
+      }
+    },
+    viewport(px) {
+      for (const pass of passes) {
+        pass.viewport(px);
+      }
+    },
+    dispose() {
+      for (const pass of passes) {
+        pass.dispose();
+      }
+    },
+  };
+}

@@ -12,21 +12,19 @@
  * allocation sized to its largest engenty and stops reallocating.
  */
 
-import { createFurRenderer, type FurRenderer, type FurUniforms } from "./fur-renderer";
-import { FUR_FRAGMENT_SHADER } from "./fur-shader";
-import { JELLY_FRAGMENT_SHADER } from "./jelly-shader";
+import type { FurRenderer, FurUniforms } from "./fur-renderer";
+import { createStrandRenderer } from "./strand-renderer";
 
-/** How the large engenty is surfaced: shell fur, or a translucent gel. */
+/** How the large engenty is surfaced: continuous strand fur, or a translucent gel. */
 export type EngentyCoat = "fur" | "jelly";
-
-const COAT_SHADER: Record<EngentyCoat, string> = {
-  fur: FUR_FRAGMENT_SHADER,
-  jelly: JELLY_FRAGMENT_SHADER,
-};
 
 export interface FurStage {
   /** Renders `uniforms` at `px` square and copies it into `target`. */
-  drawInto: (target: CanvasRenderingContext2D, px: number, uniforms: FurUniforms) => void;
+  drawInto: (
+    target: CanvasRenderingContext2D,
+    px: number,
+    uniforms: FurUniforms
+  ) => void;
   release: () => void;
 }
 
@@ -48,7 +46,7 @@ function createStage(coat: EngentyCoat): StageState | null {
   const canvas = document.createElement("canvas");
   canvas.width = 1;
   canvas.height = 1;
-  const renderer = createFurRenderer(canvas, COAT_SHADER[coat]);
+  const renderer = createStrandRenderer(canvas, coat);
   if (!renderer) {
     unavailable.add(coat);
     return null;
@@ -89,7 +87,7 @@ export function acquireFurStage(coat: EngentyCoat = "fur"): FurStage | null {
       // Rendered 1:1 with the target on purpose. Supersampling here — render
       // large, let `drawImage` scale down — was measured at ~1fps across a page
       // of engenties: the scaled blit leaves the GPU path. Coverage is
-      // antialiased analytically in the shader instead (see `radPerPixel`).
+      // smoothed by shader strand coverage and multisampling instead.
       const sampled = px;
       if (sampled > stage.size) {
         stage.size = sampled;
@@ -110,7 +108,7 @@ export function acquireFurStage(coat: EngentyCoat = "fur"): FurStage | null {
         0,
         0,
         target.canvas.width,
-        target.canvas.height,
+        target.canvas.height
       );
     },
     release() {

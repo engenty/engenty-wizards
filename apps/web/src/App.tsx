@@ -21,6 +21,10 @@ const SettingsPage = lazy(() =>
   import("./studio/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
 
+const EngentyBuilder = import.meta.env.DEV
+  ? lazy(() => import("./dev/EngentyBuilder").then((m) => ({ default: m.EngentyBuilder })))
+  : null;
+
 function Splash() {
   return (
     <div className="flex min-h-dvh items-center justify-center">
@@ -44,6 +48,7 @@ export function App() {
   return (
     <Suspense fallback={<Splash />}>
       <Routes>
+        {EngentyBuilder && <Route path="/dev/engenty-builder" element={<EngentyBuilder />} />}
         <Route path="/r/:token" element={<PublicRunner />} />
         <Route path="/r/:token/:runId" element={<PublicRunner />} />
         <Route path="/s/:token" element={<SharePage />} />
