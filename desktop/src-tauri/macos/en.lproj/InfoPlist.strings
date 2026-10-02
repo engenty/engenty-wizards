@@ -1,0 +1,4 @@
+"NSCameraUsageDescription" = "A wizard asks for a photo. engenty wizards uses the camera only while you take it.";
+"NSMicrophoneUsageDescription" = "A wizard asks for a voice note. engenty wizards uses the microphone only while you record it.";
+"NSLocationUsageDescription" = "A wizard asks where you are, to fill in a place.";
+"NSLocationWhenInUseUsageDescription" = "A wizard asks where you are, to fill in a place.";

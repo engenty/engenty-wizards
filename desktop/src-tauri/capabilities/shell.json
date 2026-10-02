@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shell",
+  "description": "The app's own pages in the main window: splash, server choice, error. A server shown in the window gets its commands from the capability added for its origin at runtime (src/window.rs).",
+  "windows": ["main"],
+  "local": true,
+  "permissions": [
+    "allow-shell-state",
+    "allow-choose-server",
+    "allow-enter-server",
+    "allow-retry-start",
+    "allow-open-logs",
+    "allow-open-server-choice"
+  ]
+}

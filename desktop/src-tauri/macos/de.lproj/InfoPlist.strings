@@ -1,0 +1,4 @@
+"NSCameraUsageDescription" = "Ein Wizard bittet um ein Foto. engenty wizards nutzt die Kamera nur, während du es aufnimmst.";
+"NSMicrophoneUsageDescription" = "Ein Wizard bittet um eine Sprachnotiz. engenty wizards nutzt das Mikrofon nur, während du sie aufnimmst.";
+"NSLocationUsageDescription" = "Ein Wizard fragt nach deinem Standort, um einen Ort einzutragen.";
+"NSLocationWhenInUseUsageDescription" = "Ein Wizard fragt nach deinem Standort, um einen Ort einzutragen.";
