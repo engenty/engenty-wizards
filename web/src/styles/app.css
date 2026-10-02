@@ -23,6 +23,8 @@
   --color-border-soft: var(--border-soft);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus: var(--focus-line);
+  --color-focus-glow: var(--focus-glow);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -59,6 +61,24 @@
   --shadow-overlay: var(--shadow-ember-overlay);
 }
 
+/* Dark is not the near-black of the base palette: the page takes the deep
+   colour of an engenty (`--stage`, set per wizard by `useStage`), the ground
+   the jelly coat is made for. Every surface and ink step derives from it, so
+   a wizard's page, cards and text all carry its hue. */
+.dark {
+  --stage: oklch(34% 0.14 264);
+  --raw-background: var(--stage);
+  --raw-sidebar: oklch(from var(--stage) calc(l - 0.04) c h);
+  --paper: oklch(from var(--stage) l c h);
+  --paper-2: oklch(from var(--stage) calc(l + 0.06) calc(c * 0.95) h);
+  --paper-3: oklch(from var(--stage) calc(l + 0.11) calc(c * 0.9) h);
+  --ink: oklch(from var(--stage) 0.97 0.015 h);
+  --ink-2: oklch(from var(--stage) 0.9 0.03 h);
+  --ink-3: oklch(from var(--stage) 0.8 0.05 h);
+  --ink-4: oklch(from var(--stage) 0.68 0.06 h);
+  color-scheme: dark;
+}
+
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
@@ -81,9 +101,44 @@ body {
   background: var(--ember-veil);
 }
 
+/* Focus stays quiet by default: a soft ink line, no ember glow. Assisted mode
+   — the OS asking for more contrast, or the `.theme-high-contrast` switch —
+   brings back the strong ember ring the WCAG focus-visible rule wants. */
+:root {
+  --focus-line: color-mix(in oklch, var(--ink) 26%, transparent);
+  --focus-glow: transparent;
+}
+
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 1.5px solid var(--focus-line);
   outline-offset: 2px;
+}
+
+/* A field shows focus by its own border (`border-focus`), not an outline. */
+:is(input, textarea, select):focus-visible {
+  outline: none;
+}
+
+.theme-high-contrast {
+  --focus-line: var(--ember);
+  --focus-glow: var(--ember-veil);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --focus-line: var(--ember);
+    --focus-glow: var(--ember-veil);
+  }
+}
+
+.theme-high-contrast :focus-visible {
+  outline-width: 2px;
+}
+
+@media (prefers-contrast: more) {
+  :focus-visible {
+    outline-width: 2px;
+  }
 }
 
 /* Rendered Markdown inside results and chat. */

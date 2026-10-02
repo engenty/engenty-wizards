@@ -64,7 +64,7 @@ export function NewWizardPage() {
           {t("new.title")}
         </h1>
       </div>
-      <div className="mt-8 rounded-3xl bg-card p-2 shadow-elevated ring-1 ring-border-soft focus-within:ring-ember/40">
+      <div className="mt-8 rounded-3xl bg-card p-2 shadow-elevated ring-1 ring-border-soft focus-within:ring-focus">
         <Textarea
           autoFocus
           minRows={4}

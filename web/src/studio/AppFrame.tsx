@@ -1,7 +1,7 @@
 import { CreditCard, LogOut, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Logo } from "../brand";
+import { Logo, ThemeToggle } from "../brand";
 import { t } from "../lib/i18n";
 import { type Me, signOut } from "../lib/session";
 import { cn } from "../ui";
@@ -85,6 +85,7 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
     <header className="sticky top-0 z-40 flex h-16 items-center gap-3 bg-background/85 px-4 backdrop-blur-md sm:px-6">
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
+      <ThemeToggle />
       <CreditsPill me={me} />
       <UserMenu me={me} />
     </header>

@@ -6,6 +6,15 @@
     <meta name="theme-color" content="#faf8f5" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>engenty wizards</title>
+    <script>
+      // Before first paint, so a dark visitor never sees the light page flash.
+      try {
+        const pick = localStorage.getItem("wizards.theme");
+        if (pick === "dark" || (!pick && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

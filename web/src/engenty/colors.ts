@@ -1,25 +1,21 @@
 /**
- * Landing token fills, one per engenty kind.
- *
- * The first five are the founding cast and map straight onto brand tokens. The
- * later five are derived from those same tokens by rotating hue (and, for
- * `slate`, dropping chroma) rather than being fixed colours: the palette has no
- * token at those hues, and hard-coding one would stop the newer engenties
- * tracking the tenant's theme, the light/dark flip and the contrast scalar the
- * way the originals do.
+ * Fills, one per engenty kind: the vibrant engenty cast. Fixed, high-chroma
+ * colours rather than the semantic accents (`--moss` is the success green,
+ * `--rose` the danger red), which sit muted on purpose and turned the jelly
+ * coat into a dull gummy. A theme can still repaint any of them through its
+ * `--engenty-<fill>` property.
  */
 export const ENGENTY_FILL = {
-  cobalt: "var(--cobalt, oklch(50% 0.18 264))",
-  amber: "var(--amber, oklch(72% 0.16 68))",
-  moss: "var(--moss, oklch(48% 0.13 150))",
-  rose: "var(--rose, oklch(58% 0.20 18))",
-  ember: "var(--ember, oklch(64% 0.195 35))",
-  teal: "oklch(from var(--moss, oklch(48% 0.13 150)) l calc(c * 1.05) calc(h + 46))",
-  violet: "oklch(from var(--cobalt, oklch(50% 0.18 264)) l calc(c * 1.05) calc(h + 44))",
-  magenta: "oklch(from var(--rose, oklch(58% 0.20 18)) l c calc(h - 40))",
-  citron: "oklch(from var(--moss, oklch(48% 0.13 150)) calc(l * 1.24) calc(c * 1.1) calc(h - 42))",
-  slate:
-    "oklch(from var(--cobalt, oklch(50% 0.18 264)) calc(l * 0.86) calc(c * 0.42) calc(h - 20))",
+  cobalt: "var(--engenty-cobalt, oklch(60% 0.23 262))",
+  amber: "var(--engenty-amber, oklch(82% 0.17 78))",
+  moss: "var(--engenty-moss, oklch(72% 0.22 145))",
+  rose: "var(--engenty-rose, oklch(64% 0.25 18))",
+  ember: "var(--engenty-ember, oklch(70% 0.21 42))",
+  teal: "var(--engenty-teal, oklch(74% 0.16 192))",
+  violet: "var(--engenty-violet, oklch(60% 0.25 300))",
+  magenta: "var(--engenty-magenta, oklch(65% 0.28 345))",
+  citron: "var(--engenty-citron, oklch(89% 0.2 118))",
+  slate: "var(--engenty-slate, oklch(66% 0.13 235))",
 } as const;
 
 export type EngentyKind =
