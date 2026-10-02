@@ -12,6 +12,7 @@ import { mcpHandler } from "./mcp/handler.js";
 import { connections } from "./routes/connections.js";
 import { publicRoutes, runRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
+import { wizardStream } from "./routes/wizard-stream.js";
 import { ServiceError } from "./services/errors.js";
 
 const app = new Hono<{ Variables: { user: SessionUser } }>();
@@ -92,6 +93,7 @@ const mcp = mcpHandler();
 app.on(["GET", "POST", "DELETE"], "/api/mcp", (c) => mcp(c.req.raw));
 
 app.route("/api/studio/connections", connections);
+app.route("/api/studio/wizards", wizardStream);
 app.route("/api/studio", studio);
 app.route("/api/billing/webhook", stripeWebhook);
 app.route("/api/billing", billingRoutes);

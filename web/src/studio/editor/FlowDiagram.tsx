@@ -20,11 +20,19 @@ import { stepIcon, stepSummary, TYPE_TONE, typeLabel } from "./meta";
 const NODE_W = 280;
 const NODE_H = 92;
 
-type StepData = { step: Step; selected: boolean; issue: boolean; index: number; active: boolean };
+type StepData = {
+  step: Step;
+  selected: boolean;
+  issue: boolean;
+  index: number;
+  active: boolean;
+  /** Just changed from elsewhere (an MCP client). */
+  pulse: boolean;
+};
 type StartData = { title: string; avatar: string; selected: boolean };
 
 function StepNode({ data }: NodeProps<Node<StepData>>) {
-  const { step, selected, issue, active } = data;
+  const { step, selected, issue, active, pulse } = data;
   const Icon = stepIcon(step);
   return (
     <div
@@ -34,11 +42,15 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
           ? "shadow-elevated ring-2 ring-ember"
           : active
             ? "ring-2 ring-moss"
-            : "ring-border-soft hover:shadow-elevated",
+            : pulse
+              ? "ring-2 ring-ember/60"
+              : "ring-border-soft hover:shadow-elevated",
       )}
     >
       {active ? (
         <span className="-top-1 -right-1 absolute size-3 animate-breathe rounded-full bg-moss" />
+      ) : pulse ? (
+        <span className="-top-1 -right-1 absolute size-3 animate-breathe rounded-full bg-ember" />
       ) : null}
       <Handle type="target" position={Position.Top} />
       <div className="flex items-center gap-2">
@@ -104,6 +116,7 @@ function layout(
   selected: string | null,
   issueSteps: Set<string>,
   activeStep: string | null,
+  pulse: string[],
 ) {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "TB", nodesep: 48, ranksep: 46, marginx: 20, marginy: 20 });
@@ -178,6 +191,7 @@ function layout(
           issue: issueSteps.has(s.id),
           index,
           active: activeStep === s.id,
+          pulse: pulse.includes(s.id),
         },
         draggable: false,
       } satisfies Node<StepData>;
@@ -218,16 +232,18 @@ function Inner({
   onSelect,
   issueSteps,
   activeStep,
+  pulse,
 }: {
   def: WizardDefinition;
   selected: string | null;
   onSelect: (id: string | null) => void;
   issueSteps: Set<string>;
   activeStep: string | null;
+  pulse?: string[];
 }) {
   const { nodes, edges } = useMemo(
-    () => layout(def, selected, issueSteps, activeStep),
-    [def, selected, issueSteps, activeStep],
+    () => layout(def, selected, issueSteps, activeStep, pulse ?? []),
+    [def, selected, issueSteps, activeStep, pulse],
   );
   const rf = useReactFlow();
   const wrap = useRef<HTMLDivElement>(null);
@@ -294,6 +310,7 @@ export function FlowDiagram(props: {
   onSelect: (id: string | null) => void;
   issueSteps: Set<string>;
   activeStep: string | null;
+  pulse?: string[];
 }) {
   return (
     <ReactFlowProvider>

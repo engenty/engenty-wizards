@@ -30,11 +30,20 @@ export function useArchitectChat(
   const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (wizard && loadedFor.current !== wizard.id) {
+    if (!wizard) {
+      return;
+    }
+    if (loadedFor.current !== wizard.id) {
       loadedFor.current = wizard.id;
       setMessages(wizard.messages);
+      return;
     }
-  }, [wizard]);
+    // Between turns the server's thread is the truth — it also carries notes an MCP client left.
+    // A turn's optimistic messages stay until the server has them (it may still be refetching).
+    if (phase === "idle") {
+      setMessages((local) => (wizard.messages.length >= local.length ? wizard.messages : local));
+    }
+  }, [wizard, phase]);
 
   const send = async (text: string) => {
     if (!wizard || !text.trim() || phase !== "idle") {

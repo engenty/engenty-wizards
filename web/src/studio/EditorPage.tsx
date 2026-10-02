@@ -1,10 +1,9 @@
-import type { WizardDefinition } from "@shared/definition";
 import type { RunView } from "@shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Play, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { ApiError, api } from "../lib/api";
+import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useMe, type WizardDetail } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
@@ -15,57 +14,9 @@ import { FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
+import { LiveChip, useLiveDraft } from "./live";
 
 type Tab = "chat" | "step" | "runs";
-
-function useDraftSaver(wizardId: string | undefined) {
-  const qc = useQueryClient();
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Saves run one after another, so each carries the revision the previous one returned.
-  const queue = useRef<Promise<void>>(Promise.resolve());
-  const [saving, setSaving] = useState(false);
-  const save = useCallback(
-    (draft: WizardDefinition) => {
-      if (!wizardId) {
-        return;
-      }
-      const key = ["wizard", wizardId];
-      qc.setQueryData<WizardDetail>(key, (old) =>
-        old ? { ...old, draft, title: draft.title, dirty: true } : old,
-      );
-      if (timer.current) {
-        clearTimeout(timer.current);
-      }
-      timer.current = setTimeout(() => {
-        queue.current = queue.current.then(async () => {
-          const current = qc.getQueryData<WizardDetail>(key);
-          if (!current) {
-            return;
-          }
-          setSaving(true);
-          try {
-            const res = await api.put<{ revision: number; issues: WizardDetail["issues"] }>(
-              `/api/studio/wizards/${wizardId}/draft`,
-              { definition: current.draft, baseRevision: current.revision },
-            );
-            qc.setQueryData<WizardDetail>(key, (old) =>
-              old ? { ...old, revision: res.revision, issues: res.issues } : old,
-            );
-          } catch (err) {
-            // Someone else (the chat, an MCP client) wrote first: show their version.
-            if (err instanceof ApiError && err.status === 409) {
-              await qc.invalidateQueries({ queryKey: key });
-            }
-          } finally {
-            setSaving(false);
-          }
-        });
-      }, 600);
-    },
-    [qc, wizardId],
-  );
-  return { save, saving };
-}
 
 export function EditorPage() {
   const { id } = useParams();
@@ -76,6 +27,8 @@ export function EditorPage() {
   const wizard = useQuery({
     queryKey: ["wizard", id],
     queryFn: () => api.get<WizardDetail>(`/api/studio/wizards/${id}`),
+    // The live stream keeps it fresh; a refetch on focus would only race unsaved edits.
+    refetchOnWindowFocus: false,
   });
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
@@ -87,7 +40,7 @@ export function EditorPage() {
       setActiveStep(view && view.status !== "done" ? (view.step?.id ?? null) : null),
     [],
   );
-  const { save, saving } = useDraftSaver(id);
+  const { save, saving, remote, merged } = useLiveDraft(id);
 
   const chat = useArchitectChat(wizard.data, (draft, revision) => {
     qc.setQueryData<WizardDetail>(["wizard", id], (old) =>
@@ -170,6 +123,9 @@ export function EditorPage() {
           )}
         </span>
         {saving ? <Spinner className="size-4 text-ink-4" /> : null}
+        <span className="hidden md:inline-flex">
+          <LiveChip remote={remote} merged={merged} />
+        </span>
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="secondary"
@@ -243,6 +199,7 @@ export function EditorPage() {
               onSelect={select}
               issueSteps={issueSteps}
               activeStep={drawerRun ? activeStep : null}
+              pulse={remote?.steps}
             />
           )}
         </section>

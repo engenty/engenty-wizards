@@ -125,6 +125,8 @@ const de = {
   "settings.neverUsed": "noch nie benutzt",
   "settings.revoke": "Schlüssel löschen",
   "editor.viaClient": "Über {client}",
+  "editor.changedVia": "Geändert über {client}",
+  "editor.merged": "Mit Änderungen von außen zusammengeführt",
   "oauth.signInTitle": "Anmelden, um zu verbinden",
   "oauth.signInSub":
     "Ein Programm wie Claude Code möchte auf deine Wizards zugreifen. Melde dich an, dann fragen wir dich.",
@@ -292,6 +294,8 @@ const en: Record<Key, string> = {
   "settings.neverUsed": "never used",
   "settings.revoke": "Delete key",
   "editor.viaClient": "Via {client}",
+  "editor.changedVia": "Changed via {client}",
+  "editor.merged": "Merged with changes from elsewhere",
   "oauth.signInTitle": "Sign in to connect",
   "oauth.signInSub":
     "An app like Claude Code wants to access your wizards. Sign in and we'll ask you.",

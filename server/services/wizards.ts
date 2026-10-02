@@ -11,6 +11,7 @@ import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { starterById } from "../starters/index.js";
+import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { defaultProject, ownedProject } from "./projects.js";
 
@@ -226,6 +227,15 @@ export async function writeDraft(
   if (input.note) {
     await addMessage(w.id, { role: "assistant", content: input.note, changed: true }, writer);
   }
+  emitDraftChanged({
+    wizardId: w.id,
+    kind: "draft",
+    revision: row.revision,
+    source: writer.source,
+    client: writer.source === "mcp" ? writer.client : null,
+    note: input.note ?? null,
+    touched: changedSteps(w.draft, draft),
+  });
   return { revision: row.revision, issues, draft };
 }
 
