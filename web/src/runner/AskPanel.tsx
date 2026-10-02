@@ -59,7 +59,7 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
           </h2>
         </div>
       </div>
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-paper-2 p-4 text-[13px] leading-relaxed ring-1 ring-border-soft">
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-paper-2 p-4 text-[13px] leading-relaxed ring-1 ring-border-soft">
         {ask.input}
       </pre>
       <div className="mt-5 flex items-center gap-4">
@@ -67,7 +67,7 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
         <span className="flex-1 text-[13px] text-ink-2">{t("ask.allowRest")}</span>
       </div>
       {error ? (
-        <div className="mt-3 rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
       ) : null}
       <div className="mt-6 flex items-center justify-between gap-3">
         <Button variant="ghost" disabled={busy} onClick={() => void answer({ type: "skip" })}>
@@ -152,7 +152,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-paper-2 ring-1 ring-border-soft">
+      <div className="overflow-hidden rounded-xl bg-paper-2 ring-1 ring-border-soft">
         <img
           ref={image}
           src={`/api/runs/${runId}/browser/screen?t=${tick}`}
@@ -179,7 +179,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
             type="button"
             onClick={() => setHidden((h) => !h)}
             className={cn(
-              "h-9 shrink-0 rounded-lg px-2.5 text-[12px]",
+              "h-9 shrink-0 rounded-md px-2.5 text-[12px]",
               hidden ? "bg-ember-veil text-ink" : "text-ink-3 hover:bg-paper-2",
             )}
           >
@@ -230,7 +230,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-moss" /> {t("ask.private")}
       </p>
       {error ? (
-        <div className="mt-3 rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
@@ -281,7 +281,7 @@ function ToolButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink"
+      className="flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink"
     >
       {children}
     </button>

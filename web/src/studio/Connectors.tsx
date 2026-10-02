@@ -16,7 +16,7 @@ import { Button, Card, Chip, cn, IconButton, Input, Spinner } from "../ui";
 function Builtin({ connector }: { connector: ConnectorView }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl bg-paper ring-1 ring-border-soft">
+    <div className="rounded-lg bg-paper ring-1 ring-border-soft">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -73,9 +73,9 @@ function Imported({ projectId, connector }: { projectId: string; connector: Conn
   const remove = useMutation({ mutationFn: () => api.del(base), onSuccess: done });
   const reads = connector.actions.filter((a) => a.group === "read").length;
   return (
-    <div className="rounded-2xl bg-paper ring-1 ring-border-soft">
+    <div className="rounded-lg bg-paper ring-1 ring-border-soft">
       <div className="flex items-center gap-3 p-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-paper-2 text-ink-2">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-paper-2 text-ink-2">
           <Plug className="size-4" />
         </div>
         <button
@@ -186,7 +186,7 @@ function SourceRow({
     },
   });
   return (
-    <div className="rounded-xl bg-card p-3 ring-1 ring-border-soft">
+    <div className="rounded-lg bg-card p-3 ring-1 ring-border-soft">
       <div className="flex items-center gap-3">
         <Chip tone={source.sourceKind === "mcp" ? "ember" : "neutral"}>
           {source.sourceKind === "mcp" ? "MCP" : "OpenAPI"}
@@ -315,7 +315,7 @@ export function Connectors({ projectId }: { projectId: string }) {
               type="button"
               disabled={!hit.kinds.length}
               onClick={() => open.mutate(hit.domain)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-paper-2 disabled:opacity-50"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-paper-2 disabled:opacity-50"
             >
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[14px]">{hit.domain}</div>

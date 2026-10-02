@@ -146,7 +146,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
           ) : null}
         </>
       ) : (
-        <p className="mt-10 rounded-2xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
+        <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
           {wizard.unavailableReason ?? t("run.unavailable")}
         </p>
       )}

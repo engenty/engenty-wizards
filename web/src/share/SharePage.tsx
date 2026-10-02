@@ -78,7 +78,7 @@ export function SharePage() {
         {view.wizardUrl ? (
           <a
             href={view.wizardUrl}
-            className="mt-10 flex items-center gap-4 rounded-3xl bg-card p-5 shadow-soft ring-1 ring-border-soft transition hover:shadow-elevated"
+            className="mt-10 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-border-soft transition hover:shadow-elevated"
           >
             <Mascot kind={view.wizard.avatar} size={44} interactive={false} />
             <div className="min-w-0 flex-1">

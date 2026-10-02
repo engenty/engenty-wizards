@@ -89,7 +89,7 @@ function FieldEditor({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl bg-paper ring-1 ring-border-soft">
+    <div className="rounded-lg bg-paper ring-1 ring-border-soft">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -608,7 +608,7 @@ function StepBody({
               const d = step.deliverables.find((x) => x.from === s.id);
               const possible = formatsFor(s);
               return (
-                <div key={s.id} className="rounded-xl bg-paper p-3 ring-1 ring-border-soft">
+                <div key={s.id} className="rounded-lg bg-paper p-3 ring-1 ring-border-soft">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="truncate text-[14px]">{s.title}</span>
                     <Switch
@@ -684,7 +684,7 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
               type="button"
               onClick={() => update({ ...def, avatar: k })}
               className={cn(
-                "flex aspect-square items-center justify-center rounded-2xl transition",
+                "flex aspect-square items-center justify-center rounded-xl transition",
                 def.avatar === k ? "bg-ember-tint ring-2 ring-ember" : "bg-paper hover:bg-paper-2",
               )}
               aria-label={k}
@@ -701,13 +701,13 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
             nutzt. Ändern kannst du das im Gespräch.
           </p>
           {(def.connections ?? []).map((c) => (
-            <div key={c.id} className="rounded-xl bg-paper px-3 py-2.5 ring-1 ring-border-soft">
+            <div key={c.id} className="rounded-lg bg-paper px-3 py-2.5 ring-1 ring-border-soft">
               <div className="text-[14px]">{c.title ?? c.id}</div>
               <div className="text-[12px] text-ink-4">Konto · {c.kind}</div>
             </div>
           ))}
           {(def.lists ?? []).map((l) => (
-            <div key={l.id} className="rounded-xl bg-paper px-3 py-2.5 ring-1 ring-border-soft">
+            <div key={l.id} className="rounded-lg bg-paper px-3 py-2.5 ring-1 ring-border-soft">
               <div className="text-[14px]">{l.title}</div>
               <div className="text-[12px] text-ink-4">
                 Liste · {l.columns.map((c) => c.name).join(", ")}
@@ -874,12 +874,12 @@ function StepList({ def, onSelect, issues }: Pick<InspectorProps, "def" | "onSel
             key={step.id}
             type="button"
             onClick={() => onSelect(step.id)}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-paper-2"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-paper-2"
           >
             <span className="w-4 text-right text-[12px] text-ink-4 tabular-nums">{i + 1}</span>
             <span
               className={cn(
-                "inline-flex size-7 shrink-0 items-center justify-center rounded-lg",
+                "inline-flex size-7 shrink-0 items-center justify-center rounded-md",
                 TYPE_TONE[step.type],
               )}
             >
@@ -963,7 +963,7 @@ function StepInspector({
       <div className="flex items-center gap-2 px-5 pt-5">
         <span
           className={cn(
-            "inline-flex size-7 items-center justify-center rounded-lg",
+            "inline-flex size-7 items-center justify-center rounded-md",
             TYPE_TONE[step.type],
           )}
         >
@@ -975,7 +975,7 @@ function StepInspector({
         <span className="ml-auto font-mono text-[11px] text-ink-4">{step.id}</span>
       </div>
       {stepIssues.length ? (
-        <div className="mx-5 mt-3 rounded-xl bg-rose-tint px-3 py-2 text-[13px] text-rose">
+        <div className="mx-5 mt-3 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
           {stepIssues.map((i, k) => (
             <div key={k}>{i.message}</div>
           ))}

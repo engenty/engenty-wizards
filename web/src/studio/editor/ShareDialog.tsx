@@ -32,7 +32,7 @@ export function ShareDialog({
   return (
     <Dialog open={open} onClose={onClose} title={t("share.title")}>
       {!wizard.published ? (
-        <p className="mb-4 rounded-xl bg-amber-tint px-3 py-2 text-[14px]">
+        <p className="mb-4 rounded-lg bg-amber-tint px-3 py-2 text-[14px]">
           {t("share.publishFirst")}
         </p>
       ) : null}

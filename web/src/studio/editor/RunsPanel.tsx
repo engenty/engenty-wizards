@@ -45,7 +45,7 @@ export function RunsPanel({
           key={r.id}
           type="button"
           onClick={() => onOpen(r.id)}
-          className="flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-accent"
+          className="flex items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-accent"
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-[14px]">

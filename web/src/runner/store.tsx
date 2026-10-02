@@ -38,7 +38,7 @@ function CredentialsForm({
     }
   };
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-input">
+    <div className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-input">
       {(connector.fields ?? []).map((f) => (
         <div key={f.key}>
           <Label>{f.label}</Label>
@@ -90,7 +90,7 @@ export function ConnectionField({
     const name =
       connection.connectors.find((c) => c.id === connection.account?.connector)?.name ?? "";
     return (
-      <div className="flex items-center gap-3 rounded-2xl bg-card p-3 ring-1 ring-input">
+      <div className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-input">
         <div className="flex size-10 items-center justify-center rounded-full bg-moss-tint text-moss">
           <Check className="size-5" />
         </div>
@@ -212,7 +212,7 @@ function CellInput({
   const [text, setText] = useState(inputText(value));
   useEffect(() => setText(inputText(value)), [value]);
   const base =
-    "h-9 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 text-[13px] outline-none hover:bg-paper-2 focus:border-ember focus:bg-card";
+    "h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 text-[13px] outline-none hover:bg-paper-2 focus:border-ember focus:bg-card";
   if (column.type === "boolean") {
     return (
       <input
@@ -292,7 +292,7 @@ export function ListTable({
   }
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl ring-1 ring-border-soft">
+      <div className="overflow-x-auto rounded-lg ring-1 ring-border-soft">
         <table className="w-full text-[13px]">
           <thead className="bg-paper-2 text-ink-2">
             <tr>
@@ -477,7 +477,7 @@ export function StoreButton({ runId }: { runId: string }) {
                     size: bytes(data.files.reduce((n, f) => n + f.size, 0)),
                   })}
                 </div>
-                <ul className="max-h-56 overflow-y-auto rounded-xl ring-1 ring-border-soft">
+                <ul className="max-h-56 overflow-y-auto rounded-lg ring-1 ring-border-soft">
                   {data.files.map((f) => (
                     <li key={f.path} className="border-border-soft border-b last:border-0">
                       <a

@@ -95,10 +95,10 @@ export function ShareResultButton({
             <Spinner />
           </div>
         ) : error ? (
-          <p className="rounded-xl bg-rose-tint px-3 py-2 text-[14px] text-rose">{error}</p>
+          <p className="rounded-lg bg-rose-tint px-3 py-2 text-[14px] text-rose">{error}</p>
         ) : shared ? (
           <div className="flex flex-col gap-5">
-            <div className="flex items-center gap-2 rounded-2xl bg-paper-2 p-1.5 pl-3">
+            <div className="flex items-center gap-2 rounded-xl bg-paper-2 p-1.5 pl-3">
               <Link2 className="size-4 shrink-0 text-ink-3" />
               <input
                 readOnly

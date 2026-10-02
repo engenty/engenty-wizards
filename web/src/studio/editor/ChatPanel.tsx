@@ -153,7 +153,7 @@ export function ChatPanel({
             m.role === "user" ? (
               <div
                 key={m.id}
-                className="ml-8 self-end rounded-2xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[14px] leading-relaxed"
+                className="ml-8 self-end rounded-xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[14px] leading-relaxed"
               >
                 <span className="whitespace-pre-wrap">{m.content}</span>
               </div>
@@ -188,13 +188,13 @@ export function ChatPanel({
           )}
         </div>
         {chat.error ? (
-          <div className="mt-4 rounded-xl bg-rose-tint px-3 py-2 text-[13px] text-rose">
+          <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
             {chat.error}
           </div>
         ) : null}
       </div>
       <div className="p-3">
-        <div className="flex items-end gap-2 rounded-2xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
+        <div className="flex items-end gap-2 rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
           <textarea
             ref={area}
             rows={1}

@@ -109,7 +109,7 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
         />
       </div>
       {error ? (
-        <div className="mt-3 rounded-xl bg-rose-tint px-3 py-2 text-[13px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">{error}</div>
       ) : null}
       <ul className="mt-4 flex flex-col">
         {files.map((f) => {
@@ -117,7 +117,7 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
           return (
             <li
               key={f.path}
-              className="group flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-paper-2"
+              className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper-2"
             >
               <Icon className="size-4 shrink-0 text-ink-3" />
               <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{f.path}</span>
@@ -141,7 +141,7 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
         })}
       </ul>
       {files.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-border border-dashed px-4 py-8 text-center text-[13px] text-ink-4">
+        <div className="mt-6 rounded-xl border border-border border-dashed px-4 py-8 text-center text-[13px] text-ink-4">
           {t("files.empty")}
         </div>
       ) : null}

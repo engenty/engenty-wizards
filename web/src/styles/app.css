@@ -76,6 +76,10 @@
   --ink-2: oklch(from var(--stage) 0.9 0.03 h);
   --ink-3: oklch(from var(--stage) 0.8 0.05 h);
   --ink-4: oklch(from var(--stage) 0.68 0.06 h);
+  /* Lines sit on cards as often as on the page, so they are mixed from the
+     card up: a field's edge and a button's outline stay visible on both. */
+  --border: color-mix(in oklch, var(--ink) 18%, var(--paper-2));
+  --input: color-mix(in oklch, var(--ink) 24%, var(--paper-2));
   color-scheme: dark;
 }
 
@@ -204,6 +208,19 @@ body {
   border-left: 3px solid var(--border);
   padding-left: 0.9em;
   color: var(--ink-2);
+}
+
+/* The colour picker's chip, concentric in the `Swatch` frame. */
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.swatch::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius) * 0.5);
+}
+.swatch::-moz-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius) * 0.5);
 }
 
 /* React Flow, quieted to the canvas. */

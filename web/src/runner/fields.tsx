@@ -4,7 +4,7 @@ import { Camera, ImagePlus, Paperclip, Plus, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../ui";
+import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "../ui";
 import { CameraDialog, hasNativeCamera, shrinkImage } from "./camera";
 import { ConnectionField, ListTable } from "./store";
 
@@ -40,7 +40,7 @@ function ItemsField({
     .map((c) => (c.kind === "text" && c === cols[0] ? "minmax(0,3fr)" : "minmax(0,1fr)"))
     .join(" ");
   return (
-    <div className="rounded-2xl bg-card p-2 ring-1 ring-input">
+    <div className="rounded-xl bg-card p-2 ring-1 ring-input">
       <div
         className="hidden gap-2 px-2 pt-1 pb-2 text-[12px] text-ink-3 sm:grid"
         style={{ gridTemplateColumns: `${grid} 36px` }}
@@ -55,7 +55,7 @@ function ItemsField({
         {rows.map((row, i) => (
           <div
             key={i}
-            className="grid gap-2 rounded-xl bg-paper p-2 sm:bg-transparent sm:p-0"
+            className="grid gap-2 rounded-lg bg-paper p-2 sm:bg-transparent sm:p-0"
             style={{ gridTemplateColumns: `${grid} 36px` }}
           >
             {cols.map((c) => (
@@ -67,7 +67,7 @@ function ItemsField({
                 value={String(row[c.id] ?? "")}
                 onChange={(e) => set(i, c.id, e.target.value)}
                 className={cn(
-                  "h-10 w-full min-w-0 rounded-lg border border-transparent bg-paper-2 px-2.5 text-[14px] outline-none focus:border-focus focus:bg-card",
+                  "h-10 w-full min-w-0 rounded-md border border-transparent bg-paper-2 px-2.5 text-[14px] outline-none focus:border-focus focus:bg-card",
                   c.kind !== "text" && "text-right tabular-nums",
                 )}
               />
@@ -178,16 +178,16 @@ function UploadField({
             return (
               <div
                 key={id}
-                className="flex items-center gap-3 rounded-2xl bg-card p-2 ring-1 ring-input"
+                className="flex items-center gap-3 rounded-xl bg-card p-2 ring-1 ring-input"
               >
                 {(known ? known.image : image) ? (
                   <img
                     src={`/api/runs/${runId}/assets/${id}`}
                     alt=""
-                    className="size-14 rounded-xl object-cover"
+                    className="size-14 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="flex size-12 items-center justify-center rounded-xl bg-paper-2">
+                  <div className="flex size-12 items-center justify-center rounded-lg bg-paper-2">
                     <Paperclip className="size-5 text-ink-3" />
                   </div>
                 )}
@@ -211,7 +211,7 @@ function UploadField({
               void add(Array.from(e.dataTransfer.files));
             }}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-input border-dashed bg-card px-4 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
+              "flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-4 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
               ids.length ? "py-4" : "py-8",
             )}
           >
@@ -223,7 +223,7 @@ function UploadField({
               type="button"
               onClick={() => (hasNativeCamera ? nativeCamera.current?.click() : setCamera(true))}
               className={cn(
-                "flex w-32 flex-col items-center justify-center gap-2 rounded-2xl border border-input border-dashed bg-card px-3 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
+                "flex w-32 flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-3 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
                 ids.length ? "py-4" : "py-8",
               )}
             >
@@ -367,12 +367,7 @@ export function FieldInput({
     case "color":
       control = (
         <div className="flex items-center gap-3">
-          <input
-            type="color"
-            value={str || "#e0531b"}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-11 w-14 cursor-pointer rounded-xl border border-input bg-card p-1"
-          />
+          <Swatch value={str || "#e0531b"} onChange={(e) => onChange(e.target.value)} />
           <Input
             value={str}
             placeholder="#e0531b"

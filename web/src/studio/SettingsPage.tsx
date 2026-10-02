@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useMe } from "../lib/session";
-import { Button, Card, IconButton, Input, Label, Segmented, Textarea } from "../ui";
+import { Button, Card, IconButton, Input, Label, Segmented, Swatch, Textarea } from "../ui";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 
@@ -92,12 +92,7 @@ function ProjectForm({ project }: { project: Project }) {
             <div>
               <Label>{t("settings.accent")}</Label>
               <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={accent || "#e0531b"}
-                  onChange={(e) => setAccent(e.target.value)}
-                  className="h-11 w-14 cursor-pointer rounded-xl border border-input bg-card p-1"
-                />
+                <Swatch value={accent || "#e0531b"} onChange={(e) => setAccent(e.target.value)} />
                 <Input
                   value={accent}
                   placeholder="#e0531b"
@@ -113,7 +108,7 @@ function ProjectForm({ project }: { project: Project }) {
                   <img
                     src={`/api/public/logos/${project.brand.logoAssetId}`}
                     alt=""
-                    className="h-11 max-w-[140px] rounded-lg object-contain"
+                    className="h-11 max-w-[140px] rounded-md object-contain"
                   />
                 ) : null}
                 <Button
@@ -143,7 +138,7 @@ function ProjectForm({ project }: { project: Project }) {
           {servers.map((s, i) => (
             <div
               key={i}
-              className="grid gap-2 rounded-2xl bg-paper p-3 ring-1 ring-border-soft sm:grid-cols-[1fr_2fr_auto]"
+              className="grid gap-2 rounded-lg bg-paper p-3 ring-1 ring-border-soft sm:grid-cols-[1fr_2fr_auto]"
             >
               <Input
                 placeholder={t("settings.serverName")}
@@ -199,7 +194,7 @@ function ProjectForm({ project }: { project: Project }) {
             </div>
           ))}
           <Button
-            variant="ghost"
+            variant="secondary"
             className="self-start"
             onClick={() => setServers((all) => [...all, { id: "", name: "", url: "", auth: "" }])}
           >
@@ -236,7 +231,7 @@ interface ApiKeyRow {
 function CopyLine({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-start gap-2 rounded-xl bg-paper-2 p-3">
+    <div className="flex items-start gap-2 rounded-lg bg-paper-2 p-3">
       <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[12px] leading-relaxed">
         {text}
       </code>
@@ -285,7 +280,7 @@ function ConnectedClients() {
         {list.data.map((c) => (
           <div
             key={c.clientId}
-            className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
+            className="flex items-center gap-3 rounded-lg bg-paper px-3 py-2 ring-1 ring-border-soft"
           >
             <Plug className="size-4 shrink-0 text-ink-4" />
             <div className="min-w-0 flex-1">
@@ -418,7 +413,7 @@ function ApiKeys({ url }: { url: string }) {
       {(keys.data ?? []).map((k) => (
         <div
           key={k.id}
-          className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
+          className="flex items-center gap-3 rounded-lg bg-paper px-3 py-2 ring-1 ring-border-soft"
         >
           <KeyRound className="size-4 shrink-0 text-ink-4" />
           <div className="min-w-0 flex-1">

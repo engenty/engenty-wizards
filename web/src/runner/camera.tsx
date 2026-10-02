@@ -117,14 +117,14 @@ export function CameraDialog({
   return (
     <Dialog open={open} onClose={onClose} title={t("camera.title")} wide>
       {error ? (
-        <p className="rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</p>
+        <p className="rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</p>
       ) : (
         <video
           ref={video}
           autoPlay
           playsInline
           muted
-          className="aspect-video w-full rounded-2xl bg-black object-contain"
+          className="aspect-video w-full rounded-xl bg-black object-contain"
         />
       )}
       <div className="mt-5 flex items-center justify-between gap-3">

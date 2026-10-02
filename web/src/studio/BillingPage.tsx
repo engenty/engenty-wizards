@@ -30,7 +30,7 @@ export function BillingPage() {
         {t("billing.title")}
       </h1>
       {params.get("ok") ? (
-        <div className="mt-6 flex items-center gap-2 rounded-2xl bg-moss-tint px-4 py-3 text-[14px] text-moss">
+        <div className="mt-6 flex items-center gap-2 rounded-xl bg-moss-tint px-4 py-3 text-[14px] text-moss">
           <Check className="size-4" /> Danke! Deine Zahlung ist eingegangen.
         </div>
       ) : null}
@@ -90,7 +90,7 @@ export function BillingPage() {
           ) : null}
         </div>
       ) : (
-        <p className="mt-6 rounded-2xl bg-paper-2 px-4 py-3 text-[14px] text-ink-3">
+        <p className="mt-6 rounded-xl bg-paper-2 px-4 py-3 text-[14px] text-ink-3">
           {t("billing.notConfigured")}
         </p>
       )}

@@ -403,7 +403,7 @@ export function RunnerBody({
       >
         {body}
         {run.error && view.status !== "failed" ? (
-          <div className="mt-4 rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">
+          <div className="mt-4 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">
             {run.error}
           </div>
         ) : null}

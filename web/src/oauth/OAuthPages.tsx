@@ -170,7 +170,7 @@ export function ConsentPage() {
           {lines.map((l) => (
             <li
               key={l.scopes[0]}
-              className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 text-[15px] ring-1 ring-border-soft"
+              className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 text-[15px] ring-1 ring-border-soft"
             >
               <span className="text-ember">{l.icon}</span>
               {l.label()}

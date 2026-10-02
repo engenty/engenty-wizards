@@ -43,7 +43,7 @@ export function UserMenu({ me }: { me: Me }) {
     .slice(0, 2)
     .toUpperCase();
   const item =
-    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
   return (
     <div className="relative" ref={ref}>
       <button
@@ -59,7 +59,7 @@ export function UserMenu({ me }: { me: Me }) {
         )}
       </button>
       {open ? (
-        <div className="absolute top-11 right-0 z-50 w-60 animate-rise rounded-2xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
+        <div className="absolute top-11 right-0 z-50 w-60 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
           <div className="px-3 pt-2 pb-2.5">
             <div className="truncate font-medium text-[14px]">{me.user.name}</div>
             <div className="truncate text-[12px] text-ink-3">{me.user.email}</div>

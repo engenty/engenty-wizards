@@ -64,7 +64,7 @@ export function HtmlFrame({
   return (
     <div
       ref={wrap}
-      className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-border-soft"
+      className="relative overflow-hidden rounded-lg bg-white ring-1 ring-border-soft"
       style={{ height: height * scale }}
     >
       {html?.src === src ? (
@@ -123,7 +123,7 @@ function JsonView({ step, json }: { step: Step; json: unknown }) {
           ) : Array.isArray(v) && v.length && typeof v[0] === "object" ? (
             <Table rows={v as Record<string, unknown>[]} />
           ) : (
-            <pre className="overflow-auto rounded-xl bg-paper-2 p-3 text-[12px]">
+            <pre className="overflow-auto rounded-lg bg-paper-2 p-3 text-[12px]">
               {JSON.stringify(v, null, 2)}
             </pre>
           )}
@@ -136,7 +136,7 @@ function JsonView({ step, json }: { step: Step; json: unknown }) {
 function Table({ rows }: { rows: Record<string, unknown>[] }) {
   const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-border-soft">
+    <div className="overflow-x-auto rounded-lg ring-1 ring-border-soft">
       <table className="w-full text-[13px]">
         <thead className="bg-paper-2 text-ink-2">
           <tr>
@@ -219,7 +219,7 @@ export function OutputView({
         <img
           src={assetUrl(asset.id)}
           alt={step.title}
-          className="w-full rounded-2xl bg-paper-2 ring-1 ring-border-soft"
+          className="w-full rounded-lg bg-paper-2 ring-1 ring-border-soft"
         />
       );
     }
@@ -232,7 +232,7 @@ export function OutputView({
           playsInline
           loop
           className={cn(
-            "mx-auto rounded-2xl bg-black ring-1 ring-border-soft",
+            "mx-auto rounded-lg bg-black ring-1 ring-border-soft",
             step.options?.aspectRatio === "9:16" ? "max-h-[70vh]" : "w-full",
           )}
         />
@@ -269,11 +269,11 @@ export function OutputView({
             key={img.id}
             src={assetUrl(img.id)}
             alt=""
-            className="w-full rounded-2xl ring-1 ring-border-soft"
+            className="w-full rounded-lg ring-1 ring-border-soft"
           />
         ))}
         {files.length ? (
-          <ul className="overflow-hidden rounded-xl ring-1 ring-border-soft">
+          <ul className="overflow-hidden rounded-lg ring-1 ring-border-soft">
             {files.map((f) => (
               <li key={f.id} className="border-border-soft border-b last:border-0">
                 <a

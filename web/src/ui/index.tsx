@@ -79,13 +79,35 @@ export function IconButton({
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-input bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
+  "rounded-lg border border-input bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
+
+/** A field fills its row unless the caller gives it a width. */
+function fieldWidth(className?: string) {
+  return /(^|\s)w-/.test(className ?? "") ? null : "w-full";
+}
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...rest }, ref) {
-    return <input ref={ref} className={cn(fieldBase, "h-11", className)} {...rest} />;
+    return (
+      <input
+        ref={ref}
+        className={cn(fieldBase, fieldWidth(className), "h-11", className)}
+        {...rest}
+      />
+    );
   },
 );
+
+/** The native colour picker as a swatch; its chip sits concentric in the frame. */
+export function Swatch(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "className">) {
+  return (
+    <input
+      type="color"
+      className="swatch size-11 shrink-0 cursor-pointer rounded-lg border border-input bg-card p-1"
+      {...props}
+    />
+  );
+}
 
 /** A textarea that grows with its content. */
 export const Textarea = forwardRef<
@@ -115,7 +137,12 @@ export const Textarea = forwardRef<
           outer.current = el;
         }
       }}
-      className={cn(fieldBase, "resize-none py-2.5 leading-[1.5]", className)}
+      className={cn(
+        fieldBase,
+        fieldWidth(className),
+        "resize-none py-2.5 leading-[1.5]",
+        className,
+      )}
       onChange={(e) => {
         resize();
         onChange?.(e);
@@ -143,7 +170,7 @@ export function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(fieldBase, "h-11 appearance-none pr-9")}
+        className={cn(fieldBase, "h-11 w-full appearance-none pr-9")}
       >
         {placeholder !== undefined ? <option value="">{placeholder}</option> : null}
         {options.map((o) => (
@@ -280,7 +307,7 @@ export function Card({
 }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-2xl bg-card shadow-soft ring-1 ring-border-soft", className)}
+      className={cn("rounded-xl bg-card shadow-soft ring-1 ring-border-soft", className)}
       {...rest}
     >
       {children}
@@ -347,7 +374,7 @@ export function Dialog({
         }
       }}
       className={cn(
-        "m-auto w-[calc(100%-32px)] rounded-3xl bg-card p-0 text-ink shadow-overlay backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
+        "m-auto w-[calc(100%-32px)] rounded-2xl bg-card p-0 text-ink shadow-overlay backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
         wide ? "max-w-2xl" : "max-w-md",
       )}
     >

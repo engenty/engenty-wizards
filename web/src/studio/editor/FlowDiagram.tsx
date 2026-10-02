@@ -37,7 +37,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
   return (
     <div
       className={cn(
-        "relative w-[280px] cursor-pointer rounded-2xl bg-card px-4 py-3 text-left shadow-soft ring-1 transition",
+        "relative w-[280px] cursor-pointer rounded-xl bg-card px-4 py-3 text-left shadow-soft ring-1 transition",
         selected
           ? "shadow-elevated ring-2 ring-ember"
           : active
@@ -56,7 +56,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            "inline-flex size-6 items-center justify-center rounded-lg",
+            "inline-flex size-6 items-center justify-center rounded-md",
             TYPE_TONE[step.type],
           )}
         >

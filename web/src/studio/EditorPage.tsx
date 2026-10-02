@@ -115,7 +115,7 @@ export function EditorPage() {
         <button
           type="button"
           onClick={() => select("__wizard")}
-          className="min-w-0 truncate rounded-lg px-2 py-1 text-left hover:bg-accent"
+          className="min-w-0 truncate rounded-md px-2 py-1 text-left hover:bg-accent"
         >
           <span className="font-display font-semibold text-[17px] tracking-tight">{def.title}</span>
         </button>
@@ -170,7 +170,7 @@ export function EditorPage() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="relative min-h-[45vh] flex-1 overflow-hidden lg:min-h-0">
           {hasIssues && !building ? (
-            <div className="absolute top-3 right-3 left-3 z-10 mx-auto max-w-xl animate-rise rounded-2xl bg-card p-4 shadow-elevated ring-1 ring-rose/30">
+            <div className="absolute top-3 right-3 left-3 z-10 mx-auto max-w-xl animate-rise rounded-xl bg-card p-4 shadow-elevated ring-1 ring-rose/30">
               <p className="text-[14px]">{t("editor.issues")}</p>
               <ul className="mt-2 list-disc pl-5 text-[13px] text-ink-2">
                 {w.issues.slice(0, 4).map((i, k) => (
