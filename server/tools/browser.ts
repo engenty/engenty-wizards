@@ -97,9 +97,13 @@ async function fillCredentials(
     }
     const locator = page.locator(ref(field.ref)).first();
     const element = await locator
-      .evaluate((el) => ({ tag: el.tagName, type: (el as HTMLInputElement).type ?? "" }), undefined, {
-        timeout: 5000,
-      })
+      .evaluate(
+        (el) => ({ tag: el.tagName, type: (el as HTMLInputElement).type ?? "" }),
+        undefined,
+        {
+          timeout: 5000,
+        },
+      )
       .catch(() => null);
     if (!element) {
       return { error: "field_missing" };
@@ -153,7 +157,10 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
       attempt(async () => {
         const p = await page();
         await ctx.emit("tool", "Klickt im Browser");
-        const popup = p.context().waitForEvent("page", { timeout: 3000 }).catch(() => null);
+        const popup = p
+          .context()
+          .waitForEvent("page", { timeout: 3000 })
+          .catch(() => null);
         await p.locator(ref(n)).first().click({ timeout: 10_000 });
         const opened = await popup;
         if (opened) {

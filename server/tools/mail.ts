@@ -83,9 +83,7 @@ export function mailTools(step: AgentStep, ctx: StepContext, files: FileKeeper) 
           z.object({
             id: z.string().describe("Mail id from mail_search."),
             attachment_id: z.string().optional(),
-            path: z
-              .string()
-              .describe("e.g. invoices/2026-09/2026-09-03_Notion_INV-123.pdf"),
+            path: z.string().describe("e.g. invoices/2026-09/2026-09-03_Notion_INV-123.pdf"),
           }),
         )
         .min(1)
@@ -111,11 +109,20 @@ export function mailTools(step: AgentStep, ctx: StepContext, files: FileKeeper) 
               });
               saved.push({ id: item.id, saved: kept.path, size: kept.size });
             } else {
-              const mail = await mailAction<MailMessage>(connector, "read", { id: item.id }, actionCtx);
-              const page = mail.html ?? `<pre style="white-space:pre-wrap;font:14px system-ui">${escapeHtml(mail.text)}</pre>`;
+              const mail = await mailAction<MailMessage>(
+                connector,
+                "read",
+                { id: item.id },
+                actionCtx,
+              );
+              const page =
+                mail.html ??
+                `<pre style="white-space:pre-wrap;font:14px system-ui">${escapeHtml(mail.text)}</pre>`;
               const head = `<div style="font:13px system-ui;color:#444;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px">${escapeHtml(mail.from ?? "")}<br>${escapeHtml(mail.date ?? "")}<br><b>${escapeHtml(mail.subject ?? "")}</b></div>`;
               // The mail's own HTML is rendered offline: its remote images and scripts never load.
-              const pdf = await htmlToPdf(guardHtml(`<!doctype html><html><body>${head}${page}</body></html>`));
+              const pdf = await htmlToPdf(
+                guardHtml(`<!doctype html><html><body>${head}${page}</body></html>`),
+              );
               const kept = await files.keep(item.path.replace(/(\.pdf)?$/i, ".pdf"), pdf, {
                 mime: "application/pdf",
                 source: `E-Mail „${mail.subject ?? ""}“ aus ${label}`,

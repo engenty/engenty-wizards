@@ -1,4 +1,9 @@
-import type { ConnectionDef, ConnectionKind, ConnectionView, ConnectorOption } from "../../shared/store.js";
+import type {
+  ConnectionDef,
+  ConnectionKind,
+  ConnectionView,
+  ConnectorOption,
+} from "../../shared/store.js";
 import { seal, unseal } from "../crypto.js";
 import {
   buildAuthorizationUrl,

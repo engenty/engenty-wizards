@@ -138,7 +138,9 @@ export function tableToCsv(rows: Record<string, unknown>[]): string {
 /** Every table of a step's JSON result, by its key; a bare array is the one table "Data". */
 export function allTables(value: unknown): { name: string; rows: Record<string, unknown>[] }[] {
   const isTable = (v: unknown): v is Record<string, unknown>[] =>
-    Array.isArray(v) && v.length > 0 && v.every((r) => r && typeof r === "object" && !Array.isArray(r));
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.every((r) => r && typeof r === "object" && !Array.isArray(r));
   if (isTable(value)) {
     return [{ name: "Data", rows: value }];
   }
@@ -160,7 +162,9 @@ export async function tablesToXlsx(
 ): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
   for (const [index, table] of tables.entries()) {
-    const ws = wb.addWorksheet(table.name.replace(/[\\/*?:[\]]/g, " ").slice(0, 31) || `Sheet${index + 1}`);
+    const ws = wb.addWorksheet(
+      table.name.replace(/[\\/*?:[\]]/g, " ").slice(0, 31) || `Sheet${index + 1}`,
+    );
     const cols = table.headers ? Object.keys(table.headers) : tableColumns(table.rows);
     ws.columns = cols.map((c) => {
       const header = table.headers?.[c] ?? c;

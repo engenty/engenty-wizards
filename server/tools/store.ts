@@ -134,13 +134,17 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
         attempt(async () => {
           const def = defOf(list);
           try {
-            const saved = rows?.length ? await saveRows(ctx.store, def, rows) : { added: 0, updated: 0 };
+            const saved = rows?.length
+              ? await saveRows(ctx.store, def, rows)
+              : { added: 0, updated: 0 };
             const deleted = remove?.length ? await deleteRows(ctx.store, def, remove) : 0;
             await ctx.emit("tool", `Merkt sich ${def.title}`);
             return { ...saved, deleted };
           } catch (err) {
             if (err instanceof TableColumnValueError) {
-              return { error: `Column "${err.columnId}": ${err.message}. Nothing after that row was saved.` };
+              return {
+                error: `Column "${err.columnId}": ${err.message}. Nothing after that row was saved.`,
+              };
             }
             throw err;
           }
@@ -205,7 +209,10 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
     }),
     execute: ({ files, kind }) =>
       attempt(async () => {
-        await ctx.emit("tool", `Liest ${files.length} ${kind === "invoice" ? "Rechnungen" : "Belege"}`);
+        await ctx.emit(
+          "tool",
+          `Liest ${files.length} ${kind === "invoice" ? "Rechnungen" : "Belege"}`,
+        );
         const results: Record<string, unknown>[] = [];
         for (let i = 0; i < files.length; i += 4) {
           const batch = await Promise.all(

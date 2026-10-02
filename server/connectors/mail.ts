@@ -59,7 +59,11 @@ export interface MailAttachment {
 export interface MailBackend {
   search(input: MailSearchInput, ctx: ConnectorActionContext): Promise<MailSummary[]>;
   read(id: string, ctx: ConnectorActionContext): Promise<MailMessage>;
-  attachment(id: string, attachmentId: string, ctx: ConnectorActionContext): Promise<MailAttachment>;
+  attachment(
+    id: string,
+    attachmentId: string,
+    ctx: ConnectorActionContext,
+  ): Promise<MailAttachment>;
 }
 
 export function mailActions(backend: MailBackend, providerScopes: string[]): ConnectorAction[] {

@@ -243,7 +243,10 @@ export async function writeStoreFile(
     })
     .from(schema.storeFile)
     .where(ownFiles(scope));
-  if (usage.files >= STORE_LIMITS.files || usage.bytes + data.byteLength > STORE_LIMITS.totalBytes) {
+  if (
+    usage.files >= STORE_LIMITS.files ||
+    usage.bytes + data.byteLength > STORE_LIMITS.totalBytes
+  ) {
     throw new StoreError("The wizard's storage is full.");
   }
   const hash = await putBlob(data);
@@ -291,12 +294,17 @@ export interface StoredSecret<T> {
   createdAt: Date;
 }
 
-export async function getSecret<T>(scope: StoreScope, slot: string): Promise<StoredSecret<T> | null> {
+export async function getSecret<T>(
+  scope: StoreScope,
+  slot: string,
+): Promise<StoredSecret<T> | null> {
   const row = await db.query.storeSecret.findFirst({
     where: and(ownSecrets(scope), eq(schema.storeSecret.slot, slot)),
   });
   const data = row ? unseal<T>(row.data) : null;
-  return row && data ? { provider: row.provider, label: row.label, data, createdAt: row.createdAt } : null;
+  return row && data
+    ? { provider: row.provider, label: row.label, data, createdAt: row.createdAt }
+    : null;
 }
 
 export async function putSecret(

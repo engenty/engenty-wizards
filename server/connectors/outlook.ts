@@ -1,12 +1,8 @@
+import { bodyToText, graphJson, MICROSOFT_OAUTH2 } from "../engenty/connections-microsoft/graph.js";
 import type {
   ConnectorActionContext,
   ConnectorDefinition,
 } from "../engenty/connections-sdk/types.js";
-import {
-  bodyToText,
-  graphJson,
-  MICROSOFT_OAUTH2,
-} from "../engenty/connections-microsoft/graph.js";
 import {
   type MailAttachmentInfo,
   type MailBackend,
@@ -62,7 +58,10 @@ function kql(input: MailSearchInput): string {
   return parts.join(" AND ");
 }
 
-async function attachmentsOf(ctx: ConnectorActionContext, id: string): Promise<MailAttachmentInfo[]> {
+async function attachmentsOf(
+  ctx: ConnectorActionContext,
+  id: string,
+): Promise<MailAttachmentInfo[]> {
   const data = await graphJson<{ value?: GraphAttachment[] }>(
     ctx,
     `/me/messages/${encodeURIComponent(id)}/attachments?$select=id,name,contentType,size,isInline`,

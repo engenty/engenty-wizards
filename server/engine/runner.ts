@@ -144,7 +144,9 @@ export function kick(runId: string) {
 }
 
 /** The wizard's lists with the person's rows, by list id. */
-async function storedLists(run: RunRow): Promise<Record<string, { def: ListDef; rows: ListRow[] }>> {
+async function storedLists(
+  run: RunRow,
+): Promise<Record<string, { def: ListDef; rows: ListRow[] }>> {
   const scope = scopeOf(run);
   const out: Record<string, { def: ListDef; rows: ListRow[] }> = {};
   for (const def of run.definition.lists ?? []) {
@@ -408,7 +410,10 @@ export async function availableFormats(step: Step, run: RunRow, wanted?: Format[
     }
   }
   // A zip holds the files a step collected; without any there is nothing to zip.
-  if (formats.includes("zip") && !run.state.outputs[step.id]?.assets?.some((a) => a.kind === "file")) {
+  if (
+    formats.includes("zip") &&
+    !run.state.outputs[step.id]?.assets?.some((a) => a.kind === "file")
+  ) {
     formats = formats.filter((f) => f !== "zip");
   }
   return formats;

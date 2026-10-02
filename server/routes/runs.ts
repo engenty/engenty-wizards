@@ -411,7 +411,10 @@ export const runRoutes = new Hono()
     try {
       if (act.type === "click") {
         // A click may open the sign-in in a new tab; the wizard then goes on there.
-        const popup = page.context().waitForEvent("page", { timeout: 1500 }).catch(() => null);
+        const popup = page
+          .context()
+          .waitForEvent("page", { timeout: 1500 })
+          .catch(() => null);
         await page.mouse.click(act.x, act.y);
         const opened = await popup;
         if (opened) {
@@ -485,7 +488,9 @@ export const runRoutes = new Hono()
     if (!run || !def) {
       return c.json({ error: "not found" }, 404);
     }
-    const { cells } = z.object({ cells: z.record(z.string(), z.unknown()) }).parse(await c.req.json());
+    const { cells } = z
+      .object({ cells: z.record(z.string(), z.unknown()) })
+      .parse(await c.req.json());
     try {
       await saveRows(scopeOf(run), def, [cells]);
     } catch (err) {
@@ -500,7 +505,9 @@ export const runRoutes = new Hono()
     if (!run || !def) {
       return c.json({ error: "not found" }, 404);
     }
-    const { cells } = z.object({ cells: z.record(z.string(), z.unknown()) }).parse(await c.req.json());
+    const { cells } = z
+      .object({ cells: z.record(z.string(), z.unknown()) })
+      .parse(await c.req.json());
     try {
       if (!(await updateRow(scopeOf(run), def, c.req.param("rowId"), cells))) {
         return c.json({ error: "not found" }, 404);

@@ -55,7 +55,13 @@ export interface ConnectorOption {
   name: string;
   auth: "oauth2" | "api_key";
   /** `api_key` connectors: the form, in order. */
-  fields?: { key: string; label: string; secret?: boolean; placeholder?: string; required?: boolean }[];
+  fields?: {
+    key: string;
+    label: string;
+    secret?: boolean;
+    placeholder?: string;
+    required?: boolean;
+  }[];
   /** Shown under the form: where to get the values. */
   hint?: string;
 }

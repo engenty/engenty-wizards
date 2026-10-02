@@ -24,7 +24,7 @@ export async function shrinkImage(file: File, max = 2400): Promise<File> {
     canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.86));
     return blob && blob.size < file.size
-      ? new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" })
+      ? new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.jpg`, { type: "image/jpeg" })
       : file;
   } catch {
     return file;
@@ -58,7 +58,11 @@ export function CameraDialog({
     setTaken(0);
     navigator.mediaDevices
       ?.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } },
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 2560 },
+          height: { ideal: 1440 },
+        },
       })
       .then((s) => {
         if (stopped) {
@@ -115,7 +119,6 @@ export function CameraDialog({
       {error ? (
         <p className="rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</p>
       ) : (
-        // biome-ignore lint/a11y/useMediaCaption: a live camera picture has no captions
         <video
           ref={video}
           autoPlay

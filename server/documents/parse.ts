@@ -77,7 +77,13 @@ const usageOf = (u: any): TokenUsage => ({
 class VisionProvider implements DocConverterProvider {
   readonly id = "vision";
   readonly name = "Vision model";
-  readonly supportedTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"];
+  readonly supportedTypes = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+  ];
 
   constructor(
     private readonly charge: Charge | undefined,
@@ -191,7 +197,9 @@ async function read(
   const vision = new VisionProvider(opts.charge, opts.signal);
   if (mime.startsWith("image/")) {
     if (!vision.canConvert(mime)) {
-      throw new UnreadableDocument(`Bilder vom Typ ${mime} kann ich nicht lesen (PNG, JPEG, WebP gehen).`);
+      throw new UnreadableDocument(
+        `Bilder vom Typ ${mime} kann ich nicht lesen (PNG, JPEG, WebP gehen).`,
+      );
     }
     const result = await vision.convert(data, name, mime);
     return { markdown: result.markdown, pages: 1, via: "vision" };

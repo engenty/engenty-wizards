@@ -68,12 +68,16 @@ function attachments(payload: GmailPayload | undefined, out: MailAttachmentInfo[
 
 function toMessage(raw: GmailMessage): MailMessage {
   const html = body(raw.payload, "text/html");
-  const text = body(raw.payload, "text/plain") ?? (html ? htmlToMarkdown(html) : (raw.snippet ?? ""));
+  const text =
+    body(raw.payload, "text/plain") ?? (html ? htmlToMarkdown(html) : (raw.snippet ?? ""));
   return {
     id: raw.id,
     date: raw.internalDate ? new Date(Number(raw.internalDate)).toISOString() : null,
     from: header(raw.payload, "From"),
-    to: (header(raw.payload, "To") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    to: (header(raw.payload, "To") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
     subject: header(raw.payload, "Subject"),
     snippet: raw.snippet ?? snippetOf(text),
     attachments: attachments(raw.payload),
@@ -117,7 +121,9 @@ const backend: MailBackend = {
     return toMessage(await getMessage(ctx, id));
   },
   async attachment(id, attachmentId, ctx) {
-    const info = attachments((await getMessage(ctx, id)).payload).find((a) => a.id === attachmentId);
+    const info = attachments((await getMessage(ctx, id)).payload).find(
+      (a) => a.id === attachmentId,
+    );
     const data = await googleJson<{ data?: string }>(
       ctx,
       `${GMAIL_API}/messages/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,

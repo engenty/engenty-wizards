@@ -137,7 +137,9 @@ export function ConnectionField({
           <button
             key={c.id}
             type="button"
-            onClick={() => (c.auth === "oauth2" ? void oauth(c) : setForm(form === c.id ? null : c.id))}
+            onClick={() =>
+              c.auth === "oauth2" ? void oauth(c) : setForm(form === c.id ? null : c.id)
+            }
             className={cn(
               "inline-flex h-11 items-center gap-2 rounded-full px-4 font-medium text-[14px] ring-1 transition",
               form === c.id
@@ -158,7 +160,12 @@ export function ConnectionField({
         />
       ) : null}
       {link ? (
-        <a href={link} target="_blank" rel="noreferrer" className="text-[14px] text-ember underline">
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[14px] text-ember underline"
+        >
           {t("connect.openLink")}
         </a>
       ) : null}
@@ -307,7 +314,9 @@ export function ListTable({
                         column={c}
                         value={row.cells[c.id]}
                         onCommit={(value) =>
-                          void call(() => api.patch(`${base}/${row.id}`, { cells: { [c.id]: value } }))
+                          void call(() =>
+                            api.patch(`${base}/${row.id}`, { cells: { [c.id]: value } }),
+                          )
                         }
                       />
                     ) : (
@@ -393,7 +402,9 @@ interface StoreSummary {
 }
 
 function bytes(n: number): string {
-  return n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} KB`;
+  return n > 1_000_000
+    ? `${(n / 1_000_000).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(n / 1000))} KB`;
 }
 
 /** Everything the wizard keeps for this person between runs, and the way to delete it. */
@@ -438,7 +449,9 @@ export function StoreButton({ runId }: { runId: string }) {
                   .map((l) => (
                     <li key={l.id} className="flex justify-between gap-3">
                       <span>{l.title}</span>
-                      <span className="text-ink-3 tabular-nums">{t("store.rows", { n: l.rows })}</span>
+                      <span className="text-ink-3 tabular-nums">
+                        {t("store.rows", { n: l.rows })}
+                      </span>
                     </li>
                   ))}
               </ul>
