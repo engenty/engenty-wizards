@@ -1,9 +1,12 @@
 import { and, count, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
+import { putLink } from "../control.js";
 import { db, schema } from "../db/client.js";
 import { saveAsset } from "../storage.js";
+import { currentTenant } from "../tenant.js";
 import { notFound, ServiceError } from "./errors.js";
+import { forgetWizardLinks } from "./links.js";
 
 export type ProjectRow = typeof schema.project.$inferSelect;
 
@@ -33,9 +36,9 @@ export const projectPatchSchema = z.object({
   mcpServers: z.array(mcpServerSchema).max(10).optional(),
 });
 
-export async function ownedProject(userId: string, projectId: string): Promise<ProjectRow> {
+export async function ownedProject(_userId: string, projectId: string): Promise<ProjectRow> {
   const p = await db.query.project.findFirst({
-    where: and(eq(schema.project.id, projectId), eq(schema.project.ownerId, userId)),
+    where: and(eq(schema.project.id, projectId), eq(schema.project.tenantId, currentTenant())),
   });
   if (!p) {
     throw notFound();
@@ -43,10 +46,23 @@ export async function ownedProject(userId: string, projectId: string): Promise<P
   return p;
 }
 
+/** A tenant always has a project: the first one is made when its studio is first opened. */
+async function ensureProject(): Promise<void> {
+  const any = await db.query.project.findFirst({
+    where: eq(schema.project.tenantId, currentTenant()),
+  });
+  if (!any) {
+    await db
+      .insert(schema.project)
+      .values({ id: nanoid(12), tenantId: currentTenant(), name: "Meine Wizards" });
+  }
+}
+
 /** The project a wizard lands in when the caller names none: the oldest one. */
-export async function defaultProject(userId: string): Promise<ProjectRow> {
+export async function defaultProject(_userId: string): Promise<ProjectRow> {
+  await ensureProject();
   const p = await db.query.project.findFirst({
-    where: eq(schema.project.ownerId, userId),
+    where: eq(schema.project.tenantId, currentTenant()),
     orderBy: [schema.project.createdAt],
   });
   if (!p) {
@@ -55,15 +71,16 @@ export async function defaultProject(userId: string): Promise<ProjectRow> {
   return p;
 }
 
-export async function listProjects(userId: string) {
+export async function listProjects(_userId: string) {
+  await ensureProject();
   const projects = await db.query.project.findMany({
-    where: eq(schema.project.ownerId, userId),
+    where: eq(schema.project.tenantId, currentTenant()),
     orderBy: [schema.project.createdAt],
   });
   const counts = await db
     .select({ projectId: schema.wizard.projectId, n: count() })
     .from(schema.wizard)
-    .where(eq(schema.wizard.ownerId, userId))
+    .where(eq(schema.wizard.tenantId, currentTenant()))
     .groupBy(schema.wizard.projectId);
   return projects.map((p) => ({
     ...p,
@@ -81,9 +98,11 @@ export function maskedServers(p: ProjectRow) {
   }));
 }
 
-export async function createProject(userId: string, name: string): Promise<{ id: string }> {
+export async function createProject(_userId: string, name: string): Promise<{ id: string }> {
   const id = nanoid(12);
-  await db.insert(schema.project).values({ id, ownerId: userId, name, brand: {}, mcpServers: [] });
+  await db
+    .insert(schema.project)
+    .values({ id, tenantId: currentTenant(), name, brand: {}, mcpServers: [] });
   return { id };
 }
 
@@ -124,7 +143,6 @@ export async function setProjectLogo(userId: string, projectId: string, file: Fi
     throw new ServiceError("invalid", "Bitte ein Bild bis 2 MB wählen.");
   }
   const ref = await saveAsset({
-    ownerId: userId,
     kind: "logo",
     mime: file.type,
     name: file.name,
@@ -134,15 +152,26 @@ export async function setProjectLogo(userId: string, projectId: string, file: Fi
     .update(schema.project)
     .set({ brand: { ...p.brand, logoAssetId: ref.id }, updatedAt: new Date() })
     .where(eq(schema.project.id, p.id));
+  // The logo is shown on public pages, where only the control database knows the tenant.
+  await putLink(ref.id, "logo", ref.id);
   return { id: ref.id };
 }
 
-export async function deleteProject(userId: string, projectId: string) {
-  const all = await db.query.project.findMany({ where: eq(schema.project.ownerId, userId) });
+export async function deleteProject(_userId: string, projectId: string) {
+  const all = await db.query.project.findMany({
+    where: eq(schema.project.tenantId, currentTenant()),
+  });
   if (all.length <= 1) {
     throw new ServiceError("refused", "Das letzte Projekt bleibt.");
   }
+  const wizards = await db
+    .select({ id: schema.wizard.id })
+    .from(schema.wizard)
+    .where(eq(schema.wizard.projectId, projectId));
+  for (const w of wizards) {
+    await forgetWizardLinks(w.id);
+  }
   await db
     .delete(schema.project)
-    .where(and(eq(schema.project.id, projectId), eq(schema.project.ownerId, userId)));
+    .where(and(eq(schema.project.id, projectId), eq(schema.project.tenantId, currentTenant())));
 }

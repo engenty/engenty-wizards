@@ -104,7 +104,8 @@ export function ShareResultButton({
                 readOnly
                 value={shared.url}
                 onFocus={(e) => e.target.select()}
-                className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+                aria-label={t("share.link")}
+                className="min-w-0 flex-1 bg-transparent text-[14px] outline-none coarse:h-11"
               />
               <Button size="sm" onClick={copy}>
                 {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -146,7 +147,7 @@ export function ShareResultButton({
               <button
                 type="button"
                 onClick={() => void withdraw()}
-                className="shrink-0 hover:text-rose"
+                className="shrink-0 hover:text-rose coarse:min-h-11"
               >
                 {t("shareRun.withdraw")}
               </button>

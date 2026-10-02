@@ -25,6 +25,7 @@ import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { HtmlFrame } from "../../runner/outputs";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
+import { ModelClassControl, StepCost, useEstimate } from "./estimate";
 import { stepIcon, TYPE_TONE, toolLabel, typeLabel } from "./meta";
 
 type Update = (next: WizardDefinition) => void;
@@ -45,7 +46,23 @@ const FIELD_KIND_LABEL: Record<string, string> = {
   items: "Positionen (Tabelle)",
   connection: "Konto verbinden",
   list: "Gespeicherte Liste",
+  location: "Standort",
+  audio: "Sprachnotiz",
+  signature: "Unterschrift",
 };
+
+/** A field that changes kind leaves behind what only the old kind understood. */
+function withKind(field: Field, kind: Field["kind"]): Field {
+  const upload = kind === "image" || kind === "file";
+  return {
+    ...field,
+    kind,
+    multiple: upload ? field.multiple : undefined,
+    camera: kind === "file" ? field.camera : undefined,
+    video: kind === "file" ? field.video : undefined,
+    scan: kind === "text" ? field.scan : undefined,
+  };
+}
 
 function Section({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
@@ -110,7 +127,7 @@ function FieldEditor({
           />
           <Select
             value={field.kind}
-            onChange={(v) => onChange({ ...field, kind: v as Field["kind"] })}
+            onChange={(v) => onChange(withKind(field, v as Field["kind"]))}
             options={FIELD_KINDS.filter((k) => k !== "items" || field.kind === "items").map(
               (k) => ({ value: k, label: FIELD_KIND_LABEL[k] }),
             )}
@@ -167,7 +184,25 @@ function FieldEditor({
               />
             </div>
           ) : null}
-          {["text", "textarea", "number", "email", "url"].includes(field.kind) ? (
+          {field.kind === "file" ? (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-ink-2">Kamera nimmt auch kurze Videos auf</span>
+              <Switch
+                checked={Boolean(field.video)}
+                onChange={(v) => onChange({ ...field, video: v || undefined })}
+              />
+            </div>
+          ) : null}
+          {field.kind === "text" ? (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-ink-2">QR- oder Barcode scannen</span>
+              <Switch
+                checked={Boolean(field.scan)}
+                onChange={(v) => onChange({ ...field, scan: v || undefined })}
+              />
+            </div>
+          ) : null}
+          {["text", "textarea", "number", "email", "url", "location"].includes(field.kind) ? (
             <Input
               placeholder="Platzhalter"
               value={field.placeholder ?? ""}
@@ -486,13 +521,11 @@ function StepBody({
                 set({ ...step, output: { ...step.output, format: v } })
               }
             />
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink-2">Stärkeres Modell</span>
-              <Switch
-                checked={step.model !== "fast"}
-                onChange={(v) => set({ ...step, model: v ? "smart" : "fast" })}
-              />
-            </div>
+            <ModelClassControl
+              model={step.model}
+              effort={step.effort}
+              onChange={(next) => set({ ...step, ...next })}
+            />
             <Input
               placeholder="Text während der Arbeit, z. B. „Recherchiert …“"
               value={step.working ?? ""}
@@ -519,6 +552,13 @@ function StepBody({
             />
           </Section>
           <Section title="Optionen">
+            {step.asset === "document" || step.asset === "dashboard" ? (
+              <ModelClassControl
+                model={step.model}
+                effort={step.effort}
+                onChange={(next) => set({ ...step, ...next })}
+              />
+            ) : null}
             {step.asset === "image" || step.asset === "video" ? (
               <>
                 <Label>Format</Label>
@@ -958,6 +998,7 @@ function StepInspector({
     onSelect(id);
   };
   const stepIssues = issues.filter((i) => i.stepId === step.id);
+  const estimate = useEstimate(wizardId, def);
   return (
     <div>
       <div className="flex items-center gap-2 px-5 pt-5">
@@ -995,6 +1036,7 @@ function StepInspector({
             onChange={(e) => set({ ...step, description: e.target.value || undefined })}
           />
         ) : null}
+        <StepCost estimate={estimate.data} stepId={step.id} />
       </Section>
       <StepBody
         def={def}

@@ -1,0 +1,21 @@
+# The cloud runtime's Chromium: its own container, without secrets and without a way to the
+# databases. The app drives it over CDP; every run opens its own context there.
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    chromium \
+    fonts-inter \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    socat \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --uid 1000 browser
+USER browser
+ENV HOME=/home/browser
+
+EXPOSE 9222
+COPY deploy/browser-entrypoint.sh /usr/local/bin/browser-entrypoint.sh
+CMD ["/usr/local/bin/browser-entrypoint.sh"]

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import type { SessionUser } from "../auth.js";
+import type { SessionUser } from "../auth/index.js";
 import { subscribeDraft } from "../services/draft-events.js";
 import { ownedWizard } from "../services/wizards.js";
 

@@ -4,23 +4,15 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { AgentStep, GenerateStep, Step } from "../../shared/definition.js";
 import type { AssetRef, StepOutput } from "../../shared/run.js";
-import { env } from "../env.js";
 import { generateImageMedia, generateVideoMedia, type MediaReference } from "../media/generate.js";
-import { languageModel, type TokenUsage, tokenCostUsd } from "../models.js";
+import { costOf, textModel } from "../models.js";
 import { loadAsset, loadAssetText } from "../storage.js";
 import { buildStepTools } from "../tools/index.js";
 import { personUploads } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
+import { prepareInputs } from "./prepare.js";
 import { answersAsText, renderTemplate } from "./template.js";
 import { type StepContext, StepError } from "./types.js";
-
-function usageOf(u: any): TokenUsage {
-  return {
-    inputTokens: u?.inputTokens ?? 0,
-    outputTokens: u?.outputTokens ?? 0,
-    cachedInputTokens: u?.cachedInputTokens ?? u?.inputTokenDetails?.cacheReadTokens ?? 0,
-  };
-}
 
 function today(): string {
   return new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
@@ -128,9 +120,9 @@ function tablesToRecords(value: Record<string, unknown>, fields: { id: string; k
 }
 
 export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
-  const modelRef = step.model === "fast" ? env.models.fast : env.models.smart;
+  const resolved = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const uploads = await personUploads(ctx);
-  const { tools, assets, close } = await buildStepTools(step, ctx, modelRef, uploads);
+  const { tools, assets, close } = await buildStepTools(step, ctx, resolved, uploads);
   try {
     const formatHint =
       step.output.format === "markdown"
@@ -158,16 +150,13 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       id: `step-${step.id}`,
       name: step.title,
       instructions: system,
-      model: languageModel(modelRef) as unknown as MastraModelConfig,
+      model: resolved.model as unknown as MastraModelConfig,
       tools,
     });
     // Working through a mailbox or a row of portals takes many small tool calls.
     const maxSteps = step.tools.includes("browser") || step.connections?.length ? 60 : 20;
     const result = await agent.generate(prompt, { maxSteps, abortSignal: ctx.signal });
-    await ctx.chargeUsd(
-      tokenCostUsd(modelRef, usageOf((result as any).totalUsage ?? result.usage)),
-      `agent ${step.id}`,
-    );
+    await ctx.chargeUsd(costOf(resolved, (result as any).totalUsage ?? result.usage));
     // `result.text` strings together what the model said between tool calls ("I open the page …").
     // A written result is its last message; structuring keeps everything, numbers may sit anywhere.
     const closing = String((result as any).steps?.at?.(-1)?.text ?? "").trim();
@@ -182,16 +171,14 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     }
 
     const { schema, fields } = outputSchema(step);
+    const structurer = await textModel("classifier", ctx.call);
     const structured = await generateText({
-      model: languageModel(env.models.fast),
+      model: structurer.model,
       abortSignal: ctx.signal,
       output: Output.object({ schema }),
       prompt: `Turn this result into the requested structure. Keep every number and source exactly.\n\n${text}`,
     });
-    await ctx.chargeUsd(
-      tokenCostUsd(env.models.fast, usageOf(structured.usage)),
-      `structure ${step.id}`,
-    );
+    await ctx.chargeUsd(costOf(structurer, structured.usage));
     const json = tablesToRecords(structured.output as Record<string, unknown>, fields);
     return { text, json, assets: assets.length ? assets : undefined, at: new Date().toISOString() };
   } finally {
@@ -238,8 +225,21 @@ function placeableImages(step: GenerateStep, ctx: StepContext): { id: string; la
     if (s.type === "page") {
       for (const f of s.fields) {
         const v = ctx.state.values[f.id];
-        if (f.kind === "image" && typeof v === "string" && v) {
-          out.push({ id: v, label: `${f.label} (uploaded by the person)` });
+        if (f.kind === "signature" && typeof v === "string" && v) {
+          out.push({
+            id: v,
+            label: `${f.label} (signature drawn by the person, dark ink on clear)`,
+          });
+        }
+        if (f.kind !== "image") {
+          continue;
+        }
+        const ids = (Array.isArray(v) ? v : [v]).filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+        for (const [i, id] of ids.entries()) {
+          const n = ids.length > 1 ? ` ${i + 1}/${ids.length}` : "";
+          out.push({ id, label: `${f.label}${n} (uploaded by the person)` });
         }
       }
     }
@@ -291,14 +291,15 @@ async function writeHtml(
   ]
     .filter(Boolean)
     .join("\n\n");
+  const writer = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const result = await generateText({
-    model: languageModel(env.models.smart),
+    model: writer.model,
     system,
     prompt,
     abortSignal: ctx.signal,
     maxOutputTokens: 32_000,
   });
-  await ctx.chargeUsd(tokenCostUsd(env.models.smart, usageOf(result.usage)), `${kind} ${step.id}`);
+  await ctx.chargeUsd(costOf(writer, result.usage));
   const html = result.text
     .replace(/^```(?:html)?\s*/i, "")
     .replace(/```\s*$/, "")
@@ -319,8 +320,9 @@ async function writeHtml(
 async function visualPrompt(step: GenerateStep, ctx: StepContext): Promise<string> {
   const brief = renderTemplate(step.prompt, ctx.scope);
   const note = ctx.state.notes[step.id];
+  const prompter = await textModel("standard", ctx.call);
   const result = await generateText({
-    model: languageModel(env.models.fast),
+    model: prompter.model,
     abortSignal: ctx.signal,
     system:
       step.asset === "video"
@@ -334,7 +336,7 @@ async function visualPrompt(step: GenerateStep, ctx: StepContext): Promise<strin
       .filter(Boolean)
       .join("\n\n"),
   });
-  await ctx.chargeUsd(tokenCostUsd(env.models.fast, usageOf(result.usage)), `prompt ${step.id}`);
+  await ctx.chargeUsd(costOf(prompter, result.usage));
   return result.text.trim() || brief;
 }
 
@@ -344,13 +346,13 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
     case "image": {
       const prompt = await visualPrompt(step, ctx);
       const media = await generateImageMedia({
-        model: env.models.image,
+        call: ctx.call,
         prompt,
         aspectRatio: step.options?.aspectRatio,
         reference: await referenceImage(step, ctx),
         abortSignal: ctx.signal,
       });
-      await ctx.chargeUsd(media.costUsd, `image ${step.id}`);
+      await ctx.chargeUsd(media.costUsd);
       const ref = await ctx.saveAsset({
         stepId: step.id,
         kind: "image",
@@ -364,14 +366,14 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
       const prompt = await visualPrompt(step, ctx);
       await ctx.emit("info", "Das Video wird gerendert – das dauert meist 1–3 Minuten.");
       const media = await generateVideoMedia({
-        model: env.models.video,
+        call: ctx.call,
         prompt,
         aspectRatio: step.options?.aspectRatio,
         duration: step.options?.duration,
         reference: await referenceImage(step, ctx),
         abortSignal: ctx.signal,
       });
-      await ctx.chargeUsd(media.costUsd, `video ${step.id}`);
+      await ctx.chargeUsd(media.costUsd);
       const ref = await ctx.saveAsset({
         stepId: step.id,
         kind: "video",
@@ -396,7 +398,8 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
   }
 }
 
-export function runAutomaticStep(step: Step, ctx: StepContext): Promise<StepOutput> {
+export async function runAutomaticStep(step: Step, ctx: StepContext): Promise<StepOutput> {
+  await prepareInputs(ctx);
   if (step.type === "agent") {
     return runAgentStep(step, ctx);
   }

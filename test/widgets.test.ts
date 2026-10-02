@@ -10,10 +10,12 @@ process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "wizards-test-"));
 
 let putBlob: (data: Uint8Array) => Promise<string>;
 let bundleWidget: typeof import("../server/widgets/bundle").bundleWidget;
+let inTenant: typeof import("../server/tenant").inTenant;
 
 beforeAll(async () => {
   ({ putBlob } = await import("../server/blobs"));
   ({ bundleWidget } = await import("../server/widgets/bundle"));
+  ({ inTenant } = await import("../server/tenant"));
 });
 
 async function file(path: string, content: string): Promise<WorkspaceFile> {
@@ -73,7 +75,8 @@ describe("widget steps", () => {
 });
 
 describe("bundleWidget", () => {
-  it("inlines scripts, styles and images and carries the data safely", async () => {
+  it("inlines scripts, styles and images and carries the data safely", () =>
+    inTenant("local", async () => {
     const files = [
       await file(
         "map/index.html",
@@ -103,5 +106,5 @@ describe("bundleWidget", () => {
     expect(html).not.toContain("</script><script>alert(1)");
     // Files the HTML did not inline stay readable through wizard.file().
     expect(html).toContain("lakes/attersee.json");
-  });
+    }));
 });

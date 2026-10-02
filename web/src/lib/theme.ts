@@ -21,9 +21,29 @@ function current(): Theme {
   return stored() ?? (system.matches ? "dark" : "light");
 }
 
+/**
+ * The browser's toolbar — and the status bar of a wizard on the home screen — takes the page's
+ * colour: paper in light, the wizard's stage in dark.
+ */
+export function syncThemeColor() {
+  requestAnimationFrame(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!meta || !ctx || !document.body) {
+      return;
+    }
+    // The page colour is oklch; a canvas pixel turns it into the hex a meta tag takes.
+    ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    meta.content = `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  });
+}
+
 function apply() {
   const dark = current() === "dark";
   document.documentElement.classList.toggle("dark", dark);
+  syncThemeColor();
   for (const listener of listeners) {
     listener();
   }
@@ -72,8 +92,10 @@ export function useStage(kind: string | null | undefined) {
     }
     const root = document.documentElement;
     root.style.setProperty("--stage", stageFill(kind as EngentyKind));
+    syncThemeColor();
     return () => {
       root.style.removeProperty("--stage");
+      syncThemeColor();
     };
   }, [kind]);
 }

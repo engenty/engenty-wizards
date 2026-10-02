@@ -1,7 +1,6 @@
-import { DockerSandbox } from "@mastra/docker";
 import type { BrowserContext, Page } from "playwright-core";
-import { env } from "../env.js";
 import { webContext } from "../render/chromium.js";
+import { createSandbox, type Sandbox } from "../sandbox/index.js";
 import { getSecret, putSecret, type StoreScope } from "../store/index.js";
 
 /** Sign-ins the person asked the wizard to keep, as Playwright storage state. */
@@ -9,13 +8,13 @@ const SESSION_SLOT = "browser";
 type StorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 
 /**
- * What a run holds while an agent works: a browser context and a sandbox container,
- * both made on first use and released when the run stops running.
+ * What a run holds while an agent works: a browser context and a sandbox, both made on first
+ * use and released when the run stops running.
  */
 export class RunResources {
   private context: BrowserContext | null = null;
   private page: Page | null = null;
-  private sandbox: DockerSandbox | null = null;
+  private sandbox: Sandbox | null = null;
   private scope: StoreScope | null = null;
   /** Changes the person allowed for the rest of this run, as "<connection>:<action>". */
   readonly allowed = new Set<string>();
@@ -71,24 +70,8 @@ export class RunResources {
     }
   }
 
-  async sandboxHandle(): Promise<DockerSandbox> {
-    if (!env.sandboxEnabled) {
-      throw new Error("The sandbox is switched off on this server.");
-    }
-    if (!this.sandbox) {
-      const sandbox = new DockerSandbox({
-        id: `wizards-${this.runId.toLowerCase()}`,
-        image: env.sandboxImage,
-        memory: 1024 * 1024 * 1024,
-        pidsLimit: 256,
-        capDrop: ["ALL"],
-        securityOpt: ["no-new-privileges"],
-        workingDir: "/workspace",
-        labels: { "engenty-wizards.run": this.runId },
-      });
-      await sandbox.start();
-      this.sandbox = sandbox;
-    }
+  sandboxHandle(): Sandbox {
+    this.sandbox ??= createSandbox(this.runId);
     return this.sandbox;
   }
 

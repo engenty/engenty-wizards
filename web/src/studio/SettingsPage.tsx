@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, KeyRound, Plug, Plus, Trash2, Upload } from "lucide-react";
+import { Check, Copy, KeyRound, Plus, Trash2, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -7,6 +7,7 @@ import { type Project, useCurrentProject, useMe } from "../lib/session";
 import { Button, Card, IconButton, Input, Label, Segmented, Swatch, Textarea } from "../ui";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
+import { LocalRuntimeCard } from "./LocalRuntime";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -249,60 +250,6 @@ function CopyLine({ text }: { text: string }) {
   );
 }
 
-interface ConnectionRow {
-  clientId: string;
-  name: string | null;
-  uri: string | null;
-  scopes: string[];
-  connectedAt: string;
-  lastUsed: string;
-}
-
-/** Apps connected over OAuth; disconnecting removes the consent and the app's tokens at once. */
-function ConnectedClients() {
-  const qc = useQueryClient();
-  const list = useQuery({
-    queryKey: ["connections"],
-    queryFn: () => api.get<ConnectionRow[]>("/api/studio/connections"),
-  });
-  const disconnect = useMutation({
-    mutationFn: (clientId: string) =>
-      api.del(`/api/studio/connections/${encodeURIComponent(clientId)}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
-  });
-  if (!list.data?.length) {
-    return null;
-  }
-  return (
-    <div className="mt-6">
-      <Label>{t("settings.connectedClients")}</Label>
-      <div className="flex flex-col gap-2">
-        {list.data.map((c) => (
-          <div
-            key={c.clientId}
-            className="flex items-center gap-3 rounded-lg bg-paper px-3 py-2 ring-1 ring-border-soft"
-          >
-            <Plug className="size-4 shrink-0 text-ink-4" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px]">{c.name ?? c.clientId}</div>
-              <div className="text-[12px] text-ink-4">
-                {t("settings.lastUsed", { when: new Date(c.lastUsed).toLocaleString() })}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              busy={disconnect.isPending && disconnect.variables === c.clientId}
-              onClick={() => disconnect.mutate(c.clientId)}
-            >
-              {t("settings.disconnect")}
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const CLIENTS = ["Claude Code", "claude.ai & Desktop", "Codex", "Cursor", "Scripts"] as const;
 type ClientTab = (typeof CLIENTS)[number];
 
@@ -464,17 +411,39 @@ function ApiKeys({ url }: { url: string }) {
 /** The admin's own MCP clients build the wizards — on their own subscription. */
 function ConnectCard() {
   const me = useMe();
-  const [client, setClient] = useState<ClientTab>("Claude Code");
+  const managed = me.data?.mode === "managed";
+  // Clients sign in over OAuth at the Manage-App; a runtime that runs alone hands out keys.
+  const [picked, setClient] = useState<ClientTab>("Claude Code");
+  const client: ClientTab = managed ? picked : "Scripts";
   const url = me.data?.mcpUrl ?? "";
   return (
     <Card className="p-6">
       <h2 className="font-display font-semibold text-lg">{t("settings.connect")}</h2>
       <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.connectHint")}</p>
-      <div className="mb-5 overflow-x-auto">
-        <Segmented value={client} onChange={setClient} options={[...CLIENTS]} />
-      </div>
-      {client === "Scripts" ? <ApiKeys url={url} /> : <ClientSetup client={client} url={url} />}
-      <ConnectedClients />
+      {managed ? (
+        <div className="mb-5 overflow-x-auto">
+          <Segmented value={client} onChange={setClient} options={[...CLIENTS]} />
+        </div>
+      ) : null}
+      {client === "Scripts" ? (
+        managed ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-[14px] text-ink-2">{t("setup.keysInAccount")}</p>
+            <div>
+              <Button
+                variant="secondary"
+                onClick={() => window.open(`${me.data?.manageUrl}/account`, "_blank", "noopener")}
+              >
+                {t("setup.openAccount")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <ApiKeys url={url} />
+        )
+      ) : (
+        <ClientSetup client={client} url={url} />
+      )}
     </Card>
   );
 }
@@ -497,6 +466,9 @@ export function SettingsPage() {
           <Connectors key={key} projectId={project.id} />
         </div>
       ) : null}
+      <div className="mt-6">
+        <LocalRuntimeCard />
+      </div>
       <div className="mt-6">
         <ConnectCard />
       </div>

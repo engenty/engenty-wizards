@@ -1,10 +1,63 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, CloudUpload, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { ApiError, api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import type { WizardDetail } from "../../lib/session";
+import { useMe, type WizardDetail } from "../../lib/session";
 import { Button, Dialog, Input, Switch } from "../../ui";
+import { openExternal } from "../LocalRuntime";
+import { useEstimate } from "./estimate";
+
+interface CloudCopy {
+  shareUrl: string;
+  version: number;
+  publishedAt: string;
+}
+
+/** A local wizard's copy in the cloud of the linked account: publish it there, get its link. */
+function CloudSection({ wizard }: { wizard: WizardDetail }) {
+  const qc = useQueryClient();
+  const copy = useQuery({
+    queryKey: ["cloud", wizard.id],
+    queryFn: () => api.get<{ copy: CloudCopy | null }>(`/api/studio/wizards/${wizard.id}/cloud`),
+  });
+  const publish = useMutation({
+    mutationFn: () => api.post<CloudCopy>(`/api/studio/wizards/${wizard.id}/cloud`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cloud", wizard.id] }),
+  });
+  const url = copy.data?.copy?.shareUrl;
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-border-soft border-t pt-5">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-[14px]">{t("cloud.title")}</span>
+        <Button
+          variant="secondary"
+          size="sm"
+          busy={publish.isPending}
+          onClick={() => publish.mutate()}
+        >
+          <CloudUpload className="size-3.5" />
+          {url ? t("cloud.update") : t("cloud.publish")}
+        </Button>
+      </div>
+      <p className="text-[13px] text-ink-3">{t("cloud.hint")}</p>
+      {url ? (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 self-start font-mono text-[13px] text-ink-2 hover:text-ink"
+          onClick={() => openExternal(url)}
+        >
+          <ExternalLink className="size-3.5" /> {url}
+        </button>
+      ) : null}
+      {publish.isError ? (
+        <p className="text-[13px] text-rose">
+          {publish.error instanceof ApiError ? publish.error.message : t("cloud.failed")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export function ShareDialog({
   wizard,
@@ -29,6 +82,12 @@ export function ShareDialog({
     onSuccess: refresh,
   });
   const url = `${window.location.origin}/r/${wizard.shareToken}`;
+  const me = useMe();
+  const estimate = useEstimate(wizard.id, wizard.draft);
+  const perDay =
+    estimate.data?.available && estimate.data.reserve > 0
+      ? Math.round(estimate.data.reserve * wizard.dailyRunLimit)
+      : null;
   return (
     <Dialog open={open} onClose={onClose} title={t("share.title")}>
       {!wizard.published ? (
@@ -88,6 +147,14 @@ export function ShareDialog({
             />
           </div>
         </div>
+        {perDay !== null && estimate.data ? (
+          <p className="text-[13px] text-ink-3 tabular-nums">
+            {t("estimate.share", {
+              run: Math.round(estimate.data.credits).toLocaleString(),
+              day: perDay.toLocaleString(),
+            })}
+          </p>
+        ) : null}
         <div className="flex items-center justify-between gap-4">
           <span className="text-[13px] text-ink-3">{t("share.rotateHint")}</span>
           <Button variant="ghost" size="sm" busy={rotate.isPending} onClick={() => rotate.mutate()}>
@@ -95,6 +162,7 @@ export function ShareDialog({
           </Button>
         </div>
       </div>
+      {me.data?.mode === "local" && me.data.account ? <CloudSection wizard={wizard} /> : null}
     </Dialog>
   );
 }

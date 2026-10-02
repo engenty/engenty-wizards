@@ -58,4 +58,20 @@ describe("line items", () => {
     expect(t.vat).toBe(64.15);
     expect(t.gross).toBe(384.9);
   });
+
+  it("totals amounts typed with a decimal comma, as a German number pad gives them", () => {
+    const field = {
+      id: "items",
+      label: "Items",
+      kind: "items" as const,
+      columns: [
+        { id: "q", label: "Q", kind: "number" as const },
+        { id: "p", label: "P", kind: "money" as const },
+      ],
+      vat: { rate: 20 },
+    };
+    const t = itemsTotals(field, [{ q: "42", p: "1,62" }, { q: "1", p: " 89,90 " }, { q: "x", p: "5" }], {});
+    expect(t.net).toBe(157.94);
+    expect(t.gross).toBe(189.53);
+  });
 });

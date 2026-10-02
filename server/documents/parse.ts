@@ -16,7 +16,7 @@ import { splitMarkdownByPageBreaks } from "../engenty/doc-converter/page-break.j
 import { LocalProvider } from "../engenty/doc-converter/providers/local/index.js";
 import { invoiceSchema, receiptSchema } from "../engenty/document-scanner/schemas/index.js";
 import { env } from "../env.js";
-import { languageModel, type TokenUsage, tokenCostUsd } from "../models.js";
+import { type CallMeta, costOf, textModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 
 /** A document as text a model can read. */
@@ -30,7 +30,7 @@ export interface ParsedDocument {
 export class UnreadableDocument extends Error {}
 
 /** Model calls made while reading are charged to whoever asked. */
-export type Charge = (usd: number, reason: string) => Promise<void>;
+export type Charge = (usd: number) => Promise<void>;
 
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -64,12 +64,6 @@ export function documentMime(name: string, mime: string): string {
   return MIME_BY_EXT[name.split(".").pop()?.toLowerCase() ?? ""] ?? declared;
 }
 
-const usageOf = (u: any): TokenUsage => ({
-  inputTokens: u?.inputTokens ?? 0,
-  outputTokens: u?.outputTokens ?? 0,
-  cachedInputTokens: u?.cachedInputTokens ?? u?.inputTokenDetails?.cacheReadTokens ?? 0,
-});
-
 /**
  * Reads scans and photos with a vision model, as an engenty doc-converter provider. Pages are
  * marked with the converter's page-break sentinel so paged output looks like any other.
@@ -88,6 +82,7 @@ class VisionProvider implements DocConverterProvider {
   constructor(
     private readonly charge: Charge | undefined,
     private readonly signal: AbortSignal | undefined,
+    private readonly call: CallMeta | undefined,
   ) {}
 
   canConvert(mimeType: string): boolean {
@@ -100,8 +95,10 @@ class VisionProvider implements DocConverterProvider {
     mimeType: string,
     _options?: ConversionOptions,
   ): Promise<ConversionResult> {
+    // Reads scans and photos: the class it runs on must take PDFs and images.
+    const reader = await textModel("standard", this.call);
     const result = await generateText({
-      model: languageModel(env.models.vision),
+      model: reader.model,
       abortSignal: this.signal,
       maxOutputTokens: 16_000,
       system: [
@@ -121,7 +118,7 @@ class VisionProvider implements DocConverterProvider {
         },
       ],
     });
-    await this.charge?.(tokenCostUsd(env.models.vision, usageOf(result.usage)), "read document");
+    await this.charge?.(costOf(reader, result.usage));
     const markdown = result.text.trim();
     return {
       markdown,
@@ -169,7 +166,7 @@ mkdirSync(CACHE_DIR, { recursive: true });
  */
 export async function parseDocument(
   input: { data: Uint8Array; name: string; mime: string },
-  opts: { charge?: Charge; signal?: AbortSignal } = {},
+  opts: { charge?: Charge; signal?: AbortSignal; call?: CallMeta } = {},
 ): Promise<ParsedDocument> {
   const mime = documentMime(input.name, input.mime);
   return kept(input.data, mime, () => read({ ...input, mime }, opts));
@@ -191,10 +188,10 @@ async function kept<T>(data: Uint8Array, variant: string, make: () => Promise<T>
 
 async function read(
   input: { data: Uint8Array; name: string; mime: string },
-  opts: { charge?: Charge; signal?: AbortSignal },
+  opts: { charge?: Charge; signal?: AbortSignal; call?: CallMeta },
 ): Promise<ParsedDocument> {
   const { data, name, mime } = input;
-  const vision = new VisionProvider(opts.charge, opts.signal);
+  const vision = new VisionProvider(opts.charge, opts.signal, opts.call);
   if (mime.startsWith("image/")) {
     if (!vision.canConvert(mime)) {
       throw new UnreadableDocument(
@@ -267,17 +264,18 @@ export type ScanResult = z.infer<(typeof SCHEMAS)[ScanKind]>;
 export async function scanDocument(
   input: { data: Uint8Array; name: string; mime: string },
   kind: ScanKind,
-  opts: { charge?: Charge; signal?: AbortSignal } = {},
+  opts: { charge?: Charge; signal?: AbortSignal; call?: CallMeta } = {},
 ): Promise<ScanResult> {
   const doc = await parseDocument(input, opts);
   return kept(input.data, `scan:${kind}`, async () => {
+    const extractor = await textModel("classifier", opts.call);
     const result = await generateText({
-      model: languageModel(env.models.fast),
+      model: extractor.model,
       abortSignal: opts.signal,
       output: Output.object({ schema: SCHEMAS[kind] as z.ZodType<ScanResult> }),
       prompt: `Extract the ${kind} from this document. Amounts are numbers in the document's own currency, exactly as printed; never convert or compute them.\n\nFile: ${input.name}\n\n${doc.markdown.slice(0, 30_000)}`,
     });
-    await opts.charge?.(tokenCostUsd(env.models.fast, usageOf(result.usage)), `scan ${kind}`);
+    await opts.charge?.(costOf(extractor, result.usage));
     return result.output;
   });
 }

@@ -1,11 +1,12 @@
 import type { Format, Step } from "@shared/definition";
 import type { StepOutput } from "@shared/run";
 import DOMPurify from "dompurify";
-import { Check, Copy, Download, FileText, Maximize2 } from "lucide-react";
+import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../lib/i18n";
-import { cn, Textarea } from "../ui";
+import { cn, Spinner, Textarea } from "../ui";
+import { canShareFiles } from "./device";
 
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const html = useMemo(
@@ -83,8 +84,8 @@ export function HtmlFrame({
         href={src}
         target="_blank"
         rel="noreferrer"
-        className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full bg-card/90 text-ink-2 shadow-soft ring-1 ring-border-soft backdrop-blur hover:text-ink"
-        aria-label="Open"
+        className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full bg-card/90 text-ink-2 shadow-soft ring-1 ring-border-soft backdrop-blur hover:text-ink coarse:size-11"
+        aria-label={t("run.openFull")}
       >
         <Maximize2 className="size-4" />
       </a>
@@ -173,7 +174,7 @@ function CopyButton({ text }: { text: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1500);
       }}
-      className="inline-flex h-8 items-center gap-1.5 rounded-full bg-paper-2 px-3 text-[13px] text-ink-2 hover:text-ink"
+      className="inline-flex h-8 items-center gap-1.5 rounded-full bg-paper-2 px-3 text-[13px] text-ink-2 hover:text-ink coarse:h-11 coarse:px-4"
     >
       {done ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {done ? t("share.copied") : t("run.copy")}
@@ -279,7 +280,7 @@ export function OutputView({
                 <a
                   href={assetUrl(f.id)}
                   download={f.name}
-                  className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2"
+                  className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
                 >
                   <FileText className="size-3.5 shrink-0 text-ink-3" />
                   <span className="min-w-0 flex-1 truncate">{f.name}</span>
@@ -313,23 +314,90 @@ const FORMAT_LABEL: Record<Format, string> = {
   zip: "ZIP",
 };
 
+/** The file's name as the server sends it, for the share sheet and "Save to Files". */
+function downloadName(res: Response, fallback: string): string {
+  const header = res.headers.get("content-disposition") ?? "";
+  return header.match(/filename="([^"]+)"/)?.[1] ?? fallback;
+}
+
+/**
+ * Hands a result to the phone's share sheet as a file — Mail, WhatsApp, "Save to Files", "Open
+ * in …". The file is fetched first; when that took longer than the browser lets a tap wait, a
+ * second tap sends it.
+ */
+function ShareFileButton({ url, format, title }: { url: string; format: Format; title?: string }) {
+  const [state, setState] = useState<"idle" | "busy" | "ready">("idle");
+  const file = useRef<File | null>(null);
+  const share = async () => {
+    try {
+      if (!file.current) {
+        setState("busy");
+        const res = await fetch(url, { credentials: "include" });
+        if (!res.ok) {
+          throw new Error(String(res.status));
+        }
+        const blob = await res.blob();
+        file.current = new File([blob], downloadName(res, `download.${format}`), {
+          type: blob.type.split(";")[0],
+        });
+      }
+      const data = { files: [file.current], title };
+      if (!navigator.canShare(data)) {
+        // A type the share sheet does not take: it is downloaded instead.
+        location.href = url;
+        setState("idle");
+        return;
+      }
+      await navigator.share(data);
+      setState("idle");
+    } catch (err) {
+      // Fetched, but the tap is too long ago for the browser: the next tap shares at once.
+      setState(file.current && (err as DOMException).name === "NotAllowedError" ? "ready" : "idle");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void share()}
+      disabled={state === "busy"}
+      aria-label={t("run.shareFile")}
+      title={t("run.shareFile")}
+      className={cn(
+        "inline-flex h-9 items-center gap-1.5 rounded-full px-3 font-medium text-[13px] transition coarse:h-11 coarse:px-4",
+        state === "ready"
+          ? "bg-ember-tint text-ink ring-1 ring-ember"
+          : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
+      )}
+    >
+      {state === "busy" ? <Spinner className="size-3.5" /> : <Share className="size-3.5" />}
+      {state === "ready" ? t("run.shareNow") : t("run.share")}
+    </button>
+  );
+}
+
+const SHARES_FILES = canShareFiles();
+
 export function DownloadButtons({
   base,
   stepId,
   formats,
+  title,
 }: {
   base: string;
   stepId: string;
   formats: Format[];
+  /** Named in the share sheet. */
+  title?: string;
 }) {
+  const href = (f: Format) => `${base}/steps/${stepId}/download?format=${f}`;
   return (
     <div className="flex flex-wrap gap-2">
       {formats.map((f, i) => (
         <a
           key={f}
-          href={`${base}/steps/${stepId}/download?format=${f}`}
+          href={href(f)}
           className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[13px] transition",
+            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[13px] transition coarse:h-11 coarse:px-4",
             i === 0
               ? "bg-primary text-primary-foreground hover:brightness-105"
               : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
@@ -339,6 +407,14 @@ export function DownloadButtons({
           {FORMAT_LABEL[f]}
         </a>
       ))}
+      {SHARES_FILES && formats.length ? (
+        <ShareFileButton
+          key={href(formats[0])}
+          url={href(formats[0])}
+          format={formats[0]}
+          title={title}
+        />
+      ) : null}
     </div>
   );
 }

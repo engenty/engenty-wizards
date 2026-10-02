@@ -33,10 +33,75 @@ export const FIELD_KINDS = [
   "items",
   "connection",
   "list",
+  "location",
+  "audio",
+  "signature",
 ] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
+/**
+ * What a `location` field holds: where the person stands (from the device), a place they typed,
+ * or both — the label is then the address of the position.
+ */
+export interface LocationValue {
+  lat?: number;
+  lng?: number;
+  /** Radius in metres the device vouches for. */
+  accuracy?: number;
+  label?: string;
+}
+
+/** What an `audio` field holds: the recording, and what is said in it once it was listened to. */
+export interface AudioValue {
+  /** Upload id of the recording. */
+  asset: string;
+  seconds?: number;
+  transcript?: string;
+}
+
+export function isLocationValue(v: unknown): v is LocationValue {
+  if (!v || typeof v !== "object" || Array.isArray(v)) {
+    return false;
+  }
+  const { lat, lng, label } = v as LocationValue;
+  return (
+    (typeof lat === "number" && typeof lng === "number") ||
+    (typeof label === "string" && label.trim().length > 0)
+  );
+}
+
+export function isAudioValue(v: unknown): v is AudioValue {
+  return Boolean(
+    v &&
+      typeof v === "object" &&
+      typeof (v as AudioValue).asset === "string" &&
+      (v as AudioValue).asset,
+  );
+}
+
+/** A position the way a person reads it: "Hauptplatz 1, Graz (47.07071, 15.43950, ±12 m)". */
+export function locationText(v: LocationValue): string {
+  const point =
+    typeof v.lat === "number" && typeof v.lng === "number"
+      ? `${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}${v.accuracy ? `, ±${Math.round(v.accuracy)} m` : ""}`
+      : "";
+  const label = v.label?.trim() ?? "";
+  return label && point ? `${label} (${point})` : label || point;
+}
+
 export const TOOL_IDS = ["web_search", "web_fetch", "browser", "sandbox", "image", "http"] as const;
+
+/**
+ * The kinds of model a step can ask for. A step names a class; which model serves it is bound
+ * outside the wizard (the model-gateway, or the settings of a runtime that runs alone).
+ */
+export const TEXT_CLASSES = ["classifier", "standard", "high", "highest"] as const;
+export type TextClass = (typeof TEXT_CLASSES)[number];
+export const MODEL_CLASSES = [...TEXT_CLASSES, "image", "video", "audio"] as const;
+export type ModelClass = (typeof MODEL_CLASSES)[number];
+/** How hard the model should think, where the bound model can be told. */
+export const EFFORTS = ["low", "medium", "high"] as const;
+export type Effort = (typeof EFFORTS)[number];
 export type ToolId = (typeof TOOL_IDS)[number];
 
 export const ASSET_KINDS = ["image", "video", "document", "dashboard"] as const;
@@ -88,6 +153,10 @@ export const fieldSchema = z.object({
   multiple: z.boolean().optional(),
   /** file: also offer the camera, for documents the person only has on paper. Images always offer it. */
   camera: z.boolean().optional(),
+  /** file: the camera also records short video clips. */
+  video: z.boolean().optional(),
+  /** text: also fill it by scanning a QR code or barcode with the camera. */
+  scan: z.boolean().optional(),
   /** connection: id of the wizard connection the person connects here. */
   connection: z.string().optional(),
   /** list: id of the wizard list shown here for the person to check and correct. */
@@ -144,7 +213,9 @@ export const agentStepSchema = z.object({
       fields: z.array(outputFieldSchema).optional(),
     })
     .default({ format: "markdown" }),
-  model: z.enum(["fast", "smart"]).optional(),
+  /** The kind of model the step needs; default `high`. The model itself is bound elsewhere. */
+  model: z.enum(TEXT_CLASSES).optional(),
+  effort: z.enum(EFFORTS).optional(),
   /** Shown to the person while it works. */
   working: z.string().optional(),
 });
@@ -167,6 +238,9 @@ export const generateStepSchema = z.object({
     .optional(),
   /** An image field whose upload the image/video model starts from. */
   referenceImage: z.string().optional(),
+  /** For document/dashboard: the kind of model that writes it; default `high`. */
+  model: z.enum(TEXT_CLASSES).optional(),
+  effort: z.enum(EFFORTS).optional(),
   working: z.string().optional(),
 });
 
@@ -397,6 +471,18 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             message: `Field "${field.id}" needs "list": the id of one of the wizard's lists.`,
           });
         }
+        if (field.scan && field.kind !== "text") {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": "scan" fills a text field; kind is "${field.kind}".`,
+          });
+        }
+        if (field.video && field.kind !== "file") {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": "video" belongs to a file field; kind is "${field.kind}".`,
+          });
+        }
       }
     }
   }
@@ -594,9 +680,7 @@ export function itemsTotals(
   const rows = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
   const numeric = (field.columns ?? []).filter((c) => c.kind !== "text");
   const withAmount = rows.map((row) => {
-    const amount = numeric.length
-      ? numeric.reduce((acc, c) => acc * (Number(row[c.id]) || 0), 1)
-      : 0;
+    const amount = numeric.length ? numeric.reduce((acc, c) => acc * amountOf(row[c.id]), 1) : 0;
     return { ...row, amount: round2(amount) };
   });
   const net = round2(withAmount.reduce((a, r) => a + (r.amount as number), 0));
@@ -617,6 +701,12 @@ export function itemsTotals(
     gross: round2(net + vat),
     currency: field.currency ?? "EUR",
   };
+}
+
+/** A typed amount as a number: a phone's number pad in German gives "89,90". */
+function amountOf(v: unknown): number {
+  const n = typeof v === "string" ? Number(v.replace(/\s/g, "").replace(",", ".")) : Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function round2(n: number): number {

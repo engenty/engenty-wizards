@@ -2,18 +2,216 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGateway } from "@ai-sdk/gateway";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
+import {
+  type Effort,
+  MODEL_CLASSES,
+  type ModelClass,
+  type TextClass,
+} from "../shared/definition.js";
+import { accountToken } from "./auth/account.js";
 import { env } from "./env.js";
+import { managed } from "./manage.js";
+import { readSetting, writeSetting } from "./settings.js";
+import { currentTenantOrNull } from "./tenant.js";
+import { vaultDelete, vaultGet, vaultSet } from "./vault.js";
 
 /**
- * Model refs are `[provider:]vendor/model`. Without a provider prefix the Vercel AI
- * Gateway serves the ref when its key is set, else the vendor's own API. Adding a
- * provider = one entry here; nothing else in the app names a provider.
+ * A step names a model class, never a model. Where the class runs is decided here:
+ *  - a runtime of a Manage-App sends `wizards/<class>` to the model-gateway, which binds it,
+ *    meters the call and books the tenant's credits;
+ *  - a runtime that runs alone uses the linked account's credits through the same gateway, or
+ *    resolves the class itself: own keys (AI Gateway, OpenAI, Anthropic) or a local model.
+ * A local binding is `[provider:]vendor/model`, e.g. `anthropic/claude-haiku-4.5`,
+ * `openai:gpt-5.4-mini`, `ollama:qwen3`.
  */
-const gateway = env.aiGatewayKey ? createGateway({ apiKey: env.aiGatewayKey }) : null;
-const openai = env.openaiKey ? createOpenAI({ apiKey: env.openaiKey }) : null;
-const anthropic = env.anthropicKey ? createAnthropic({ apiKey: env.anthropicKey }) : null;
-
 export class ModelUnavailableError extends Error {}
+
+/** What a call is made for; the gateway books it on the run and step. */
+export interface CallMeta {
+  runId?: string;
+  stepId?: string;
+  effort?: Effort;
+}
+
+export interface ResolvedModel<M> {
+  model: M;
+  /** The model the class is bound to, as far as this runtime knows it — prices and vendor quirks. */
+  ref: string;
+  vendor: string;
+  /** Served by an AI Gateway (ours or the person's own key): its search tools are available. */
+  gateway: boolean;
+  /** Booked by the model-gateway; the runtime adds no cost of its own. */
+  metered: boolean;
+}
+
+// --- local configuration -------------------------------------------------------
+
+export const LOCAL_KEYS = ["gateway", "openai", "anthropic"] as const;
+export type LocalKey = (typeof LOCAL_KEYS)[number];
+
+export interface LocalModelSettings {
+  /** `account` = the linked account's credits; `own` = own keys or a local model. */
+  source: "account" | "own";
+  bindings: Partial<Record<ModelClass, string>>;
+  ollamaUrl?: string;
+}
+
+const local: { settings: LocalModelSettings; keys: Partial<Record<LocalKey, string>> } = {
+  settings: { source: "own", bindings: {} },
+  keys: {},
+};
+
+/** Reads the model settings and keys of a runtime that runs alone; called at start and after a change. */
+export async function loadLocalModels() {
+  if (managed) {
+    return;
+  }
+  local.settings = (await readSetting<LocalModelSettings>("models")) ?? {
+    source: "own",
+    bindings: {},
+  };
+  local.keys = {
+    gateway: (await vaultGet("key.gateway")) ?? env.aiGatewayKey,
+    openai: (await vaultGet("key.openai")) ?? env.openaiKey,
+    anthropic: (await vaultGet("key.anthropic")) ?? env.anthropicKey,
+  };
+}
+
+export function localModelSettings() {
+  return {
+    ...local.settings,
+    bindings: Object.fromEntries(
+      MODEL_CLASSES.map((c) => [c, local.settings.bindings[c] ?? env.models[c]]),
+    ) as Record<ModelClass, string>,
+    ollamaUrl: local.settings.ollamaUrl ?? env.ollamaUrl,
+    keys: Object.fromEntries(LOCAL_KEYS.map((k) => [k, Boolean(local.keys[k])])) as Record<
+      LocalKey,
+      boolean
+    >,
+  };
+}
+
+export async function saveLocalModels(input: {
+  source?: "account" | "own";
+  bindings?: Partial<Record<ModelClass, string>>;
+  ollamaUrl?: string;
+  /** A key to store; an empty string removes it. */
+  keys?: Partial<Record<LocalKey, string>>;
+}) {
+  const bindings = { ...local.settings.bindings };
+  for (const [cls, ref] of Object.entries(input.bindings ?? {})) {
+    if (ref?.trim()) {
+      bindings[cls as ModelClass] = ref.trim();
+    } else {
+      delete bindings[cls as ModelClass];
+    }
+  }
+  await writeSetting("models", {
+    source: input.source ?? local.settings.source,
+    bindings,
+    ollamaUrl: input.ollamaUrl?.trim() || local.settings.ollamaUrl,
+  } satisfies LocalModelSettings);
+  for (const [name, value] of Object.entries(input.keys ?? {})) {
+    if (value?.trim()) {
+      await vaultSet(`key.${name}`, value.trim());
+    } else {
+      await vaultDelete(`key.${name}`);
+    }
+  }
+  await loadLocalModels();
+}
+
+// --- the model-gateway of a Manage-App -------------------------------------------
+
+interface GatewayAccess {
+  baseUrl: string;
+  token: string;
+  tenant: string | null;
+}
+
+async function gatewayAccess(): Promise<GatewayAccess | null> {
+  if (managed) {
+    return {
+      baseUrl: env.manage.gatewayUrl,
+      token: env.manage.serviceKey,
+      tenant: currentTenantOrNull(),
+    };
+  }
+  if (local.settings.source !== "account") {
+    return null;
+  }
+  const token = await accountToken();
+  if (!token) {
+    throw new ModelUnavailableError(
+      "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
+    );
+  }
+  return { baseUrl: env.local.gatewayUrl, token, tenant: null };
+}
+
+function gatewayClient(access: GatewayAccess, meta: CallMeta) {
+  return createGateway({
+    baseURL: `${access.baseUrl}/v4/ai`,
+    apiKey: access.token,
+    headers: {
+      ...(access.tenant ? { "x-wizards-tenant": access.tenant } : {}),
+      ...(meta.runId ? { "x-wizards-run": meta.runId } : {}),
+      ...(meta.stepId ? { "x-wizards-step": meta.stepId } : {}),
+      ...(meta.effort ? { "x-wizards-effort": meta.effort } : {}),
+    },
+  });
+}
+
+export interface ClassPrice {
+  model: string;
+  kind: "text" | "image" | "video" | "audio";
+  inputCreditsPerMTok?: number;
+  outputCreditsPerMTok?: number;
+  creditsPerImage?: number;
+  creditsPerSecond?: number;
+}
+
+export interface GatewayCatalog {
+  markup: number;
+  classes: Partial<Record<ModelClass, ClassPrice | null>>;
+  webSearchCredits: number;
+}
+
+let gatewayCatalog: { at: number; base: string; value: GatewayCatalog } | null = null;
+
+/** What the gateway binds each class to, with prices in credits. Cached for five minutes. */
+export async function classCatalog(): Promise<GatewayCatalog | null> {
+  const access = await gatewayAccess().catch(() => null);
+  if (!access) {
+    return null;
+  }
+  if (
+    gatewayCatalog &&
+    gatewayCatalog.base === access.baseUrl &&
+    Date.now() - gatewayCatalog.at < 300_000
+  ) {
+    return gatewayCatalog.value;
+  }
+  try {
+    const res = await fetch(`${access.baseUrl}/v1/models`, {
+      headers: {
+        authorization: `Bearer ${access.token}`,
+        ...(access.tenant ? { "x-wizards-tenant": access.tenant } : {}),
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      return gatewayCatalog?.value ?? null;
+    }
+    const value = (await res.json()) as GatewayCatalog;
+    gatewayCatalog = { at: Date.now(), base: access.baseUrl, value };
+    return value;
+  } catch {
+    return gatewayCatalog?.value ?? null;
+  }
+}
+
+// --- resolving a class -------------------------------------------------------------
 
 function split(ref: string): { provider: string | null; vendor: string; model: string } {
   const [maybeProvider, rest] = ref.includes(":") ? ref.split(/:(.*)/s, 2) : [null, ref];
@@ -21,38 +219,126 @@ function split(ref: string): { provider: string | null; vendor: string; model: s
   return { provider: maybeProvider, vendor, model: model.join("/") };
 }
 
-export function languageModel(ref: string): LanguageModel {
+const vendorOf = (ref: string) => split(ref).vendor;
+
+function localRef(cls: ModelClass): string {
+  return local.settings.bindings[cls] ?? env.models[cls];
+}
+
+function ownGateway() {
+  return local.keys.gateway ? createGateway({ apiKey: local.keys.gateway }) : null;
+}
+
+function localLanguageModel(ref: string): { model: LanguageModel; gateway: boolean } {
   const { provider, vendor, model } = split(ref);
-  const full = `${vendor}/${model}`;
+  if (provider === "ollama") {
+    const ollama = createOpenAI({
+      baseURL: local.settings.ollamaUrl ?? env.ollamaUrl,
+      apiKey: "ollama",
+    });
+    return { model: ollama.chat(model ? `${vendor}/${model}` : vendor), gateway: false };
+  }
+  const gateway = ownGateway();
   if ((provider === null || provider === "gateway") && gateway) {
-    return gateway(full);
+    return { model: gateway(`${vendor}/${model}`), gateway: true };
   }
-  if ((provider === "openai" || vendor === "openai") && openai) {
-    return openai(model || vendor);
+  if ((provider === "openai" || vendor === "openai") && local.keys.openai) {
+    return {
+      model: createOpenAI({ apiKey: local.keys.openai })(model || vendor),
+      gateway: false,
+    };
   }
-  if ((provider === "anthropic" || vendor === "anthropic") && anthropic) {
-    return anthropic(model || vendor);
+  if ((provider === "anthropic" || vendor === "anthropic") && local.keys.anthropic) {
+    return {
+      model: createAnthropic({ apiKey: local.keys.anthropic })(model || vendor),
+      gateway: false,
+    };
   }
-  throw new ModelUnavailableError(`No provider configured for model "${ref}".`);
+  throw new ModelUnavailableError(
+    `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen Schlüssel hinterlegen oder ein Konto anmelden.`,
+  );
 }
 
-export function imageModel(ref: string) {
-  const { vendor, model } = split(ref);
-  if (gateway) {
-    return gateway.imageModel(`${vendor}/${model}`);
+async function viaGateway<M>(
+  cls: ModelClass,
+  meta: CallMeta,
+  pick: (client: ReturnType<typeof createGateway>, id: string) => M,
+): Promise<ResolvedModel<M> | null> {
+  const access = await gatewayAccess();
+  if (!access) {
+    return null;
   }
-  if (openai && vendor === "openai") {
-    return openai.image(model);
-  }
-  throw new ModelUnavailableError(`No provider configured for image model "${ref}".`);
+  const bound = (await classCatalog())?.classes[cls]?.model ?? "";
+  return {
+    model: pick(gatewayClient(access, meta), `wizards/${cls}`),
+    ref: bound,
+    vendor: vendorOf(bound.replace(/^[a-z]+:/, "")),
+    gateway: true,
+    metered: true,
+  };
 }
 
-export function videoModel(ref: string) {
-  const { vendor, model } = split(ref);
-  if (gateway) {
-    return gateway.videoModel(`${vendor}/${model}`);
+/** The language model a text class runs on. */
+export async function textModel(
+  cls: TextClass | "audio" | "image",
+  meta: CallMeta = {},
+): Promise<ResolvedModel<LanguageModel>> {
+  const remote = await viaGateway(cls, meta, (client, id) => client(id) as LanguageModel);
+  if (remote) {
+    return remote;
   }
-  throw new ModelUnavailableError(`No provider configured for video model "${ref}".`);
+  const ref = localRef(cls);
+  const { model, gateway } = localLanguageModel(ref);
+  return { model, ref, vendor: vendorOf(ref), gateway, metered: false };
+}
+
+export async function imageModel(meta: CallMeta = {}) {
+  const remote = await viaGateway("image", meta, (client, id) => client.imageModel(id));
+  if (remote) {
+    return remote;
+  }
+  const ref = localRef("image");
+  const { vendor, model } = split(ref);
+  const gateway = ownGateway();
+  if (gateway) {
+    return {
+      model: gateway.imageModel(`${vendor}/${model}`),
+      ref,
+      vendor,
+      gateway: true,
+      metered: false,
+    };
+  }
+  if (local.keys.openai && vendor === "openai") {
+    return {
+      model: createOpenAI({ apiKey: local.keys.openai }).image(model),
+      ref,
+      vendor,
+      gateway: false,
+      metered: false,
+    };
+  }
+  throw new ModelUnavailableError("Für Bilder ist kein Modell eingerichtet.");
+}
+
+export async function videoModel(meta: CallMeta = {}) {
+  const remote = await viaGateway("video", meta, (client, id) => client.videoModel(id));
+  if (remote) {
+    return remote;
+  }
+  const ref = localRef("video");
+  const { vendor, model } = split(ref);
+  const gateway = ownGateway();
+  if (gateway) {
+    return {
+      model: gateway.videoModel(`${vendor}/${model}`),
+      ref,
+      vendor,
+      gateway: true,
+      metered: false,
+    };
+  }
+  throw new ModelUnavailableError("Für Videos ist kein Modell eingerichtet.");
 }
 
 /** Gemini image models are chat models answering with image files. */
@@ -60,12 +346,17 @@ export function isChatImageModel(ref: string): boolean {
   return ref.includes("gemini") && ref.includes("image");
 }
 
-export function gatewayTools() {
-  return gateway?.tools ?? null;
-}
+/** Search tools an AI Gateway runs itself; they travel in the request, so any gateway client names them. */
+export const gatewayTools = createGateway({ apiKey: "unused" }).tools;
 
-export function hasTextModel(): boolean {
-  return Boolean(gateway || openai || anthropic);
+/** Whether any text model can answer at all: the studio says so before the first chat turn. */
+export async function hasTextModel(): Promise<boolean> {
+  try {
+    await textModel("standard");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // --- Pricing ---------------------------------------------------------------
@@ -78,6 +369,7 @@ interface CatalogEntry {
 let catalog = new Map<string, CatalogEntry>();
 let catalogLoadedAt = 0;
 
+/** Public prices of the AI Gateway: what a runtime that runs alone shows as the cost of a run. */
 export async function loadCatalog(force = false): Promise<void> {
   if (!force && Date.now() - catalogLoadedAt < 6 * 3600_000 && catalog.size) {
     return;
@@ -108,6 +400,19 @@ export interface TokenUsage {
   inputTokens?: number;
   outputTokens?: number;
   cachedInputTokens?: number;
+}
+
+export function usageOf(u: any): TokenUsage {
+  return {
+    inputTokens: u?.inputTokens ?? 0,
+    outputTokens: u?.outputTokens ?? 0,
+    cachedInputTokens: u?.cachedInputTokens ?? u?.inputTokenDetails?.cacheReadTokens ?? 0,
+  };
+}
+
+/** Provider cost of a text call a runtime that runs alone made; the gateway books the others itself. */
+export function costOf(resolved: ResolvedModel<unknown>, usage: any): number {
+  return resolved.metered ? 0 : tokenCostUsd(resolved.ref, usageOf(usage));
 }
 
 export function tokenCostUsd(ref: string, usage: TokenUsage | undefined): number {

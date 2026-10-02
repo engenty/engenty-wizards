@@ -1,4 +1,10 @@
-import type { Field, PageStep } from "../../shared/definition.js";
+import {
+  type AudioValue,
+  type Field,
+  isLocationValue,
+  type LocationValue,
+  type PageStep,
+} from "../../shared/definition.js";
 
 export interface InputError {
   field: string;
@@ -37,6 +43,12 @@ function coerce(field: Field, raw: unknown): unknown {
       }
       return field.multiple ? ids : ids[0];
     }
+    case "signature":
+      return typeof raw === "string" && raw ? raw.slice(0, 64) : undefined;
+    case "audio":
+      return readAudio(raw);
+    case "location":
+      return readLocation(raw);
     // The account and the list live in the wizard's store, not in the page's answers.
     case "connection":
     case "list":
@@ -66,6 +78,59 @@ function coerce(field: Field, raw: unknown): unknown {
     default:
       return String(raw).slice(0, 20_000);
   }
+}
+
+function finite(v: unknown): number | undefined {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : Number.NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * A position from the device, a typed place, or both. Coordinates outside the globe are dropped,
+ * so a step never reads a point that cannot exist.
+ */
+function readLocation(raw: unknown): LocationValue | undefined {
+  if (typeof raw === "string") {
+    const label = raw.trim().slice(0, 300);
+    return label ? { label } : undefined;
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+  const out: LocationValue = {};
+  const lat = finite(input.lat);
+  const lng = finite(input.lng);
+  if (lat !== undefined && lng !== undefined && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    out.lat = Math.round(lat * 1e6) / 1e6;
+    out.lng = Math.round(lng * 1e6) / 1e6;
+    const accuracy = finite(input.accuracy);
+    if (accuracy !== undefined && accuracy >= 0) {
+      out.accuracy = Math.round(accuracy);
+    }
+  }
+  const label = typeof input.label === "string" ? input.label.trim().slice(0, 300) : "";
+  if (label) {
+    out.label = label;
+  }
+  return isLocationValue(out) ? out : undefined;
+}
+
+/** A recording by its upload id; a transcript the page already shows travels with it. */
+function readAudio(raw: unknown): AudioValue | undefined {
+  const input = typeof raw === "string" ? { asset: raw } : (raw as Record<string, unknown> | null);
+  if (!input || typeof input !== "object" || typeof input.asset !== "string" || !input.asset) {
+    return undefined;
+  }
+  const out: AudioValue = { asset: input.asset.slice(0, 64) };
+  const seconds = finite(input.seconds);
+  if (seconds !== undefined && seconds >= 0) {
+    out.seconds = Math.round(seconds);
+  }
+  if (typeof input.transcript === "string") {
+    out.transcript = input.transcript.slice(0, 20_000);
+  }
+  return out;
 }
 
 /** Keep only this page's fields, typed; report what is missing or wrong. */

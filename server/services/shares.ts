@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ShareView } from "../../shared/run.js";
+import { dropLinks, dropRuns, putLink } from "../control.js";
 import { db, schema } from "../db/client.js";
 import { availableFormats } from "../engine/runner.js";
 import { env } from "../env.js";
@@ -31,11 +32,15 @@ export async function shareRun(run: RunRow) {
       .update(schema.run)
       .set({ shareToken: token, sharedAt: new Date() })
       .where(eq(schema.run.id, run.id));
+    await putLink(token, "result", run.id);
   }
   return { url: shareUrlFor(token), expiresAt: run.expiresAt?.toISOString() ?? null };
 }
 
 export async function unshareRun(run: RunRow) {
+  if (run.shareToken) {
+    await dropLinks([run.shareToken]);
+  }
   await db
     .update(schema.run)
     .set({ shareToken: null, sharedAt: null })
@@ -113,10 +118,9 @@ export async function shareImage(run: RunRow): Promise<{ data: Uint8Array; mime:
       if (cached) {
         return { data: new Uint8Array(cached.data), mime: "image/png" };
       }
-      const page = await inlineAssetRefs(await loadAssetText(html.id), run.ownerId);
+      const page = await inlineAssetRefs(await loadAssetText(html.id));
       const png = await htmlToPng(page, 1200, { height: 630, fullPage: false, scale: 1 });
       await saveAsset({
-        ownerId: run.ownerId,
         runId: run.id,
         kind: "render",
         mime: "image/png",
@@ -132,12 +136,14 @@ export async function shareImage(run: RunRow): Promise<{ data: Uint8Array; mime:
 /** Deletes runs past their expiry with everything they made. Runs hourly. */
 export async function purgeExpiredRuns() {
   const expired = await db
-    .select({ id: schema.run.id })
+    .select({ id: schema.run.id, shareToken: schema.run.shareToken })
     .from(schema.run)
     .where(and(isNotNull(schema.run.expiresAt), lt(schema.run.expiresAt, new Date())));
   for (const { id } of expired) {
     await removeAssetFiles(id);
     await db.delete(schema.run).where(eq(schema.run.id, id));
   }
+  await dropLinks(expired.map((r) => r.shareToken).filter((t): t is string => Boolean(t)));
+  await dropRuns(expired.map((r) => r.id));
   return expired.length;
 }

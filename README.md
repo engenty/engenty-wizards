@@ -8,19 +8,46 @@ widgets (maps, timelines with a scrubber, dashboards) are written once into the 
 workspace and only get new data per run. Anyone can share a finished result as a link
 (`/s/<token>`); results of end users without an account are kept 7 days.
 
+## Two ways to run it
+
+| | Alone | Managed |
+|---|---|---|
+| What | one person, one tenant, on this machine: the desktop app, `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
+| Sign-in | a one-time link printed at start (the desktop app opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
+| Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
+| Models | own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
+| Studio chat | a model of class `highest`, or the admin's own Claude subscription (the installed Claude Code runs headless) | a model of class `highest` |
+| Files | `DATA_DIR/objects` | an S3-compatible bucket (R2) |
+
+The Manage-App (accounts, tenants, credits, the model-gateway) is a separate, closed app. What
+the two speak is in [docs/manage-contract.md](docs/manage-contract.md).
+
+A step names a **model class** — `classifier`, `standard`, `high`, `highest`, plus `image`,
+`video`, `audio` — and an optional effort hint, never a model. Which model serves a class is
+bound outside the wizard: in the model-gateway, or under Settings → "Modelle & Konto".
+
 ## Run locally
 
 ```bash
 pnpm install
-cp .env.example .env.local   # set AI_GATEWAY_API_KEY and BETTER_AUTH_SECRET; DEV_LOGIN=1
+cp .env.example .env.local   # set AI_GATEWAY_API_KEY (or another key); DEV_LOGIN=1
 pnpm dev                     # web on :5181, API on :8891
 ```
 
 With Portless: `portless alias wizards 5181`, set `APP_URL=https://wizards.localhost`, open
-https://wizards.localhost. "Dev-Login" signs you in without OAuth (local only).
+https://wizards.localhost. "Dev-Login" lets you in (local only); without `DEV_LOGIN` the server
+prints a one-time link at start.
 
 Local Chrome renders PDFs/PNGs (`CHROME_PATH`), ffmpeg encodes widget animations to MP4
-(`FFMPEG_PATH`); the shell/code tool needs Docker and the `engenty-sandbox` image.
+(`FFMPEG_PATH`). The shell/code tool runs in a sandbox per run, chosen with `SANDBOX`:
+`docker` (default) needs Docker and the `engenty-sandbox` image; `agentos` runs an
+[agentOS](https://rivet.dev/agentos/) VM inside the server process (macOS and glibc Linux, no
+Docker) with a smaller toolset — sh, coreutils, node, npm, and Python as a separate tool without
+pandas, pillow or matplotlib; `off` removes the tool. The agent is told what the chosen sandbox
+runs (`server/sandbox`).
+
+A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
+the first start; the old file stays.
 
 ## Checks
 
@@ -29,17 +56,47 @@ pnpm fix && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to end via the API
 ```
 
+`test/tenants.test.ts` is the leak test: two tenants, two databases, nothing of one visible to
+the other. `test/managed.test.ts` runs the runtime against a stand-in Manage-App.
+
 ## Deploy
 
+Alone, on your own server:
+
 ```bash
-cp .env.example .env    # fill the required block, a sign-in provider, Stripe if billing
+cp .env.example .env    # APP_URL, a model key; put a TLS proxy in front of port 8891
 docker compose up -d --build
 ```
 
-One container: API + built SPA + Chromium, data (libSQL file + assets) on the `/data`
-volume. Put a TLS proxy in front of port 8891. Auth callbacks:
-`<APP_URL>/api/auth/callback/<google|github|microsoft>`; Stripe webhook:
-`<APP_URL>/api/billing/webhook`.
+One container: API + built SPA + Chromium, data on the `/data` volume. Set `API_HOST=0.0.0.0`
+behind the proxy and open the link the container prints at start once.
+
+Managed (the cloud runtime): `compose.cloud.yaml` runs the app and a separate Chromium
+container that holds no secrets and reaches no database. Set the `MANAGE_*` block, `GATEWAY_URL`,
+`APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
+start; a new one migrates when it is first opened.
+
+## Desktop app
+
+`desktop/` is a Tauri 2 app (macOS first) that brings this runtime along as a Node sidecar on
+the loopback interface and shows the studio in its window. Data lives in the app's data folder,
+keys in the Keychain. An account is optional; sign-in runs in the system browser.
+
+```bash
+node scripts/desktop-bundle.mjs          # the runtime + production node_modules + Node
+cd desktop && pnpm install && pnpm tauri build --bundles app
+```
+
+Signing, notarization and the app's rules for what a page in its window may do:
+[desktop/README.md](desktop/README.md).
+
+## On a phone
+
+A shared wizard (`/r/<token>`) is built for phones: sticky actions above the keyboard, camera
+with several shots and clips, code scan, location, voice notes (transcribed by the `audio`
+class before the next step), a drawn signature, the share sheet for results, a wake lock and a
+notice when a long step ends, and its own home-screen entry. Each of these falls back to a file
+picker or typed input where a browser lacks the API.
 
 ## Accounts people connect
 
@@ -72,10 +129,10 @@ the person first, deleting always. `ENGENTY_INTEGRATIONS_REGISTRY_URL` points at
 ## Build wizards from your own AI client
 
 Admins can author wizards in Claude Code, Codex, Cursor, claude.ai or Claude Desktop, on their own
-subscription. The MCP endpoint is `<APP_URL>/api/mcp`. Clients sign in with OAuth 2.1: discovery,
-dynamic registration or a client metadata document, then a consent page in the studio. Settings →
-"Mit Claude Code & Co. bauen" shows the setup for each client, lists connected apps (with
-"Trennen") and issues API keys for scripts.
+subscription. The MCP endpoint is `<APP_URL>/api/mcp`. Managed, clients sign in with OAuth 2.1 at
+the Manage-App (discovery, dynamic registration or a client metadata document, consent there);
+connected apps and API keys are managed in the account. Alone, Settings → "Mit Claude Code & Co.
+bauen" issues API keys.
 
 ```bash
 # Claude Code: plugin with the /wizard command (needs a public https APP_URL)
@@ -88,7 +145,7 @@ codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty
 ```
 
 The plugin is built from `plugin/` with this deployment's `APP_URL` filled in (`server/plugin.ts`).
-Test runs that a client starts spend the admin's credits. Writes from a client show up live in an
+Test runs that a client starts spend the tenant's credits. Writes from a client show up live in an
 open editor.
 
 ## How it is built
@@ -99,6 +156,7 @@ open editor.
 | Step runner (cursor over the definition, pages / back / regenerate / branches) | `server/engine/runner.ts` |
 | Agent + generate steps (Mastra Agent, AI SDK media) | `server/engine/steps.ts` |
 | Agent tools: web search/fetch, sandbox, HTTP, image, MCP | `server/tools/index.ts` |
+| Sandbox engines (Docker, agentOS) and what each runs | `server/sandbox/` |
 | Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `server/tools/browser.ts`, `server/engine/asks.ts` |
 | What a wizard keeps per person: lists, files, connected accounts, sign-ins | `shared/store.ts`, `server/store/`, `server/tools/store.ts` |
 | Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `server/connectors/`, `server/tools/mail.ts` |
@@ -111,13 +169,20 @@ open editor.
 | Workspace files (content-addressed blobs, snapshots per version and run) | `server/services/files.ts`, `server/blobs.ts` |
 | Shared results, link previews, 7-day retention | `server/services/shares.ts`, `server/link-preview.ts` |
 | Starter wizards | `server/starters/index.ts` |
-| Models + pricing (Vercel AI Gateway first, vendor keys as fallback) | `server/models.ts` |
-| Credits + Stripe | `server/billing/` |
+| Tenants: context, one database each, the control database | `server/tenant.ts`, `server/db/client.ts`, `server/control.ts` |
+| Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `server/auth/`, `server/manage.ts` |
+| Model classes: gateway, own keys, local model | `server/models.ts` |
+| Credits: balance, reservation, cost per step; estimate before a run | `server/credits.ts`, `server/estimate.ts` |
+| Studio chat on the Claude subscription | `server/agents/subscription.ts` |
+| Publish to the cloud, import API | `server/services/cloud.ts`, `server/routes/api.ts` |
+| Files in the data folder or a bucket, per tenant | `server/objects.ts` |
 | Studio (editor, diagram, chat, inspector) | `web/src/studio/` |
 | Public runner | `web/src/runner/` |
-| MCP server for authoring (tools, OAuth/API-key gate) | `server/mcp/`, `server/auth.ts` |
+| Phone inputs: camera and clips, code scan, location, voice note, signature; wake lock, notify, install | `web/src/runner/{camera,scan,location,voice,signature,device}.*`, `web/public/{sw.js,manifest.webmanifest}` |
+| Voice notes to text before a step reads them; address of a position (`GEOCODER_URL`) | `server/media/transcribe.ts`, `server/engine/prepare.ts`, `server/geocode.ts` |
+| MCP server for authoring (tools, token/API-key gate) | `server/mcp/` |
 | Live editor (SSE stream, merge of concurrent edits) | `server/routes/wizard-stream.ts`, `web/src/studio/live.tsx` |
 | Claude Code plugin template | `plugin/`, `server/plugin.ts` |
 | Share sheet and shared result page | `web/src/share/` |
 
-Decisions and status: `../PLAN-engenty-wizards.md`.
+License: [FSL-1.1-MIT](LICENSE).

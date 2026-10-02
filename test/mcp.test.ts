@@ -6,7 +6,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const dir = mkdtempSync(join(tmpdir(), "wizards-mcp-"));
 process.env.DATA_DIR = dir;
-process.env.DATABASE_URL = `file:${join(dir, "test.db")}`;
 process.env.APP_URL = "http://localhost:5181";
 process.env.DEV_LOGIN = "1";
 
@@ -15,7 +14,6 @@ const MCP_URL = "http://localhost:5181/api/mcp";
 type App = { fetch: (req: Request) => Response | Promise<Response> };
 let app: App;
 let key: string;
-let userId: string;
 
 async function connect(): Promise<Client> {
   const client = new Client({ name: "vitest", version: "1.0.0" });
@@ -41,17 +39,10 @@ async function call(client: Client, name: string, args: Record<string, unknown> 
 }
 
 beforeAll(async () => {
-  const { migrateDb } = await import("../server/db/client");
-  await migrateDb();
-  const { auth } = await import("../server/auth");
-  const signUp = await auth.api.signUpEmail({
-    body: { email: "mcp@test.local", password: "a-long-test-password", name: "Test Admin" },
-  });
-  userId = signUp.user.id;
-  const created = await auth.api.createApiKey({
-    body: { name: "Claude Code", userId, prefix: "wz_" },
-  });
-  key = created.key;
+  const { migrateControlDb } = await import("../server/db/client");
+  await migrateControlDb();
+  const { createLocalKey } = await import("../server/auth/keys");
+  key = (await createLocalKey("Claude Code")).key;
   app = (await import("../server/app")).default;
 }, 60_000);
 
@@ -141,11 +132,11 @@ describe("MCP endpoint", () => {
     });
     expect(fixed.body).toMatchObject({ revision: 2, issues: [] });
 
-    const { db, schema } = await import("../server/db/client");
+    const { withTenant, db, schema } = await import("../server/db/client");
     const { eq } = await import("drizzle-orm");
-    const notes = await db.query.wizardMessage.findMany({
-      where: eq(schema.wizardMessage.wizardId, wizardId),
-    });
+    const notes = await withTenant("local", () =>
+      db.query.wizardMessage.findMany({ where: eq(schema.wizardMessage.wizardId, wizardId) }),
+    );
     expect(notes.map((n) => [n.source, n.client, n.content])).toEqual([
       ["mcp", "Claude Code", "Leeren Wizard angelegt."],
       ["mcp", "Claude Code", "Titel gesetzt."],

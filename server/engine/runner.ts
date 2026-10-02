@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   type Format,
@@ -12,13 +12,17 @@ import {
 import type { RunState, RunView, ShownList } from "../../shared/run.js";
 import type { ListDef, ListRow } from "../../shared/store.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
-import { canSpend, charge, usdToMicros } from "../billing/credits.js";
 import { connectionViews } from "../connectors/index.js";
-import { db, schema } from "../db/client.js";
+import { activeRuns, indexRun, markRunActive } from "../control.js";
+import { addLocalCost, canSpend, releaseRun, reserveForRun, syncRunCost } from "../credits.js";
+import { db, schema, withTenant } from "../db/client.js";
 import { env } from "../env.js";
+import { estimateRun } from "../estimate.js";
+import { managed, tenantInfo } from "../manage.js";
 import { ModelUnavailableError } from "../models.js";
 import { saveAsset } from "../storage.js";
 import { listRows, scopeOf } from "../store/index.js";
+import { currentTenant } from "../tenant.js";
 import { hasFfmpeg } from "../widgets/render.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
@@ -36,7 +40,66 @@ export class RunInputError extends Error {
   }
 }
 
+export class NoCreditsError extends Error {
+  constructor() {
+    super("Dieser Wizard hat gerade kein Guthaben mehr. Bitte später erneut versuchen.");
+  }
+}
+
 const active = new Map<string, AbortController>();
+
+// --- a tenant's runs that work at the same time ---------------------------------
+// Runs beyond the limit wait in line; nothing is refused.
+
+const slots = new Map<string, { busy: number; waiting: (() => void)[] }>();
+
+async function concurrencyLimit(tenant: string): Promise<number> {
+  if (!managed) {
+    return env.limits.concurrentRuns;
+  }
+  const info = await tenantInfo(tenant).catch(() => null);
+  return info?.limits.concurrentRuns || env.limits.concurrentRuns;
+}
+
+async function acquireSlot(tenant: string, signal: AbortSignal): Promise<boolean> {
+  const limit = await concurrencyLimit(tenant);
+  let slot = slots.get(tenant);
+  if (!slot) {
+    slot = { busy: 0, waiting: [] };
+    slots.set(tenant, slot);
+  }
+  if (slot.busy < limit) {
+    slot.busy++;
+    return true;
+  }
+  const queue = slot.waiting;
+  return new Promise<boolean>((resolve) => {
+    const go = () => {
+      signal.removeEventListener("abort", stop);
+      resolve(true);
+    };
+    const stop = () => {
+      queue.splice(queue.indexOf(go), 1);
+      resolve(false);
+    };
+    queue.push(go);
+    signal.addEventListener("abort", stop, { once: true });
+  });
+}
+
+function releaseSlot(tenant: string) {
+  const slot = slots.get(tenant);
+  if (!slot) {
+    return;
+  }
+  const next = slot.waiting.shift();
+  if (next) {
+    // The slot passes straight to the next run in line.
+    next();
+  } else {
+    slot.busy--;
+  }
+}
 
 async function loadRun(runId: string): Promise<RunRow | undefined> {
   return db.query.run.findFirst({ where: eq(schema.run.id, runId) });
@@ -62,6 +125,10 @@ async function updateRun(runId: string, patch: Partial<typeof schema.run.$inferI
     .update(schema.run)
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(schema.run.id, runId));
+  // A run that ended needs no credits held for it any more.
+  if (patch.status === "done" || patch.status === "failed" || patch.status === "cancelled") {
+    await releaseRun(runId);
+  }
   signalChanged(runId);
 }
 
@@ -74,6 +141,10 @@ function friendly(err: unknown): string {
     return err.message;
   }
   const msg = (err as Error)?.message ?? String(err);
+  // The model-gateway answers 402 once the tenant's credits are used up.
+  if (/insufficient_credits|\b402\b/i.test(msg)) {
+    return new NoCreditsError().message;
+  }
   if (/rate.?limit|429/i.test(msg)) {
     return "Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.";
   }
@@ -93,7 +164,6 @@ function friendly(err: unknown): string {
 
 export async function createRun(input: {
   wizardId: string;
-  ownerId: string;
   definition: WizardDefinition;
   files: WorkspaceFile[];
   version: number | null;
@@ -105,10 +175,15 @@ export async function createRun(input: {
   const id = nanoid(18);
   const first = input.definition.steps[0];
   const state: RunState = { values: {}, outputs: {}, history: [], notes: {} };
+  // The run's expected cost is held before it starts; what it really costs is booked per call.
+  const estimate = await estimateRun(input.wizardId, input.version, input.definition);
+  if (!(await reserveForRun(id, estimate.reserve))) {
+    throw new NoCreditsError();
+  }
   await db.insert(schema.run).values({
     id,
     wizardId: input.wizardId,
-    ownerId: input.ownerId,
+    tenantId: currentTenant(),
     definition: input.definition,
     files: input.files,
     version: input.version,
@@ -125,6 +200,7 @@ export async function createRun(input: {
         ? new Date(Date.now() + env.limits.resultTtlDays * 24 * 60 * 60 * 1000)
         : null,
   });
+  await indexRun({ runId: id, visitorId: input.visitorId, ipHash: input.ipHash });
   if (first.type !== "page") {
     kick(id);
   }
@@ -137,13 +213,26 @@ export function kick(runId: string) {
   }
   const abort = new AbortController();
   active.set(runId, abort);
-  drive(runId, abort.signal)
+  const tenant = currentTenant();
+  const work = async () => {
+    await markRunActive(runId, true);
+    if (!(await acquireSlot(tenant, abort.signal))) {
+      return;
+    }
+    try {
+      await drive(runId, abort.signal);
+    } finally {
+      releaseSlot(tenant);
+    }
+  };
+  work()
     .catch(async (err) => {
       console.error(`[run ${runId}]`, err);
       await updateRun(runId, { status: "failed", error: friendly(err) }).catch(() => undefined);
     })
     .finally(async () => {
       active.delete(runId);
+      await markRunActive(runId, false).catch(() => undefined);
       await releaseResources(runId);
       signalChanged(runId);
     });
@@ -173,7 +262,7 @@ async function makeContext(
   const stepId = run.cursor ?? "";
   return {
     runId: run.id,
-    ownerId: run.ownerId,
+    tenantId: run.tenantId,
     stepId,
     store,
     def: run.definition,
@@ -193,21 +282,11 @@ async function makeContext(
         ? Promise.resolve(null)
         : askPerson(run.id, { ...ask, stepId }, signal),
     emit: (type, message) => emitEvent(run.id, run.cursor, type, message),
-    chargeUsd: async (usd, reason) => {
-      const micros = usdToMicros(usd);
-      if (micros <= 0) {
-        return;
-      }
-      await charge(run.ownerId, micros, reason, run.id);
-      await db
-        .update(schema.run)
-        .set({ costMicros: sql`${schema.run.costMicros} + ${micros}` })
-        .where(eq(schema.run.id, run.id));
-    },
+    call: { runId: run.id, stepId },
+    chargeUsd: (usd) => addLocalCost(run.id, stepId, usd),
     saveAsset: (input) =>
       saveAsset({
         ...input,
-        ownerId: run.ownerId,
         runId: run.id,
         stepId: input.stepId ?? run.cursor,
       }),
@@ -235,8 +314,8 @@ async function drive(runId: string, signal: AbortSignal) {
       await updateRun(runId, { status: "waiting_input" });
       return;
     }
-    if (!(await canSpend(run.ownerId))) {
-      const message = "Dieser Wizard hat gerade kein Guthaben mehr. Bitte später erneut versuchen.";
+    if (!(await canSpend())) {
+      const message = new NoCreditsError().message;
       await emitEvent(runId, step.id, "error", message);
       await updateRun(runId, { status: "failed", error: message });
       return;
@@ -249,6 +328,7 @@ async function drive(runId: string, signal: AbortSignal) {
       if (signal.aborted) {
         return;
       }
+      await syncRunCost(runId);
       state.outputs[step.id] = output;
       delete state.notes[step.id];
       const cursor = nextStepId(def, step.id, state.values);
@@ -269,12 +349,15 @@ async function drive(runId: string, signal: AbortSignal) {
 
 /** Runs a restart left mid-step go on where they were. */
 export async function resumeInterruptedRuns() {
-  const rows = await db
-    .select({ id: schema.run.id })
-    .from(schema.run)
-    .where(eq(schema.run.status, "running"));
-  for (const r of rows) {
-    kick(r.id);
+  for (const r of await activeRuns()) {
+    await withTenant(r.tenantId, async () => {
+      const run = await loadRun(r.runId);
+      if (run?.status === "running") {
+        kick(r.runId);
+      } else {
+        await markRunActive(r.runId, false);
+      }
+    }).catch((err) => console.error(`[resume ${r.runId}]`, err));
   }
 }
 

@@ -1,0 +1,104 @@
+# Contract between the runtime and the Manage-App
+
+The runtime (this repo) runs alone with own keys or a local model. When `MANAGE_URL` is set it
+signs people in at a Manage-App, verifies that app's tokens, and sends model calls to its
+model-gateway. This file is what both sides implement.
+
+Local defaults: runtime API `:8891` (web `:5181`), Manage-App `:8892` (web `:5182`),
+model-gateway `:8893`.
+
+## Tokens
+
+The Manage-App is an OAuth 2.1 / OIDC authorization server.
+
+| | |
+|---|---|
+| Discovery | `<MANAGE_URL>/.well-known/openid-configuration`, `<MANAGE_URL>/.well-known/oauth-authorization-server` |
+| JWKS | the `jwks_uri` from discovery |
+| Access token | a JWT signed with a key from the JWKS, `iss` = the issuer from discovery — when the request names a `resource`; without one the token is opaque and only the Manage-App itself takes it |
+| Claims | `sub` user id · `tenant` tenant id · `role` `owner` \| `admin` \| `member` · `name` · `email` · `scope` · `azp` client id · `aud` the requested `resource` (a list that also holds the userinfo endpoint when `openid` is in scope) |
+| Scopes | `openid profile email offline_access wizards:read wizards:write wizards:publish runs:test` |
+
+- A token names exactly one tenant. A person in several tenants picks one while signing in.
+- The first sign-in creates the account, a tenant with the starting balance, and that tenant's
+  database.
+- `resource` (RFC 8707) is the audience. A runtime's resources are `<RUNTIME_URL>` (studio
+  sessions, API) and `<RUNTIME_URL>/api/mcp` (MCP clients). The Manage-App keeps the list of
+  runtimes it serves.
+- The gateway accepts every access token the Manage-App issued, whatever its audience.
+
+Clients:
+
+| Client id | Kind | Redirect | Consent page |
+|---|---|---|---|
+| `wizards-runtime-<name>` | confidential (secret, sent as HTTP Basic), one per runtime | `<RUNTIME_URL>/api/auth/callback` | no |
+| `wizards-desktop` | public, PKCE | `http://127.0.0.1:<any port>/api/auth/callback` | no |
+| MCP clients | register themselves (RFC 7591) or bring a metadata document | their own | yes |
+
+API keys (`wz_…`) belong to one user and one tenant. Issued and revoked in the Manage-App.
+
+## Manage-App API for runtimes
+
+Every call carries `Authorization: Bearer <service key of the runtime>`. JSON in, JSON out.
+Errors: `{ "error": string, "code": string }`.
+
+| Call | Body → answer |
+|---|---|
+| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns }, db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file |
+| `POST /v1/keys/verify` | `{ key }` → `{ valid: false }` or `{ valid: true, keyId, name, userId, userName, tenantId, role }` |
+| `POST /v1/reservations` | `{ tenantId, runId, credits }` → `{ id }` · `402` with code `no_credits` when the free balance is below `credits` · the same `runId` again replaces the earlier reservation |
+| `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |
+| `POST /v1/usage` | `{ tenantId, runId?, stepId?, kind, usd, idempotencyKey }` → `{ credits }` · for what is not a model call |
+| `GET /v1/runs/:runId/usage?tenantId=` | → `{ credits, steps: { [stepId]: credits } }` · what the ledger booked for the run; rows without a step under `""` |
+| `GET /v1/users/:id` | → `{ id, name, email, image }` |
+
+Free balance = balance − open reservations. A reservation's hold shrinks by what its run has
+been booked. Reservations older than 24 h lapse.
+
+With a user's access token instead of the service key:
+
+| Call | Answer |
+|---|---|
+| `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, balanceCredits }, tenants: [{ id, name, role }] }` |
+
+## Manage-App → runtime
+
+`Authorization: Bearer <service key of the runtime>`.
+
+| Call | Body |
+|---|---|
+| `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
+
+## Model-gateway
+
+The gateway speaks the Vercel AI Gateway protocol, so `@ai-sdk/gateway` works with
+`createGateway({ baseURL: "<GATEWAY_URL>/v4/ai", apiKey: <token> })`.
+
+| | |
+|---|---|
+| Model id (header `ai-language-model-id` for language models, `ai-model-id` for the others — as `@ai-sdk/gateway` sends them) | `wizards/<class>` with class `classifier`, `standard`, `high`, `highest`, `image`, `video`, `audio`; the gateway binds it to a model. A concrete model id is refused unless the catalog enables it. |
+| Caller: a person (desktop app) | `Authorization: Bearer <access token>`; the tenant is the token's |
+| Caller: a runtime | `Authorization: Bearer <service key>` plus `x-wizards-tenant`; visitors have no token |
+| Attribution (optional, both callers) | `x-wizards-run`, `x-wizards-step`, `x-wizards-effort` (`low` \| `medium` \| `high`); a runtime may add `x-wizards-user` |
+| Chat-image models | `wizards/image` may arrive on `/language-model` (models that answer a chat with an image, like Gemini) or on `/image-model` |
+| No balance | `402`, body `{ error: { message, type: "insufficient_credits" } }` — unless the run named in `x-wizards-run` holds a reservation |
+| Suspended tenant, unknown class, model not enabled | `403`, type `forbidden` |
+| Booking | one ledger row per call: tenant, user, run, step, class, model, tokens, provider cost, credits |
+
+`GET <GATEWAY_URL>/v1/models` (any valid token or service key) → what an estimate needs:
+
+```json
+{
+  "markup": 2,
+  "classes": {
+    "standard": { "model": "google/gemini-3.5-flash-lite", "kind": "text", "inputCreditsPerMTok": 60, "outputCreditsPerMTok": 500 },
+    "image":    { "model": "google/gemini-3.1-flash-image", "kind": "image", "creditsPerImage": 13.4 },
+    "video":    { "model": "google/veo-3.1-fast-generate-001", "kind": "video", "creditsPerSecond": 30 },
+    "audio":    null
+  },
+  "webSearchCredits": 2
+}
+```
+
+1 credit = 1 cent retail; credits = provider cost in cents × markup. The provider cost is the
+AI Gateway's cost of the call, which includes web-search fees.

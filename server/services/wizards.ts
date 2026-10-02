@@ -9,12 +9,15 @@ import {
 } from "../../shared/definition.js";
 import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
+import { dropLinks, putLink } from "../control.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { starterById } from "../starters/index.js";
+import { currentTenant } from "../tenant.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { copyFiles, draftFiles, sameFiles } from "./files.js";
+import { forgetWizardLinks } from "./links.js";
 import { defaultProject, ownedProject } from "./projects.js";
 
 export type WizardRow = typeof schema.wizard.$inferSelect;
@@ -42,9 +45,9 @@ export const studioUrl = (wizardId: string) => `${env.appUrl}/w/${wizardId}`;
 export const shareUrl = (token: string) => `${env.appUrl}/r/${token}`;
 const newShareToken = () => nanoid(14);
 
-export async function ownedWizard(userId: string, wizardId: string): Promise<WizardRow> {
+export async function ownedWizard(_userId: string, wizardId: string): Promise<WizardRow> {
   const w = await db.query.wizard.findFirst({
-    where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.ownerId, userId)),
+    where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())),
   });
   if (!w) {
     throw notFound();
@@ -70,10 +73,10 @@ export function wizardSummary(w: WizardRow) {
   };
 }
 
-export async function listWizards(userId: string, projectId?: string) {
+export async function listWizards(_userId: string, projectId?: string) {
   const rows = await db.query.wizard.findMany({
     where: and(
-      eq(schema.wizard.ownerId, userId),
+      eq(schema.wizard.tenantId, currentTenant()),
       projectId ? eq(schema.wizard.projectId, projectId) : undefined,
     ),
     orderBy: [desc(schema.wizard.updatedAt)],
@@ -232,16 +235,18 @@ export async function createWizard(
       ? parseDraft(input.definition)
       : { draft: structuredClone(starter?.definition ?? BLANK), issues: [] };
   const id = nanoid(12);
+  const shareToken = newShareToken();
   await db.insert(schema.wizard).values({
     id,
     projectId: project.id,
-    ownerId: userId,
+    tenantId: currentTenant(),
     title: draft.title,
     draft,
-    shareToken: newShareToken(),
+    shareToken,
     dailyRunLimit: env.limits.defaultDailyRuns,
     starter: input.definition === undefined ? (starter?.id ?? null) : null,
   });
+  await putLink(shareToken, "wizard", id);
   if (input.note) {
     await addMessage(id, { role: "assistant", content: input.note, changed: true }, writer);
   } else if (starter && input.definition === undefined) {
@@ -351,6 +356,8 @@ export async function rotateShareLink(userId: string, wizardId: string) {
     .update(schema.wizard)
     .set({ shareToken: token, updatedAt: new Date() })
     .where(eq(schema.wizard.id, w.id));
+  await dropLinks([w.shareToken]);
+  await putLink(token, "wizard", w.id);
   return { shareToken: token, shareUrl: shareUrl(token) };
 }
 
@@ -358,24 +365,27 @@ export async function duplicateWizard(userId: string, wizardId: string) {
   const w = await ownedWizard(userId, wizardId);
   const id = nanoid(12);
   const draft = { ...w.draft, title: `${w.draft.title} (Kopie)` };
+  const shareToken = newShareToken();
   await db.insert(schema.wizard).values({
     id,
     projectId: w.projectId,
-    ownerId: userId,
+    tenantId: currentTenant(),
     title: draft.title,
     draft,
-    shareToken: newShareToken(),
+    shareToken,
     dailyRunLimit: w.dailyRunLimit,
     starter: w.starter,
   });
+  await putLink(shareToken, "wizard", id);
   await copyFiles(w.id, id);
   return { id };
 }
 
-export async function deleteWizard(userId: string, wizardId: string) {
+export async function deleteWizard(_userId: string, wizardId: string) {
+  await forgetWizardLinks(wizardId);
   await db
     .delete(schema.wizard)
-    .where(and(eq(schema.wizard.id, wizardId), eq(schema.wizard.ownerId, userId)));
+    .where(and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())));
 }
 
 /** A wizard with validator issues is never published — same rule for studio and MCP. */

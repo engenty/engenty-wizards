@@ -1,10 +1,10 @@
 import type { BrandView, PublicWizard } from "@shared/run";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, SquarePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
-import { api } from "../lib/api";
+import { api, isOffline } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, Spinner } from "../ui";
@@ -24,18 +24,95 @@ export function useBrandAccent(accent: string | null | undefined) {
   }, [accent]);
 }
 
+/**
+ * A wizard's link is an app of its own: the browser's "add to home screen" then installs this
+ * wizard — its name, its start address — not the studio.
+ */
+function useWizardApp(token: string | undefined, title: string | undefined) {
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!token || !title || !link) {
+      return;
+    }
+    const before = link.getAttribute("href") ?? "/manifest.webmanifest";
+    link.setAttribute("href", `/api/public/wizards/${token}/manifest.webmanifest`);
+    const name = document.createElement("meta");
+    name.name = "apple-mobile-web-app-title";
+    name.content = title;
+    document.head.appendChild(name);
+    return () => {
+      link.setAttribute("href", before);
+      name.remove();
+    };
+  }, [token, title]);
+}
+
+interface InstallPrompt extends Event {
+  prompt(): Promise<unknown>;
+}
+
+declare global {
+  interface Window {
+    /** Chrome's offer to install, kept by the page's first script until the person asks for it. */
+    wizardInstall?: InstallPrompt | null;
+  }
+}
+
+/** "Add to home screen", where the browser offers it; on an iPhone the way through the share menu. */
+function InstallHint() {
+  const [prompt, setPrompt] = useState(() => window.wizardInstall ?? null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const update = () => setPrompt(window.wizardInstall ?? null);
+    window.addEventListener("wizard-install", update);
+    return () => window.removeEventListener("wizard-install", update);
+  }, []);
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as { standalone?: boolean }).standalone === true;
+  // iPadOS calls itself a Mac; its touch screen gives it away.
+  const ios =
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (standalone || (!prompt && !ios)) {
+    return null;
+  }
+  return (
+    <div className="mt-6 flex flex-col items-center gap-2 text-[13px] text-ink-3">
+      <button
+        type="button"
+        onClick={() => {
+          if (prompt) {
+            void prompt.prompt();
+            window.wizardInstall = null;
+            setPrompt(null);
+          } else {
+            setShown((s) => !s);
+          }
+        }}
+        className="inline-flex items-center gap-1.5 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+      >
+        <SquarePlus className="size-4" /> {t("install.add")}
+      </button>
+      {shown ? <p className="max-w-xs leading-relaxed">{t("install.ios")}</p> : null}
+    </div>
+  );
+}
+
 export function BrandHeader({ brand }: { brand: BrandView }) {
   return (
-    <header className="relative flex h-14 items-center justify-center px-5">
-      {brand.logoUrl ? (
-        <img src={brand.logoUrl} alt={brand.name} className="h-7 max-w-[160px] object-contain" />
-      ) : brand.name ? (
-        <span className="font-display font-semibold text-[15px] text-ink-2 tracking-tight">
-          {brand.name}
-        </span>
-      ) : null}
-      <div className="absolute right-3">
-        <ThemeToggle />
+    <header className="safe-top">
+      <div className="relative flex h-14 items-center justify-center px-5">
+        {brand.logoUrl ? (
+          <img src={brand.logoUrl} alt={brand.name} className="h-7 max-w-[160px] object-contain" />
+        ) : brand.name ? (
+          <span className="max-w-[60%] truncate font-display font-semibold text-[15px] text-ink-2 tracking-tight">
+            {brand.name}
+          </span>
+        ) : null}
+        <div className="absolute right-3">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
@@ -113,9 +190,9 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
     }
   };
   return (
-    <div className="mx-auto flex max-w-lg animate-rise flex-col items-center px-6 pt-10 pb-16 text-center sm:pt-16">
+    <div className="mx-auto flex max-w-lg animate-rise flex-col items-center px-6 pt-6 pb-12 text-center sm:pt-16 sm:pb-16">
       <Mascot kind={wizard.avatar} size={190} fluffy />
-      <h1 className="mt-2 font-display font-semibold text-[34px] leading-[1.1] tracking-tight">
+      <h1 className="mt-2 text-balance font-display font-semibold text-[30px] leading-[1.1] tracking-tight sm:text-[34px]">
         {wizard.title}
       </h1>
       {wizard.description ? (
@@ -139,11 +216,12 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
             <button
               type="button"
               onClick={() => navigate(`/r/${wizard.token}/${previous}`)}
-              className="mt-4 text-[14px] text-ink-3 underline-offset-4 hover:text-ink hover:underline"
+              className="mt-4 text-[14px] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
             >
               {t("run.resume")}
             </button>
           ) : null}
+          <InstallHint />
         </>
       ) : (
         <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
@@ -161,10 +239,12 @@ export function PublicRunner() {
   const wizard = useQuery({
     queryKey: ["public", token],
     queryFn: () => api.get<PublicWizard>(`/api/public/wizards/${token}`),
-    retry: false,
+    // A wizard that is gone stays gone; a phone without signal gets a few more tries.
+    retry: (count, err) => isOffline(err) && count < 3,
   });
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
+  useWizardApp(token, wizard.data?.title);
   useEffect(() => {
     if (wizard.data) {
       document.title = wizard.data.title;
@@ -179,10 +259,16 @@ export function PublicRunner() {
     );
   }
   if (!wizard.data) {
+    const offline = isOffline(wizard.error);
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
         <Mascot kind="pebble" size={80} />
-        <p className="text-ink-3">{t("run.notFound")}</p>
+        <p className="max-w-xs text-ink-3">{t(offline ? "common.offline" : "run.notFound")}</p>
+        {offline ? (
+          <Button variant="secondary" onClick={() => void wizard.refetch()}>
+            {t("common.retry")}
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -196,8 +282,8 @@ export function PublicRunner() {
           <StartScreen wizard={wizard.data} />
         )}
       </div>
-      <footer className="py-6 text-center text-[12px] text-ink-4">
-        <a href="/" className="hover:text-ink-2">
+      <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
+        <a href="/" className="inline-block py-3.5 hover:text-ink-2">
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>
       </footer>

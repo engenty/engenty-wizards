@@ -87,7 +87,7 @@ function describeColumns(def: ListDef): string {
 export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
   const tools: Record<string, any> = {};
   const lists = ctx.def.lists ?? [];
-  const charge = (usd: number, reason: string) => ctx.chargeUsd(usd, reason);
+  const charge = (usd: number) => ctx.chargeUsd(usd);
 
   if (lists.length) {
     const listId = z.enum(lists.map((l) => l.id) as [string, ...string[]]);
@@ -188,7 +188,7 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
       attempt(async () => {
         const source = await resolveFile(ctx, file);
         await ctx.emit("tool", `Liest ${source.name}`);
-        const doc = await parseDocument(source, { charge, signal: ctx.signal });
+        const doc = await parseDocument(source, { charge, signal: ctx.signal, call: ctx.call });
         const start = offset ?? 0;
         return {
           file,

@@ -4,74 +4,22 @@ import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { signInSocial } from "../lib/session";
+import { signIn } from "../lib/session";
 import { Button } from "../ui";
 
-const PROVIDER_LABEL: Record<string, string> = {
-  google: "Google",
-  github: "GitHub",
-  microsoft: "Microsoft",
-};
-
-function ProviderIcon({ id }: { id: string }) {
-  if (id === "google") {
-    return (
-      <svg viewBox="0 0 24 24" className="size-[18px]">
-        <path
-          fill="#4285F4"
-          d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.8z"
-        />
-        <path
-          fill="#34A853"
-          d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"
-        />
-        <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1z" />
-        <path
-          fill="#EA4335"
-          d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"
-        />
-      </svg>
-    );
-  }
-  if (id === "github") {
-    return (
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
-        <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" className="size-[18px]">
-      <path fill="#F25022" d="M1 1h10.5v10.5H1z" />
-      <path fill="#7FBA00" d="M12.5 1H23v10.5H12.5z" />
-      <path fill="#00A4EF" d="M1 12.5h10.5V23H1z" />
-      <path fill="#FFB900" d="M12.5 12.5H23V23H12.5z" />
-    </svg>
-  );
-}
-
 /**
- * `callbackURL` / `onSignedIn` let another page (the OAuth sign-in for MCP clients) take over
- * once the admin is signed in.
+ * The studio's front door. A runtime of a Manage-App sends the person there to sign in (or to
+ * create an account); a runtime that runs alone is entered through the link it printed at start.
  */
-export function SignInPage({
-  callbackURL,
-  onSignedIn,
-  title,
-  sub,
-}: {
-  callbackURL?: string;
-  onSignedIn?: () => void;
-  title?: string;
-  sub?: string;
-} = {}) {
+export function SignInPage() {
   const config = useQuery({
     queryKey: ["config"],
-    queryFn: () => api.get<{ devLogin: boolean; providers: string[] }>("/api/config"),
+    queryFn: () => api.get<{ mode: "managed" | "local"; devLogin: boolean }>("/api/config"),
   });
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<string | null>(null);
-  const providers = config.data?.providers ?? [];
+  const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+  const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">
@@ -79,51 +27,57 @@ export function SignInPage({
         <Mascot kind="round" size={200} fluffy />
         <EngentyWordmark className="mt-2 font-display font-semibold text-[15px] text-ink-3 tracking-tight" />
         <h1 className="mt-3 font-display font-semibold text-[34px] leading-[1.1] tracking-tight">
-          {title ?? t("brand.tagline")}
+          {t("brand.tagline")}
         </h1>
-        <p className="mt-4 text-[16px] text-ink-2 leading-relaxed">{sub ?? t("brand.sub")}</p>
+        <p className="mt-4 text-[16px] text-ink-2 leading-relaxed">{t("brand.sub")}</p>
         <div className="mt-10 flex w-full flex-col gap-3">
-          {providers.map((p) => (
+          {failed ? <p className="text-[14px] text-rose">{t("auth.failed")}</p> : null}
+          {config.data?.mode === "managed" ? (
             <Button
-              key={p}
-              variant="secondary"
               size="lg"
-              busy={busy === p}
+              busy={busy}
               className="w-full"
               onClick={async () => {
-                setBusy(p);
-                await signInSocial(p, callbackURL).finally(() => setBusy(null));
-              }}
-            >
-              <ProviderIcon id={p} />
-              {t("auth.continueWith", { provider: PROVIDER_LABEL[p] ?? p })}
-            </Button>
-          ))}
-          {config.data?.devLogin ? (
-            <Button
-              variant={providers.length ? "ghost" : "primary"}
-              size="lg"
-              busy={busy === "dev"}
-              className="w-full"
-              onClick={async () => {
-                setBusy("dev");
-                await api.post("/api/dev/login");
-                if (onSignedIn) {
-                  onSignedIn();
+                setBusy(true);
+                const desktop = (window as { engentyDesktop?: { open(url: string): void } })
+                  .engentyDesktop;
+                if (!desktop) {
+                  signIn("/");
                   return;
                 }
+                // In the desktop app the sign-in runs in the person's own browser and comes
+                // back to this window as a link.
+                const { url } = await api.post<{ url: string }>("/api/auth/desktop/start");
+                desktop.open(url);
+                setWaiting(true);
+                setBusy(false);
+              }}
+            >
+              {waiting ? t("local.accountWaiting") : t("auth.signIn")}
+            </Button>
+          ) : null}
+          {config.data?.devLogin ? (
+            <Button
+              size="lg"
+              busy={busy}
+              className="w-full"
+              onClick={async () => {
+                setBusy(true);
+                await api.post("/api/dev/login");
                 await qc.invalidateQueries();
-                setBusy(null);
+                setBusy(false);
               }}
             >
               {t("auth.dev")}
             </Button>
           ) : null}
-          {config.data && !providers.length && !config.data.devLogin ? (
-            <p className="text-[14px] text-ink-3">{t("auth.none")}</p>
+          {config.data?.mode === "local" && !config.data.devLogin ? (
+            <p className="text-[14px] text-ink-3">{t("auth.localLink")}</p>
           ) : null}
         </div>
-        <p className="mt-6 text-[13px] text-ink-3">{t("auth.legal")}</p>
+        {config.data?.mode === "managed" ? (
+          <p className="mt-6 text-[13px] text-ink-3">{t("auth.legal")}</p>
+        ) : null}
       </div>
     </div>
   );

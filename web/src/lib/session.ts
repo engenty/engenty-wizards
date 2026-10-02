@@ -1,24 +1,50 @@
-import type { WizardDefinition } from "@shared/definition";
+import type { ModelClass, WizardDefinition } from "@shared/definition";
 import type { WorkspaceFile } from "@shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "./api";
 
+export interface LocalModels {
+  source: "account" | "own";
+  bindings: Record<ModelClass, string>;
+  ollamaUrl: string;
+  keys: { gateway: boolean; openai: boolean; anthropic: boolean };
+}
+
 export interface Me {
   user: { id: string; name: string; email: string; image?: string | null };
-  billing: {
-    plan: "free" | "pro";
-    credits: number;
-    allowance: number;
-    topup: number;
-    resetAt: string | null;
-    monthly: number;
-    hasCustomer: boolean;
-  };
-  billingEnabled: boolean;
+  tenant: { id: string; role: "owner" | "admin" | "member" };
+  /** `managed`: signed in at the Manage-App. `local`: this runtime runs alone (desktop app, own machine). */
+  mode: "managed" | "local";
+  /** The tenant's balance; null where no credits are involved. */
+  credits: number | null;
+  /** Where account, members, API keys and credits are managed. */
+  manageUrl: string | null;
+  /** The account a local runtime is linked to. */
+  account: {
+    name: string;
+    email: string;
+    credits: number | null;
+    url: string;
+    cloudUrl: string;
+    signedIn: boolean;
+  } | null;
+  models: LocalModels | null;
+  /** Installed AI clients whose subscription can answer the studio chat. */
+  subscriptions: "claude"[];
+  /** What answers the studio chat. */
+  chatEngine: "models" | "claude";
   aiReady: boolean;
   /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
   mcpUrl: string;
+}
+
+/** The credits a person can spend right now, wherever they come from. */
+export function spendableCredits(me: Me): number | null {
+  if (me.mode === "managed") {
+    return me.credits;
+  }
+  return me.models?.source === "account" ? (me.account?.credits ?? null) : null;
 }
 
 export function useMe() {
@@ -136,12 +162,7 @@ export async function signOut() {
   window.location.href = "/";
 }
 
-export async function signInSocial(provider: string, callbackURL = "/") {
-  const res = await api.post<{ url?: string }>("/api/auth/sign-in/social", {
-    provider,
-    callbackURL,
-  });
-  if (res.url) {
-    window.location.href = res.url;
-  }
+/** Sign-in happens at the Manage-App; it sends the person back to `returnTo`. */
+export function signIn(returnTo = window.location.pathname) {
+  window.location.href = `/api/auth/login?return=${encodeURIComponent(returnTo)}`;
 }

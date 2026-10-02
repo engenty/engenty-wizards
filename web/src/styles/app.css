@@ -6,6 +6,8 @@
 @source "../";
 
 @custom-variant dark (&:is(.dark *));
+/* A finger, not a mouse: controls grow to a 44 px touch target. */
+@custom-variant coarse (@media (pointer: coarse));
 
 @theme inline {
   --color-background: var(--background);
@@ -105,6 +107,56 @@ body {
   min-height: 100dvh;
 }
 
+/* iOS zooms the page into any field typed in below 16 px, and does not zoom back out. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Taps answer at once and leave no grey flash; text is not selected by a long press on a control. */
+button,
+a,
+[role="switch"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* The notch, the home indicator and the on-screen keyboard (`--kb`, kept by `useKeyboardInset`
+   where the keyboard covers the page instead of resizing it). */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-x {
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* The page's primary action: on a phone it stays in reach above the keyboard and the home
+   indicator while the page scrolls under it. */
+@media (max-width: 767px) {
+  .action-bar {
+    position: sticky;
+    bottom: var(--kb, 0px);
+    z-index: 10;
+    margin-inline: -1.25rem;
+    padding: 0.75rem 1.25rem max(0.75rem, env(safe-area-inset-bottom));
+    background: color-mix(in oklch, var(--background) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-soft);
+  }
+  /* With the keyboard up the bar sits on it; the home indicator is covered. */
+  .keyboard-open .action-bar {
+    padding-bottom: 0.75rem;
+  }
+}
+
 ::selection {
   color: var(--ink);
   background: var(--ember-veil);
@@ -196,6 +248,21 @@ body {
   border-collapse: collapse;
   font-size: 0.9em;
 }
+/* A wide table scrolls inside itself; the page never scrolls sideways. */
+@media (max-width: 639px) {
+  .prose-zen table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+.prose-zen pre {
+  overflow-x: auto;
+}
+.prose-zen img {
+  max-width: 100%;
+  height: auto;
+}
 .prose-zen th,
 .prose-zen td {
   border-bottom: 1px solid var(--border-soft);
@@ -267,9 +334,50 @@ body {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
+/* A recording in progress. */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.72);
+    opacity: 0.55;
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+/* The camera and the scanner fill a phone's screen; on a desk they are a centred sheet. */
+dialog.media-sheet {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  background: #000;
+  color: #fff;
+}
+dialog.media-sheet::backdrop {
+  background: oklch(20% 0.01 60 / 0.5);
+}
+@media (min-width: 640px) and (min-height: 560px) {
+  dialog.media-sheet {
+    margin: auto;
+    width: min(720px, calc(100% - 48px));
+    height: min(640px, calc(100dvh - 48px));
+    border-radius: calc(var(--radius) * 2);
+    overflow: hidden;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
-  .animate-breathe {
+  .animate-breathe,
+  .animate-pulse-dot {
     animation: none;
   }
 }

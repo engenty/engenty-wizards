@@ -1,3 +1,4 @@
+import { sandboxGuideLine } from "../sandbox/index.js";
 import { STARTERS } from "../starters/index.js";
 
 /**
@@ -56,10 +57,21 @@ type Field = {
   currency?: "EUR"|...                                        // items only
   multiple?: boolean            // image / file: several files
   camera?: boolean              // file: also offer the camera, for papers the person has not scanned (image always offers it)
+  video?: boolean               // file: the camera also records a short clip (up to 30 s); the clip is a file like any other
+  scan?: boolean                // text: a "scan" button fills it from a QR code or barcode (serial number, ticket, article number)
   connection?: connectionId     // kind "connection": the page shows "connect your account"; with required the person must connect
   list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
 }
 // kinds: text textarea number select multiselect date email url toggle color image file items connection list
+//        location audio signature
+//   location:  where the person is — the phone's position on a tap (with its accuracy), or an address they type.
+//              {{field}} → "Herrengasse 16, 8010 Graz (47.07071, 15.43950, ±12 m)" · {{field.lat}} {{field.lng}}
+//              {{field.accuracy}} (metres) · {{field.label}} (the address line) · {{field.map}} (a map link).
+//              A typed address has no lat/lng. Widgets take the numbers: data { lat: "place.lat", lng: "place.lng" }.
+//   audio:     a voice note recorded on the page (up to 5 minutes). It is written down before the next step runs:
+//              {{field}} is what the person said, as text. {{field.seconds}} is its length.
+//   signature: drawn with the finger — a picture (dark ink, clear ground). A document step can place it:
+//              {{field}} → asset://ID, used as <img src="asset://ID">.
 
 type AgentStep = {
   type: "agent"
@@ -69,7 +81,8 @@ type AgentStep = {
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
   output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description, columns?: string[] }[] }
                                 // a table with columns gives rows as objects with exactly those keys — what widgets read
-  model?: "fast"|"smart"        // fast for short copy, smart for research/reasoning
+  model?: "classifier"|"standard"|"high"|"highest"  // the kind of model, see "Models"; default "high"
+  effort?: "low"|"medium"|"high"                    // how hard it should think; leave out unless it matters
   working?: string              // shown while it runs ("Recherchiert im Web …")
 }
 // Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
@@ -113,6 +126,7 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{brand.name}} {{brand.details}} · {{today}}
   · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)
+  · {{locationField}} {{locationField.lat|lng|accuracy|label|map}} · {{audioField}} (the transcript) · {{signatureField}} (asset://ID)
 A template may only use fields asked and steps run EARLIER.`;
 
 export const PRINCIPLES = `
@@ -122,13 +136,15 @@ How good wizards look:
 - Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.
 - Money/totals: use an "items" field with vat — the runner computes totals; documents must use {{items}} verbatim. Never let a model compute totals.
 - Facts from the web need an agent step with web_search + web_fetch BEFORE writing; documents then cite those notes.
-- Live data with a free public JSON API (weather and wind: api.open-meteo.com; sunrise/sunset is in it too) → an agent step with the http tool and model "fast" that calls the API and returns json. Far cheaper and more exact than web research; use web research only when no API exists.
+- Live data with a free public JSON API (weather and wind: api.open-meteo.com; sunrise/sunset is in it too) → an agent step with the http tool and model "standard" that calls the API and returns json. Far cheaper and more exact than web research; use web research only when no API exists.
 - Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
-- The sandbox runs code (python/node) for calculations, charts or file conversion; export_file hands files to the person.
+${sandboxGuideLine()}
 - Remembering between runs ("merke dir", "führe eine Liste"): declare a list and let an agent step save into it with list_write; a later run reads it as {{lists.id}} or list_read. Give it a key column so known rows are updated, not duplicated. Never make the person re-upload last time's result.
 - The person's mail: one connection of kind "mail", a page field of kind "connection" early in the wizard, and the agent step lists it in "connections". Do not ask for the provider or the address in other fields — the connect field does that.
 - Working in a service for the person (read their Notion, create an issue, look up a customer): import the service as a connector, declare a connection with "connector", put a page field of kind "connection" before the step, and list the connection in the step's "connections". Prefer a connector over the browser whenever the service has one.
 - Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.
+- Most people open a wizard on their phone. Keep pages short, and let the phone do the typing: photos with an "image" field (multiple) instead of descriptions, the place with a "location" field instead of an address form, what happened as an "audio" field instead of a long textarea (keep an optional textarea beside it), a sign-off as a "signature" field, a serial or ticket number as a "text" field with scan. Typical: damage report, handover protocol, site inspection, delivery note.
+- Photos in documents: a document step can place the photos of an earlier "image" field and a "signature" (it gets them as asset:// images); say in its prompt where they go. A model only SEES a photo in an agent step, through read_document.
 - Papers and scans: a "file" field with multiple and camera. Agent steps read uploads with read_document; for invoices and receipts scan_documents returns the fields (vendor, number, date, totals, currency) exactly as printed.
 - Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
 - Every step a person sees later (review/result) must come from an earlier step id.
@@ -207,7 +223,13 @@ ${mcpServersLine(mcp)}
 
 ${connectorsLine(connectors)}
 
-Models: an agent step's "model" is "fast" (short copy, cheap) or "smart" (research, reasoning). Image, video and document models are chosen by the platform.
+Models: a step names the KIND of model it needs, never a model. Pick the cheapest class that does the job:
+- "classifier": routing, yes/no, picking from options, pulling a few values out of text.
+- "standard": short copy, calling an API, reformatting, simple summaries.
+- "high": research with tools, long documents, reasoning over many sources (the default).
+- "highest": hard reasoning or writing code; rare in a run, several times the cost of "high".
+"effort" ("low" | "medium" | "high") tells the model how hard to think where it can be told; leave it out unless a step is clearly trivial ("low") or clearly hard ("high").
+A generate step for a document or dashboard takes the same "model" (default "high"). Image and video steps use the image and video class; which model serves a class is set by the platform, not in the wizard.
 
 Editing:
 - Every write returns the new "revision" and the validator's "issues". Pass the revision you last saw as "baseRevision"; on revision_conflict re-read with get_wizard and apply your change again.

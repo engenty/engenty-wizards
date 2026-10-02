@@ -2,9 +2,18 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#faf8f5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>engenty wizards</title>
     <script>
       // Before first paint, so a dark visitor never sees the light page flash.
@@ -12,8 +21,15 @@
         const pick = localStorage.getItem("wizards.theme");
         if (pick === "dark" || (!pick && matchMedia("(prefers-color-scheme: dark)").matches)) {
           document.documentElement.classList.add("dark");
+          document.querySelector('meta[name="theme-color"]').content = "#1c2a63";
         }
       } catch {}
+      // Chrome offers "install" once, early; the offer is kept until the person asks for it.
+      addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        window.wizardInstall = e;
+        dispatchEvent(new Event("wizard-install"));
+      });
     </script>
   </head>
   <body>

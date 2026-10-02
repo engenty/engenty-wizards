@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { t } from "../lib/i18n";
 
 export function cn(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -42,8 +43,8 @@ export const Button = forwardRef<
       disabled={disabled || busy}
       className={cn(
         "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-[background,filter,color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
-        size === "sm" && "h-8 px-3 text-[13px]",
-        size === "md" && "h-10 px-4 text-sm",
+        size === "sm" && "h-8 px-3 text-[13px] coarse:h-11 coarse:px-4",
+        size === "md" && "h-10 px-4 text-sm coarse:h-11",
         size === "lg" && "h-12 px-6 text-[15px]",
         VARIANTS[variant],
         className,
@@ -68,7 +69,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-full text-ink-3 transition hover:bg-accent hover:text-ink disabled:opacity-40",
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink-3 transition hover:bg-accent hover:text-ink disabled:opacity-40 coarse:size-11",
         className,
       )}
       {...rest}
@@ -226,7 +227,7 @@ export function Segmented({
               }
             }}
             className={cn(
-              "h-10 rounded-full border px-4 text-sm transition",
+              "h-10 rounded-full border px-4 text-sm transition coarse:h-11",
               on
                 ? "border-ember bg-ember-tint text-ink"
                 : "border-input bg-card text-ink-2 hover:border-ink-4 hover:text-ink",
@@ -257,7 +258,8 @@ export function Switch({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition",
+        // The track stays slim; the tap area around it is a full 44 px.
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
         checked ? "bg-primary" : "bg-paper-3",
       )}
     >
@@ -374,13 +376,27 @@ export function Dialog({
         }
       }}
       className={cn(
-        "m-auto w-[calc(100%-32px)] rounded-2xl bg-card p-0 text-ink shadow-overlay backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
+        "m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card p-0 text-ink shadow-overlay backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
         wide ? "max-w-2xl" : "max-w-md",
       )}
     >
       {open ? (
-        <div className="p-6 sm:p-7">
-          {title ? <h2 className="mb-5 font-display font-semibold text-xl">{title}</h2> : null}
+        <div className="p-5 sm:p-7">
+          {title ? (
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <h2 className="min-w-0 font-display font-semibold text-xl">{title}</h2>
+              <IconButton label={t("common.close")} onClick={onClose} className="-mt-1.5 -mr-2">
+                <svg viewBox="0 0 16 16" fill="none" className="size-4" aria-hidden="true">
+                  <path
+                    d="M4 4l8 8M12 4l-8 8"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </IconButton>
+            </div>
+          ) : null}
           {children}
         </div>
       ) : null}

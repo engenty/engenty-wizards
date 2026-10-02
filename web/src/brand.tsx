@@ -92,7 +92,7 @@ export function Logo({ onClick }: { onClick?: () => void }) {
       <EngentyLogoMark size={30} />
       <span className="font-display font-semibold text-[17px] tracking-tight">
         engenty<span className="text-ember">.</span>
-        <span className="ml-1 font-normal text-ink-3">{BRAND.short}</span>
+        <span className="ml-1 font-normal text-ink-3 max-[420px]:hidden">{BRAND.short}</span>
       </span>
     </button>
   );

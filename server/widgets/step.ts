@@ -24,7 +24,7 @@ async function widgetData(step: WidgetStep, ctx: StepContext) {
   for (const [key, raw] of Object.entries(step.data)) {
     const ref = dataRef(raw);
     const field = fields.find((f) => f.id === ref);
-    if (field && (field.kind === "image" || field.kind === "file")) {
+    if (field && (field.kind === "image" || field.kind === "file" || field.kind === "signature")) {
       const id = ctx.state.values[ref];
       const found = typeof id === "string" ? await loadAsset(id) : null;
       out[key] =

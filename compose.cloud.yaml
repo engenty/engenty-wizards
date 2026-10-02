@@ -1,0 +1,53 @@
+# The cloud runtime of a Manage-App: the app (web and runner in one process) and a separate
+# Chromium container. Databases live on Turso, files in R2 — nothing durable on this host.
+# Put a TLS proxy (Coolify/Traefik) in front of port 8891 and Cloudflare in front of that.
+services:
+  runtime:
+    build: .
+    image: engenty-wizards:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_URL: ${APP_URL:?the public https origin}
+      MANAGE_URL: ${MANAGE_URL:?the Manage-App}
+      GATEWAY_URL: ${GATEWAY_URL:?the model-gateway}
+      API_HOST: 0.0.0.0
+      # No shell/code tool in the cloud: runs get a browser context, never a sandbox.
+      SANDBOX: "off"
+      # Chromium answers DevTools requests only under an IP address or localhost.
+      BROWSER_CDP_URL: http://172.30.5.10:9222
+    ports:
+      - "8891:8891"
+    volumes:
+      # Caches only (parsed documents); safe to lose.
+      - runtime-cache:/data
+    networks:
+      default:
+      browser:
+    depends_on:
+      - browser
+
+  browser:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.browser
+    image: engenty-wizards-browser:latest
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges]
+    shm_size: 1gb
+    mem_limit: 3g
+    networks:
+      browser:
+        ipv4_address: 172.30.5.10
+
+networks:
+  browser:
+    ipam:
+      config:
+        - subnet: 172.30.5.0/24
+
+volumes:
+  runtime-cache:

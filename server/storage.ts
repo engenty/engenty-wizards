@@ -1,20 +1,24 @@
-import { mkdirSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { AssetRef } from "../shared/run.js";
 import { db, schema } from "./db/client.js";
-import { env } from "./env.js";
+import { objects } from "./objects.js";
+import { currentTenant } from "./tenant.js";
 
-const ASSET_DIR = join(env.dataDir, "assets");
-mkdirSync(ASSET_DIR, { recursive: true });
+const assetKey = (file: string) => `assets/${file}`;
 
 const EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "audio/webm": "weba",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
   "text/html": "html",
   "text/markdown": "md",
   "text/plain": "txt",
@@ -27,7 +31,6 @@ export function extFor(mime: string): string {
 }
 
 export interface SaveAssetInput {
-  ownerId: string;
   runId?: string | null;
   stepId?: string | null;
   kind: string;
@@ -41,10 +44,10 @@ export async function saveAsset(input: SaveAssetInput): Promise<AssetRef> {
   const bytes =
     typeof input.data === "string" ? Buffer.from(input.data, "utf8") : Buffer.from(input.data);
   const file = `${id}.${extFor(input.mime)}`;
-  await writeFile(join(ASSET_DIR, file), bytes);
+  await objects.put(assetKey(file), bytes);
   await db.insert(schema.asset).values({
     id,
-    ownerId: input.ownerId,
+    tenantId: currentTenant(),
     runId: input.runId ?? null,
     stepId: input.stepId ?? null,
     kind: input.kind,
@@ -61,8 +64,8 @@ export async function loadAsset(id: string) {
   if (!row) {
     return null;
   }
-  const data = await readFile(join(ASSET_DIR, row.path));
-  return { row, data };
+  const data = await objects.get(assetKey(row.path));
+  return data ? { row, data } : null;
 }
 
 export async function loadAssetText(id: string): Promise<string> {
@@ -72,17 +75,16 @@ export async function loadAssetText(id: string): Promise<string> {
 
 /**
  * Generated HTML points at images as `asset://ID`; previews and downloads get them
- * inlined as data URIs, so every file stands on its own. Only the owner's assets resolve.
+ * inlined as data URIs, so every file stands on its own. Only the tenant's assets resolve.
  */
-export async function inlineAssetRefs(html: string, ownerId: string): Promise<string> {
+export async function inlineAssetRefs(html: string): Promise<string> {
   const ids = [...new Set([...html.matchAll(/asset:\/\/([A-Za-z0-9_-]{6,40})/g)].map((m) => m[1]))];
   let out = html;
   for (const id of ids) {
     const found = await loadAsset(id);
-    const uri =
-      found && found.row.ownerId === ownerId && found.row.mime.startsWith("image/")
-        ? `data:${found.row.mime};base64,${found.data.toString("base64")}`
-        : "";
+    const uri = found?.row.mime.startsWith("image/")
+      ? `data:${found.row.mime};base64,${found.data.toString("base64")}`
+      : "";
     out = out.split(`asset://${id}`).join(uri);
   }
   return out;
@@ -92,7 +94,7 @@ export async function inlineAssetRefs(html: string, ownerId: string): Promise<st
 export async function removeAssetFiles(runId: string) {
   const rows = await db.query.asset.findMany({ where: eq(schema.asset.runId, runId) });
   for (const row of rows) {
-    await rm(join(ASSET_DIR, row.path), { force: true });
+    await objects.remove(assetKey(row.path));
   }
   await db.delete(schema.asset).where(eq(schema.asset.runId, runId));
 }

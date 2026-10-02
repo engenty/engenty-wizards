@@ -1,7 +1,10 @@
 import {
   allFields,
   type Field,
+  isAudioValue,
+  isLocationValue,
   itemsTotals,
+  locationText,
   type WizardDefinition,
 } from "../../shared/definition.js";
 import type { RunState } from "../../shared/run.js";
@@ -111,6 +114,35 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
       (v): v is string => typeof v === "string" && v.length > 0,
     );
     return ids.map((id) => `upload:${id}`).join(", ");
+  }
+  if (field?.kind === "location") {
+    if (!isLocationValue(value)) {
+      return "";
+    }
+    switch (rest[0]) {
+      case undefined:
+        return locationText(value);
+      case "map":
+        return value.lat === undefined
+          ? ""
+          : `https://www.openstreetmap.org/?mlat=${value.lat}&mlon=${value.lng}#map=17/${value.lat}/${value.lng}`;
+      default:
+        return (value as Record<string, unknown>)[rest[0]];
+    }
+  }
+  if (field?.kind === "audio") {
+    if (!isAudioValue(value)) {
+      return "";
+    }
+    if (rest[0] === "seconds") {
+      return value.seconds;
+    }
+    // A recording reads as what is said in it.
+    return value.transcript?.trim() || "(voice note without intelligible speech)";
+  }
+  if (field?.kind === "signature") {
+    // Documents place it as an image: <img src="asset://ID">.
+    return typeof value === "string" && value ? `asset://${value}` : "";
   }
   if (field?.kind === "list") {
     const list = scope.lists?.[field.list ?? ""];

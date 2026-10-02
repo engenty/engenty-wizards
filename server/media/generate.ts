@@ -1,9 +1,10 @@
 import { experimental_generateVideo, generateImage, generateText } from "ai";
 import {
+  type CallMeta,
   imageCostUsd,
   imageModel,
   isChatImageModel,
-  languageModel,
+  textModel,
   videoCostUsd,
   videoModel,
 } from "../models.js";
@@ -23,18 +24,21 @@ type Aspect = `${number}:${number}`;
 
 /** One image. Gemini image models answer through chat with an image file; the rest through generateImage. */
 export async function generateImageMedia(input: {
-  model: string;
+  call?: CallMeta;
   prompt: string;
   aspectRatio?: string;
   reference?: MediaReference | null;
   abortSignal?: AbortSignal;
 }): Promise<GeneratedMedia> {
-  const { model, prompt, reference, abortSignal } = input;
+  const { prompt, reference, abortSignal } = input;
   const aspect = (input.aspectRatio ?? "1:1") as Aspect;
-  if (isChatImageModel(model)) {
+  const image = await imageModel(input.call);
+  const costUsd = image.metered ? 0 : imageCostUsd(image.ref);
+  if (isChatImageModel(image.ref)) {
+    const chat = await textModel("image", input.call);
     const text = `${prompt}\n\nAspect ratio: ${aspect}. Return exactly one image.`;
     const result = await generateText({
-      model: languageModel(model),
+      model: chat.model,
       abortSignal,
       providerOptions: {
         google: { responseModalities: ["IMAGE", "TEXT"], imageConfig: { aspectRatio: aspect } },
@@ -58,11 +62,11 @@ export async function generateImageMedia(input: {
     return {
       bytes: file.uint8Array,
       mime: file.mediaType ?? "image/png",
-      costUsd: imageCostUsd(model),
+      costUsd,
     };
   }
   const result = await generateImage({
-    model: imageModel(model),
+    model: image.model,
     n: 1,
     abortSignal,
     prompt: reference ? { images: [reference.bytes], text: prompt } : prompt,
@@ -75,13 +79,13 @@ export async function generateImageMedia(input: {
   return {
     bytes: img.uint8Array,
     mime: img.mediaType ?? "image/png",
-    costUsd: imageCostUsd(model),
+    costUsd,
   };
 }
 
 /** One video clip. Text-to-video, or image-to-video when a reference is given. */
 export async function generateVideoMedia(input: {
-  model: string;
+  call?: CallMeta;
   prompt: string;
   aspectRatio?: string;
   duration?: number;
@@ -90,8 +94,9 @@ export async function generateVideoMedia(input: {
 }): Promise<GeneratedMedia> {
   const duration = Math.min(Math.max(Math.round(input.duration ?? 8), 4), 10);
   const aspect = (input.aspectRatio === "1:1" ? "16:9" : (input.aspectRatio ?? "16:9")) as Aspect;
+  const videoClass = await videoModel(input.call);
   const result = await experimental_generateVideo({
-    model: videoModel(input.model),
+    model: videoClass.model,
     prompt: input.reference ? { image: input.reference.bytes, text: input.prompt } : input.prompt,
     aspectRatio: aspect,
     duration,
@@ -104,6 +109,6 @@ export async function generateVideoMedia(input: {
   return {
     bytes: video.uint8Array,
     mime: video.mediaType ?? "video/mp4",
-    costUsd: videoCostUsd(input.model, duration),
+    costUsd: videoClass.metered ? 0 : videoCostUsd(videoClass.ref, duration),
   };
 }

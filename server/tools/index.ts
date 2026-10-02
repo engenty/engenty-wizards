@@ -8,8 +8,14 @@ import { isTextMime } from "../../shared/workspace.js";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
-import { gatewayTools } from "../models.js";
+import { gatewayTools, type ResolvedModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
+import {
+  type ExecResult,
+  pythonToolDescription,
+  sandboxCapabilities,
+  shellToolDescription,
+} from "../sandbox/index.js";
 import { snapshotFile } from "../services/files.js";
 import { browserTools } from "./browser.js";
 import { connectorTools } from "./connector.js";
@@ -29,7 +35,7 @@ export interface StepTools {
 export async function buildStepTools(
   step: AgentStep,
   ctx: StepContext,
-  modelRef: string,
+  resolved: ResolvedModel<unknown>,
   uploads: UploadRef[],
 ): Promise<StepTools> {
   const tools: Record<string, any> = {};
@@ -38,12 +44,11 @@ export async function buildStepTools(
   let mcp: MCPClient | null = null;
 
   if (allowed.has("web_search")) {
-    const vendor = modelRef.replace(/^[a-z]+:/, "").split("/")[0];
-    const gw = gatewayTools();
-    if (vendor === "anthropic") {
+    // Anthropic models search natively; other models search through the AI Gateway's tool.
+    if (resolved.vendor === "anthropic") {
       tools.web_search = anthropic.tools.webSearch_20250305({ maxUses: 8 });
-    } else if (gw) {
-      tools.web_search = gw.perplexitySearch({ maxResults: 8 });
+    } else if (resolved.gateway) {
+      tools.web_search = gatewayTools.perplexitySearch({ maxResults: 8 });
     }
   }
 
@@ -105,25 +110,47 @@ export async function buildStepTools(
   Object.assign(tools, mailTools(step, ctx, files));
   Object.assign(tools, await connectorTools(step, ctx, files));
 
-  if (allowed.has("sandbox") && env.sandboxEnabled) {
+  const sandbox = sandboxCapabilities();
+  if (allowed.has("sandbox") && sandbox) {
+    const timeoutMs = (seconds?: number) => Math.min((seconds ?? 120) * 1000, 600_000);
+    const report = (result: ExecResult) => ({
+      exitCode: result.exitCode,
+      stdout: clip(result.stdout, 8000),
+      stderr: clip(result.stderr, 4000),
+    });
     tools.run_command = createTool({
       id: "run_command",
-      description:
-        "Run a shell command in a private Linux sandbox (python3, node, bun, uv, jq, curl). Working directory /workspace.",
+      description: shellToolDescription(sandbox),
       inputSchema: z.object({ command: z.string(), timeoutSeconds: z.number().optional() }),
       execute: async ({ command, timeoutSeconds }) => {
         await ctx.emit("tool", `Führt aus: ${command.slice(0, 80)}`);
-        const sandbox = await ctx.resources.sandboxHandle();
-        const result = await sandbox.executeCommand!(command, [], {
-          timeout: Math.min((timeoutSeconds ?? 120) * 1000, 600_000),
-        });
-        return {
-          exitCode: result.exitCode,
-          stdout: clip(result.stdout, 8000),
-          stderr: clip(result.stderr, 4000),
-        };
+        return report(
+          await ctx.resources
+            .sandboxHandle()
+            .exec(command, { timeoutMs: timeoutMs(timeoutSeconds) }),
+        );
       },
     });
+    if (sandbox.python === "tool") {
+      tools.run_python = createTool({
+        id: "run_python",
+        description: pythonToolDescription(sandbox),
+        inputSchema: z.object({
+          code: z.string(),
+          packages: z.array(z.string()).optional().describe("PyPI packages the code imports"),
+          timeoutSeconds: z.number().optional(),
+        }),
+        execute: async ({ code, packages, timeoutSeconds }) => {
+          await ctx.emit("tool", "Führt Python aus");
+          return report(
+            await ctx.resources.sandboxHandle().runPython!(code, {
+              packages,
+              timeoutMs: timeoutMs(timeoutSeconds),
+            }),
+          );
+        },
+      });
+    }
     tools.export_file = createTool({
       id: "export_file",
       description:
@@ -133,17 +160,17 @@ export async function buildStepTools(
         mime: z.string().describe("e.g. image/png, text/csv"),
       }),
       execute: async ({ path, mime }) => {
-        const sandbox = await ctx.resources.sandboxHandle();
-        const result = await sandbox.executeCommand!(`base64 -w0 ${JSON.stringify(path)}`, []);
-        if (result.exitCode !== 0) {
-          return { error: result.stderr || "file not found" };
+        let bytes: Uint8Array;
+        try {
+          bytes = await ctx.resources.sandboxHandle().readFile(path);
+        } catch (err) {
+          return { error: (err as Error).message || "file not found" };
         }
-        const bytes = Buffer.from(result.stdout.trim(), "base64");
         const ref = await ctx.saveAsset({
           kind: mime.startsWith("image/") ? "image" : "file",
           mime,
           name: path.split("/").pop() ?? "file",
-          data: bytes,
+          data: Buffer.from(bytes),
         });
         assets.push(ref);
         return { saved: true, assetId: ref.id };
@@ -162,12 +189,12 @@ export async function buildStepTools(
       execute: async ({ prompt, aspectRatio }) => {
         await ctx.emit("tool", "Zeichnet ein Bild");
         const media = await generateImageMedia({
-          model: env.models.image,
+          call: ctx.call,
           prompt,
           aspectRatio,
           abortSignal: ctx.signal,
         });
-        await ctx.chargeUsd(media.costUsd, "image");
+        await ctx.chargeUsd(media.costUsd);
         const ref = await ctx.saveAsset({
           kind: "image",
           mime: media.mime,

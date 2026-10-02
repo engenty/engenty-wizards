@@ -1,0 +1,154 @@
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import type { Step, TextClass, WizardDefinition } from "../shared/definition.js";
+import type { RunEstimate, StepEstimate } from "../shared/run.js";
+import { MICROS_PER_CREDIT } from "./credits.js";
+import { db, schema } from "./db/client.js";
+import { type ClassPrice, classCatalog, type GatewayCatalog } from "./models.js";
+
+/**
+ * What a run will cost, in credits, before it starts. A step that has run five times on this
+ * version is estimated from its measurements (median, and the 90th percentile as the amount to
+ * hold); until then a formula per step type and model class stands in.
+ */
+const MIN_SAMPLES = 5;
+const SAMPLE_RUNS = 40;
+
+/** Tokens a text call of each shape takes, as [input, output]. */
+const TOKENS = {
+  plain: [8_000, 1_500],
+  tools: [60_000, 4_000],
+  browser: [250_000, 8_000],
+  document: [6_000, 8_000],
+  prompt: [2_000, 300],
+  structure: [4_000, 1_000],
+} as const;
+
+function textCredits(price: ClassPrice | null | undefined, [input, output]: readonly number[]) {
+  if (!price) {
+    return 0;
+  }
+  return (
+    (input / 1e6) * (price.inputCreditsPerMTok ?? 0) +
+    (output / 1e6) * (price.outputCreditsPerMTok ?? 0)
+  );
+}
+
+function formula(step: Step, catalog: GatewayCatalog): number {
+  const cls = (c: TextClass) => catalog.classes[c];
+  if (step.type === "agent") {
+    const shape = step.tools.includes("browser")
+      ? TOKENS.browser
+      : step.tools.length || step.mcp?.length || step.connections?.length
+        ? TOKENS.tools
+        : TOKENS.plain;
+    let credits = textCredits(cls(step.model ?? "high"), shape);
+    if (step.tools.includes("web_search")) {
+      credits += 4 * catalog.webSearchCredits;
+    }
+    if (step.tools.includes("image")) {
+      credits += catalog.classes.image?.creditsPerImage ?? 0;
+    }
+    if (step.output.format === "json") {
+      credits += textCredits(cls("classifier"), TOKENS.structure);
+    }
+    return credits;
+  }
+  if (step.type === "generate") {
+    if (step.asset === "image") {
+      return (
+        (catalog.classes.image?.creditsPerImage ?? 0) + textCredits(cls("standard"), TOKENS.prompt)
+      );
+    }
+    if (step.asset === "video") {
+      const seconds = Math.min(Math.max(Math.round(step.options?.duration ?? 8), 4), 10);
+      return (
+        seconds * (catalog.classes.video?.creditsPerSecond ?? 0) +
+        textCredits(cls("standard"), TOKENS.prompt)
+      );
+    }
+    return textCredits(cls(step.model ?? "high"), TOKENS.document);
+  }
+  return 0;
+}
+
+function percentile(sorted: number[], p: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+}
+
+/** Credits each step cost in the latest finished runs of this wizard version. */
+async function measurements(
+  wizardId: string,
+  version: number | null,
+): Promise<Map<string, number[]>> {
+  const runs = await db
+    .select({ id: schema.run.id })
+    .from(schema.run)
+    .where(
+      and(
+        eq(schema.run.wizardId, wizardId),
+        eq(schema.run.status, "done"),
+        version === null ? isNull(schema.run.version) : eq(schema.run.version, version),
+      ),
+    )
+    .orderBy(desc(schema.run.createdAt))
+    .limit(SAMPLE_RUNS);
+  const out = new Map<string, number[]>();
+  if (!runs.length) {
+    return out;
+  }
+  const costs = await db
+    .select()
+    .from(schema.runCost)
+    .where(
+      inArray(
+        schema.runCost.runId,
+        runs.map((r) => r.id),
+      ),
+    );
+  for (const c of costs) {
+    const list = out.get(c.stepId) ?? [];
+    list.push(c.micros / MICROS_PER_CREDIT);
+    out.set(c.stepId, list);
+  }
+  return out;
+}
+
+const round = (credits: number) => Math.round(credits * 10) / 10;
+
+export async function estimateRun(
+  wizardId: string,
+  version: number | null,
+  definition: WizardDefinition,
+): Promise<RunEstimate> {
+  const catalog = await classCatalog();
+  if (!catalog) {
+    // A runtime that resolves models itself has no credits to estimate in.
+    return { available: false, credits: 0, reserve: 0, steps: {} };
+  }
+  const measured = await measurements(wizardId, version);
+  const steps: Record<string, StepEstimate> = {};
+  let credits = 0;
+  let reserve = 0;
+  for (const step of definition.steps) {
+    const samples = (measured.get(step.id) ?? []).sort((a, b) => a - b);
+    let estimate: StepEstimate;
+    if (samples.length >= MIN_SAMPLES) {
+      estimate = {
+        credits: round(percentile(samples, 0.5)),
+        high: round(percentile(samples, 0.9)),
+        measured: true,
+      };
+    } else {
+      const value = formula(step, catalog);
+      if (value <= 0) {
+        continue;
+      }
+      // A formula knows little: hold twice as much as it says.
+      estimate = { credits: round(value), high: round(value * 2), measured: false };
+    }
+    steps[step.id] = estimate;
+    credits += estimate.credits;
+    reserve += estimate.high;
+  }
+  return { available: true, credits: round(credits), reserve: Math.ceil(reserve), steps };
+}

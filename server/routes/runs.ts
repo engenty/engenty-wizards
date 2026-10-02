@@ -1,6 +1,6 @@
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { and, eq } from "drizzle-orm";
-import { type Context, Hono } from "hono";
+import { type Context, Hono, type MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { nanoid } from "nanoid";
@@ -8,16 +8,18 @@ import { z } from "zod";
 import { FORMATS, LIST_FORMATS } from "../../shared/definition.js";
 import { TableColumnValueError } from "../../shared/engenty/data-tables/index.js";
 import type { PublicWizard } from "../../shared/run.js";
-import { sessionUser } from "../auth.js";
+import { principalOf } from "../auth/index.js";
 import {
   ConnectError,
   connectionViews,
   connectWithCredentials,
   disconnect,
   finishOAuth,
+  oauthStateRun,
   startOAuth,
 } from "../connectors/index.js";
-import { db, schema } from "../db/client.js";
+import { tenantOfLink, tenantOfRun, tenantStatus, visitorOverLimit } from "../control.js";
+import { db, schema, withTenant } from "../db/client.js";
 import { listDownload, renderDownload, stepHtml } from "../downloads.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
 import { signalChanged, subscribe } from "../engine/events.js";
@@ -26,6 +28,7 @@ import {
   cancel,
   createRun,
   goBack,
+  NoCreditsError,
   projectIdOf,
   RunConflict,
   RunInputError,
@@ -35,7 +38,8 @@ import {
   submitPage,
 } from "../engine/runner.js";
 import { env } from "../env.js";
-import { hashIp, verifyTurnstile, visitorOverLimit, wizardUnavailable } from "../limits.js";
+import { reverseGeocode } from "../geocode.js";
+import { hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
@@ -54,6 +58,7 @@ import {
   storeFiles,
   updateRow,
 } from "../store/index.js";
+import { byteRange, uploadLimit, wizardManifest } from "./delivery.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -100,8 +105,8 @@ async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean
   if (vid && run.visitorId === vid) {
     return run;
   }
-  const user = await sessionUser(c.req.raw.headers);
-  if (user && user.id === run.ownerId) {
+  const user = await principalOf(c);
+  if (user && user.tenantId === run.tenantId) {
     return run;
   }
   return null;
@@ -122,7 +127,32 @@ function commandError(c: Context, err: unknown) {
   throw err;
 }
 
+/**
+ * These routes arrive without a session. The tenant comes from the public token or the run id
+ * in the path — looked up in the control database, never taken from the request.
+ */
+function tenantFrom(find: (c: Context) => Promise<string | null>): MiddlewareHandler {
+  return async (c, next) => {
+    const tenant = await find(c);
+    if (!tenant) {
+      return c.json({ error: "not found" }, 404);
+    }
+    if ((await tenantStatus(tenant)) === "suspended") {
+      return c.json({ error: "Dieser Wizard ist gerade nicht verfügbar." }, 403);
+    }
+    return withTenant(tenant, next);
+  };
+}
+
+const wizardLink = tenantFrom((c) => tenantOfLink(c.req.param("token") ?? "", "wizard"));
+const resultLink = tenantFrom((c) => tenantOfLink(c.req.param("token") ?? "", "result"));
+const logoLink = tenantFrom((c) => tenantOfLink(c.req.param("id") ?? "", "logo"));
+const runTenant = tenantFrom((c) => tenantOfRun(c.req.param("id") ?? ""));
+
 export const publicRoutes = new Hono()
+  .use("/wizards/:token", wizardLink)
+  .use("/wizards/:token/*", wizardLink)
+  .use("/logos/:id", logoLink)
   .get("/wizards/:token", async (c) => {
     const w = await db.query.wizard.findFirst({
       where: eq(schema.wizard.shareToken, c.req.param("token")),
@@ -186,17 +216,43 @@ export const publicRoutes = new Hono()
         eq(schema.wizardVersion.version, w.publishedVersion),
       ),
     });
-    const runId = await createRun({
-      wizardId: w.id,
-      ownerId: w.ownerId,
-      definition: version!.definition,
-      files: version!.files,
-      version: w.publishedVersion,
-      mode: "live",
-      visitorId: vid,
-      ipHash,
+    try {
+      const runId = await createRun({
+        wizardId: w.id,
+        definition: version!.definition,
+        files: version!.files,
+        version: w.publishedVersion,
+        mode: "live",
+        visitorId: vid,
+        ipHash,
+      });
+      return c.json({ runId });
+    } catch (err) {
+      if (err instanceof NoCreditsError) {
+        return c.json({ error: "Dieser Wizard ist gerade nicht verfügbar." }, 403);
+      }
+      throw err;
+    }
+  })
+  // A published wizard as an app of its own: added to a phone's home screen it opens on its link.
+  .get("/wizards/:token/manifest.webmanifest", async (c) => {
+    const w = await db.query.wizard.findFirst({
+      where: eq(schema.wizard.shareToken, c.req.param("token")),
     });
-    return c.json({ runId });
+    if (!w || w.publishedVersion === null) {
+      return c.notFound();
+    }
+    const version = await db.query.wizardVersion.findFirst({
+      where: and(
+        eq(schema.wizardVersion.wizardId, w.id),
+        eq(schema.wizardVersion.version, w.publishedVersion),
+      ),
+    });
+    const def = version!.definition;
+    return c.body(JSON.stringify(wizardManifest(w.shareToken, def.title, def.description)), 200, {
+      "content-type": "application/manifest+json; charset=utf-8",
+      "cache-control": "public, max-age=300",
+    });
   })
   .get("/logos/:id", async (c) => {
     const found = await loadAsset(c.req.param("id"));
@@ -210,6 +266,8 @@ export const publicRoutes = new Hono()
   });
 
 export const runRoutes = new Hono()
+  .use("/:id", runTenant)
+  .use("/:id/*", runTenant)
   .get("/:id", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
@@ -326,18 +384,38 @@ export const runRoutes = new Hono()
     }
     const form = await c.req.formData();
     const file = form.get("file");
-    if (!(file instanceof File) || file.size > 15_000_000) {
-      return c.json({ error: "Bitte eine Datei bis 15 MB wählen." }, 400);
+    // A recorder names its type with codecs ("audio/webm;codecs=opus"); the bare type is kept.
+    const mime = file instanceof File ? file.type.split(";")[0].trim().toLowerCase() : "";
+    const limit = uploadLimit(mime);
+    if (!(file instanceof File) || file.size > limit) {
+      return c.json(
+        { error: `Bitte eine Datei bis ${Math.round(limit / 1_000_000)} MB wählen.` },
+        400,
+      );
     }
     const ref = await saveAsset({
-      ownerId: run.ownerId,
       runId: run.id,
-      kind: file.type.startsWith("image/") ? "upload-image" : "upload",
-      mime: file.type || "application/octet-stream",
+      kind: mime.startsWith("image/") ? "upload-image" : "upload",
+      mime: mime || "application/octet-stream",
       name: file.name.slice(0, 120),
       data: new Uint8Array(await file.arrayBuffer()),
     });
     return c.json(ref);
+  })
+  // The address of where the person stands, for a location field — only when a geocoder is set up.
+  .post("/:id/geocode", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const { lat, lng, language } = z
+      .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        language: z.enum(["de", "en"]).default("de"),
+      })
+      .parse(await c.req.json());
+    return c.json({ label: await reverseGeocode(lat, lng, language) });
   })
   .get("/:id/assets/:assetId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"), { signed: true });
@@ -653,9 +731,10 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
   const state = c.req.query("state");
   let ok = false;
   let message = "Verbinden wurde abgebrochen.";
-  if (code && state) {
+  const tenant = state ? await tenantOfRun(oauthStateRun(state) ?? "") : null;
+  if (code && state && tenant) {
     try {
-      const done = await finishOAuth(code, state);
+      const done = await withTenant(tenant, () => finishOAuth(code, state));
       signalChanged(done.runId);
       ok = true;
       message = "Verbunden. Du kannst dieses Fenster schließen.";
@@ -696,13 +775,25 @@ async function serveAsset(c: Context, run: RunRow, assetId: string) {
   }
   // Generated HTML runs its scripts in an opaque origin and can reach nothing.
   if (found.row.mime === "text/html") {
-    const html = await stepHtml(
-      { assets: [{ id: assetId, kind: found.row.kind, mime: found.row.mime, name: "" }], at: "" },
-      run.ownerId,
-    );
+    const html = await stepHtml({
+      assets: [{ id: assetId, kind: found.row.kind, mime: found.row.mime, name: "" }],
+      at: "",
+    });
     headers["content-type"] = "text/html; charset=utf-8";
     headers["content-security-policy"] = HTML_RESPONSE_CSP;
     return c.body(new TextEncoder().encode(html ?? ""), 200, headers);
+  }
+  if (/^(audio|video)\//.test(found.row.mime)) {
+    headers["accept-ranges"] = "bytes";
+    const size = found.data.byteLength;
+    const range = byteRange(c.req.header("range"), size);
+    if (range === "unsatisfiable") {
+      return c.body(null, 416, { "content-range": `bytes */${size}` });
+    }
+    if (range) {
+      headers["content-range"] = `bytes ${range.start}-${range.end}/${size}`;
+      return c.body(new Uint8Array(found.data.subarray(range.start, range.end + 1)), 206, headers);
+    }
   }
   return c.body(new Uint8Array(found.data), 200, headers);
 }
@@ -722,7 +813,6 @@ async function serveDownload(c: Context, run: RunRow, stepId: string, rawFormat?
     output,
     format.data,
     `${run.definition.title} ${label ?? step.title}`,
-    run.ownerId,
   );
   if (!download) {
     return c.notFound();
@@ -741,6 +831,8 @@ function sharedStepIds(run: RunRow): Set<string> {
 
 /** `/api/shares/:token` — a shared result, readable by anyone holding the link until it expires. */
 export const shareRoutes = new Hono()
+  .use("/:token", resultLink)
+  .use("/:token/*", resultLink)
   .get("/:token", async (c) => {
     const run = await sharedRun(c.req.param("token"));
     if (!run) {

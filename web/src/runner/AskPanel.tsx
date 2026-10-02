@@ -69,7 +69,7 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
       {error ? (
         <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
       ) : null}
-      <div className="mt-6 flex items-center justify-between gap-3">
+      <div className="action-bar mt-6 flex items-center justify-between gap-3">
         <Button variant="ghost" disabled={busy} onClick={() => void answer({ type: "skip" })}>
           {t("ask.deny")}
         </Button>
@@ -160,7 +160,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
           onClick={click}
           className="block w-full cursor-pointer"
         />
-        <div className="flex items-center gap-1.5 border-border-soft border-t bg-card p-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-border-soft border-t bg-card p-2">
           <Input
             type={hidden ? "password" : "text"}
             autoComplete="off"
@@ -173,13 +173,17 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
                 void act({ type: "type", text }).then(() => setText(""));
               }
             }}
-            className="h-9 text-[13px]"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="send"
+            className="h-9 min-w-[9rem] flex-1 basis-full text-[13px] sm:basis-0 coarse:h-11"
           />
           <button
             type="button"
             onClick={() => setHidden((h) => !h)}
             className={cn(
-              "h-9 shrink-0 rounded-md px-2.5 text-[12px]",
+              "h-9 shrink-0 rounded-md px-2.5 text-[12px] coarse:h-11 coarse:px-3.5",
               hidden ? "bg-ember-veil text-ink" : "text-ink-3 hover:bg-paper-2",
             )}
           >
@@ -213,6 +217,10 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
                 autoFocus={i === 0}
                 type={f.secret ? "password" : "text"}
                 autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint={i === ask.fields.length - 1 ? "go" : "next"}
                 value={values[f.id] ?? ""}
                 onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}
               />
@@ -233,7 +241,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
         <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="action-bar mt-6 flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" disabled={busy} onClick={() => void answer({ type: "skip" })}>
           {t("ask.skip")}
         </Button>
@@ -281,7 +289,7 @@ function ToolButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink"
+      className="flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink coarse:size-11"
     >
       {children}
     </button>

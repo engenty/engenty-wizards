@@ -52,7 +52,7 @@ export const STARTERS: Starter[] = [
             "Schreibe einen Post für X (Twitter) zum Thema: {{topic}}. Ton: {{tone}}. Höchstens 270 Zeichen inklusive Link und höchstens zwei Hashtags. Wenn ein Link angegeben ist ({{link}}), setze ihn ans Ende. Ein starker erster Satz. Nur den Post ausgeben.",
           tools: [],
           output: { format: "text" },
-          model: "fast",
+          model: "standard",
         },
         {
           id: "visual",
@@ -159,7 +159,7 @@ export const STARTERS: Starter[] = [
               { id: "cta", kind: "text", description: "Handlungsaufforderung" },
             ],
           },
-          model: "smart",
+          model: "high",
         },
         {
           id: "concept",
@@ -248,7 +248,7 @@ export const STARTERS: Starter[] = [
             "Recherchiere gründlich im Web zum Thema: {{topic}}. Schwerpunkt: {{focus}}. Nutze mindestens sechs glaubwürdige, möglichst aktuelle Quellen und öffne die wichtigsten Seiten. Sammle Fakten mit Zahlen, Daten und Zitaten; notiere zu jedem Fakt die Quelle (Titel + URL). Gib strukturierte Recherche-Notizen aus, keine fertige Zusammenfassung.",
           tools: ["web_search", "web_fetch"],
           output: { format: "markdown" },
-          model: "smart",
+          model: "high",
         },
         {
           id: "briefing",
@@ -329,7 +329,7 @@ export const STARTERS: Starter[] = [
               { id: "sources", kind: "list", description: "Quellen als 'Titel – URL'" },
             ],
           },
-          model: "smart",
+          model: "high",
         },
         {
           id: "dashboard",
@@ -544,7 +544,7 @@ export const STARTERS: Starter[] = [
             "Schreibe für ein Angebot an {{customer}} (Ansprechperson: {{contact}}) eine persönliche Einleitung (3–4 Sätze) und eine klare Leistungsbeschreibung mit Zwischenüberschriften und Aufzählungen. Vorhaben: {{project}}. Diese Positionen werden angeboten:\n{{items}}\nKeine Preise wiederholen, keine Summen.",
           tools: [],
           output: { format: "markdown" },
-          model: "smart",
+          model: "high",
         },
         {
           id: "pitchCheck",
@@ -579,6 +579,127 @@ export const STARTERS: Starter[] = [
           deliverables: [
             { from: "offer", label: "Angebot", formats: ["pdf", "docx", "html"] },
             { from: "pitch", label: "Text", formats: ["md", "docx"] },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "damage",
+    title: "Schadensmeldung",
+    pitch:
+      "Vor Ort mit dem Handy: Fotos, Standort, Sprachnotiz, Unterschrift – fertig ist der Bericht.",
+    definition: {
+      version: 1,
+      title: "Schaden melden",
+      description:
+        "Fotos, Ort und eine kurze Sprachnotiz – daraus wird ein Schadensbericht als PDF.",
+      avatar: "pebble",
+      intro: "Mach ein paar Fotos und erzähl kurz, was passiert ist – den Bericht schreibe ich.",
+      steps: [
+        {
+          id: "photos",
+          type: "page",
+          title: "Was ist beschädigt?",
+          fields: [
+            {
+              id: "photos",
+              label: "Fotos vom Schaden",
+              kind: "image",
+              multiple: true,
+              required: true,
+              help: "Eine Übersicht und ein, zwei Nahaufnahmen.",
+            },
+            {
+              id: "objectId",
+              label: "Kennzeichen, Serien- oder Inventarnummer",
+              kind: "text",
+              scan: true,
+              help: "Eintippen – oder den Code am Gerät scannen.",
+            },
+          ],
+        },
+        {
+          id: "where",
+          type: "page",
+          title: "Wo und wann?",
+          fields: [
+            { id: "place", label: "Ort des Schadens", kind: "location", required: true },
+            { id: "happenedOn", label: "Wann ist es passiert?", kind: "date" },
+          ],
+        },
+        {
+          id: "what",
+          type: "page",
+          title: "Was ist passiert?",
+          fields: [
+            {
+              id: "note",
+              label: "Erzähl es kurz",
+              kind: "audio",
+              help: "Was ist passiert, was ist kaputt, wer war dabei?",
+            },
+            {
+              id: "details",
+              label: "Oder schreib es auf",
+              kind: "textarea",
+              placeholder: "z. B. Beim Ausparken die Stoßstange hinten links eingedrückt.",
+            },
+          ],
+        },
+        {
+          id: "who",
+          type: "page",
+          title: "Wer meldet den Schaden?",
+          cta: "Bericht erstellen",
+          fields: [
+            { id: "reporter", label: "Dein Name", kind: "text", required: true },
+            { id: "contact", label: "E-Mail für Rückfragen", kind: "email" },
+            {
+              id: "signature",
+              label: "Unterschrift",
+              kind: "signature",
+              required: true,
+              help: "Damit bestätigst du, dass die Angaben stimmen.",
+            },
+          ],
+        },
+        {
+          id: "summary",
+          type: "agent",
+          title: "Schaden beschreiben",
+          working: "Sieht sich die Fotos an und fasst zusammen …",
+          instructions:
+            "Schreibe die sachliche Beschreibung für einen Schadensbericht. Sieh dir zuerst jedes Foto mit read_document an ({{photos}}) und beschreibe, was darauf zu sehen ist.\n\nWas die Person erzählt hat (Sprachnotiz, wörtlich): {{note}}\nWas sie dazu geschrieben hat: {{details}}\nBetroffenes Objekt: {{objectId}}\nOrt: {{place}}\nDatum des Schadens: {{happenedOn}}\n\nGliederung: „Hergang“ (2–4 Sätze, nur was gesagt oder geschrieben wurde), „Schäden“ (Aufzählung: was laut Fotos und Schilderung beschädigt ist), „Offene Punkte“ (was für die Bearbeitung noch fehlt – nur wenn etwas fehlt). Nichts erfinden, keine Schuldzuweisung, keine Kostenschätzung. Gib nur diese Abschnitte aus – ohne Einleitung, ohne Titel darüber, ohne Bemerkungen zu deiner Arbeit.",
+          tools: [],
+          output: { format: "markdown" },
+          model: "standard",
+        },
+        {
+          id: "report",
+          type: "generate",
+          title: "Bericht erstellen",
+          working: "Setzt den Schadensbericht …",
+          asset: "document",
+          prompt:
+            "Schadensbericht, erstellt am {{today}}.\n\nKopfdaten als kleine Tabelle:\n- Gemeldet von: {{reporter}} ({{contact}})\n- Betroffenes Objekt: {{objectId}}\n- Ort: {{place}}\n- Karte: {{place.map}} (als Link „Auf der Karte ansehen“)\n- Datum des Schadens: {{happenedOn}}\n\nBeschreibung – wörtlich übernehmen:\n{{steps.summary}}\n\nDanach ein Abschnitt „Fotos“: alle Fotos der Person in einem Raster mit zwei Spalten, jedes mit der Bildunterschrift „Foto 1“, „Foto 2“ …\n\nAm Ende der Unterschriftsblock: das Bild der Unterschrift ({{signature}}, etwa 60 mm breit) über einer Linie, darunter „{{reporter}}, {{today}}“. Leere Angaben weglassen.",
+          options: { template: "report" },
+        },
+        {
+          id: "check",
+          type: "review",
+          title: "Stimmt der Bericht?",
+          show: ["report"],
+          regenerate: true,
+        },
+        {
+          id: "done",
+          type: "result",
+          title: "Schadensbericht fertig",
+          message: "Lade ihn herunter oder teile ihn direkt vom Handy.",
+          deliverables: [
+            { from: "report", label: "Schadensbericht", formats: ["pdf", "docx", "html"] },
+            { from: "summary", label: "Beschreibung", formats: ["md", "txt"] },
           ],
         },
       ],

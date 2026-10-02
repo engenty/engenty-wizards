@@ -16,8 +16,7 @@ import {
 } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
-import { env } from "../env.js";
-import { gatewayTools, languageModel, tokenCostUsd } from "../models.js";
+import { costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
@@ -128,7 +127,7 @@ async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string; i
   }
 }
 
-function buildTools(input: ArchitectInput, wrote: () => void) {
+function buildTools(input: ArchitectInput, resolved: ResolvedModel<unknown>, wrote: () => void) {
   const { userId, wizardId } = input;
   const signal = input.signal;
   const projectId = async () => (await ownedWizard(userId, wizardId)).projectId;
@@ -381,12 +380,10 @@ function buildTools(input: ArchitectInput, wrote: () => void) {
       },
     }),
   };
-  const vendor = env.models.architect.replace(/^[a-z]+:/, "").split("/")[0];
-  const gw = gatewayTools();
-  if (vendor === "anthropic") {
+  if (resolved.vendor === "anthropic") {
     tools.web_search = anthropic.tools.webSearch_20250305({ maxUses: 5 });
-  } else if (gw) {
-    tools.web_search = gw.perplexitySearch({ maxResults: 6 });
+  } else if (resolved.gateway) {
+    tools.web_search = gatewayTools.perplexitySearch({ maxResults: 6 });
   }
   return tools;
 }
@@ -396,6 +393,8 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
   const w = await ownedWizard(input.userId, input.wizardId);
   const files = await listFiles(input.userId, input.wizardId);
   let changed = false;
+  // Building a wizard is the hardest job here: widgets are code.
+  const resolved = await textModel("highest");
   const agent = new Agent({
     id: "architect",
     name: "Architect",
@@ -405,8 +404,8 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
       content: systemPrompt(input.mcpServers, input.connectors),
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
-    model: languageModel(env.models.architect) as unknown as MastraModelConfig,
-    tools: buildTools(input, () => {
+    model: resolved.model as unknown as MastraModelConfig,
+    tools: buildTools(input, resolved, () => {
       changed = true;
     }),
   });
@@ -485,10 +484,6 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
     reply: reply.trim(),
     changed,
     unfinished: steps >= MAX_STEPS,
-    costUsd: tokenCostUsd(env.models.architect, {
-      inputTokens: usage?.inputTokens ?? 0,
-      outputTokens: usage?.outputTokens ?? 0,
-      cachedInputTokens: usage?.cachedInputTokens ?? usage?.inputTokenDetails?.cacheReadTokens ?? 0,
-    }),
+    costUsd: costOf(resolved, usage),
   };
 }

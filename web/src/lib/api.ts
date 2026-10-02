@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -6,6 +8,11 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+/** The request never reached the server: no network, a tunnel, a phone switching cells. */
+export function isOffline(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 0;
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -17,6 +24,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         ? { "content-type": "application/json" }
         : undefined,
     body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+  }).catch(() => {
+    throw new ApiError(t("common.offline"), 0, null);
   });
   const text = await res.text();
   const data = text ? safeJson(text) : null;

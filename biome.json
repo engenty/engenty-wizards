@@ -10,7 +10,9 @@
       "!web/src/engenty",
       "!server/engenty/**",
       "server/engenty/shims/**",
-      "!shared/engenty"
+      "!shared/engenty",
+      "!!**/.claude",
+      "!!desktop"
     ]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },

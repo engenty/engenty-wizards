@@ -203,24 +203,33 @@ function cellValue(column: TableColumn, text: string): unknown {
 function CellInput({
   column,
   value,
+  boxed,
   onCommit,
 }: {
   column: TableColumn;
   value: unknown;
+  /** On a card (phone) the input shows its own ground; in the table the cell is the frame. */
+  boxed?: boolean;
   onCommit: (value: unknown) => void;
 }) {
   const [text, setText] = useState(inputText(value));
   useEffect(() => setText(inputText(value)), [value]);
-  const base =
-    "h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 text-[13px] outline-none hover:bg-paper-2 focus:border-ember focus:bg-card";
+  const base = cn(
+    "w-full min-w-0 rounded-md border border-transparent px-2 text-[13px] outline-none focus:border-ember focus:bg-card",
+    boxed ? "h-11 bg-paper-2" : "h-9 bg-transparent hover:bg-paper-2 coarse:h-11",
+  );
   if (column.type === "boolean") {
     return (
-      <input
-        type="checkbox"
-        checked={value === true}
-        onChange={(e) => onCommit(e.target.checked)}
-        className="size-4 accent-[var(--ember)]"
-      />
+      // The box stays small; the label around it is the full touch target.
+      <label className="flex size-9 cursor-pointer items-center justify-center coarse:size-11">
+        <input
+          type="checkbox"
+          aria-label={column.name}
+          checked={value === true}
+          onChange={(e) => onCommit(e.target.checked)}
+          className="size-4 accent-[var(--ember)] coarse:size-6"
+        />
+      </label>
     );
   }
   if (column.type === "select" && !column.format.multiple && !column.format.allowCustom) {
@@ -245,6 +254,8 @@ function CellInput({
       aria-label={column.name}
       type={column.type === "date" && column.format.kind === "date" ? "date" : "text"}
       inputMode={column.type === "number" ? "decimal" : undefined}
+      enterKeyHint="done"
+      autoComplete="off"
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
@@ -290,9 +301,81 @@ export function ListTable({
   if (!rows.length && !editable) {
     return <p className="text-[14px] text-ink-3">{t("list.empty")}</p>;
   }
+  const wide = (c: TableColumn, i: number) =>
+    i === 0 || (c.type === "text" && c.format?.style === "multiline");
+  const commitCell = (rowId: string, columnId: string, value: unknown) =>
+    void call(() => api.patch(`${base}/${rowId}`, { cells: { [columnId]: value } }));
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg ring-1 ring-border-soft">
+      {/* A phone shows each row as a card of labelled cells; a table would scroll sideways. */}
+      <div className="flex flex-col gap-2 sm:hidden">
+        {rows.map((row) => (
+          <div key={row.id} className="rounded-lg bg-paper p-2 ring-1 ring-border-soft">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              {def.columns.map((c, i) => (
+                <div key={c.id} className={cn("min-w-0", wide(c, i) && "col-span-2")}>
+                  <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                  {editable ? (
+                    <CellInput
+                      boxed
+                      column={c}
+                      value={row.cells[c.id]}
+                      onCommit={(value) => commitCell(row.id, c.id, value)}
+                    />
+                  ) : (
+                    <div
+                      className={cn(
+                        "break-words px-1 text-[14px]",
+                        c.type === "number" && "tabular-nums",
+                      )}
+                    >
+                      {formatTableCell(c, row.cells[c.id], lang) || "—"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {editable ? (
+              <div className="mt-1 flex justify-end">
+                <IconButton
+                  label={t("list.delete")}
+                  onClick={() => void call(() => api.del(`${base}/${row.id}`))}
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              </div>
+            ) : null}
+          </div>
+        ))}
+        {editable ? (
+          <div className="rounded-lg border border-input border-dashed p-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              {def.columns.map((c, i) => (
+                <div key={c.id} className={cn("min-w-0", wide(c, i) && "col-span-2")}>
+                  <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                  <CellInput
+                    boxed
+                    column={c}
+                    value={draft[c.id]}
+                    onCommit={(value) => setDraft((d) => ({ ...d, [c.id]: value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="secondary"
+                size="sm"
+                // The cell being typed in commits on blur, just before this click lands.
+                onClick={() => (hasDraft ? void addRow() : undefined)}
+              >
+                <Plus className="size-4" /> {t("run.addRow")}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="hidden overflow-x-auto rounded-lg ring-1 ring-border-soft sm:block">
         <table className="w-full text-[13px]">
           <thead className="bg-paper-2 text-ink-2">
             <tr>
@@ -316,11 +399,7 @@ export function ListTable({
                       <CellInput
                         column={c}
                         value={row.cells[c.id]}
-                        onCommit={(value) =>
-                          void call(() =>
-                            api.patch(`${base}/${row.id}`, { cells: { [c.id]: value } }),
-                          )
-                        }
+                        onCommit={(value) => commitCell(row.id, c.id, value)}
                       />
                     ) : (
                       <span className={cn(c.type === "number" && "tabular-nums")}>
@@ -386,7 +465,7 @@ export function ListDownloads({ runId, list }: { runId: string; list: ShownList 
         <a
           key={f}
           href={`/api/runs/${runId}/lists/${list.def.id}/download?format=${f}`}
-          className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink"
+          className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink coarse:h-11 coarse:px-4"
         >
           {LIST_FORMAT_LABEL[f] ?? f}
         </a>
@@ -432,7 +511,7 @@ export function StoreButton({ runId }: { runId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-[13px] text-ink-4 transition hover:text-ink-2"
+        className="inline-flex items-center gap-1.5 text-[13px] text-ink-4 transition hover:text-ink-2 coarse:min-h-11"
       >
         <Database className="size-3.5" /> {t("store.open")}
       </button>
@@ -482,7 +561,7 @@ export function StoreButton({ runId }: { runId: string }) {
                     <li key={f.path} className="border-border-soft border-b last:border-0">
                       <a
                         href={`/api/runs/${runId}/store/files/${f.path}`}
-                        className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2"
+                        className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
                         title={f.source ?? undefined}
                       >
                         <FileText className="size-3.5 shrink-0 text-ink-3" />

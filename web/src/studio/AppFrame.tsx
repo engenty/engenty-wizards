@@ -3,23 +3,33 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Logo, ThemeToggle } from "../brand";
 import { t } from "../lib/i18n";
-import { type Me, signOut } from "../lib/session";
+import { type Me, signOut, spendableCredits } from "../lib/session";
 import { cn } from "../ui";
 
+/** Where credits are bought: the Manage-App of the runtime, or of the linked account. */
+function billingUrl(me: Me): string | null {
+  const base = me.manageUrl ?? me.account?.url ?? null;
+  return base ? `${base}/billing` : null;
+}
+
 export function CreditsPill({ me }: { me: Me }) {
-  const navigate = useNavigate();
-  const low = me.billing.credits < 50;
+  const credits = spendableCredits(me);
+  const url = billingUrl(me);
+  if (credits === null || !url) {
+    return null;
+  }
   return (
-    <button
-      type="button"
-      onClick={() => navigate("/billing")}
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
       className={cn(
-        "h-8 rounded-full px-3 font-medium text-[13px] tabular-nums transition",
-        low ? "bg-amber-tint text-ink" : "bg-paper-2 text-ink-2 hover:text-ink",
+        "flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium text-[13px] tabular-nums transition",
+        credits < 50 ? "bg-amber-tint text-ink" : "bg-paper-2 text-ink-2 hover:text-ink",
       )}
     >
-      {t("nav.credits", { n: me.billing.credits.toLocaleString() })}
-    </button>
+      {t("nav.credits", { n: credits.toLocaleString() })}
+    </a>
   );
 }
 
@@ -49,8 +59,8 @@ export function UserMenu({ me }: { me: Me }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[13px] text-ember-strong ring-1 ring-border-soft"
-        aria-label={me.user.name}
+        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[13px] text-ember-strong ring-1 ring-border-soft"
+        aria-label={me.user.name || "Menu"}
       >
         {me.user.image ? (
           <img src={me.user.image} alt="" className="size-full object-cover" />
@@ -67,12 +77,16 @@ export function UserMenu({ me }: { me: Me }) {
           <button type="button" className={item} onClick={() => navigate("/settings")}>
             <Settings className="size-4" /> {t("nav.settings")}
           </button>
-          <button type="button" className={item} onClick={() => navigate("/billing")}>
-            <CreditCard className="size-4" /> {t("nav.billing")}
-          </button>
-          <button type="button" className={item} onClick={() => void signOut()}>
-            <LogOut className="size-4" /> {t("nav.logout")}
-          </button>
+          {me.manageUrl ? (
+            <a className={item} href={`${me.manageUrl}/account`} target="_blank" rel="noreferrer">
+              <CreditCard className="size-4" /> {t("nav.account")}
+            </a>
+          ) : null}
+          {me.mode === "managed" ? (
+            <button type="button" className={item} onClick={() => void signOut()}>
+              <LogOut className="size-4" /> {t("nav.logout")}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -82,7 +96,7 @@ export function UserMenu({ me }: { me: Me }) {
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 bg-background/85 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-4 backdrop-blur-md sm:gap-3 sm:px-6">
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
       <ThemeToggle />

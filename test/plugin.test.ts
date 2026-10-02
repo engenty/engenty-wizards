@@ -7,16 +7,15 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const dir = mkdtempSync(join(tmpdir(), "wizards-plugin-"));
 process.env.DATA_DIR = dir;
-process.env.DATABASE_URL = `file:${join(dir, "test.db")}`;
 process.env.APP_URL = "https://wizards.example.com";
 
 type App = { fetch: (req: Request) => Response | Promise<Response> };
 let app: App;
 
 beforeAll(async () => {
-  await (await import("../server/db/client")).migrateDb();
+  await (await import("../server/db/client")).migrateControlDb();
   app = (await import("../server/app")).default;
-});
+}, 60_000);
 
 describe("Claude Code plugin of this deployment", () => {
   it("serves a marketplace whose archive carries this server's MCP URL", async () => {

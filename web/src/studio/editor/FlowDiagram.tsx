@@ -1,5 +1,6 @@
 import dagre from "@dagrejs/dagre";
 import type { Step, WizardDefinition } from "@shared/definition";
+import type { RunEstimate } from "@shared/run";
 import {
   type Edge,
   Handle,
@@ -15,6 +16,7 @@ import { AlertCircle, Minus, Plus, Scan } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Mascot } from "../../brand";
 import { cn } from "../../ui";
+import { useEstimate } from "./estimate";
 import { stepIcon, stepSummary, TYPE_TONE, typeLabel } from "./meta";
 
 const NODE_W = 280;
@@ -28,11 +30,13 @@ type StepData = {
   active: boolean;
   /** Just changed from elsewhere (an MCP client). */
   pulse: boolean;
+  /** What the step is expected to cost, in credits. */
+  cost: number | null;
 };
 type StartData = { title: string; avatar: string; selected: boolean };
 
 function StepNode({ data }: NodeProps<Node<StepData>>) {
-  const { step, selected, issue, active, pulse } = data;
+  const { step, selected, issue, active, pulse, cost } = data;
   const Icon = stepIcon(step);
   return (
     <div
@@ -65,7 +69,17 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
         <span className="font-medium text-[11px] text-ink-3 uppercase tracking-[0.07em]">
           {typeLabel(step)}
         </span>
-        {issue ? <AlertCircle className="ml-auto size-4 text-rose" /> : null}
+        {issue ? (
+          <AlertCircle className="ml-auto size-4 text-rose" />
+        ) : cost !== null ? (
+          <span className="ml-auto text-[11px] text-ink-3 tabular-nums">
+            ≈{" "}
+            {cost < 10
+              ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
+              : Math.round(cost)}{" "}
+            cr
+          </span>
+        ) : null}
       </div>
       <div className="mt-1.5 truncate font-display font-semibold text-[15px] text-ink">
         {step.title}
@@ -92,6 +106,7 @@ function StartNode({ data }: NodeProps<Node<StartData>>) {
 }
 
 const nodeTypes = { step: StepNode, start: StartNode };
+const NO_COSTS: RunEstimate["steps"] = {};
 
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
   const v = Array.isArray(rule.when.value)
@@ -117,6 +132,7 @@ function layout(
   issueSteps: Set<string>,
   activeStep: string | null,
   pulse: string[],
+  costs: RunEstimate["steps"],
 ) {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "TB", nodesep: 48, ranksep: 46, marginx: 20, marginy: 20 });
@@ -192,6 +208,7 @@ function layout(
           index,
           active: activeStep === s.id,
           pulse: pulse.includes(s.id),
+          cost: costs[s.id]?.credits ?? null,
         },
         draggable: false,
       } satisfies Node<StepData>;
@@ -233,6 +250,7 @@ function Inner({
   issueSteps,
   activeStep,
   pulse,
+  wizardId,
 }: {
   def: WizardDefinition;
   selected: string | null;
@@ -240,10 +258,13 @@ function Inner({
   issueSteps: Set<string>;
   activeStep: string | null;
   pulse?: string[];
+  wizardId: string;
 }) {
+  const estimate = useEstimate(wizardId, def);
+  const costs = estimate.data?.available ? estimate.data.steps : NO_COSTS;
   const { nodes, edges } = useMemo(
-    () => layout(def, selected, issueSteps, activeStep, pulse ?? []),
-    [def, selected, issueSteps, activeStep, pulse],
+    () => layout(def, selected, issueSteps, activeStep, pulse ?? [], costs),
+    [def, selected, issueSteps, activeStep, pulse, costs],
   );
   const rf = useReactFlow();
   const wrap = useRef<HTMLDivElement>(null);
@@ -311,6 +332,7 @@ export function FlowDiagram(props: {
   issueSteps: Set<string>;
   activeStep: string | null;
   pulse?: string[];
+  wizardId: string;
 }) {
   return (
     <ReactFlowProvider>

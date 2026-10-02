@@ -163,3 +163,20 @@ export interface PublicWizard {
   available: boolean;
   unavailableReason: string | null;
 }
+
+/** What a step is expected to cost, in credits. `high` is the 90th percentile once measured. */
+export interface StepEstimate {
+  credits: number;
+  high: number;
+  /** From at least five runs of this version; otherwise from a formula. */
+  measured: boolean;
+}
+
+/** What a run is expected to cost. `available` is false where no credits are involved. */
+export interface RunEstimate {
+  available: boolean;
+  credits: number;
+  /** Credits held when a run starts. */
+  reserve: number;
+  steps: Record<string, StepEstimate>;
+}

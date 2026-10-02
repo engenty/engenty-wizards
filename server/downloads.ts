@@ -48,7 +48,6 @@ export function slug(s: string): string {
 async function cachedRender(
   source: AssetRef,
   format: Format,
-  ownerId: string,
   produce: () => Promise<Uint8Array | null>,
 ): Promise<Uint8Array | null> {
   const name = `${source.id}.${format}`;
@@ -65,7 +64,6 @@ async function cachedRender(
   if (data) {
     const row = await db.query.asset.findFirst({ where: eq(schema.asset.id, source.id) });
     await saveAsset({
-      ownerId,
       runId: row?.runId ?? null,
       stepId: row?.stepId ?? null,
       kind: "render",
@@ -78,12 +76,12 @@ async function cachedRender(
 }
 
 /** The HTML a step produced, ready to show or save: images inlined, network and frames locked. */
-export async function stepHtml(output: StepOutput, ownerId: string): Promise<string | null> {
+export async function stepHtml(output: StepOutput): Promise<string | null> {
   const asset = output.assets?.find((a) => a.mime === "text/html");
   if (!asset) {
     return null;
   }
-  return guardHtml(await inlineAssetRefs(await loadAssetText(asset.id), ownerId));
+  return guardHtml(await inlineAssetRefs(await loadAssetText(asset.id)));
 }
 
 /** One step's output in one format. Conversions happen on demand. */
@@ -92,7 +90,6 @@ export async function renderDownload(
   output: StepOutput,
   format: Format,
   baseName: string,
-  ownerId: string,
 ): Promise<Download | null> {
   if (!formatsFor(step).includes(format)) {
     return null;
@@ -117,7 +114,7 @@ export async function renderDownload(
     const data =
       format === "html"
         ? html
-        : await cachedRender(source, format, ownerId, async () => {
+        : await cachedRender(source, format, async () => {
             switch (format) {
               case "png":
                 return widgetPng(html, size);
@@ -147,9 +144,9 @@ export async function renderDownload(
           }
         : null;
     }
-    const html = await inlineAssetRefs(await loadAssetText(asset.id), ownerId);
+    const html = await inlineAssetRefs(await loadAssetText(asset.id));
     const render = (produce: () => Promise<Uint8Array>) =>
-      cachedRender(asset, format, ownerId, produce) as Promise<Uint8Array>;
+      cachedRender(asset, format, produce) as Promise<Uint8Array>;
     switch (format) {
       case "html":
         return { data: guardHtml(html), mime: MIME.html, filename: file("html") };

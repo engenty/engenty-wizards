@@ -1,8 +1,10 @@
 import { eq } from "drizzle-orm";
 import { runArchitect } from "../agents/architect.js";
-import { charge, usdToMicros } from "../billing/credits.js";
+import { chatEngine, subscriptionTurn } from "../agents/subscription.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
+import { managed } from "../manage.js";
+import { hasTextModel } from "../models.js";
 import { draftFiles } from "./files.js";
 import { ownedProject } from "./projects.js";
 import { addMessage, draftIssues, ownedWizard, wizardMessages } from "./wizards.js";
@@ -24,19 +26,33 @@ export async function architectTurn(
   const project = await ownedProject(userId, w.projectId);
   const userMessageId = await addMessage(w.id, { role: "user", content: message });
   try {
-    const result = await runArchitect({
-      userId,
-      wizardId: w.id,
-      message,
-      history: history.map((m) => ({ role: m.role, content: m.content })),
-      mcpServers: project.mcpServers.map((s) => ({ id: s.id, name: s.name })),
-      connectors: await listConnectors(project.id),
-      signal: io.signal,
-      onText: io.onText,
-      onActivity: io.onActivity,
-      onBuilding: io.onBuilding,
-    });
-    await charge(userId, usdToMicros(result.costUsd), "architect");
+    // A runtime that runs alone can answer the chat on the admin's own Claude subscription.
+    const engine = managed ? "models" : await chatEngine(await hasTextModel());
+    const result =
+      engine === "claude"
+        ? {
+            ...(await subscriptionTurn({
+              wizardId: w.id,
+              message,
+              signal: io.signal,
+              onText: io.onText,
+              onActivity: io.onActivity,
+              onBuilding: io.onBuilding,
+            })),
+            unfinished: false,
+          }
+        : await runArchitect({
+            userId,
+            wizardId: w.id,
+            message,
+            history: history.map((m) => ({ role: m.role, content: m.content })),
+            mcpServers: project.mcpServers.map((s) => ({ id: s.id, name: s.name })),
+            connectors: await listConnectors(project.id),
+            signal: io.signal,
+            onText: io.onText,
+            onActivity: io.onActivity,
+            onBuilding: io.onBuilding,
+          });
     const reply = result.unfinished
       ? `${result.reply ? `${result.reply}\n\n` : ""}Ich bin noch nicht ganz fertig geworden. Schreib „weiter“, dann mache ich genau dort weiter.`
       : result.reply ||

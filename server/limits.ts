@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { and, count, eq, gte, or } from "drizzle-orm";
-import { canSpend } from "./billing/credits.js";
+import { and, count, eq, gte } from "drizzle-orm";
+import { canSpend } from "./credits.js";
 import { db, schema } from "./db/client.js";
 import { env } from "./env.js";
 
@@ -37,22 +37,10 @@ export async function wizardUnavailable(w: WizardRow): Promise<string | null> {
   if (n >= w.dailyRunLimit) {
     return "Für heute ist das Limit dieses Wizards erreicht. Bitte morgen wieder versuchen.";
   }
-  if (!(await canSpend(w.ownerId))) {
+  if (!(await canSpend())) {
     return "Dieser Wizard ist gerade nicht verfügbar.";
   }
   return null;
-}
-
-export async function visitorOverLimit(visitorId: string, ipHash: string | null): Promise<boolean> {
-  const since = new Date(Date.now() - 3600_000);
-  const who = ipHash
-    ? or(eq(schema.run.visitorId, visitorId), eq(schema.run.ipHash, ipHash))
-    : eq(schema.run.visitorId, visitorId);
-  const [{ n }] = await db
-    .select({ n: count() })
-    .from(schema.run)
-    .where(and(who, gte(schema.run.createdAt, since)));
-  return n >= env.limits.visitorRunsPerHour;
 }
 
 export async function verifyTurnstile(

@@ -1,20 +1,28 @@
-# Production: put a TLS proxy (Coolify/Traefik/Caddy) in front of port 8891 and set APP_URL.
+# One container for a runtime that runs alone on your own server: put a TLS proxy
+# (Coolify/Traefik/Caddy) in front of port 8891 and set APP_URL. The cloud runtime of a
+# Manage-App is compose.cloud.yaml.
 services:
   wizards:
     build: .
     image: engenty-wizards:latest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       APP_URL: ${APP_URL:?set APP_URL to the public https origin}
+      API_HOST: 0.0.0.0
     ports:
       - "8891:8891"
     volumes:
       - wizards-data:/data
-    # The agent sandbox (shell/code tools) starts one container per run through the host's
-    # Docker. Mounting the socket gives this service control over the host's Docker — only
-    # enable it on a host dedicated to this app.
+    # The agent sandbox (shell/code tools) is off in the image. SANDBOX=docker starts one
+    # container per run through the host's Docker. Mounting the socket gives this service
+    # control over the host's Docker — only enable it on a host dedicated to this app.
     #   environment: { SANDBOX_ENABLED: "1", SANDBOX_IMAGE: "ghcr.io/engenty/engenty-sandbox:latest" }
     #   volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+    # SANDBOX=agentos needs no socket, but the image must be built with the agentOS packages
+    # as dependencies (see .env.example).
+    #   environment: { SANDBOX_ENABLED: "1", SANDBOX: "agentos" }
 volumes:
   wizards-data:

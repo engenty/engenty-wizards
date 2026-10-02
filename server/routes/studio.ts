@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
-import { auth, enabledProviders, type SessionUser } from "../auth.js";
-import { getBilling, microsToCredits } from "../billing/credits.js";
-import { billingEnabled } from "../billing/stripe.js";
+import { MODEL_CLASSES } from "../../shared/definition.js";
+import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscription.js";
+import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
+import type { SessionUser } from "../auth/index.js";
+import { createLocalKey, deleteLocalKey, listLocalKeys } from "../auth/keys.js";
 import {
   connectorImportSchema,
   importConnector,
@@ -14,11 +16,14 @@ import {
   removeConnector,
   searchRegistry,
 } from "../connectors/external.js";
+import { balanceCredits, canSpend } from "../credits.js";
 import { env } from "../env.js";
-import { hasTextModel } from "../models.js";
+import { estimateRun } from "../estimate.js";
+import { managed } from "../manage.js";
+import { hasTextModel, LOCAL_KEYS, localModelSettings, saveLocalModels } from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { architectTurn } from "../services/architect.js";
-import { requireCredits } from "../services/credits.js";
+import { cloudCopy, publishToCloud } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
 import {
@@ -50,27 +55,36 @@ import { STARTERS } from "../starters/index.js";
 
 type Vars = { Variables: { user: SessionUser } };
 
-/** Keys a person's own MCP client (Claude Code, Cursor, Codex) signs in with. */
-const API_KEY_PREFIX = "wz_";
-
 export const studio = new Hono<Vars>()
   .get("/me", async (c) => {
     const user = c.get("user");
-    const b = await getBilling(user.id);
+    // A runtime that runs alone may be linked to an account: its credits and the cloud to publish to.
+    const linked = managed ? null : await linkedAccount();
+    const overview = linked ? await accountOverview() : null;
     return c.json({
-      user,
-      billing: {
-        plan: b.plan,
-        credits: microsToCredits(Math.max(0, b.allowanceMicros) + Math.max(0, b.topupMicros)),
-        allowance: microsToCredits(Math.max(0, b.allowanceMicros)),
-        topup: microsToCredits(Math.max(0, b.topupMicros)),
-        resetAt: b.allowanceResetAt?.toISOString() ?? null,
-        monthly: b.plan === "pro" ? env.credits.proMonthly : env.credits.freeMonthly,
-        hasCustomer: Boolean(b.stripeCustomerId),
-      },
-      billingEnabled: billingEnabled(),
-      aiReady: hasTextModel(),
-      providers: enabledProviders,
+      user: { id: user.id, name: user.name, email: user.email, image: user.image ?? null },
+      tenant: { id: user.tenantId, role: user.role },
+      mode: managed ? "managed" : "local",
+      /** The tenant's balance; null where the runtime resolves models itself. */
+      credits: managed ? await balanceCredits() : null,
+      /** Where the account, members, API keys and credits are managed. */
+      manageUrl: managed ? env.manage.url : null,
+      account: linked
+        ? {
+            name: linked.name,
+            email: linked.email,
+            credits: overview?.tenant.balanceCredits ?? null,
+            url: env.local.accountUrl,
+            cloudUrl: env.local.cloudUrl,
+            signedIn: Boolean(overview),
+          }
+        : null,
+      models: managed ? null : localModelSettings(),
+      /** Installed AI clients whose subscription can answer the studio chat. */
+      subscriptions: managed ? [] : await subscriptionClients(),
+      /** What answers the studio chat: a model of class `highest`, or the admin's own subscription. */
+      chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
+      aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
       mcpUrl: `${env.appUrl}/api/mcp`,
     });
   })
@@ -221,6 +235,22 @@ export const studio = new Hono<Vars>()
   .post("/wizards/:id/publish", async (c) =>
     c.json(await publishWizard(c.get("user").id, c.req.param("id"))),
   )
+  // What a run of the draft is expected to cost, per step and in total.
+  .get("/wizards/:id/estimate", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    return c.json(await estimateRun(w.id, null, w.draft));
+  })
+  // A runtime that runs alone: the wizard's copy in the cloud of the linked account.
+  .get("/wizards/:id/cloud", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    return c.json({ copy: managed ? null : await cloudCopy(w.id) });
+  })
+  .post("/wizards/:id/cloud", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    return c.json(await publishToCloud(c.get("user").id, c.req.param("id")));
+  })
   .post("/wizards/:id/chat", async (c) => {
     const user = c.get("user");
     const wizardId = c.req.param("id");
@@ -228,7 +258,9 @@ export const studio = new Hono<Vars>()
       .object({ message: z.string().min(1).max(8000) })
       .parse(await c.req.json());
     await ownedWizard(user.id, wizardId);
-    await requireCredits(user.id);
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
     return streamSSE(c, async (stream) => {
       const abort = new AbortController();
       stream.onAbort(() => abort.abort());
@@ -307,31 +339,52 @@ export const studio = new Hono<Vars>()
     });
   })
 
-  // --- API keys for MCP clients ------------------------------------------------
-  .get("/api-keys", async (c) => {
-    const keys = await auth.api.listApiKeys({ headers: c.req.raw.headers });
-    return c.json(
-      keys.apiKeys.map((k) => ({
-        id: k.id,
-        name: k.name,
-        start: k.start,
-        createdAt: k.createdAt,
-        lastRequest: k.lastRequest,
-      })),
-    );
-  })
+  // --- a runtime that runs alone: its keys, models and linked account -----------
+  .get("/api-keys", async (c) => (managed ? c.notFound() : c.json(await listLocalKeys())))
   .post("/api-keys", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
     const { name } = z.object({ name: z.string().min(1).max(32) }).parse(await c.req.json());
-    const created = await auth.api.createApiKey({
-      body: { name, prefix: API_KEY_PREFIX },
-      headers: c.req.raw.headers,
-    });
-    return c.json({ id: created.id, name: created.name, key: created.key });
+    return c.json(await createLocalKey(name));
   })
   .delete("/api-keys/:id", async (c) => {
-    await auth.api.deleteApiKey({
-      body: { keyId: c.req.param("id") },
-      headers: c.req.raw.headers,
-    });
+    if (managed) {
+      return c.notFound();
+    }
+    await deleteLocalKey(c.req.param("id"));
+    return c.json({ ok: true });
+  })
+  .get("/local/models", (c) => (managed ? c.notFound() : c.json(localModelSettings())))
+  .put("/local/models", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const body = z
+      .object({
+        source: z.enum(["account", "own"]).optional(),
+        bindings: z.partialRecord(z.enum(MODEL_CLASSES), z.string().max(120)).optional(),
+        ollamaUrl: z.string().max(200).optional(),
+        keys: z.partialRecord(z.enum(LOCAL_KEYS), z.string().max(400)).optional(),
+      })
+      .parse(await c.req.json());
+    await saveLocalModels(body);
+    return c.json(localModelSettings());
+  })
+  .put("/local/chat", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const { engine } = z.object({ engine: z.enum(["models", "claude"]) }).parse(await c.req.json());
+    await setChatEngine(engine);
+    return c.json({ ok: true });
+  })
+  .post("/account/link", async (c) => (managed ? c.notFound() : c.json({ url: await startLink() })))
+  .delete("/account", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    await unlink();
+    await saveLocalModels({ source: "own" });
     return c.json({ ok: true });
   });

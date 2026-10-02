@@ -1,6 +1,6 @@
 import { env } from "../env.js";
 
-/** What an MCP client may do; the consent page lists them, tools register only when granted. */
+/** What an MCP client may do; the Manage-App's consent page lists them, tools register only when granted. */
 export const SCOPES = ["wizards:read", "wizards:write", "wizards:publish", "runs:test"] as const;
 export type Scope = (typeof SCOPES)[number];
 

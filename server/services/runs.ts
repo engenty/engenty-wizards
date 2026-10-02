@@ -1,13 +1,13 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { formatsFor, type Step } from "../../shared/definition.js";
-import { MICROS_PER_CREDIT } from "../billing/credits.js";
+import { canSpend, MICROS_PER_CREDIT } from "../credits.js";
 import { db, schema } from "../db/client.js";
 import { unattended } from "../engine/asks.js";
 import { emitEvent, recentEvents, subscribe } from "../engine/events.js";
 import { createRun, RunInputError, reviewStep, submitPage } from "../engine/runner.js";
 import { signedUrl } from "../signing.js";
-import { requireCredits } from "./credits.js";
-import { notFound } from "./errors.js";
+import { currentTenant } from "../tenant.js";
+import { notFound, ServiceError } from "./errors.js";
 import { ownedWizard, requireClean, studioUrl } from "./wizards.js";
 
 type RunRow = typeof schema.run.$inferSelect;
@@ -22,10 +22,11 @@ export async function startTestRun(
 ) {
   const w = await ownedWizard(userId, wizardId);
   const { definition, files } = await requireClean(w);
-  await requireCredits(userId);
+  if (!(await canSpend())) {
+    throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+  }
   const runId = await createRun({
     wizardId: w.id,
-    ownerId: userId,
     definition,
     files,
     version: null,
@@ -102,11 +103,11 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
   void step();
 }
 
-async function ownedTestRun(userId: string, runId: string): Promise<RunRow> {
+async function ownedTestRun(_userId: string, runId: string): Promise<RunRow> {
   const run = await db.query.run.findFirst({
     where: and(
       eq(schema.run.id, runId),
-      eq(schema.run.ownerId, userId),
+      eq(schema.run.tenantId, currentTenant()),
       eq(schema.run.mode, "test"),
     ),
   });

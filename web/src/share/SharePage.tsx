@@ -4,12 +4,12 @@ import { ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { useParams } from "react-router";
 import { BRAND, Mascot } from "../brand";
-import { api } from "../lib/api";
+import { api, isOffline } from "../lib/api";
 import { lang, t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { DownloadButtons, OutputView } from "../runner/outputs";
 import { BrandHeader, useBrandAccent } from "../runner/PublicRunner";
-import { Card, Spinner } from "../ui";
+import { Button, Card, Spinner } from "../ui";
 
 /** A shared result, read-only: the deliverables, their downloads, and a way to make your own. */
 export function SharePage() {
@@ -17,7 +17,7 @@ export function SharePage() {
   const share = useQuery({
     queryKey: ["share", token],
     queryFn: () => api.get<ShareView>(`/api/shares/${token}`),
-    retry: false,
+    retry: (count, err) => isOffline(err) && count < 3,
   });
   useBrandAccent(share.data?.brand.accent);
   useStage(share.data?.wizard.avatar);
@@ -39,7 +39,14 @@ export function SharePage() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
         <Mascot kind="pebble" size={80} />
-        <p className="max-w-sm text-ink-3">{t("sharePage.gone")}</p>
+        <p className="max-w-sm text-ink-3">
+          {t(isOffline(share.error) ? "common.offline" : "sharePage.gone")}
+        </p>
+        {isOffline(share.error) ? (
+          <Button variant="secondary" onClick={() => void share.refetch()}>
+            {t("common.retry")}
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -69,7 +76,12 @@ export function SharePage() {
             <Card key={step.id} className="p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-display font-semibold text-[17px]">{label ?? step.title}</h2>
-                <DownloadButtons base={base} stepId={step.id} formats={formats} />
+                <DownloadButtons
+                  base={base}
+                  stepId={step.id}
+                  formats={formats}
+                  title={label ?? step.title}
+                />
               </div>
               <OutputView base={base} step={step} output={output} />
             </Card>
@@ -93,8 +105,8 @@ export function SharePage() {
           </a>
         ) : null}
       </main>
-      <footer className="py-6 text-center text-[12px] text-ink-4">
-        <a href="/" className="hover:text-ink-2">
+      <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
+        <a href="/" className="inline-block py-3.5 hover:text-ink-2">
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>
       </footer>

@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 /** Load `.env.local` then `.env` without overriding the real environment. */
 function loadEnvFiles() {
@@ -20,45 +21,115 @@ function loadEnvFiles() {
 loadEnvFiles();
 
 const str = (key: string, fallback = ""): string => process.env[key]?.trim() || fallback;
+
+function sandboxEngine(): "docker" | "agentos" | "off" {
+  const engine = str("SANDBOX", "docker");
+  if (str("SANDBOX_ENABLED", "1") !== "1" || engine === "off") {
+    return "off";
+  }
+  return engine === "agentos" ? "agentos" : "docker";
+}
 const num = (key: string, fallback: number): number => {
   const v = Number(process.env[key]);
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
 
+const dataDir = resolve(str("DATA_DIR", "data"));
+
+/**
+ * Signs cookies and links and derives the store's encryption key. A runtime that runs alone
+ * makes its own once and keeps it in the data folder.
+ */
+function appSecret(): string {
+  const given = str("APP_SECRET");
+  if (given) {
+    return given;
+  }
+  mkdirSync(dataDir, { recursive: true });
+  const file = join(dataDir, "secret");
+  if (!existsSync(file)) {
+    writeFileSync(file, randomBytes(32).toString("hex"), { mode: 0o600 });
+  }
+  return readFileSync(file, "utf8").trim();
+}
+
+const manageUrl = str("MANAGE_URL").replace(/\/$/, "");
+
 export const env = {
   production: process.env.NODE_ENV === "production",
   port: num("API_PORT", 8891),
+  /** Listen address; a runtime that runs alone stays on the loopback interface. */
+  host: str("API_HOST", manageUrl ? "0.0.0.0" : "127.0.0.1"),
   /** The origin people open, e.g. https://wizards.localhost — auth callbacks and links use it. */
   appUrl: str("APP_URL", "http://localhost:5181").replace(/\/$/, ""),
-  dataDir: resolve(str("DATA_DIR", "data")),
+  /** More host names this server answers under, besides APP_URL's and the loopback names. */
+  allowedHosts: str("ALLOWED_HOSTS")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean),
+  dataDir,
+  /** The control database; empty = a libSQL file in the data folder. */
   databaseUrl: str("DATABASE_URL", ""),
   databaseAuthToken: str("DATABASE_AUTH_TOKEN"),
-  authSecret: str("BETTER_AUTH_SECRET", "dev-only-secret-change-me-dev-only-secret"),
+  /** Tenant databases on a libSQL server: `{tenant}` is replaced by the tenant id. Empty = files. */
+  tenantDbUrlTemplate: str("TENANT_DB_URL_TEMPLATE"),
+  tenantDbAuthToken: str("TENANT_DB_AUTH_TOKEN", str("DATABASE_AUTH_TOKEN")),
+  authSecret: appSecret(),
   /** Where OAuth providers send people back after connecting an account; default <APP_URL>/api/connect/callback. */
   connectRedirectUrl: str("CONNECT_REDIRECT_URL"),
-  /** Encrypts connected accounts and kept browser sessions; falls back to the auth secret. */
+  /** Encrypts connected accounts and kept browser sessions; falls back to the app secret. */
   storeKey: str("STORE_ENC_KEY"),
   devLogin: process.env.NODE_ENV !== "production" && str("DEV_LOGIN") === "1",
-  devEmail: str("DEV_LOGIN_EMAIL", "dev@wizards.local"),
 
-  google: { id: str("GOOGLE_CLIENT_ID"), secret: str("GOOGLE_CLIENT_SECRET") },
-  github: { id: str("GITHUB_CLIENT_ID"), secret: str("GITHUB_CLIENT_SECRET") },
-  microsoft: { id: str("MICROSOFT_CLIENT_ID"), secret: str("MICROSOFT_CLIENT_SECRET") },
+  /**
+   * The Manage-App this runtime belongs to. Set = people sign in there, tenants come from its
+   * tokens and model calls go through its gateway. Empty = the runtime runs alone with one tenant.
+   */
+  manage: {
+    url: manageUrl,
+    gatewayUrl: str("GATEWAY_URL").replace(/\/$/, ""),
+    clientId: str("MANAGE_CLIENT_ID"),
+    clientSecret: str("MANAGE_CLIENT_SECRET"),
+    /** Authenticates this runtime at the Manage-App and the gateway, and the Manage-App here. */
+    serviceKey: str("MANAGE_SERVICE_KEY"),
+  },
+  /**
+   * A runtime that runs alone answers the studio only with a cookie, set by opening
+   * `/api/local/enter?k=<key>` once. The desktop app passes the key; else one is printed at start.
+   */
+  local: {
+    accessKey: str("LOCAL_ACCESS_KEY"),
+    /** The Manage-App a local runtime links an account to (credits, publishing). */
+    accountUrl: str("ACCOUNT_URL", "https://account.engenty-wizards.com").replace(/\/$/, ""),
+    gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty-wizards.com").replace(
+      /\/$/,
+      "",
+    ),
+    /** The cloud runtime "publish to the cloud" sends wizards to. */
+    cloudUrl: str("CLOUD_URL", "https://engenty-wizards.com").replace(/\/$/, ""),
+  },
 
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),
   openaiKey: str("OPENAI_API_KEY"),
   anthropicKey: str("ANTHROPIC_API_KEY"),
+  ollamaUrl: str("OLLAMA_URL", "http://127.0.0.1:11434/v1"),
 
+  /** What each model class runs on when this runtime resolves classes itself (own keys, Ollama). */
   models: {
-    architect: str("MODEL_ARCHITECT", "anthropic/claude-sonnet-5.5"),
-    smart: str("MODEL_SMART", "anthropic/claude-sonnet-5.5"),
-    fast: str("MODEL_FAST", "anthropic/claude-haiku-4.5"),
-    /** Reads scans and photos; must take PDFs and images. */
-    vision: str("MODEL_VISION", str("MODEL_FAST", "anthropic/claude-haiku-4.5")),
+    classifier: str("MODEL_CLASSIFIER", "anthropic/claude-haiku-4.5"),
+    standard: str("MODEL_STANDARD", "anthropic/claude-haiku-4.5"),
+    high: str("MODEL_HIGH", "anthropic/claude-sonnet-5.5"),
+    highest: str("MODEL_HIGHEST", "anthropic/claude-sonnet-5.5"),
     image: str("MODEL_IMAGE", "google/gemini-3.1-flash-image"),
     video: str("MODEL_VIDEO", "google/veo-3.1-fast-generate-001"),
+    audio: str("MODEL_AUDIO", "google/gemini-3.5-flash-lite"),
   },
 
+  /**
+   * Reverse geocoder for location fields (Nominatim's `/reverse`); unset = coordinates only,
+   * nothing about where a person stands leaves this server.
+   */
+  geocoderUrl: str("GEOCODER_URL"),
   /** CDP endpoint of a Chromium (the engenty-browser image); else a local Chrome is launched. */
   browserCdpUrl: str("BROWSER_CDP_URL"),
   chromePath: str(
@@ -69,25 +140,26 @@ export const env = {
   ),
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
+  /** What runs an agent's shell and code: a Docker container, an agentOS VM, or nothing. */
+  sandbox: sandboxEngine(),
   sandboxImage: str("SANDBOX_IMAGE", "engenty-sandbox:latest"),
-  sandboxEnabled: str("SANDBOX_ENABLED", "1") === "1",
 
-  stripe: {
-    secret: str("STRIPE_SECRET_KEY"),
-    webhookSecret: str("STRIPE_WEBHOOK_SECRET"),
-    pricePro: str("STRIPE_PRICE_PRO"),
-    priceTopup: str("STRIPE_PRICE_TOPUP"),
+  /** Assets and workspace files in an S3-compatible bucket (R2); empty = the data folder. */
+  s3: {
+    endpoint: str("S3_ENDPOINT").replace(/\/$/, ""),
+    bucket: str("S3_BUCKET"),
+    region: str("S3_REGION", "auto"),
+    accessKeyId: str("S3_ACCESS_KEY_ID"),
+    secretAccessKey: str("S3_SECRET_ACCESS_KEY"),
   },
+
   turnstile: { siteKey: str("TURNSTILE_SITE_KEY"), secret: str("TURNSTILE_SECRET_KEY") },
 
-  credits: {
-    freeMonthly: num("CREDITS_FREE_MONTHLY", 500),
-    proMonthly: num("CREDITS_PRO_MONTHLY", 3000),
-    topup: num("CREDITS_TOPUP", 2000),
-  },
   limits: {
     visitorRunsPerHour: num("LIMIT_VISITOR_RUNS_PER_HOUR", 6),
     defaultDailyRuns: num("LIMIT_DEFAULT_DAILY_RUNS", 50),
+    /** Runs of one tenant that work at the same time; the Manage-App can set another number per tenant. */
+    concurrentRuns: num("LIMIT_CONCURRENT_RUNS", 4),
     /** End-user runs (no account) and their shared links are deleted after this many days. */
     resultTtlDays: num("RESULT_TTL_DAYS", 7),
     /** What a wizard keeps for a person (lists, files, accounts) goes when unused this long. */
@@ -96,7 +168,11 @@ export const env = {
 };
 
 if (env.production) {
-  const missing = ["BETTER_AUTH_SECRET", "APP_URL"].filter((k) => !process.env[k]?.trim());
+  const required = [
+    "APP_URL",
+    ...(manageUrl ? ["APP_SECRET", "MANAGE_SERVICE_KEY", "MANAGE_CLIENT_ID"] : []),
+  ];
+  const missing = required.filter((k) => !process.env[k]?.trim());
   if (missing.length) {
     throw new Error(`Missing required environment in production: ${missing.join(", ")}`);
   }

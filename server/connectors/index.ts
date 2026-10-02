@@ -186,6 +186,11 @@ export async function startOAuth(
   });
 }
 
+/** The run an OAuth callback belongs to; its tenant is looked up before the state is used. */
+export function oauthStateRun(rawState: string): string | null {
+  return unseal<OAuthState>(rawState)?.runId ?? null;
+}
+
 export async function finishOAuth(code: string, rawState: string): Promise<OAuthState> {
   const state = unseal<OAuthState>(rawState);
   if (!state || state.exp < Date.now()) {

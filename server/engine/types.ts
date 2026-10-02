@@ -2,6 +2,7 @@ import type { WizardDefinition } from "../../shared/definition.js";
 import type { AskInput, AssetRef, RunState } from "../../shared/run.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
 import type { schema } from "../db/client.js";
+import type { CallMeta } from "../models.js";
 import type { SaveAssetInput } from "../storage.js";
 import type { StoreScope } from "../store/index.js";
 import type { AskResult } from "./asks.js";
@@ -13,7 +14,7 @@ export type RunRow = typeof schema.run.$inferSelect;
 
 export interface StepContext {
   runId: string;
-  ownerId: string;
+  tenantId: string;
   /** The current step's id. */
   stepId: string;
   /** What the wizard keeps for the person running it. */
@@ -32,8 +33,11 @@ export interface StepContext {
    * MCP client drives).
    */
   ask(ask: AskInput): Promise<AskResult | null>;
-  chargeUsd(usd: number, reason: string): Promise<void>;
-  saveAsset(input: Omit<SaveAssetInput, "ownerId" | "runId">): Promise<AssetRef>;
+  /** Run and step every model call of this step is made for. */
+  call: CallMeta;
+  /** Adds provider cost to the run where the runtime resolves models itself; the gateway books the rest. */
+  chargeUsd(usd: number): Promise<void>;
+  saveAsset(input: Omit<SaveAssetInput, "runId">): Promise<AssetRef>;
 }
 
 /** A step failure the person can read. */

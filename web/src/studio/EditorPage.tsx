@@ -209,6 +209,7 @@ export function EditorPage() {
               issueSteps={issueSteps}
               activeStep={drawerRun ? activeStep : null}
               pulse={remote?.steps}
+              wizardId={w.id}
             />
           )}
         </section>
