@@ -67,7 +67,7 @@ function ItemsField({
                 value={String(row[c.id] ?? "")}
                 onChange={(e) => set(i, c.id, e.target.value)}
                 className={cn(
-                  "h-10 w-full min-w-0 rounded-lg border border-transparent bg-paper-2 px-2.5 text-[14px] outline-none focus:border-ember focus:bg-card",
+                  "h-10 w-full min-w-0 rounded-lg border border-transparent bg-paper-2 px-2.5 text-[14px] outline-none focus:border-focus focus:bg-card",
                   c.kind !== "text" && "text-right tabular-nums",
                 )}
               />

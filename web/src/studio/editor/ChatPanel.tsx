@@ -194,7 +194,7 @@ export function ChatPanel({
         ) : null}
       </div>
       <div className="p-3">
-        <div className="flex items-end gap-2 rounded-2xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-ember/50">
+        <div className="flex items-end gap-2 rounded-2xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
           <textarea
             ref={area}
             rows={1}

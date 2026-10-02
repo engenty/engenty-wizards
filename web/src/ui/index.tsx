@@ -79,7 +79,7 @@ export function IconButton({
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-input bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-ember focus:ring-4 focus:ring-ember-veil disabled:opacity-60";
+  "w-full rounded-xl border border-input bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...rest }, ref) {

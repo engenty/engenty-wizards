@@ -6,6 +6,7 @@ import { useParams } from "react-router";
 import { BRAND, Mascot } from "../brand";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
+import { useStage } from "../lib/theme";
 import { DownloadButtons, OutputView } from "../runner/outputs";
 import { BrandHeader, useBrandAccent } from "../runner/PublicRunner";
 import { Card, Spinner } from "../ui";
@@ -19,6 +20,7 @@ export function SharePage() {
     retry: false,
   });
   useBrandAccent(share.data?.brand.accent);
+  useStage(share.data?.wizard.avatar);
   useEffect(() => {
     if (share.data) {
       document.title = `${share.data.title} · ${share.data.wizard.title}`;

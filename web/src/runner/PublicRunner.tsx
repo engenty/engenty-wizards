@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { BRAND, Mascot } from "../brand";
+import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
+import { useStage } from "../lib/theme";
 import { Button, Spinner } from "../ui";
 import { RunnerBody } from "./RunnerView";
 
@@ -25,7 +26,7 @@ export function useBrandAccent(accent: string | null | undefined) {
 
 export function BrandHeader({ brand }: { brand: BrandView }) {
   return (
-    <header className="flex h-14 items-center justify-center px-5">
+    <header className="relative flex h-14 items-center justify-center px-5">
       {brand.logoUrl ? (
         <img src={brand.logoUrl} alt={brand.name} className="h-7 max-w-[160px] object-contain" />
       ) : brand.name ? (
@@ -33,6 +34,9 @@ export function BrandHeader({ brand }: { brand: BrandView }) {
           {brand.name}
         </span>
       ) : null}
+      <div className="absolute right-3">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
@@ -160,6 +164,7 @@ export function PublicRunner() {
     retry: false,
   });
   useBrandAccent(wizard.data?.brand.accent);
+  useStage(wizard.data?.avatar);
   useEffect(() => {
     if (wizard.data) {
       document.title = wizard.data.title;
