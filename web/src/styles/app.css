@@ -70,16 +70,21 @@
   --raw-background: var(--stage);
   --raw-sidebar: oklch(from var(--stage) calc(l - 0.04) c h);
   --paper: oklch(from var(--stage) l c h);
-  --paper-2: oklch(from var(--stage) calc(l + 0.06) calc(c * 0.95) h);
-  --paper-3: oklch(from var(--stage) calc(l + 0.11) calc(c * 0.9) h);
+  /* The card sits one step above the page and the tints one step above the
+     card, so a code line, a chip or a table head still reads on a card. */
+  --card: oklch(from var(--stage) calc(l + 0.06) calc(c * 0.95) h);
+  --paper-2: oklch(from var(--stage) calc(l + 0.1) calc(c * 0.92) h);
+  --paper-3: oklch(from var(--stage) calc(l + 0.14) calc(c * 0.88) h);
   --ink: oklch(from var(--stage) 0.97 0.015 h);
   --ink-2: oklch(from var(--stage) 0.9 0.03 h);
   --ink-3: oklch(from var(--stage) 0.8 0.05 h);
   --ink-4: oklch(from var(--stage) 0.68 0.06 h);
-  /* Lines sit on cards as often as on the page, so they are mixed from the
-     card up: a field's edge and a button's outline stay visible on both. */
-  --border: color-mix(in oklch, var(--ink) 18%, var(--paper-2));
-  --input: color-mix(in oklch, var(--ink) 24%, var(--paper-2));
+  /* Lines and the hover wash sit on cards as often as on the page, so they
+     are mixed from the card up: a field's edge, a button's outline and a
+     hovered icon button stay visible on both. */
+  --accent: color-mix(in oklch, var(--ink) 10%, var(--card));
+  --border: color-mix(in oklch, var(--ink) 18%, var(--card));
+  --input: color-mix(in oklch, var(--ink) 24%, var(--card));
   color-scheme: dark;
 }
 
