@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Play, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useMe, type WizardDetail } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
@@ -21,31 +21,45 @@ type Tab = "chat" | "step" | "runs";
 function useDraftSaver(wizardId: string | undefined) {
   const qc = useQueryClient();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Saves run one after another, so each carries the revision the previous one returned.
+  const queue = useRef<Promise<void>>(Promise.resolve());
   const [saving, setSaving] = useState(false);
   const save = useCallback(
     (draft: WizardDefinition) => {
       if (!wizardId) {
         return;
       }
-      qc.setQueryData<WizardDetail>(["wizard", wizardId], (old) =>
+      const key = ["wizard", wizardId];
+      qc.setQueryData<WizardDetail>(key, (old) =>
         old ? { ...old, draft, title: draft.title, dirty: true } : old,
       );
       if (timer.current) {
         clearTimeout(timer.current);
       }
-      timer.current = setTimeout(async () => {
-        setSaving(true);
-        try {
-          const res = await api.put<{ issues: WizardDetail["issues"] }>(
-            `/api/studio/wizards/${wizardId}/draft`,
-            { definition: draft },
-          );
-          qc.setQueryData<WizardDetail>(["wizard", wizardId], (old) =>
-            old ? { ...old, issues: res.issues } : old,
-          );
-        } finally {
-          setSaving(false);
-        }
+      timer.current = setTimeout(() => {
+        queue.current = queue.current.then(async () => {
+          const current = qc.getQueryData<WizardDetail>(key);
+          if (!current) {
+            return;
+          }
+          setSaving(true);
+          try {
+            const res = await api.put<{ revision: number; issues: WizardDetail["issues"] }>(
+              `/api/studio/wizards/${wizardId}/draft`,
+              { definition: current.draft, baseRevision: current.revision },
+            );
+            qc.setQueryData<WizardDetail>(key, (old) =>
+              old ? { ...old, revision: res.revision, issues: res.issues } : old,
+            );
+          } catch (err) {
+            // Someone else (the chat, an MCP client) wrote first: show their version.
+            if (err instanceof ApiError && err.status === 409) {
+              await qc.invalidateQueries({ queryKey: key });
+            }
+          } finally {
+            setSaving(false);
+          }
+        });
       }, 600);
     },
     [qc, wizardId],
@@ -75,9 +89,9 @@ export function EditorPage() {
   );
   const { save, saving } = useDraftSaver(id);
 
-  const chat = useArchitectChat(wizard.data, (draft) => {
+  const chat = useArchitectChat(wizard.data, (draft, revision) => {
     qc.setQueryData<WizardDetail>(["wizard", id], (old) =>
-      old ? { ...old, draft, title: draft.title, blank: false } : old,
+      old ? { ...old, draft, revision, title: draft.title, blank: false } : old,
     );
   });
 

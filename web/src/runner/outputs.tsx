@@ -54,7 +54,9 @@ function HtmlFrame({ src, kind }: { src: string; kind: "document" | "dashboard" 
       <iframe
         title="preview"
         srcDoc={html ?? ""}
-        sandbox=""
+        // No allow-scripts, so generated HTML never runs code. allow-same-origin keeps the
+        // frame in this renderer: Chrome paints a sandboxed, scaled out-of-process frame blank.
+        sandbox="allow-same-origin"
         className="absolute top-0 left-0 origin-top-left border-0"
         style={{ width: page, height, transform: `scale(${scale})` }}
       />

@@ -8,12 +8,17 @@ import { ZodError } from "zod";
 import { auth, type SessionUser, sessionUser } from "./auth.js";
 import { billingRoutes, stripeWebhook } from "./billing/stripe.js";
 import { env } from "./env.js";
+import { mcpHandler } from "./mcp/handler.js";
 import { publicRoutes, runRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
+import { ServiceError } from "./services/errors.js";
 
 const app = new Hono<{ Variables: { user: SessionUser } }>();
 
 app.onError((err, c) => {
+  if (err instanceof ServiceError) {
+    return c.json(err.toJSON(), err.status);
+  }
   if (err instanceof ZodError) {
     return c.json({ error: "Ungültige Eingabe", issues: err.issues }, 400);
   }
@@ -79,6 +84,9 @@ app.use("/api/billing/portal", async (c, next) => {
   c.set("user", user);
   await next();
 });
+
+const mcp = mcpHandler();
+app.on(["GET", "POST", "DELETE"], "/api/mcp", (c) => mcp(c.req.raw));
 
 app.route("/api/studio", studio);
 app.route("/api/billing/webhook", stripeWebhook);

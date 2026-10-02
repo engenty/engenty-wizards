@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, KeyRound, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { type Project, useCurrentProject } from "../lib/session";
+import { type Project, useCurrentProject, useMe } from "../lib/session";
 import { Button, Card, IconButton, Input, Label, Textarea } from "../ui";
 import { ProjectSwitcher } from "./HomePage";
 
@@ -224,6 +224,113 @@ function ProjectForm({ project }: { project: Project }) {
   );
 }
 
+interface ApiKeyRow {
+  id: string;
+  name: string | null;
+  start: string | null;
+  createdAt: string;
+  lastRequest: string | null;
+}
+
+function CopyLine({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-start gap-2 rounded-xl bg-paper-2 p-3">
+      <code className="min-w-0 flex-1 break-all font-mono text-[12px] leading-relaxed">{text}</code>
+      <IconButton
+        label={copied ? t("settings.copied") : t("settings.copy")}
+        onClick={async () => {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+      >
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      </IconButton>
+    </div>
+  );
+}
+
+/** Personal keys for the admin's own MCP client — the wizards get built on their subscription. */
+function ConnectCard() {
+  const qc = useQueryClient();
+  const me = useMe();
+  const [name, setName] = useState("Claude Code");
+  const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
+  const keys = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: () => api.get<ApiKeyRow[]>("/api/studio/api-keys"),
+  });
+  const create = useMutation({
+    mutationFn: () =>
+      api.post<{ id: string; name: string; key: string }>("/api/studio/api-keys", { name }),
+    onSuccess: async (key) => {
+      setCreated({ name: key.name, key: key.key });
+      await qc.invalidateQueries({ queryKey: ["api-keys"] });
+    },
+  });
+  const revoke = useMutation({
+    mutationFn: (id: string) => api.del(`/api/studio/api-keys/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["api-keys"] }),
+  });
+  const url = me.data?.mcpUrl ?? "";
+  return (
+    <Card className="p-6">
+      <h2 className="font-display font-semibold text-lg">{t("settings.connect")}</h2>
+      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.connectHint")}</p>
+      <div className="flex flex-col gap-2">
+        {(keys.data ?? []).map((k) => (
+          <div
+            key={k.id}
+            className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
+          >
+            <KeyRound className="size-4 shrink-0 text-ink-4" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px]">{k.name}</div>
+              <div className="font-mono text-[11px] text-ink-4">
+                {k.start}… ·{" "}
+                {k.lastRequest
+                  ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString() })
+                  : t("settings.neverUsed")}
+              </div>
+            </div>
+            <IconButton
+              label={t("settings.revoke")}
+              onClick={() => revoke.mutate(k.id)}
+              className="hover:text-rose"
+            >
+              <Trash2 className="size-4" />
+            </IconButton>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="min-w-48 flex-1">
+          <Label>{t("settings.keyName")}</Label>
+          <Input value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <Button
+          variant="secondary"
+          busy={create.isPending}
+          disabled={!name.trim()}
+          onClick={() => create.mutate()}
+        >
+          <Plus className="size-4" /> {t("settings.createKey")}
+        </Button>
+      </div>
+      {created ? (
+        <div className="mt-5 flex flex-col gap-3">
+          <p className="text-[14px] text-ink-2">{t("settings.keyOnce")}</p>
+          <CopyLine
+            text={`claude mcp add --transport http engenty-wizards ${url} --header "Authorization: Bearer ${created.key}"`}
+          />
+          <p className="text-[13px] text-ink-3">{t("settings.keyOther", { url })}</p>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { project } = useCurrentProject();
   const [key, setKey] = useState(project?.id);
@@ -237,6 +344,9 @@ export function SettingsPage() {
         <ProjectSwitcher />
       </div>
       <div className="mt-8">{project ? <ProjectForm key={key} project={project} /> : null}</div>
+      <div className="mt-6">
+        <ConnectCard />
+      </div>
     </div>
   );
 }

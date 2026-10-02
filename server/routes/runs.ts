@@ -24,6 +24,7 @@ import {
 } from "../engine/runner.js";
 import { env } from "../env.js";
 import { hashIp, verifyTurnstile, visitorOverLimit, wizardUnavailable } from "../limits.js";
+import { verifySignedUrl } from "../signing.js";
 import { inlineAssetRefs, loadAsset, saveAsset } from "../storage.js";
 
 const VISITOR_COOKIE = "wz_vid";
@@ -64,11 +65,17 @@ async function brandFor(projectId: string): Promise<BrandView> {
   };
 }
 
-/** The run, if the caller may see it: its visitor, or the admin who owns the wizard. */
-async function accessibleRun(c: Context, runId: string) {
+/**
+ * The run, if the caller may see it: its visitor, the admin who owns the wizard, or — on the
+ * read-only file routes — a signed link handed out to the owner's MCP client.
+ */
+async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean } = {}) {
   const run = await db.query.run.findFirst({ where: eq(schema.run.id, runId) });
   if (!run) {
     return null;
+  }
+  if (opts.signed && verifySignedUrl(c.req.url)) {
+    return run;
   }
   const vid = visitorId(c, false);
   if (vid && run.visitorId === vid) {
@@ -313,7 +320,7 @@ export const runRoutes = new Hono()
     return c.json(ref);
   })
   .get("/:id/assets/:assetId", async (c) => {
-    const run = await accessibleRun(c, c.req.param("id"));
+    const run = await accessibleRun(c, c.req.param("id"), { signed: true });
     if (!run) {
       return c.notFound();
     }
@@ -335,7 +342,7 @@ export const runRoutes = new Hono()
     return c.body(new Uint8Array(found.data), 200, headers);
   })
   .get("/:id/steps/:stepId/download", async (c) => {
-    const run = await accessibleRun(c, c.req.param("id"));
+    const run = await accessibleRun(c, c.req.param("id"), { signed: true });
     if (!run) {
       return c.notFound();
     }

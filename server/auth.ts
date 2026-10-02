@@ -1,3 +1,4 @@
+import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db, schema } from "./db/client.js";
@@ -28,6 +29,7 @@ export const auth = betterAuth({
       session: schema.session,
       account: schema.account,
       verification: schema.verification,
+      apikey: schema.apikey,
     },
   }),
   socialProviders,
@@ -37,6 +39,13 @@ export const auth = betterAuth({
     ? [env.appUrl]
     : [env.appUrl, "http://localhost:5181", "http://127.0.0.1:5181"],
   session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
+  plugins: [
+    // Personal keys for MCP clients and scripts. They only open /api/mcp, never a studio session.
+    apiKey({
+      enableSessionForAPIKeys: false,
+      rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 300 },
+    }),
+  ],
   databaseHooks: {
     user: {
       create: {

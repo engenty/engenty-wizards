@@ -4,9 +4,15 @@ import {
   type ValidationIssue,
   type WizardDefinition,
 } from "../../shared/definition.js";
+import {
+  exampleWizard,
+  type GuideServer,
+  mcpServersLine,
+  PRINCIPLES,
+  SCHEMA_DOC,
+} from "../authoring/guide.js";
 import { env } from "../env.js";
 import { languageModel, tokenCostUsd } from "../models.js";
-import { STARTERS } from "../starters/index.js";
 
 export interface ArchitectInput {
   message: string;
@@ -25,76 +31,7 @@ export interface ArchitectResult {
   costUsd: number;
 }
 
-const SCHEMA_DOC = `
-type Wizard = {
-  version: 1
-  title: string                 // short, what the end user gets ("Rechnung erstellen")
-  description: string           // one sentence
-  avatar: "round"|"drop"|"dome"|"flame"|"oval"|"bean"|"pebble"|"sprout"|"tower"|"wedge"  // the engenty mascot shown to end users
-  intro?: string                // one friendly sentence above the first page
-  steps: Step[]                 // run top to bottom; the LAST step is always a "result"
-}
-
-// Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
-// Branch = { when: { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty", value? }, goto: stepId | "end" }
-//   first matching branch wins, otherwise the next step in the list.
-
-type PageStep = { type: "page", fields: Field[] (1–5 per page), cta?: string }
-type Field = {
-  id (camelCase, unique across the WHOLE wizard), label, kind, required?, placeholder?, help?,
-  options?: string[]            // select / multiselect
-  default?: string|number|boolean|string[]
-  columns?: { id, label, kind: "text"|"number"|"money" }[]   // items only; row amount = product of number/money columns
-  vat?: { rate?: number, field?: fieldId }                    // items only; VAT % fixed or read from a field
-  currency?: "EUR"|...                                        // items only
-}
-// kinds: text textarea number select multiselect date email url toggle color image file items
-
-type AgentStep = {
-  type: "agent"
-  instructions: string          // the task, with {{templates}}
-  tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http")[]
-  mcp?: string[]                // ids of the project's MCP servers this step may use
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description }[] }
-  model?: "fast"|"smart"        // fast for short copy, smart for research/reasoning
-  working?: string              // shown while it runs ("Recherchiert im Web …")
-}
-
-type GenerateStep = {
-  type: "generate"
-  asset: "image"|"video"|"document"|"dashboard"
-  prompt: string                // the brief, with {{templates}}
-  options?: { aspectRatio?: "1:1"|"16:9"|"9:16"|"4:5"|"3:2"|"2:3", duration?: 4–10 (video seconds), style?: string,
-              template?: "invoice"|"offer"|"briefing"|"letter"|"report"|"free" }   // template for documents
-  referenceImage?: fieldId      // an earlier image field the image/video starts from
-  working?: string
-}
-
-type ReviewStep = { type: "review", show: stepId[], edit?: boolean, regenerate?: boolean }
-// shows earlier outputs; the person accepts, edits text outputs (edit), or asks for a new version with a note (regenerate)
-
-type ResultStep = { type: "result", message?: string, deliverables: { from: stepId, label?, formats: Format[] }[] }
-// formats per source: image→png · video→mp4 · document→pdf docx html md png · dashboard→html pdf png
-//                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md
-
-Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
-  · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{brand.name}} {{brand.details}} · {{today}}
-A template may only use fields asked and steps run EARLIER.`;
-
-const PRINCIPLES = `
-How good wizards look:
-- For non-technical end users. Plain words, friendly titles phrased as questions ("Wofür ist der Post?").
-- Few pages, 1–5 fields each, one theme per page. Only ask what the result really needs; prefer selects with sensible defaults.
-- Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.
-- Money/totals: use an "items" field with vat — the runner computes totals; documents must use {{items}} verbatim. Never let a model compute totals.
-- Facts from the web need an agent step with web_search + web_fetch BEFORE writing; documents then cite those notes.
-- Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
-- The sandbox runs code (python/node) for calculations, charts or file conversion; export_file hands files to the person.
-- Every step a person sees later (review/result) must come from an earlier step id.
-- Write all wizard texts in the admin's language.`;
-
-function systemPrompt(mcp: { id: string; name: string }[]): string {
-  const example = STARTERS.find((s) => s.id === "tweet")!.definition;
+function systemPrompt(mcp: GuideServer[]): string {
   return `You design wizards for "engenty wizards": a page-by-page flow an end user walks through, where AI steps research, write, draw images, render video, build documents and dashboards, or write into other systems.
 
 You talk to the ADMIN who builds the wizard. Answer in the admin's language, briefly and warmly. Never mention JSON, ids, schemas or templates to them — talk about pages, questions, steps and results.
@@ -102,11 +39,11 @@ You talk to the ADMIN who builds the wizard. Answer in the admin's language, bri
 ${SCHEMA_DOC}
 ${PRINCIPLES}
 
-Project MCP servers available to agent steps: ${mcp.length ? mcp.map((m) => `${m.id} (${m.name})`).join(", ") : "none — if the admin wants to write into an external system that needs one, build the step with http or browser, and tell them they can connect a server in the project settings"}.
+${mcpServersLine(mcp)}
 
 Example of a complete wizard:
 \`\`\`json
-${JSON.stringify(example, null, 2)}
+${exampleWizard()}
 \`\`\`
 
 OUTPUT FORMAT — always exactly this:
@@ -137,15 +74,13 @@ async function streamOnce(
 ): Promise<{ text: string; costUsd: number }> {
   const result = streamText({
     model: languageModel(env.models.architect),
-    messages: [
-      // The system prompt is long and identical on every turn: cache it.
-      {
-        role: "system",
-        content: system,
-        providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
-      },
-      ...messages,
-    ],
+    // The system prompt is long and identical on every turn: cache it.
+    instructions: {
+      role: "system",
+      content: system,
+      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+    },
+    messages,
     abortSignal: input.signal,
     maxOutputTokens: 16_000,
   });

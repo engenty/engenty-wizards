@@ -1,6 +1,6 @@
 import type { WizardDefinition } from "@shared/definition";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Plug, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
@@ -15,11 +15,13 @@ interface ChatMessage {
   content: string;
   changed?: boolean;
   pending?: boolean;
+  source?: "studio" | "mcp";
+  client?: string | null;
 }
 
 export function useArchitectChat(
   wizard: WizardDetail | undefined,
-  onChanged: (draft: WizardDefinition) => void,
+  onChanged: (draft: WizardDefinition, revision: number) => void,
 ) {
   const qc = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -63,6 +65,7 @@ export function useArchitectChat(
               reply: string;
               changed: boolean;
               draft: WizardDefinition;
+              revision: number;
             };
             setMessages((m) =>
               m.map((x) =>
@@ -72,7 +75,7 @@ export function useArchitectChat(
               ),
             );
             if (done.changed) {
-              onChanged(done.draft);
+              onChanged(done.draft, done.revision);
             }
           } else if (event === "error") {
             setError(JSON.parse(data).message);
@@ -140,6 +143,12 @@ export function ChatPanel({
                   <Mascot kind={avatar} size={28} interactive={false} />
                 </div>
                 <div className="min-w-0 pt-0.5 text-[14px]">
+                  {m.source === "mcp" ? (
+                    <div className="mb-1 inline-flex items-center gap-1.5 text-[12px] text-ink-3">
+                      <Plug className="size-3" />{" "}
+                      {t("editor.viaClient", { client: m.client ?? "MCP" })}
+                    </div>
+                  ) : null}
                   {m.content ? <Markdown text={m.content} className="text-[14px]" /> : null}
                   {m.pending ? (
                     <div className="mt-1 inline-flex items-center gap-2 text-[13px] text-ink-3">

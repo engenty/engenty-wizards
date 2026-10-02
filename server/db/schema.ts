@@ -59,6 +59,38 @@ export const verification = sqliteTable("verification", {
   updatedAt: updatedAt(),
 });
 
+/** Personal API keys (Better Auth api-key plugin): MCP clients and scripts act as their user. */
+export const apikey = sqliteTable(
+  "apikey",
+  {
+    id: text("id").primaryKey(),
+    configId: text("config_id").notNull().default("default"),
+    name: text("name"),
+    start: text("start"),
+    referenceId: text("reference_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    prefix: text("prefix"),
+    key: text("key").notNull(),
+    refillInterval: integer("refill_interval"),
+    refillAmount: integer("refill_amount"),
+    lastRefillAt: integer("last_refill_at", { mode: "timestamp_ms" }),
+    enabled: integer("enabled", { mode: "boolean" }).default(true),
+    rateLimitEnabled: integer("rate_limit_enabled", { mode: "boolean" }).default(true),
+    rateLimitTimeWindow: integer("rate_limit_time_window"),
+    rateLimitMax: integer("rate_limit_max"),
+    requestCount: integer("request_count").default(0),
+    remaining: integer("remaining"),
+    lastRequest: integer("last_request", { mode: "timestamp_ms" }),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    permissions: text("permissions"),
+    metadata: text("metadata"),
+  },
+  (t) => [index("apikey_key").on(t.key), index("apikey_reference").on(t.referenceId)],
+);
+
 // --- Billing ---------------------------------------------------------------
 
 /** 1 credit = 1 cent of provider cost; stored in micros so cheap calls still add up. */
@@ -147,6 +179,8 @@ export const wizard = sqliteTable(
     shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(true),
     dailyRunLimit: integer("daily_run_limit").notNull().default(50),
     starter: text("starter"),
+    /** Bumped on every draft write; a write carrying an older one is refused. */
+    revision: integer("revision").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -181,6 +215,11 @@ export const wizardMessage = sqliteTable(
     content: text("content").notNull(),
     /** Set on assistant turns that changed the wizard. */
     changed: integer("changed", { mode: "boolean" }).notNull().default(false),
+    /** "mcp": written by an admin's own client (Claude Code, Cursor …) named in `client`. */
+    source: text("source", { enum: ["studio", "mcp"] })
+      .notNull()
+      .default("studio"),
+    client: text("client"),
     createdAt: createdAt(),
   },
   (t) => [index("wizard_message_wizard").on(t.wizardId, t.createdAt)],

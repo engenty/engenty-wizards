@@ -16,6 +16,8 @@ export interface Me {
   };
   billingEnabled: boolean;
   aiReady: boolean;
+  /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
+  mcpUrl: string;
 }
 
 export function useMe() {
@@ -89,6 +91,7 @@ export interface WizardSummary {
   title: string;
   description: string;
   avatar: string;
+  revision: number;
   published: boolean;
   publishedVersion: number | null;
   shareToken: string;
@@ -103,9 +106,17 @@ export interface WizardDetail extends WizardSummary {
   issues: { stepId?: string; message: string }[];
   blank: boolean;
   dirty: boolean;
-  messages: { id: string; role: "user" | "assistant"; content: string; changed: boolean }[];
+  messages: {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    changed: boolean;
+    source: "studio" | "mcp";
+    client: string | null;
+  }[];
   mcpServers: { id: string; name: string }[];
   shareUrl: string;
+  studioUrl: string;
 }
 
 export function useRefreshMe() {
