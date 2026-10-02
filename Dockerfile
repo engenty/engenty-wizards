@@ -22,6 +22,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist-web ./dist-web
 COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/server/db/migrations ./server/db/migrations
+# The Claude Code plugin template, filled with APP_URL at runtime (server/plugin.ts).
+COPY --from=build /app/plugin ./plugin
 VOLUME /data
 EXPOSE 8891
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:8891/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

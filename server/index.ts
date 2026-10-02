@@ -1,5 +1,4 @@
 import { serve } from "@hono/node-server";
-import app from "./app.js";
 import { migrateDb } from "./db/client.js";
 import { resumeInterruptedRuns } from "./engine/runner.js";
 import { env } from "./env.js";
@@ -8,6 +7,9 @@ import { closeBrowser } from "./render/chromium.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 
 await migrateDb();
+// Imported only now: Better Auth sets up its plugins (OAuth resources, keys) as soon as it loads,
+// and on a fresh database their tables exist only after the migration.
+const { default: app } = await import("./app.js");
 void loadCatalog();
 
 const server = serve({ fetch: app.fetch, port: env.port, hostname: "0.0.0.0" }, (info) => {

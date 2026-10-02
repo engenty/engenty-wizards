@@ -10,6 +10,7 @@ import { billingRoutes, stripeWebhook } from "./billing/stripe.js";
 import { env } from "./env.js";
 import { linkPreview } from "./link-preview.js";
 import { mcpHandler } from "./mcp/handler.js";
+import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { connections } from "./routes/connections.js";
 import { publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
@@ -101,6 +102,13 @@ app.route("/api/billing", billingRoutes);
 app.route("/api/public", publicRoutes);
 app.route("/api/runs", runRoutes);
 app.route("/api/shares", shareRoutes);
+
+// The Claude Code plugin of this deployment: `claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json`.
+app.get("/api/claude-plugin/marketplace.json", async (c) => c.json(await pluginMarketplace()));
+app.get(`/api/claude-plugin/${PLUGIN_NAME}.zip`, async (c) => {
+  const { zip } = await pluginArchive();
+  return c.body(new Uint8Array(zip), 200, { "content-type": "application/zip" });
+});
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 

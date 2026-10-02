@@ -167,13 +167,25 @@ const de = {
   "oauth.deny": "Ablehnen",
   "oauth.failed": "Das hat nicht geklappt. Bitte im Programm noch einmal verbinden.",
   "oauth.revokeHint": "Du kannst die Verbindung jederzeit in den Einstellungen trennen.",
+  "setup.ccPlugin": "Am einfachsten mit dem Plugin – es bringt den Befehl /wizard mit:",
+  "setup.ccServerOnly": "Oder nur den Server hinzufügen:",
+  "setup.ccServer": "Füge den Server hinzu:",
+  "setup.ccAuth":
+    "Beim ersten Aufruf meldest du dich im Browser an und erlaubst den Zugriff. Sonst in Claude Code: /mcp → engenty-wizards → Authenticate.",
+  "setup.claudeAi":
+    "Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, und diese URL eintragen:",
+  "setup.needsPublic":
+    "Das geht nur, wenn dieser Server öffentlich über HTTPS erreichbar ist – lokal nicht.",
+  "setup.codex": "Im Terminal hinzufügen und anmelden:",
+  "setup.cursor":
+    "In ~/.cursor/mcp.json eintragen, dann in den Cursor-Einstellungen unter MCP auf Verbinden klicken:",
+  "setup.cursorFallback":
+    "Klappt die Anmeldung nicht, nimm einen API-Schlüssel (Tab „Scripts“) als Header Authorization: Bearer <Schlüssel>.",
+  "setup.scripts":
+    "Für Scripts und Programme ohne Browser-Anmeldung. Ein Schlüssel hat alle Rechte – behandle ihn wie ein Passwort.",
   "settings.connectedClients": "Verbundene Programme",
   "settings.disconnect": "Trennen",
   "settings.connectedSince": "verbunden {when}",
-  "settings.connectOauth":
-    "Füge den Server in Claude Code hinzu – beim ersten Aufruf meldest du dich im Browser an und erlaubst den Zugriff:",
-  "settings.connectOtherOauth": "Cursor, Codex, claude.ai: Server-URL {url}",
-  "settings.apiKeys": "API-Schlüssel für Scripts",
   "billing.title": "Guthaben & Abo",
   "billing.plan": "Tarif",
   "billing.free": "Free",
@@ -359,13 +371,24 @@ const en: Record<Key, string> = {
   "oauth.deny": "Deny",
   "oauth.failed": "That did not work. Please connect again from the app.",
   "oauth.revokeHint": "You can disconnect any time in the settings.",
+  "setup.ccPlugin": "Easiest with the plugin — it adds the /wizard command:",
+  "setup.ccServerOnly": "Or add just the server:",
+  "setup.ccServer": "Add the server:",
+  "setup.ccAuth":
+    "On first use you sign in in the browser and allow access. Otherwise in Claude Code: /mcp → engenty-wizards → Authenticate.",
+  "setup.claudeAi": "Settings → Connectors → Add custom connector, and enter this URL:",
+  "setup.needsPublic":
+    "This only works when this server is reachable publicly over HTTPS — not locally.",
+  "setup.codex": "Add it in the terminal and sign in:",
+  "setup.cursor":
+    "Put this into ~/.cursor/mcp.json, then click Connect under MCP in the Cursor settings:",
+  "setup.cursorFallback":
+    "If signing in does not work, use an API key (tab “Scripts”) as the header Authorization: Bearer <key>.",
+  "setup.scripts":
+    "For scripts and apps without a browser sign-in. A key has every right — treat it like a password.",
   "settings.connectedClients": "Connected apps",
   "settings.disconnect": "Disconnect",
   "settings.connectedSince": "connected {when}",
-  "settings.connectOauth":
-    "Add the server in Claude Code — on first use you sign in in the browser and allow access:",
-  "settings.connectOtherOauth": "Cursor, Codex, claude.ai: server URL {url}",
-  "settings.apiKeys": "API keys for scripts",
   "billing.title": "Credits & plan",
   "billing.plan": "Plan",
   "billing.free": "Free",

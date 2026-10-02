@@ -41,6 +41,28 @@ volume. Put a TLS proxy in front of port 8891. Auth callbacks:
 `<APP_URL>/api/auth/callback/<google|github|microsoft>`; Stripe webhook:
 `<APP_URL>/api/billing/webhook`.
 
+## Build wizards from your own AI client
+
+Admins can author wizards in Claude Code, Codex, Cursor, claude.ai or Claude Desktop, on their own
+subscription. The MCP endpoint is `<APP_URL>/api/mcp`. Clients sign in with OAuth 2.1: discovery,
+dynamic registration or a client metadata document, then a consent page in the studio. Settings →
+"Mit Claude Code & Co. bauen" shows the setup for each client, lists connected apps (with
+"Trennen") and issues API keys for scripts.
+
+```bash
+# Claude Code: plugin with the /wizard command (needs a public https APP_URL)
+claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json
+claude plugin install engenty-wizards@engenty
+# or just the server
+claude mcp add --transport http --scope user engenty-wizards <APP_URL>/api/mcp
+# Codex
+codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty-wizards
+```
+
+The plugin is built from `plugin/` with this deployment's `APP_URL` filled in (`server/plugin.ts`).
+Test runs that a client starts spend the admin's credits. Writes from a client show up live in an
+open editor.
+
 ## How it is built
 
 | Part | Where |
@@ -58,6 +80,9 @@ volume. Put a TLS proxy in front of port 8891. Auth callbacks:
 | Credits + Stripe | `server/billing/` |
 | Studio (editor, diagram, chat, inspector) | `web/src/studio/` |
 | Public runner | `web/src/runner/` |
+| MCP server for authoring (tools, OAuth/API-key gate) | `server/mcp/`, `server/auth.ts` |
+| Live editor (SSE stream, merge of concurrent edits) | `server/routes/wizard-stream.ts`, `web/src/studio/live.tsx` |
+| Claude Code plugin template | `plugin/`, `server/plugin.ts` |
 | Share sheet and shared result page | `web/src/share/` |
 
 Decisions and status: `../PLAN-engenty-wizards.md`.

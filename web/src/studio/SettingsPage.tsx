@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, KeyRound, Plug, Plus, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useMe } from "../lib/session";
-import { Button, Card, IconButton, Input, Label, Textarea } from "../ui";
+import { Button, Card, IconButton, Input, Label, Segmented, Textarea } from "../ui";
 import { ProjectSwitcher } from "./HomePage";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
@@ -236,7 +236,9 @@ function CopyLine({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-start gap-2 rounded-xl bg-paper-2 p-3">
-      <code className="min-w-0 flex-1 break-all font-mono text-[12px] leading-relaxed">{text}</code>
+      <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[12px] leading-relaxed">
+        {text}
+      </code>
       <IconButton
         label={copied ? t("settings.copied") : t("settings.copy")}
         onClick={async () => {
@@ -305,11 +307,93 @@ function ConnectedClients() {
   );
 }
 
-/** The admin's own MCP clients build the wizards — on their own subscription. */
-function ConnectCard() {
+const CLIENTS = ["Claude Code", "claude.ai & Desktop", "Codex", "Cursor", "Scripts"] as const;
+type ClientTab = (typeof CLIENTS)[number];
+
+/** Claude Code fetches no plugin archive from a local host, and claude.ai cannot reach one. */
+function isPublicHttps(href: string): boolean {
+  try {
+    const url = new URL(href);
+    return (
+      url.protocol === "https:" &&
+      !/(^|\.)localhost$/.test(url.hostname) &&
+      !/^(127\.|10\.|192\.168\.|\[::1\])/.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function Step({ text, children }: { text: string; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[14px] text-ink-2">{text}</p>
+      {children}
+    </div>
+  );
+}
+
+/** What to paste where, per client. All of them sign in over OAuth on first use. */
+function ClientSetup({ client, url }: { client: Exclude<ClientTab, "Scripts">; url: string }) {
+  const publicHttps = isPublicHttps(url);
+  const plugin = url.replace(/\/api\/mcp$/, "/api/claude-plugin");
+  const local = publicHttps ? null : (
+    <p className="text-[13px] text-ink-3">{t("setup.needsPublic")}</p>
+  );
+  switch (client) {
+    case "Claude Code":
+      return (
+        <div className="flex flex-col gap-5">
+          {publicHttps ? (
+            <Step text={t("setup.ccPlugin")}>
+              <CopyLine text={`claude plugin marketplace add ${plugin}/marketplace.json`} />
+              <CopyLine text="claude plugin install engenty-wizards@engenty" />
+            </Step>
+          ) : null}
+          <Step text={publicHttps ? t("setup.ccServerOnly") : t("setup.ccServer")}>
+            <CopyLine
+              text={`claude mcp add --transport http --scope user engenty-wizards ${url}`}
+            />
+          </Step>
+          <p className="text-[13px] text-ink-3">{t("setup.ccAuth")}</p>
+        </div>
+      );
+    case "claude.ai & Desktop":
+      return (
+        <div className="flex flex-col gap-5">
+          <Step text={t("setup.claudeAi")}>
+            <CopyLine text={url} />
+          </Step>
+          {local}
+        </div>
+      );
+    case "Codex":
+      return (
+        <div className="flex flex-col gap-5">
+          <Step text={t("setup.codex")}>
+            <CopyLine text={`codex mcp add engenty-wizards --url ${url}`} />
+            <CopyLine text="codex mcp login engenty-wizards" />
+          </Step>
+        </div>
+      );
+    case "Cursor":
+      return (
+        <div className="flex flex-col gap-5">
+          <Step text={t("setup.cursor")}>
+            <CopyLine
+              text={JSON.stringify({ mcpServers: { "engenty-wizards": { url } } }, null, 2)}
+            />
+          </Step>
+          <p className="text-[13px] text-ink-3">{t("setup.cursorFallback")}</p>
+        </div>
+      );
+  }
+}
+
+/** Personal keys for scripts and clients without OAuth; they act with every right. */
+function ApiKeys({ url }: { url: string }) {
   const qc = useQueryClient();
-  const me = useMe();
-  const [name, setName] = useState("Claude Code");
+  const [name, setName] = useState("Script");
   const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
   const keys = useQuery({
     queryKey: ["api-keys"],
@@ -327,43 +411,34 @@ function ConnectCard() {
     mutationFn: (id: string) => api.del(`/api/studio/api-keys/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["api-keys"] }),
   });
-  const url = me.data?.mcpUrl ?? "";
   return (
-    <Card className="p-6">
-      <h2 className="font-display font-semibold text-lg">{t("settings.connect")}</h2>
-      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.connectHint")}</p>
-      <p className="mb-2 text-[14px] text-ink-2">{t("settings.connectOauth")}</p>
-      <CopyLine text={`claude mcp add --transport http engenty-wizards ${url}`} />
-      <p className="mt-2 text-[13px] text-ink-3">{t("settings.connectOtherOauth", { url })}</p>
-      <ConnectedClients />
-      <h3 className="mt-8 mb-3 font-medium text-[15px]">{t("settings.apiKeys")}</h3>
-      <div className="flex flex-col gap-2">
-        {(keys.data ?? []).map((k) => (
-          <div
-            key={k.id}
-            className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
-          >
-            <KeyRound className="size-4 shrink-0 text-ink-4" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px]">{k.name}</div>
-              <div className="font-mono text-[11px] text-ink-4">
-                {k.start}… ·{" "}
-                {k.lastRequest
-                  ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString() })
-                  : t("settings.neverUsed")}
-              </div>
+    <div className="flex flex-col gap-2">
+      <p className="mb-2 text-[14px] text-ink-2">{t("setup.scripts")}</p>
+      {(keys.data ?? []).map((k) => (
+        <div
+          key={k.id}
+          className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
+        >
+          <KeyRound className="size-4 shrink-0 text-ink-4" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[14px]">{k.name}</div>
+            <div className="font-mono text-[11px] text-ink-4">
+              {k.start}… ·{" "}
+              {k.lastRequest
+                ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString() })
+                : t("settings.neverUsed")}
             </div>
-            <IconButton
-              label={t("settings.revoke")}
-              onClick={() => revoke.mutate(k.id)}
-              className="hover:text-rose"
-            >
-              <Trash2 className="size-4" />
-            </IconButton>
           </div>
-        ))}
-      </div>
-      <div className="mt-4 flex flex-wrap items-end gap-3">
+          <IconButton
+            label={t("settings.revoke")}
+            onClick={() => revoke.mutate(k.id)}
+            className="hover:text-rose"
+          >
+            <Trash2 className="size-4" />
+          </IconButton>
+        </div>
+      ))}
+      <div className="mt-2 flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1">
           <Label>{t("settings.keyName")}</Label>
           <Input value={name} maxLength={32} onChange={(e) => setName(e.target.value)} />
@@ -386,6 +461,24 @@ function ConnectCard() {
           <p className="text-[13px] text-ink-3">{t("settings.keyOther", { url })}</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** The admin's own MCP clients build the wizards — on their own subscription. */
+function ConnectCard() {
+  const me = useMe();
+  const [client, setClient] = useState<ClientTab>("Claude Code");
+  const url = me.data?.mcpUrl ?? "";
+  return (
+    <Card className="p-6">
+      <h2 className="font-display font-semibold text-lg">{t("settings.connect")}</h2>
+      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.connectHint")}</p>
+      <div className="mb-5 overflow-x-auto">
+        <Segmented value={client} onChange={setClient} options={[...CLIENTS]} />
+      </div>
+      {client === "Scripts" ? <ApiKeys url={url} /> : <ClientSetup client={client} url={url} />}
+      <ConnectedClients />
     </Card>
   );
 }
