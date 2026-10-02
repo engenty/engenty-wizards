@@ -42,9 +42,19 @@ export const STORE_LIMITS = {
 export const CONNECTION_KINDS = ["mail"] as const;
 export type ConnectionKind = (typeof CONNECTION_KINDS)[number];
 
+/** An account the person connects: a built-in kind, or one of the project's imported connectors. */
 export interface ConnectionDef {
   id: string;
-  kind: ConnectionKind;
+  kind?: ConnectionKind;
+  /** Id of an imported connector of the project. */
+  connector?: string;
+  /** Imported connectors: the actions steps may call. Default: every action that only reads. */
+  actions?: string[];
+  /**
+   * Imported connectors: per action, run it without asking ("allow") or ask the person first
+   * ("ask"). Default: reading is allowed, changing asks; deleting always asks.
+   */
+  policy?: Record<string, "allow" | "ask">;
   title?: string;
   description?: string;
 }
@@ -68,7 +78,9 @@ export interface ConnectorOption {
 
 export interface ConnectionView {
   id: string;
-  kind: ConnectionKind;
+  kind: ConnectionKind | null;
+  /** The imported connector behind the connection, if it is one. */
+  connector: string | null;
   title: string | null;
   description: string | null;
   /** Set when the person has connected an account. */

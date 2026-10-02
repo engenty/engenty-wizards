@@ -240,7 +240,14 @@ export const listSchema = z.object({
 
 export const connectionSchema = z.object({
   id,
-  kind: z.enum(CONNECTION_KINDS),
+  /** A built-in kind of account … */
+  kind: z.enum(CONNECTION_KINDS).optional(),
+  /** … or the id of one of the project's imported connectors. */
+  connector: z.string().optional(),
+  /** Imported connectors: the actions steps may call. Default: every action that only reads. */
+  actions: z.array(z.string()).max(200).optional(),
+  /** Imported connectors, per action: "allow" runs it without asking, "ask" asks the person first. */
+  policy: z.record(z.string(), z.enum(["allow", "ask"])).optional(),
   title: z.string().optional(),
   description: z.string().optional(),
 });
@@ -354,6 +361,11 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       issues.push({ message: `Duplicate connection id "${connection.id}".` });
     }
     connectionIds.add(connection.id);
+    if (Boolean(connection.kind) === Boolean(connection.connector)) {
+      issues.push({
+        message: `Connection "${connection.id}" needs either "kind" or "connector", not both.`,
+      });
+    }
   }
 
   for (const step of def.steps) {

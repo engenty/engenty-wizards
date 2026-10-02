@@ -5,7 +5,9 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { isTextMime } from "../../shared/workspace.js";
 import {
+  connectorsLine,
   exampleWizard,
+  type GuideConnector,
   type GuideServer,
   mcpServersLine,
   PRINCIPLES,
@@ -13,6 +15,7 @@ import {
   WIDGET_GUIDE,
 } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
+import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
 import { env } from "../env.js";
 import { gatewayTools, languageModel, tokenCostUsd } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
@@ -29,6 +32,7 @@ export interface ArchitectInput {
   message: string;
   history: { role: "user" | "assistant"; content: string }[];
   mcpServers: GuideServer[];
+  connectors: GuideConnector[];
   signal?: AbortSignal;
   onText?: (delta: string) => void;
   /** A short line about what the architect is doing right now ("Lädt Seeformen …"). */
@@ -47,7 +51,7 @@ export interface ArchitectResult {
   costUsd: number;
 }
 
-function systemPrompt(mcp: GuideServer[]): string {
+function systemPrompt(mcp: GuideServer[], connectors: GuideConnector[]): string {
   return `You design wizards for "engenty wizards": a page-by-page flow an end user walks through, where AI steps research, write, draw images, render video, build documents, dashboards and interactive widgets, or write into other systems.
 
 You talk to the ADMIN who builds the wizard. Answer in the admin's language, briefly and warmly. Never mention JSON, ids, schemas, files or templates to them — talk about pages, questions, steps, the widget and results.
@@ -57,6 +61,8 @@ ${PRINCIPLES}
 ${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
+
+${connectorsLine(connectors)}
 
 Example of a complete wizard:
 \`\`\`json
@@ -70,6 +76,7 @@ HOW YOU WORK
 - Call independent tools in the same step (they run together).
 - Never retype data you downloaded. Reshape it with run_script (output to a file), or let the widget read the raw files with wizard.json() and transform them when it starts.
 - Work in few, purposeful steps: every tool call costs the admin time and credits.
+- Services the wizard should work in for the person: find_connectors, import_connector (it returns the actions), then a connection for it in the wizard. list_connectors shows what the project has.
 - Research what you need to prepare (web_search, web_fetch) — e.g. which lakes, their outlines, a chart library.
 - Finish with one to three sentences to the admin: what you built or changed, and at most one suggestion. If they only asked a question, just answer it.`;
 }
@@ -124,7 +131,41 @@ async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string; i
 function buildTools(input: ArchitectInput, wrote: () => void) {
   const { userId, wizardId } = input;
   const signal = input.signal;
+  const projectId = async () => (await ownedWizard(userId, wizardId)).projectId;
   const tools: Record<string, any> = {
+    find_connectors: createTool({
+      id: "find_connectors",
+      description:
+        "Search the integrations registry for a service that can be imported as a connector (from its OpenAPI spec or MCP server). Returns domains with a short description.",
+      inputSchema: z.object({ query: z.string().describe("Service name, e.g. Notion") }),
+      execute: async ({ query }) =>
+        attempt(async () => ({ services: await searchRegistry(query) })),
+    }),
+    import_connector: createTool({
+      id: "import_connector",
+      description:
+        "Import a service from the registry into this project as a connector. Returns its id, tool prefix, how people connect (OAuth, API key, none) and its actions with their marks (read / write / destructive). Importing again returns the existing one.",
+      inputSchema: z.object({
+        domain: z.string().describe("A domain from find_connectors, e.g. notion.com"),
+        kind: z
+          .enum(["mcp", "openapi"])
+          .optional()
+          .describe("Default: the service's MCP server if it has one, else its OpenAPI spec."),
+      }),
+      execute: async ({ domain, kind }) =>
+        attempt(async () => {
+          const result = await importFromRegistry(userId, await projectId(), { domain, kind });
+          wrote();
+          return result;
+        }),
+    }),
+    list_connectors: createTool({
+      id: "list_connectors",
+      description: "The connectors this project has imported, with every action.",
+      inputSchema: z.object({}),
+      execute: async () =>
+        attempt(async () => ({ connectors: await listConnectors(await projectId()) })),
+    }),
     replace_wizard: createTool({
       id: "replace_wizard",
       description:
@@ -361,7 +402,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
     // The system prompt is long and identical on every turn: cache it.
     instructions: {
       role: "system",
-      content: systemPrompt(input.mcpServers),
+      content: systemPrompt(input.mcpServers, input.connectors),
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
     model: languageModel(env.models.architect) as unknown as MastraModelConfig,

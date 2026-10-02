@@ -42,6 +42,12 @@ async function loadRun(runId: string): Promise<RunRow | undefined> {
   return db.query.run.findFirst({ where: eq(schema.run.id, runId) });
 }
 
+/** The project a run's wizard belongs to — where its imported connectors live. */
+export async function projectIdOf(run: RunRow): Promise<string> {
+  const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
+  return w?.projectId ?? "";
+}
+
 async function loadProject(run: RunRow): Promise<ProjectRow> {
   const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
   const p = w && (await db.query.project.findFirst({ where: eq(schema.project.id, w.projectId) }));
@@ -299,7 +305,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     throw new RunInputError(errors);
   }
   const connections = step.fields.some((f) => f.kind === "connection")
-    ? await connectionViews(run.definition.connections ?? [], scopeOf(run))
+    ? await connectionViews(run.definition.connections ?? [], scopeOf(run), await projectIdOf(run))
     : [];
   for (const field of step.fields) {
     if (field.kind === "image" || field.kind === "file") {
@@ -486,7 +492,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     lists,
     connections:
       step?.type === "page" && step.fields.some((f) => f.kind === "connection")
-        ? await connectionViews(def.connections ?? [], scopeOf(run))
+        ? await connectionViews(def.connections ?? [], scopeOf(run), await projectIdOf(run))
         : [],
     keeps: Boolean(def.lists?.length || def.connections?.length),
     shareUrl: run.shareToken ? `${env.appUrl}/s/${run.shareToken}` : null,

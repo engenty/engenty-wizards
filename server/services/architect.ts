@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { runArchitect } from "../agents/architect.js";
 import { charge, usdToMicros } from "../billing/credits.js";
+import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { draftFiles } from "./files.js";
 import { ownedProject } from "./projects.js";
@@ -29,6 +30,7 @@ export async function architectTurn(
       message,
       history: history.map((m) => ({ role: m.role, content: m.content })),
       mcpServers: project.mcpServers.map((s) => ({ id: s.id, name: s.name })),
+      connectors: await listConnectors(project.id),
       signal: io.signal,
       onText: io.onText,
       onActivity: io.onActivity,

@@ -20,6 +20,7 @@ import {
 } from "../engenty/connections-sdk/types.js";
 import { env } from "../env.js";
 import { deleteSecret, getSecret, putSecret, type StoreScope } from "../store/index.js";
+import { importedConnector } from "./external.js";
 import { gmailConnector } from "./gmail.js";
 import { imapConnector } from "./imap.js";
 import { outlookConnector } from "./outlook.js";
@@ -59,14 +60,35 @@ interface StoredConnection {
 }
 
 async function usable(connector: ConnectorDefinition): Promise<boolean> {
-  return connector.auth.kind === "oauth2"
-    ? hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)
-    : connector.auth.kind === "api_key";
+  if (connector.auth.kind !== "oauth2") {
+    return connector.auth.kind === "api_key";
+  }
+  // A connector that registers its own OAuth client needs none configured.
+  return (
+    connector.auth.oauth2.dynamicClientRegistration === true ||
+    hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)
+  );
 }
 
-export async function connectorOptions(kind: ConnectionKind): Promise<ConnectorOption[]> {
+/** An imported connector that needs no credential: there is nothing for the person to connect. */
+const open = (connector: ConnectorDefinition) =>
+  connector.auth.kind === "api_key" && connector.auth.apiKey.fields.length === 0;
+
+/** The connectors behind a connection: the built-in ones of its kind, or the one it names. */
+async function candidates(connection: ConnectionDef, projectId: string) {
+  if (connection.connector) {
+    const imported = await importedConnector(projectId, connection.connector);
+    return imported ? [imported.connector] : [];
+  }
+  return connection.kind ? CONNECTORS[connection.kind] : [];
+}
+
+export async function connectorOptions(
+  connection: ConnectionDef,
+  projectId: string,
+): Promise<ConnectorOption[]> {
   const out: ConnectorOption[] = [];
-  for (const c of CONNECTORS[kind]) {
+  for (const c of await candidates(connection, projectId)) {
     if (!(await usable(c))) {
       continue;
     }
@@ -85,8 +107,12 @@ export async function connectorOptions(kind: ConnectionKind): Promise<ConnectorO
   return out;
 }
 
-function connectorFor(connection: ConnectionDef, connectorId: string): ConnectorDefinition {
-  const connector = CONNECTORS[connection.kind].find((c) => c.id === connectorId);
+async function connectorFor(
+  connection: ConnectionDef,
+  connectorId: string,
+  projectId: string,
+): Promise<ConnectorDefinition> {
+  const connector = (await candidates(connection, projectId)).find((c) => c.id === connectorId);
   if (!connector) {
     throw new Error(`Unknown connector "${connectorId}".`);
   }
@@ -96,14 +122,17 @@ function connectorFor(connection: ConnectionDef, connectorId: string): Connector
 export async function connectionViews(
   connections: ConnectionDef[],
   scope: StoreScope,
+  projectId: string,
 ): Promise<ConnectionView[]> {
   return Promise.all(
     connections.map(async (c) => {
       const stored = await getSecret<StoredConnection>(scope, slot(c.id));
+      const only = c.connector ? (await candidates(c, projectId))[0] : undefined;
       return {
         id: c.id,
-        kind: c.kind,
-        title: c.title ?? null,
+        kind: c.kind ?? null,
+        connector: c.connector ?? null,
+        title: c.title ?? only?.name ?? null,
         description: c.description ?? null,
         account: stored
           ? {
@@ -111,8 +140,10 @@ export async function connectionViews(
               label: stored.label,
               connectedAt: stored.createdAt.toISOString(),
             }
-          : null,
-        connectors: await connectorOptions(c.kind),
+          : only && open(only)
+            ? { connector: only.id, label: only.name, connectedAt: new Date(0).toISOString() }
+            : null,
+        connectors: await connectorOptions(c, projectId),
       };
     }),
   );
@@ -123,6 +154,7 @@ export async function connectionViews(
 /** Carried through the provider as `state`: sealed, so the PKCE verifier stays with us. */
 interface OAuthState {
   scope: StoreScope;
+  projectId: string;
   runId: string;
   connection: ConnectionDef;
   connectorId: string;
@@ -132,17 +164,21 @@ interface OAuthState {
 
 export async function startOAuth(
   scope: StoreScope,
+  projectId: string,
   runId: string,
   connection: ConnectionDef,
   connectorId: string,
 ): Promise<string> {
-  const connector = connectorFor(connection, connectorId);
+  const connector = await connectorFor(connection, connectorId, projectId);
   if (connector.auth.kind !== "oauth2") {
     throw new Error(`${connector.name} is not connected by signing in.`);
   }
+  // Servers that hand out OAuth clients on request (most MCP servers): get one on first use.
+  await connector.auth.oauth2.registerClient?.();
   const pkce = createOAuth2Pkce();
   const state: OAuthState = {
     scope,
+    projectId,
     runId,
     connection,
     connectorId,
@@ -164,7 +200,7 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
   if (!state || state.exp < Date.now()) {
     throw new Error("Die Anmeldung ist abgelaufen. Bitte noch einmal verbinden.");
   }
-  const connector = connectorFor(state.connection, state.connectorId);
+  const connector = await connectorFor(state.connection, state.connectorId, state.projectId);
   if (connector.auth.kind !== "oauth2") {
     throw new Error("not an oauth connector");
   }
@@ -191,11 +227,12 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
 /** Connects an `api_key` connector with what the person typed; the connector checks it first. */
 export async function connectWithCredentials(
   scope: StoreScope,
+  projectId: string,
   connection: ConnectionDef,
   connectorId: string,
   values: Record<string, string>,
 ): Promise<string> {
-  const connector = connectorFor(connection, connectorId);
+  const connector = await connectorFor(connection, connectorId, projectId);
   if (connector.auth.kind !== "api_key") {
     throw new Error(`${connector.name} is connected by signing in.`);
   }
@@ -252,12 +289,16 @@ export function disconnect(scope: StoreScope, connectionId: string) {
 export async function connectionContext(
   scope: StoreScope,
   connection: ConnectionDef,
+  projectId: string,
 ): Promise<{ connector: ConnectorDefinition; ctx: ConnectorActionContext; label: string } | null> {
   const stored = await getSecret<StoredConnection>(scope, slot(connection.id));
   if (!stored) {
-    return null;
+    const only = connection.connector ? (await candidates(connection, projectId))[0] : undefined;
+    return only && open(only)
+      ? { connector: only, label: only.name, ctx: actionContext(scope, connection, only, "{}", []) }
+      : null;
   }
-  const connector = connectorFor(connection, stored.provider);
+  const connector = await connectorFor(connection, stored.provider, projectId);
   let data = stored.data;
   const expires = data.expiresAt ? Date.parse(data.expiresAt) : null;
   if (
@@ -282,26 +323,37 @@ export async function connectionContext(
   return {
     connector,
     label: stored.label,
-    ctx: {
-      accessToken: data.accessToken,
-      fetchImpl: fetch,
-      log: () => undefined,
-      connection: {
-        id: connection.id,
-        connector_id: connector.id,
-        auth_kind: connector.auth.kind,
-        autonomous_mode: "read_only",
-        connected_by: null,
-        created_at: stored.createdAt.toISOString(),
-        display_name: stored.label,
-        error_message: null,
-        external_account: stored.label,
-        granted_scopes: data.scopes,
-        owner_user_id: null,
-        space_id: null,
-        status: "active",
-        tenant_id: scope.wizardId,
-      },
+    ctx: actionContext(scope, connection, connector, data.accessToken, data.scopes, stored),
+  };
+}
+
+function actionContext(
+  scope: StoreScope,
+  connection: ConnectionDef,
+  connector: ConnectorDefinition,
+  accessToken: string,
+  scopes: string[],
+  stored?: { label: string; createdAt: Date },
+): ConnectorActionContext {
+  return {
+    accessToken,
+    fetchImpl: fetch,
+    log: () => undefined,
+    connection: {
+      id: connection.id,
+      connector_id: connector.id,
+      auth_kind: connector.auth.kind,
+      autonomous_mode: "read_only",
+      connected_by: null,
+      created_at: (stored?.createdAt ?? new Date()).toISOString(),
+      display_name: stored?.label ?? connector.name,
+      error_message: null,
+      external_account: stored?.label ?? null,
+      granted_scopes: scopes,
+      owner_user_id: null,
+      space_id: null,
+      status: "active",
+      tenant_id: scope.wizardId,
     },
   };
 }

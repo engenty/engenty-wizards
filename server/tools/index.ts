@@ -12,6 +12,7 @@ import { gatewayTools } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { snapshotFile } from "../services/files.js";
 import { browserTools } from "./browser.js";
+import { connectorTools } from "./connector.js";
 import { mailTools } from "./mail.js";
 import { assertPublicUrl, safeFetch } from "./net-guard.js";
 import { clip, FileKeeper } from "./shared.js";
@@ -102,6 +103,7 @@ export async function buildStepTools(
   // The wizard's lists and files, and the documents the person gave, are always at hand.
   Object.assign(tools, storeTools(ctx, uploads));
   Object.assign(tools, mailTools(step, ctx, files));
+  Object.assign(tools, await connectorTools(step, ctx));
 
   if (allowed.has("sandbox") && env.sandboxEnabled) {
     tools.run_command = createTool({

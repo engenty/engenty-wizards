@@ -8,6 +8,7 @@ import {
   wizardSchema,
 } from "../../shared/definition.js";
 import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
+import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { starterById } from "../starters/index.js";
@@ -93,10 +94,44 @@ async function publishedVersion(w: WizardRow) {
   return v ?? null;
 }
 
-/** Validator issues of the draft, checked against its workspace (widget files must exist). */
+/** Connections must name connectors the project has imported, and actions those connectors have. */
+async function connectorIssues(projectId: string, draft: WizardDefinition) {
+  const wanted = (draft.connections ?? []).filter((c) => c.connector);
+  if (!wanted.length) {
+    return [];
+  }
+  const issues: ValidationIssue[] = [];
+  const connectors = await listConnectors(projectId);
+  for (const connection of wanted) {
+    const connector = connectors.find((c) => c.id === connection.connector);
+    if (!connector) {
+      issues.push({
+        message: `Connection "${connection.id}" uses connector "${connection.connector}", which this project has not imported.`,
+      });
+      continue;
+    }
+    const unknown = (connection.actions ?? []).filter(
+      (a) => !connector.actions.some((x) => x.id === a),
+    );
+    if (unknown.length && !connector.toolsPending) {
+      issues.push({
+        message: `Connection "${connection.id}": ${connector.name} has no action ${unknown.map((a) => `"${a}"`).join(", ")}.`,
+      });
+    }
+  }
+  return issues;
+}
+
+/** Everything wrong with a draft: its structure, its workspace files, its project's connectors. */
+async function checkDraft(projectId: string, draft: WizardDefinition, files: string[]) {
+  return [...validateWizard(draft, files), ...(await connectorIssues(projectId, draft))];
+}
+
+/** Validator issues of the draft, checked against its workspace and the project's connectors. */
 export async function draftIssues(w: WizardRow) {
   const files = await draftFiles(w.id);
-  return validateWizard(
+  return checkDraft(
+    w.projectId,
     w.draft,
     files.map((f) => f.path),
   );
@@ -110,7 +145,8 @@ export async function wizardState(w: WizardRow) {
     ...wizardSummary(w),
     draft: w.draft,
     files,
-    issues: validateWizard(
+    issues: await checkDraft(
+      w.projectId,
       w.draft,
       files.map((f) => f.path),
     ),
@@ -229,10 +265,9 @@ export async function writeDraft(
 ) {
   const w = await ownedWizard(userId, wizardId);
   const files = await draftFiles(w.id);
-  const { draft, issues } = parseDraft(
-    input.definition,
-    files.map((f) => f.path),
-  );
+  const paths = files.map((f) => f.path);
+  const { draft } = parseDraft(input.definition, paths);
+  const issues = await checkDraft(w.projectId, draft, paths);
   const [row] = await db
     .update(schema.wizard)
     .set({
@@ -346,7 +381,8 @@ export async function deleteWizard(userId: string, wizardId: string) {
 /** A wizard with validator issues is never published — same rule for studio and MCP. */
 export async function requireClean(w: WizardRow) {
   const files = await draftFiles(w.id);
-  const issues = validateWizard(
+  const issues = await checkDraft(
+    w.projectId,
     w.draft,
     files.map((f) => f.path),
   );

@@ -3,7 +3,7 @@ import type {
   ConnectorActionContext,
   ConnectorActionGroup,
   ConnectorOAuth2Config,
-} from "../connections-sdk/types.js";
+} from "../shims/connections-sdk.js";
 import type { z } from "zod";
 
 /**

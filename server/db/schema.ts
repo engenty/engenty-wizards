@@ -10,6 +10,7 @@ import {
 import type { WizardDefinition } from "../../shared/definition.js";
 import type { RunAsk, RunState } from "../../shared/run.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
+import type { ImportedConnectorRecord } from "../engenty/connections-external/types.js";
 
 const now = sql`(unixepoch() * 1000)`;
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
@@ -324,6 +325,24 @@ export const asset = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index("asset_run").on(t.runId)],
+);
+
+/**
+ * A service imported as a connector, from the integrations registry or a pasted OpenAPI spec /
+ * MCP endpoint. The record is engenty's: actions, auth and source, normalised at import time.
+ */
+export const projectConnector = sqliteTable(
+  "project_connector",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    id: text("id").notNull(),
+    record: text("record", { mode: "json" }).$type<ImportedConnectorRecord>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.id] })],
 );
 
 // --- The wizard's store ------------------------------------------------------

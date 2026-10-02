@@ -2,6 +2,7 @@ import type { CallToolResult, McpServer, ToolCallback } from "@modelcontextproto
 import { z } from "zod";
 import { authoringGuide } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
+import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
 import { RunConflict } from "../engine/runner.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
@@ -110,7 +111,62 @@ export function registerTools(server: McpServer, who: Principal) {
       const project = projectId
         ? await ownedProject(who.userId, projectId)
         : await defaultProject(who.userId);
-      return authoringGuide(project.mcpServers.map((s) => ({ id: s.id, name: s.name })));
+      return authoringGuide(
+        project.mcpServers.map((s) => ({ id: s.id, name: s.name })),
+        await listConnectors(project.id),
+      );
+    },
+  );
+
+  // --- connectors ------------------------------------------------------------
+  tool(
+    "find_connectors",
+    "wizards:read",
+    {
+      title: "Find connectors",
+      description:
+        "Search the integrations registry for a service that can be imported as a connector, from its OpenAPI spec or its MCP server.",
+      input: z.object({ query: z.string().min(1).max(200) }),
+      readOnly: true,
+    },
+    async ({ query }) => ({ services: await searchRegistry(query) }),
+  );
+
+  tool(
+    "list_connectors",
+    "wizards:read",
+    {
+      title: "List connectors",
+      description: "The connectors a project has imported, each with its actions.",
+      input: z.object({ projectId: z.string().optional() }),
+      readOnly: true,
+    },
+    async ({ projectId }) => {
+      const project = projectId
+        ? await ownedProject(who.userId, projectId)
+        : await defaultProject(who.userId);
+      return { projectId: project.id, connectors: await listConnectors(project.id) };
+    },
+  );
+
+  tool(
+    "import_connector",
+    "wizards:write",
+    {
+      title: "Import connector",
+      description:
+        "Import a registry service into a project as a connector. Returns its id, tool prefix, how people connect and its actions. A wizard uses it through a connection { id, connector }.",
+      input: z.object({
+        projectId: z.string().optional(),
+        domain: z.string().describe("A domain from find_connectors, e.g. notion.com"),
+        kind: z.enum(["mcp", "openapi"]).optional(),
+      }),
+    },
+    async ({ projectId, domain, kind }) => {
+      const project = projectId
+        ? await ownedProject(who.userId, projectId)
+        : await defaultProject(who.userId);
+      return importFromRegistry(who.userId, project.id, { domain, kind });
     },
   );
 

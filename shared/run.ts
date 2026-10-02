@@ -33,22 +33,47 @@ export interface RunState {
   notes: Record<string, string>;
 }
 
+interface AskBase {
+  id: string;
+  stepId: string;
+  /** Why the wizard asks, in the person's language. */
+  reason: string;
+  at: string;
+}
+
 /**
  * A running step asks the person to sign in on a page the wizard's browser has open. What the
  * person types goes into that page; the model never sees it.
  */
-export interface RunAsk {
-  id: string;
-  stepId: string;
+export interface LoginAsk extends AskBase {
   kind: "login";
-  /** Why the wizard asks, in the person's language. */
-  reason: string;
   site: { host: string; title: string };
   /** Inputs found on the page, to fill here instead of clicking into the picture. */
   fields: { id: string; label: string; secret: boolean }[];
-  at: string;
 }
 
+/** A running step wants to change something in one of the person's accounts and asks first. */
+export interface ConfirmAsk extends AskBase {
+  kind: "confirm";
+  /** The connected service, e.g. "Notion". */
+  service: string;
+  action: { id: string; summary: string; destructive: boolean };
+  /** What would be sent, as readable JSON. */
+  input: string;
+}
+
+/** What a running step asks the person; the step waits for the answer. */
+export type RunAsk = LoginAsk | ConfirmAsk;
+
+/** A question as a step puts it; the runner adds id, step and time. */
+export type AskInput =
+  | Omit<LoginAsk, "id" | "stepId" | "at">
+  | Omit<ConfirmAsk, "id" | "stepId" | "at">;
+
+/**
+ * `fill` and `done` answer a sign-in (remember = keep the sign-in); `done` also allows a change
+ * (remember = allow that action for the rest of the run); `skip` declines either.
+ */
 export type AskAnswer =
   | { type: "fill"; values: Record<string, string>; remember?: boolean }
   | { type: "done"; remember?: boolean }

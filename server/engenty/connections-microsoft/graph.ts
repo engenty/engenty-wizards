@@ -1,7 +1,7 @@
 import type {
   ConnectorActionContext,
   ConnectorOAuth2Config,
-} from "../connections-sdk/types.js";
+} from "../shims/connections-sdk.js";
 
 export const GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0";
 

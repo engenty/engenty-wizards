@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useMe } from "../lib/session";
 import { Button, Card, IconButton, Input, Label, Segmented, Textarea } from "../ui";
+import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
@@ -496,6 +497,11 @@ export function SettingsPage() {
         <ProjectSwitcher />
       </div>
       <div className="mt-8">{project ? <ProjectForm key={key} project={project} /> : null}</div>
+      {project ? (
+        <div className="mt-6">
+          <Connectors key={key} projectId={project.id} />
+        </div>
+      ) : null}
       <div className="mt-6">
         <ConnectCard />
       </div>

@@ -29,7 +29,7 @@ export function mailTools(step: AgentStep, ctx: StepContext, files: FileKeeper) 
     return {};
   }
   const open = async () => {
-    const found = await connectionContext(ctx.store, connection);
+    const found = await connectionContext(ctx.store, connection, ctx.project.id);
     if (!found) {
       throw new Error(NOT_CONNECTED);
     }

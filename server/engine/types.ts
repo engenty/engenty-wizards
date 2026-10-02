@@ -1,5 +1,5 @@
 import type { WizardDefinition } from "../../shared/definition.js";
-import type { AssetRef, RunAsk, RunState } from "../../shared/run.js";
+import type { AskInput, AssetRef, RunState } from "../../shared/run.js";
 import type { WorkspaceFile } from "../../shared/workspace.js";
 import type { schema } from "../db/client.js";
 import type { SaveAssetInput } from "../storage.js";
@@ -31,7 +31,7 @@ export interface StepContext {
    * Asks the person and waits for the answer. `null` when nobody is there to answer (a run an
    * MCP client drives).
    */
-  ask(ask: Omit<RunAsk, "id" | "at" | "stepId">): Promise<AskResult | null>;
+  ask(ask: AskInput): Promise<AskResult | null>;
   chargeUsd(usd: number, reason: string): Promise<void>;
   saveAsset(input: Omit<SaveAssetInput, "ownerId" | "runId">): Promise<AssetRef>;
 }

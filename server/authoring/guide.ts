@@ -27,8 +27,17 @@ type List = {
 //   type "select":  format  { options: { id, label }[], allowCustom: boolean }
 //   type "boolean"
 
-type Connection = { id, kind: "mail", title?, description? }
-// the person picks how to connect (Gmail, Outlook, or any mailbox over IMAP); steps only ever READ it
+type Connection =
+  | { id, kind: "mail", title?, description? }
+      // the person picks how to connect (Gmail, Outlook, or any mailbox over IMAP); steps only ever READ it
+  | { id, connector: connectorId, actions?: actionId[], policy?: { [actionId]: "allow"|"ask" }, title?, description? }
+      // connector = a service imported into the PROJECT from the integrations registry (its OpenAPI spec or MCP server):
+      //   Notion, Stripe, GitHub, HubSpot … The person connects their own account (OAuth or API key) on a page.
+      // A step that lists the connection gets the connector's actions as tools named <toolPrefix>_<actionId>.
+      //   actions: exactly the actions the wizard may use. Default: only those marked "read".
+      //   policy: "allow" = runs without asking, "ask" = the person confirms each call first.
+      //           Default: read → allow, write → ask. Deleting always asks. Set "allow" for an action marked
+      //           "write" that in truth only looks something up (MCP servers often leave the mark out).
 
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
 // Branch = { when: { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty", value? }, goto: stepId | "end" }
@@ -115,6 +124,7 @@ How good wizards look:
 - The sandbox runs code (python/node) for calculations, charts or file conversion; export_file hands files to the person.
 - Remembering between runs ("merke dir", "führe eine Liste"): declare a list and let an agent step save into it with list_write; a later run reads it as {{lists.id}} or list_read. Give it a key column so known rows are updated, not duplicated. Never make the person re-upload last time's result.
 - The person's mail: one connection of kind "mail", a page field of kind "connection" early in the wizard, and the agent step lists it in "connections". Do not ask for the provider or the address in other fields — the connect field does that.
+- Working in a service for the person (read their Notion, create an issue, look up a customer): import the service as a connector, declare a connection with "connector", put a page field of kind "connection" before the step, and list the connection in the step's "connections". Prefer a connector over the browser whenever the service has one.
 - Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.
 - Papers and scans: a "file" field with multiple and camera. Agent steps read uploads with read_document; for invoices and receipts scan_documents returns the fields (vendor, number, date, totals, currency) exactly as printed.
 - Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
@@ -150,6 +160,28 @@ export interface GuideServer {
   name: string;
 }
 
+export interface GuideConnector {
+  id: string;
+  name: string;
+  toolPrefix: string;
+  actions: { id: string; group: string }[];
+}
+
+export function connectorsLine(connectors: GuideConnector[]): string {
+  if (!connectors.length) {
+    return "Imported connectors of this project: none yet. When a wizard should work in a service on the person's behalf (their Notion, GitHub, CRM …), find it with find_connectors and import it with import_connector, then declare a connection for it.";
+  }
+  const lines = connectors.map((c) => {
+    const actions = c.actions
+      .slice(0, 40)
+      .map((a) => `${a.id}${a.group === "read" ? "" : ` (${a.group})`}`)
+      .join(", ");
+    const more = c.actions.length > 40 ? `, … ${c.actions.length - 40} more (list_connectors)` : "";
+    return `- ${c.id} — ${c.name}, tools ${c.toolPrefix}_*: ${actions || "actions appear once an account is connected"}${more}`;
+  });
+  return `Imported connectors of this project (more with find_connectors + import_connector):\n${lines.join("\n")}`;
+}
+
 export function mcpServersLine(mcp: GuideServer[]): string {
   return `Project MCP servers available to agent steps: ${mcp.length ? mcp.map((m) => `${m.id} (${m.name})`).join(", ") : "none — if the admin wants to write into an external system that needs one, build the step with http or browser, and tell them they can connect a server in the project settings"}.`;
 }
@@ -159,7 +191,7 @@ export function exampleWizard(): string {
 }
 
 /** The guide an MCP client reads before it writes a wizard. */
-export function authoringGuide(mcp: GuideServer[]): string {
+export function authoringGuide(mcp: GuideServer[], connectors: GuideConnector[] = []): string {
   return `engenty wizards: a wizard is a page-by-page flow an end user walks through on a shared link. Pages ask questions; AI steps research, write, draw images, render video, build documents and dashboards, or write into other systems. You author the wizard as JSON; the person who asked you is the ADMIN, the people who later open the link are END USERS.
 
 ${SCHEMA_DOC}
@@ -167,6 +199,8 @@ ${PRINCIPLES}
 ${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
+
+${connectorsLine(connectors)}
 
 Models: an agent step's "model" is "fast" (short copy, cheap) or "smart" (research, reasoning). Image, video and document models are chosen by the platform.
 

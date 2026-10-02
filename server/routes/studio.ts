@@ -4,6 +4,16 @@ import { z } from "zod";
 import { auth, enabledProviders, type SessionUser } from "../auth.js";
 import { getBilling, microsToCredits } from "../billing/credits.js";
 import { billingEnabled } from "../billing/stripe.js";
+import {
+  connectorImportSchema,
+  importConnector,
+  listConnectors,
+  previewSource,
+  refreshConnector,
+  registryService,
+  removeConnector,
+  searchRegistry,
+} from "../connectors/external.js";
 import { env } from "../env.js";
 import { hasTextModel } from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
@@ -96,6 +106,45 @@ export const studio = new Hono<Vars>()
   })
   .delete("/projects/:id", async (c) => {
     await deleteProject(c.get("user").id, c.req.param("id"));
+    return c.json({ ok: true });
+  })
+
+  // --- connectors: services imported from the integrations registry ------------
+  .post("/connectors/search", async (c) => {
+    const { query } = z.object({ query: z.string().min(1).max(200) }).parse(await c.req.json());
+    return c.json(await searchRegistry(query));
+  })
+  .get("/connectors/registry/:domain", async (c) =>
+    c.json(await registryService(c.req.param("domain"))),
+  )
+  .post("/connectors/preview", async (c) => {
+    const body = z
+      .object({
+        domain: z.string().min(1).max(253).optional(),
+        sourceKind: z.enum(["openapi", "mcp"]),
+        sourceUrl: z.string().url(),
+      })
+      .parse(await c.req.json());
+    return c.json(await previewSource(body));
+  })
+  .get("/projects/:id/connectors", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    return c.json(await listConnectors(project.id));
+  })
+  .post("/projects/:id/connectors", async (c) => {
+    const user = c.get("user");
+    const project = await ownedProject(user.id, c.req.param("id"));
+    return c.json(
+      await importConnector(user.id, project.id, connectorImportSchema.parse(await c.req.json())),
+    );
+  })
+  .post("/projects/:id/connectors/:connectorId/refresh", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    return c.json(await refreshConnector(project.id, c.req.param("connectorId"), null));
+  })
+  .delete("/projects/:id/connectors/:connectorId", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    await removeConnector(project.id, c.req.param("connectorId"));
     return c.json({ ok: true });
   })
 

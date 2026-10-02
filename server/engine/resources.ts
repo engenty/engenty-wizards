@@ -17,6 +17,8 @@ export class RunResources {
   private page: Page | null = null;
   private sandbox: DockerSandbox | null = null;
   private scope: StoreScope | null = null;
+  /** Changes the person allowed for the rest of this run, as "<connection>:<action>". */
+  readonly allowed = new Set<string>();
 
   constructor(readonly runId: string) {}
 

@@ -53,6 +53,16 @@ use for sign-in one more redirect URI, `<APP_URL>/api/connect/callback`, and
 Connected accounts, kept sign-ins, lists and collected files belong to one wizard and one person,
 are encrypted where secret (`STORE_ENC_KEY`), and go when unused for `STORE_TTL_DAYS`.
 
+## Connectors
+
+In the project settings, search a service (Notion, Stripe, GitHub …) in the
+[integrations.sh](https://integrations.sh) registry and import it — from its OpenAPI spec or its
+MCP server. The architect and MCP clients can do the same (`find_connectors`, `import_connector`).
+A wizard declares a connection to it; the person running the wizard connects their own account
+(OAuth, with the client registered on the fly where the server allows it, or an API key). Steps
+get the connector's actions as tools: reading is allowed, anything that changes the account asks
+the person first, deleting always. `ENGENTY_INTEGRATIONS_REGISTRY_URL` points at another registry.
+
 ## Build wizards from your own AI client
 
 Admins can author wizards in Claude Code, Codex, Cursor, claude.ai or Claude Desktop, on their own
@@ -86,6 +96,7 @@ open editor.
 | Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `server/tools/browser.ts`, `server/engine/asks.ts` |
 | What a wizard keeps per person: lists, files, connected accounts, sign-ins | `shared/store.ts`, `server/store/`, `server/tools/store.ts` |
 | Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `server/connectors/`, `server/tools/mail.ts` |
+| Imported connectors: any service from the integrations.sh registry, by its OpenAPI spec or MCP server | `server/connectors/external.ts`, `server/tools/connector.ts`, `web/src/studio/Connectors.tsx` |
 | Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `server/documents/parse.ts` |
 | engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `server/engenty/`, `shared/engenty/` |
 | Architect (prompt → wizard, self-repairing) | `server/agents/architect.ts` |

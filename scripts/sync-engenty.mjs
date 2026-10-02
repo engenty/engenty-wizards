@@ -16,7 +16,32 @@ const SETS = [
     "shared/engenty/data-tables",
     ["columns.ts", "columns-value.ts", "columns-format.ts", "index.ts"],
   ],
-  ["packages/connections-sdk/src", "server/engenty/connections-sdk", ["types.ts", "oauth2.ts"]],
+  [
+    "packages/connections-sdk/src",
+    "server/engenty/connections-sdk",
+    ["types.ts", "oauth2.ts", "registry.ts"],
+  ],
+  [
+    "modules/connections/providers/external/src",
+    "server/engenty/connections-external",
+    [
+      "types.ts",
+      "errors.ts",
+      "registry-client.ts",
+      "registry-source.ts",
+      "import-service.ts",
+      "build-connector.ts",
+      "oauth-dcr.ts",
+      "importer/classify.ts",
+      "importer/map-auth.ts",
+      "importer/normalize-mcp.ts",
+      "importer/normalize-openapi.ts",
+      "invoke/http-invoker.ts",
+      "invoke/mcp-client.ts",
+      "net/guarded-fetch.ts",
+    ],
+  ],
+  ["packages/web-ingest/src/lib", "server/engenty/web-ingest", ["ssrf.ts"]],
   ["modules/connections/providers/google/src", "server/engenty/connections-google", ["shared.ts"]],
   [
     "modules/connections/providers/microsoft/src",
@@ -49,7 +74,7 @@ const SETS = [
 
 /** Where an `@engenty/*` package lives in this tree (a file, relative to the repo root). */
 const PACKAGES = {
-  "@engenty/connections-sdk": "server/engenty/connections-sdk/types.ts",
+  "@engenty/connections-sdk": "server/engenty/shims/connections-sdk.ts",
   "@engenty/plugin-sdk": "server/engenty/shims/plugin-sdk.ts",
   "@engenty/web-ingest": "server/engenty/shims/web-ingest.ts",
 };

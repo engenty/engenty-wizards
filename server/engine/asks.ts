@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { AskAnswer, RunAsk } from "../../shared/run.js";
+import type { AskAnswer, AskInput, RunAsk } from "../../shared/run.js";
 import { db, schema } from "../db/client.js";
 import { signalChanged } from "./events.js";
 
@@ -25,13 +25,13 @@ async function setAsk(runId: string, ask: RunAsk | null) {
  */
 export async function askPerson(
   runId: string,
-  ask: Omit<RunAsk, "id" | "at">,
+  ask: AskInput & { stepId: string },
   signal: AbortSignal,
 ): Promise<AskResult> {
   if (waiting.has(runId)) {
     throw new Error("The wizard is already waiting for the person.");
   }
-  const full: RunAsk = { ...ask, id: nanoid(10), at: new Date().toISOString() };
+  const full = { ...ask, id: nanoid(10), at: new Date().toISOString() } as RunAsk;
   const result = new Promise<AskResult>((resolve) => {
     const finish = (r: AskResult) => {
       clearTimeout(timer);

@@ -26,6 +26,7 @@ import {
   cancel,
   createRun,
   goBack,
+  projectIdOf,
   RunConflict,
   RunInputError,
   retry,
@@ -442,7 +443,13 @@ export const runRoutes = new Hono()
     if (!run || !connection) {
       return c.json({ error: "not found" }, 404);
     }
-    const url = await startOAuth(scopeOf(run), run.id, connection, c.req.param("connectorId"));
+    const url = await startOAuth(
+      scopeOf(run),
+      await projectIdOf(run),
+      run.id,
+      connection,
+      c.req.param("connectorId"),
+    );
     return c.json({ url });
   })
   .post("/:id/connections/:connectionId/credentials/:connectorId", async (c) => {
@@ -459,6 +466,7 @@ export const runRoutes = new Hono()
     try {
       const label = await connectWithCredentials(
         scopeOf(run),
+        await projectIdOf(run),
         connection,
         c.req.param("connectorId"),
         values,
@@ -560,9 +568,9 @@ export const runRoutes = new Hono()
     return c.json({
       lists,
       files: await storeFiles(scope),
-      connections: (await connectionViews(run.definition.connections ?? [], scope)).filter(
-        (x) => x.account,
-      ),
+      connections: (
+        await connectionViews(run.definition.connections ?? [], scope, await projectIdOf(run))
+      ).filter((x) => x.account),
       keepsSignIns: secrets.some((s) => s.slot === "browser"),
     });
   })

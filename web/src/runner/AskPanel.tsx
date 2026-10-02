@@ -1,16 +1,92 @@
-import type { AskAnswer, BrowserAct, RunAsk } from "@shared/run";
-import { ArrowDown, ArrowUp, CornerDownLeft, LockKeyhole, ShieldCheck } from "lucide-react";
+import type { AskAnswer, BrowserAct, ConfirmAsk, LoginAsk, RunAsk } from "@shared/run";
+import {
+  ArrowDown,
+  ArrowUp,
+  CornerDownLeft,
+  LockKeyhole,
+  PencilLine,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, cn, Input, Label, Switch } from "../ui";
+
+/** What a running step asks the person: a sign-in, or leave to change something. */
+export function AskPanel({ runId, ask }: { runId: string; ask: RunAsk }) {
+  return ask.kind === "confirm" ? (
+    <ConfirmPanel runId={runId} ask={ask} />
+  ) : (
+    <LoginPanel runId={runId} ask={ask} />
+  );
+}
+
+/**
+ * A running step wants to change something in an account the person connected. They see what
+ * and with which values, and decide.
+ */
+function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
+  const [remember, setRemember] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const answer = async (body: AskAnswer) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/api/runs/${runId}/ask/${ask.id}`, body);
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  };
+  const Icon = ask.action.destructive ? TriangleAlert : PencilLine;
+  return (
+    <div className="animate-rise">
+      <div className="mb-5 flex items-start gap-3">
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-full",
+            ask.action.destructive ? "bg-rose-tint text-rose" : "bg-ember-tint text-ember-strong",
+          )}
+        >
+          <Icon className="size-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] text-ink-3">{t("ask.wants", { service: ask.service })}</p>
+          <h2 className="font-display font-semibold text-[20px] leading-snug tracking-tight">
+            {ask.reason}
+          </h2>
+        </div>
+      </div>
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-paper-2 p-4 text-[13px] leading-relaxed ring-1 ring-border-soft">
+        {ask.input}
+      </pre>
+      <div className="mt-5 flex items-center gap-4">
+        <Switch checked={remember} onChange={setRemember} label={t("ask.allowRest")} />
+        <span className="flex-1 text-[13px] text-ink-2">{t("ask.allowRest")}</span>
+      </div>
+      {error ? (
+        <div className="mt-3 rounded-xl bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
+      ) : null}
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button variant="ghost" disabled={busy} onClick={() => void answer({ type: "skip" })}>
+          {t("ask.deny")}
+        </Button>
+        <Button busy={busy} onClick={() => void answer({ type: "done", remember })}>
+          {t("ask.allow")}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * A running step asks the person to sign in on a page the wizard has open. The picture is that
  * page: they fill the form here, or click and type in the picture itself (a captcha, "continue
  * with Google"). What they enter goes into the page — the model never gets it.
  */
-export function AskPanel({ runId, ask }: { runId: string; ask: RunAsk }) {
+function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);

@@ -117,6 +117,25 @@ describe("lists and connections in a wizard", () => {
     expect(messages).toContain('Deliverable from unknown list "lists.customers"');
   });
 
+  it("takes a connection to an imported connector, with its actions and policy", () => {
+    const withConnector = structuredClone(wizard) as any;
+    withConnector.connections.push({
+      id: "notion",
+      connector: "notion-mcp",
+      actions: ["search", "create_pages"],
+      policy: { search: "allow" },
+    });
+    const parsed = parseWizard(withConnector);
+    expect(parsed.ok && parsed.issues).toEqual([]);
+
+    withConnector.connections.push({ id: "both", kind: "mail", connector: "notion-mcp" });
+    withConnector.connections.push({ id: "neither" });
+    const broken = parseWizard(withConnector);
+    const messages = broken.ok ? broken.issues.map((i) => i.message) : [];
+    expect(messages).toContain('Connection "both" needs either "kind" or "connector", not both.');
+    expect(messages).toContain('Connection "neither" needs either "kind" or "connector", not both.');
+  });
+
   it("refuses a list column the data-table schema does not know", () => {
     const broken = structuredClone(wizard) as any;
     broken.lists[0].columns[1] = { id: "amount", name: "Betrag", type: "number" };
