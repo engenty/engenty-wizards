@@ -20,6 +20,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": { target: `http://127.0.0.1:${apiPort}`, changeOrigin: false, xfwd: true },
+      "/.well-known": { target: `http://127.0.0.1:${apiPort}`, changeOrigin: false, xfwd: true },
     },
   },
   build: { outDir: "../dist-web", emptyOutDir: true },

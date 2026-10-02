@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, KeyRound, Plus, Trash2, Upload } from "lucide-react";
+import { Check, Copy, KeyRound, Plug, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -251,7 +251,61 @@ function CopyLine({ text }: { text: string }) {
   );
 }
 
-/** Personal keys for the admin's own MCP client — the wizards get built on their subscription. */
+interface ConnectionRow {
+  clientId: string;
+  name: string | null;
+  uri: string | null;
+  scopes: string[];
+  connectedAt: string;
+  lastUsed: string;
+}
+
+/** Apps connected over OAuth; disconnecting removes the consent and the app's tokens at once. */
+function ConnectedClients() {
+  const qc = useQueryClient();
+  const list = useQuery({
+    queryKey: ["connections"],
+    queryFn: () => api.get<ConnectionRow[]>("/api/studio/connections"),
+  });
+  const disconnect = useMutation({
+    mutationFn: (clientId: string) =>
+      api.del(`/api/studio/connections/${encodeURIComponent(clientId)}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
+  });
+  if (!list.data?.length) {
+    return null;
+  }
+  return (
+    <div className="mt-6">
+      <Label>{t("settings.connectedClients")}</Label>
+      <div className="flex flex-col gap-2">
+        {list.data.map((c) => (
+          <div
+            key={c.clientId}
+            className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2 ring-1 ring-border-soft"
+          >
+            <Plug className="size-4 shrink-0 text-ink-4" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px]">{c.name ?? c.clientId}</div>
+              <div className="text-[12px] text-ink-4">
+                {t("settings.lastUsed", { when: new Date(c.lastUsed).toLocaleString() })}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              busy={disconnect.isPending && disconnect.variables === c.clientId}
+              onClick={() => disconnect.mutate(c.clientId)}
+            >
+              {t("settings.disconnect")}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The admin's own MCP clients build the wizards — on their own subscription. */
 function ConnectCard() {
   const qc = useQueryClient();
   const me = useMe();
@@ -278,6 +332,11 @@ function ConnectCard() {
     <Card className="p-6">
       <h2 className="font-display font-semibold text-lg">{t("settings.connect")}</h2>
       <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.connectHint")}</p>
+      <p className="mb-2 text-[14px] text-ink-2">{t("settings.connectOauth")}</p>
+      <CopyLine text={`claude mcp add --transport http engenty-wizards ${url}`} />
+      <p className="mt-2 text-[13px] text-ink-3">{t("settings.connectOtherOauth", { url })}</p>
+      <ConnectedClients />
+      <h3 className="mt-8 mb-3 font-medium text-[15px]">{t("settings.apiKeys")}</h3>
       <div className="flex flex-col gap-2">
         {(keys.data ?? []).map((k) => (
           <div

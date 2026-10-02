@@ -9,6 +9,7 @@ import { auth, type SessionUser, sessionUser } from "./auth.js";
 import { billingRoutes, stripeWebhook } from "./billing/stripe.js";
 import { env } from "./env.js";
 import { mcpHandler } from "./mcp/handler.js";
+import { connections } from "./routes/connections.js";
 import { publicRoutes, runRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { ServiceError } from "./services/errors.js";
@@ -32,6 +33,8 @@ app.onError((err, c) => {
 app.get("/api/health", (c) => c.json({ ok: true }));
 
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+// OAuth discovery for MCP clients: protected-resource and authorization-server metadata.
+app.on(["GET", "HEAD"], "/.well-known/*", (c) => auth.handler(c.req.raw));
 
 /** Local only: a one-click sign-in so agents and developers can use the studio without OAuth. */
 app.post("/api/dev/login", async (c) => {
@@ -88,6 +91,7 @@ app.use("/api/billing/portal", async (c, next) => {
 const mcp = mcpHandler();
 app.on(["GET", "POST", "DELETE"], "/api/mcp", (c) => mcp(c.req.raw));
 
+app.route("/api/studio/connections", connections);
 app.route("/api/studio", studio);
 app.route("/api/billing/webhook", stripeWebhook);
 app.route("/api/billing", billingRoutes);

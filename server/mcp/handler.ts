@@ -1,10 +1,13 @@
+import { requireMcpAuth } from "@better-auth/mcp";
 import {
   createMcpHandler,
   McpServer,
   originValidationResponse,
 } from "@modelcontextprotocol/server";
+import { auth } from "../auth.js";
 import { env } from "../env.js";
-import { authenticate, principalOf } from "./auth.js";
+import { apiKeyAuth, oauthAuth, presentedApiKey, principalOf } from "./auth.js";
+import { MCP_RESOURCE, SCOPES } from "./scopes.js";
 import { registerPrompts, registerTools } from "./tools.js";
 
 const INSTRUCTIONS = `engenty wizards: build page-by-page AI wizards that people open on a shared link.
@@ -16,8 +19,8 @@ Publish only when the admin asks. Hand the admin the studioUrl: the studio shows
 const MAX_BODY_BYTES = 300_000;
 
 /**
- * Streamable HTTP MCP endpoint, stateless: every request authenticates and gets a fresh server
- * whose tools act as the key's owner.
+ * Streamable HTTP MCP endpoint, stateless: every request authenticates — with an OAuth access
+ * token or a personal API key — and gets a fresh server whose tools act as that admin.
  */
 export function mcpHandler(): (request: Request) => Promise<Response> {
   const allowedHosts = [new URL(env.appUrl).hostname, "localhost", "127.0.0.1"];
@@ -35,15 +38,32 @@ export function mcpHandler(): (request: Request) => Promise<Response> {
     { legacy: "stateless", maxRequestBodySize: MAX_BODY_BYTES },
   );
 
+  // Tokens are verified against our own JWKS, fetched over loopback: the public origin may sit
+  // behind a proxy or a certificate this process does not trust.
+  const oauth = requireMcpAuth(
+    auth,
+    async (request, claims) => {
+      const token = request.headers.get("authorization")?.replace(/^\S+\s+/, "") ?? "";
+      const authInfo = await oauthAuth(claims, token);
+      return authInfo instanceof Response ? authInfo : handler.fetch(request, { authInfo });
+    },
+    {
+      resource: MCP_RESOURCE,
+      jwksUrl: `http://127.0.0.1:${env.port}/api/auth/jwks`,
+      challengeScopes: SCOPES,
+    },
+  );
+
   return async (request) => {
     const rejected = originValidationResponse(request, allowedHosts);
     if (rejected) {
       return rejected;
     }
-    const authInfo = await authenticate(request);
-    if (authInfo instanceof Response) {
-      return authInfo;
+    const key = presentedApiKey(request);
+    if (!key) {
+      return oauth(request);
     }
-    return handler.fetch(request, { authInfo });
+    const authInfo = await apiKeyAuth(key);
+    return authInfo instanceof Response ? authInfo : handler.fetch(request, { authInfo });
   };
 }

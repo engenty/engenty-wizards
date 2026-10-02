@@ -19,6 +19,12 @@ const NewWizardPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./studio/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
+const OAuthSignInPage = lazy(() =>
+  import("./oauth/OAuthPages").then((m) => ({ default: m.OAuthSignInPage })),
+);
+const ConsentPage = lazy(() =>
+  import("./oauth/OAuthPages").then((m) => ({ default: m.ConsentPage })),
+);
 const BillingPage = lazy(() =>
   import("./studio/BillingPage").then((m) => ({ default: m.BillingPage })),
 );
@@ -47,6 +53,8 @@ export function App() {
     <Suspense fallback={<Splash />}>
       <Routes>
         <Route path="/r/:token" element={<PublicRunner />} />
+        <Route path="/sign-in" element={<OAuthSignInPage />} />
+        <Route path="/consent" element={<ConsentPage />} />
         <Route path="/r/:token/:runId" element={<PublicRunner />} />
         <Route
           path="/"

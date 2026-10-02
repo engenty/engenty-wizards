@@ -21,7 +21,8 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import { STARTERS, starterById } from "../starters/index.js";
-import type { Principal, Scope } from "./auth.js";
+import type { Principal } from "./auth.js";
+import type { Scope } from "./scopes.js";
 
 const definition = z
   .record(z.string(), z.unknown())

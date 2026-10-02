@@ -50,7 +50,21 @@ function ProviderIcon({ id }: { id: string }) {
   );
 }
 
-export function SignInPage() {
+/**
+ * `callbackURL` / `onSignedIn` let another page (the OAuth sign-in for MCP clients) take over
+ * once the admin is signed in.
+ */
+export function SignInPage({
+  callbackURL,
+  onSignedIn,
+  title,
+  sub,
+}: {
+  callbackURL?: string;
+  onSignedIn?: () => void;
+  title?: string;
+  sub?: string;
+} = {}) {
   const config = useQuery({
     queryKey: ["config"],
     queryFn: () => api.get<{ devLogin: boolean; providers: string[] }>("/api/config"),
@@ -65,9 +79,9 @@ export function SignInPage() {
         <Mascot kind="round" size={200} fluffy />
         <EngentyWordmark className="mt-2 font-display font-semibold text-[15px] text-ink-3 tracking-tight" />
         <h1 className="mt-3 font-display font-semibold text-[34px] leading-[1.1] tracking-tight">
-          {t("brand.tagline")}
+          {title ?? t("brand.tagline")}
         </h1>
-        <p className="mt-4 text-[16px] text-ink-2 leading-relaxed">{t("brand.sub")}</p>
+        <p className="mt-4 text-[16px] text-ink-2 leading-relaxed">{sub ?? t("brand.sub")}</p>
         <div className="mt-10 flex w-full flex-col gap-3">
           {providers.map((p) => (
             <Button
@@ -78,7 +92,7 @@ export function SignInPage() {
               className="w-full"
               onClick={async () => {
                 setBusy(p);
-                await signInSocial(p).finally(() => setBusy(null));
+                await signInSocial(p, callbackURL).finally(() => setBusy(null));
               }}
             >
               <ProviderIcon id={p} />
@@ -94,6 +108,10 @@ export function SignInPage() {
               onClick={async () => {
                 setBusy("dev");
                 await api.post("/api/dev/login");
+                if (onSignedIn) {
+                  onSignedIn();
+                  return;
+                }
                 await qc.invalidateQueries();
                 setBusy(null);
               }}

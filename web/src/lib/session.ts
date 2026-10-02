@@ -134,10 +134,10 @@ export async function signOut() {
   window.location.href = "/";
 }
 
-export async function signInSocial(provider: string) {
+export async function signInSocial(provider: string, callbackURL = "/") {
   const res = await api.post<{ url?: string }>("/api/auth/sign-in/social", {
     provider,
-    callbackURL: "/",
+    callbackURL,
   });
   if (res.url) {
     window.location.href = res.url;
