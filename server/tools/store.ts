@@ -41,7 +41,7 @@ export async function personUploads(ctx: StepContext): Promise<UploadRef[]> {
 }
 
 /** A file by the name agents use: `upload:<id>` (given by the person) or a path in the store. */
-async function resolveFile(ctx: StepContext, file: string) {
+export async function resolveFile(ctx: StepContext, file: string) {
   if (file.startsWith("upload:")) {
     const found = await loadAsset(file.slice("upload:".length));
     if (!found || found.row.runId !== ctx.runId) {

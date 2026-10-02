@@ -31,8 +31,11 @@ type Connection =
   | { id, kind: "mail", title?, description? }
       // the person picks how to connect (Gmail, Outlook, or any mailbox over IMAP); steps only ever READ it
   | { id, connector: connectorId, actions?: actionId[], policy?: { [actionId]: "allow"|"ask" }, title?, description? }
-      // connector = a service imported into the PROJECT from the integrations registry (its OpenAPI spec or MCP server):
-      //   Notion, Stripe, GitHub, HubSpot … The person connects their own account (OAuth or API key) on a page.
+      // connector = a service the wizard works in for the person: a built-in one (Gmail, Google Drive, Calendar and
+      //   Contacts, Outlook, OneDrive, Slack, GitHub, HubSpot, S3) or one imported into the project from the
+      //   integrations registry. The person connects their own account (OAuth or API key) on a page.
+      //   kind "mail" reads any mailbox the same way and keeps attachments as files; use the gmail / outlook
+      //   connectors only for what it cannot do (drafts, sending, labels, calendar).
       // A step that lists the connection gets the connector's actions as tools named <toolPrefix>_<actionId>.
       //   actions: exactly the actions the wizard may use. Default: only those marked "read".
       //   policy: "allow" = runs without asking, "ask" = the person confirms each call first.
@@ -164,22 +167,24 @@ export interface GuideConnector {
   id: string;
   name: string;
   toolPrefix: string;
+  /** Whether people can connect an account on this server right now. */
+  usable: boolean;
   actions: { id: string; group: string }[];
 }
 
 export function connectorsLine(connectors: GuideConnector[]): string {
-  if (!connectors.length) {
-    return "Imported connectors of this project: none yet. When a wizard should work in a service on the person's behalf (their Notion, GitHub, CRM …), find it with find_connectors and import it with import_connector, then declare a connection for it.";
-  }
   const lines = connectors.map((c) => {
     const actions = c.actions
       .slice(0, 40)
       .map((a) => `${a.id}${a.group === "read" ? "" : ` (${a.group})`}`)
       .join(", ");
     const more = c.actions.length > 40 ? `, … ${c.actions.length - 40} more (list_connectors)` : "";
-    return `- ${c.id} — ${c.name}, tools ${c.toolPrefix}_*: ${actions || "actions appear once an account is connected"}${more}`;
+    const state = c.usable
+      ? ""
+      : " — NOT SET UP on this server: tell the admin before you build on it";
+    return `- ${c.id} — ${c.name}${state}, tools ${c.toolPrefix}_*: ${actions || "actions appear once an account is connected"}${more}`;
   });
-  return `Imported connectors of this project (more with find_connectors + import_connector):\n${lines.join("\n")}`;
+  return `Connectors a wizard of this project can use (built in, or imported from the integrations registry; find more with find_connectors + import_connector):\n${lines.join("\n")}`;
 }
 
 export function mcpServersLine(mcp: GuideServer[]): string {

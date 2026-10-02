@@ -40,6 +40,7 @@ import type { ConnectorDefinition } from "../engenty/connections-sdk/types.js";
 import { encryptToken } from "../engenty/shims/connections-sdk.js";
 import { env } from "../env.js";
 import { ServiceError } from "../services/errors.js";
+import { BUILTIN_CONNECTORS, builtinConnector, missingSetup, usable } from "./builtin.js";
 
 /**
  * Imported connectors: any service becomes a connector from its OpenAPI spec or MCP server,
@@ -78,7 +79,11 @@ const actionView = (a: NormalizedAction): ConnectorActionView => ({
 
 function view(record: ImportedConnectorRecord): ConnectorView {
   const auth = record.auth_config;
+  const needsOAuthClient =
+    auth.kind === "oauth2" && !record.client_id_enc && !(auth.dcr && auth.registration_endpoint);
   return {
+    usable: !needsOAuthClient,
+    missingSetup: null,
     id: record.id,
     name: record.name,
     domain: record.domain,
@@ -86,8 +91,7 @@ function view(record: ImportedConnectorRecord): ConnectorView {
     sourceUrl: record.source_url,
     toolPrefix: record.tool_prefix,
     auth: auth.kind,
-    needsOAuthClient:
-      auth.kind === "oauth2" && !record.client_id_enc && !(auth.dcr && auth.registration_endpoint),
+    needsOAuthClient,
     toolsPending: record.source_kind === "mcp" && record.actions.length === 0,
     actions: record.actions.map(actionView),
     importedAt: record.imported_at,
@@ -262,12 +266,78 @@ export async function previewSource(input: {
 
 // --- a project's connectors --------------------------------------------------------
 
+async function builtinView(connector: ConnectorDefinition): Promise<ConnectorView> {
+  const ready = await usable(connector);
+  return {
+    id: connector.id,
+    name: connector.name,
+    domain: "",
+    sourceKind: "builtin",
+    sourceUrl: "",
+    toolPrefix: connector.toolPrefix,
+    auth: connector.auth.kind === "oauth2" ? "oauth2" : "api_key",
+    usable: ready,
+    missingSetup: ready ? null : missingSetup(connector),
+    needsOAuthClient: false,
+    toolsPending: false,
+    actions: connector.actions.map((a) => ({
+      id: a.id,
+      summary: a.summary.slice(0, 160),
+      group: a.group,
+    })),
+    importedAt: "",
+    refreshedAt: null,
+  };
+}
+
+/** Every connector a wizard of the project can name: the built-in ones, then its imports. */
 export async function listConnectors(projectId: string): Promise<ConnectorView[]> {
   const rows = await db.query.projectConnector.findMany({
     where: eq(schema.projectConnector.projectId, projectId),
     orderBy: [asc(schema.projectConnector.createdAt)],
   });
-  return rows.map((r) => view(r.record));
+  return [
+    ...(await Promise.all(BUILTIN_CONNECTORS.map(builtinView))),
+    ...rows.map((r) => view(r.record)),
+  ];
+}
+
+/**
+ * A connector by id, ready to run, with the JSON schema of each action's input: a built-in one,
+ * or one the project imported.
+ */
+export async function resolveConnector(
+  projectId: string,
+  id: string,
+): Promise<{
+  connector: ConnectorDefinition;
+  inputSchema(actionId: string): Record<string, unknown>;
+  imported: boolean;
+} | null> {
+  const builtin = builtinConnector(id);
+  if (builtin) {
+    return {
+      connector: builtin,
+      imported: false,
+      inputSchema: (actionId) => {
+        const action = builtin.actions.find((a) => a.id === actionId);
+        try {
+          return action ? (z.toJSONSchema(action.inputSchema) as Record<string, unknown>) : {};
+        } catch {
+          return {};
+        }
+      },
+    };
+  }
+  const found = await importedConnector(projectId, id);
+  return found
+    ? {
+        connector: found.connector,
+        imported: true,
+        inputSchema: (actionId) =>
+          found.record.actions.find((a) => a.id === actionId)?.input_json_schema ?? {},
+      }
+    : null;
 }
 
 export async function importConnector(

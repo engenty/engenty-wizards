@@ -262,7 +262,7 @@ export const wizardSchema = z.object({
   /** Tabular data the wizard keeps between runs, per person. */
   lists: z.array(listSchema).max(12).optional(),
   /** Accounts the person connects; kept between runs, per person. */
-  connections: z.array(connectionSchema).max(6).optional(),
+  connections: z.array(connectionSchema).max(12).optional(),
   steps: z.array(stepSchema).min(1),
 });
 export type WizardDefinition = z.infer<typeof wizardSchema>;

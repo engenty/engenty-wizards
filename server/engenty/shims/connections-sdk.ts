@@ -3,6 +3,8 @@
  * files; what engenty binds to its database and plugin host is provided here.
  */
 import { seal, unseal } from "../../crypto.js";
+import { filesCapabilityActions } from "../connections-sdk/files-capability.js";
+import { storageCapabilityActions } from "../connections-sdk/storage-capability.js";
 import type { ConnectorDefinition } from "../connections-sdk/types.js";
 
 export * from "../connections-sdk/oauth2.js";
@@ -22,7 +24,21 @@ export function decryptToken(value: string): string {
   return plain;
 }
 
-/** engenty adds file actions for connectors with a files capability; wizards have none. */
-export function defineConnector(definition: ConnectorDefinition): ConnectorDefinition {
-  return definition;
+/**
+ * Finalises a connector definition as engenty's runtime does: a `files` capability becomes the
+ * read actions `files_list` / `files_read` / `files_stat` / `files_search`, a `storage`
+ * capability the write actions `files_write` / `files_delete` / `files_move`.
+ */
+export function defineConnector(def: ConnectorDefinition): ConnectorDefinition {
+  if (!(def.files || def.storage)) {
+    return def;
+  }
+  return {
+    ...def,
+    actions: [
+      ...def.actions,
+      ...(def.files ? filesCapabilityActions(def.files, def.filesProviderScopes) : []),
+      ...(def.storage ? storageCapabilityActions(def.storage, def.storageProviderScopes) : []),
+    ],
+  };
 }

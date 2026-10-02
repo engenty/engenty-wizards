@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import type {
   ConnectionDef,
   ConnectionKind,
@@ -5,12 +6,11 @@ import type {
   ConnectorOption,
 } from "../../shared/store.js";
 import { seal, unseal } from "../crypto.js";
+import { db, schema } from "../db/client.js";
 import {
   buildAuthorizationUrl,
-  type ClientEnvResolver,
   createOAuth2Pkce,
   exchangeAuthorizationCode,
-  hasOAuth2ClientCredentials,
   refreshAccessToken,
 } from "../engenty/connections-sdk/oauth2.js";
 import {
@@ -20,29 +20,31 @@ import {
 } from "../engenty/connections-sdk/types.js";
 import { env } from "../env.js";
 import { deleteSecret, getSecret, putSecret, type StoreScope } from "../store/index.js";
-import { importedConnector } from "./external.js";
-import { gmailConnector } from "./gmail.js";
-import { imapConnector } from "./imap.js";
-import { outlookConnector } from "./outlook.js";
+import { connectorFetch, MAIL_CONNECTORS, resolveEnv, usable } from "./builtin.js";
+import { resolveConnector } from "./external.js";
 
 /** The connectors a person can pick for each kind of connection. */
-const CONNECTORS: Record<ConnectionKind, ConnectorDefinition[]> = {
-  mail: [gmailConnector, outlookConnector, imapConnector],
-};
+const CONNECTORS: Record<ConnectionKind, ConnectorDefinition[]> = { mail: MAIL_CONNECTORS };
 
 const HINTS: Record<string, string> = {
   imap: "Bei Gmail, iCloud, GMX und web.de brauchst du ein App-Passwort (in den Sicherheitseinstellungen deines Kontos), nicht dein normales Passwort.",
 };
 
-/** A wizard only reads: connections are asked for the scopes of read actions. */
-const READ = new Set(["read"] as const);
-
 /**
- * engenty's connectors name their OAuth client `<VENDOR>_OAUTH_CLIENT_ID`; this product signs
- * people in with `<VENDOR>_CLIENT_ID`. One client can serve both, so either name works.
+ * What a connection asks the provider for: what reading needs, plus what each action the wizard
+ * may use needs. A wizard that only reads never asks for the right to send or delete.
  */
-const resolveEnv: ClientEnvResolver = async (key) =>
-  process.env[key]?.trim() || process.env[key.replace("_OAUTH_", "_")]?.trim() || undefined;
+function scopesFor(connection: ConnectionDef, connector: ConnectorDefinition): string[] {
+  const scopes = new Set(scopesForGroups(connector, new Set(["read"] as const)));
+  for (const action of connector.actions) {
+    if (connection.actions?.includes(action.id)) {
+      for (const scope of action.providerScopes ?? []) {
+        scopes.add(scope);
+      }
+    }
+  }
+  return [...scopes];
+}
 
 /** Where the provider sends the person back; must be registered with the OAuth client. */
 export function connectRedirectUri(): string {
@@ -59,26 +61,15 @@ interface StoredConnection {
   scopes: string[];
 }
 
-async function usable(connector: ConnectorDefinition): Promise<boolean> {
-  if (connector.auth.kind !== "oauth2") {
-    return connector.auth.kind === "api_key";
-  }
-  // A connector that registers its own OAuth client needs none configured.
-  return (
-    connector.auth.oauth2.dynamicClientRegistration === true ||
-    hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)
-  );
-}
-
-/** An imported connector that needs no credential: there is nothing for the person to connect. */
+/** A connector that needs no credential: there is nothing for the person to connect. */
 const open = (connector: ConnectorDefinition) =>
   connector.auth.kind === "api_key" && connector.auth.apiKey.fields.length === 0;
 
 /** The connectors behind a connection: the built-in ones of its kind, or the one it names. */
 async function candidates(connection: ConnectionDef, projectId: string) {
   if (connection.connector) {
-    const imported = await importedConnector(projectId, connection.connector);
-    return imported ? [imported.connector] : [];
+    const found = await resolveConnector(projectId, connection.connector);
+    return found ? [found.connector] : [];
   }
   return connection.kind ? CONNECTORS[connection.kind] : [];
 }
@@ -156,7 +147,7 @@ interface OAuthState {
   scope: StoreScope;
   projectId: string;
   runId: string;
-  connection: ConnectionDef;
+  connectionId: string;
   connectorId: string;
   verifier: string;
   exp: number;
@@ -180,7 +171,7 @@ export async function startOAuth(
     scope,
     projectId,
     runId,
-    connection,
+    connectionId: connection.id,
     connectorId,
     verifier: pkce.codeVerifier,
     exp: Date.now() + 15 * 60_000,
@@ -189,7 +180,7 @@ export async function startOAuth(
     connector,
     pkce,
     redirectUri: connectRedirectUri(),
-    scopes: scopesForGroups(connector, READ),
+    scopes: scopesFor(connection, connector),
     state: seal(state),
     resolveEnv,
   });
@@ -200,7 +191,12 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
   if (!state || state.exp < Date.now()) {
     throw new Error("Die Anmeldung ist abgelaufen. Bitte noch einmal verbinden.");
   }
-  const connector = await connectorFor(state.connection, state.connectorId, state.projectId);
+  const run = await db.query.run.findFirst({ where: eq(schema.run.id, state.runId) });
+  const connection = run?.definition.connections?.find((c) => c.id === state.connectionId);
+  if (!connection) {
+    throw new Error("The run this sign-in belongs to is gone.");
+  }
+  const connector = await connectorFor(connection, state.connectorId, state.projectId);
   if (connector.auth.kind !== "oauth2") {
     throw new Error("not an oauth connector");
   }
@@ -211,16 +207,17 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
     redirectUri: connectRedirectUri(),
     resolveEnv,
   });
-  const account = (await connector.auth.oauth2.resolveAccount?.(tokens.accessToken, fetch)) ?? {
-    label: connector.name,
-  };
+  // A provider that will not name the account still connected it.
+  const account = (await connector.auth.oauth2
+    .resolveAccount?.(tokens.accessToken, fetch)
+    .catch(() => null)) ?? { label: connector.name };
   const stored: StoredConnection = {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     expiresAt: tokens.expiresAt?.toISOString() ?? null,
     scopes: tokens.grantedScopes,
   };
-  await putSecret(state.scope, slot(state.connection.id), connector.id, account.label, stored);
+  await putSecret(state.scope, slot(connection.id), connector.id, account.label, stored);
   return state;
 }
 
@@ -248,7 +245,7 @@ export async function connectWithCredentials(
   }
   let account: { label: string };
   try {
-    account = await connector.auth.apiKey.verify(credentials, fetch);
+    account = await connector.auth.apiKey.verify(credentials, connectorFetch);
   } catch (err) {
     throw new ConnectError(connectFailure(err));
   }
@@ -337,7 +334,7 @@ function actionContext(
 ): ConnectorActionContext {
   return {
     accessToken,
-    fetchImpl: fetch,
+    fetchImpl: connectorFetch,
     log: () => undefined,
     connection: {
       id: connection.id,

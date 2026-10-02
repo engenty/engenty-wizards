@@ -140,7 +140,7 @@ const backend: MailBackend = {
 };
 
 export const gmailConnector: ConnectorDefinition = {
-  id: "google-gmail",
+  id: "mail-gmail",
   moduleId: "wizards-mail",
   name: "Gmail",
   description: "Read mail in a Gmail or Google Workspace account.",

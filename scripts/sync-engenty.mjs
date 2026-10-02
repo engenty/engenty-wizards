@@ -19,7 +19,7 @@ const SETS = [
   [
     "packages/connections-sdk/src",
     "server/engenty/connections-sdk",
-    ["types.ts", "oauth2.ts", "registry.ts"],
+    ["types.ts", "oauth2.ts", "registry.ts", "files-capability.ts", "storage-capability.ts"],
   ],
   [
     "modules/connections/providers/external/src",
@@ -42,12 +42,35 @@ const SETS = [
     ],
   ],
   ["packages/web-ingest/src/lib", "server/engenty/web-ingest", ["ssrf.ts"]],
-  ["modules/connections/providers/google/src", "server/engenty/connections-google", ["shared.ts"]],
+  [
+    "modules/connections/providers/google/src",
+    "server/engenty/connections-google",
+    [
+      "shared.ts",
+      "definitions.ts",
+      "connectors/gmail.ts",
+      "connectors/drive.ts",
+      "connectors/calendar.ts",
+      "connectors/contacts.ts",
+    ],
+  ],
   [
     "modules/connections/providers/microsoft/src",
     "server/engenty/connections-microsoft",
-    ["graph.ts"],
+    ["graph.ts", "action.ts", "outlook.ts", "onedrive.ts"],
   ],
+  ["modules/connections/providers/slack/src", "server/engenty/connections-slack", ["connector.ts"]],
+  [
+    "modules/connections/providers/github/src",
+    "server/engenty/connections-github",
+    ["connector.ts"],
+  ],
+  [
+    "modules/connections/providers/hubspot/src",
+    "server/engenty/connections-hubspot",
+    ["connector.ts"],
+  ],
+  ["modules/connections/providers/s3/src", "server/engenty/connections-s3", ["s3.ts"]],
   [
     "packages/doc-converter/src",
     "server/engenty/doc-converter",

@@ -135,7 +135,7 @@ const backend: MailBackend = {
 };
 
 export const outlookConnector: ConnectorDefinition = {
-  id: "microsoft-outlook",
+  id: "mail-outlook",
   moduleId: "wizards-mail",
   name: "Outlook",
   description: "Read mail in an Outlook or Microsoft 365 account.",

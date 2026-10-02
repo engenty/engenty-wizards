@@ -12,6 +12,52 @@ import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, Card, Chip, cn, IconButton, Input, Spinner } from "../ui";
 
+/** A connector the product ships with: ready, or waiting for the server's OAuth client. */
+function Builtin({ connector }: { connector: ConnectorView }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl bg-paper ring-1 ring-border-soft">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 px-3 py-2 text-left"
+      >
+        <span
+          className={cn("size-2 shrink-0 rounded-full", connector.usable ? "bg-moss" : "bg-ink-4")}
+        />
+        <span className="min-w-0 flex-1 truncate text-[13px]">
+          {connector.name} <span className="font-mono text-[11px] text-ink-4">{connector.id}</span>
+        </span>
+        <span className="shrink-0 text-[12px] text-ink-3">
+          {connector.usable
+            ? t("connectors.actions", {
+                n: connector.actions.length,
+                r: connector.actions.filter((a) => a.group === "read").length,
+              })
+            : t("connectors.notSetUp")}
+        </span>
+      </button>
+      {open ? (
+        <div className="border-border-soft border-t px-3 py-2 text-[12px]">
+          {connector.missingSetup ? (
+            <p className="mb-1 text-ink-3">
+              {t("connectors.setup")}{" "}
+              <span className="font-mono text-ink-2">{connector.missingSetup}</span>
+            </p>
+          ) : null}
+          <p className="text-ink-4">
+            {connector.actions
+              .map((a) =>
+                a.group === "read" ? a.id : `${a.id} (${t(`connectors.group.${a.group}`)})`,
+              )
+              .join(" · ")}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const AUTH_LABEL: Record<ConnectorView["auth"], string> = {
   none: "connectors.authNone",
   oauth2: "connectors.authOauth",
@@ -216,13 +262,25 @@ export function Connectors({ projectId }: { projectId: string }) {
     onSuccess: setService,
   });
   const connectors = list.data ?? [];
+  const builtin = connectors.filter((c) => c.sourceKind === "builtin");
+  const imported = connectors.filter((c) => c.sourceKind !== "builtin");
   return (
     <Card className="p-6">
       <h2 className="font-display font-semibold text-lg">{t("connectors.title")}</h2>
       <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("connectors.hint")}</p>
-      {connectors.length ? (
-        <div className="mb-5 flex flex-col gap-2">
-          {connectors.map((c) => (
+      {builtin.length ? (
+        <div className="mb-5 grid gap-1.5 sm:grid-cols-2">
+          {builtin.map((c) => (
+            <Builtin key={c.id} connector={c} />
+          ))}
+        </div>
+      ) : null}
+      <h3 className="mb-2 font-medium text-[12px] text-ink-3 uppercase tracking-[0.07em]">
+        {t("connectors.imported")}
+      </h3>
+      {imported.length ? (
+        <div className="mb-4 flex flex-col gap-2">
+          {imported.map((c) => (
             <Imported key={c.id} projectId={projectId} connector={c} />
           ))}
         </div>

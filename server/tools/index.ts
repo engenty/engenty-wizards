@@ -103,7 +103,7 @@ export async function buildStepTools(
   // The wizard's lists and files, and the documents the person gave, are always at hand.
   Object.assign(tools, storeTools(ctx, uploads));
   Object.assign(tools, mailTools(step, ctx, files));
-  Object.assign(tools, await connectorTools(step, ctx));
+  Object.assign(tools, await connectorTools(step, ctx, files));
 
   if (allowed.has("sandbox") && env.sandboxEnabled) {
     tools.run_command = createTool({

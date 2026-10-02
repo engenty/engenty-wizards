@@ -2,11 +2,15 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { AgentStep } from "../../shared/definition.js";
 import type { ConnectionDef } from "../../shared/store.js";
-import { importedConnector, refreshConnector } from "../connectors/external.js";
+import { refreshConnector, resolveConnector } from "../connectors/external.js";
 import { connectionContext } from "../connectors/index.js";
 import type { ConnectorAction } from "../engenty/connections-sdk/types.js";
 import type { StepContext } from "../engine/types.js";
-import { attempt, clip } from "./shared.js";
+import { attempt, clip, type FileKeeper } from "./shared.js";
+import { resolveFile } from "./store.js";
+
+const FILE_NOTE =
+  " File content never passes through you: returned content is kept as a file and you get its path; to send a kept file, give `file:<path>` where an input asks for `*_base64`.";
 
 /** Above this many actions a connector is offered as "find an action, then call it". */
 const DIRECT_TOOLS = 24;
@@ -17,15 +21,83 @@ const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
  * changes the person's account waits for their yes — engenty's default policy for connectors
  * (read: allow, write and destructive: ask), asked of the person who is running the wizard.
  */
-export async function connectorTools(step: AgentStep, ctx: StepContext) {
+export async function connectorTools(step: AgentStep, ctx: StepContext, files: FileKeeper) {
   const tools: Record<string, any> = {};
   const connections = (ctx.def.connections ?? []).filter(
     (c) => c.connector && step.connections?.includes(c.id),
   );
   for (const connection of connections) {
-    Object.assign(tools, await toolsOf(connection, ctx));
+    Object.assign(tools, await toolsOf(connection, ctx, files));
   }
   return tools;
+}
+
+const MAGIC: [string, string, string][] = [
+  ["%PDF", "application/pdf", "pdf"],
+  ["\x89PNG", "image/png", "png"],
+  ["\xff\xd8\xff", "image/jpeg", "jpg"],
+  ["GIF8", "image/gif", "gif"],
+  ["PK\x03\x04", "application/zip", "zip"],
+];
+
+/** What a file is, by its first bytes — connectors often hand over content without a name. */
+function sniff(data: Buffer): { mime: string; ext: string } | null {
+  const head = data.subarray(0, 8).toString("latin1");
+  const hit = MAGIC.find(([magic]) => head.startsWith(magic));
+  return hit ? { mime: hit[1], ext: hit[2] } : null;
+}
+
+/**
+ * A model cannot carry a file: content an action returns as base64 is kept in the wizard's
+ * files and the result names the path instead.
+ */
+async function keepContent(
+  result: unknown,
+  action: ConnectorAction,
+  service: string,
+  files: FileKeeper,
+): Promise<unknown> {
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    return result;
+  }
+  const out: Record<string, unknown> = { ...(result as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(out)) {
+    if (!key.endsWith("_base64") || typeof value !== "string" || !value) {
+      continue;
+    }
+    const data = Buffer.from(value, "base64");
+    const kind = sniff(data);
+    const given = [out.name, out.filename, out.file_name].find(
+      (v): v is string => typeof v === "string" && v.length > 0,
+    );
+    const name = given ?? `${action.id}-${Date.now().toString(36)}.${kind?.ext ?? "bin"}`;
+    const declared = [out.mime_type, out.mimeType, out.content_type].find(
+      (v): v is string => typeof v === "string",
+    );
+    const kept = await files.keep(`${service}/${name}`, data, {
+      mime: declared ?? kind?.mime,
+      source: `${service}: ${action.summary || action.id}`,
+    });
+    delete out[key];
+    out.saved = kept.path;
+    out.note = "The content is kept as a file; read it with read_document.";
+  }
+  return out;
+}
+
+/** The other way round: `file:<path>` in a `*_base64` input sends a kept file or an upload. */
+async function sendContent(input: unknown, ctx: StepContext): Promise<unknown> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+  const out: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(out)) {
+    if (key.endsWith("_base64") && typeof value === "string" && value.startsWith("file:")) {
+      const file = await resolveFile(ctx, value.slice("file:".length));
+      out[key] = Buffer.from(file.data).toString("base64");
+    }
+  }
+  return out;
 }
 
 /**
@@ -39,24 +111,23 @@ function asks(connection: ConnectionDef, action: ConnectorAction): boolean {
   return (connection.policy?.[action.id] ?? (action.group === "read" ? "allow" : "ask")) === "ask";
 }
 
-async function toolsOf(connection: ConnectionDef, ctx: StepContext) {
+async function toolsOf(connection: ConnectionDef, ctx: StepContext, files: FileKeeper) {
   const projectId = ctx.project.id;
-  let imported = await importedConnector(projectId, connection.connector ?? "");
-  if (!imported) {
+  const id = connection.connector ?? "";
+  let resolved = await resolveConnector(projectId, id);
+  if (!resolved) {
     return {};
   }
   const account = () => connectionContext(ctx.store, connection, projectId);
   // An MCP server that lists its tools only to a signed-in account: ask it now that there is one.
-  if (!imported.connector.actions.length) {
+  if (resolved.imported && !resolved.connector.actions.length) {
     const found = await account();
     if (found) {
-      await refreshConnector(projectId, imported.record.id, found.ctx.accessToken).catch(
-        () => undefined,
-      );
-      imported = (await importedConnector(projectId, imported.record.id)) ?? imported;
+      await refreshConnector(projectId, id, found.ctx.accessToken).catch(() => undefined);
+      resolved = (await resolveConnector(projectId, id)) ?? resolved;
     }
   }
-  const { connector, record } = imported;
+  const { connector, inputSchema } = resolved;
   const usable = connection.actions
     ? connector.actions.filter((a) => connection.actions?.includes(a.id))
     : connector.actions.filter((a) => a.group === "read");
@@ -100,7 +171,12 @@ async function toolsOf(connection: ConnectionDef, ctx: StepContext) {
         }
       }
       await ctx.emit("tool", `${service}: ${action.summary || action.id}`.slice(0, 120));
-      const result = await action.handler(input ?? {}, found.ctx);
+      const result = await keepContent(
+        await action.handler(await sendContent(input ?? {}, ctx), found.ctx),
+        action,
+        service,
+        files,
+      );
       const text = typeof result === "string" ? result : JSON.stringify(result);
       return { result: clip(text ?? "", 8000) };
     });
@@ -116,7 +192,7 @@ async function toolsOf(connection: ConnectionDef, ctx: StepContext) {
           id: `${prefix}_${action.id}`,
           description: `${service}: ${action.description || action.summary}${
             asks(connection, action) ? " — the person is asked before this runs." : ""
-          }`.slice(0, 1000),
+          }${FILE_NOTE}`.slice(0, 1100),
           inputSchema: action.inputSchema as z.ZodType<any>,
           execute: (input) => call(action, input),
         }),
@@ -124,7 +200,6 @@ async function toolsOf(connection: ConnectionDef, ctx: StepContext) {
     );
   }
 
-  const schemas = new Map(record.actions.map((a) => [a.id, a.input_json_schema]));
   return {
     [`${prefix}_actions`]: createTool({
       id: `${prefix}_actions`,
@@ -148,14 +223,14 @@ async function toolsOf(connection: ConnectionDef, ctx: StepContext) {
               id: a.id,
               does: a.summary || a.description.slice(0, 200),
               asks_person_first: asks(connection, a),
-              input: schemas.get(a.id) ?? {},
+              input: inputSchema(a.id),
             })),
           };
         }),
     }),
     [`${prefix}_call`]: createTool({
       id: `${prefix}_call`,
-      description: `Run one ${service} action found with ${prefix}_actions. Some wait for the person's yes first.`,
+      description: `Run one ${service} action found with ${prefix}_actions. Some wait for the person's yes first.${FILE_NOTE}`,
       inputSchema: z.object({
         action: z.string(),
         input: z.record(z.string(), z.unknown()).optional(),

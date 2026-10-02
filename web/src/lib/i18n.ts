@@ -247,7 +247,10 @@ const de = {
   "common.close": "Schließen",
   "connectors.title": "Connectors",
   "connectors.hint":
-    "Jeder Dienst wird zum Connector: im Verzeichnis integrations.sh suchen und aus seiner OpenAPI-Beschreibung oder seinem MCP-Server importieren. Wizards lassen die Person dann ihr Konto verbinden.",
+    "Dienste, in denen ein Wizard für die Person arbeiten kann – sie verbindet beim Durchlauf ihr eigenes Konto. Die wichtigsten sind eingebaut; jeden weiteren findest du im Verzeichnis integrations.sh und importierst ihn aus seiner OpenAPI-Beschreibung oder seinem MCP-Server.",
+  "connectors.imported": "Aus dem Verzeichnis",
+  "connectors.notSetUp": "nicht eingerichtet",
+  "connectors.setup": "Auf dem Server fehlen:",
   "connectors.search": "Dienst suchen, z. B. Notion, Stripe, GitHub",
   "connectors.find": "Suchen",
   "connectors.none": "Nichts gefunden.",
@@ -516,7 +519,10 @@ const en: Record<Key, string> = {
   "common.close": "Close",
   "connectors.title": "Connectors",
   "connectors.hint":
-    "Any service becomes a connector: find it in the integrations.sh registry and import it from its OpenAPI spec or its MCP server. Wizards then let the person connect their account.",
+    "Services a wizard can work in for the person — they connect their own account during a run. The main ones are built in; any other you find in the integrations.sh registry and import from its OpenAPI spec or its MCP server.",
+  "connectors.imported": "From the registry",
+  "connectors.notSetUp": "not set up",
+  "connectors.setup": "The server still needs:",
   "connectors.search": "Find a service, e.g. Notion, Stripe, GitHub",
   "connectors.find": "Search",
   "connectors.none": "Nothing found.",

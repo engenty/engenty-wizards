@@ -12,9 +12,14 @@ export interface ConnectorView {
   id: string;
   name: string;
   domain: string;
-  sourceKind: "openapi" | "mcp";
+  /** Where it comes from: shipped with the product, or imported from a spec or an MCP server. */
+  sourceKind: "builtin" | "openapi" | "mcp";
   sourceUrl: string;
   toolPrefix: string;
+  /** Whether a person can connect an account right now. */
+  usable: boolean;
+  /** Built-in OAuth connectors that are not usable: the settings the server still needs. */
+  missingSetup: string | null;
   /** How a person connects their account. */
   auth: "none" | "oauth2" | "api_key";
   /** OAuth without client credentials and without self-registration: connecting cannot work yet. */

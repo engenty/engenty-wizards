@@ -55,7 +55,13 @@ are encrypted where secret (`STORE_ENC_KEY`), and go when unused for `STORE_TTL_
 
 ## Connectors
 
-In the project settings, search a service (Notion, Stripe, GitHub …) in the
+Built in, as engenty ships them: Gmail, Google Drive, Calendar and Contacts, Outlook, OneDrive,
+Slack, GitHub (sign-in with OAuth — set the client in `.env`, see `.env.example`), HubSpot and S3
+(the person enters a token or keys). The settings show which are set up. Google needs the APIs
+enabled and the scopes on the consent screen; a connection asks only for what the wizard's
+actions need.
+
+For everything else: in the project settings, search a service (Notion, Stripe, GitHub …) in the
 [integrations.sh](https://integrations.sh) registry and import it — from its OpenAPI spec or its
 MCP server. The architect and MCP clients can do the same (`find_connectors`, `import_connector`).
 A wizard declares a connection to it; the person running the wizard connects their own account
@@ -96,6 +102,7 @@ open editor.
 | Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `server/tools/browser.ts`, `server/engine/asks.ts` |
 | What a wizard keeps per person: lists, files, connected accounts, sign-ins | `shared/store.ts`, `server/store/`, `server/tools/store.ts` |
 | Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `server/connectors/`, `server/tools/mail.ts` |
+| engenty's built-in connectors (Google, Microsoft, Slack, GitHub, HubSpot, S3), copied unchanged | `server/engenty/connections-*`, `server/connectors/builtin.ts` |
 | Imported connectors: any service from the integrations.sh registry, by its OpenAPI spec or MCP server | `server/connectors/external.ts`, `server/tools/connector.ts`, `web/src/studio/Connectors.tsx` |
 | Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `server/documents/parse.ts` |
 | engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `server/engenty/`, `shared/engenty/` |
