@@ -1,0 +1,198 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "@xyflow/react/dist/base.css";
+@import "tailwindcss";
+@import "./shadcn-ember.css";
+
+@source "../";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-ember: var(--ember);
+  --color-ember-tint: var(--ember-tint);
+  --color-ember-strong: var(--ember-strong);
+  --color-ember-veil: var(--ember-veil);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-moss: var(--moss);
+  --color-moss-tint: var(--moss-tint);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-tint: var(--cobalt-tint);
+  --color-amber: var(--amber);
+  --color-amber-tint: var(--amber-tint);
+  --color-rose: var(--rose);
+  --color-rose-tint: var(--rose-tint);
+  --font-sans: var(--f-ui);
+  --font-display: var(--f-display);
+  --font-mono: var(--f-mono);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
+  --shadow-soft: var(--shadow-ember-soft);
+  --shadow-elevated: var(--shadow-ember-elevated);
+  --shadow-overlay: var(--shadow-ember-overlay);
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--f-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--ember-veil);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Rendered Markdown inside results and chat. */
+.prose-zen {
+  line-height: 1.6;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.prose-zen > * + * {
+  margin-top: 0.75em;
+}
+.prose-zen h1,
+.prose-zen h2,
+.prose-zen h3 {
+  font-family: var(--f-display);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.25em;
+}
+.prose-zen h1 {
+  font-size: 1.5rem;
+}
+.prose-zen h2 {
+  font-size: 1.2rem;
+}
+.prose-zen h3 {
+  font-size: 1.05rem;
+}
+.prose-zen ul,
+.prose-zen ol {
+  padding-left: 1.25em;
+}
+.prose-zen ul {
+  list-style: disc;
+}
+.prose-zen ol {
+  list-style: decimal;
+}
+.prose-zen a {
+  color: var(--ember-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-zen table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.prose-zen th,
+.prose-zen td {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.prose-zen code {
+  font-family: var(--f-mono);
+  font-size: 0.9em;
+  background: var(--paper-2);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+.prose-zen blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.9em;
+  color: var(--ink-2);
+}
+
+/* React Flow, quieted to the canvas. */
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__edge-path {
+  stroke: var(--ink-4);
+  stroke-width: 1.5;
+}
+.react-flow__handle {
+  opacity: 0;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-breathe {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-breathe {
+    animation: none;
+  }
+}

@@ -1,0 +1,147 @@
+@import "./ember-primitives.css";
+
+/* shadcn semantic tokens → Ember (light) */
+:root,
+.dark .tone-flip {
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: oklch(100% 0 0);
+  --card-foreground: var(--ink);
+  /* Relative color, not color-mix(…, transparent): mix in oklch with the
+     `transparent` keyword often bakes an opaque colour (alpha 1), so glass
+     menus read as solid cards. `/ 0.72` is enough frost for a colourful
+     Engenty behind a menu to still read through. */
+  --popover: oklch(from var(--card) l c h / 0.72);
+  --popover-foreground: var(--ink);
+  --primary: var(--ember-strong);
+  --primary-foreground: oklch(99% 0 0);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink);
+  /* Plain paper-3 read as a strong “beige band”; blend toward card so bg-muted/* feels quieter */
+  --muted: color-mix(in oklch, var(--paper-3) 32%, var(--card));
+  --muted-foreground: var(--ink-3);
+  /* Hover / selection wash: must read clearly on white cards and warm canvas */
+  --accent: color-mix(in oklch, var(--ink) calc(7.5% * var(--contrast)), var(--paper));
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --destructive-foreground: oklch(99% 0 0);
+  --border: color-mix(in oklch, var(--ink) calc(12% * var(--contrast)), var(--paper));
+  /* The one soft rule. Half-strength `--border` for quiet separators inside
+     content; use `border-border-soft`, never `border-border/NN`. */
+  --border-soft: color-mix(in oklch, var(--border) 50%, transparent);
+  --input: color-mix(in oklch, var(--ink) calc(10% * var(--contrast)), var(--paper));
+  --ring: color-mix(in oklch, var(--ember) 45%, transparent);
+  --link: var(--info);
+
+  --chart-1: var(--moss);
+  --chart-2: var(--cobalt);
+  --chart-3: var(--ember);
+  --chart-4: var(--amber);
+  --chart-5: var(--rose);
+
+  /* Primary app rail: fully dynamic, based on raw sidebar input */
+  --sidebar: oklch(from var(--raw-sidebar) l c h);
+  /* Auto-contrast: light rail → dark ink, dark rail → light ink. Threshold at
+     OKLCH l≈0.62 (perceptual black-text cutoff). Works for any picked color
+     and both themes without manual tuning. */
+  --sidebar-foreground: oklch(
+    from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
+  );
+  --sidebar-primary: var(--ember);
+  --sidebar-primary-foreground: oklch(from var(--ember) calc(1 - l) calc(c * 0.1) h);
+  --sidebar-accent: oklch(from var(--sidebar) calc(l + 0.05 * (1 - 2 * l)) c h);
+  --sidebar-accent-foreground: oklch(
+    from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
+  );
+  /* Rail-relative hairline for furniture INSIDE the app bar (user-menu
+     separators, the dashed “new space” tile, the hidden-rail pill). It is not
+     a layout edge: the rail separates from the secondary column by surface
+     step plus the column's shadow, never by a line. Nudged toward the
+     auto-contrasting foreground so it stays visible at any rail lightness. */
+  --sidebar-border: color-mix(in oklch, var(--sidebar) 82%, var(--sidebar-foreground));
+  --sidebar-ring: color-mix(in oklch, var(--sidebar-primary) 65%, transparent);
+
+  --font-sans: var(--f-ui);
+  --font-heading: var(--f-display);
+  --font-mono: var(--f-mono);
+
+  /* DESIGN: ~8px default control radius, larger cards use Tailwind rounded-xl+ */
+  --radius: 0.5rem;
+  --radius-button: 0.5rem;
+
+  --shadow-2xs: var(--e-1);
+  --shadow-xs: 0 1px 2px oklch(40% var(--seed-neutral-c) var(--seed-neutral-h) / 0.06);
+  --shadow-sm: var(--e-2);
+  --shadow-md: 0 4px 12px oklch(40% var(--seed-neutral-c) var(--seed-neutral-h) / 0.08);
+  --shadow-lg: var(--e-3);
+  --shadow-xl: 0 20px 40px oklch(35% var(--seed-neutral-c) var(--seed-neutral-h) / 0.12);
+  --shadow-2xl: 0 24px 48px oklch(30% var(--seed-neutral-c) var(--seed-neutral-h) / 0.16);
+}
+
+/* `.tone-flip` turns one region to the other theme: dark on a light page,
+   light on a dark one (a private chat's band and the topbar over it).
+   The lower-specificity `.tone-flip` must come after `.dark .tone-flip`
+   above: on a dark page the light block has to win. */
+.dark,
+/* biome-ignore lint/style/noDescendingSpecificity: the flip depends on this order */
+.tone-flip {
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  /* Raised surface above canvas — never `var(--card)` (self-cycle → transparent). */
+  --card: var(--paper-2);
+  --card-foreground: var(--ink);
+  --popover: oklch(from var(--card) l c h / 0.78);
+  --popover-foreground: var(--ink);
+  --primary: var(--ember-strong);
+  --primary-foreground: oklch(from var(--raw-background) 0.16 0.02 h);
+  --secondary: var(--paper-2);
+  --secondary-foreground: var(--ink-2);
+  --muted: color-mix(in oklch, var(--paper-3) 45%, var(--card));
+  --muted-foreground: var(--ink-3);
+  --accent: color-mix(in oklch, var(--ink) calc(10% * var(--contrast)), var(--paper));
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --destructive-foreground: oklch(99% 0 0);
+  --border: color-mix(in oklch, var(--ink) calc(12% * var(--contrast)), var(--paper));
+  /* The one soft rule. Half-strength `--border` for quiet separators inside
+     content; use `border-border-soft`, never `border-border/NN`. */
+  --border-soft: color-mix(in oklch, var(--border) 50%, transparent);
+  --input: color-mix(in oklch, var(--ink) calc(10% * var(--contrast)), var(--paper));
+  --ring: color-mix(in oklch, var(--ember) 55%, transparent);
+  --link: var(--info);
+
+  --chart-1: var(--moss);
+  --chart-2: var(--cobalt);
+  --chart-3: var(--ember);
+  --chart-4: var(--amber);
+  --chart-5: var(--rose);
+
+  --sidebar: oklch(from var(--raw-sidebar) l c h);
+  /* Auto-contrast: light rail → dark ink, dark rail → light ink. Threshold at
+     OKLCH l≈0.62 (perceptual black-text cutoff). Works for any picked color
+     and both themes without manual tuning. */
+  --sidebar-foreground: oklch(
+    from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
+  );
+  --sidebar-primary: var(--ember);
+  --sidebar-primary-foreground: oklch(from var(--ember) calc(1 - l) calc(c * 0.1) h);
+  --sidebar-accent: oklch(from var(--sidebar) calc(l + 0.05 * (1 - 2 * l)) c h);
+  --sidebar-accent-foreground: oklch(
+    from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
+  );
+  /* Rail-relative hairline for furniture INSIDE the app bar (user-menu
+     separators, the dashed “new space” tile, the hidden-rail pill). It is not
+     a layout edge: the rail separates from the secondary column by surface
+     step plus the column's shadow, never by a line. Nudged toward the
+     auto-contrasting foreground so it stays visible at any rail lightness. */
+  --sidebar-border: color-mix(in oklch, var(--sidebar) 82%, var(--sidebar-foreground));
+  --sidebar-ring: color-mix(in oklch, var(--sidebar-primary) 55%, transparent);
+
+  --shadow-2xs: 0 1px 0 oklch(0% 0 0 / 0.2);
+  --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.25);
+  --shadow-sm: var(--e-2);
+  --shadow-md: 0 4px 14px oklch(0% 0 0 / 0.32);
+  --shadow-lg: var(--e-3);
+  --shadow-xl: 0 20px 40px oklch(0% 0 0 / 0.42);
+  --shadow-2xl: 0 24px 56px oklch(0% 0 0 / 0.48);
+}
