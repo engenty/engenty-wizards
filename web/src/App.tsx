@@ -9,6 +9,7 @@ import { SignInPage } from "./studio/SignInPage";
 const PublicRunner = lazy(() =>
   import("./runner/PublicRunner").then((m) => ({ default: m.PublicRunner })),
 );
+const SharePage = lazy(() => import("./share/SharePage").then((m) => ({ default: m.SharePage })));
 const EditorPage = lazy(() =>
   import("./studio/EditorPage").then((m) => ({ default: m.EditorPage })),
 );
@@ -56,6 +57,7 @@ export function App() {
         <Route path="/sign-in" element={<OAuthSignInPage />} />
         <Route path="/consent" element={<ConsentPage />} />
         <Route path="/r/:token/:runId" element={<PublicRunner />} />
+        <Route path="/s/:token" element={<SharePage />} />
         <Route
           path="/"
           element={

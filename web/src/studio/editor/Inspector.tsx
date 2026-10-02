@@ -9,10 +9,12 @@ import {
   TOOL_IDS,
   type WizardDefinition,
 } from "@shared/definition";
+import type { WorkspaceFile } from "@shared/workspace";
 import { ArrowDown, ArrowUp, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
+import { HtmlFrame } from "../../runner/outputs";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
 import { stepIcon, TYPE_TONE, toolLabel, typeLabel } from "./meta";
 
@@ -154,22 +156,174 @@ function FieldEditor({
   );
 }
 
+const WIDGET_SIZES = [
+  { label: "16:9", width: 1280, height: 720 },
+  { label: "1:1", width: 1080, height: 1080 },
+  { label: "4:5", width: 1080, height: 1350 },
+  { label: "9:16", width: 1080, height: 1920 },
+];
+
+/** Where a widget's data can come from: earlier fields and steps. */
+function dataSources(def: WizardDefinition, index: number): string[] {
+  const out: string[] = [];
+  for (const s of def.steps.slice(0, index)) {
+    if (s.type === "page") {
+      out.push(...s.fields.map((f) => f.id));
+    } else if (s.type === "agent") {
+      out.push(`steps.${s.id}`, ...(s.output.fields ?? []).map((f) => `steps.${s.id}.${f.id}`));
+    } else if (s.type === "generate" || s.type === "widget") {
+      out.push(`steps.${s.id}`);
+    }
+  }
+  return [...out, "brand.name", "today"];
+}
+
+function WidgetBody({
+  def,
+  step,
+  set,
+  files,
+  wizardId,
+}: {
+  def: WizardDefinition;
+  step: Extract<Step, { type: "widget" }>;
+  set: (s: Step) => void;
+  files: WorkspaceFile[];
+  wizardId: string;
+}) {
+  const html = files.filter((f) => f.mime === "text/html");
+  const json = files.filter((f) => f.mime === "application/json");
+  const size = step.size ?? WIDGET_SIZES[0];
+  const sources = dataSources(def, def.steps.indexOf(step));
+  const entries = Object.entries(step.data);
+  const setData = (next: [string, string][]) => set({ ...step, data: Object.fromEntries(next) });
+  // The preview reloads when the widget's files or its size change.
+  const version = [
+    files.find((f) => f.path === step.entry)?.hash.slice(0, 8),
+    files.find((f) => f.path === step.sample)?.hash.slice(0, 8),
+    size.width,
+    size.height,
+  ].join("-");
+  const hasEntry = files.some((f) => f.path === step.entry);
+  return (
+    <>
+      <Section title="Vorschau mit Beispieldaten">
+        {hasEntry ? (
+          <HtmlFrame
+            src={`/api/studio/wizards/${wizardId}/widgets/${step.id}/preview?v=${version}`}
+            page={size.width}
+            height={size.height}
+            fit
+          />
+        ) : (
+          <p className="text-[13px] text-ink-3">
+            Das Widget ist noch nicht gebaut. Bitte im Gespräch darum – oder lade eine HTML-Datei
+            unter „Dateien“ hoch.
+          </p>
+        )}
+      </Section>
+      <Section title="Widget">
+        <Label>HTML-Datei</Label>
+        <Select
+          value={step.entry}
+          onChange={(v) => set({ ...step, entry: v })}
+          options={(html.some((f) => f.path === step.entry)
+            ? html
+            : [{ path: step.entry }, ...html]
+          ).map((f) => ({ value: f.path, label: f.path }))}
+        />
+        <Label>Beispieldaten</Label>
+        <Select
+          value={step.sample ?? ""}
+          onChange={(v) => set({ ...step, sample: v || undefined })}
+          options={[
+            { value: "", label: "keine" },
+            ...json.map((f) => ({ value: f.path, label: f.path })),
+          ]}
+        />
+        <Label>Größe</Label>
+        <Segmented
+          value={
+            WIDGET_SIZES.find((p) => p.width === size.width && p.height === size.height)?.label ??
+            ""
+          }
+          options={WIDGET_SIZES.map((p) => p.label)}
+          onChange={(v: string) => {
+            const p = WIDGET_SIZES.find((x) => x.label === v);
+            if (p) {
+              set({ ...step, size: { width: p.width, height: p.height } });
+            }
+          }}
+        />
+      </Section>
+      <Section title="Daten für das Widget">
+        <datalist id={`sources-${step.id}`}>
+          {sources.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+        {entries.map(([key, ref], i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Input
+              value={key}
+              className="w-28 font-mono text-[12px]"
+              onChange={(e) =>
+                setData(entries.map((x, j) => (j === i ? [e.target.value, x[1]] : x)))
+              }
+            />
+            <span className="text-ink-4">←</span>
+            <Input
+              value={ref}
+              list={`sources-${step.id}`}
+              className="flex-1 font-mono text-[12px]"
+              onChange={(e) =>
+                setData(entries.map((x, j) => (j === i ? [x[0], e.target.value] : x)))
+              }
+            />
+            <IconButton
+              label={t("editor.deleteStep")}
+              onClick={() => setData(entries.filter((_, j) => j !== i))}
+            >
+              <Trash2 className="size-4" />
+            </IconButton>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            setData([...entries, [`wert${entries.length + 1}`, sources[0] ?? "today"]])
+          }
+          className="inline-flex h-8 items-center gap-1 self-start rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-accent"
+        >
+          <Plus className="size-3.5" /> Wert
+        </button>
+      </Section>
+    </>
+  );
+}
+
 function StepBody({
   def,
   step,
   set,
   mcpServers,
+  files,
+  wizardId,
 }: {
   def: WizardDefinition;
   step: Step;
   set: (s: Step) => void;
   mcpServers: { id: string; name: string }[];
+  files: WorkspaceFile[];
+  wizardId: string;
 }) {
   const index = def.steps.indexOf(step);
   const earlierProducers = def.steps
     .slice(0, index)
-    .filter((s) => s.type === "agent" || s.type === "generate");
+    .filter((s) => s.type === "agent" || s.type === "generate" || s.type === "widget");
   switch (step.type) {
+    case "widget":
+      return <WidgetBody def={def} step={step} set={set} files={files} wizardId={wizardId} />;
     case "page":
       return (
         <Section title="Fragen">
@@ -500,6 +654,14 @@ const NEW_STEP: Record<string, (id: string) => Step> = {
     asset: "image",
     prompt: "Beschreibe das Bild …",
   }),
+  widget: (id) => ({
+    id,
+    type: "widget",
+    title: "Widget",
+    entry: `${id}/index.html`,
+    data: {},
+    sample: `${id}/sample.json`,
+  }),
 };
 
 export function Inspector({
@@ -509,6 +671,8 @@ export function Inspector({
   onSelect,
   issues,
   mcpServers,
+  files,
+  wizardId,
 }: {
   def: WizardDefinition;
   selected: string | null;
@@ -516,6 +680,8 @@ export function Inspector({
   onSelect: (id: string | null) => void;
   issues: { stepId?: string; message: string }[];
   mcpServers: { id: string; name: string }[];
+  files: WorkspaceFile[];
+  wizardId: string;
 }) {
   if (selected === "__wizard") {
     return <WizardSettings def={def} update={update} />;
@@ -544,7 +710,16 @@ export function Inspector({
     update({ ...def, steps });
   };
   const insertAfter = (kind: keyof typeof NEW_STEP) => {
-    const id = uniqueId(def, kind === "page" ? "seite" : kind === "agent" ? "ki" : "erzeugen");
+    const id = uniqueId(
+      def,
+      kind === "page"
+        ? "seite"
+        : kind === "agent"
+          ? "ki"
+          : kind === "widget"
+            ? "widget"
+            : "erzeugen",
+    );
     const steps = [...def.steps];
     steps.splice(step.type === "result" ? index : index + 1, 0, NEW_STEP[kind](id));
     update({ ...def, steps });
@@ -589,7 +764,14 @@ export function Inspector({
           />
         ) : null}
       </Section>
-      <StepBody def={def} step={step} set={set} mcpServers={mcpServers} />
+      <StepBody
+        def={def}
+        step={step}
+        set={set}
+        mcpServers={mcpServers}
+        files={files}
+        wizardId={wizardId}
+      />
       <Section>
         <div className="flex flex-wrap items-center gap-1">
           {step.type !== "result" ? (
@@ -613,7 +795,7 @@ export function Inspector({
             </>
           ) : null}
           <span className="ml-auto text-[12px] text-ink-4">Danach einfügen:</span>
-          {(["page", "agent", "generate"] as const).map((k) => (
+          {(["page", "agent", "generate", "widget"] as const).map((k) => (
             <button
               key={k}
               type="button"

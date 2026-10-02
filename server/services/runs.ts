@@ -20,12 +20,13 @@ export async function startTestRun(
   autopilot?: { answers: Record<string, unknown>; acceptReviews: boolean },
 ) {
   const w = await ownedWizard(userId, wizardId);
-  const definition = requireClean(w);
+  const { definition, files } = await requireClean(w);
   await requireCredits(userId);
   const runId = await createRun({
     wizardId: w.id,
     ownerId: userId,
     definition,
+    files,
     version: null,
     mode: "test",
     userId,

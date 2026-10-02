@@ -1,5 +1,7 @@
-import { type Format, formatsFor, type Step } from "../shared/definition.js";
-import type { StepOutput } from "../shared/run.js";
+import { and, eq } from "drizzle-orm";
+import { type Format, formatsFor, type Step, widgetSize } from "../shared/definition.js";
+import type { AssetRef, StepOutput } from "../shared/run.js";
+import { db, schema } from "./db/client.js";
 import {
   firstTable,
   htmlToDocx,
@@ -12,7 +14,9 @@ import {
   tableToCsv,
   tableToXlsx,
 } from "./render/convert.js";
-import { extFor, inlineAssetRefs, loadAsset, loadAssetText } from "./storage.js";
+import { guardHtml } from "./render/guard.js";
+import { extFor, inlineAssetRefs, loadAsset, loadAssetText, saveAsset } from "./storage.js";
+import { widgetMp4, widgetPdf, widgetPng } from "./widgets/render.js";
 
 export interface Download {
   data: Uint8Array | string;
@@ -33,6 +37,51 @@ export function slug(s: string): string {
   );
 }
 
+/**
+ * Renders of an asset (PDF, PNG, MP4 …) are kept next to it: a shared link opened a hundred
+ * times renders once. A regenerated output is a new asset, so its renders start fresh.
+ */
+async function cachedRender(
+  source: AssetRef,
+  format: Format,
+  ownerId: string,
+  produce: () => Promise<Uint8Array | null>,
+): Promise<Uint8Array | null> {
+  const name = `${source.id}.${format}`;
+  const hit = await db.query.asset.findFirst({
+    where: and(eq(schema.asset.kind, "render"), eq(schema.asset.name, name)),
+  });
+  if (hit) {
+    const found = await loadAsset(hit.id);
+    if (found) {
+      return new Uint8Array(found.data);
+    }
+  }
+  const data = await produce();
+  if (data) {
+    const row = await db.query.asset.findFirst({ where: eq(schema.asset.id, source.id) });
+    await saveAsset({
+      ownerId,
+      runId: row?.runId ?? null,
+      stepId: row?.stepId ?? null,
+      kind: "render",
+      mime: MIME[format],
+      name,
+      data,
+    });
+  }
+  return data;
+}
+
+/** The HTML a step produced, ready to show or save: images inlined, network and frames locked. */
+export async function stepHtml(output: StepOutput, ownerId: string): Promise<string | null> {
+  const asset = output.assets?.find((a) => a.mime === "text/html");
+  if (!asset) {
+    return null;
+  }
+  return guardHtml(await inlineAssetRefs(await loadAssetText(asset.id), ownerId));
+}
+
 /** One step's output in one format. Conversions happen on demand. */
 export async function renderDownload(
   step: Step,
@@ -46,6 +95,38 @@ export async function renderDownload(
   }
   const name = slug(baseName);
   const file = (ext: string) => `${name}.${ext}`;
+
+  if (step.type === "widget") {
+    const source = output.assets?.find((a) => a.mime === "text/html");
+    if (format === "json") {
+      return {
+        data: JSON.stringify(output.json ?? {}, null, 2),
+        mime: MIME.json,
+        filename: file("json"),
+      };
+    }
+    if (!source) {
+      return null;
+    }
+    const html = await loadAssetText(source.id);
+    const size = widgetSize(step);
+    const data =
+      format === "html"
+        ? html
+        : await cachedRender(source, format, ownerId, async () => {
+            switch (format) {
+              case "png":
+                return widgetPng(html, size);
+              case "pdf":
+                return widgetPdf(html, size);
+              case "mp4":
+                return output.widget?.duration ? widgetMp4(html, size) : null;
+              default:
+                return null;
+            }
+          });
+    return data ? { data, mime: MIME[format], filename: file(format) } : null;
+  }
 
   if (step.type === "generate") {
     const asset = output.assets?.[0];
@@ -63,15 +144,21 @@ export async function renderDownload(
         : null;
     }
     const html = await inlineAssetRefs(await loadAssetText(asset.id), ownerId);
+    const render = (produce: () => Promise<Uint8Array>) =>
+      cachedRender(asset, format, ownerId, produce) as Promise<Uint8Array>;
     switch (format) {
       case "html":
-        return { data: html, mime: MIME.html, filename: file("html") };
+        return { data: guardHtml(html), mime: MIME.html, filename: file("html") };
       case "pdf":
-        return { data: await htmlToPdf(html), mime: MIME.pdf, filename: file("pdf") };
+        return { data: await render(() => htmlToPdf(html)), mime: MIME.pdf, filename: file("pdf") };
       case "png":
-        return { data: await htmlToPng(html), mime: MIME.png, filename: file("png") };
+        return { data: await render(() => htmlToPng(html)), mime: MIME.png, filename: file("png") };
       case "docx":
-        return { data: await htmlToDocx(html), mime: MIME.docx, filename: file("docx") };
+        return {
+          data: await render(() => htmlToDocx(html)),
+          mime: MIME.docx,
+          filename: file("docx"),
+        };
       case "md":
         return { data: htmlToMarkdown(html), mime: MIME.md, filename: file("md") };
       default:

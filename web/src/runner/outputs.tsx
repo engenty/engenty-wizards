@@ -18,8 +18,25 @@ export function Markdown({ text, className }: { text: string; className?: string
   );
 }
 
-/** Generated HTML in a sandboxed frame. Documents are laid out at A4 width and scaled to fit. */
-function HtmlFrame({ src, kind }: { src: string; kind: "document" | "dashboard" }) {
+/**
+ * Generated HTML in a sandboxed frame: scripts run (scrubbers, tabs, animations) but in an opaque
+ * origin with no network. The frame is mounted only once its HTML is there — Chrome paints a
+ * sandboxed frame whose content changes after mount blank. `page` is the layout width; the frame
+ * is scaled to fit.
+ */
+export function HtmlFrame({
+  src,
+  page,
+  height,
+  fit,
+}: {
+  src: string;
+  /** Layout width in CSS px; null = the frame's own width. */
+  page: number | null;
+  height: number;
+  /** Scale up as well as down, so a fixed-size widget fills the width. */
+  fit?: boolean;
+}) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -32,34 +49,36 @@ function HtmlFrame({ src, kind }: { src: string; kind: "document" | "dashboard" 
     setWidth(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-  const [html, setHtml] = useState<string | null>(null);
+  const [html, setHtml] = useState<{ src: string; text: string } | null>(null);
   useEffect(() => {
     let alive = true;
     fetch(src, { credentials: "include" })
       .then((r) => (r.ok ? r.text() : ""))
-      .then((text) => alive && setHtml(text));
+      .then((text) => alive && setHtml({ src, text }));
     return () => {
       alive = false;
     };
   }, [src]);
-  const page = kind === "document" ? 820 : Math.max(width, 900);
-  const scale = width ? Math.min(1, width / page) : 1;
-  const height = kind === "document" ? 1100 : 760;
+  const layout = page ?? Math.max(width, 900);
+  const scale = width ? (fit ? width / layout : Math.min(1, width / layout)) : 1;
   return (
     <div
       ref={wrap}
       className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-border-soft"
       style={{ height: height * scale }}
     >
-      <iframe
-        title="preview"
-        srcDoc={html ?? ""}
-        // No allow-scripts, so generated HTML never runs code. allow-same-origin keeps the
-        // frame in this renderer: Chrome paints a sandboxed, scaled out-of-process frame blank.
-        sandbox="allow-same-origin"
-        className="absolute top-0 left-0 origin-top-left border-0"
-        style={{ width: page, height, transform: `scale(${scale})` }}
-      />
+      {html?.src === src ? (
+        <iframe
+          key={src}
+          title="preview"
+          srcDoc={html.text}
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+          className="absolute top-0 left-0 origin-top-left border-0"
+          style={{ width: layout, height, transform: `scale(${scale})` }}
+        />
+      ) : (
+        <div className="absolute inset-0 animate-pulse bg-paper-2" />
+      )}
       <a
         href={src}
         target="_blank"
@@ -164,14 +183,15 @@ function CopyButton({ text }: { text: string }) {
 
 /** One step's result: the right preview for what it produced. */
 export function OutputView({
-  runId,
+  base,
   step,
   output,
   editable,
   draft,
   onDraft,
 }: {
-  runId: string;
+  /** `/api/runs/<id>` or `/api/shares/<token>` — where the output's files are served. */
+  base: string;
   step: Step;
   output: StepOutput | null;
   editable?: boolean;
@@ -181,7 +201,14 @@ export function OutputView({
   if (!output) {
     return null;
   }
-  const assetUrl = (id: string) => `/api/runs/${runId}/assets/${id}`;
+  const assetUrl = (id: string) => `${base}/assets/${id}`;
+  if (step.type === "widget") {
+    const html = output.assets?.find((a) => a.mime === "text/html");
+    const size = step.size ?? { width: 1280, height: 720 };
+    return html ? (
+      <HtmlFrame src={assetUrl(html.id)} page={size.width} height={size.height} fit />
+    ) : null;
+  }
   if (step.type === "generate") {
     const asset = output.assets?.[0];
     if (!asset) {
@@ -211,7 +238,11 @@ export function OutputView({
         />
       );
     }
-    return <HtmlFrame src={assetUrl(asset.id)} kind={step.asset} />;
+    return step.asset === "document" ? (
+      <HtmlFrame src={assetUrl(asset.id)} page={820} height={1100} />
+    ) : (
+      <HtmlFrame src={assetUrl(asset.id)} page={null} height={760} />
+    );
   }
   if (step.type === "agent") {
     const images = output.assets?.filter((a) => a.mime.startsWith("image/")) ?? [];
@@ -264,11 +295,11 @@ const FORMAT_LABEL: Record<Format, string> = {
 };
 
 export function DownloadButtons({
-  runId,
+  base,
   stepId,
   formats,
 }: {
-  runId: string;
+  base: string;
   stepId: string;
   formats: Format[];
 }) {
@@ -277,7 +308,7 @@ export function DownloadButtons({
       {formats.map((f, i) => (
         <a
           key={f}
-          href={`/api/runs/${runId}/steps/${stepId}/download?format=${f}`}
+          href={`${base}/steps/${stepId}/download?format=${f}`}
           className={cn(
             "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[13px] transition",
             i === 0

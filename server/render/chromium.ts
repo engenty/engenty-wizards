@@ -39,6 +39,18 @@ export async function newContext(
   return browser.newContext({ viewport: { width: 1280, height: 900 }, ...options });
 }
 
+/**
+ * A context for rendering generated HTML: every network request is refused. The HTML is
+ * self-contained by design, and nothing it runs may reach the server's network.
+ */
+export async function offlineContext(
+  options: Parameters<Browser["newContext"]>[0] = {},
+): Promise<BrowserContext> {
+  const context = await newContext({ javaScriptEnabled: true, ...options });
+  await context.route("**/*", (route) => route.abort("blockedbyclient"));
+  return context;
+}
+
 export async function closeBrowser() {
   const b = await browserPromise?.catch(() => null);
   browserPromise = null;

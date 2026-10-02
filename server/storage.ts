@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -86,4 +86,13 @@ export async function inlineAssetRefs(html: string, ownerId: string): Promise<st
     out = out.split(`asset://${id}`).join(uri);
   }
   return out;
+}
+
+/** Deletes every file a run made (uploads, results, renders) and their rows. */
+export async function removeAssetFiles(runId: string) {
+  const rows = await db.query.asset.findMany({ where: eq(schema.asset.runId, runId) });
+  for (const row of rows) {
+    await rm(join(ASSET_DIR, row.path), { force: true });
+  }
+  await db.delete(schema.asset).where(eq(schema.asset.runId, runId));
 }

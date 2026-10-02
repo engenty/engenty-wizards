@@ -4,12 +4,14 @@ import { MCPClient } from "@mastra/mcp";
 import { z } from "zod";
 import type { AgentStep } from "../../shared/definition.js";
 import type { AssetRef } from "../../shared/run.js";
+import { isTextMime } from "../../shared/workspace.js";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
 import { gatewayTools } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
-import { assertPublicUrl } from "./net-guard.js";
+import { snapshotFile } from "../services/files.js";
+import { assertPublicUrl, safeFetch } from "./net-guard.js";
 
 const TEXT_LIMIT = 8000;
 
@@ -53,10 +55,9 @@ export async function buildStepTools(
       execute: async ({ url }) => {
         const safe = await assertPublicUrl(url);
         await ctx.emit("tool", `Liest ${safe.hostname}`);
-        const res = await fetch(safe, {
+        const res = await safeFetch(safe.toString(), {
           signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(20_000)]),
           headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
-          redirect: "follow",
         });
         const type = res.headers.get("content-type") ?? "";
         const body = await res.text();
@@ -79,7 +80,7 @@ export async function buildStepTools(
       execute: async ({ method, url, headers, json }) => {
         const safe = await assertPublicUrl(url);
         await ctx.emit("tool", `${method} ${safe.hostname}${safe.pathname}`);
-        const res = await fetch(safe, {
+        const res = await safeFetch(safe.toString(), {
           method,
           signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(30_000)]),
           headers: {
@@ -262,6 +263,27 @@ export async function buildStepTools(
         });
         assets.push(ref);
         return { saved: true, assetId: ref.id };
+      },
+    });
+  }
+
+  // The wizard's workspace (reference data, price lists, templates) is always readable.
+  if (ctx.files.length) {
+    tools.read_workspace_file = createTool({
+      id: "read_workspace_file",
+      description: `Read a file from the wizard's workspace. Files: ${ctx.files
+        .slice(0, 60)
+        .map((f) => f.path)
+        .join(", ")}`,
+      inputSchema: z.object({ path: z.string() }),
+      execute: async ({ path }) => {
+        const found = await snapshotFile(ctx.files, path);
+        if (!found) {
+          return { error: `No file ${path}` };
+        }
+        return isTextMime(found.file.mime)
+          ? { path, text: clip(found.data.toString("utf8"), 40_000) }
+          : { path, mime: found.file.mime, size: found.file.size, note: "binary file" };
       },
     });
   }

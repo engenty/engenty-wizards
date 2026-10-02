@@ -6,9 +6,11 @@ import { getBilling, microsToCredits } from "../billing/credits.js";
 import { billingEnabled } from "../billing/stripe.js";
 import { env } from "../env.js";
 import { hasTextModel } from "../models.js";
+import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { architectTurn } from "../services/architect.js";
 import { requireCredits } from "../services/credits.js";
 import { ServiceError } from "../services/errors.js";
+import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
 import {
   createProject,
   deleteProject,
@@ -20,6 +22,7 @@ import {
   updateProject,
 } from "../services/projects.js";
 import { listRuns, startTestRun } from "../services/runs.js";
+import { draftWidgetPreview } from "../services/widgets.js";
 import {
   createWizard,
   deleteWizard,
@@ -186,6 +189,9 @@ export const studio = new Hono<Vars>()
           onText: (delta) => {
             void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });
           },
+          onActivity: (label) => {
+            void stream.writeSSE({ event: "activity", data: JSON.stringify(label) });
+          },
           onBuilding: () => {
             void stream.writeSSE({ event: "building", data: "1" });
           },
@@ -211,6 +217,46 @@ export const studio = new Hono<Vars>()
   .get("/wizards/:id/runs", async (c) =>
     c.json(await listRuns(c.get("user").id, c.req.param("id"))),
   )
+
+  // --- workspace -------------------------------------------------------------
+  .get("/wizards/:id/files", async (c) =>
+    c.json(await listFiles(c.get("user").id, c.req.param("id"))),
+  )
+  .get("/wizards/:id/files/:path{.+}", async (c) => {
+    const { file, data } = await readFile(c.get("user").id, c.req.param("id"), c.req.param("path"));
+    return c.body(new Uint8Array(data), 200, {
+      "content-type": file.mime,
+      "content-disposition": `attachment; filename="${file.path.split("/").pop()}"`,
+      "cache-control": "private, no-cache",
+    });
+  })
+  .put("/wizards/:id/files/:path{.+}", async (c) => {
+    const data = new Uint8Array(await c.req.arrayBuffer());
+    const file = await writeFile(
+      c.get("user").id,
+      c.req.param("id"),
+      c.req.param("path"),
+      data,
+      c.req.header("content-type")?.split(";")[0],
+    );
+    return c.json(file);
+  })
+  .delete("/wizards/:id/files/:path{.+}", async (c) => {
+    await deleteFile(c.get("user").id, c.req.param("id"), c.req.param("path"));
+    return c.json({ ok: true });
+  })
+  .get("/wizards/:id/widgets/:stepId/preview", async (c) => {
+    const html = await draftWidgetPreview(
+      c.get("user").id,
+      c.req.param("id"),
+      c.req.param("stepId"),
+    );
+    return c.body(new TextEncoder().encode(html), 200, {
+      "content-type": "text/html; charset=utf-8",
+      "content-security-policy": HTML_RESPONSE_CSP,
+      "cache-control": "no-store",
+    });
+  })
 
   // --- API keys for MCP clients ------------------------------------------------
   .get("/api-keys", async (c) => {

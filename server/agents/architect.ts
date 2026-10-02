@@ -1,43 +1,60 @@
-import { streamText } from "ai";
-import {
-  parseWizard,
-  type ValidationIssue,
-  type WizardDefinition,
-} from "../../shared/definition.js";
+import { anthropic } from "@ai-sdk/anthropic";
+import { Agent } from "@mastra/core/agent";
+import type { MastraModelConfig } from "@mastra/core/llm";
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+import { isTextMime } from "../../shared/workspace.js";
 import {
   exampleWizard,
   type GuideServer,
   mcpServersLine,
   PRINCIPLES,
   SCHEMA_DOC,
+  WIDGET_GUIDE,
 } from "../authoring/guide.js";
+import { wizardOpSchema } from "../authoring/ops.js";
 import { env } from "../env.js";
-import { languageModel, tokenCostUsd } from "../models.js";
+import { gatewayTools, languageModel, tokenCostUsd } from "../models.js";
+import { htmlToMarkdown } from "../render/convert.js";
+import { ServiceError } from "../services/errors.js";
+import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
+import { checkDraftWidget } from "../services/widgets.js";
+import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
+import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
+import { runScript } from "../widgets/script.js";
 
 export interface ArchitectInput {
+  userId: string;
+  wizardId: string;
   message: string;
-  current: WizardDefinition | null;
   history: { role: "user" | "assistant"; content: string }[];
-  mcpServers: { id: string; name: string }[];
+  mcpServers: GuideServer[];
   signal?: AbortSignal;
   onText?: (delta: string) => void;
+  /** A short line about what the architect is doing right now ("Lädt Seeformen …"). */
+  onActivity?: (label: string) => void;
   onBuilding?: () => void;
 }
 
+const MAX_STEPS = 45;
+
 export interface ArchitectResult {
   reply: string;
-  wizard: WizardDefinition | null;
-  issues: ValidationIssue[];
+  /** The architect wrote the draft or the workspace during the turn. */
+  changed: boolean;
+  /** It ran out of steps before it finished. */
+  unfinished: boolean;
   costUsd: number;
 }
 
 function systemPrompt(mcp: GuideServer[]): string {
-  return `You design wizards for "engenty wizards": a page-by-page flow an end user walks through, where AI steps research, write, draw images, render video, build documents and dashboards, or write into other systems.
+  return `You design wizards for "engenty wizards": a page-by-page flow an end user walks through, where AI steps research, write, draw images, render video, build documents, dashboards and interactive widgets, or write into other systems.
 
-You talk to the ADMIN who builds the wizard. Answer in the admin's language, briefly and warmly. Never mention JSON, ids, schemas or templates to them — talk about pages, questions, steps and results.
+You talk to the ADMIN who builds the wizard. Answer in the admin's language, briefly and warmly. Never mention JSON, ids, schemas, files or templates to them — talk about pages, questions, steps, the widget and results.
 
 ${SCHEMA_DOC}
 ${PRINCIPLES}
+${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
 
@@ -46,116 +63,391 @@ Example of a complete wizard:
 ${exampleWizard()}
 \`\`\`
 
-OUTPUT FORMAT — always exactly this:
-1. One to three sentences to the admin: what you built or changed, and at most one useful suggestion.
-2. If the wizard is new or changed: a fenced \`\`\`json block with the COMPLETE wizard (never a partial diff).
-If the admin only asked a question, answer it and leave the json block out.`;
+HOW YOU WORK
+- You change the wizard ONLY through tools: edit_wizard (small ops) or replace_wizard (new or mostly rewritten). Every write returns the validator's issues — fix them before you finish.
+- Widgets and their data live in the workspace: list_files, read_file, write_file, delete_file, download_files. Then check_widget, look at the screenshot, fix, check again.
+- Order: 1. write the wizard's steps, 2. fetch only the reference data the widget truly needs (one download_files call for all of it), 3. write the widget and its sample.json, 4. check_widget and fix, 5. answer. You have about 30 tool calls — never spend them on exploring.
+- Call independent tools in the same step (they run together).
+- Never retype data you downloaded. Reshape it with run_script (output to a file), or let the widget read the raw files with wizard.json() and transform them when it starts.
+- Work in few, purposeful steps: every tool call costs the admin time and credits.
+- Research what you need to prepare (web_search, web_fetch) — e.g. which lakes, their outlines, a chart library.
+- Finish with one to three sentences to the admin: what you built or changed, and at most one suggestion. If they only asked a question, just answer it.`;
 }
 
-function extractJson(text: string): { reply: string; json: string | null } {
-  const fence = text.indexOf("```");
-  if (fence === -1) {
-    return { reply: text.trim(), json: null };
+/** Turns a tool call into the line the admin sees while it runs. */
+function activity(tool: string, args: Record<string, unknown>): string | null {
+  const host = (u: unknown) => {
+    try {
+      return new URL(String(u)).hostname;
+    } catch {
+      return "";
+    }
+  };
+  switch (tool) {
+    case "replace_wizard":
+    case "edit_wizard":
+      return "Baut den Ablauf …";
+    case "write_file":
+      return args.path ? `Schreibt ${String(args.path)} …` : "Schreibt eine Datei …";
+    case "download_files":
+      return "Lädt Daten herunter …";
+    case "web_fetch":
+      return args.url ? `Liest ${host(args.url)} …` : "Liest im Web …";
+    case "web_search":
+      return "Sucht im Web …";
+    case "check_widget":
+      return "Testet das Widget …";
+    case "run_script":
+      return args.output ? `Bereitet ${String(args.output)} vor …` : "Rechnet …";
+    case "list_files":
+    case "read_file":
+      return "Sieht sich die Dateien an …";
+    case "delete_file":
+      return "Räumt Dateien auf …";
+    default:
+      return null;
   }
-  const reply = text.slice(0, fence).trim();
-  const body = text
-    .slice(fence)
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```[\s\S]*$/, "")
-    .trim();
-  return { reply, json: body };
 }
 
-async function streamOnce(
-  system: string,
-  messages: { role: "user" | "assistant"; content: string }[],
-  input: ArchitectInput,
-  forward: boolean,
-): Promise<{ text: string; costUsd: number }> {
-  const result = streamText({
-    model: languageModel(env.models.architect),
+/** A tool failure the model can read and fix, instead of a crashed turn. */
+async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string; issues?: unknown }> {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof ServiceError) {
+      return { error: err.message, ...err.data };
+    }
+    return { error: (err as Error).message };
+  }
+}
+
+function buildTools(input: ArchitectInput, wrote: () => void) {
+  const { userId, wizardId } = input;
+  const signal = input.signal;
+  const tools: Record<string, any> = {
+    replace_wizard: createTool({
+      id: "replace_wizard",
+      description:
+        "Replace the whole wizard. Use for a new wizard or a rewrite. Returns the validator's issues.",
+      inputSchema: z.object({ wizard: z.record(z.string(), z.unknown()) }),
+      execute: async ({ wizard }) =>
+        attempt(async () => {
+          const w = await ownedWizard(userId, wizardId);
+          const { issues } = await writeDraft(userId, wizardId, {
+            definition: wizard,
+            baseRevision: w.revision,
+          });
+          wrote();
+          return { ok: true, issues };
+        }),
+    }),
+    edit_wizard: createTool({
+      id: "edit_wizard",
+      description:
+        "Change the wizard with ops, applied in order: set_meta, upsert_step (the complete step; replaces the step with that id or inserts it before/after another), remove_step, move_step. Returns the validator's issues.",
+      inputSchema: z.object({ ops: z.array(wizardOpSchema).min(1) }),
+      execute: async ({ ops }) =>
+        attempt(async () => {
+          const w = await ownedWizard(userId, wizardId);
+          const { issues } = await editWizard(
+            userId,
+            wizardId,
+            { ops, baseRevision: w.revision },
+            { source: "studio" },
+          );
+          wrote();
+          return { ok: true, issues };
+        }),
+    }),
+    list_files: createTool({
+      id: "list_files",
+      description: "The files in the wizard's workspace (path, mime, size).",
+      inputSchema: z.object({}),
+      execute: async () =>
+        attempt(async () =>
+          (await listFiles(userId, wizardId)).map(({ path, mime, size }) => ({ path, mime, size })),
+        ),
+    }),
+    read_file: createTool({
+      id: "read_file",
+      description: "Read a workspace file as text.",
+      inputSchema: z.object({ path: z.string() }),
+      execute: async ({ path }) =>
+        attempt(async () => {
+          const f = await readFileText(userId, wizardId, path);
+          return f.text === null
+            ? { path: f.path, mime: f.mime, size: f.size, note: "binary file" }
+            : {
+                path: f.path,
+                text:
+                  f.text.length > 60_000
+                    ? `${f.text.slice(0, 60_000)}\n…[${f.text.length - 60_000} more characters]`
+                    : f.text,
+              };
+        }),
+    }),
+    write_file: createTool({
+      id: "write_file",
+      description:
+        "Create or overwrite a text file in the workspace (HTML, JS, CSS, JSON, CSV, SVG). Max 5 MB.",
+      inputSchema: z.object({ path: z.string(), content: z.string() }),
+      execute: async ({ path, content }) =>
+        attempt(async () => {
+          const f = await writeFile(userId, wizardId, path, content);
+          wrote();
+          return { ok: true, path: f.path, size: f.size };
+        }),
+    }),
+    delete_file: createTool({
+      id: "delete_file",
+      description: "Delete a workspace file.",
+      inputSchema: z.object({ path: z.string() }),
+      execute: async ({ path }) =>
+        attempt(async () => {
+          await deleteFile(userId, wizardId, path);
+          wrote();
+          return { ok: true };
+        }),
+    }),
+    download_files: createTool({
+      id: "download_files",
+      description:
+        "Download public URLs straight into the workspace — all at once (libraries from cdnjs/jsdelivr, GeoJSON outlines, CSV, images). The content does not pass through you; you get each file's size and first characters. Requests to the same host are spaced one second apart (fair use of OpenStreetMap and others).",
+      inputSchema: z.object({
+        files: z
+          .array(z.object({ url: z.string(), path: z.string() }))
+          .min(1)
+          .max(40),
+      }),
+      execute: async ({ files }) => {
+        const results: unknown[] = [];
+        const lastHit = new Map<string, number>();
+        for (const { url, path } of files) {
+          const host = (() => {
+            try {
+              return new URL(url).hostname;
+            } catch {
+              return "";
+            }
+          })();
+          const wait = (lastHit.get(host) ?? 0) + 1000 - Date.now();
+          if (wait > 0) {
+            await new Promise((r) => setTimeout(r, wait));
+          }
+          lastHit.set(host, Date.now());
+          results.push(
+            await attempt(async () => {
+              const res = await safeFetch(url, {
+                signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(30_000)]),
+                headers: { "user-agent": "engenty-wizards/0.1 (widget builder)" },
+              });
+              if (!res.ok) {
+                return { path, error: `HTTP ${res.status}` };
+              }
+              const data = new Uint8Array(await res.arrayBuffer());
+              const mime = res.headers.get("content-type")?.split(";")[0];
+              const f = await writeFile(userId, wizardId, path, data, mime);
+              wrote();
+              return {
+                path: f.path,
+                size: f.size,
+                start: isTextMime(f.mime) ? Buffer.from(data.slice(0, 160)).toString("utf8") : null,
+              };
+            }),
+          );
+        }
+        return { results };
+      },
+    }),
+    run_script: createTool({
+      id: "run_script",
+      description:
+        "Run JavaScript over workspace files in a browser without network — to reshape downloaded data (simplify outlines, merge files, compute bounds or SVG paths) instead of retyping it. The body of an async function: `files` maps each input path to its text; return a string or a JSON value. With `output`, the result is saved as that workspace file.",
+      inputSchema: z.object({
+        script: z.string(),
+        inputs: z.array(z.string()).describe("Workspace paths to pass in `files`."),
+        output: z.string().optional(),
+      }),
+      execute: async ({ script, inputs, output }) =>
+        attempt(async () => {
+          const files: Record<string, string> = {};
+          for (const path of inputs) {
+            const f = await readFileText(userId, wizardId, path);
+            if (f.text !== null) {
+              files[f.path] = f.text;
+            }
+          }
+          const result = await runScript(script, files);
+          const text = typeof result === "string" ? result : JSON.stringify(result);
+          if (output) {
+            const f = await writeFile(userId, wizardId, output, text ?? "");
+            wrote();
+            return { ok: true, path: f.path, size: f.size, start: (text ?? "").slice(0, 400) };
+          }
+          return {
+            result: (text ?? "").length > 8000 ? `${text.slice(0, 8000)} …[truncated]` : text,
+          };
+        }),
+    }),
+    web_fetch: createTool({
+      id: "web_fetch",
+      description: "Read a public web page or API response (Markdown/text, first 6000 chars).",
+      inputSchema: z.object({ url: z.string() }),
+      execute: async ({ url }) =>
+        attempt(async () => {
+          const safe = await assertPublicUrl(url);
+          const res = await safeFetch(safe.toString(), {
+            signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(20_000)]),
+            headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
+          });
+          const type = res.headers.get("content-type") ?? "";
+          const body = await res.text();
+          const text = type.includes("html") ? htmlToMarkdown(body) : body;
+          return { status: res.status, content: text.slice(0, 6000) };
+        }),
+    }),
+    check_widget: createTool({
+      id: "check_widget",
+      description:
+        "Load a widget step in a real browser with its sample data (or the data you pass): returns script errors, whether it registered a timeline, and a screenshot you can look at.",
+      inputSchema: z.object({
+        stepId: z.string(),
+        data: z.record(z.string(), z.unknown()).optional(),
+      }),
+      execute: async ({ stepId, data }) =>
+        attempt(async () => {
+          const r = await checkDraftWidget(userId, wizardId, stepId, data);
+          return {
+            errors: r.errors,
+            timelineSeconds: r.duration,
+            size: r.size,
+            bundleBytes: r.bytes,
+            screenshot: Buffer.from(r.png).toString("base64"),
+          };
+        }),
+      toModelOutput: (out: any) => {
+        if (!out || out.error || !out.screenshot) {
+          return { type: "json", value: out };
+        }
+        const { screenshot, ...rest } = out;
+        return {
+          type: "content",
+          value: [
+            { type: "text", text: JSON.stringify(rest) },
+            { type: "image-data", data: screenshot, mediaType: "image/png" },
+          ],
+        };
+      },
+    }),
+  };
+  const vendor = env.models.architect.replace(/^[a-z]+:/, "").split("/")[0];
+  const gw = gatewayTools();
+  if (vendor === "anthropic") {
+    tools.web_search = anthropic.tools.webSearch_20250305({ maxUses: 5 });
+  } else if (gw) {
+    tools.web_search = gw.perplexitySearch({ maxResults: 6 });
+  }
+  return tools;
+}
+
+/** One studio turn: the architect reads the draft and its workspace and changes them with tools. */
+export async function runArchitect(input: ArchitectInput): Promise<ArchitectResult> {
+  const w = await ownedWizard(input.userId, input.wizardId);
+  const files = await listFiles(input.userId, input.wizardId);
+  let changed = false;
+  const agent = new Agent({
+    id: "architect",
+    name: "Architect",
     // The system prompt is long and identical on every turn: cache it.
     instructions: {
       role: "system",
-      content: system,
+      content: systemPrompt(input.mcpServers),
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
-    messages,
-    abortSignal: input.signal,
-    maxOutputTokens: 16_000,
+    model: languageModel(env.models.architect) as unknown as MastraModelConfig,
+    tools: buildTools(input, () => {
+      changed = true;
+    }),
   });
-  let text = "";
-  let inFence = false;
-  for await (const delta of result.textStream) {
-    text += delta;
-    if (!forward) {
-      continue;
-    }
-    if (!inFence) {
-      const fence = text.indexOf("```");
-      if (fence === -1) {
-        input.onText?.(delta);
-      } else {
-        inFence = true;
-        const before = text.length - delta.length;
-        if (fence > before) {
-          input.onText?.(text.slice(before, fence));
+  const context = [
+    `Current wizard (revision ${w.revision}):\n\`\`\`json\n${JSON.stringify(w.draft)}\n\`\`\``,
+    `Workspace files: ${files.length ? files.map((f) => `${f.path} (${f.size} B)`).join(", ") : "none"}`,
+    input.message,
+  ].join("\n\n");
+  const stream = await agent.stream(
+    [
+      ...input.history
+        .slice(-10)
+        .map((m) =>
+          m.role === "user"
+            ? { role: "user" as const, content: m.content }
+            : { role: "assistant" as const, content: m.content },
+        ),
+      { role: "user" as const, content: context },
+    ],
+    {
+      maxSteps: MAX_STEPS,
+      abortSignal: input.signal,
+      modelSettings: { maxOutputTokens: 32_000 },
+    },
+  );
+  let reply = "";
+  let steps = 0;
+  // A big write_file streams its arguments for minutes; name the file as soon as its path arrives.
+  const streaming = new Map<string, { tool: string; args: string; named: boolean }>();
+  for await (const chunk of stream.fullStream as AsyncIterable<any>) {
+    const payload = chunk.payload ?? chunk;
+    if (chunk.type === "text-delta") {
+      const text: string = payload.text ?? payload.delta ?? "";
+      reply += text;
+      input.onText?.(text);
+    } else if (chunk.type === "tool-call-input-streaming-start") {
+      streaming.set(payload.toolCallId, { tool: payload.toolName, args: "", named: false });
+      const label = activity(payload.toolName, {});
+      if (label) {
+        input.onActivity?.(label);
+      }
+    } else if (chunk.type === "tool-call-delta") {
+      const s = streaming.get(payload.toolCallId);
+      if (s && !s.named) {
+        s.args += payload.argsTextDelta ?? "";
+        const path = s.args.match(/"path"\s*:\s*"([^"]+)"/)?.[1];
+        if (path) {
+          s.named = true;
+          const label = activity(s.tool, { path });
+          if (label) {
+            input.onActivity?.(label);
+          }
         }
+      }
+    } else if (chunk.type === "tool-call") {
+      const label = activity(payload.toolName, (payload.args ?? payload.input ?? {}) as never);
+      if (label) {
+        input.onActivity?.(label);
+      }
+      if (payload.toolName === "replace_wizard" || payload.toolName === "edit_wizard") {
         input.onBuilding?.();
       }
+      // Keep what it says before and after a tool call apart.
+      if (reply.trim() && !reply.endsWith("\n\n")) {
+        input.onText?.("\n\n");
+        reply += "\n\n";
+      }
+    } else if (chunk.type === "step-finish") {
+      steps += 1;
+    } else if (chunk.type === "error") {
+      throw payload.error ?? new Error("architect stream error");
     }
   }
-  const usage = await result.usage;
-  return { text, costUsd: tokenCostUsd(env.models.architect, usage as any) };
-}
-
-/** Turn the admin's words into a (changed) wizard. Repairs its own output once if it does not validate. */
-export async function runArchitect(input: ArchitectInput): Promise<ArchitectResult> {
-  const system = systemPrompt(input.mcpServers);
-  const messages: { role: "user" | "assistant"; content: string }[] = [
-    ...input.history.slice(-10),
-    {
-      role: "user",
-      content: input.current
-        ? `Current wizard:\n\`\`\`json\n${JSON.stringify(input.current)}\n\`\`\`\n\n${input.message}`
-        : input.message,
-    },
-  ];
-  let { text, costUsd } = await streamOnce(system, messages, input, true);
-  let { reply, json } = extractJson(text);
-  if (!json) {
-    return { reply, wizard: null, issues: [], costUsd };
-  }
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let parsed: ReturnType<typeof parseWizard>;
-    try {
-      parsed = parseWizard(JSON.parse(json));
-    } catch (err) {
-      parsed = { ok: false, issues: [{ message: `Invalid JSON: ${(err as Error).message}` }] };
-    }
-    if (parsed.ok && parsed.issues.length === 0) {
-      return { reply, wizard: parsed.wizard, issues: [], costUsd };
-    }
-    if (attempt === 1) {
-      return { reply, wizard: parsed.ok ? parsed.wizard : null, issues: parsed.issues, costUsd };
-    }
-    const repair = await streamOnce(
-      system,
-      [
-        ...messages,
-        { role: "assistant", content: text },
-        {
-          role: "user",
-          content: `The wizard has these problems:\n${parsed.issues.map((i) => `- ${i.stepId ? `[${i.stepId}] ` : ""}${i.message}`).join("\n")}\nReturn the corrected COMPLETE wizard as a json block only.`,
-        },
-      ],
-      input,
-      false,
-    );
-    costUsd += repair.costUsd;
-    text = repair.text;
-    json = extractJson(repair.text).json ?? json;
-  }
-  return { reply, wizard: null, issues: [], costUsd };
+  const usage: any = (await (stream as any).totalUsage) ?? (await stream.usage);
+  return {
+    reply: reply.trim(),
+    changed,
+    unfinished: steps >= MAX_STEPS,
+    costUsd: tokenCostUsd(env.models.architect, {
+      inputTokens: usage?.inputTokens ?? 0,
+      outputTokens: usage?.outputTokens ?? 0,
+      cachedInputTokens: usage?.cachedInputTokens ?? usage?.inputTokenDetails?.cacheReadTokens ?? 0,
+    }),
+  };
 }

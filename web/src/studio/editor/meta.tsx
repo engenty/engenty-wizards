@@ -1,5 +1,6 @@
 import type { Step } from "@shared/definition";
 import {
+  AppWindow,
   Bot,
   Eye,
   FileText,
@@ -26,6 +27,8 @@ export function stepIcon(step: Step) {
           : step.asset === "dashboard"
             ? LayoutDashboard
             : FileText;
+    case "widget":
+      return AppWindow;
     case "review":
       return Eye;
     case "result":
@@ -38,6 +41,7 @@ export const TYPE_TONE: Record<Step["type"], string> = {
   page: "bg-cobalt-tint text-cobalt",
   agent: "bg-ember-tint text-ember-strong",
   generate: "bg-amber-tint text-ink-2",
+  widget: "bg-ember-veil text-ember-strong",
   review: "bg-moss-tint text-moss",
   result: "bg-paper-2 text-ink-2",
 };
@@ -82,6 +86,8 @@ export function stepSummary(step: Step): string {
       }
       return parts.join(" · ");
     }
+    case "widget":
+      return [step.entry, Object.keys(step.data).join(", ")].filter(Boolean).join(" · ");
     case "review":
       return [step.edit ? "bearbeitbar" : null, step.regenerate ? "neu erstellbar" : null]
         .filter(Boolean)

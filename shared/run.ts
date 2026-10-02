@@ -14,6 +14,12 @@ export interface StepOutput {
   text?: string;
   json?: unknown;
   assets?: AssetRef[];
+  /** Widgets: what loading it with this run's data showed. */
+  widget?: {
+    /** Seconds of animation the widget registered for video export; null = a still widget. */
+    duration: number | null;
+    errors: string[];
+  };
   at: string;
 }
 
@@ -50,6 +56,24 @@ export interface RunView {
   error: string | null;
   events: RunEvent[];
   brand: BrandView;
+  /** Set once the result is shared. */
+  shareUrl: string | null;
+  /** When the run and its shared link are deleted; null = kept. */
+  expiresAt: string | null;
+}
+
+/** A shared result: what `/s/<token>` shows. Never the person's answers. */
+export interface ShareView {
+  token: string;
+  title: string;
+  message: string | null;
+  wizard: Pick<WizardDefinition, "title" | "description" | "avatar">;
+  brand: BrandView;
+  shown: RunView["shown"];
+  createdAt: string;
+  expiresAt: string | null;
+  /** The wizard's public link, to make your own — when it is published and open. */
+  wizardUrl: string | null;
 }
 
 export interface BrandView {

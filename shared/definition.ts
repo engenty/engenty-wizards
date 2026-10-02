@@ -104,6 +104,8 @@ export const outputFieldSchema = z.object({
   id,
   kind: z.enum(["text", "number", "list", "table"]),
   description: z.string().optional(),
+  /** Table only: the exact column keys every row has — what a widget reads. */
+  columns: z.array(z.string().min(1)).optional(),
 });
 
 export const pageStepSchema = z.object({
@@ -153,6 +155,25 @@ export const generateStepSchema = z.object({
   working: z.string().optional(),
 });
 
+export const widgetStepSchema = z.object({
+  ...stepBase,
+  type: z.literal("widget"),
+  /** Workspace path of the widget's HTML. Written once; every run only brings new data. */
+  entry: z.string().min(1),
+  /** What the widget gets as `wizard.data`: key → a field id, steps.id, steps.id.key, brand.name or today. */
+  data: z.record(z.string(), z.string()).default({}),
+  /** Workspace path of example data (JSON) for previews before any run. */
+  sample: z.string().optional(),
+  /** The size the widget is designed for; previews scale it, PNG/PDF/MP4 render at it. */
+  size: z
+    .object({
+      width: z.number().int().min(200).max(3840),
+      height: z.number().int().min(200).max(3840),
+    })
+    .optional(),
+  working: z.string().optional(),
+});
+
 export const reviewStepSchema = z.object({
   ...stepBase,
   type: z.literal("review"),
@@ -179,6 +200,7 @@ export const stepSchema = z.discriminatedUnion("type", [
   pageStepSchema,
   agentStepSchema,
   generateStepSchema,
+  widgetStepSchema,
   reviewStepSchema,
   resultStepSchema,
 ]);
@@ -186,6 +208,7 @@ export type Step = z.infer<typeof stepSchema>;
 export type PageStep = z.infer<typeof pageStepSchema>;
 export type AgentStep = z.infer<typeof agentStepSchema>;
 export type GenerateStep = z.infer<typeof generateStepSchema>;
+export type WidgetStep = z.infer<typeof widgetStepSchema>;
 export type ReviewStep = z.infer<typeof reviewStepSchema>;
 export type ResultStep = z.infer<typeof resultStepSchema>;
 export type StepType = Step["type"];
@@ -221,6 +244,9 @@ export function formatsFor(step: Step): Format[] {
         return ["html", "pdf", "png"];
     }
   }
+  if (step.type === "widget") {
+    return ["html", "png", "pdf", "mp4", "json"];
+  }
   if (step.type === "agent") {
     if (step.output.format === "json") {
       return ["json", "csv", "xlsx", "md"];
@@ -228,6 +254,20 @@ export function formatsFor(step: Step): Format[] {
     return ["md", "txt", "docx", "pdf", "html"];
   }
   return [];
+}
+
+export const DEFAULT_WIDGET_SIZE = { width: 1280, height: 720 };
+
+export function widgetSize(step: WidgetStep) {
+  return step.size ?? DEFAULT_WIDGET_SIZE;
+}
+
+/** A widget data reference without braces: "{{steps.x}}" and "steps.x" mean the same. */
+export function dataRef(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^\{\{\s*/, "")
+    .replace(/\s*\}\}$/, "");
 }
 
 export interface ValidationIssue {
@@ -245,7 +285,7 @@ export function templateRefs(template: string): string[] {
  * Structural checks the schema cannot express: ids, references between steps,
  * templates naming things that exist by the time the step runs.
  */
-export function validateWizard(def: WizardDefinition): ValidationIssue[] {
+export function validateWizard(def: WizardDefinition, files?: string[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const stepIds = new Set<string>();
   const fieldIds = new Set<string>();
@@ -318,6 +358,29 @@ export function validateWizard(def: WizardDefinition): ValidationIssue[] {
           });
         }
         break;
+      case "widget":
+        for (const [key, ref] of Object.entries(step.data)) {
+          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+            issues.push({
+              stepId: step.id,
+              message: `Widget data key "${key}" is not an identifier.`,
+            });
+          }
+          checkTemplate(step, `{{${dataRef(ref)}}}`);
+        }
+        if (files && !files.includes(step.entry)) {
+          issues.push({
+            stepId: step.id,
+            message: `Widget entry "${step.entry}" is not in the workspace.`,
+          });
+        }
+        if (files && step.sample && !files.includes(step.sample)) {
+          issues.push({
+            stepId: step.id,
+            message: `Widget sample "${step.sample}" is not in the workspace.`,
+          });
+        }
+        break;
       case "review":
         for (const ref of step.show) {
           if (!seenSteps.has(ref)) {
@@ -352,6 +415,7 @@ export function validateWizard(def: WizardDefinition): ValidationIssue[] {
 /** Parse + validate in one go. */
 export function parseWizard(
   input: unknown,
+  files?: string[],
 ):
   | { ok: true; wizard: WizardDefinition; issues: ValidationIssue[] }
   | { ok: false; issues: ValidationIssue[] } {
@@ -362,7 +426,7 @@ export function parseWizard(
       issues: parsed.error.issues.map((i) => ({ message: `${i.path.join(".")}: ${i.message}` })),
     };
   }
-  const issues = validateWizard(parsed.data);
+  const issues = validateWizard(parsed.data, files);
   return { ok: true, wizard: parsed.data, issues };
 }
 

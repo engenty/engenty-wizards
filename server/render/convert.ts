@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { marked } from "marked";
 import TurndownService from "turndown";
 import type { Format } from "../../shared/definition.js";
-import { newContext } from "./chromium.js";
+import { offlineContext } from "./chromium.js";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
@@ -58,7 +58,7 @@ export function htmlToMarkdown(html: string): string {
 }
 
 export async function htmlToPdf(html: string): Promise<Uint8Array> {
-  const context = await newContext();
+  const context = await offlineContext();
   try {
     const page = await context.newPage();
     await page.setContent(html, { waitUntil: "networkidle", timeout: 30_000 });
@@ -68,12 +68,19 @@ export async function htmlToPdf(html: string): Promise<Uint8Array> {
   }
 }
 
-export async function htmlToPng(html: string, width = 1200): Promise<Uint8Array> {
-  const context = await newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 2 });
+export async function htmlToPng(
+  html: string,
+  width = 1200,
+  opts: { height?: number; fullPage?: boolean; scale?: number } = {},
+): Promise<Uint8Array> {
+  const context = await offlineContext({
+    viewport: { width, height: opts.height ?? 900 },
+    deviceScaleFactor: opts.scale ?? 2,
+  });
   try {
     const page = await context.newPage();
     await page.setContent(html, { waitUntil: "networkidle", timeout: 30_000 });
-    return await page.screenshot({ fullPage: true, type: "png" });
+    return await page.screenshot({ fullPage: opts.fullPage ?? true, type: "png" });
   } finally {
     await context.close();
   }

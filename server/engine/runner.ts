@@ -1,16 +1,20 @@
 import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
+  type Format,
   formatsFor,
   nextStepId,
   type Step,
   type WizardDefinition,
 } from "../../shared/definition.js";
 import type { RunState, RunView } from "../../shared/run.js";
+import type { WorkspaceFile } from "../../shared/workspace.js";
 import { canSpend, charge, usdToMicros } from "../billing/credits.js";
 import { db, schema } from "../db/client.js";
+import { env } from "../env.js";
 import { ModelUnavailableError } from "../models.js";
 import { saveAsset } from "../storage.js";
+import { hasFfmpeg } from "../widgets/render.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
 import { releaseResources, resourcesFor } from "./resources.js";
@@ -64,6 +68,12 @@ function friendly(err: unknown): string {
   if (/timeout|timed out/i.test(msg)) {
     return "Der Schritt hat zu lange gedauert. Bitte noch einmal versuchen.";
   }
+  // The platform's own provider account (budget, quota, key): nothing the person can fix.
+  if (
+    /budget|quota|insufficient|billing|credit balance|api key|unauthori[sz]ed|401|403/i.test(msg)
+  ) {
+    return "Der KI-Dienst ist gerade nicht erreichbar. Bitte später noch einmal versuchen.";
+  }
   return `Dieser Schritt ist fehlgeschlagen: ${msg.slice(0, 300)}`;
 }
 
@@ -73,6 +83,7 @@ export async function createRun(input: {
   wizardId: string;
   ownerId: string;
   definition: WizardDefinition;
+  files: WorkspaceFile[];
   version: number | null;
   mode: "test" | "live";
   visitorId?: string | null;
@@ -87,6 +98,7 @@ export async function createRun(input: {
     wizardId: input.wizardId,
     ownerId: input.ownerId,
     definition: input.definition,
+    files: input.files,
     version: input.version,
     mode: input.mode,
     visitorId: input.visitorId ?? null,
@@ -95,6 +107,11 @@ export async function createRun(input: {
     status: first.type === "page" ? "waiting_input" : "running",
     cursor: first.id,
     state,
+    // Without an account nobody can come back for a result later: it is kept a week.
+    expiresAt:
+      input.mode === "live"
+        ? new Date(Date.now() + env.limits.resultTtlDays * 24 * 60 * 60 * 1000)
+        : null,
   });
   if (first.type !== "page") {
     kick(id);
@@ -130,6 +147,7 @@ function makeContext(
     runId: run.id,
     ownerId: run.ownerId,
     def: run.definition,
+    files: run.files,
     state,
     scope: {
       def: run.definition,
@@ -338,6 +356,19 @@ export async function cancel(runId: string) {
 
 // --- view --------------------------------------------------------------------
 
+/** The formats a deliverable can really be downloaded in: a still widget has no video. */
+export async function availableFormats(step: Step, run: RunRow, wanted?: Format[]) {
+  const possible = formatsFor(step);
+  let formats = wanted ? wanted.filter((f) => possible.includes(f)) : possible;
+  if (step.type === "widget" && formats.includes("mp4")) {
+    const output = run.state.outputs[step.id];
+    if (!output?.widget?.duration || !(await hasFfmpeg())) {
+      formats = formats.filter((f) => f !== "mp4");
+    }
+  }
+  return formats;
+}
+
 export async function runView(run: RunRow, brand: RunView["brand"]): Promise<RunView> {
   const def = run.definition;
   const step = stepOf(def, run.cursor) ?? null;
@@ -348,20 +379,21 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       : step?.type === "result"
         ? [...new Set(step.deliverables.map((d) => d.from))]
         : [];
-  const shown = shownIds
-    .map((id) => stepOf(def, id))
-    .filter((s): s is Step => Boolean(s))
-    .map((s) => {
-      const deliverable =
-        step?.type === "result" ? step.deliverables.find((d) => d.from === s.id) : undefined;
-      const possible = formatsFor(s);
-      return {
-        step: s,
-        output: run.state.outputs[s.id] ?? null,
-        formats: deliverable ? deliverable.formats.filter((f) => possible.includes(f)) : possible,
-        label: deliverable?.label ?? null,
-      };
-    });
+  const shown = await Promise.all(
+    shownIds
+      .map((id) => stepOf(def, id))
+      .filter((s): s is Step => Boolean(s))
+      .map(async (s) => {
+        const deliverable =
+          step?.type === "result" ? step.deliverables.find((d) => d.from === s.id) : undefined;
+        return {
+          step: s,
+          output: run.state.outputs[s.id] ?? null,
+          formats: await availableFormats(s, run, deliverable?.formats),
+          label: deliverable?.label ?? null,
+        };
+      }),
+  );
   return {
     id: run.id,
     status: run.status,
@@ -383,5 +415,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     error: run.error,
     events: await recentEvents(run.id, 0, 30),
     brand,
+    shareUrl: run.shareToken ? `${env.appUrl}/s/${run.shareToken}` : null,
+    expiresAt: run.expiresAt?.toISOString() ?? null,
   };
 }

@@ -1,7 +1,15 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 import type { WizardDefinition } from "../../shared/definition.js";
 import type { RunState } from "../../shared/run.js";
+import type { WorkspaceFile } from "../../shared/workspace.js";
 
 const now = sql`(unixepoch() * 1000)`;
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
@@ -199,9 +207,27 @@ export const wizardVersion = sqliteTable(
       .references(() => wizard.id, { onDelete: "cascade" }),
     version: integer("version").notNull(),
     definition: text("definition", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    /** The workspace as it was at publish time. */
+    files: text("files", { mode: "json" }).$type<WorkspaceFile[]>().notNull().default([]),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("wizard_version_n").on(t.wizardId, t.version)],
+);
+
+/** The draft's workspace: widget code, libraries, reference data. Content lives in the blob store. */
+export const wizardFile = sqliteTable(
+  "wizard_file",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    hash: text("hash").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.path] })],
 );
 
 export const wizardMessage = sqliteTable(
@@ -235,6 +261,8 @@ export const run = sqliteTable(
     ownerId: text("owner_id").notNull(),
     /** The definition the run started on — edits never reach a running wizard. */
     definition: text("definition", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    /** The workspace the run started with. */
+    files: text("files", { mode: "json" }).$type<WorkspaceFile[]>().notNull().default([]),
     version: integer("version"),
     mode: text("mode", { enum: ["test", "live"] }).notNull(),
     visitorId: text("visitor_id"),
@@ -247,10 +275,17 @@ export const run = sqliteTable(
     state: text("state", { mode: "json" }).$type<RunState>().notNull(),
     error: text("error"),
     costMicros: integer("cost_micros").notNull().default(0),
+    /** Set once the result is shared: `/s/<token>` shows it read-only. */
+    shareToken: text("share_token"),
+    sharedAt: integer("shared_at", { mode: "timestamp_ms" }),
+    /** Runs without an account are deleted after this; null keeps the run. */
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    uniqueIndex("run_share_token").on(t.shareToken),
+    index("run_expires").on(t.expiresAt),
     index("run_wizard").on(t.wizardId, t.createdAt),
     index("run_visitor").on(t.visitorId, t.createdAt),
     index("run_status").on(t.status),

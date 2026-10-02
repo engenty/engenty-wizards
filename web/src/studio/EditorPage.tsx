@@ -10,13 +10,21 @@ import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
 import { ChatPanel, useArchitectChat } from "./editor/ChatPanel";
+import { FilesPanel } from "./editor/FilesPanel";
 import { FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
 
-type Tab = "chat" | "step" | "runs";
+type Tab = "chat" | "step" | "files" | "runs";
+
+const TAB_LABEL: Record<Tab, string> = {
+  chat: "editor.chat",
+  step: "editor.step",
+  files: "editor.files",
+  runs: "editor.runs",
+};
 
 export function EditorPage() {
   const { id } = useParams();
@@ -189,7 +197,8 @@ export function EditorPage() {
             <div className="flex h-full flex-col items-center justify-center gap-3 text-ink-3">
               <Spinner className="size-6 text-ember" />
               <span className="text-[14px]">
-                {chat.phase === "building" ? t("editor.building") : t("editor.thinking")}
+                {chat.activity ??
+                  (chat.phase === "building" ? t("editor.building") : t("editor.thinking"))}
               </span>
             </div>
           ) : (
@@ -206,7 +215,7 @@ export function EditorPage() {
 
         <aside className="flex h-[55vh] min-h-0 w-full shrink-0 flex-col bg-card shadow-[0_0_0_1px_var(--border-soft)] lg:h-auto lg:w-[420px] lg:rounded-tl-3xl">
           <nav className="flex shrink-0 gap-1 px-3 pt-3">
-            {(["chat", "step", "runs"] as Tab[]).map((k) => (
+            {(["chat", "step", "files", "runs"] as Tab[]).map((k) => (
               <button
                 key={k}
                 type="button"
@@ -216,7 +225,7 @@ export function EditorPage() {
                   tab === k ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
                 )}
               >
-                {t(k === "chat" ? "editor.chat" : k === "step" ? "editor.step" : "editor.runs")}
+                {t(TAB_LABEL[k] as "editor.chat")}
               </button>
             ))}
           </nav>
@@ -231,7 +240,11 @@ export function EditorPage() {
                 onSelect={select}
                 issues={w.issues}
                 mcpServers={w.mcpServers}
+                files={w.files}
+                wizardId={w.id}
               />
+            ) : tab === "files" ? (
+              <FilesPanel wizardId={w.id} files={w.files} />
             ) : (
               <RunsPanel wizardId={w.id} onOpen={setDrawerRun} />
             )}

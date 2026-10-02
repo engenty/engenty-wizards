@@ -9,7 +9,7 @@ RUN pnpm build && pnpm prune --prod
 
 FROM node:24-bookworm-slim
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-noto-color-emoji fonts-inter ca-certificates \
+  && apt-get install -y --no-install-recommends chromium ffmpeg fonts-liberation fonts-noto-color-emoji fonts-inter ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production \

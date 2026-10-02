@@ -51,3 +51,17 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
   }
   return url;
 }
+
+/** fetch that re-checks every redirect hop, so a public URL cannot bounce into the private network. */
+export async function safeFetch(raw: string, init: RequestInit = {}): Promise<Response> {
+  let url = await assertPublicUrl(raw);
+  for (let hop = 0; hop < 6; hop++) {
+    const res = await fetch(url, { ...init, redirect: "manual" });
+    const location = res.headers.get("location");
+    if (res.status < 300 || res.status >= 400 || !location) {
+      return res;
+    }
+    url = await assertPublicUrl(new URL(location, url).toString());
+  }
+  throw new Error("Too many redirects.");
+}

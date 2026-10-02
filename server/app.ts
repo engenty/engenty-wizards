@@ -8,9 +8,10 @@ import { ZodError } from "zod";
 import { auth, type SessionUser, sessionUser } from "./auth.js";
 import { billingRoutes, stripeWebhook } from "./billing/stripe.js";
 import { env } from "./env.js";
+import { linkPreview } from "./link-preview.js";
 import { mcpHandler } from "./mcp/handler.js";
 import { connections } from "./routes/connections.js";
-import { publicRoutes, runRoutes } from "./routes/runs.js";
+import { publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
 import { ServiceError } from "./services/errors.js";
@@ -99,6 +100,7 @@ app.route("/api/billing/webhook", stripeWebhook);
 app.route("/api/billing", billingRoutes);
 app.route("/api/public", publicRoutes);
 app.route("/api/runs", runRoutes);
+app.route("/api/shares", shareRoutes);
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
@@ -106,7 +108,15 @@ app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 const webDir = resolve(process.cwd(), "dist-web");
 if (existsSync(webDir)) {
   app.use("/*", serveStatic({ root: "./dist-web" }));
-  app.get("*", async (c) => c.html(await readFile(join(webDir, "index.html"), "utf8")));
+  app.get("*", async (c) => {
+    const html = await readFile(join(webDir, "index.html"), "utf8");
+    const preview = await linkPreview(c.req.path).catch(() => null);
+    return c.html(
+      preview
+        ? html.replace(/<title>[^<]*<\/title>/, "").replace("</head>", `${preview}\n</head>`)
+        : html,
+    );
+  });
 }
 
 export default app;

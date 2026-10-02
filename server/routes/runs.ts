@@ -6,10 +6,10 @@ import { streamSSE } from "hono/streaming";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { FORMATS } from "../../shared/definition.js";
-import type { BrandView, PublicWizard } from "../../shared/run.js";
+import type { PublicWizard } from "../../shared/run.js";
 import { sessionUser } from "../auth.js";
 import { db, schema } from "../db/client.js";
-import { renderDownload } from "../downloads.js";
+import { renderDownload, stepHtml } from "../downloads.js";
 import { subscribe } from "../engine/events.js";
 import {
   cancel,
@@ -24,8 +24,12 @@ import {
 } from "../engine/runner.js";
 import { env } from "../env.js";
 import { hashIp, verifyTurnstile, visitorOverLimit, wizardUnavailable } from "../limits.js";
+import { HTML_RESPONSE_CSP } from "../render/guard.js";
+import { brandView } from "../services/brand.js";
+import { ServiceError } from "../services/errors.js";
+import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
 import { verifySignedUrl } from "../signing.js";
-import { inlineAssetRefs, loadAsset, saveAsset } from "../storage.js";
+import { loadAsset, saveAsset } from "../storage.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -56,15 +60,6 @@ function visitorId(c: Context, create: boolean): string | null {
   return vid;
 }
 
-async function brandFor(projectId: string): Promise<BrandView> {
-  const p = await db.query.project.findFirst({ where: eq(schema.project.id, projectId) });
-  return {
-    name: p?.brand.name ?? "",
-    accent: p?.brand.accent ?? null,
-    logoUrl: p?.brand.logoAssetId ? `/api/public/logos/${p.brand.logoAssetId}` : null,
-  };
-}
-
 /**
  * The run, if the caller may see it: its visitor, the admin who owns the wizard, or — on the
  * read-only file routes — a signed link handed out to the owner's MCP client.
@@ -90,7 +85,7 @@ async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean
 
 async function viewOf(run: NonNullable<Awaited<ReturnType<typeof accessibleRun>>>) {
   const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
-  return runView(run, await brandFor(w?.projectId ?? ""));
+  return runView(run, await brandView(w?.projectId ?? ""));
 }
 
 function commandError(c: Context, err: unknown) {
@@ -125,7 +120,7 @@ export const publicRoutes = new Hono()
       description: def.description,
       avatar: def.avatar,
       intro: def.intro ?? null,
-      brand: await brandFor(w.projectId),
+      brand: await brandView(w.projectId),
       turnstileSiteKey: env.turnstile.siteKey || null,
       available: !reason,
       unavailableReason: reason,
@@ -171,6 +166,7 @@ export const publicRoutes = new Hono()
       wizardId: w.id,
       ownerId: w.ownerId,
       definition: version!.definition,
+      files: version!.files,
       version: w.publishedVersion,
       mode: "live",
       visitorId: vid,
@@ -324,54 +320,138 @@ export const runRoutes = new Hono()
     if (!run) {
       return c.notFound();
     }
-    const found = await loadAsset(c.req.param("assetId"));
-    if (!found || found.row.runId !== run.id) {
-      return c.notFound();
-    }
-    const headers: Record<string, string> = {
-      "content-type": found.row.mime,
-      "cache-control": "private, max-age=3600",
-    };
-    // Generated HTML is shown in a sandboxed frame; keep it from running scripts against this origin.
-    if (found.row.mime === "text/html") {
-      headers["content-security-policy"] =
-        "sandbox; default-src 'none'; img-src data: https:; style-src 'unsafe-inline' https:; font-src https: data:";
-      const html = await inlineAssetRefs(found.data.toString("utf8"), run.ownerId);
-      return c.body(new TextEncoder().encode(html), 200, headers);
-    }
-    return c.body(new Uint8Array(found.data), 200, headers);
+    return serveAsset(c, run, c.req.param("assetId"));
   })
   .get("/:id/steps/:stepId/download", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"), { signed: true });
     if (!run) {
       return c.notFound();
     }
-    const format = z.enum(FORMATS).safeParse(c.req.query("format"));
-    const step = run.definition.steps.find((s) => s.id === c.req.param("stepId"));
-    const output = step ? run.state.outputs[step.id] : undefined;
-    if (!format.success || !step || !output) {
-      return c.notFound();
+    return serveDownload(c, run, c.req.param("stepId"), c.req.query("format"));
+  })
+  .post("/:id/share", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
     }
-    const label = run.definition.steps
-      .flatMap((s) => (s.type === "result" ? s.deliverables : []))
-      .find((d) => d.from === step.id)?.label;
-    const download = await renderDownload(
-      step,
-      output,
-      format.data,
-      `${run.definition.title} ${label ?? step.title}`,
+    try {
+      return c.json(await shareRun(run));
+    } catch (err) {
+      if (err instanceof ServiceError) {
+        return c.json(err.toJSON(), err.status);
+      }
+      throw err;
+    }
+  })
+  .delete("/:id/share", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await unshareRun(run);
+    return c.json({ ok: true });
+  });
+
+type RunRow = typeof schema.run.$inferSelect;
+
+async function serveAsset(c: Context, run: RunRow, assetId: string) {
+  const found = await loadAsset(assetId);
+  if (!found || found.row.runId !== run.id) {
+    return c.notFound();
+  }
+  const headers: Record<string, string> = {
+    "content-type": found.row.mime,
+    "cache-control": "private, max-age=3600",
+  };
+  // Generated HTML runs its scripts in an opaque origin and can reach nothing.
+  if (found.row.mime === "text/html") {
+    const html = await stepHtml(
+      { assets: [{ id: assetId, kind: found.row.kind, mime: found.row.mime, name: "" }], at: "" },
       run.ownerId,
     );
-    if (!download) {
+    headers["content-type"] = "text/html; charset=utf-8";
+    headers["content-security-policy"] = HTML_RESPONSE_CSP;
+    return c.body(new TextEncoder().encode(html ?? ""), 200, headers);
+  }
+  return c.body(new Uint8Array(found.data), 200, headers);
+}
+
+async function serveDownload(c: Context, run: RunRow, stepId: string, rawFormat?: string) {
+  const format = z.enum(FORMATS).safeParse(rawFormat);
+  const step = run.definition.steps.find((s) => s.id === stepId);
+  const output = step ? run.state.outputs[step.id] : undefined;
+  if (!format.success || !step || !output) {
+    return c.notFound();
+  }
+  const label = run.definition.steps
+    .flatMap((s) => (s.type === "result" ? s.deliverables : []))
+    .find((d) => d.from === step.id)?.label;
+  const download = await renderDownload(
+    step,
+    output,
+    format.data,
+    `${run.definition.title} ${label ?? step.title}`,
+    run.ownerId,
+  );
+  if (!download) {
+    return c.notFound();
+  }
+  const data = new Uint8Array(
+    typeof download.data === "string" ? new TextEncoder().encode(download.data) : download.data,
+  );
+  return c.body(data, 200, {
+    "content-type": download.mime.startsWith("text/")
+      ? `${download.mime}; charset=utf-8`
+      : download.mime,
+    "content-disposition": `attachment; filename="${download.filename}"`,
+  });
+}
+
+/** Steps a shared link shows: the result's deliverables — never uploads or in-between steps. */
+function sharedStepIds(run: RunRow): Set<string> {
+  return new Set(
+    run.definition.steps.flatMap((s) =>
+      s.type === "result" ? s.deliverables.map((d) => d.from) : [],
+    ),
+  );
+}
+
+/** `/api/shares/:token` — a shared result, readable by anyone holding the link until it expires. */
+export const shareRoutes = new Hono()
+  .get("/:token", async (c) => {
+    const run = await sharedRun(c.req.param("token"));
+    if (!run) {
+      return c.json({ error: "Dieser Link ist abgelaufen oder wurde zurückgezogen." }, 404);
+    }
+    return c.json(await shareView(run));
+  })
+  .get("/:token/image", async (c) => {
+    const run = await sharedRun(c.req.param("token"));
+    const image = run ? await shareImage(run) : null;
+    if (!image) {
       return c.notFound();
     }
-    const data = new Uint8Array(
-      typeof download.data === "string" ? new TextEncoder().encode(download.data) : download.data,
-    );
-    return c.body(data, 200, {
-      "content-type": download.mime.startsWith("text/")
-        ? `${download.mime}; charset=utf-8`
-        : download.mime,
-      "content-disposition": `attachment; filename="${download.filename}"`,
+    return c.body(image.data as Uint8Array<ArrayBuffer>, 200, {
+      "content-type": image.mime,
+      "cache-control": "public, max-age=3600",
     });
+  })
+  .get("/:token/assets/:assetId", async (c) => {
+    const run = await sharedRun(c.req.param("token"));
+    if (!run) {
+      return c.notFound();
+    }
+    const assetId = c.req.param("assetId");
+    const allowed = [...sharedStepIds(run)].some((id) =>
+      run.state.outputs[id]?.assets?.some((a) => a.id === assetId),
+    );
+    return allowed ? serveAsset(c, run, assetId) : c.notFound();
+  })
+  .get("/:token/steps/:stepId/download", async (c) => {
+    const run = await sharedRun(c.req.param("token"));
+    const stepId = c.req.param("stepId");
+    if (!run || !sharedStepIds(run).has(stepId)) {
+      return c.notFound();
+    }
+    return serveDownload(c, run, stepId, c.req.query("format"));
   });

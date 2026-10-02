@@ -9,6 +9,7 @@ import { generateImageMedia, generateVideoMedia, type MediaReference } from "../
 import { languageModel, type TokenUsage, tokenCostUsd } from "../models.js";
 import { loadAsset, loadAssetText } from "../storage.js";
 import { buildStepTools } from "../tools/index.js";
+import { runWidgetStep } from "../widgets/step.js";
 import { answersAsText, renderTemplate } from "./template.js";
 import { type StepContext, StepError } from "./types.js";
 
@@ -70,9 +71,10 @@ const GROUND_RULES = [
 // --- agent -------------------------------------------------------------------
 
 function outputSchema(step: AgentStep) {
-  const fields = step.output.fields?.length
+  const fields: { id: string; kind: string; description?: string; columns?: string[] }[] = step
+    .output.fields?.length
     ? step.output.fields
-    : [{ id: "data", kind: "table" as const, description: "The result as a table" }];
+    : [{ id: "data", kind: "table", description: "The result as a table" }];
   const shape: Record<string, z.ZodType> = {};
   for (const f of fields) {
     const d = f.description ?? f.id;
@@ -87,12 +89,22 @@ function outputSchema(step: AgentStep) {
         shape[f.id] = z.array(z.string()).describe(d);
         break;
       case "table":
-        shape[f.id] = z
-          .object({
-            columns: z.array(z.string()),
-            rows: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
-          })
-          .describe(d);
+        shape[f.id] = f.columns?.length
+          ? z
+              .array(
+                z.object(
+                  Object.fromEntries(
+                    f.columns.map((c) => [c, z.union([z.string(), z.number(), z.null()])]),
+                  ),
+                ),
+              )
+              .describe(d)
+          : z
+              .object({
+                columns: z.array(z.string()),
+                rows: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
+              })
+              .describe(d);
         break;
     }
   }
@@ -236,7 +248,8 @@ async function writeHtml(
     kind === "dashboard"
       ? [
           "Build a single self-contained HTML dashboard (one file).",
-          "Charts are INLINE SVG you draw yourself — no external scripts, no CDN, no images. Bar, line and donut charts with axis labels and values.",
+          "Charts are INLINE SVG you draw yourself — no external scripts, no CDN, no network requests. Bar, line and donut charts with axis labels and values.",
+          "Interactivity (tabs, tooltips, a slider over time, filters) may use a small inline <script>. Everything must also read well without interacting.",
           "Layout: a title row, 3–6 KPI tiles, then charts and a compact data table, and a 'Sources' list at the bottom.",
           `Calm design: white background, generous whitespace, system font stack, one accent colour ${accent}, muted greys. Width-responsive with CSS grid.`,
         ].join("\n")
@@ -375,6 +388,9 @@ export function runAutomaticStep(step: Step, ctx: StepContext): Promise<StepOutp
   }
   if (step.type === "generate") {
     return runGenerateStep(step, ctx);
+  }
+  if (step.type === "widget") {
+    return runWidgetStep(step, ctx);
   }
   throw new StepError(`Step ${step.id} is not automatic.`);
 }

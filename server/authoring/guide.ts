@@ -34,7 +34,8 @@ type AgentStep = {
   instructions: string          // the task, with {{templates}}
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description }[] }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description, columns?: string[] }[] }
+                                // a table with columns gives rows as objects with exactly those keys — what widgets read
   model?: "fast"|"smart"        // fast for short copy, smart for research/reasoning
   working?: string              // shown while it runs ("Recherchiert im Web …")
 }
@@ -49,11 +50,22 @@ type GenerateStep = {
   working?: string
 }
 
+type WidgetStep = {
+  type: "widget"
+  entry: string                 // workspace path of the widget's HTML, e.g. "weather/index.html"
+  data: { [key]: string }       // what the widget gets as wizard.data: key → fieldId | steps.stepId | steps.stepId.key | brand.name | today
+  sample?: string               // workspace path of example data (same shape as data) for previews
+  size?: { width, height }      // design size in px, default 1280×720 (9:16 → 1080×1920)
+  working?: string
+}
+// an interactive HTML app written ONCE into the workspace; every run only brings new data (no model call, no cost)
+
 type ReviewStep = { type: "review", show: stepId[], edit?: boolean, regenerate?: boolean }
 // shows earlier outputs; the person accepts, edits text outputs (edit), or asks for a new version with a note (regenerate)
 
 type ResultStep = { type: "result", message?: string, deliverables: { from: stepId, label?, formats: Format[] }[] }
 // formats per source: image→png · video→mp4 · document→pdf docx html md png · dashboard→html pdf png
+//                     widget→html png pdf mp4 json (mp4 only when the widget registers a timeline)
 //                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md
 
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
@@ -67,10 +79,35 @@ How good wizards look:
 - Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.
 - Money/totals: use an "items" field with vat — the runner computes totals; documents must use {{items}} verbatim. Never let a model compute totals.
 - Facts from the web need an agent step with web_search + web_fetch BEFORE writing; documents then cite those notes.
+- Live data with a free public JSON API (weather and wind: api.open-meteo.com; sunrise/sunset is in it too) → an agent step with the http tool and model "fast" that calls the API and returns json. Far cheaper and more exact than web research; use web research only when no API exists.
 - Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
 - The sandbox runs code (python/node) for calculations, charts or file conversion; export_file hands files to the person.
 - Every step a person sees later (review/result) must come from an earlier step id.
 - Write all wizard texts in the admin's language.`;
+
+export const WIDGET_GUIDE = `
+Widgets — when to use: the result must look the same every run, animate, or be explored (a map with
+animated arrows, a timeline with a scrubber, a dashboard with filters, a configurator). Documents and
+one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE (files), written once:
+- Files: "<widget>/index.html" (+ optional app.js, style.css), libraries under "lib/", reference data
+  (GeoJSON shapes, station lists, price lists) as JSON/CSV files, and "<widget>/sample.json" with
+  example data in exactly the shape of the step's data.
+- Its data usually comes from an agent step with output.format "json"; give its table fields fixed
+  "columns" so rows have known keys, and write sample.json in that exact shape.
+- NO NETWORK when it runs: no CDN, no fetch, no external fonts or images — everything is inlined.
+  Put libraries into the workspace (cdnjs.cloudflare.com, cdn.jsdelivr.net) and include them with
+  <script src="lib/name.min.js">. Fetch reference data ONCE now (e.g. lake outlines
+  from nominatim.openstreetmap.org/search?q=…&format=json&polygon_geojson=1&polygon_threshold=0.0005)
+  and save it as a workspace file.
+- Runtime, window.wizard: data · brand {name, accent, logo} · mode "view"|"export" · file(path) ·
+  json(path) · url(path) (data URL for images/fonts) · ready() · timeline({ duration, seek, poster }).
+- Animation: call wizard.timeline({ duration: seconds, seek: t => draw(t) }) and drive your own
+  play/pause and <input type=range> scrubber from it. seek(t) must draw time t synchronously — the MP4
+  export steps through it frame by frame. In mode "export" hide all controls and do not autoplay.
+- Call wizard.ready() once the first frame is drawn. Lay out for the step's size and scale to fit
+  the window on every "resize" event — the window can be 0×0 when your script first runs.
+- Plain HTML/CSS/JS, SVG or canvas. Calm design, one accent colour (brand.accent), legible labels.
+- After writing, ALWAYS run check_widget, read its errors and look at the screenshot; fix until clean.`;
 
 export interface GuideServer {
   id: string;
@@ -91,6 +128,7 @@ export function authoringGuide(mcp: GuideServer[]): string {
 
 ${SCHEMA_DOC}
 ${PRINCIPLES}
+${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
 

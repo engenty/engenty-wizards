@@ -4,8 +4,10 @@ import { authoringGuide } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { RunConflict } from "../engine/runner.js";
 import { ServiceError } from "../services/errors.js";
+import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { defaultProject, listProjects, ownedProject } from "../services/projects.js";
 import { startTestRun, testRunReport } from "../services/runs.js";
+import { checkDraftWidget } from "../services/widgets.js";
 import {
   createWizard,
   editWizard,
@@ -377,6 +379,118 @@ Returns the new revision and the issues.`,
     },
     async ({ runId, waitSeconds }) => testRunReport(who.userId, runId, waitSeconds),
   );
+
+  // --- workspace (widget code, libraries, reference data) --------------------
+  tool(
+    "list_files",
+    "wizards:read",
+    {
+      title: "List workspace files",
+      description:
+        "The wizard's workspace: widget HTML/JS/CSS, vendored libraries, reference data. Runs use a snapshot of it.",
+      input: z.object({ wizardId: z.string() }),
+      readOnly: true,
+    },
+    async ({ wizardId }) =>
+      (await listFiles(who.userId, wizardId)).map(({ path, mime, size }) => ({ path, mime, size })),
+  );
+
+  tool(
+    "read_file",
+    "wizards:read",
+    {
+      title: "Read workspace file",
+      description: "A workspace file as text (binary files are described, not returned).",
+      input: z.object({ wizardId: z.string(), path: z.string() }),
+      readOnly: true,
+    },
+    async ({ wizardId, path }) => readFileText(who.userId, wizardId, path),
+  );
+
+  tool(
+    "write_file",
+    "wizards:write",
+    {
+      title: "Write workspace file",
+      description:
+        "Create or overwrite a workspace file: `content` for text (HTML, JS, CSS, JSON, CSV, SVG) or `base64` for binary (images, fonts). Max 5 MB per file, 25 MB per workspace. A widget may only use files from here — no network when it runs.",
+      input: z.object({
+        wizardId: z.string(),
+        path: z.string().describe('Relative path, e.g. "weather/index.html" or "lib/d3.min.js".'),
+        content: z.string().optional(),
+        base64: z.string().optional(),
+        mime: z.string().optional(),
+      }),
+    },
+    async ({ wizardId, path, content, base64, mime }) => {
+      if ((content === undefined) === (base64 === undefined)) {
+        throw new ServiceError("invalid", "Pass either content or base64.");
+      }
+      return writeFile(
+        who.userId,
+        wizardId,
+        path,
+        content ?? Buffer.from(base64 ?? "", "base64"),
+        mime,
+      );
+    },
+  );
+
+  tool(
+    "delete_file",
+    "wizards:write",
+    {
+      title: "Delete workspace file",
+      description: "Remove a file from the workspace.",
+      input: z.object({ wizardId: z.string(), path: z.string() }),
+    },
+    async ({ wizardId, path }) => {
+      await deleteFile(who.userId, wizardId, path);
+      return { ok: true };
+    },
+  );
+
+  if (who.scopes.includes("wizards:read")) {
+    const input = z.object({
+      wizardId: z.string(),
+      stepId: z.string().describe("A widget step of the draft."),
+      data: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe("Data to show instead of the step's sample file."),
+    });
+    server.registerTool(
+      "check_widget",
+      {
+        title: "Check widget",
+        description:
+          "Load a widget step of the draft in a real browser with its sample data: script errors, the timeline it registered (seconds, for the MP4 export) and a screenshot.",
+        inputSchema: input,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (async ({ wizardId, stepId, data }: z.infer<typeof input>) => {
+        try {
+          const r = await checkDraftWidget(who.userId, wizardId, stepId, data);
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  errors: r.errors,
+                  timelineSeconds: r.duration,
+                  size: r.size,
+                  bundleBytes: r.bytes,
+                }),
+              },
+              { type: "image", data: Buffer.from(r.png).toString("base64"), mimeType: "image/png" },
+            ],
+          } satisfies CallToolResult;
+        } catch (err) {
+          return failure(err);
+        }
+      }) as ToolCallback<typeof input>,
+    );
+  }
 }
 
 export function registerPrompts(server: McpServer) {

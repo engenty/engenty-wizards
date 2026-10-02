@@ -61,6 +61,8 @@ export const env = {
       ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       : "/usr/bin/chromium",
   ),
+  /** Encodes widget animations to MP4; without it widgets offer no video. */
+  ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
   sandboxImage: str("SANDBOX_IMAGE", "engenty-sandbox:latest"),
   sandboxEnabled: str("SANDBOX_ENABLED", "1") === "1",
 
@@ -80,6 +82,8 @@ export const env = {
   limits: {
     visitorRunsPerHour: num("LIMIT_VISITOR_RUNS_PER_HOUR", 6),
     defaultDailyRuns: num("LIMIT_DEFAULT_DAILY_RUNS", 50),
+    /** End-user runs (no account) and their shared links are deleted after this many days. */
+    resultTtlDays: num("RESULT_TTL_DAYS", 7),
   },
 };
 

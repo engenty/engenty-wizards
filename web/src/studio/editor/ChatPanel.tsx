@@ -27,6 +27,7 @@ export function useArchitectChat(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<"idle" | "thinking" | "building">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [activity, setActivity] = useState<string | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,8 @@ export function useArchitectChat(
       { id: pendingId, role: "assistant", content: "", pending: true },
     ]);
     setPhase("thinking");
+    setActivity(null);
+    let answered = false;
     try {
       await postStream(
         `/api/studio/wizards/${wizard.id}/chat`,
@@ -67,9 +70,12 @@ export function useArchitectChat(
             setMessages((m) =>
               m.map((x) => (x.id === pendingId ? { ...x, content: x.content + delta } : x)),
             );
+          } else if (event === "activity") {
+            setActivity(JSON.parse(data) as string);
           } else if (event === "building") {
             setPhase("building");
           } else if (event === "done") {
+            answered = true;
             const done = JSON.parse(data) as {
               reply: string;
               changed: boolean;
@@ -87,13 +93,18 @@ export function useArchitectChat(
               onChanged(done.draft, done.revision);
             }
           } else if (event === "error") {
+            answered = true;
             setError(JSON.parse(data).message);
           }
         },
       );
+      if (!answered) {
+        setError(t("editor.chatBroken"));
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
+      setActivity(null);
       setMessages((m) =>
         m.filter((x) => !(x.id === pendingId && !x.content)).map((x) => ({ ...x, pending: false })),
       );
@@ -103,7 +114,7 @@ export function useArchitectChat(
     }
   };
 
-  return { messages, phase, error, send };
+  return { messages, phase, activity, error, send };
 }
 
 export function ChatPanel({
@@ -162,7 +173,8 @@ export function ChatPanel({
                   {m.pending ? (
                     <div className="mt-1 inline-flex items-center gap-2 text-[13px] text-ink-3">
                       <Spinner className="size-3.5" />
-                      {chat.phase === "building" ? t("editor.building") : t("editor.thinking")}
+                      {chat.activity ??
+                        (chat.phase === "building" ? t("editor.building") : t("editor.thinking"))}
                     </div>
                   ) : null}
                   {m.changed ? (

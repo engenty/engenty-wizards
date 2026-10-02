@@ -1,5 +1,6 @@
 import type { WizardDefinition } from "../../shared/definition.js";
 import type { AssetRef, RunState } from "../../shared/run.js";
+import type { WorkspaceFile } from "../../shared/workspace.js";
 import type { schema } from "../db/client.js";
 import type { SaveAssetInput } from "../storage.js";
 import type { RunResources } from "./resources.js";
@@ -12,6 +13,8 @@ export interface StepContext {
   runId: string;
   ownerId: string;
   def: WizardDefinition;
+  /** The workspace the run started with. */
+  files: WorkspaceFile[];
   state: RunState;
   scope: TemplateScope;
   project: ProjectRow;

@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Pencil, RefreshCw, RotateCcw, Sparkles } from "l
 import { useEffect, useMemo, useState } from "react";
 import { Mascot } from "../brand";
 import { t } from "../lib/i18n";
+import { ShareResultButton } from "../share/ShareSheet";
 import { Button, Card, cn, Spinner, Textarea } from "../ui";
 import { FieldInput, type Values } from "./fields";
 import { DownloadButtons, OutputView } from "./outputs";
@@ -203,7 +204,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                 </div>
               </div>
               <OutputView
-                runId={view.id}
+                base={`/api/runs/${view.id}`}
                 step={s}
                 output={output}
                 editable={editable && editing[s.id]}
@@ -264,23 +265,30 @@ function Result({
 }) {
   return (
     <div className="animate-rise">
-      <div className="mb-8 flex items-center gap-4">
+      <div className="mb-8 flex flex-wrap items-center gap-4">
         <Mascot kind={view.wizard.avatar} size={64} />
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-display font-semibold text-[28px] leading-tight tracking-tight sm:text-[32px]">
             {step.title}
           </h1>
           {step.message ? <p className="mt-1 text-[15px] text-ink-3">{step.message}</p> : null}
         </div>
+        {view.shown.length ? (
+          <ShareResultButton
+            runId={view.id}
+            title={`${step.title} · ${view.wizard.title}`}
+            initial={view.shareUrl ? { url: view.shareUrl, expiresAt: view.expiresAt } : null}
+          />
+        ) : null}
       </div>
       <div className="flex flex-col gap-6">
         {view.shown.map(({ step: s, output, formats, label }) => (
           <Card key={s.id} className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display font-semibold text-[17px]">{label ?? s.title}</h3>
-              <DownloadButtons runId={view.id} stepId={s.id} formats={formats} />
+              <DownloadButtons base={`/api/runs/${view.id}`} stepId={s.id} formats={formats} />
             </div>
-            <OutputView runId={view.id} step={s} output={output} />
+            <OutputView base={`/api/runs/${view.id}`} step={s} output={output} />
           </Card>
         ))}
       </div>

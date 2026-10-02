@@ -13,6 +13,7 @@ import { env } from "../env.js";
 import { starterById } from "../starters/index.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
+import { copyFiles, draftFiles, sameFiles } from "./files.js";
 import { defaultProject, ownedProject } from "./projects.js";
 
 export type WizardRow = typeof schema.wizard.$inferSelect;
@@ -79,7 +80,7 @@ export async function listWizards(userId: string, projectId?: string) {
   return rows.map(wizardSummary);
 }
 
-async function publishedDefinition(w: WizardRow) {
+async function publishedVersion(w: WizardRow) {
   if (w.publishedVersion === null) {
     return null;
   }
@@ -89,17 +90,34 @@ async function publishedDefinition(w: WizardRow) {
       eq(schema.wizardVersion.version, w.publishedVersion),
     ),
   });
-  return v?.definition ?? null;
+  return v ?? null;
+}
+
+/** Validator issues of the draft, checked against its workspace (widget files must exist). */
+export async function draftIssues(w: WizardRow) {
+  const files = await draftFiles(w.id);
+  return validateWizard(
+    w.draft,
+    files.map((f) => f.path),
+  );
 }
 
 /** The draft with its validator issues and whether it differs from the published version. */
 export async function wizardState(w: WizardRow) {
-  const published = await publishedDefinition(w);
+  const published = await publishedVersion(w);
+  const files = await draftFiles(w.id);
   return {
     ...wizardSummary(w),
     draft: w.draft,
-    issues: validateWizard(w.draft),
-    dirty: !published || JSON.stringify(published) !== JSON.stringify(w.draft),
+    files,
+    issues: validateWizard(
+      w.draft,
+      files.map((f) => f.path),
+    ),
+    dirty:
+      !published ||
+      JSON.stringify(published.definition) !== JSON.stringify(w.draft) ||
+      !sameFiles(published.files, files),
     shareUrl: shareUrl(w.shareToken),
     studioUrl: studioUrl(w.id),
   };
@@ -137,14 +155,17 @@ function stepLabel(raw: unknown, index: number): string {
 }
 
 /** The schema check every write passes. Validator issues are allowed in a draft; a wrong shape is not. */
-export function parseDraft(raw: unknown): { draft: WizardDefinition; issues: ValidationIssue[] } {
+export function parseDraft(
+  raw: unknown,
+  files?: string[],
+): { draft: WizardDefinition; issues: ValidationIssue[] } {
   const parsed = wizardSchema.safeParse(raw);
   if (!parsed.success) {
     throw new ServiceError("invalid", "The wizard does not match the schema.", {
       issues: shapeIssues(parsed.error, raw),
     });
   }
-  return { draft: parsed.data, issues: validateWizard(parsed.data) };
+  return { draft: parsed.data, issues: validateWizard(parsed.data, files) };
 }
 
 export function shapeIssues(error: z.ZodError, raw: unknown): ValidationIssue[] {
@@ -207,7 +228,11 @@ export async function writeDraft(
   writer: Writer = { source: "studio" },
 ) {
   const w = await ownedWizard(userId, wizardId);
-  const { draft, issues } = parseDraft(input.definition);
+  const files = await draftFiles(w.id);
+  const { draft, issues } = parseDraft(
+    input.definition,
+    files.map((f) => f.path),
+  );
   const [row] = await db
     .update(schema.wizard)
     .set({
@@ -308,6 +333,7 @@ export async function duplicateWizard(userId: string, wizardId: string) {
     dailyRunLimit: w.dailyRunLimit,
     starter: w.starter,
   });
+  await copyFiles(w.id, id);
   return { id };
 }
 
@@ -318,21 +344,25 @@ export async function deleteWizard(userId: string, wizardId: string) {
 }
 
 /** A wizard with validator issues is never published — same rule for studio and MCP. */
-export function requireClean(w: WizardRow): WizardDefinition {
-  const issues = validateWizard(w.draft);
+export async function requireClean(w: WizardRow) {
+  const files = await draftFiles(w.id);
+  const issues = validateWizard(
+    w.draft,
+    files.map((f) => f.path),
+  );
   if (issues.length) {
     throw new ServiceError("has_issues", "Der Wizard hat noch Fehler.", { issues });
   }
-  return w.draft;
+  return { definition: w.draft, files };
 }
 
 export async function publishWizard(userId: string, wizardId: string) {
   const w = await ownedWizard(userId, wizardId);
-  const definition = requireClean(w);
+  const { definition, files } = await requireClean(w);
   const version = (w.publishedVersion ?? 0) + 1;
   await db
     .insert(schema.wizardVersion)
-    .values({ id: nanoid(12), wizardId: w.id, version, definition });
+    .values({ id: nanoid(12), wizardId: w.id, version, definition, files });
   await db
     .update(schema.wizard)
     .set({ publishedVersion: version, updatedAt: new Date() })

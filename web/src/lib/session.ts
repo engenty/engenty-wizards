@@ -1,4 +1,5 @@
 import type { WizardDefinition } from "@shared/definition";
+import type { WorkspaceFile } from "@shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "./api";
@@ -103,6 +104,7 @@ export interface WizardSummary {
 
 export interface WizardDetail extends WizardSummary {
   draft: WizardDefinition;
+  files: WorkspaceFile[];
   issues: { stepId?: string; message: string }[];
   blank: boolean;
   dirty: boolean;
