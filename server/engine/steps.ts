@@ -168,7 +168,11 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       tokenCostUsd(modelRef, usageOf((result as any).totalUsage ?? result.usage)),
       `agent ${step.id}`,
     );
-    const text = (result.text ?? "").trim();
+    // `result.text` strings together what the model said between tool calls ("I open the page …").
+    // A written result is its last message; structuring keeps everything, numbers may sit anywhere.
+    const closing = String((result as any).steps?.at?.(-1)?.text ?? "").trim();
+    const everything = (result.text ?? "").trim();
+    const text = step.output.format === "json" ? everything : closing || everything;
 
     if (step.output.format !== "json") {
       if (!text && !assets.length) {

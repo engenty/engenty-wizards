@@ -10,8 +10,17 @@ import {
   type WizardDefinition,
 } from "@shared/definition";
 import type { WorkspaceFile } from "@shared/workspace";
-import { ArrowDown, ArrowUp, ChevronDown, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { HtmlFrame } from "../../runner/outputs";
@@ -744,16 +753,7 @@ const NEW_STEP: Record<string, (id: string) => Step> = {
   }),
 };
 
-export function Inspector({
-  def,
-  selected,
-  update,
-  onSelect,
-  issues,
-  mcpServers,
-  files,
-  wizardId,
-}: {
+interface InspectorProps {
   def: WizardDefinition;
   selected: string | null;
   update: Update;
@@ -762,16 +762,168 @@ export function Inspector({
   mcpServers: { id: string; name: string }[];
   files: WorkspaceFile[];
   wizardId: string;
-}) {
-  if (selected === "__wizard") {
-    return <WizardSettings def={def} update={update} />;
-  }
+}
+
+const WIZARD = "__wizard";
+
+/**
+ * The wizard's steps in a row, in run order, with the wizard's own settings first: one click or
+ * the arrows move from step to step without going back to the diagram.
+ */
+function StepNav({
+  def,
+  selected,
+  onSelect,
+  issues,
+}: Pick<InspectorProps, "def" | "selected" | "onSelect" | "issues">) {
+  const ids = [WIZARD, ...def.steps.map((s) => s.id)];
+  const at = selected ? ids.indexOf(selected) : -1;
+  const current = useRef<HTMLButtonElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the selected step is what moves into view
+  useEffect(() => {
+    current.current?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [selected]);
+  const go = (dir: -1 | 1) => {
+    // Nothing picked: forward starts at the first step, back at the last.
+    const next = at === -1 ? (dir === 1 ? 1 : ids.length - 1) : at + dir;
+    if (next >= 0 && next < ids.length) {
+      onSelect(ids[next]);
+    }
+  };
+  const dot = "inline-flex size-8 shrink-0 items-center justify-center rounded-full transition";
+  return (
+    <div className="sticky top-0 z-10 flex items-center gap-1 border-border-soft border-b bg-card/95 px-2 py-2 backdrop-blur">
+      <IconButton
+        label={t("editor.prevStep")}
+        className="size-8 shrink-0"
+        disabled={at === 0}
+        onClick={() => go(-1)}
+      >
+        <ChevronLeft className="size-4" />
+      </IconButton>
+      <div className="flex min-w-0 flex-1 items-center overflow-x-auto py-1 [scrollbar-width:none]">
+        <button
+          ref={selected === WIZARD ? current : undefined}
+          type="button"
+          title={def.title}
+          aria-label={def.title}
+          aria-current={selected === WIZARD ? "step" : undefined}
+          onClick={() => onSelect(WIZARD)}
+          className={cn(
+            dot,
+            "bg-paper-2 text-ink-2",
+            selected === WIZARD ? "ring-2 ring-ember" : "hover:ring-2 hover:ring-border-soft",
+          )}
+        >
+          <Wand2 className="size-4" />
+        </button>
+        {def.steps.map((step, i) => {
+          const Icon = stepIcon(step);
+          const active = step.id === selected;
+          const broken = issues.some((issue) => issue.stepId === step.id);
+          return (
+            <div key={step.id} className="flex shrink-0 items-center">
+              <span className="h-px w-3 bg-border-soft" />
+              <button
+                ref={active ? current : undefined}
+                type="button"
+                title={`${i + 1}. ${step.title}`}
+                aria-label={`${i + 1}. ${step.title}`}
+                aria-current={active ? "step" : undefined}
+                onClick={() => onSelect(step.id)}
+                className={cn(
+                  dot,
+                  "relative",
+                  TYPE_TONE[step.type],
+                  active ? "ring-2 ring-ember" : "opacity-70 hover:opacity-100",
+                )}
+              >
+                <Icon className="size-4" />
+                {broken ? (
+                  <span className="-top-0.5 -right-0.5 absolute size-2.5 rounded-full bg-rose ring-2 ring-card" />
+                ) : null}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <span className="shrink-0 px-1 text-[12px] text-ink-4 tabular-nums">
+        {at > 0 ? `${at} / ${def.steps.length}` : ""}
+      </span>
+      <IconButton
+        label={t("editor.nextStep")}
+        className="size-8 shrink-0"
+        disabled={at === ids.length - 1}
+        onClick={() => go(1)}
+      >
+        <ChevronRight className="size-4" />
+      </IconButton>
+    </div>
+  );
+}
+
+/** Nothing picked yet: the steps as a list to pick from. */
+function StepList({ def, onSelect, issues }: Pick<InspectorProps, "def" | "onSelect" | "issues">) {
+  return (
+    <div className="flex flex-col gap-1 p-3">
+      {def.steps.map((step, i) => {
+        const Icon = stepIcon(step);
+        const broken = issues.some((issue) => issue.stepId === step.id);
+        return (
+          <button
+            key={step.id}
+            type="button"
+            onClick={() => onSelect(step.id)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-paper-2"
+          >
+            <span className="w-4 text-right text-[12px] text-ink-4 tabular-nums">{i + 1}</span>
+            <span
+              className={cn(
+                "inline-flex size-7 shrink-0 items-center justify-center rounded-lg",
+                TYPE_TONE[step.type],
+              )}
+            >
+              <Icon className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px]">{step.title}</span>
+              <span className="block text-[12px] text-ink-4">{typeLabel(step)}</span>
+            </span>
+            {broken ? <span className="size-2 shrink-0 rounded-full bg-rose" /> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Inspector(props: InspectorProps) {
+  const { def, selected, update, onSelect, issues } = props;
   const step = def.steps.find((s) => s.id === selected);
-  if (!step) {
-    return (
-      <div className="px-6 py-10 text-center text-[14px] text-ink-3">{t("editor.selectStep")}</div>
-    );
-  }
+  return (
+    <div>
+      <StepNav def={def} selected={selected} onSelect={onSelect} issues={issues} />
+      {selected === WIZARD ? (
+        <WizardSettings def={def} update={update} />
+      ) : step ? (
+        <StepInspector {...props} step={step} />
+      ) : (
+        <StepList def={def} onSelect={onSelect} issues={issues} />
+      )}
+    </div>
+  );
+}
+
+function StepInspector({
+  def,
+  step,
+  update,
+  onSelect,
+  issues,
+  mcpServers,
+  files,
+  wizardId,
+}: InspectorProps & { step: Step }) {
   const index = def.steps.indexOf(step);
   const Icon = stepIcon(step);
   const set = (next: Step) =>

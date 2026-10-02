@@ -308,7 +308,10 @@ export function ListTable({
             {rows.map((row) => (
               <tr key={row.id} className="border-border-soft border-t align-top">
                 {def.columns.map((c) => (
-                  <td key={c.id} className={cn(editable ? "px-1 py-0.5" : "px-3 py-2")}>
+                  <td
+                    key={c.id}
+                    className={cn("min-w-[7.5rem]", editable ? "px-1 py-0.5" : "px-3 py-2")}
+                  >
                     {editable ? (
                       <CellInput
                         column={c}

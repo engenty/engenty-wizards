@@ -41,6 +41,18 @@ volume. Put a TLS proxy in front of port 8891. Auth callbacks:
 `<APP_URL>/api/auth/callback/<google|github|microsoft>`; Stripe webhook:
 `<APP_URL>/api/billing/webhook`.
 
+## Accounts people connect
+
+A wizard can ask the person running it to connect their mailbox; steps then read it (never write).
+IMAP works without any setup. For "Gmail" and "Outlook" buttons, give the OAuth client you already
+use for sign-in one more redirect URI, `<APP_URL>/api/connect/callback`, and
+
+- Google: enable the Gmail API and add the scope `gmail.readonly` to the consent screen
+- Microsoft: add the delegated permission `Mail.Read`
+
+Connected accounts, kept sign-ins, lists and collected files belong to one wizard and one person,
+are encrypted where secret (`STORE_ENC_KEY`), and go when unused for `STORE_TTL_DAYS`.
+
 ## Build wizards from your own AI client
 
 Admins can author wizards in Claude Code, Codex, Cursor, claude.ai or Claude Desktop, on their own
@@ -70,7 +82,12 @@ open editor.
 | Wizard definition (zod) + validator | `shared/definition.ts` |
 | Step runner (cursor over the definition, pages / back / regenerate / branches) | `server/engine/runner.ts` |
 | Agent + generate steps (Mastra Agent, AI SDK media) | `server/engine/steps.ts` |
-| Agent tools: web search/fetch, browser, sandbox, HTTP, image, MCP | `server/tools/index.ts` |
+| Agent tools: web search/fetch, sandbox, HTTP, image, MCP | `server/tools/index.ts` |
+| Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `server/tools/browser.ts`, `server/engine/asks.ts` |
+| What a wizard keeps per person: lists, files, connected accounts, sign-ins | `shared/store.ts`, `server/store/`, `server/tools/store.ts` |
+| Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `server/connectors/`, `server/tools/mail.ts` |
+| Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `server/documents/parse.ts` |
+| engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `server/engenty/`, `shared/engenty/` |
 | Architect (prompt → wizard, self-repairing) | `server/agents/architect.ts` |
 | Widgets: bundle (code + data → one HTML), `window.wizard` runtime, PNG/PDF/MP4 export | `server/widgets/` |
 | Workspace files (content-addressed blobs, snapshots per version and run) | `server/services/files.ts`, `server/blobs.ts` |

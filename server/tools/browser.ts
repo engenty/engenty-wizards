@@ -26,15 +26,20 @@ export async function pageSnapshot(page: Page) {
     const items = els.slice(0, 120).map((el, i) => {
       el.setAttribute("data-wz-ref", String(i));
       const input = el as HTMLInputElement;
+      const button = ["submit", "button", "reset"].includes(input.type);
+      const field = (el.tagName === "INPUT" && !button) || el.tagName === "TEXTAREA";
+      // What stands in a field may be something the person typed: the model learns that a
+      // field is filled, never with what.
       const label =
         el.getAttribute("aria-label") ||
         input.placeholder ||
-        (input.type === "password" ? "" : el.innerText || input.value) ||
+        (field ? "" : el.innerText || (button ? input.value : "")) ||
         el.getAttribute("name") ||
         "";
       const tag = el.tagName.toLowerCase();
       const kind = tag === "input" ? `input(${input.type || "text"})` : tag;
-      return `[${i}] ${kind} ${label.trim().replace(/\s+/g, " ").slice(0, 80)}`;
+      const filled = field && input.value ? " (filled)" : "";
+      return `[${i}] ${kind} ${label.trim().replace(/\s+/g, " ").slice(0, 80)}${filled}`;
     });
     return { text: document.body?.innerText ?? "", items };
   });
@@ -64,6 +69,26 @@ function found<T>(wait: Promise<T>): Promise<T> {
 
 const settle = (page: Page) =>
   page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
+
+/**
+ * Fetches a URL with the browser's sign-in, outside any page. Page requests pass the context's
+ * host guard; this one does not, so every redirect hop is checked here.
+ */
+async function signedInGet(page: Page, url: string) {
+  let next = url;
+  for (let hop = 0; hop < 6; hop++) {
+    const safe = await assertPublicUrl(next);
+    const res = await page
+      .context()
+      .request.get(safe.toString(), { timeout: 60_000, maxRedirects: 0 });
+    const location = res.headers().location;
+    if (res.status() < 300 || res.status() >= 400 || !location) {
+      return res;
+    }
+    next = new URL(location, safe).toString();
+  }
+  throw new Error("Too many redirects.");
+}
 
 const credentialField = z.object({
   ref: z.number().describe("The field's [number] from your latest page snapshot."),
@@ -132,6 +157,14 @@ const DECLINED =
 export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKeeper) {
   const page = () => ctx.resources.browserPage();
   const tools: Record<string, any> = {};
+  // There is one page. A model may ask for several browser actions at once; they run one after
+  // the other, in the order asked — else a navigation would cut a download short.
+  let queue: Promise<unknown> = Promise.resolve();
+  const inTurn = <T>(run: () => Promise<T>): Promise<T | { error: string }> => {
+    const next = queue.then(() => attempt(run));
+    queue = next;
+    return next;
+  };
 
   tools.browser_open = createTool({
     id: "browser_open",
@@ -139,7 +172,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
       "Open a URL in the browser and return its text plus numbered interactive elements. Sites the person signed in to on an earlier run may still be signed in.",
     inputSchema: z.object({ url: z.string() }),
     execute: ({ url }) =>
-      attempt(async () => {
+      inTurn(async () => {
         const safe = await assertPublicUrl(url);
         await ctx.emit("tool", `Öffnet ${safe.hostname}`);
         const p = await page();
@@ -154,7 +187,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     description: "Click an element by its [number] from the last snapshot.",
     inputSchema: z.object({ ref: z.number() }),
     execute: ({ ref: n }) =>
-      attempt(async () => {
+      inTurn(async () => {
         const p = await page();
         await ctx.emit("tool", "Klickt im Browser");
         const popup = p
@@ -179,7 +212,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
       "Type text into an input by its [number]; set submit to press Enter afterwards. Never for passwords or codes — those the person enters through browser_request_credentials.",
     inputSchema: z.object({ ref: z.number(), text: z.string(), submit: z.boolean().optional() }),
     execute: ({ ref: n, text, submit }) =>
-      attempt(async () => {
+      inTurn(async () => {
         const p = await page();
         await ctx.emit("tool", "Tippt im Browser");
         const el = p.locator(ref(n)).first();
@@ -198,7 +231,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
       "Look at the current page: returns a picture of it to you. Use it when the text snapshot is not enough (charts, a layout you cannot make sense of, a captcha or cookie wall). Set save to also hand the picture to the person as part of the result.",
     inputSchema: z.object({ save: z.boolean().optional(), name: z.string().optional() }),
     execute: ({ save, name }) =>
-      attempt(async () => {
+      inTurn(async () => {
         const p = await page();
         await ctx.emit("tool", "Sieht sich die Seite an");
         const png = await p.screenshot({ type: "png" });
@@ -310,7 +343,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
         .describe("[number] of the button to press once the fields are filled."),
     }),
     execute: ({ reason, fields, submit_ref }) =>
-      attempt(() => handOver({ reason, fields, submitRef: submit_ref })),
+      inTurn(() => handOver({ reason, fields, submitRef: submit_ref })),
   });
 
   tools.browser_request_user = createTool({
@@ -324,7 +357,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
         .max(300)
         .describe("One sentence for the person, in their language: what to do on the page."),
     }),
-    execute: ({ reason }) => attempt(() => handOver({ reason, fields: [] })),
+    execute: ({ reason }) => inTurn(() => handOver({ reason, fields: [] })),
   });
 
   tools.browser_download = createTool({
@@ -340,14 +373,13 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
       source: z.string().optional().describe("Where it came from, in words, for the person."),
     }),
     execute: ({ ref: n, url, path, source }) =>
-      attempt(async () => {
+      inTurn(async () => {
         const p = await page();
         await ctx.emit("tool", `Lädt ${path.split("/").pop()} herunter`);
         let data: Buffer;
         let mime: string | undefined;
         if (url) {
-          const safe = await assertPublicUrl(new URL(url, p.url()).toString());
-          const res = await p.context().request.get(safe.toString(), { timeout: 60_000 });
+          const res = await signedInGet(p, new URL(url, p.url()).toString());
           if (!res.ok()) {
             return { error: `The server answered ${res.status()}.` };
           }
@@ -370,7 +402,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
             // No download event: the click opened the file in a tab (a PDF viewer).
             const target = opened ?? p;
             await settle(target);
-            const res = await p.context().request.get(target.url(), { timeout: 60_000 });
+            const res = await signedInGet(p, target.url());
             mime = res.headers()["content-type"]?.split(";")[0];
             if (!res.ok() || mime === "text/html") {
               await opened?.close().catch(() => undefined);

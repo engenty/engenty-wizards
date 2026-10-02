@@ -675,7 +675,17 @@ async function serveAsset(c: Context, run: RunRow, assetId: string) {
   const headers: Record<string, string> = {
     "content-type": found.row.mime,
     "cache-control": "private, max-age=3600",
+    "x-content-type-options": "nosniff",
   };
+  // Files a step collected come from mail and the web: they are downloads, never pages of ours.
+  if (found.row.kind === "file") {
+    headers["content-disposition"] =
+      `attachment; filename="${found.row.name.replace(/["\\\r\n]/g, "")}"`;
+  }
+  // An SVG or XML document opened on its own could run scripts with this origin.
+  if (/svg|xml/.test(found.row.mime)) {
+    headers["content-security-policy"] = "sandbox";
+  }
   // Generated HTML runs its scripts in an opaque origin and can reach nothing.
   if (found.row.mime === "text/html") {
     const html = await stepHtml(
