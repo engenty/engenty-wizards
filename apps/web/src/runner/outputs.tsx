@@ -111,7 +111,9 @@ function JsonView({ step, json }: { step: Step; json: unknown }) {
           <div className="mb-1 font-medium text-[12px] text-ink-3 uppercase tracking-[0.06em]">
             {labelFor(step, key)}
           </div>
-          {typeof v === "string" || typeof v === "number" ? (
+          {typeof v === "boolean" ? (
+            <div className="text-[15px]">{t(v ? "run.yes" : "run.no")}</div>
+          ) : typeof v === "string" || typeof v === "number" ? (
             <div className="whitespace-pre-wrap text-[15px]">{String(v)}</div>
           ) : Array.isArray(v) && v.every((x) => typeof x !== "object") ? (
             <ul className="list-disc pl-5 text-[14px]">

@@ -1,4 +1,5 @@
 import {
+  branchValues,
   type Format,
   formatsFor,
   LIST_FORMATS,
@@ -337,7 +338,7 @@ async function drive(runId: string, signal: AbortSignal) {
       await syncRunCost(runId);
       state.outputs[step.id] = output;
       delete state.notes[step.id];
-      const cursor = nextStepId(def, step.id, state.values);
+      const cursor = nextStepId(def, step.id, branchValues(state.values, state.outputs));
       await updateRun(runId, { state, cursor, status: cursor ? "running" : "done", error: null });
       await emitEvent(runId, step.id, "step_done", step.title);
     } catch (err) {
@@ -425,7 +426,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     }
   }
   state.history.push(stepId);
-  const cursor = nextStepId(run.definition, stepId, state.values);
+  const cursor = nextStepId(run.definition, stepId, branchValues(state.values, state.outputs));
   await updateRun(runId, { state, cursor, status: "running", error: null });
   kick(runId);
 }
@@ -448,7 +449,7 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
       }
     }
     state.history.push(stepId);
-    const cursor = nextStepId(run.definition, stepId, state.values);
+    const cursor = nextStepId(run.definition, stepId, branchValues(state.values, state.outputs));
     await updateRun(runId, { state, cursor, status: "running", error: null });
     kick(runId);
     return;

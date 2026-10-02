@@ -85,6 +85,13 @@ The gateway speaks the Vercel AI Gateway protocol, so `@ai-sdk/gateway` works wi
 | Suspended tenant, unknown class, model not enabled | `403`, type `forbidden` |
 | Booking | one ledger row per call: tenant, user, run, step, class, model, tokens, provider cost, credits |
 
+The classifier class may be bound to a model that only decides (type `evaluation`, e.g.
+`typesafe-ai/jev`). The runtime calls `wizards/classifier` like any language model. A call that
+asks for a JSON object whose fields are all booleans or strings from a fixed set, with no tools
+and no stream, is a decision: the gateway asks the evaluation model and answers with that
+object. Every other call, and a decision the model leaves open, is answered by the model of the
+`standard` class and booked under `classifier`.
+
 `GET <GATEWAY_URL>/v1/models` (any valid token or service key) → what an estimate needs:
 
 ```json

@@ -45,6 +45,7 @@ type Connection =
 
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
 // Branch = { when: { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty", value? }, goto: stepId | "end" }
+//   field is a page field id, or an output field of this or an earlier agent step as "steps.<stepId>.<fieldId>"
 //   first matching branch wins, otherwise the next step in the list.
 
 type PageStep = { type: "page", fields: Field[] (1–5 per page), cta?: string }
@@ -79,8 +80,9 @@ type AgentStep = {
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table", description, columns?: string[] }[] }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice", description, columns?: string[], options?: string[] }[] }
                                 // a table with columns gives rows as objects with exactly those keys — what widgets read
+                                // "yesno" answers the question in its description with true/false; "choice" picks one of its options
   model?: "classifier"|"standard"|"high"|"highest"  // the kind of model, see "Models"; default "high"
   effort?: "low"|"medium"|"high"                    // how hard it should think; leave out unless it matters
   working?: string              // shown while it runs ("Recherchiert im Web …")
@@ -225,6 +227,7 @@ ${connectorsLine(connectors)}
 
 Models: a step names the KIND of model it needs, never a model. Pick the cheapest class that does the job:
 - "classifier": routing, yes/no, picking from options, pulling a few values out of text.
+  A DECISION is a "classifier" step with no tools whose json output has only "yesno" and "choice" fields: it is answered in one fast, very cheap call. Write the question into each field's description, give the step everything it must judge in its instructions via {{templates}}, and branch on the answer with "next" (e.g. { when: { field: "steps.check.refund", op: "equals", value: true }, goto: "refund" }).
 - "standard": short copy, calling an API, reformatting, simple summaries.
 - "high": research with tools, long documents, reasoning over many sources (the default).
 - "highest": hard reasoning or writing code; rare in a run, several times the cost of "high".

@@ -1,4 +1,9 @@
-import type { AgentStep, GenerateStep, Step } from "@engenty-wizards/shared/definition";
+import {
+  type AgentStep,
+  type GenerateStep,
+  isDecisionStep,
+  type Step,
+} from "@engenty-wizards/shared/definition";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
@@ -65,8 +70,13 @@ const GROUND_RULES = [
 // --- agent -------------------------------------------------------------------
 
 function outputSchema(step: AgentStep) {
-  const fields: { id: string; kind: string; description?: string; columns?: string[] }[] = step
-    .output.fields?.length
+  const fields: {
+    id: string;
+    kind: string;
+    description?: string;
+    columns?: string[];
+    options?: string[];
+  }[] = step.output.fields?.length
     ? step.output.fields
     : [{ id: "data", kind: "table", description: "The result as a table" }];
   const shape: Record<string, z.ZodType> = {};
@@ -81,6 +91,12 @@ function outputSchema(step: AgentStep) {
         break;
       case "list":
         shape[f.id] = z.array(z.string()).describe(d);
+        break;
+      case "yesno":
+        shape[f.id] = z.boolean().describe(d);
+        break;
+      case "choice":
+        shape[f.id] = z.enum(f.options as [string, ...string[]]).describe(d);
         break;
       case "table":
         shape[f.id] = f.columns?.length
@@ -145,6 +161,26 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     ]
       .filter(Boolean)
       .join("\n\n");
+
+    // A decision needs no agent: its questions go to the classifier class in one call.
+    if (isDecisionStep(step) && uploads.length === 0) {
+      const { schema, fields } = outputSchema(step);
+      const decision = await generateText({
+        model: resolved.model,
+        abortSignal: ctx.signal,
+        output: Output.object({ schema }),
+        prompt,
+      });
+      await ctx.chargeUsd(costOf(resolved, decision.usage));
+      const json = decision.output as Record<string, unknown>;
+      const text = fields
+        .map((f) => {
+          const value = json[f.id];
+          return `${f.description ?? f.id}: ${value === true ? "ja" : value === false ? "nein" : String(value)}`;
+        })
+        .join("\n");
+      return { text, json, at: new Date().toISOString() };
+    }
 
     const agent = new Agent({
       id: `step-${step.id}`,

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { itemsTotals, nextStepId, parseWizard } from "@engenty-wizards/shared/definition";
+import {
+  type AgentStep,
+  branchValues,
+  isDecisionStep,
+  itemsTotals,
+  nextStepId,
+  parseWizard,
+} from "@engenty-wizards/shared/definition";
 import { STARTERS } from "../src/starters/index";
 
 describe("starters", () => {
@@ -37,6 +44,87 @@ describe("validator", () => {
     if (!parsed.ok) throw new Error("invalid");
     expect(nextStepId(parsed.wizard, "p", { kind: "b" })).toBe("r");
     expect(nextStepId(parsed.wizard, "p", { kind: "a" })).toBe("q");
+  });
+});
+
+describe("decisions", () => {
+  const fields = [
+    { id: "refund", kind: "yesno", description: "Does the customer ask for money back?" },
+    { id: "topic", kind: "choice", options: ["delivery", "billing"] },
+  ];
+  /** A wizard whose second step judges a mail; `step` overrides parts of that step. */
+  const wizard = (step: Record<string, unknown> = {}) => ({
+    title: "x",
+    steps: [
+      { id: "p", type: "page", title: "P", fields: [{ id: "mail", label: "M", kind: "textarea" }] },
+      {
+        id: "check",
+        type: "agent",
+        title: "Check",
+        instructions: "Judge {{mail}}",
+        model: "classifier",
+        output: { format: "json", fields },
+        ...step,
+      },
+      { id: "thanks", type: "agent", title: "Thanks", instructions: "Write a thank-you note." },
+      { id: "refund", type: "agent", title: "Refund", instructions: "Write the refund note." },
+      { id: "r", type: "result", title: "R", deliverables: [{ from: "check", formats: ["json"] }] },
+    ],
+  });
+  const checkStep = (step: Record<string, unknown> = {}) => {
+    const parsed = parseWizard(wizard(step));
+    if (!parsed.ok) {
+      throw new Error(parsed.issues.map((i) => i.message).join("; "));
+    }
+    return parsed.wizard.steps[1] as AgentStep;
+  };
+
+  it("takes yes/no and choice fields; a choice lists its options", () => {
+    expect(isDecisionStep(checkStep())).toBe(true);
+    const bare = parseWizard(
+      wizard({ output: { format: "json", fields: [{ id: "topic", kind: "choice" }] } }),
+    );
+    expect(bare.ok).toBe(false);
+  });
+
+  it("is a decision only on the classifier class, without tools and other fields", () => {
+    expect(isDecisionStep(checkStep({ model: "standard" }))).toBe(false);
+    expect(isDecisionStep(checkStep({ tools: ["web_search"] }))).toBe(false);
+    expect(
+      isDecisionStep(
+        checkStep({ output: { format: "json", fields: [...fields, { id: "why", kind: "text" }] } }),
+      ),
+    ).toBe(false);
+  });
+
+  it("branches on a yes/no answer", () => {
+    const parsed = parseWizard(
+      wizard({
+        next: [{ when: { field: "steps.check.refund", op: "equals", value: true }, goto: "refund" }],
+      }),
+    );
+    if (!parsed.ok) {
+      throw new Error("invalid");
+    }
+    const after = (refund: boolean) =>
+      nextStepId(
+        parsed.wizard,
+        "check",
+        branchValues({ mail: "…" }, { check: { json: { refund, topic: "delivery" } } }),
+      );
+    expect(after(true)).toBe("refund");
+    expect(after(false)).toBe("thanks");
+  });
+
+  it("refuses a branch on an output field the step does not have", () => {
+    const parsed = parseWizard(
+      wizard({
+        next: [{ when: { field: "steps.check.nope", op: "equals", value: true }, goto: "refund" }],
+      }),
+    );
+    expect(parsed.issues.map((i) => i.message)).toEqual([
+      'Branch reads unknown field "steps.check.nope".',
+    ]);
   });
 });
 

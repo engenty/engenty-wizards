@@ -182,13 +182,21 @@ const stepBase = {
   next: z.array(nextRuleSchema).optional(),
 };
 
-export const outputFieldSchema = z.object({
-  id,
-  kind: z.enum(["text", "number", "list", "table"]),
-  description: z.string().optional(),
-  /** Table only: the exact column keys every row has — what a widget reads. */
-  columns: z.array(z.string().min(1)).optional(),
-});
+export const outputFieldSchema = z
+  .object({
+    id,
+    kind: z.enum(["text", "number", "list", "table", "yesno", "choice"]),
+    /** What the field holds; for `yesno` and `choice` the question it answers. */
+    description: z.string().optional(),
+    /** Table only: the exact column keys every row has — what a widget reads. */
+    columns: z.array(z.string().min(1)).optional(),
+    /** Choice only: the options, one of which is the answer. */
+    options: z.array(z.string().min(1)).min(2).max(40).optional(),
+  })
+  .refine((field) => field.kind !== "choice" || Boolean(field.options?.length), {
+    message: "A choice field lists its options.",
+    path: ["options"],
+  });
 
 export const pageStepSchema = z.object({
   ...stepBase,
@@ -296,6 +304,24 @@ export const stepSchema = z.discriminatedUnion("type", [
 export type Step = z.infer<typeof stepSchema>;
 export type PageStep = z.infer<typeof pageStepSchema>;
 export type AgentStep = z.infer<typeof agentStepSchema>;
+
+/**
+ * A decision: a step on the classifier class that uses no tools and whose output is only
+ * yes/no and choice fields. It is answered in one call, which a model that only decides
+ * (no text) can take.
+ */
+export function isDecisionStep(step: AgentStep): boolean {
+  const fields = step.output.fields ?? [];
+  return (
+    step.model === "classifier" &&
+    step.output.format === "json" &&
+    fields.length > 0 &&
+    fields.every((f) => f.kind === "yesno" || f.kind === "choice") &&
+    step.tools.length === 0 &&
+    !step.mcp?.length &&
+    !step.connections?.length
+  );
+}
 export type GenerateStep = z.infer<typeof generateStepSchema>;
 export type WidgetStep = z.infer<typeof widgetStepSchema>;
 export type ReviewStep = z.infer<typeof reviewStepSchema>;
@@ -591,7 +617,17 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       if (rule.goto !== "end" && !stepIds.has(rule.goto)) {
         issues.push({ stepId: step.id, message: `Branch goes to unknown step "${rule.goto}".` });
       }
-      if (!fieldIds.has(rule.when.field)) {
+      // A branch reads what the person answered, or an output field of this or an earlier
+      // agent step as `steps.<step>.<field>`.
+      const [head, from, key, ...more] = rule.when.field.split(".");
+      const source =
+        head === "steps" && key && more.length === 0 && (from === step.id || seenSteps.has(from))
+          ? def.steps.find((s) => s.id === from)
+          : undefined;
+      const known =
+        fieldIds.has(rule.when.field) ||
+        (source?.type === "agent" && (source.output.fields ?? []).some((f) => f.id === key));
+      if (!known) {
         issues.push({
           stepId: step.id,
           message: `Branch reads unknown field "${rule.when.field}".`,
@@ -619,6 +655,25 @@ export function parseWizard(
   }
   const issues = validateWizard(parsed.data, files);
   return { ok: true, wizard: parsed.data, issues };
+}
+
+/**
+ * What branch rules can read in a run: the person's answers by field id, and the structured
+ * output of the steps run so far as `steps.<step>.<field>`.
+ */
+export function branchValues(
+  values: Record<string, unknown>,
+  outputs: Record<string, { json?: unknown }>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...values };
+  for (const [stepId, output] of Object.entries(outputs)) {
+    if (output.json && typeof output.json === "object" && !Array.isArray(output.json)) {
+      for (const [key, value] of Object.entries(output.json)) {
+        out[`steps.${stepId}.${key}`] = value;
+      }
+    }
+  }
+  return out;
 }
 
 /** The step after `step`, honouring its branch rules. `null` = the end. */

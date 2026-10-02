@@ -1,4 +1,9 @@
-import type { Step, TextClass, WizardDefinition } from "@engenty-wizards/shared/definition";
+import {
+  isDecisionStep,
+  type Step,
+  type TextClass,
+  type WizardDefinition,
+} from "@engenty-wizards/shared/definition";
 import type { RunEstimate, StepEstimate } from "@engenty-wizards/shared/run";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
@@ -21,6 +26,7 @@ const TOKENS = {
   document: [6_000, 8_000],
   prompt: [2_000, 300],
   structure: [4_000, 1_000],
+  decision: [1_500, 100],
 } as const;
 
 function textCredits(price: ClassPrice | null | undefined, [input, output]: readonly number[]) {
@@ -36,6 +42,10 @@ function textCredits(price: ClassPrice | null | undefined, [input, output]: read
 function formula(step: Step, catalog: GatewayCatalog): number {
   const cls = (c: TextClass) => catalog.classes[c];
   if (step.type === "agent") {
+    // A decision is one small call to the classifier class.
+    if (isDecisionStep(step)) {
+      return textCredits(cls("classifier"), TOKENS.decision);
+    }
     const shape = step.tools.includes("browser")
       ? TOKENS.browser
       : step.tools.length || step.mcp?.length || step.connections?.length
