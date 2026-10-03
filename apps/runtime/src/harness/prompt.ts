@@ -31,9 +31,24 @@ export function renderPrompt(
   const files: string[] = [];
   const system: string[] = [];
   const turns: { role: string; text: string }[] = [];
-  const saveFile = (part: { data: unknown; mediaType: string; filename?: string }): string => {
+  const saveFile = (input: { data: unknown; mediaType: string; filename?: string }): string => {
+    // A file's content comes tagged: { type: "data", data } | { type: "url", url } | { type: "text", text }.
+    const tagged = input.data as { type?: string; data?: unknown; url?: URL; text?: string } | null;
+    const data =
+      tagged && typeof tagged === "object" && typeof tagged.type === "string"
+        ? tagged.type === "url"
+          ? tagged.url
+          : tagged.type === "text"
+            ? Buffer.from(tagged.text ?? "", "utf8")
+            : tagged.data
+        : input.data;
+    const part = { ...input, data };
     if (part.data instanceof URL) {
       return `[Attachment at ${part.data.href} (${part.mediaType})]`;
+    }
+    if (typeof part.data !== "string" && !(part.data instanceof Uint8Array)) {
+      warnings.push({ type: "unsupported", feature: "file parts" });
+      return `[Attachment: ${part.filename ?? part.mediaType}]`;
     }
     if (!dir) {
       warnings.push({ type: "unsupported", feature: "file parts" });
