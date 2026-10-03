@@ -257,6 +257,10 @@ const de = {
   "run.feedbackPlaceholder": "Passt etwas nicht? Schreib, was anders sein soll …",
   "run.feedbackTarget": "Was soll sich ändern?",
   "run.feedbackPick": "Wähle oben, was sich ändern soll.",
+  "ai.generated": "KI-generiert",
+  "ai.modified": "Mit KI verändert",
+  "ai.publish":
+    "Mit KI erstellt: Wer das veröffentlicht, muss es als KI-generiert kennzeichnen (EU AI Act, Art. 50). Die Datei trägt die Kennzeichnung bereits in ihren Metadaten.",
   "run.regenerateGo": "Neu erstellen",
   "run.retry": "Erneut versuchen",
   "run.again": "Nochmal",
@@ -761,6 +765,10 @@ const en: Record<Key, string> = {
   "run.feedbackPlaceholder": "Something not right? Write what should be different …",
   "run.feedbackTarget": "What should change?",
   "run.feedbackPick": "Pick above what should change.",
+  "ai.generated": "AI generated",
+  "ai.modified": "AI modified",
+  "ai.publish":
+    "Made with AI: whoever publishes this has to label it as AI-generated (EU AI Act, Art. 50). The file already carries the marking in its metadata.",
   "run.regenerateGo": "Recreate",
   "run.retry": "Try again",
   "run.again": "Start over",

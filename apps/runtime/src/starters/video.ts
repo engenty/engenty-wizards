@@ -28,7 +28,6 @@ Film.play({
   hook: d.hook,
   end: { title: d.headline, lines: [d.product], cta: d.cta },
   voice: d.voice,
-  label: "KI-generiert",
   clipSeconds: 6,
   stillSeconds: 4.5
 });`,
@@ -276,7 +275,7 @@ Film.play({
   hook: d.place,
   end: { title: d.title, lines: Array.isArray(d.facts) ? d.facts.slice(0, 4) : [], cta: "Jetzt besichtigen", note: d.contact },
   voice: d.voice,
-  label: staged ? "Visualisierung · virtuell möbliert" : "Fotos KI-bearbeitet",
+  label: staged ? "Visualisierung · virtuell möbliert" : "",
   clipSeconds: 4,
   stillSeconds: 3.6
 });`,

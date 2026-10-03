@@ -4,6 +4,8 @@
  *
  *   wizard.data            the run's data (keys from the widget step's `data` map)
  *   wizard.brand           { name, accent, logo } — logo as a data URL or null
+ *   wizard.ai              "generated" | "edited" when the run's media in `data` was made or
+ *                          changed by a model, else null — a film labels itself with it
  *   wizard.mode            "view" in the browser, "export" while a PNG/PDF/MP4 is rendered
  *   wizard.file(path)      text of a workspace file (JSON, CSV, SVG, …)
  *   wizard.json(path)      a workspace JSON file, parsed
@@ -42,6 +44,7 @@ export const WIDGET_RUNTIME = `(function () {
   window.wizard = {
     data: payload.data || {},
     brand: payload.brand || {},
+    ai: payload.ai || null,
     mode: window.__WIZARD_EXPORT ? "export" : "view",
     file: function (path) {
       var f = find(path);

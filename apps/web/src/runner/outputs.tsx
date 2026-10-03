@@ -94,6 +94,119 @@ export function HtmlFrame({
   );
 }
 
+/**
+ * Where the artwork sits inside the Commission's icon files (the half-transparent variants):
+ * each leaves clear space around its shape, and the label is laid out by the shape.
+ */
+const AI_ICONS = {
+  disc: { file: "ai", box: 566.93, x: 89.28, y: 100.72, w: 365.49, h: 365.49 },
+  generated: { file: "ai-generated", box: 1789.84, x: 207.3, y: 144.36, w: 1384.24, h: 266.41 },
+  edited: { file: "ai-modified", box: 1700.79, x: 231.11, y: 144.36, w: 1230.56, h: 266.41 },
+} as const;
+
+/** One of the icons, scaled so that its shape is `size` px high, with the shape at the box's corner. */
+function AiIcon({
+  icon,
+  tone,
+  size,
+  className,
+}: {
+  icon: keyof typeof AI_ICONS;
+  tone: "white" | "black";
+  size: number;
+  className?: string;
+}) {
+  const art = AI_ICONS[icon];
+  const scale = size / art.h;
+  return (
+    <img
+      src={withBase(`/ai-labels/${art.file}-${tone}.svg`)}
+      alt=""
+      draggable={false}
+      className={cn("pointer-events-none absolute max-w-none select-none", className)}
+      style={{
+        width: art.box * scale,
+        height: 566.93 * scale,
+        left: -art.x * scale,
+        top: -art.y * scale,
+      }}
+    />
+  );
+}
+
+/**
+ * The EU's label on media a model made or changed: the round "AI" alone, and on hover, on focus
+ * and on a tap the long form — "AI GENERATED" or "AI MODIFIED". It lies over the picture in the
+ * interface and is not part of the file; the file says the same in its metadata.
+ */
+export function AiBadge({
+  ai,
+  className,
+}: {
+  ai: "generated" | "edited" | undefined;
+  /** Where on the media it sits; default: bottom left. "static" sets it into the text flow. */
+  className?: string;
+}) {
+  // A phone has no hover: a tap opens the label and the next one closes it.
+  const [open, setOpen] = useState(false);
+  if (!ai) {
+    return null;
+  }
+  // Small, and of glass: the icon's ground is half transparent, the picture behind it blurred.
+  const size = 18;
+  const long = AI_ICONS[ai];
+  const inline = className === "static";
+  const shown = "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100";
+  const hidden = "opacity-100 group-hover:opacity-0 group-focus-visible:opacity-0";
+  // Over a picture the white label reads on anything; in the text it follows the theme.
+  const tones = inline
+    ? ([
+        ["black", "dark:hidden"],
+        ["white", "hidden dark:block"],
+      ] as const)
+    : ([["white", ""]] as const);
+  return (
+    <button
+      type="button"
+      aria-label={t(ai === "edited" ? "ai.modified" : "ai.generated")}
+      aria-expanded={open}
+      data-open={open}
+      onClick={() => setOpen((v) => !v)}
+      className={cn(
+        "group block cursor-default overflow-hidden rounded-full backdrop-blur-md transition-[width] duration-200",
+        "w-[var(--ai-disc)] hover:w-[var(--ai-long)] focus-visible:w-[var(--ai-long)] data-[open=true]:w-[var(--ai-long)]",
+        inline
+          ? "relative"
+          : cn("absolute shadow-[0_1px_3px_rgba(0,0,0,0.25)]", className ?? "bottom-2 left-2"),
+      )}
+      style={
+        {
+          height: size,
+          "--ai-disc": `${size}px`,
+          "--ai-long": `${(long.w / long.h) * size}px`,
+        } as React.CSSProperties
+      }
+    >
+      {tones.map(([tone, theme]) => (
+        <span key={tone} className={theme}>
+          <AiIcon
+            icon="disc"
+            tone={tone}
+            size={size}
+            className={cn("transition-opacity duration-200", open ? "opacity-0" : hidden)}
+          />
+          <AiIcon
+            icon={ai}
+            tone={tone}
+            size={size}
+            className={cn("transition-opacity duration-200", open ? "opacity-100" : shown)}
+          />
+        </span>
+      ))}
+    </button>
+  );
+}
+
 function labelFor(step: Step, key: string): string {
   if (step.type === "agent") {
     return step.output.fields?.find((f) => f.id === key)?.description ?? key;
@@ -217,17 +330,20 @@ export function OutputView({
       const poster = output.assets?.find((a) => a.kind === "poster");
       const tall = (step.size?.height ?? 0) > (step.size?.width ?? 1);
       return (
-        // biome-ignore lint/a11y/useMediaCaption: the film's captions are part of the picture
-        <video
-          src={assetUrl(film.id)}
-          poster={poster ? assetUrl(poster.id) : undefined}
-          controls
-          playsInline
-          className={cn(
-            "mx-auto rounded-lg bg-black ring-1 ring-border-soft",
-            tall ? "max-h-[76vh]" : "w-full",
-          )}
-        />
+        <div className={cn("relative mx-auto", tall ? "w-fit" : "w-full")}>
+          {/* biome-ignore lint/a11y/useMediaCaption: the film's captions are part of the picture */}
+          <video
+            src={assetUrl(film.id)}
+            poster={poster ? assetUrl(poster.id) : undefined}
+            controls
+            playsInline
+            className={cn(
+              "rounded-lg bg-black ring-1 ring-border-soft",
+              tall ? "max-h-[76vh]" : "w-full",
+            )}
+          />
+          <AiBadge ai={film.ai} className="top-2 right-2" />
+        </div>
       );
     }
     const html = output.assets?.find((a) => a.mime === "text/html");
@@ -246,6 +362,7 @@ export function OutputView({
         <div className="flex flex-col gap-3">
           {/* biome-ignore lint/a11y/useMediaCaption: what is said stands right below */}
           <audio src={assetUrl(asset.id)} controls className="w-full" />
+          <AiBadge ai={asset.ai} className="static" />
           {output.text ? (
             <p className="text-[14px] text-ink-2 leading-relaxed">{output.text}</p>
           ) : null}
@@ -291,6 +408,10 @@ export function OutputView({
                     {i + 1}
                   </span>
                 )}
+                <AiBadge
+                  ai={a.ai}
+                  className={step.asset === "image" ? "bottom-2 left-2" : "top-2 right-2"}
+                />
               </figure>
             );
           })}
@@ -299,26 +420,33 @@ export function OutputView({
     }
     if (step.asset === "image") {
       return (
-        <img
-          src={assetUrl(asset.id)}
-          alt={step.title}
-          className="w-full rounded-lg bg-paper-2 ring-1 ring-border-soft"
-        />
+        <div className="relative">
+          <img
+            src={assetUrl(asset.id)}
+            alt={step.title}
+            className="w-full rounded-lg bg-paper-2 ring-1 ring-border-soft"
+          />
+          <AiBadge ai={asset.ai} />
+        </div>
       );
     }
     if (step.asset === "video") {
+      const tall = step.options?.aspectRatio === "9:16";
       return (
-        // biome-ignore lint/a11y/useMediaCaption: generated clips have no caption track to offer
-        <video
-          src={assetUrl(asset.id)}
-          controls
-          playsInline
-          loop
-          className={cn(
-            "mx-auto rounded-lg bg-black ring-1 ring-border-soft",
-            step.options?.aspectRatio === "9:16" ? "max-h-[70vh]" : "w-full",
-          )}
-        />
+        <div className={cn("relative mx-auto", tall ? "w-fit" : "w-full")}>
+          {/* biome-ignore lint/a11y/useMediaCaption: generated clips have no caption track to offer */}
+          <video
+            src={assetUrl(asset.id)}
+            controls
+            playsInline
+            loop
+            className={cn(
+              "rounded-lg bg-black ring-1 ring-border-soft",
+              tall ? "max-h-[70vh]" : "w-full",
+            )}
+          />
+          <AiBadge ai={asset.ai} className="top-2 left-2" />
+        </div>
       );
     }
     return step.asset === "document" ? (
@@ -348,12 +476,14 @@ export function OutputView({
           <div className="whitespace-pre-wrap text-[16px] leading-relaxed">{output.text}</div>
         )}
         {images.map((img) => (
-          <img
-            key={img.id}
-            src={assetUrl(img.id)}
-            alt=""
-            className="w-full rounded-lg ring-1 ring-border-soft"
-          />
+          <div key={img.id} className="relative">
+            <img
+              src={assetUrl(img.id)}
+              alt=""
+              className="w-full rounded-lg ring-1 ring-border-soft"
+            />
+            <AiBadge ai={img.ai} />
+          </div>
         ))}
         {files.length ? (
           <ul className="overflow-hidden rounded-lg ring-1 ring-border-soft">

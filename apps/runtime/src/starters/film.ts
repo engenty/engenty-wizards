@@ -1,3 +1,5 @@
+import { AI_LABEL_GENERATED, AI_LABEL_MODIFIED } from "./ai-labels.js";
+
 /**
  * The film widget the video starters share: scenes (clips or stills) on a canvas, captions, a
  * closing card with the call to action, and the sound that goes with it. A starter adds its own
@@ -65,7 +67,9 @@ const FILM_JS = String.raw`(function () {
    *   scenes  [{ media, fallback?, caption?, sub? }] — media is a clip or an image
    *   end     { title, lines?, cta?, note? } — the closing card
    *   voice   the voice-over, spoken from the start
-   *   label   a small standing note ("KI-generiert")
+   *   label   a small standing note ("virtuell möbliert")
+   * Where the film shows media a model made or changed (wizard.ai), the EU's label for it stands
+   * in the picture from the first frame to the last: "AI GENERATED" or "AI MODIFIED".
    */
   function play(o) {
     var size = o.size || { width: 1080, height: 1920 };
@@ -90,6 +94,11 @@ const FILM_JS = String.raw`(function () {
 
     var input = (o.scenes || []).filter(function (s) { return s && (s.media || s.fallback); });
     var voiceSrc = srcOf(o.voice);
+    // The EU label for what a model made or changed: one of the icon files in the workspace.
+    var ai = o.ai === undefined ? W.ai : o.ai;
+    var art = !ai ? null : ai === "edited"
+      ? { file: "ai-modified.svg", box: 1700.79, x: 231.11, w: 1230.56 }
+      : { file: "ai-generated.svg", box: 1789.84, x: 207.3, w: 1384.24 };
 
     Promise.all([
       Promise.all(input.map(function (s) {
@@ -103,10 +112,11 @@ const FILM_JS = String.raw`(function () {
         });
       })),
       audioSeconds(voiceSrc),
-      loadImage(W.brand && W.brand.logo)
+      loadImage(W.brand && W.brand.logo),
+      loadImage(art ? W.url(art.file) : "")
     ]).then(function (loaded) {
       var scenes = loaded[0].filter(function (s) { return s.media; });
-      var voiceSeconds = loaded[1], logo = loaded[2];
+      var voiceSeconds = loaded[1], logo = loaded[2], icon = loaded[3];
       var X = 0.4;
       var endSeconds = o.end ? 3.2 : 0;
       scenes.forEach(function (s) {
@@ -168,6 +178,20 @@ const FILM_JS = String.raw`(function () {
         (o.end.lines || []).filter(Boolean).forEach(function (l) { el("div", "film-end-line", card).textContent = l; });
         if (o.end.cta) { card.cta = el("div", "film-end-cta", card); card.cta.textContent = o.end.cta; }
         if (o.end.note) el("div", "film-end-note", card).textContent = o.end.note;
+      }
+      // The EU label: the pill of the icon file, cut out of the clear space around it.
+      if (art && icon) {
+        var high = (style === "tour" ? 1.9 : 3.4) * u, k = high / 266.41;
+        var pill = el("div", "film-ai", overlay);
+        pill.style.height = high + "px";
+        pill.style.width = art.w * k + "px";
+        icon.style.width = art.box * k + "px";
+        icon.style.height = 566.93 * k + "px";
+        icon.style.left = -art.x * k + "px";
+        icon.style.top = -144.36 * k + "px";
+        pill.appendChild(icon);
+        // A note beside it stands clear of it.
+        if (label && style === "tour") label.style.right = 3 * u + art.w * k + 1.4 * u + "px";
       }
 
       function cover(m, zoom, px, py, alpha) {
@@ -237,7 +261,7 @@ const FILM_JS = String.raw`(function () {
             hook.style.opacity = ha;
             hook.style.transform = "translateY(" + (ha - 1) * 3 * u + "px)";
           }
-          if (label) label.style.opacity = inEnd ? 0.75 * (1 - ease((t - endStart) / 0.3)) : 0.75;
+          if (label) label.style.opacity = inEnd ? 0.85 * (1 - ease((t - endStart) / 0.3)) : 0.85;
           if (card) {
             var ca = inEnd ? ease((t - endStart - 0.15) / 0.5) : 0;
             card.style.opacity = ca;
@@ -285,6 +309,10 @@ const FILM_CSS = `html, body { margin: 0; background: #000; overflow: hidden; }
 .film-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .film-overlay { position: absolute; inset: 0; }
 .film-caption, .film-hook, .film-end, .film-label { position: absolute; opacity: 0; will-change: transform, opacity; }
+.film-ai { position: absolute; overflow: hidden; border-radius: 999px; backdrop-filter: blur(calc(1.2 * var(--u))); -webkit-backdrop-filter: blur(calc(1.2 * var(--u))); }
+.film-ai img { position: absolute; max-width: none; }
+.film-ad .film-ai { left: calc(4 * var(--u)); top: calc(4.5 * var(--u)); }
+.film-tour .film-ai { right: calc(3 * var(--u)); bottom: calc(2.4 * var(--u)); }
 
 /* ad: bold words in the lower third, above where the platform puts its own buttons */
 .film-ad .film-caption { left: calc(7 * var(--u)); right: calc(7 * var(--u)); top: 62%; text-align: center; }
@@ -301,7 +329,7 @@ const FILM_CSS = `html, body { margin: 0; background: #000; overflow: hidden; }
 .film-caption-sub { margin-top: calc(0.5 * var(--u)); font-weight: 500; font-size: calc(1.9 * var(--u)); line-height: 1.3; opacity: .92; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
 .film-tour .film-hook { left: calc(4.5 * var(--u)); top: calc(4.5 * var(--u)); }
 .film-tour .film-hook span { display: inline-block; padding: calc(0.7 * var(--u)) calc(1.6 * var(--u)); border-radius: 99px; background: rgba(10,12,20,.55); font-weight: 600; font-size: calc(1.7 * var(--u)); letter-spacing: .02em; }
-.film-tour .film-label { right: calc(3 * var(--u)); bottom: calc(2.2 * var(--u)); font-size: calc(1.25 * var(--u)); letter-spacing: 0.03em; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.film-tour .film-label { right: calc(3 * var(--u)); bottom: calc(2.4 * var(--u)); line-height: calc(1.9 * var(--u)); font-size: calc(1.2 * var(--u)); letter-spacing: 0.03em; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
 
 /* the closing card */
 .film-end { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 9%; }
@@ -363,6 +391,8 @@ export function filmFiles(input: {
   const files: Record<string, string> = {
     "film/film.js": FILM_JS,
     "film/film.css": FILM_CSS,
+    "film/ai-generated.svg": AI_LABEL_GENERATED,
+    "film/ai-modified.svg": AI_LABEL_MODIFIED,
     [`film/${input.entry}.html`]: entryHtml(input.script),
     [`film/${input.entry}.sample.json`]: JSON.stringify(input.sample, null, 2),
   };

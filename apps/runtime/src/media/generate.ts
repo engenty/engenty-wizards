@@ -12,6 +12,7 @@ import {
   videoModel,
 } from "../models.js";
 import { toMp3 } from "./ffmpeg.js";
+import { speechTags } from "./marking.js";
 
 export interface MediaReference {
   bytes: Uint8Array;
@@ -22,6 +23,8 @@ export interface GeneratedMedia {
   bytes: Uint8Array;
   mime: string;
   costUsd: number;
+  /** The model that made it, for the file's marking. */
+  system: string;
 }
 
 type Aspect = `${number}:${number}`;
@@ -67,6 +70,7 @@ export async function generateImageMedia(input: {
       bytes: file.uint8Array,
       mime: file.mediaType ?? "image/png",
       costUsd,
+      system: image.ref,
     };
   }
   const result = await generateImage({
@@ -84,6 +88,7 @@ export async function generateImageMedia(input: {
     bytes: img.uint8Array,
     mime: img.mediaType ?? "image/png",
     costUsd,
+    system: image.ref,
   };
 }
 
@@ -114,6 +119,7 @@ export async function generateVideoMedia(input: {
     bytes: video.uint8Array,
     mime: video.mediaType ?? "video/mp4",
     costUsd: videoClass.metered ? 0 : videoCostUsd(videoClass.ref, duration),
+    system: videoClass.ref,
   };
 }
 
@@ -138,11 +144,13 @@ export async function generateSpeechMedia(input: {
   }
   const mime = audio.mediaType ?? "audio/mpeg";
   const costUsd = speech.metered ? 0 : speechCostUsd(speech.ref, input.text.length);
-  if (mime !== "audio/mpeg") {
-    const mp3 = await toMp3(audio.uint8Array, extFor(mime) === "bin" ? "wav" : extFor(mime));
-    if (mp3) {
-      return { bytes: mp3, mime: "audio/mpeg", costUsd };
-    }
-  }
-  return { bytes: audio.uint8Array, mime, costUsd };
+  // As MP3, and saying in its tags that a model speaks here.
+  const mp3 = await toMp3(
+    audio.uint8Array,
+    extFor(mime) === "bin" ? "wav" : extFor(mime),
+    speechTags({ origin: "generated", system: speech.ref }),
+  );
+  return mp3
+    ? { bytes: mp3, mime: "audio/mpeg", costUsd, system: speech.ref }
+    : { bytes: audio.uint8Array, mime, costUsd, system: speech.ref };
 }

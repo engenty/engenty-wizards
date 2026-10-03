@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
+import { markMedia } from "../media/marking.js";
 import { gatewayTools, isHarnessVendor, type ResolvedModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import {
@@ -207,7 +208,8 @@ export async function buildStepTools(
           kind: "image",
           mime: media.mime,
           name: "image.png",
-          data: media.bytes,
+          data: markMedia(media.bytes, media.mime, { origin: "generated", system: media.system }),
+          ai: "generated",
         });
         assets.push(ref);
         return { saved: true, assetId: ref.id };

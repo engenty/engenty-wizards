@@ -45,6 +45,8 @@ export async function bundleWidget(input: {
   brand: WidgetBrand;
   /** An origin the page may load images, video and audio from (films). */
   media?: string;
+  /** What the widget shows of the run is media a model made ("generated") or changed ("edited"). */
+  ai?: "generated" | "edited";
 }): Promise<string> {
   const loaded = new Map<string, Loaded>();
   for (const file of input.files) {
@@ -120,6 +122,7 @@ export async function bundleWidget(input: {
   const payload = JSON.stringify({
     data: input.data ?? {},
     brand: input.brand,
+    ai: input.ai ?? null,
     files: payloadFiles,
     base: entryDir ? `${entryDir}/` : "",
   }).replace(/</g, "\\u003c");

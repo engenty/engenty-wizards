@@ -9,6 +9,7 @@ import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { resolveRef } from "../engine/template.js";
 import { type ProjectRow, type StepContext, StepError } from "../engine/types.js";
 import { extFor, loadAsset } from "../files/storage.js";
+import { type AiOrigin, markMedia } from "../media/marking.js";
 import { snapshotFile } from "../services/files.js";
 import { bundleWidget, type WidgetBrand } from "./bundle.js";
 import { FILM_MEDIA_ORIGIN, type FilmMedia, probeWidget, renderFilm } from "./render.js";
@@ -36,11 +37,21 @@ async function widgetData(step: WidgetStep, ctx: StepContext) {
   const out: Record<string, unknown> = {};
   const media = new Map<string, FilmMedia>();
   const fields = allFields(ctx.def);
+  // Which of the run's media a model made or changed: what the widget shows of it makes the
+  // widget's own result AI media too.
+  const made = new Map(
+    Object.values(ctx.state.outputs)
+      .flatMap((o) => o.assets ?? [])
+      .filter((a) => a.ai)
+      .map((a) => [a.id, a.ai]),
+  );
+  const seen = { generated: 0, edited: 0, own: 0 };
   const urlOf = async (id: unknown): Promise<string | null> => {
     const found = typeof id === "string" && id ? await loadAsset(id) : null;
     if (!found || found.row.runId !== ctx.runId) {
       return null;
     }
+    seen[made.get(found.row.id) ?? "own"]++;
     if (step.video) {
       const url = `${FILM_MEDIA_ORIGIN}/${found.row.id}.${extFor(found.row.mime)}`;
       media.set(url, { bytes: new Uint8Array(found.data), mime: found.row.mime });
@@ -70,7 +81,11 @@ async function widgetData(step: WidgetStep, ctx: StepContext) {
     }
     out[key] = resolveRef(ref, ctx.scope) ?? null;
   }
-  return { data: out, media };
+  // Only generated media: a model made the film's pictures. Edited pictures, or AI media among
+  // the person's own: the result is edited material.
+  const origin: AiOrigin | undefined =
+    seen.generated || seen.edited ? (seen.edited || seen.own ? "edited" : "generated") : undefined;
+  return { data: out, media, origin };
 }
 
 /** A film: the widget's timeline rendered to an MP4 with sound — that video is the result. */
@@ -80,6 +95,7 @@ async function runFilmStep(
   html: string,
   data: Record<string, unknown>,
   media: Map<string, FilmMedia>,
+  origin: AiOrigin | undefined,
 ): Promise<StepOutput> {
   await ctx.emit("info", "Der Film wird geschnitten – das dauert etwa eine Minute.");
   let told = 0;
@@ -103,14 +119,17 @@ async function runFilmStep(
       kind: "video",
       mime: "video/mp4",
       name: `${step.id}.mp4`,
-      data: film.mp4,
+      // Cutting re-encodes every frame, which drops what the clips and stills carried.
+      data: origin ? markMedia(film.mp4, "video/mp4", { origin }) : film.mp4,
+      ai: origin,
     }),
     await ctx.saveAsset({
       stepId: step.id,
       kind: "poster",
       mime: "image/png",
       name: `${step.id}.png`,
-      data: film.png,
+      data: origin ? markMedia(film.png, "image/png", { origin }) : film.png,
+      ai: origin,
     }),
   ];
   return {
@@ -123,16 +142,17 @@ async function runFilmStep(
 
 /** A widget step makes no model call: it binds this run's data into the widget and keeps the file. */
 export async function runWidgetStep(step: WidgetStep, ctx: StepContext): Promise<StepOutput> {
-  const { data, media } = await widgetData(step, ctx);
+  const { data, media, origin } = await widgetData(step, ctx);
   const html = await bundleWidget({
     entry: step.entry,
     files: ctx.files,
     data,
     brand: await widgetBrand(ctx.project),
     media: step.video ? FILM_MEDIA_ORIGIN : undefined,
+    ai: origin,
   });
   if (step.video) {
-    return runFilmStep(step, ctx, html, data, media);
+    return runFilmStep(step, ctx, html, data, media, origin);
   }
   let probe: Awaited<ReturnType<typeof probeWidget>> | null = null;
   try {

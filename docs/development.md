@@ -65,6 +65,20 @@ The agent is told what the chosen sandbox runs (`apps/runtime/src/sandbox`).
 A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
 the first start; the old file stays.
 
+## AI media and the AI Act
+
+Media a model made or changed says so in two ways (Art. 50): in the file and on the page.
+
+- **In the file** (`apps/runtime/src/media/marking.ts`): the IPTC Digital Source Type in the XMP
+  of PNG, JPEG and MP4 files, ID3 tags on a voice-over. A file that arrives marked — image models
+  sign their output with C2PA Content Credentials — is kept byte for byte, since changing it would
+  break the signature. A film is re-encoded when it is cut, so it gets its own marking.
+- **On the page**: the asset's reference carries `ai: "generated" | "edited"`, and every view shows
+  a label over such media. Nothing is drawn into an image. A film shows one line in the picture,
+  because it is published as a file, away from these pages.
+
+Not done here: signing our own Content Credentials (needs a certificate), and the EU's common icon.
+
 ## Checks
 
 ```bash

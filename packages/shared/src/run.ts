@@ -9,6 +9,11 @@ export interface AssetRef {
   kind: string;
   mime: string;
   name: string;
+  /**
+   * Media a model made ("generated") or changed ("edited"). Shown with a label wherever it is
+   * displayed; the file itself carries the marking in its metadata (EU AI Act, Art. 50).
+   */
+  ai?: "generated" | "edited";
 }
 
 export interface StepOutput {

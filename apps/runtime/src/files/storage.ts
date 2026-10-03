@@ -37,6 +37,8 @@ export interface SaveAssetInput {
   mime: string;
   name: string;
   data: Uint8Array | string;
+  /** Media a model made or changed; travels with the asset's reference. */
+  ai?: AssetRef["ai"];
 }
 
 export async function saveAsset(input: SaveAssetInput): Promise<AssetRef> {
@@ -56,7 +58,13 @@ export async function saveAsset(input: SaveAssetInput): Promise<AssetRef> {
     path: file,
     size: bytes.byteLength,
   });
-  return { id, kind: input.kind, mime: input.mime, name: input.name };
+  return {
+    id,
+    kind: input.kind,
+    mime: input.mime,
+    name: input.name,
+    ...(input.ai ? { ai: input.ai } : {}),
+  };
 }
 
 export async function loadAsset(id: string) {

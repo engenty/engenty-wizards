@@ -20,6 +20,7 @@ import {
   generateVideoMedia,
   type MediaReference,
 } from "../media/generate.js";
+import { type AiOrigin, markMedia } from "../media/marking.js";
 import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
 import { buildStepTools } from "../tools/index.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
@@ -549,6 +550,13 @@ async function runMediaStep(
   }
   let finished = 0;
   const note = ctx.state.notes[step.id];
+  // The pictures the person gave: a result that starts from one of them is an edited picture.
+  const given = new Set(
+    allFields(ctx.def)
+      .filter((f) => f.kind === "image" || f.kind === "file")
+      .flatMap((f) => ctx.state.values[f.id])
+      .filter((id): id is string => typeof id === "string"),
+  );
   const made = await inParallel(todo, asset === "image" ? 4 : 3, async (entry) => {
     // An entry's brief was written for it by the step that made the table: it goes to the model
     // as it is. One brief for all, or a change the person asked for, is turned into a prompt first.
@@ -588,12 +596,16 @@ async function runMediaStep(
           });
     await ctx.chargeUsd(media.costUsd);
     const n = entries.length > 1 ? `-${entry.index + 1}` : "";
+    // A picture changed from one the person gave is "edited"; everything else a model made.
+    const origin: AiOrigin =
+      asset === "image" && entry.reference && given.has(entry.reference) ? "edited" : "generated";
     const ref = await ctx.saveAsset({
       stepId: step.id,
       kind: asset,
       mime: media.mime,
-      name: `${step.id}${n}.${asset === "image" ? "png" : extFor(media.mime)}`,
-      data: media.bytes,
+      name: `${step.id}${n}.${extFor(media.mime)}`,
+      data: markMedia(media.bytes, media.mime, { origin, system: media.system }),
+      ai: origin,
     });
     finished++;
     if (todo.length > 1) {
@@ -641,6 +653,7 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
         mime: media.mime,
         name: `${step.id}.${extFor(media.mime)}`,
         data: media.bytes,
+        ai: "generated",
       });
       return { text, assets: [ref], at };
     }

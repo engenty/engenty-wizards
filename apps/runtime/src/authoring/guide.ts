@@ -173,6 +173,7 @@ ${sandboxGuideLine()}
 - Going through documents one by one (receipts against payments): never one model step per document. One step reads them in batches (scan_documents takes 30 at once) and writes rows into a list with "check"; the review shows that list split-screen — the person answers each row beside its file, without any model call.
 - Video that convinces is built in stages, each with its own review: idea and script (agent, json with a table of shots) → one still per shot (generate image with "each", starting from the person's product photo) → one clip per still (generate video with "each" and referenceImage = the stills step) → a voice-over (generate voice) → a film widget (video: true) that cuts clips, captions, voice and a closing card with the call to action. The starters "facebook-video-ad" and "property-film" carry such a widget (film/film.js) to copy. Offer a cheaper path without clips: the film animates the stills.
 - Prices come from a file the admin keeps in the workspace (a CSV price list): the agent step looks them up with read_workspace_file and proposes positions as a table; the next page shows them in an "items" field with "prefill" for the person to correct; the runner computes the totals.
+- AI media is marked for you (EU AI Act, Art. 50): images, clips, voice-overs and films carry the marking in their file metadata, and the pages lay the EU's "AI" label over them. Never ask an image step to draw such a label into the picture. A film is different — it leaves the page as a video file, so its widget shows the EU label in the picture: wizard.ai tells a widget whether the run's media in its data is "generated" or "edited" (film/film.js draws the matching icon).
 - Every step a person sees later (review/result) must come from an earlier step id.
 - Write all wizard texts in the admin's language.`;
 
@@ -190,7 +191,7 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
   <script src="lib/name.min.js">. Fetch reference data ONCE now (e.g. lake outlines
   from nominatim.openstreetmap.org/search?q=…&format=json&polygon_geojson=1&polygon_threshold=0.0005)
   and save it as a workspace file.
-- Runtime, window.wizard: data · brand {name, accent, logo} · mode "view"|"export" · file(path) ·
+- Runtime, window.wizard: data · brand {name, accent, logo} · ai "generated"|"edited"|null · mode "view"|"export" · file(path) ·
   json(path) · url(path) (data URL for images/fonts) · ready() · timeline({ duration, seek, poster }).
 - Animation: call wizard.timeline({ duration: seconds, seek: t => draw(t) }) and drive your own
   play/pause and <input type=range> scrubber from it. seek(t) must draw time t synchronously — the MP4

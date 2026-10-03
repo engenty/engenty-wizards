@@ -585,6 +585,10 @@ function Result({
               />
             </div>
             <OutputView base={`/api/runs/${view.id}`} step={s} output={output} />
+            {output?.assets?.some((a) => a.ai) ? (
+              // Whoever publishes it has to say so too; the file already does, in its metadata.
+              <p className="mt-3 text-[12px] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
+            ) : null}
           </Card>
         ))}
         {view.lists.map((list) => (

@@ -49,8 +49,15 @@ export async function probeMedia(path: string): Promise<{ seconds: number; audio
   return { seconds, audio: /Stream #\d+:\d+.*Audio:/.test(stderr) };
 }
 
-/** Any audio as MP3 — what every phone and browser plays. `null` without ffmpeg. */
-export async function toMp3(bytes: Uint8Array, ext: string): Promise<Uint8Array | null> {
+/**
+ * Any audio as MP3 — what every phone and browser plays — with `tags` written into the file
+ * (ID3). An MP3 is not encoded again, only tagged. `null` without ffmpeg.
+ */
+export async function toMp3(
+  bytes: Uint8Array,
+  ext: string,
+  tags: Record<string, string> = {},
+): Promise<Uint8Array | null> {
   if (!(await hasFfmpeg())) {
     return null;
   }
@@ -64,10 +71,10 @@ export async function toMp3(bytes: Uint8Array, ext: string): Promise<Uint8Array 
       "error",
       "-i",
       input,
-      "-codec:a",
-      "libmp3lame",
-      "-q:a",
+      ...(ext === "mp3" ? ["-codec:a", "copy"] : ["-codec:a", "libmp3lame", "-q:a", "3"]),
+      "-id3v2_version",
       "3",
+      ...Object.entries(tags).flatMap(([key, value]) => ["-metadata", `${key}=${value}`]),
       out,
     ]);
     return code === 0 ? new Uint8Array(await readFile(out)) : null;
