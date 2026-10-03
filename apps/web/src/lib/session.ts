@@ -1,7 +1,7 @@
 import type { ModelClass, WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { ApiError, api } from "./api";
 import { BASE, withBase } from "./base";
 
@@ -110,26 +110,36 @@ function readStored(): string | null {
   }
 }
 
+/** The pick, shared by every component that asks: the switcher and the list it switches. */
+let picked = readStored();
+const listeners = new Set<() => void>();
+
+function pick(next: string) {
+  picked = next;
+  try {
+    localStorage.setItem(KEY, next);
+  } catch {
+    // per-browser convenience only
+  }
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
 /** The project the studio is looking at; remembered per browser. */
 export function useCurrentProject() {
   const projects = useProjects();
-  const [id, setId] = useState<string | null>(readStored);
+  const id = useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => picked,
+  );
   const list = projects.data ?? [];
+  // A pick that is gone (deleted, another tenant) falls back to the first project.
   const current = list.find((p) => p.id === id) ?? list[0] ?? null;
-  useEffect(() => {
-    if (current && current.id !== id) {
-      setId(current.id);
-    }
-  }, [current, id]);
-  const select = (next: string) => {
-    setId(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // per-browser convenience only
-    }
-  };
-  return { project: current, projects: list, select, loading: projects.isLoading };
+  return { project: current, projects: list, select: pick, loading: projects.isLoading };
 }
 
 export interface WizardSummary {
