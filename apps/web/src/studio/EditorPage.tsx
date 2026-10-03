@@ -287,9 +287,9 @@ export function EditorPage() {
             onPointerDown={pane.onPointerDown}
             onKeyDown={pane.onKeyDown}
             onDoubleClick={pane.reset}
-            className="group -left-1.5 absolute inset-y-0 z-10 hidden w-3 cursor-col-resize outline-none lg:block"
+            className="group -left-1.5 absolute inset-y-0 z-10 hidden w-5 cursor-col-resize outline-none lg:block"
           >
-            <span className="absolute inset-y-6 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition group-hover:bg-ember/60 group-focus-visible:bg-ember group-active:bg-ember" />
+            <span className="-translate-y-1/2 absolute top-1/2 left-[9px] h-12 w-1.5 rounded-full bg-ink-4/40 transition group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:h-16 group-active:bg-ember" />
           </div>
           <nav className="flex shrink-0 gap-1 px-3 pt-3">
             {(["chat", "step", "files", "runs"] as Tab[]).map((k) => (
