@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Url};
 
 /// The engenty Cloud runtime offered in the server choice.
-pub const CLOUD_URL: &str = "https://engenty-wizards.com";
+pub const CLOUD_URL: &str = "https://engenty.ai/w";
 
 /// Which server the window shows. Stored in `server.json` in the app's config folder.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

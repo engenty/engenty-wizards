@@ -141,13 +141,13 @@ export const env = {
   local: {
     accessKey: str("LOCAL_ACCESS_KEY"),
     /** The Manage-App a local runtime links an account to (credits, publishing). */
-    accountUrl: str("ACCOUNT_URL", "https://account.engenty-wizards.com").replace(/\/$/, ""),
-    gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty-wizards.com").replace(
+    accountUrl: str("ACCOUNT_URL", "https://account.engenty.ai").replace(/\/$/, ""),
+    gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty.ai").replace(
       /\/$/,
       "",
     ),
     /** The cloud runtime "publish to the cloud" sends wizards to. */
-    cloudUrl: str("CLOUD_URL", "https://engenty-wizards.com").replace(/\/$/, ""),
+    cloudUrl: str("CLOUD_URL", "https://engenty.ai/w").replace(/\/$/, ""),
   },
 
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),

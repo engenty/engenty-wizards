@@ -17,11 +17,11 @@ Roots are cached by form, density and inflation; time, gaze, wind, colour and
 hair length do not regenerate them. The GPU cache is bounded to 24 variants.
 
 - Wizards: `/dev/engenty-builder` (development only; German/English).
-- Pro Manage: `/styleguide`, section `fluffy`.
+- The engenty repo's manage app: `/styleguide`, section `fluffy`.
 
-Canonical renderer source: `engenty-pro/packages/ui-core/src/components/engenty`.
+Canonical renderer source: `packages/ui-core/src/components/engenty` in the engenty repo.
 Wizards vendors the same files under `apps/web/src/engenty`; copy changes to both.
-The geometry stability tests live beside the canonical source in Pro.
+The geometry stability tests live beside the canonical source in the engenty repo.
 
 ## Motion and accessories
 

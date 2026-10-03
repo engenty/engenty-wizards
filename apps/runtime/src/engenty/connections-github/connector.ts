@@ -103,7 +103,7 @@ function mapPull(pull: GitHubPull) {
 const repoFullName = z
   .string()
   .regex(/^[^/\s]+\/[^/\s]+$/, "Expected 'owner/repo'.")
-  .describe("Repository in 'owner/repo' form (e.g. engenty/engenty-pro).");
+  .describe("Repository in 'owner/repo' form (e.g. engenty/engenty).");
 
 const listReposInput = z.object({
   limit: z

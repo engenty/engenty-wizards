@@ -1,5 +1,5 @@
 // Copies the engenty framework files this product builds on from a sibling engenty checkout
-// (default ../engenty-pro, or ENGENTY_DIR). The copies are never edited by hand: only the
+// (default ../engenty, or ENGENTY_DIR). The copies are never edited by hand: only the
 // `@engenty/*` import specifiers are pointed at their place in this tree. Run it to pick up
 // upstream changes:  node scripts/sync-engenty.mjs
 import { execSync } from "node:child_process";
@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const source = resolve(root, process.env.ENGENTY_DIR ?? "../engenty-pro");
+const source = resolve(root, process.env.ENGENTY_DIR ?? "../engenty");
 
 /** [directory in engenty, directory here, files] */
 const SETS = [
