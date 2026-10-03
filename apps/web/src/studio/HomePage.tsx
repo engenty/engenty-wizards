@@ -8,7 +8,8 @@ import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useCurrentProject, type WizardSummary } from "../lib/session";
-import { Button, Card, Chip, Dialog, Empty, Input, Select } from "../ui";
+import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
+import { openExternal } from "./LocalRuntime";
 
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
@@ -96,7 +97,7 @@ function WizardCard({ w }: { w: WizardSummary }) {
   const navigate = useNavigate();
   return (
     <Card
-      className="group flex cursor-pointer flex-col p-5 transition hover:shadow-elevated"
+      className="flex cursor-pointer flex-col p-5 transition hover:shadow-elevated"
       onClick={() => navigate(`/edit/${w.id}`)}
     >
       <div className="flex items-start justify-between">
@@ -110,8 +111,22 @@ function WizardCard({ w }: { w: WizardSummary }) {
       <div className="mt-4 flex items-center justify-between">
         <span className="text-[12px] text-ink-4">{t("home.steps", { n: w.stepCount })}</span>
         <div className="flex items-center">
-          {w.published ? <CopyLink token={w.shareToken} /> : null}
-          <ArrowUpRight className="ml-1 size-4 text-ink-4 transition group-hover:text-ink" />
+          {w.published ? (
+            <>
+              <CopyLink token={w.shareToken} />
+              {/* The live wizard as a visitor sees it, outside the studio. */}
+              <IconButton
+                label={t("share.open")}
+                className="ml-1 size-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openExternal(`${window.location.origin}${BASE}/w/${w.shareToken}`);
+                }}
+              >
+                <ArrowUpRight className="size-4" />
+              </IconButton>
+            </>
+          ) : null}
         </div>
       </div>
     </Card>
