@@ -163,7 +163,6 @@ export const claude: Harness = {
   name: "Claude Code",
   bin: CLAUDE_BIN,
   install: "npm install -g @anthropic-ai/claude-code",
-  site: "https://claude.com/claude-code",
   classes: CLASSES,
   async version(env) {
     try {

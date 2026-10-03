@@ -11,8 +11,6 @@ export interface HarnessStatus {
   id: HarnessId;
   name: string;
   install: string;
-  /** The client's own page. */
-  site: string;
   /** Null: not installed. */
   version: string | null;
   auth: "subscription" | "api_key" | "none";

@@ -148,7 +148,6 @@ export const gemini: Harness = {
   name: "Gemini CLI",
   bin: GEMINI_BIN,
   install: "npm install -g @google/gemini-cli",
-  site: "https://geminicli.com",
   classes: CLASSES,
   async version(env) {
     try {

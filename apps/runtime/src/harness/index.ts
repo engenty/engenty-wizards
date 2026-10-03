@@ -28,7 +28,6 @@ export interface HarnessStatus {
   id: HarnessId;
   name: string;
   install: string;
-  site: string;
   /** Null: not installed. */
   version: string | null;
   auth: HarnessAuth;
@@ -56,7 +55,6 @@ export async function detectHarness(id: HarnessId, force = false): Promise<Harne
     id,
     name: h.name,
     install: h.install,
-    site: h.site,
     version: null,
     auth: "none",
     interactiveLogin: h.login.interactive,

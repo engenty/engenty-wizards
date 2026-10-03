@@ -507,19 +507,16 @@ export function SetupPage() {
           ) : null}
         </div>
       </main>
-      {/* One quiet line at the foot: whose app this is, where it runs, and the clients' own pages. */}
-      <footer className="mx-auto flex w-full max-w-6xl flex-col gap-2 pb-6 text-[12px] text-white/55 sm:flex-row sm:items-center sm:justify-between sm:pb-8">
+      {/* One quiet line at the foot: whose app this is and where it runs. Its other end holds
+          a place, marked with the wordmark's dot at its own size, for what belongs there later. */}
+      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-[12px] text-white/55 sm:pb-8">
         <span>
           © {new Date().getFullYear()} engenty · {t("setup.local")}
         </span>
-        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1">
+        <span className="flex items-center gap-5">
           {site ? <FooterLink href={site}>{new URL(site).host}</FooterLink> : null}
-          {me.data.harnesses.map((h) => (
-            <FooterLink key={h.id} href={h.site}>
-              {h.name}
-            </FooterLink>
-          ))}
-        </nav>
+          <span aria-hidden="true" className="size-[3px]" style={{ background: CREAM }} />
+        </span>
       </footer>
     </div>
   );

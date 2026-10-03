@@ -29,8 +29,6 @@ export interface Harness extends EnvSpec {
   bin: string;
   /** How to install it, as one command. */
   install: string;
-  /** The client's own page: what it is and how to get it. */
-  site: string;
   /** The model each text class runs on unless a binding names another: `<id>/<alias>`. */
   classes: Record<TextClass, string>;
   version(env: NodeJS.ProcessEnv): Promise<string | null>;
