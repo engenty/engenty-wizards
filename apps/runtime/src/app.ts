@@ -74,6 +74,7 @@ app.get("/api/config", (c) =>
     devLogin: !managed && env.devLogin,
     /** The product's own site, for a runtime that runs alone. */
     site: managed ? null : env.local.cloudUrl,
+    signedOutUrl: managed && env.signedOutUrl ? env.signedOutUrl : null,
   }),
 );
 

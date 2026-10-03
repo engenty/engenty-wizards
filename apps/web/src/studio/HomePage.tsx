@@ -90,7 +90,7 @@ function WizardCard({ w }: { w: WizardSummary }) {
   return (
     <Card
       className="group flex cursor-pointer flex-col p-5 transition hover:shadow-elevated"
-      onClick={() => navigate(`/w/${w.id}`)}
+      onClick={() => navigate(`/edit/${w.id}`)}
     >
       <div className="flex items-start justify-between">
         <div className="-ml-1 -mt-1">

@@ -41,7 +41,7 @@ const BLANK: WizardDefinition = {
   ],
 };
 
-export const studioUrl = (wizardId: string) => `${env.appUrl}/w/${wizardId}`;
+export const studioUrl = (wizardId: string) => `${env.appUrl}/edit/${wizardId}`;
 export const shareUrl = (token: string) => `${env.appUrl}/w/${token}`;
 const newShareToken = () => nanoid(14);
 

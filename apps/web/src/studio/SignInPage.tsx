@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
 import { api } from "../lib/api";
+import { withBase } from "../lib/base";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
@@ -15,7 +16,10 @@ import { Button } from "../ui";
 export function SignInPage() {
   const config = useQuery({
     queryKey: ["config"],
-    queryFn: () => api.get<{ mode: "managed" | "local"; devLogin: boolean }>("/api/config"),
+    queryFn: () =>
+      api.get<{ mode: "managed" | "local"; devLogin: boolean; signedOutUrl: string | null }>(
+        "/api/config",
+      ),
   });
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -23,6 +27,18 @@ export function SignInPage() {
   const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
   const auto = config.data?.mode === "local" && config.data.devLogin;
   const [autoFailed, setAutoFailed] = useState(false);
+  // While sign-up is closed, a visitor of the start page goes to the landing page; the sign-in
+  // itself stays at /sign-in.
+  const away =
+    config.data?.signedOutUrl && window.location.pathname === withBase("/") && !failed
+      ? config.data.signedOutUrl
+      : null;
+
+  useEffect(() => {
+    if (away) {
+      window.location.replace(away);
+    }
+  }, [away]);
 
   useEffect(() => {
     if (!auto || autoFailed) {
@@ -43,7 +59,7 @@ export function SignInPage() {
   }, [auto, autoFailed, qc]);
 
   // Nothing to decide yet, or nothing to decide at all: the engenty alone, until the studio is there.
-  if (config.isLoading || (auto && !autoFailed)) {
+  if (config.isLoading || away || (auto && !autoFailed)) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Mascot kind="round" size={56} />

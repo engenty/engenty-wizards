@@ -70,6 +70,14 @@ export function App() {
           }
         />
         <Route
+          path="/sign-in"
+          element={
+            <Studio>
+              <Navigate to="/" replace />
+            </Studio>
+          }
+        />
+        <Route
           path="/new"
           element={
             <Studio>
@@ -78,7 +86,7 @@ export function App() {
           }
         />
         <Route
-          path="/w/:id"
+          path="/edit/:id"
           element={
             <Studio bare>
               <EditorPage />

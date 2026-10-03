@@ -103,6 +103,11 @@ export const env = {
     /\/$/,
     "",
   ),
+  /**
+   * Where a signed-out visitor of the start page is sent instead of the sign-in, e.g. a landing
+   * page while sign-up is closed. The sign-in stays at /sign-in. Empty: the start page signs in.
+   */
+  signedOutUrl: str("SIGNED_OUT_URL"),
   /** More host names this server answers under, besides APP_URL's and the loopback names. */
   allowedHosts: str("ALLOWED_HOSTS")
     .split(",")

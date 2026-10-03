@@ -56,7 +56,7 @@ fn deep_link_path(url: &Url) -> Option<String> {
         return sealed.then(|| format!("/api/auth/handoff?code={code}"));
     }
     match parts.as_slice() {
-        ["w", wizard] if id(wizard) => Some(format!("/w/{wizard}")),
+        ["w", wizard] if id(wizard) => Some(format!("/edit/{wizard}")),
         ["new"] => Some("/new".into()),
         ["settings"] => Some("/settings".into()),
         [] => Some("/".into()),

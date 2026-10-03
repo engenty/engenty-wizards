@@ -153,7 +153,7 @@ pub fn show_local(app: &AppHandle) -> bool {
     }
 }
 
-/// Opens a path of the studio (`/w/<id>`), now or once the server is shown.
+/// Opens a path of the studio (`/edit/<id>`), now or once the server is shown.
 pub fn open_path(app: &AppHandle, path: &str) {
     let origin = {
         let shell = app.state::<Shell>();

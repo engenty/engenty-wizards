@@ -46,7 +46,7 @@ export function NewWizardPage() {
     onSuccess: async ({ id }, starterId) => {
       await qc.invalidateQueries({ queryKey: ["projects"] });
       await qc.invalidateQueries({ queryKey: ["wizards"] });
-      navigate(starterId ? `/w/${id}` : `/w/${id}?prompt=${encodeURIComponent(prompt.trim())}`);
+      navigate(starterId ? `/edit/${id}` : `/edit/${id}?prompt=${encodeURIComponent(prompt.trim())}`);
     },
   });
 
