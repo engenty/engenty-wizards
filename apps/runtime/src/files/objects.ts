@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -24,7 +25,8 @@ function fileStore(root: string): ObjectStore {
     async put(key, data) {
       const path = at(key);
       await mkdir(dirname(path), { recursive: true });
-      const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+      // Two writers of the same key (the same blob, at the same moment) each need their own.
+      const tmp = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
       await writeFile(tmp, data);
       await rename(tmp, path);
     },
