@@ -5,6 +5,7 @@ import {
   type GenerateStep,
   isDecisionStep,
   type Step,
+  templateRefs,
 } from "@engenty-wizards/shared/definition";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import { Agent } from "@mastra/core/agent";
@@ -19,9 +20,9 @@ import {
   generateVideoMedia,
   type MediaReference,
 } from "../media/generate.js";
-import { attachTools, costOf, textModel } from "../models.js";
+import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
 import { buildStepTools } from "../tools/index.js";
-import { personUploads } from "../tools/store.js";
+import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { prepareInputs } from "./prepare.js";
 import { answersAsText, renderTemplate, resolveRef, type TemplateScope } from "./template.js";
@@ -143,12 +144,57 @@ function tablesToRecords(value: Record<string, unknown>, fields: { id: string; k
   return out;
 }
 
+/** An agent step looks at this many photos itself; more are read one by one with read_document. */
+const MAX_SEEN = 8;
+
+/** Models that take pictures in a message: the installed clients and the large vendors' models. */
+function seesImages(resolved: ResolvedModel<unknown>): boolean {
+  return isHarnessVendor(resolved.vendor) || /^(anthropic|openai|google)$/.test(resolved.vendor);
+}
+
+/**
+ * The photos the step's instructions name ({{imageField}}), handed to the model itself. Looking
+ * at them directly is one model call; reading each with read_document is one more call per photo
+ * and leaves the step with a description instead of the picture.
+ */
+async function seenPhotos(
+  step: AgentStep,
+  ctx: StepContext,
+  resolved: ResolvedModel<unknown>,
+  uploads: UploadRef[],
+) {
+  if (!seesImages(resolved)) {
+    return [];
+  }
+  const named = new Set(templateRefs(step.instructions).map((ref) => ref.split(".")[0]));
+  const ids = allFields(ctx.def)
+    .filter((f) => f.kind === "image" && named.has(f.id))
+    .flatMap((f) => {
+      const value = ctx.state.values[f.id];
+      return (Array.isArray(value) ? value : [value]).filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      );
+    })
+    .slice(0, MAX_SEEN);
+  const out: { upload: UploadRef; id: string; data: Uint8Array; mime: string }[] = [];
+  for (const id of ids) {
+    const upload = uploads.find((u) => u.ref === `upload:${id}`);
+    const found = upload ? await loadAsset(id) : null;
+    if (upload && found && /^image\/(jpeg|png|webp)$/.test(found.row.mime)) {
+      out.push({ upload, id, data: new Uint8Array(found.data), mime: found.row.mime });
+    }
+  }
+  return out;
+}
+
 export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
   const resolved = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const uploads = await personUploads(ctx);
   const { tools, assets, close } = await buildStepTools(step, ctx, resolved, uploads);
   attachTools(resolved, tools);
   try {
+    const photos = await seenPhotos(step, ctx, resolved, uploads);
+    const others = uploads.filter((u) => !photos.some((p) => p.upload === u));
     const formatHint =
       step.output.format === "markdown"
         ? "Answer with the finished result in clean Markdown — no preamble, no closing remarks."
@@ -161,8 +207,13 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     const prompt = [
       `# TASK\n${renderTemplate(step.instructions, ctx.scope)}`,
       `# THE PERSON'S ANSWERS (data)\n${answersAsText(ctx.scope) || "(none)"}`,
-      uploads.length
-        ? `# FILES THE PERSON GAVE\nRead them with read_document or scan_documents.\n${uploads
+      photos.length
+        ? `# PHOTOS THE PERSON GAVE\nThey are attached to this message, in this order — look at them yourself, do not call read_document for them.\n${photos
+            .map((p, i) => `${i + 1}. ${p.upload.ref} — ${p.upload.name}, from "${p.upload.field}"`)
+            .join("\n")}`
+        : "",
+      others.length
+        ? `# FILES THE PERSON GAVE\nRead them with read_document or scan_documents.\n${others
             .map((u) => `- ${u.ref} — ${u.name} (${u.mime}), from "${u.field}"`)
             .join("\n")}`
         : "",
@@ -200,7 +251,26 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     });
     // Working through a mailbox or a row of portals takes many small tool calls.
     const maxSteps = step.tools.includes("browser") || step.connections?.length ? 60 : 20;
-    const result = await agent.generate(prompt, { maxSteps, abortSignal: ctx.signal });
+    for (const [i, photo] of photos.entries()) {
+      await ctx.emit("info", `Sieht sich Foto ${i + 1} von ${photos.length} an`, photo.id);
+    }
+    const message = photos.length
+      ? [
+          {
+            role: "user" as const,
+            content: [
+              { type: "text" as const, text: prompt },
+              ...photos.map((p) => ({
+                type: "file" as const,
+                data: p.data,
+                mediaType: p.mime,
+                filename: p.upload.name,
+              })),
+            ],
+          },
+        ]
+      : prompt;
+    const result = await agent.generate(message, { maxSteps, abortSignal: ctx.signal });
     await ctx.chargeUsd(costOf(resolved, (result as any).totalUsage ?? result.usage));
     // `result.text` strings together what the model said between tool calls ("I open the page …").
     // A written result is its last message; structuring keeps everything, numbers may sit anywhere.
@@ -478,8 +548,26 @@ async function runMediaStep(
     );
   }
   let finished = 0;
-  const made = await inParallel(todo, 3, async (entry) => {
-    const prompt = await visualPrompt(step, ctx, entry);
+  const note = ctx.state.notes[step.id];
+  const made = await inParallel(todo, asset === "image" ? 4 : 3, async (entry) => {
+    // An entry's brief was written for it by the step that made the table: it goes to the model
+    // as it is. One brief for all, or a change the person asked for, is turned into a prompt first.
+    const prompt =
+      step.each && !note
+        ? [
+            renderTemplate(step.prompt, { ...ctx.scope, entry }),
+            step.options?.style ? `Style: ${step.options.style}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : await visualPrompt(step, ctx, entry);
+    if (entry.reference && todo.length > 1) {
+      await ctx.emit(
+        "info",
+        `${asset === "image" ? "Bearbeitet" : "Dreht"} ${entry.index + 1} von ${entries.length}`,
+        entry.reference,
+      );
+    }
     const reference = await loadReference(entry.reference, ctx);
     const media: GeneratedMedia =
       asset === "image"
@@ -509,7 +597,11 @@ async function runMediaStep(
     });
     finished++;
     if (todo.length > 1) {
-      await ctx.emit("info", `${finished} von ${todo.length} fertig`);
+      await ctx.emit(
+        "info",
+        `${finished} von ${todo.length} fertig`,
+        asset === "image" ? ref.id : undefined,
+      );
     }
     return { index: entry.index, prompt, ref };
   });

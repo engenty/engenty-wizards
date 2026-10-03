@@ -183,6 +183,8 @@ export const runEvent = sqliteTable(
     stepId: text("step_id"),
     type: text("type", { enum: ["step_started", "step_done", "tool", "info", "error"] }).notNull(),
     message: text("message").notNull(),
+    /** A picture of the run the event is about; shown while the step works. */
+    assetId: text("asset_id"),
     createdAt: createdAt(),
   },
   (t) => [index("run_event_run").on(t.runId, t.id)],

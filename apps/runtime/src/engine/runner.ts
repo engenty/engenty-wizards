@@ -295,7 +295,7 @@ async function makeContext(
       unattended.has(run.id)
         ? Promise.resolve(null)
         : askPerson(run.id, { ...ask, stepId }, signal),
-    emit: (type, message) => emitEvent(run.id, run.cursor, type, message),
+    emit: (type, message, asset) => emitEvent(run.id, run.cursor, type, message, asset),
     call: { runId: run.id, stepId },
     chargeUsd: (usd) => addLocalCost(run.id, stepId, usd),
     saveAsset: (input) =>

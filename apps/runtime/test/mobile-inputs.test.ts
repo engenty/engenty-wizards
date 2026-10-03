@@ -240,3 +240,27 @@ describe("delivery", () => {
     expect(placeLabel({})).toBeNull();
   });
 });
+
+describe("how many files a page takes", () => {
+  const page: PageStep = {
+    id: "p",
+    type: "page",
+    title: "P",
+    fields: [{ id: "photos", label: "Photos", kind: "image", multiple: true, min: 2, max: 3 }],
+  };
+
+  it("keeps the files in the order the person put them", () => {
+    const { values, errors } = readPageInput(page, { photos: ["c", "a", "b"] });
+    expect(errors).toEqual([]);
+    expect(values.photos).toEqual(["c", "a", "b"]);
+  });
+
+  it("asks for more below the minimum and for fewer above the maximum", () => {
+    expect(readPageInput(page, { photos: ["a"] }).errors.map((e) => e.field)).toEqual(["photos"]);
+    expect(readPageInput(page, { photos: ["a", "b", "c", "d"] }).errors).toHaveLength(1);
+  });
+
+  it("takes none where the field is not required", () => {
+    expect(readPageInput(page, {}).errors).toEqual([]);
+  });
+});

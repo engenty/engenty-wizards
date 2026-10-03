@@ -172,8 +172,40 @@ function FieldEditor({
               <span className="text-[13px] text-ink-2">Mehrere Dateien</span>
               <Switch
                 checked={Boolean(field.multiple)}
-                onChange={(v) => onChange({ ...field, multiple: v || undefined })}
+                onChange={(v) =>
+                  onChange({
+                    ...field,
+                    multiple: v || undefined,
+                    ...(v ? {} : { min: undefined, max: undefined }),
+                  })
+                }
               />
+            </div>
+          ) : null}
+          {(field.kind === "image" || field.kind === "file") && field.multiple ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[13px] text-ink-2">Wie viele?</span>
+              <div className="flex items-center gap-1.5">
+                {(["min", "max"] as const).map((key) => (
+                  <Input
+                    key={key}
+                    type="number"
+                    min={1}
+                    max={30}
+                    aria-label={key === "min" ? "Mindestens" : "Höchstens"}
+                    placeholder={key === "min" ? "min." : "max."}
+                    value={field[key] ?? ""}
+                    onChange={(e) => {
+                      const n = Math.round(Number(e.target.value));
+                      onChange({
+                        ...field,
+                        [key]: e.target.value && n >= 1 ? Math.min(n, 30) : undefined,
+                      });
+                    }}
+                    className="h-8 w-16 text-right"
+                  />
+                ))}
+              </div>
             </div>
           ) : null}
           {field.kind === "file" ? (

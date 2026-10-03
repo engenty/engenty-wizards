@@ -27,7 +27,8 @@ export interface StepContext {
   project: ProjectRow;
   signal: AbortSignal;
   resources: RunResources;
-  emit(type: "tool" | "info", message: string): Promise<void>;
+  /** Tells the person what the step is doing; `asset` is a picture of the run it is about. */
+  emit(type: "tool" | "info", message: string, asset?: string): Promise<void>;
   /**
    * Asks the person and waits for the answer. `null` when nobody is there to answer (a run an
    * MCP client drives).

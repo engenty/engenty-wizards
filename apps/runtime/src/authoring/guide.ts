@@ -60,7 +60,9 @@ type Field = {
   columns?: { id, label, kind: "text"|"number"|"money" }[]   // items only; row amount = product of number/money columns
   vat?: { rate?: number, field?: fieldId }                    // items only; VAT % fixed or read from a field
   currency?: "EUR"|...                                        // items only
-  multiple?: boolean            // image / file: several files
+  multiple?: boolean            // image / file: several files, in the order the person puts them (they can drag them)
+  min?: number, max?: number    // image / file with multiple: how many files at least / at most (up to 30). Set max wherever
+                                //   every file costs something later (a video clip per photo)
   camera?: boolean              // file: also offer the camera, for papers the person has not scanned (image always offers it)
   video?: boolean               // file: the camera also records a short clip (up to 30 s); the clip is a file like any other
   scan?: boolean                // text: a "scan" button fills it from a QR code or barcode (serial number, ticket, article number)
@@ -112,6 +114,8 @@ type GenerateStep = {
                                 // image/video: ONE RESULT PER ENTRY (at most 8) — per upload of an image field (multiple), per image
                                 //   of an earlier step, or per row of an agent step's table. The prompt reads the row as
                                 //   {{item.<column>}} (plus {{index}}, {{count}}); referenceImage gives entry n its n-th image.
+                                //   With each the prompt goes to the model AS WRITTEN (no rewriting step): let the agent step
+                                //   that makes the table write complete visual descriptions.
                                 //   In a review the person can make single results again.
   working?: string
 }
@@ -162,7 +166,8 @@ ${sandboxGuideLine()}
 - Working in a service for the person (read their Notion, create an issue, look up a customer): import the service as a connector, declare a connection with "connector", put a page field of kind "connection" before the step, and list the connection in the step's "connections". Prefer a connector over the browser whenever the service has one.
 - Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.
 - Most people open a wizard on their phone. Keep pages short, and let the phone do the typing: photos with an "image" field (multiple) instead of descriptions, the place with a "location" field instead of an address form, what happened as an "audio" field instead of a long textarea (keep an optional textarea beside it), a sign-off as a "signature" field, a serial or ticket number as a "text" field with scan. Typical: damage report, handover protocol, site inspection, delivery note.
-- Photos in documents: a document step can place the photos of an earlier "image" field and a "signature" (it gets them as asset:// images); say in its prompt where they go. A model only SEES a photo in an agent step, through read_document.
+- Photos in documents: a document step can place the photos of an earlier "image" field and a "signature" (it gets them as asset:// images); say in its prompt where they go.
+- Looking at photos: an agent step whose instructions name an image field ({{photos}}) gets up to 8 of its photos attached and sees them itself, in the person's order — do not tell it to call read_document for them. Photos in a "file" field, PDFs and scans are read with read_document / scan_documents.
 - Papers and scans: a "file" field with multiple and camera. Agent steps read uploads with read_document; for invoices and receipts scan_documents returns the fields (vendor, number, date, totals, currency) exactly as printed.
 - Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
 - Going through documents one by one (receipts against payments): never one model step per document. One step reads them in batches (scan_documents takes 30 at once) and writes rows into a list with "check"; the review shows that list split-screen — the person answers each row beside its file, without any model call.

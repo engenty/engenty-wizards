@@ -8,6 +8,13 @@
       "when": 1790945216913,
       "tag": "0000_eminent_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791067068249,
+      "tag": "0001_salty_master_chief",
+      "breakpoints": true
     }
   ]
 }

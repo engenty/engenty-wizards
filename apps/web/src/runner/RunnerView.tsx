@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
 import { t } from "../lib/i18n";
 import { ShareResultButton } from "../share/ShareSheet";
@@ -278,12 +279,14 @@ function Working({
       .find((ev) => ev.type === "step_started" && ev.stepId === view.step?.id)?.message ??
     view.step?.title ??
     t("run.working");
-  const trail = view.events
-    .filter(
-      (ev) =>
-        (ev.type === "tool" || ev.type === "info") && new Date(ev.at).getTime() >= started - 500,
-    )
-    .slice(-4);
+  const recent = view.events.filter(
+    (ev) =>
+      (ev.type === "tool" || ev.type === "info") && new Date(ev.at).getTime() >= started - 500,
+  );
+  const trail = recent.slice(-4);
+  // The pictures the step is about — photos it looks at, images it has just made — newest last.
+  const pictures = [...new Set(recent.map((ev) => ev.asset).filter((id): id is string => !!id))];
+  const latest = [...recent].reverse().find((ev) => ev.asset)?.asset;
   return (
     <div className="flex animate-rise flex-col items-center pt-6 text-center">
       <Mascot kind={view.wizard.avatar} size={compact ? 130 : 170} fluffy />
@@ -291,6 +294,21 @@ function Working({
       <div className="mt-1 text-[13px] text-ink-4 tabular-nums">
         {t("run.elapsed", { s: Math.max(0, Math.round((now - started) / 1000)) })}
       </div>
+      {pictures.length ? (
+        <div className="mt-5 flex max-w-full flex-wrap justify-center gap-2">
+          {pictures.slice(-8).map((id) => (
+            <img
+              key={id}
+              src={withBase(`/api/runs/${view.id}/assets/${id}`)}
+              alt=""
+              className={cn(
+                "size-16 animate-rise rounded-lg bg-paper-2 object-cover ring-1 ring-border-soft transition sm:size-20",
+                id === latest ? "ring-2 ring-ember" : "opacity-70",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
       <div className="mt-6 flex min-h-[7rem] w-full max-w-sm flex-col gap-1.5">
         {trail.map((ev, i) => (
           <div
@@ -359,10 +377,20 @@ function useDoneSignal(view: RunView | null) {
 function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Record<string, boolean>>({});
-  const [noteFor, setNoteFor] = useState<string | null>(null);
+  // What the person wants changed, and which of the shown results it is about.
   const [note, setNote] = useState("");
+  const made = view.shown.filter((x) => x.output);
+  const [target, setTarget] = useState<string | null>(made.length === 1 ? made[0].step.id : null);
   // Steps with several results: the ones picked to be made again.
   const [picked, setPicked] = useState<Record<string, number[]>>({});
+  const prompt = useRef<HTMLTextAreaElement>(null);
+  const aim = made.find((x) => x.step.id === target);
+  const several = aim?.step.type === "generate" && (aim.output?.assets?.length ?? 0) > 1;
+  const send = () => {
+    if (aim && note.trim()) {
+      void run.regenerate(step.id, aim.step.id, note.trim(), picked[aim.step.id]);
+    }
+  };
   return (
     <div className="animate-rise">
       <StepHeading title={step.title} description={step.description} />
@@ -385,18 +413,6 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                       <Pencil className="size-3.5" /> {t("run.edit")}
                     </button>
                   ) : null}
-                  {step.regenerate ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNoteFor(noteFor === s.id ? null : s.id);
-                        setNote("");
-                      }}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
-                    >
-                      <RefreshCw className="size-3.5" /> {t("run.regenerate")}
-                    </button>
-                  ) : null}
                 </div>
               </div>
               <OutputView
@@ -409,53 +425,21 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                 picked={picked[s.id]}
                 onPick={
                   step.regenerate
-                    ? (i) =>
+                    ? (i) => {
+                        // Picking a result says what the change is about.
+                        setTarget(s.id);
                         setPicked((p) => {
                           const now = p[s.id] ?? [];
                           return {
                             ...p,
                             [s.id]: now.includes(i) ? now.filter((x) => x !== i) : [...now, i],
                           };
-                        })
+                        });
+                        prompt.current?.focus();
+                      }
                     : undefined
                 }
               />
-              {noteFor === s.id ? (
-                <Card className="mt-3 animate-rise p-3">
-                  {(output?.assets?.length ?? 0) > 1 && s.type === "generate" ? (
-                    <p className="px-2 pt-1 text-[13px] text-ink-3">
-                      {picked[s.id]?.length
-                        ? t("run.regeneratePicked", {
-                            n: [...picked[s.id]]
-                              .sort((a, b) => a - b)
-                              .map((i) => i + 1)
-                              .join(", "),
-                          })
-                        : t("run.regenerateAll")}
-                    </p>
-                  ) : null}
-                  <Textarea
-                    autoFocus
-                    minRows={2}
-                    value={note}
-                    placeholder={t("run.regenerateNote")}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="border-0 bg-transparent shadow-none focus:ring-0"
-                  />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button variant="ghost" size="sm" onClick={() => setNoteFor(null)}>
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      busy={run.busy}
-                      onClick={() => void run.regenerate(step.id, s.id, note, picked[s.id])}
-                    >
-                      {t("run.regenerateGo")}
-                    </Button>
-                  </div>
-                </Card>
-              ) : null}
             </section>
           );
         })}
@@ -471,6 +455,75 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
             )}
           </section>
         ))}
+        {step.regenerate && made.length ? (
+          // The way to say what should be different: always there, below what it is about.
+          <Card className="p-3">
+            {made.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-1.5 px-1 pb-2">
+                <span className="mr-1 text-[13px] text-ink-3">{t("run.feedbackTarget")}</span>
+                {made.map(({ step: s }) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-pressed={target === s.id}
+                    onClick={() => {
+                      setTarget(s.id);
+                      prompt.current?.focus();
+                    }}
+                    className={cn(
+                      "inline-flex h-8 items-center rounded-full px-3 text-[13px] ring-1 transition coarse:h-11",
+                      target === s.id
+                        ? "bg-ember-tint text-ink ring-ember"
+                        : "bg-card text-ink-2 ring-input hover:text-ink",
+                    )}
+                  >
+                    {s.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <Textarea
+              ref={prompt}
+              minRows={2}
+              maxRows={8}
+              value={note}
+              placeholder={t("run.feedbackPlaceholder")}
+              onChange={(e) => setNote(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              className="border-0 bg-transparent shadow-none focus:ring-0"
+            />
+            <div className="flex items-center justify-between gap-3 px-1 pt-1">
+              <span className="min-w-0 text-[12px] text-ink-3">
+                {several
+                  ? picked[aim.step.id]?.length
+                    ? t("run.regeneratePicked", {
+                        n: [...picked[aim.step.id]]
+                          .sort((x, y) => x - y)
+                          .map((i) => i + 1)
+                          .join(", "),
+                      })
+                    : t("run.regenerateAll")
+                  : !aim && note.trim()
+                    ? t("run.feedbackPick")
+                    : null}
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                busy={run.busy}
+                disabled={!note.trim() || !aim}
+                onClick={send}
+              >
+                <RefreshCw className="size-3.5" /> {t("run.regenerateGo")}
+              </Button>
+            </div>
+          </Card>
+        ) : null}
       </div>
       <Footer view={view} run={run} sticky>
         <Button

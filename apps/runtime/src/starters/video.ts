@@ -316,7 +316,9 @@ Film.play({
             kind: "image",
             multiple: true,
             required: true,
-            help: "3 bis 6 Fotos im Querformat, ein Raum pro Foto, in der Reihenfolge des Rundgangs.",
+            min: 2,
+            max: 6,
+            help: "Im Querformat, ein Raum pro Foto. Zieh sie in die Reihenfolge des Rundgangs.",
           },
           {
             id: "title",
@@ -384,7 +386,7 @@ Film.play({
         instructions: `Du bereitest ein Rundgang-Video für eine Immobilie vor: „{{title}}“, Lage: {{place}}.
 Eckdaten: {{facts}}
 
-Sieh dir jedes Foto mit read_document an, in genau dieser Reihenfolge: {{photos}}
+Sieh dir die Fotos an – sie sind in der Reihenfolge des Rundgangs: {{photos}}
 
 Liefere:
 - rooms: GENAU eine Zeile pro Foto, in derselben Reihenfolge.

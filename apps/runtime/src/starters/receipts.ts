@@ -115,6 +115,7 @@ export const RECEIPTS: Starter = {
             multiple: true,
             camera: true,
             required: true,
+            max: 6,
             help: "CSV-Export, PDF oder Foto. Daraus lese ich die Zahlungen des Monats.",
           },
           {
@@ -137,6 +138,7 @@ export const RECEIPTS: Starter = {
             kind: "file",
             multiple: true,
             camera: true,
+            max: 30,
             help: "PDFs oder Fotos von Papierbelegen – fotografiere sie einfach ab.",
           },
           {

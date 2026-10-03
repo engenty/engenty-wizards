@@ -15,10 +15,11 @@ export async function emitEvent(
   stepId: string | null,
   type: RunEvent["type"],
   message: string,
+  asset?: string | null,
 ): Promise<void> {
   const [row] = await db
     .insert(schema.runEvent)
-    .values({ runId, stepId, type, message: message.slice(0, 2000) })
+    .values({ runId, stepId, type, message: message.slice(0, 2000), assetId: asset ?? null })
     .returning();
   const event: RunEvent = {
     id: row.id,
@@ -26,6 +27,7 @@ export async function emitEvent(
     stepId: row.stepId,
     type: row.type,
     message: row.message,
+    asset: row.assetId,
   };
   bus.emit(runId, { runId, event } satisfies RunSignal);
 }
@@ -54,5 +56,6 @@ export async function recentEvents(runId: string, afterId = 0, limit = 40): Prom
     stepId: r.stepId,
     type: r.type,
     message: r.message,
+    asset: r.assetId,
   }));
 }

@@ -1,6 +1,17 @@
-import { type Field, itemsTotals } from "@engenty-wizards/shared/definition";
+import { type Field, itemsTotals, MAX_FILES } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
-import { Camera, Film, ImagePlus, Paperclip, Plus, ScanLine, Trash2, Video, X } from "lucide-react";
+import {
+  Camera,
+  Film,
+  GripVertical,
+  ImagePlus,
+  Paperclip,
+  Plus,
+  ScanLine,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
@@ -152,8 +163,17 @@ function UploadField({
   const [error, setError] = useState<string | null>(null);
   const [camera, setCamera] = useState(false);
   const [over, setOver] = useState(false);
+  // The file being dragged to another place in the list. The ref is what the pointer handlers
+  // read: a move can arrive before the state has rendered.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const drag = useRef<string | null>(null);
+  const grab = (id: string | null) => {
+    drag.current = id;
+    setDragging(id);
+  };
   const image = field.kind === "image";
   const multiple = Boolean(field.multiple);
+  const most = multiple ? (field.max ?? MAX_FILES) : 1;
   const withCamera = image || Boolean(field.camera) || Boolean(field.video);
   const clips = !image && Boolean(field.video);
   const ids = Array.isArray(value)
@@ -164,18 +184,23 @@ function UploadField({
   // The list as it is now, not as it was when an upload started: several can finish in a row.
   const current = useRef(ids);
   current.current = ids;
-  const room = multiple || !ids.length;
+  const room = ids.length < most;
 
   const add = async (files: File[]) => {
-    const wanted = image ? files.filter((f) => f.type.startsWith("image/")) : files;
+    // Several picked at once arrive in whatever order the file dialog likes; by name, pictures
+    // from a camera are in the order they were taken.
+    const wanted = (image ? files.filter((f) => f.type.startsWith("image/")) : files).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true }),
+    );
     if (!wanted.length) {
       return;
     }
+    const free = most - (multiple ? current.current.length : 0);
     setBusy(true);
     onBusy?.(true);
-    setError(null);
+    setError(wanted.length > free && multiple ? t("run.maxFiles", { n: most }) : null);
     try {
-      for (const raw of multiple ? wanted : wanted.slice(0, 1)) {
+      for (const raw of wanted.slice(0, Math.max(0, free))) {
         const file = await shrinkImage(raw);
         const ref = await api.upload<{ id: string; name: string; mime: string }>(
           `/api/runs/${runId}/uploads`,
@@ -199,6 +224,19 @@ function UploadField({
     const left = ids.filter((x) => x !== id);
     onChange(multiple ? left : undefined);
   };
+  // The order is part of the answer (the rooms of a tour, the pages of a document).
+  const move = (id: string, to: number) => {
+    const from = current.current.indexOf(id);
+    const at = Math.min(current.current.length - 1, Math.max(0, to));
+    if (from < 0 || from === at) {
+      return;
+    }
+    const next = current.current.filter((x) => x !== id);
+    next.splice(at, 0, id);
+    current.current = next;
+    onChange(next);
+  };
+  const sortable = multiple && ids.length > 1;
 
   // A screenshot or a copied picture is pasted straight in: into the field the pointer is on,
   // or the page's only upload field. Typing in a text field keeps its own paste.
@@ -247,14 +285,61 @@ function UploadField({
     >
       {ids.length ? (
         <div className="mb-2 flex flex-col gap-2">
-          {ids.map((id) => {
+          {ids.map((id, index) => {
             const known = names[id];
             const mime = known?.mime ?? (image ? "image/" : "");
             return (
               <div
                 key={id}
-                className="flex items-center gap-3 rounded-xl bg-card p-2 ring-1 ring-input"
+                data-file-id={id}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl bg-card p-2 ring-1 ring-input transition-shadow",
+                  dragging === id && "relative z-10 shadow-elevated ring-2 ring-ember",
+                )}
               >
+                {sortable ? (
+                  <button
+                    type="button"
+                    aria-label={t("run.moveFile", { n: index + 1 })}
+                    title={t("run.moveFileHint")}
+                    className={cn(
+                      "-mr-1 flex h-14 w-9 shrink-0 touch-none flex-col items-center justify-center gap-0.5 rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink",
+                      dragging === id ? "cursor-grabbing" : "cursor-grab",
+                    )}
+                    onPointerDown={(e) => {
+                      try {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      } catch {
+                        // Without capture the drag still works while the pointer stays on the list.
+                      }
+                      grab(id);
+                    }}
+                    onPointerMove={(e) => {
+                      if (drag.current !== id) {
+                        return;
+                      }
+                      // The row under the pointer gives its place to the one being dragged.
+                      const row = document
+                        .elementFromPoint(e.clientX, e.clientY)
+                        ?.closest("[data-file-id]");
+                      const other = row?.getAttribute("data-file-id");
+                      if (other && other !== id && root.current?.contains(row ?? null)) {
+                        move(id, current.current.indexOf(other));
+                      }
+                    }}
+                    onPointerUp={() => grab(null)}
+                    onPointerCancel={() => grab(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                        e.preventDefault();
+                        move(id, index + (e.key === "ArrowUp" ? -1 : 1));
+                      }
+                    }}
+                  >
+                    <span className="font-medium text-[12px] tabular-nums">{index + 1}</span>
+                    <GripVertical className="size-4" />
+                  </button>
+                ) : null}
                 {mime.startsWith("image/") ? (
                   <img
                     src={withBase(`/api/runs/${runId}/assets/${id}`)}
@@ -359,6 +444,15 @@ function UploadField({
         onCapture={(file) => add([file])}
         onNative={() => nativeCamera.current?.click()}
       />
+      {multiple && (field.min || field.max) ? (
+        <div className="mt-2 text-[13px] text-ink-3 tabular-nums">
+          {field.min && ids.length < field.min
+            ? t("run.filesMin", { n: ids.length, min: field.min })
+            : field.max
+              ? t("run.filesOf", { n: ids.length, max: field.max })
+              : null}
+        </div>
+      ) : null}
       {error ? <div className="mt-2 text-[13px] text-rose">{error}</div> : null}
     </div>
   );

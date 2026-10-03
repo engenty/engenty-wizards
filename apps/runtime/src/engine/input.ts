@@ -3,6 +3,7 @@ import {
   type Field,
   isLocationValue,
   type LocationValue,
+  MAX_FILES,
   type PageStep,
 } from "@engenty-wizards/shared/definition";
 
@@ -37,7 +38,7 @@ function coerce(field: Field, raw: unknown): unknown {
     case "file": {
       const ids = (Array.isArray(raw) ? raw : [raw])
         .filter((v): v is string => typeof v === "string" && v.length > 0)
-        .slice(0, 20);
+        .slice(0, MAX_FILES);
       if (!ids.length) {
         return undefined;
       }
@@ -148,6 +149,19 @@ export function readPageInput(
     if (field.required && empty(v) && field.kind !== "toggle") {
       errors.push({ field: field.id, message: "Pflichtfeld" });
       continue;
+    }
+    if (Array.isArray(v) && (field.kind === "image" || field.kind === "file")) {
+      if (field.min && v.length < field.min) {
+        errors.push({ field: field.id, message: `Bitte mindestens ${field.min} auswählen` });
+        continue;
+      }
+      if (field.max && v.length > field.max) {
+        errors.push({
+          field: field.id,
+          message: `Höchstens ${field.max} – bitte einige entfernen`,
+        });
+        continue;
+      }
     }
     if (field.kind === "number" && Number.isNaN(v)) {
       errors.push({ field: field.id, message: "Bitte eine Zahl eingeben" });

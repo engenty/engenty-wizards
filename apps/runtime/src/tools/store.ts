@@ -224,7 +224,13 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
     execute: ({ file, offset }) =>
       attempt(async () => {
         const source = await resolveFile(ctx, file);
-        await ctx.emit("tool", `Liest ${source.name}`);
+        await ctx.emit(
+          "tool",
+          `Liest ${source.name}`,
+          file.startsWith("upload:") && source.mime.startsWith("image/")
+            ? file.slice("upload:".length)
+            : undefined,
+        );
         const doc = await parseDocument(source, { charge, signal: ctx.signal, call: ctx.call });
         const start = offset ?? 0;
         return {

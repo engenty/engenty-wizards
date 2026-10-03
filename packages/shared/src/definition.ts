@@ -89,6 +89,9 @@ export function locationText(v: LocationValue): string {
   return label && point ? `${label} (${point})` : label || point;
 }
 
+/** A field takes at most this many files. */
+export const MAX_FILES = 30;
+
 export const TOOL_IDS = ["web_search", "web_fetch", "browser", "sandbox", "image", "http"] as const;
 
 /**
@@ -150,8 +153,11 @@ export const fieldSchema = z.object({
   /** VAT for `items`: a fixed rate in percent, or the id of a number/select field holding it. */
   vat: z.object({ rate: z.number().optional(), field: z.string().optional() }).optional(),
   currency: z.string().optional(),
-  /** image / file: several files; the value is then a list. */
+  /** image / file: several files; the value is then a list, in the order the person put them. */
   multiple: z.boolean().optional(),
+  /** image / file with `multiple`: how many files at least and at most (up to 30). */
+  min: z.number().int().min(1).max(MAX_FILES).optional(),
+  max: z.number().int().min(1).max(MAX_FILES).optional(),
   /** file: also offer the camera, for documents the person only has on paper. Images always offer it. */
   camera: z.boolean().optional(),
   /** file: the camera also records short video clips. */
@@ -535,6 +541,19 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             stepId: step.id,
             message: `Field "${field.id}" needs "list": the id of one of the wizard's lists.`,
           });
+        }
+        if (field.min !== undefined || field.max !== undefined) {
+          if ((field.kind !== "image" && field.kind !== "file") || !field.multiple) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}": "min" and "max" count the files of an image or file field with "multiple".`,
+            });
+          } else if (field.min !== undefined && field.max !== undefined && field.min > field.max) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}": min is larger than max.`,
+            });
+          }
         }
         if (field.scan && field.kind !== "text") {
           issues.push({

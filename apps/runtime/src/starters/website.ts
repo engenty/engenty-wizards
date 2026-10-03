@@ -501,6 +501,7 @@ Keine steuerliche Beratung oder Einschätzung, keine Zahlen, die nicht in den An
               kind: "image",
               multiple: true,
               required: true,
+              max: 4,
               help: "Das ganze Produkt und der Fehler aus der Nähe.",
             },
             {
@@ -536,7 +537,7 @@ Keine steuerliche Beratung oder Einschätzung, keine Zahlen, die nicht in den An
           type: "agent",
           title: "Beschreibung",
           working: "Sieht sich die Fotos an …",
-          instructions: `Schreibe die sachliche Beschreibung für eine Reklamation. Sieh dir zuerst jedes Foto mit read_document an: {{photos}}
+          instructions: `Schreibe die sachliche Beschreibung für eine Reklamation. Sieh dir zuerst die Fotos an: {{photos}}
 Geschildert (wörtlich): {{note}} {{details}}
 Bestellung: {{order}}
 

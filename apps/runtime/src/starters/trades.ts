@@ -74,6 +74,7 @@ export const WINDOW_OFFER: Starter = {
             label: "Fotos der Fenster",
             kind: "image",
             multiple: true,
+            max: 8,
             help: "Ein Foto pro Fenster oder Raum, von innen.",
           },
           {
@@ -136,7 +137,7 @@ export const WINDOW_OFFER: Starter = {
 
 Eingesprochenes Aufmaß (wörtlich): {{note}}
 Aufgeschriebenes Aufmaß: {{details}}
-Fotos: {{photos}} – sieh sie dir mit read_document an (Anzahl der Flügel, Öffnungsart, Rollladenkasten, Zustand der Laibung, Fensterbänke).
+Fotos: {{photos}} – achte auf die Anzahl der Flügel, die Öffnungsart, Rollladenkästen, den Zustand der Laibung und die Fensterbänke.
 Gewünscht: Material {{material}}, Farbe außen {{colour}}, dazu: {{extras}}
 
 Lies die Preisliste mit read_workspace_file: fenster/preisliste.csv (Spalten: artikel; beschreibung; einheit; preis_netto).

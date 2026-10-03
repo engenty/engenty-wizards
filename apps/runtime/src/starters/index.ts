@@ -496,6 +496,7 @@ export const STARTERS: Starter[] = [
               kind: "image",
               multiple: true,
               required: true,
+              max: 6,
               help: "Eine Übersicht und ein, zwei Nahaufnahmen.",
             },
             {
@@ -558,7 +559,7 @@ export const STARTERS: Starter[] = [
           title: "Schaden beschreiben",
           working: "Sieht sich die Fotos an und fasst zusammen …",
           instructions:
-            "Schreibe die sachliche Beschreibung für einen Schadensbericht. Sieh dir zuerst jedes Foto mit read_document an ({{photos}}) und beschreibe, was darauf zu sehen ist.\n\nWas die Person erzählt hat (Sprachnotiz, wörtlich): {{note}}\nWas sie dazu geschrieben hat: {{details}}\nBetroffenes Objekt: {{objectId}}\nOrt: {{place}}\nDatum des Schadens: {{happenedOn}}\n\nGliederung: „Hergang“ (2–4 Sätze, nur was gesagt oder geschrieben wurde), „Schäden“ (Aufzählung: was laut Fotos und Schilderung beschädigt ist), „Offene Punkte“ (was für die Bearbeitung noch fehlt – nur wenn etwas fehlt). Nichts erfinden, keine Schuldzuweisung, keine Kostenschätzung. Gib nur diese Abschnitte aus – ohne Einleitung, ohne Titel darüber, ohne Bemerkungen zu deiner Arbeit.",
+            "Schreibe die sachliche Beschreibung für einen Schadensbericht. Sieh dir zuerst die Fotos an ({{photos}}) und beschreibe, was darauf zu sehen ist.\n\nWas die Person erzählt hat (Sprachnotiz, wörtlich): {{note}}\nWas sie dazu geschrieben hat: {{details}}\nBetroffenes Objekt: {{objectId}}\nOrt: {{place}}\nDatum des Schadens: {{happenedOn}}\n\nGliederung: „Hergang“ (2–4 Sätze, nur was gesagt oder geschrieben wurde), „Schäden“ (Aufzählung: was laut Fotos und Schilderung beschädigt ist), „Offene Punkte“ (was für die Bearbeitung noch fehlt – nur wenn etwas fehlt). Nichts erfinden, keine Schuldzuweisung, keine Kostenschätzung. Gib nur diese Abschnitte aus – ohne Einleitung, ohne Titel darüber, ohne Bemerkungen zu deiner Arbeit.",
           tools: [],
           output: { format: "markdown" },
           model: "standard",

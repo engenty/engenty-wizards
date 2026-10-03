@@ -221,3 +221,28 @@ describe("one result per entry, prefilled fields, lists gone through row by row"
     ]);
   });
 });
+
+describe("how many files a field takes", () => {
+  const photos = (extra: Record<string, unknown>) =>
+    parseWizard({
+      title: "x",
+      steps: [
+        {
+          id: "p",
+          type: "page",
+          title: "P",
+          fields: [{ id: "photos", label: "Photos", kind: "image", ...extra }],
+        },
+        { id: "r", type: "result", title: "R", deliverables: [] },
+      ],
+    });
+
+  it("takes min and max on a field with several files", () => {
+    expect(photos({ multiple: true, min: 2, max: 6 }).issues).toEqual([]);
+  });
+
+  it("refuses them on a single file, and a min above the max", () => {
+    expect(photos({ max: 3 }).issues).toHaveLength(1);
+    expect(photos({ multiple: true, min: 5, max: 2 }).issues).toHaveLength(1);
+  });
+});

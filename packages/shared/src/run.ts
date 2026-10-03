@@ -102,6 +102,8 @@ export interface RunEvent {
   stepId: string | null;
   type: "step_started" | "step_done" | "tool" | "info" | "error";
   message: string;
+  /** A picture of the run this is about (a photo being looked at, an image just made). */
+  asset?: string | null;
 }
 
 export interface RunView {
