@@ -9,6 +9,7 @@ import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useCurrentProject, type WizardSummary } from "../lib/session";
 import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
+import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
 
 export function ProjectSwitcher() {
@@ -151,9 +152,12 @@ export function HomePage() {
         <div>
           <ProjectSwitcher />
         </div>
-        <Button onClick={() => navigate("/new")}>
-          <Plus className="size-4" /> {t("home.new")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ImportWizard />
+          <Button onClick={() => navigate("/new")}>
+            <Plus className="size-4" /> {t("home.new")}
+          </Button>
+        </div>
       </div>
       <h1 className="mt-10 font-display font-semibold text-[28px] tracking-tight">
         {t("home.title")}

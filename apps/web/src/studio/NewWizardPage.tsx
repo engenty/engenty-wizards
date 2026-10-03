@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
 import { useCurrentProject } from "../lib/session";
 import { Button, Card, Textarea } from "../ui";
+import { ImportWizard } from "./ImportWizard";
 
 interface Starter {
   id: string;
@@ -135,6 +136,9 @@ export function NewWizardPage() {
           </section>
         ) : null,
       )}
+      <div className="mt-8 flex justify-center">
+        <ImportWizard variant="ghost" label={t("new.import")} />
+      </div>
     </div>
   );
 }

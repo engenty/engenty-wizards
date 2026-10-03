@@ -53,6 +53,12 @@ import { cloudCopy, publishToCloud } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
 import {
+  exportWizard,
+  importWizard,
+  PACKAGE_EXTENSION,
+  PACKAGE_MAX_BYTES,
+} from "../services/package.js";
+import {
   createProject,
   deleteProject,
   listProjects,
@@ -236,6 +242,29 @@ export const studio = new Hono<Vars>()
       .parse(await c.req.json());
     const { id } = await createWizard(c.get("user").id, body);
     return c.json({ id });
+  })
+  // A wizard as a file, and a new wizard made of such a file.
+  .post("/projects/:id/wizards/import", async (c) => {
+    const file = (await c.req.formData()).get("file");
+    if (!(file instanceof File) || !file.size || file.size > PACKAGE_MAX_BYTES) {
+      throw new ServiceError("invalid", `Bitte ein Wizard-Paket (${PACKAGE_EXTENSION}) bis 30 MB.`);
+    }
+    return c.json(
+      await importWizard(
+        c.get("user").id,
+        c.req.param("id"),
+        new Uint8Array(await file.arrayBuffer()),
+        file.name,
+      ),
+    );
+  })
+  .get("/wizards/:id/export", async (c) => {
+    const { name, zip } = await exportWizard(c.get("user").id, c.req.param("id"));
+    return c.body(new Uint8Array(zip), 200, {
+      "content-type": "application/zip",
+      "content-disposition": `attachment; filename="${name}"`,
+      "cache-control": "private, no-store",
+    });
   })
   .get("/wizards/:id", async (c) => {
     const user = c.get("user");

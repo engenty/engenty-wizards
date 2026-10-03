@@ -1,8 +1,9 @@
 import type { RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Play, Share2, X } from "lucide-react";
+import { ArrowLeft, Download, Play, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useMe, type WizardDetail } from "../lib/session";
@@ -193,6 +194,16 @@ export function EditorPage() {
           <LiveChip remote={remote} merged={merged} />
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {/* The wizard as a file: definition and workspace, to keep or to import elsewhere. */}
+          <a
+            href={withBase(`/api/studio/wizards/${w.id}/export`)}
+            download
+            aria-label={t("editor.export")}
+            title={t("editor.export")}
+            className="hidden size-9 shrink-0 items-center justify-center rounded-full text-ink-3 transition hover:bg-accent hover:text-ink sm:inline-flex"
+          >
+            <Download className="size-4" />
+          </a>
           <Button
             variant="secondary"
             size="sm"
