@@ -206,6 +206,13 @@ const de = {
   "share.rotateHint": "Der alte Link funktioniert danach nicht mehr.",
   "share.publishFirst": "Veröffentliche den Wizard, damit der Link funktioniert.",
   "share.open": "Öffnen",
+  "embed.title": "In eine Website einbetten",
+  "embed.inline": "In der Seite",
+  "embed.modal": "Button + Fenster",
+  "embed.inlineHint":
+    "Füge das Tag in den HTML-Code deiner Seite ein. Der Wizard erscheint an dieser Stelle.",
+  "embed.modalHint":
+    "Füge das Tag in den HTML-Code deiner Seite ein. An dieser Stelle erscheint ein Button, der den Wizard in einem Fenster öffnet.",
   "type.page": "Seite",
   "type.agent": "KI-Schritt",
   "type.generate": "Erzeugen",
@@ -651,6 +658,12 @@ const en: Record<Key, string> = {
   "share.rotateHint": "The old link stops working.",
   "share.publishFirst": "Publish the wizard so the link works.",
   "share.open": "Open",
+  "embed.title": "Embed in a website",
+  "embed.inline": "Inline",
+  "embed.modal": "Button + modal",
+  "embed.inlineHint": "Paste the tag into your page's HTML. The wizard appears in that place.",
+  "embed.modalHint":
+    "Paste the tag into your page's HTML. A button appears in that place and opens the wizard in a window.",
   "type.page": "Page",
   "type.agent": "AI step",
   "type.generate": "Generate",

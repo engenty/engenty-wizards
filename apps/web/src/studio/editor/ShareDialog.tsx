@@ -5,7 +5,7 @@ import { BASE } from "@/lib/base";
 import { ApiError, api } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { useMe, type WizardDetail } from "../../lib/session";
-import { Button, Dialog, Input, Switch } from "../../ui";
+import { Button, Dialog, Input, Segmented, Switch } from "../../ui";
 import { openExternal } from "../LocalRuntime";
 import { useEstimate } from "./estimate";
 
@@ -13,6 +13,53 @@ interface CloudCopy {
   shareUrl: string;
   version: number;
   publishedAt: string;
+}
+
+const attr = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+/**
+ * The tag that shows the wizard behind `url` (…/w/<token>) in a website (`public/embed.js`):
+ * in the page, or behind a button that opens it in a window.
+ */
+function EmbedSection({ url, title }: { url: string; title: string }) {
+  const [modal, setModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [, app, token] = url.match(/^(.*)\/w\/([^/]+)$/) ?? [];
+  if (!token) {
+    return null;
+  }
+  const button = modal ? ` data-mode="modal" data-label="${attr(title)}"` : "";
+  const tag = `<script async src="${app}/embed.js" data-wizard="${token}"${button}></script>`;
+  const modes = [t("embed.inline"), t("embed.modal")];
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-border-soft border-t pt-5">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-[14px]">{t("embed.title")}</span>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            void navigator.clipboard.writeText(tag);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copied ? t("share.copied") : t("share.copy")}
+        </Button>
+      </div>
+      <p className="text-[13px] text-ink-3">{t(modal ? "embed.modalHint" : "embed.inlineHint")}</p>
+      <Segmented
+        value={modes[modal ? 1 : 0]}
+        onChange={(v) => setModal(v === modes[1])}
+        options={modes}
+      />
+      <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[12px] text-ink-2 leading-relaxed">
+        {tag}
+      </pre>
+    </div>
+  );
 }
 
 /** A local wizard's copy in the cloud of the linked account: publish it there, get its link. */
@@ -51,6 +98,7 @@ function CloudSection({ wizard }: { wizard: WizardDetail }) {
           <ExternalLink className="size-3.5" /> {url}
         </button>
       ) : null}
+      {url ? <EmbedSection url={url} title={wizard.draft.title} /> : null}
       {publish.isError ? (
         <p className="text-[13px] text-rose">
           {publish.error instanceof ApiError ? publish.error.message : t("cloud.failed")}
@@ -123,6 +171,7 @@ export function ShareDialog({
       >
         <ExternalLink className="size-3.5" /> {t("share.open")}
       </a>
+      <EmbedSection url={url} title={wizard.draft.title} />
       <div className="mt-6 flex flex-col gap-5 border-border-soft border-t pt-5">
         <div className="flex items-center justify-between">
           <span className="text-[14px]">{t("share.enabled")}</span>

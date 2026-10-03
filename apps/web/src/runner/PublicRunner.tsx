@@ -6,9 +6,10 @@ import { useNavigate, useParams } from "react-router";
 import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
+import { EMBED, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
-import { Button, Spinner } from "../ui";
+import { Button, cn, Spinner } from "../ui";
 import { RunnerBody } from "./RunnerView";
 
 /** The wizard owner's accent recolours the whole palette: every Ember token derives from --raw-primary. */
@@ -100,7 +101,7 @@ function InstallHint() {
   );
 }
 
-export function BrandHeader({ brand }: { brand: BrandView }) {
+export function BrandHeader({ brand, toggle = true }: { brand: BrandView; toggle?: boolean }) {
   return (
     <header className="safe-top">
       <div className="relative flex h-14 items-center justify-center px-5">
@@ -115,9 +116,11 @@ export function BrandHeader({ brand }: { brand: BrandView }) {
             {brand.name}
           </span>
         ) : null}
-        <div className="absolute right-3">
-          <ThemeToggle />
-        </div>
+        {toggle ? (
+          <div className="absolute right-3">
+            <ThemeToggle />
+          </div>
+        ) : null}
       </div>
     </header>
   );
@@ -161,6 +164,9 @@ function Turnstile({ siteKey, onToken }: { siteKey: string; onToken: (t: string)
 
 const lastRunKey = (token: string) => `wz.run.${token}`;
 
+/** Inline in another website the wizard is as tall as its content; everywhere else it fills the screen. */
+const PAGE = EMBED === "inline" ? "min-h-80" : "min-h-dvh";
+
 function StartScreen({ wizard }: { wizard: PublicWizard }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -181,6 +187,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
         `/api/public/wizards/${wizard.token}/runs`,
         {
           turnstileToken: captcha ?? undefined,
+          embedded: EMBED !== null,
         },
       );
       try {
@@ -226,7 +233,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
               {t("run.resume")}
             </button>
           ) : null}
-          <InstallHint />
+          {EMBED ? null : <InstallHint />}
         </>
       ) : (
         <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
@@ -250,6 +257,7 @@ export function PublicRunner() {
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
+  useEmbed();
   useEffect(() => {
     if (wizard.data) {
       document.title = wizard.data.title;
@@ -258,7 +266,7 @@ export function PublicRunner() {
 
   if (wizard.isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-ink-4">
+      <div className={cn("flex items-center justify-center text-ink-4", PAGE)}>
         <Spinner />
       </div>
     );
@@ -266,7 +274,7 @@ export function PublicRunner() {
   if (!wizard.data) {
     const offline = isOffline(wizard.error);
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className={cn("flex flex-col items-center justify-center gap-4 px-6 text-center", PAGE)}>
         <Mascot kind="pebble" size={80} />
         <p className="max-w-xs text-ink-3">{t(offline ? "common.offline" : "run.notFound")}</p>
         {offline ? (
@@ -278,8 +286,9 @@ export function PublicRunner() {
     );
   }
   return (
-    <div className="flex min-h-dvh flex-col">
-      <BrandHeader brand={wizard.data.brand} />
+    <div className={cn("flex flex-col", PAGE)}>
+      {/* The website around an inline wizard carries the brand; in the window its close button takes the corner. */}
+      {EMBED === "inline" ? null : <BrandHeader brand={wizard.data.brand} toggle={!EMBED} />}
       <div className="flex-1">
         {runId ? (
           <RunnerBody runId={runId} onRestart={() => navigate(`/w/${token}`)} />
@@ -288,7 +297,13 @@ export function PublicRunner() {
         )}
       </div>
       <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
-        <a href={`${BASE}/`} className="inline-block py-3.5 hover:text-ink-2">
+        <a
+          href={`${BASE}/`}
+          // In a frame the link would load the studio into the website.
+          target={EMBED ? "_blank" : undefined}
+          rel="noreferrer"
+          className="inline-block py-3.5 hover:text-ink-2"
+        >
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>
       </footer>

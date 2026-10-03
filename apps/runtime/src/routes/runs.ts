@@ -74,16 +74,20 @@ function clientIp(c: Context): string | null {
   }
 }
 
-function visitorId(c: Context, create: boolean): string | null {
+function visitorId(c: Context, create: boolean, embedded = false): string | null {
   let vid = getCookie(c, VISITOR_COOKIE) ?? null;
   if (!vid && create) {
     vid = nanoid(24);
+    const secure = env.appUrl.startsWith("https");
     setCookie(c, VISITOR_COOKIE, vid, {
       httpOnly: true,
-      sameSite: "Lax",
-      secure: env.appUrl.startsWith("https"),
       path: basePath || "/",
       maxAge: 60 * 60 * 24 * 365,
+      // In a frame on another website the wizard is a third party: a browser keeps its cookie
+      // only when the cookie says so, and then apart for each website (CHIPS).
+      ...(embedded && secure
+        ? ({ sameSite: "None", secure: true, partitioned: true } as const)
+        : ({ sameSite: "Lax", secure } as const)),
     });
   }
   return vid;
@@ -193,13 +197,13 @@ export const publicRoutes = new Hono()
       return c.json({ error: reason }, 403);
     }
     const body = z
-      .object({ turnstileToken: z.string().optional() })
+      .object({ turnstileToken: z.string().optional(), embedded: z.boolean().optional() })
       .parse(await c.req.json().catch(() => ({})));
     const ip = clientIp(c);
     if (!(await verifyTurnstile(body.turnstileToken, ip))) {
       return c.json({ error: "Bitte bestätige kurz, dass du ein Mensch bist." }, 403);
     }
-    const vid = visitorId(c, true)!;
+    const vid = visitorId(c, true, body.embedded)!;
     const ipHash = hashIp(ip);
     if (await visitorOverLimit(vid, ipHash)) {
       return c.json(
