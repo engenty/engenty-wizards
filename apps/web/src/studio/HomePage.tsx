@@ -1,3 +1,4 @@
+import { MAX_PROJECTS } from "@engenty-wizards/shared/projects";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
 import { useState } from "react";
@@ -34,7 +35,13 @@ export function ProjectSwitcher() {
         onChange={(v) => (v === "__new" ? setOpen(true) : select(v))}
         options={[
           ...projects.map((p) => ({ value: p.id, label: p.name })),
-          { value: "__new", label: `+ ${t("home.newProject")}` },
+          projects.length < MAX_PROJECTS
+            ? { value: "__new", label: `+ ${t("home.newProject")}` }
+            : {
+                value: "__new",
+                label: t("home.projectLimit", { n: MAX_PROJECTS }),
+                disabled: true,
+              },
         ]}
       />
       <Dialog open={open} onClose={() => setOpen(false)} title={t("home.newProject")}>

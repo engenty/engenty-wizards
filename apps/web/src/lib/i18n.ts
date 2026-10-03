@@ -145,6 +145,7 @@ const de = {
   "home.steps": "{n} Schritte",
   "home.newProject": "Neues Projekt",
   "home.projectName": "Name des Projekts",
+  "home.projectLimit": "Höchstens {n} Projekte",
   "new.title": "Was soll dein Wizard können?",
   "new.placeholder":
     "z. B. Kunden geben ihr Produkt und ihre Zielgruppe ein, der Wizard recherchiert Wettbewerber und erstellt daraus ein Positionierungs-Briefing als PDF.",
@@ -619,6 +620,7 @@ const en: Record<Key, string> = {
   "home.steps": "{n} steps",
   "home.newProject": "New project",
   "home.projectName": "Project name",
+  "home.projectLimit": "At most {n} projects",
   "new.title": "What should your wizard do?",
   "new.placeholder":
     "e.g. Customers enter their product and audience, the wizard researches competitors and writes a positioning briefing as a PDF.",

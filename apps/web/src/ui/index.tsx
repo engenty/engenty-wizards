@@ -162,7 +162,7 @@ export function Select({
 }: {
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
   className?: string;
   placeholder?: string;
 }) {
@@ -175,7 +175,7 @@ export function Select({
       >
         {placeholder !== undefined ? <option value="">{placeholder}</option> : null}
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} disabled={o.disabled}>
             {o.label}
           </option>
         ))}

@@ -1,3 +1,4 @@
+import { MAX_PROJECTS } from "@engenty-wizards/shared/projects";
 import { and, count, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -99,6 +100,13 @@ export function maskedServers(p: ProjectRow) {
 }
 
 export async function createProject(_userId: string, name: string): Promise<{ id: string }> {
+  const [{ n }] = await db
+    .select({ n: count() })
+    .from(schema.project)
+    .where(eq(schema.project.tenantId, currentTenant()));
+  if (n >= MAX_PROJECTS) {
+    throw new ServiceError("refused", `Höchstens ${MAX_PROJECTS} Projekte.`);
+  }
   const id = nanoid(12);
   await db
     .insert(schema.project)
