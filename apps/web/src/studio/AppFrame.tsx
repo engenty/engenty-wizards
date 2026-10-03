@@ -1,11 +1,12 @@
 import { CreditCard, LogOut, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Logo, ThemeToggle } from "../brand";
+import { Logo } from "../brand";
 import { t } from "../lib/i18n";
 import { type Me, signOut, spendableCredits } from "../lib/session";
 import { cn } from "../ui";
 import { LangSwitch } from "./LangSwitch";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
 const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
@@ -91,6 +92,10 @@ export function UserMenu({ me }: { me: Me }) {
             {t("nav.language")}
             <LangSwitch tone="surface" />
           </div>
+          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[14px] text-ink-2">
+            {t("nav.theme")}
+            <ThemeSwitch />
+          </div>
           {me.mode === "managed" ? (
             <button type="button" className={item} onClick={() => void signOut()}>
               <LogOut className="size-4" /> {t("nav.logout")}
@@ -108,7 +113,6 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
     <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-4 backdrop-blur-md sm:gap-3 sm:px-6">
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
-      <ThemeToggle />
       <CreditsPill me={me} />
       <UserMenu me={me} />
     </header>
