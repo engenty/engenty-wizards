@@ -6,7 +6,7 @@ export function uploadLimit(mime: string): number {
 }
 
 export function wizardManifest(token: string, title: string, description: string) {
-  const start = `${basePath}/r/${token}`;
+  const start = `${basePath}/w/${token}`;
   return {
     id: start,
     name: title,

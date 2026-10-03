@@ -73,7 +73,7 @@ function CopyLink({ token }: { token: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        void navigator.clipboard.writeText(`${window.location.origin}${BASE}/r/${token}`);
+        void navigator.clipboard.writeText(`${window.location.origin}${BASE}/w/${token}`);
         setDone(true);
         setTimeout(() => setDone(false), 1500);
       }}

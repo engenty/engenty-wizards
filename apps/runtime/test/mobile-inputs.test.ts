@@ -224,8 +224,8 @@ describe("delivery", () => {
 
   it("makes a wizard an app that opens on its own link", () => {
     const manifest = wizardManifest("tok123", "Schadensmeldung aufnehmen", "Vor Ort");
-    expect(manifest.start_url).toBe("/r/tok123");
-    expect(manifest.id).toBe("/r/tok123");
+    expect(manifest.start_url).toBe("/w/tok123");
+    expect(manifest.id).toBe("/w/tok123");
     expect(manifest.display).toBe("standalone");
     expect(manifest.short_name.length).toBeLessThanOrEqual(14);
     expect(manifest.icons.some((i) => i.purpose === "maskable")).toBe(true);

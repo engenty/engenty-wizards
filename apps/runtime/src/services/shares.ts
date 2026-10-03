@@ -89,7 +89,7 @@ export async function shareView(run: RunRow): Promise<ShareView> {
     createdAt: run.createdAt.toISOString(),
     expiresAt: run.expiresAt?.toISOString() ?? null,
     wizardUrl:
-      w?.shareEnabled && w.publishedVersion !== null ? `${env.appUrl}/r/${w.shareToken}` : null,
+      w?.shareEnabled && w.publishedVersion !== null ? `${env.appUrl}/w/${w.shareToken}` : null,
   };
 }
 

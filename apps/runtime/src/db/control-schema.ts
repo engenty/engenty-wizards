@@ -23,7 +23,7 @@ export const link = sqliteTable(
   {
     token: text("token").primaryKey(),
     tenantId: text("tenant_id").notNull(),
-    /** `wizard` = a share link `/r/<token>`, `result` = a shared result `/s/<token>`, `logo` = a brand logo. */
+    /** `wizard` = a share link `/w/<token>`, `result` = a shared result `/s/<token>`, `logo` = a brand logo. */
     kind: text("kind", { enum: ["wizard", "result", "logo"] }).notNull(),
     ref: text("ref").notNull(),
     createdAt: createdAt(),

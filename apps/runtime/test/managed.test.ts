@@ -257,7 +257,7 @@ describe("a runtime of a Manage-App", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { wizardId: string; shareUrl: string; version: number };
     expect(body.version).toBe(1);
-    const token_ = body.shareUrl.split("/r/")[1];
+    const token_ = body.shareUrl.split("/w/")[1];
     const open = await app.fetch(new Request(`${RUNTIME}/api/public/wizards/${token_}`));
     // Tenant B has no credits: the link exists but cannot start runs.
     expect(((await open.json()) as { title: string; available: boolean })).toMatchObject({

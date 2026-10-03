@@ -149,6 +149,6 @@ describe("MCP endpoint", () => {
 
     const published = await call(client, "publish_wizard", { wizardId });
     expect(published.body).toMatchObject({ version: 1 });
-    expect(published.body.shareUrl).toMatch(/^http:\/\/localhost:5181\/r\//);
+    expect(published.body.shareUrl).toMatch(/^http:\/\/localhost:5181\/w\//);
   });
 });

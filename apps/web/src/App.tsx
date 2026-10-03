@@ -58,8 +58,8 @@ export function App() {
     <Suspense fallback={<Splash />}>
       <Routes>
         {EngentyBuilder && <Route path="/dev/engenty-builder" element={<EngentyBuilder />} />}
-        <Route path="/r/:token" element={<PublicRunner />} />
-        <Route path="/r/:token/:runId" element={<PublicRunner />} />
+        <Route path="/w/:token" element={<PublicRunner />} />
+        <Route path="/w/:token/:runId" element={<PublicRunner />} />
         <Route path="/s/:token" element={<SharePage />} />
         <Route
           path="/"

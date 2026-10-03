@@ -9,7 +9,7 @@ COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --frozen-lockfile
 COPY . .
-# The path the app is served under (https://engenty.ai/w: /w); empty at an origin's root.
+# The path the app is served under (https://example.com/wizards: /wizards); empty at an origin's root.
 ARG APP_BASE_PATH=""
 ENV APP_BASE_PATH=$APP_BASE_PATH
 RUN pnpm build

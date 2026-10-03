@@ -42,7 +42,7 @@ const BLANK: WizardDefinition = {
 };
 
 export const studioUrl = (wizardId: string) => `${env.appUrl}/w/${wizardId}`;
-export const shareUrl = (token: string) => `${env.appUrl}/r/${token}`;
+export const shareUrl = (token: string) => `${env.appUrl}/w/${token}`;
 const newShareToken = () => nanoid(14);
 
 export async function ownedWizard(_userId: string, wizardId: string): Promise<WizardRow> {

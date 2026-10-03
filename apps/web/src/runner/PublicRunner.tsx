@@ -188,7 +188,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
       } catch {
         // resuming is a convenience
       }
-      navigate(`/r/${wizard.token}/${runId}`);
+      navigate(`/w/${wizard.token}/${runId}`);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -220,7 +220,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
           {previous ? (
             <button
               type="button"
-              onClick={() => navigate(`/r/${wizard.token}/${previous}`)}
+              onClick={() => navigate(`/w/${wizard.token}/${previous}`)}
               className="mt-4 text-[14px] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
             >
               {t("run.resume")}
@@ -282,7 +282,7 @@ export function PublicRunner() {
       <BrandHeader brand={wizard.data.brand} />
       <div className="flex-1">
         {runId ? (
-          <RunnerBody runId={runId} onRestart={() => navigate(`/r/${token}`)} />
+          <RunnerBody runId={runId} onRestart={() => navigate(`/w/${token}`)} />
         ) : (
           <StartScreen wizard={wizard.data} />
         )}

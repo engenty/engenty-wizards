@@ -129,10 +129,10 @@ app.get(`/api/claude-plugin/${PLUGIN_NAME}.zip`, async (c) => {
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
-/** Link cards for `/r/<token>` and `/s/<token>`; the token names the tenant. */
+/** Link cards for `/w/<token>` and `/s/<token>`; the token names the tenant. */
 async function previewFor(path: string): Promise<string | null> {
-  const m = path.match(/^\/(r|s)\/([A-Za-z0-9_-]+)\/?$/);
-  const tenant = m ? await tenantOfLink(m[2], m[1] === "r" ? "wizard" : "result") : null;
+  const m = path.match(/^\/(w|s)\/([A-Za-z0-9_-]+)\/?$/);
+  const tenant = m ? await tenantOfLink(m[2], m[1] === "w" ? "wizard" : "result") : null;
   return tenant ? withTenant(tenant, () => linkPreview(path)) : null;
 }
 
@@ -144,7 +144,7 @@ if (existsSync(webDir)) {
     const html = await readFile(join(webDir, "index.html"), "utf8");
     const preview = await previewFor(c.req.path).catch(() => null);
     // A wizard's link installs as that wizard: its own name and start address on the home screen.
-    const token = c.req.path.match(/^\/r\/([A-Za-z0-9_-]{6,64})(?:\/|$)/)?.[1];
+    const token = c.req.path.match(/^\/w\/([A-Za-z0-9_-]{6,64})(?:\/|$)/)?.[1];
     const page = token
       ? html.replace(
           /href="[^"]*manifest\.webmanifest"/,

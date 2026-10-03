@@ -82,7 +82,7 @@ export function ShareDialog({
     mutationFn: () => api.post(`/api/studio/wizards/${wizard.id}/rotate-link`),
     onSuccess: refresh,
   });
-  const url = `${window.location.origin}${BASE}/r/${wizard.shareToken}`;
+  const url = `${window.location.origin}${BASE}/w/${wizard.shareToken}`;
   const me = useMe();
   const estimate = useEstimate(wizard.id, wizard.draft);
   const perDay =

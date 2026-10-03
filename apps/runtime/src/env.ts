@@ -144,7 +144,7 @@ export const env = {
     accountUrl: str("ACCOUNT_URL", "https://account.engenty.ai").replace(/\/$/, ""),
     gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty.ai").replace(/\/$/, ""),
     /** The cloud runtime "publish to the cloud" sends wizards to. */
-    cloudUrl: str("CLOUD_URL", "https://engenty.ai/w").replace(/\/$/, ""),
+    cloudUrl: str("CLOUD_URL", "https://engenty.ai").replace(/\/$/, ""),
   },
 
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),
@@ -206,7 +206,7 @@ export const env = {
 };
 
 /**
- * The path APP_URL ends in: `/w` for https://engenty.ai/w, empty for an origin alone. The proxy
+ * The path APP_URL ends in: `/wizards` for https://example.com/wizards, empty for an origin alone. The proxy
  * may strip it or not, so the server takes both; what it writes into a cookie or a redirect
  * carries it.
  */
