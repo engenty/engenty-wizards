@@ -94,7 +94,7 @@ export function App() {
           }
         />
         <Route
-          path="/settings"
+          path="/settings/:section?"
           element={
             <Studio>
               <SettingsPage />
