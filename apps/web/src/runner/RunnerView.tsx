@@ -27,7 +27,7 @@ import {
 } from "./device";
 import { FieldInput, type Values } from "./fields";
 import { DownloadButtons, OutputView } from "./outputs";
-import { ListDownloads, ListTable, StoreButton } from "./store";
+import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
 import { useRun } from "./useRun";
 
 type Run = ReturnType<typeof useRun>;
@@ -71,7 +71,11 @@ function StepHeading({
 function initialValues(step: PageStep, view: RunView): Values {
   const out: Values = {};
   for (const f of step.fields) {
-    out[f.id] = view.values[f.id] ?? f.default ?? (f.kind === "multiselect" ? [] : undefined);
+    out[f.id] =
+      view.values[f.id] ??
+      view.prefill?.[f.id] ??
+      f.default ??
+      (f.kind === "multiselect" ? [] : undefined);
   }
   return out;
 }
@@ -357,6 +361,8 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  // Steps with several results: the ones picked to be made again.
+  const [picked, setPicked] = useState<Record<string, number[]>>({});
   return (
     <div className="animate-rise">
       <StepHeading title={step.title} description={step.description} />
@@ -400,9 +406,34 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                 editable={editable && editing[s.id]}
                 draft={drafts[s.id]}
                 onDraft={(text) => setDrafts((d) => ({ ...d, [s.id]: text }))}
+                picked={picked[s.id]}
+                onPick={
+                  step.regenerate
+                    ? (i) =>
+                        setPicked((p) => {
+                          const now = p[s.id] ?? [];
+                          return {
+                            ...p,
+                            [s.id]: now.includes(i) ? now.filter((x) => x !== i) : [...now, i],
+                          };
+                        })
+                    : undefined
+                }
               />
               {noteFor === s.id ? (
                 <Card className="mt-3 animate-rise p-3">
+                  {(output?.assets?.length ?? 0) > 1 && s.type === "generate" ? (
+                    <p className="px-2 pt-1 text-[13px] text-ink-3">
+                      {picked[s.id]?.length
+                        ? t("run.regeneratePicked", {
+                            n: [...picked[s.id]]
+                              .sort((a, b) => a - b)
+                              .map((i) => i + 1)
+                              .join(", "),
+                          })
+                        : t("run.regenerateAll")}
+                    </p>
+                  ) : null}
                   <Textarea
                     autoFocus
                     minRows={2}
@@ -418,7 +449,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                     <Button
                       size="sm"
                       busy={run.busy}
-                      onClick={() => void run.regenerate(step.id, s.id, note)}
+                      onClick={() => void run.regenerate(step.id, s.id, note, picked[s.id])}
                     >
                       {t("run.regenerateGo")}
                     </Button>
@@ -433,7 +464,11 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
             <h3 className="mb-2 font-medium text-[13px] text-ink-3 uppercase tracking-[0.06em]">
               {list.def.title}
             </h3>
-            <ListTable runId={view.id} list={list} editable />
+            {list.def.check ? (
+              <ListCheck runId={view.id} list={list} />
+            ) : (
+              <ListTable runId={view.id} list={list} editable />
+            )}
           </section>
         ))}
       </div>
@@ -461,6 +496,7 @@ function Result({
   step: ResultStep;
   onRestart?: () => void;
 }) {
+  const made = view.shown.filter((x) => x.output);
   return (
     <div className="animate-rise">
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-5">
@@ -483,7 +519,8 @@ function Result({
         ) : null}
       </div>
       <div className="flex flex-col gap-6">
-        {view.shown.map(({ step: s, output, formats, label }) => (
+        {/* A step the run skipped (a branch) has made nothing to hand over. */}
+        {made.map(({ step: s, output, formats, label }) => (
           <Card key={s.id} className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display font-semibold text-[17px]">{label ?? s.title}</h3>
@@ -590,13 +627,22 @@ export function RunnerBody({
   } else if (step?.type === "result") {
     body = <Result view={view} run={run} step={step} onRestart={onRestart} />;
   }
+  // Rows beside their files need the width of the screen.
+  const wide =
+    step?.type === "review" &&
+    view.status === "waiting_input" &&
+    view.lists.some((l) => l.def.check);
   return (
     <div className="flex min-h-full flex-col">
       <Progress view={view} />
       <div
         className={cn(
           "safe-x mx-auto w-full flex-1",
-          compact ? "max-w-[620px] py-8" : "max-w-[640px] py-8 sm:py-16",
+          wide
+            ? "max-w-[1240px] py-8"
+            : compact
+              ? "max-w-[620px] py-8"
+              : "max-w-[640px] py-8 sm:py-16",
         )}
       >
         {body}

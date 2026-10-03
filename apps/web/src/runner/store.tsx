@@ -452,11 +452,266 @@ export function ListTable({
   );
 }
 
+/** The path of a kept file as its address: shown in place for PDFs and photos. */
+function storeFileUrl(runId: string, path: string, inline: boolean): string {
+  const safe = path.split("/").map(encodeURIComponent).join("/");
+  return withBase(`/api/runs/${runId}/store/files/${safe}${inline ? "?inline=1" : ""}`);
+}
+
+const ANSWER_TONE = [
+  "bg-paper-3 text-ink-3",
+  "bg-moss-tint text-moss",
+  "bg-rose-tint text-rose",
+  "bg-ember-tint text-ember-strong",
+];
+
+/**
+ * A list the person goes through row by row: the rows on the left, the row's kept file and its
+ * cells on the right, and the answers of the list's status column as buttons. An answer saves
+ * and moves on to the next open row.
+ */
+export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
+  const { def, rows } = list;
+  const fileColumn = def.columns.find((c) => c.id === def.check?.file);
+  const statusColumn = def.columns.find((c) => c.id === def.check?.status);
+  const answers = statusColumn?.type === "select" ? statusColumn.format.options : [];
+  const openId = answers[0]?.id;
+  const statusOf = (row: ShownList["rows"][number]) =>
+    statusColumn ? String(row.cells[statusColumn.id] ?? openId ?? "") : "";
+  const isOpen = (row: ShownList["rows"][number]) => !statusColumn || statusOf(row) === openId;
+  const [selected, setSelected] = useState<string | null>(
+    () => (rows.find(isOpen) ?? rows[0])?.id ?? null,
+  );
+  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const base = `/api/runs/${runId}/lists/${def.id}/rows`;
+  const current = rows.find((r) => r.id === selected) ?? rows[0];
+  const shown = onlyOpen ? rows.filter((r) => isOpen(r) || r.id === current?.id) : rows;
+  const done = rows.filter((r) => !isOpen(r)).length;
+  const labelled = def.columns.filter((c) => c !== fileColumn && c !== statusColumn);
+  // A row is named by its first text cell; the next two cells (a date, an amount) stand below.
+  const named = labelled.filter((c) => c.id !== def.key);
+  const titleColumn = named.find((c) => c.type === "text") ?? named[0];
+  const restColumns = named.filter((c) => c !== titleColumn);
+  const patch = async (rowId: string, cells: Record<string, unknown>) => {
+    setError(null);
+    try {
+      await api.patch(`${base}/${rowId}`, { cells });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : String(err));
+    }
+  };
+  const move = (step: number) => {
+    const at = shown.findIndex((r) => r.id === current?.id);
+    const next = shown[Math.min(shown.length - 1, Math.max(0, at + step))];
+    if (next) {
+      setSelected(next.id);
+    }
+  };
+  const answer = async (id: string) => {
+    if (!current || !statusColumn) {
+      return;
+    }
+    const at = rows.findIndex((r) => r.id === current.id);
+    // The next row still open, looking onward from this one and then from the top.
+    const next = [...rows.slice(at + 1), ...rows.slice(0, at)].find(isOpen);
+    await patch(current.id, { [statusColumn.id]: id });
+    if (next && id !== openId) {
+      setSelected(next.id);
+    }
+  };
+  // Arrow keys walk the list and digits answer, as long as nobody is typing in a cell.
+  const keys = (e: React.KeyboardEvent) => {
+    if ((e.target as HTMLElement).closest("input, textarea, select")) {
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      move(e.key === "ArrowDown" ? 1 : -1);
+    } else if (/^[1-9]$/.test(e.key) && answers[Number(e.key)]) {
+      e.preventDefault();
+      void answer(answers[Number(e.key)].id);
+    }
+  };
+  if (!rows.length) {
+    return <p className="text-[14px] text-ink-3">{t("list.empty")}</p>;
+  }
+  const path = fileColumn && current ? String(current.cells[fileColumn.id] ?? "").trim() : "";
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const tone = (row: ShownList["rows"][number]) =>
+    ANSWER_TONE[
+      Math.min(
+        Math.max(
+          0,
+          answers.findIndex((a) => a.id === statusOf(row)),
+        ),
+        3,
+      )
+    ];
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]" onKeyDown={keys}>
+      <div className="flex min-h-0 flex-col">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-[13px] text-ink-3 tabular-nums">
+            {t("check.progress", { done, total: rows.length })}
+          </span>
+          {statusColumn ? (
+            <button
+              type="button"
+              aria-pressed={onlyOpen}
+              onClick={() => setOnlyOpen((v) => !v)}
+              className={cn(
+                "inline-flex h-8 items-center rounded-full px-3 text-[13px] ring-1 transition coarse:h-11",
+                onlyOpen
+                  ? "bg-ember-tint text-ink ring-ember"
+                  : "bg-card text-ink-2 ring-input hover:text-ink",
+              )}
+            >
+              {t("check.onlyOpen")}
+            </button>
+          ) : null}
+        </div>
+        <ul className="flex max-h-[38vh] flex-col gap-1.5 overflow-y-auto p-0.5 pr-1 lg:max-h-[calc(100vh-15rem)]">
+          {shown.map((row) => (
+            <li key={row.id}>
+              <button
+                type="button"
+                onClick={() => setSelected(row.id)}
+                aria-current={row.id === current?.id}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left ring-1 transition",
+                  row.id === current?.id
+                    ? "bg-card shadow-soft ring-ember"
+                    : "bg-paper ring-border-soft hover:bg-card",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-[14px]">
+                    {(titleColumn &&
+                      formatTableCell(titleColumn, row.cells[titleColumn.id], lang)) ||
+                      "—"}
+                  </span>
+                  <span className="block truncate text-[12px] text-ink-3 tabular-nums">
+                    {restColumns
+                      .slice(0, 2)
+                      .map((c) => formatTableCell(c, row.cells[c.id], lang))
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </span>
+                {statusColumn ? (
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 font-medium text-[11px]",
+                      tone(row),
+                    )}
+                  >
+                    {answers.find((a) => a.id === statusOf(row))?.label ?? statusOf(row)}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      {current ? (
+        <div className="flex min-w-0 flex-col gap-3">
+          {answers.length > 1 ? (
+            <div className="flex flex-wrap gap-2">
+              {answers.slice(1).map((a, i) => (
+                <Button
+                  key={a.id}
+                  size="md"
+                  variant={statusOf(current) === a.id ? "primary" : "secondary"}
+                  onClick={() => void answer(a.id)}
+                >
+                  {statusOf(current) === a.id ? <Check className="size-4" /> : null}
+                  {a.label}
+                  <kbd className="ml-1 hidden rounded bg-black/10 px-1.5 text-[11px] lg:inline">
+                    {i + 1}
+                  </kbd>
+                </Button>
+              ))}
+              {statusOf(current) !== openId ? (
+                <Button size="md" variant="ghost" onClick={() => void answer(openId ?? "")}>
+                  {t("check.reopen")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="overflow-hidden rounded-lg bg-paper-2 ring-1 ring-border-soft">
+            {path ? (
+              <>
+                <div className="flex items-center gap-2 border-border-soft border-b bg-card px-3 py-2 text-[13px]">
+                  <FileText className="size-3.5 shrink-0 text-ink-3" />
+                  <span className="min-w-0 flex-1 truncate">{path.split("/").pop()}</span>
+                  <a
+                    href={storeFileUrl(runId, path, ext === "pdf")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-ink-2 underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    {t("run.openFull")}
+                  </a>
+                </div>
+                {ext === "pdf" ? (
+                  <iframe
+                    key={path}
+                    title={path}
+                    src={`${storeFileUrl(runId, path, true)}#toolbar=0&navpanes=0&view=FitH`}
+                    className="h-[46vh] w-full border-0 bg-white lg:h-[calc(100vh-27rem)] lg:min-h-[360px]"
+                  />
+                ) : ["png", "jpg", "jpeg", "webp"].includes(ext) ? (
+                  <div className="flex max-h-[46vh] justify-center overflow-auto bg-white lg:max-h-[calc(100vh-27rem)]">
+                    <img
+                      key={path}
+                      src={storeFileUrl(runId, path, true)}
+                      alt={path}
+                      className="max-w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <p className="px-4 py-10 text-center text-[14px] text-ink-3">
+                    {t("check.noPreview")}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="px-4 py-14 text-center text-[14px] text-ink-3">{t("check.noFile")}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+            {labelled.map((c) => (
+              <div
+                key={c.id}
+                className={cn(
+                  "min-w-0",
+                  c.type === "text" && c.format?.style === "multiline" && "col-span-full",
+                )}
+              >
+                <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                <CellInput
+                  boxed
+                  column={c}
+                  value={current.cells[c.id]}
+                  onCommit={(value) => void patch(current.id, { [c.id]: value })}
+                />
+              </div>
+            ))}
+          </div>
+          {error ? <p className="text-[13px] text-rose">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const LIST_FORMAT_LABEL: Partial<Record<Format, string>> = {
   xlsx: "Excel",
   csv: "CSV",
   json: "JSON",
   md: "Markdown",
+  zip: "ZIP",
 };
 
 export function ListDownloads({ runId, list }: { runId: string; list: ShownList }) {

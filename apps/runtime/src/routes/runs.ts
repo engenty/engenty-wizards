@@ -62,6 +62,9 @@ import { byteRange, uploadLimit, wizardManifest } from "./delivery.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
+/** Kept files a review shows inline. */
+const INLINE_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
+
 function clientIp(c: Context): string | null {
   const fwd = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
   if (fwd) {
@@ -339,7 +342,12 @@ export const runRoutes = new Hono()
     const action = z
       .discriminatedUnion("type", [
         z.object({ type: z.literal("accept"), edits: z.record(z.string(), z.string()).optional() }),
-        z.object({ type: z.literal("regenerate"), target: z.string(), note: z.string().max(2000) }),
+        z.object({
+          type: z.literal("regenerate"),
+          target: z.string(),
+          note: z.string().max(2000),
+          items: z.array(z.number().int().min(0).max(50)).max(20).optional(),
+        }),
       ])
       .parse(await c.req.json());
     try {
@@ -625,11 +633,16 @@ export const runRoutes = new Hono()
     if (!run || !def || !format.success || !LIST_FORMATS.includes(format.data)) {
       return c.notFound();
     }
+    const scope = scopeOf(run);
     const download = await listDownload(
       def,
-      await listRows(scopeOf(run), def.id),
+      await listRows(scope, def.id),
       format.data,
       `${run.definition.title} ${def.title}`,
+      async (path) => {
+        const found = await readStoreFile(scope, path).catch(() => null);
+        return found ? new Uint8Array(found.data) : null;
+      },
     );
     return download ? sendDownload(c, download) : c.notFound();
   })
@@ -662,11 +675,21 @@ export const runRoutes = new Hono()
     if (!found) {
       return c.notFound();
     }
-    const name = found.file.path.split("/").pop() ?? "file";
+    const name = (found.file.path.split("/").pop() ?? "file").replace(/"/g, "");
+    // Shown beside its row in a review: only what a browser draws without running anything of
+    // the file's — PDFs and photos. Everything else stays a download.
+    if (c.req.query("inline") && INLINE_TYPES.has(found.file.mime)) {
+      return c.body(new Uint8Array(found.data), 200, {
+        "content-type": found.file.mime,
+        "content-disposition": `inline; filename="${name}"`,
+        "x-content-type-options": "nosniff",
+        "cache-control": "private, max-age=300",
+      });
+    }
     return c.body(new Uint8Array(found.data), 200, {
       // Stored files come from mail and the web: always a download, never a page of ours.
       "content-type": "application/octet-stream",
-      "content-disposition": `attachment; filename="${name.replace(/"/g, "")}"`,
+      "content-disposition": `attachment; filename="${name}"`,
       "x-content-type-options": "nosniff",
     });
   })

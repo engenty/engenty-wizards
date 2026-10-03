@@ -1,11 +1,10 @@
-import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import { RECEIPTS } from "./receipts.js";
+import { MENU_PLAN, WINDOW_OFFER } from "./trades.js";
+import type { Starter } from "./types.js";
+import { PROPERTY_FILM, VIDEO_AD } from "./video.js";
+import { WEBSITE_STARTERS } from "./website.js";
 
-export interface Starter {
-  id: string;
-  title: string;
-  pitch: string;
-  definition: WizardDefinition;
-}
+export type { Starter } from "./types.js";
 
 const TAX_OPTIONS = ["20", "19", "10", "7", "0"];
 
@@ -86,119 +85,8 @@ export const STARTERS: Starter[] = [
       ],
     },
   },
-  {
-    id: "facebook-video-ad",
-    title: "Facebook-Videoanzeige",
-    pitch: "Konzept, Anzeigentexte und ein 8-Sekunden-Video für Reels & Stories.",
-    definition: {
-      version: 1,
-      title: "Facebook-Videoanzeige",
-      description: "Von der Produktidee zur fertigen Video-Anzeige (9:16).",
-      avatar: "drop",
-      intro:
-        "Wir bauen eine Video-Anzeige für Reels und Stories. Zuerst das Produkt, dann der Look.",
-      steps: [
-        {
-          id: "product",
-          type: "page",
-          title: "Was bewerben wir?",
-          fields: [
-            { id: "product", label: "Produkt oder Angebot", kind: "text", required: true },
-            { id: "usp", label: "Was macht es besonders?", kind: "textarea", required: true },
-            {
-              id: "audience",
-              label: "Für wen?",
-              kind: "textarea",
-              placeholder: "z. B. Hobbyköche zwischen 25 und 45",
-            },
-            {
-              id: "cta",
-              label: "Handlungsaufforderung",
-              kind: "select",
-              options: ["Jetzt kaufen", "Mehr erfahren", "Registrieren", "Angebot sichern"],
-              default: "Mehr erfahren",
-            },
-          ],
-        },
-        {
-          id: "look",
-          type: "page",
-          title: "Wie soll es aussehen?",
-          fields: [
-            {
-              id: "mood",
-              label: "Stimmung",
-              kind: "select",
-              options: ["Energiegeladen", "Ruhig & hochwertig", "Verspielt", "Dokumentarisch"],
-              default: "Ruhig & hochwertig",
-            },
-            {
-              id: "productImage",
-              label: "Produktfoto (optional)",
-              kind: "image",
-              help: "Das Video startet von diesem Bild.",
-            },
-          ],
-        },
-        {
-          id: "script",
-          type: "agent",
-          title: "Konzept & Texte",
-          working: "Entwickelt das Anzeigenkonzept …",
-          instructions:
-            "Entwickle eine Facebook-/Instagram-Videoanzeige (9:16, 8 Sekunden) für {{product}}. Besonderheit: {{usp}}. Zielgruppe: {{audience}}. Stimmung: {{mood}}. Liefere: einen Hook für die ersten zwei Sekunden, eine präzise Szenenbeschreibung für ein 8-Sekunden-Video (eine durchgehende Einstellung, Kamerabewegung, Licht, keine Schrift im Bild), den Primärtext (max. 125 Zeichen), eine Überschrift (max. 40 Zeichen), eine Beschreibung (max. 30 Zeichen) und die Handlungsaufforderung {{cta}}.",
-          tools: [],
-          output: {
-            format: "json",
-            fields: [
-              { id: "hook", kind: "text", description: "Hook für die ersten 2 Sekunden" },
-              { id: "scene", kind: "text", description: "Szenenbeschreibung für das Video" },
-              { id: "primaryText", kind: "text", description: "Primärtext, max. 125 Zeichen" },
-              { id: "headline", kind: "text", description: "Überschrift, max. 40 Zeichen" },
-              { id: "description", kind: "text", description: "Beschreibung, max. 30 Zeichen" },
-              { id: "cta", kind: "text", description: "Handlungsaufforderung" },
-            ],
-          },
-          model: "high",
-        },
-        {
-          id: "concept",
-          type: "review",
-          title: "Gefällt dir das Konzept?",
-          description: "Erst wenn das Konzept passt, wird das Video gerendert.",
-          show: ["script"],
-          regenerate: true,
-        },
-        {
-          id: "video",
-          type: "generate",
-          title: "Video rendern",
-          working: "Rendert das Video …",
-          asset: "video",
-          prompt: "{{steps.script.scene}} Stimmung: {{mood}}. Produkt: {{product}}.",
-          options: { aspectRatio: "9:16", duration: 8 },
-          referenceImage: "productImage",
-        },
-        {
-          id: "videoCheck",
-          type: "review",
-          title: "Das Video",
-          show: ["video"],
-          regenerate: true,
-        },
-        {
-          id: "done",
-          type: "result",
-          title: "Deine Anzeige ist fertig",
-          message: "Lade Video und Texte herunter und lege die Anzeige im Werbeanzeigenmanager an.",
-          deliverables: [
-            { from: "video", label: "Video", formats: ["mp4"] },
-            { from: "script", label: "Anzeigentexte", formats: ["md", "json"] },
-          ],
-        },
-      ],
-    },
-  },
+  VIDEO_AD,
+  PROPERTY_FILM,
   {
     id: "research-briefing",
     title: "Research-Briefing",
@@ -705,6 +593,10 @@ export const STARTERS: Starter[] = [
       ],
     },
   },
+  WINDOW_OFFER,
+  RECEIPTS,
+  MENU_PLAN,
+  ...WEBSITE_STARTERS,
 ];
 
 export function starterById(id: string): Starter | undefined {

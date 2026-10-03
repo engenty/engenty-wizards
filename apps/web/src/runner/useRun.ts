@@ -146,8 +146,13 @@ export function useRun(runId: string | null) {
       command(`pages/${stepId}`, { values }),
     accept: (stepId: string, edits?: Record<string, string>) =>
       command(`reviews/${stepId}`, { type: "accept", edits }),
-    regenerate: (stepId: string, target: string, note: string) =>
-      command(`reviews/${stepId}`, { type: "regenerate", target, note }),
+    regenerate: (stepId: string, target: string, note: string, items?: number[]) =>
+      command(`reviews/${stepId}`, {
+        type: "regenerate",
+        target,
+        note,
+        items: items?.length ? items : undefined,
+      }),
     back: () => command("back"),
     retry: () => command("retry"),
   };

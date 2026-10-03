@@ -120,6 +120,24 @@ export async function copyFiles(fromWizardId: string, toWizardId: string) {
   }
 }
 
+/** The files a new wizard starts with (a starter's widget, price list, reference text). */
+export async function seedFiles(wizardId: string, files: Record<string, string>) {
+  const rows: (WorkspaceFile & { wizardId: string })[] = [];
+  for (const [path, text] of Object.entries(files)) {
+    const data = Buffer.from(text, "utf8");
+    rows.push({
+      wizardId,
+      path: requirePath(path),
+      hash: await putBlob(data),
+      mime: mimeForPath(path),
+      size: data.byteLength,
+    });
+  }
+  if (rows.length) {
+    await db.insert(schema.wizardFile).values(rows);
+  }
+}
+
 async function touch(wizardId: string) {
   await db
     .update(schema.wizard)

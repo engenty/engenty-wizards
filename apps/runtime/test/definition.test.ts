@@ -163,3 +163,61 @@ describe("line items", () => {
     expect(t.gross).toBe(189.53);
   });
 });
+
+describe("starters with files", () => {
+  for (const s of STARTERS.filter((x) => x.files)) {
+    it(`${s.id} ships every file its widgets name`, () => {
+      const parsed = parseWizard(s.definition, Object.keys(s.files ?? {}));
+      expect(parsed.issues).toEqual([]);
+    });
+  }
+});
+
+describe("one result per entry, prefilled fields, lists gone through row by row", () => {
+  const wizard = (steps: unknown[], lists?: unknown[]) =>
+    parseWizard({ title: "x", lists, steps: [...steps, { id: "r", type: "result", title: "R", deliverables: [] }] });
+  const shots = {
+    id: "script",
+    type: "agent",
+    title: "S",
+    instructions: "write",
+    tools: [],
+    output: { format: "json", fields: [{ id: "shots", kind: "table", columns: ["still"] }] },
+  };
+
+  it("takes a table of an earlier step as the entries of an image step", () => {
+    const parsed = wizard([
+      shots,
+      { id: "stills", type: "generate", title: "I", asset: "image", each: "steps.script.shots", prompt: "{{item.still}} {{index}}/{{count}}" },
+      { id: "clips", type: "generate", title: "V", asset: "video", each: "steps.script.shots", referenceImage: "stills", prompt: "move" },
+    ]);
+    expect(parsed.issues).toEqual([]);
+  });
+
+  it("refuses {{item}} without each, and each on a document", () => {
+    const parsed = wizard([
+      shots,
+      { id: "a", type: "generate", title: "I", asset: "image", prompt: "{{item.still}}" },
+      { id: "b", type: "generate", title: "D", asset: "document", each: "steps.script.shots", prompt: "x" },
+    ]);
+    expect(parsed.issues.map((i) => i.stepId)).toEqual(["a", "b"]);
+  });
+
+  it("refuses a prefill that names no earlier step", () => {
+    const parsed = wizard([
+      { id: "p", type: "page", title: "P", fields: [{ id: "items", label: "I", kind: "items", columns: [{ id: "d", label: "D", kind: "text" }], prefill: "steps.later.rows" }] },
+    ]);
+    expect(parsed.issues).toHaveLength(1);
+  });
+
+  it("wants a select as the status of a list that is gone through", () => {
+    const columns = [
+      { id: "file", name: "File", type: "text" },
+      { id: "state", name: "State", type: "text" },
+    ];
+    const parsed = wizard([], [{ id: "docs", title: "Docs", columns, check: { file: "file", status: "state" } }]);
+    expect(parsed.issues.map((i) => i.message)).toEqual([
+      'List "docs": check.status "state" must be a select.',
+    ]);
+  });
+});

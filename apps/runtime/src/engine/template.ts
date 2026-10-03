@@ -16,6 +16,8 @@ export interface TemplateScope {
   brand: { name?: string; details?: string };
   /** The wizard's stored lists as they are when the step starts. */
   lists?: Record<string, { def: ListDef; rows: ListRow[] }>;
+  /** A generate step with `each`: the entry this result is made for. */
+  entry?: { item: unknown; index: number; count: number };
 }
 
 const TEMPLATE_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
@@ -81,6 +83,23 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
   }
   if (head === "today") {
     return new Date().toISOString().slice(0, 10);
+  }
+  if (head === "item" || head === "index" || head === "count") {
+    const entry = scope.entry;
+    if (!entry) {
+      return "";
+    }
+    if (head === "index") {
+      return entry.index + 1;
+    }
+    if (head === "count") {
+      return entry.count;
+    }
+    let cur: unknown = entry.item;
+    for (const key of rest) {
+      cur = cur && typeof cur === "object" ? (cur as Record<string, unknown>)[key] : undefined;
+    }
+    return cur;
   }
   if (head === "brand") {
     return (brand as Record<string, unknown>)[rest[0] ?? "name"] ?? "";

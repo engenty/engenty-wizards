@@ -219,6 +219,7 @@ export const studio = new Hono<Vars>()
         title: s.title,
         pitch: s.pitch,
         avatar: s.definition.avatar,
+        group: s.group ?? null,
       })),
     ),
   )

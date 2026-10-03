@@ -180,7 +180,7 @@ function gatewayClient(access: GatewayAccess, meta: CallMeta) {
 
 export interface ClassPrice {
   model: string;
-  kind: "text" | "image" | "video" | "audio";
+  kind: "text" | "image" | "video" | "audio" | "speech";
   inputCreditsPerMTok?: number;
   outputCreditsPerMTok?: number;
   creditsPerImage?: number;
@@ -382,6 +382,46 @@ export async function videoModel(meta: CallMeta = {}) {
   throw new ModelUnavailableError("Für Videos ist kein Modell eingerichtet.");
 }
 
+/** The model that reads a text aloud. */
+export async function speechModel(meta: CallMeta = {}) {
+  const access = await gatewayAccess();
+  if (access) {
+    const bound = (await classCatalog())?.classes.speech?.model;
+    if (!bound) {
+      throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+    }
+    return {
+      model: gatewayClient(access, meta).speechModel("wizards/speech"),
+      ref: bound,
+      vendor: vendorOf(bound.replace(/^[a-z]+:/, "")),
+      gateway: true,
+      metered: true,
+    };
+  }
+  const ref = localRef("speech");
+  const { vendor, model } = split(ref);
+  const gateway = ownGateway();
+  if (gateway) {
+    return {
+      model: gateway.speechModel(`${vendor}/${model}`),
+      ref,
+      vendor,
+      gateway: true,
+      metered: false,
+    };
+  }
+  if (local.keys.openai && vendor === "openai") {
+    return {
+      model: createOpenAI({ apiKey: local.keys.openai }).speech(model),
+      ref,
+      vendor,
+      gateway: false,
+      metered: false,
+    };
+  }
+  throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+}
+
 /** Gemini image models are chat models answering with image files. */
 export function isChatImageModel(ref: string): boolean {
   return ref.includes("gemini") && ref.includes("image");
@@ -490,6 +530,15 @@ export function videoCostUsd(ref: string, seconds: number): number {
   const pick = withAudio.length ? withAudio : usable;
   const perSecond = pick.length ? Math.max(...pick.map((t) => n(t.cost_per_second, 0))) : 0.4;
   return perSecond * seconds;
+}
+
+/** Speech is priced per character read, or per audio token (about 25 a second, 15 characters). */
+export function speechCostUsd(ref: string, characters: number): number {
+  const p = priceOf(ref);
+  if (p.speech_input_character_cost !== undefined) {
+    return n(p.speech_input_character_cost, 0.00003) * characters;
+  }
+  return n(p.audio_output_token_cost, 0.00001) * Math.ceil((characters / 15) * 25);
 }
 
 export const WEB_SEARCH_COST_USD = 0.01;

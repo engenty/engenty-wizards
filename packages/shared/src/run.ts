@@ -31,6 +31,8 @@ export interface RunState {
   history: string[];
   /** Regenerate notes per step. */
   notes: Record<string, string>;
+  /** Steps that make several results: the entries (from 0) to make again; the others stay. */
+  redo?: Record<string, number[]>;
 }
 
 interface AskBase {
@@ -110,6 +112,8 @@ export interface RunView {
   /** The step the person is on (interactive) or the one running. */
   step: Step | null;
   values: Record<string, unknown>;
+  /** What fields of the current page start with, from earlier steps (`prefill`). */
+  prefill: Record<string, unknown>;
   outputs: Record<string, StepOutput>;
   /** Steps whose outputs the current step shows, with their definitions. */
   shown: { step: Step; output: StepOutput | null; formats: Format[]; label: string | null }[];

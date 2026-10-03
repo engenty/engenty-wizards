@@ -97,19 +97,20 @@ export const TOOL_IDS = ["web_search", "web_fetch", "browser", "sandbox", "image
  */
 export const TEXT_CLASSES = ["classifier", "standard", "high", "highest"] as const;
 export type TextClass = (typeof TEXT_CLASSES)[number];
-export const MODEL_CLASSES = [...TEXT_CLASSES, "image", "video", "audio"] as const;
+export const MODEL_CLASSES = [...TEXT_CLASSES, "image", "video", "audio", "speech"] as const;
 export type ModelClass = (typeof MODEL_CLASSES)[number];
 /** How hard the model should think, where the bound model can be told. */
 export const EFFORTS = ["low", "medium", "high"] as const;
 export type Effort = (typeof EFFORTS)[number];
 export type ToolId = (typeof TOOL_IDS)[number];
 
-export const ASSET_KINDS = ["image", "video", "document", "dashboard"] as const;
+export const ASSET_KINDS = ["image", "video", "voice", "document", "dashboard"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
 
 export const FORMATS = [
   "png",
   "mp4",
+  "mp3",
   "pdf",
   "docx",
   "html",
@@ -161,6 +162,11 @@ export const fieldSchema = z.object({
   connection: z.string().optional(),
   /** list: id of the wizard list shown here for the person to check and correct. */
   list: z.string().optional(),
+  /**
+   * What the field starts with, from an earlier step: "steps.<id>" or "steps.<id>.<key>". An
+   * `items` field takes a table whose columns are its column ids; the person corrects it.
+   */
+  prefill: z.string().optional(),
 });
 export type Field = z.infer<typeof fieldSchema>;
 
@@ -244,8 +250,18 @@ export const generateStepSchema = z.object({
       template: z.enum(["invoice", "offer", "briefing", "letter", "report", "free"]).optional(),
     })
     .optional(),
-  /** An image field whose upload the image/video model starts from. */
+  /**
+   * The image the image/video model starts from: an earlier image field, or an earlier step
+   * that made images.
+   */
   referenceImage: z.string().optional(),
+  /**
+   * Image / video: one result per entry instead of one. Names an image field with several
+   * uploads, an earlier step that made several images, or a table of an earlier agent step
+   * ("steps.<id>.<key>"). The prompt reads the entry as {{item.<column>}}, {{index}}, {{count}};
+   * `referenceImage` gives each entry its own image when it holds as many.
+   */
+  each: z.string().optional(),
   /** For document/dashboard: the kind of model that writes it; default `high`. */
   model: z.enum(TEXT_CLASSES).optional(),
   effort: z.enum(EFFORTS).optional(),
@@ -268,6 +284,11 @@ export const widgetStepSchema = z.object({
       height: z.number().int().min(200).max(3840),
     })
     .optional(),
+  /**
+   * The result is a film: the timeline is rendered to an MP4 with sound when the step runs,
+   * and that video is what the person sees and downloads.
+   */
+  video: z.boolean().optional(),
   working: z.string().optional(),
 });
 
@@ -336,6 +357,12 @@ export const listSchema = z.object({
   columns: tableColumnsSchema,
   /** Column that identifies a row; saving a row with a known key updates it. */
   key: z.string().optional(),
+  /**
+   * The person goes through the rows one by one in a review: `file` is the column holding the
+   * path of a kept file, shown beside the row; `status` a select column whose options are the
+   * answers — the first one means "not looked at yet".
+   */
+  check: z.object({ file: z.string().optional(), status: z.string().optional() }).optional(),
 });
 
 export const connectionSchema = z.object({
@@ -378,9 +405,11 @@ export function formatsFor(step: Step): Format[] {
   if (step.type === "generate") {
     switch (step.asset) {
       case "image":
-        return ["png"];
+        return step.each ? ["png", "zip"] : ["png"];
       case "video":
-        return ["mp4"];
+        return step.each ? ["mp4", "zip"] : ["mp4"];
+      case "voice":
+        return ["mp3"];
       case "document":
         return ["pdf", "docx", "html", "md", "png"];
       case "dashboard":
@@ -388,7 +417,7 @@ export function formatsFor(step: Step): Format[] {
     }
   }
   if (step.type === "widget") {
-    return ["html", "png", "pdf", "mp4", "json"];
+    return step.video ? ["mp4", "png"] : ["html", "png", "pdf", "mp4", "json"];
   }
   if (step.type === "agent") {
     if (step.output.format === "json") {
@@ -399,8 +428,8 @@ export function formatsFor(step: Step): Format[] {
   return [];
 }
 
-/** Formats a stored list can be downloaded in. */
-export const LIST_FORMATS: Format[] = ["xlsx", "csv", "json", "md"];
+/** Formats a stored list can be downloaded in; zip = the kept files its rows name, with the list. */
+export const LIST_FORMATS: Format[] = ["xlsx", "csv", "json", "md", "zip"];
 
 const LIST_REF = /^lists\.([a-zA-Z][a-zA-Z0-9_]*)$/;
 
@@ -454,6 +483,16 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     listIds.add(list.id);
     if (list.key && !list.columns.some((c) => c.id === list.key)) {
       issues.push({ message: `List "${list.id}": key "${list.key}" is not one of its columns.` });
+    }
+    for (const [role, column] of Object.entries(list.check ?? {})) {
+      const found = list.columns.find((c) => c.id === column);
+      if (!found) {
+        issues.push({
+          message: `List "${list.id}": check.${role} "${column}" is not one of its columns.`,
+        });
+      } else if (role === "status" && found.type !== "select") {
+        issues.push({ message: `List "${list.id}": check.status "${column}" must be a select.` });
+      }
     }
   }
   for (const connection of def.connections ?? []) {
@@ -530,6 +569,13 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         }
       } else if (head === "brand" || head === "today" || head === "notes") {
         // provided by the runner
+      } else if (head === "item" || head === "index" || head === "count") {
+        if (step.type !== "generate" || !step.each) {
+          issues.push({
+            stepId: step.id,
+            message: `"{{${ref}}}" only exists in a generate step with "each".`,
+          });
+        }
       } else if (head === "lists") {
         if (!second || !listIds.has(second)) {
           issues.push({ stepId: step.id, message: `"{{${ref}}}" refers to an unknown list.` });
@@ -547,6 +593,17 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     switch (step.type) {
       case "page":
         for (const field of step.fields) {
+          if (field.prefill) {
+            const ref = dataRef(field.prefill);
+            if (ref.split(".")[0] !== "steps") {
+              issues.push({
+                stepId: step.id,
+                message: `Field "${field.id}": prefill names an earlier step ("steps.<id>.<key>").`,
+              });
+            } else {
+              checkTemplate(step, `{{${ref}}}`);
+            }
+          }
           seenFields.add(field.id);
         }
         break;
@@ -560,11 +617,28 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         break;
       case "generate":
         checkTemplate(step, step.prompt);
-        if (step.referenceImage && !seenFields.has(step.referenceImage)) {
+        if (
+          step.referenceImage &&
+          !seenFields.has(step.referenceImage) &&
+          !seenSteps.has(step.referenceImage)
+        ) {
           issues.push({
             stepId: step.id,
-            message: `referenceImage "${step.referenceImage}" is not an earlier field.`,
+            message: `referenceImage "${step.referenceImage}" is not an earlier field or step.`,
           });
+        }
+        if (step.each) {
+          const ref = dataRef(step.each);
+          if (step.asset !== "image" && step.asset !== "video") {
+            issues.push({ stepId: step.id, message: `"each" is for image and video steps.` });
+          } else if (ref.startsWith("steps.")) {
+            checkTemplate(step, `{{${ref}}}`);
+          } else if (!seenFields.has(ref) && !seenSteps.has(ref)) {
+            issues.push({
+              stepId: step.id,
+              message: `each "${step.each}" is not an earlier field, step or "steps.<id>.<key>".`,
+            });
+          }
         }
         break;
       case "widget":

@@ -43,6 +43,8 @@ export async function bundleWidget(input: {
   files: WorkspaceFile[];
   data: unknown;
   brand: WidgetBrand;
+  /** An origin the page may load images, video and audio from (films). */
+  media?: string;
 }): Promise<string> {
   const loaded = new Map<string, Loaded>();
   for (const file of input.files) {
@@ -126,7 +128,7 @@ export async function bundleWidget(input: {
   html = /<head[^>]*>/i.test(html)
     ? html.replace(/<head[^>]*>/i, (m) => `${m}${boot}`)
     : `<!doctype html><html><head>${boot}</head><body>${html}</body></html>`;
-  const out = guardHtml(html);
+  const out = guardHtml(html, input.media);
   if (Buffer.byteLength(out) > MAX_BUNDLE_BYTES) {
     throw new Error("The widget with its files is larger than 30 MB.");
   }

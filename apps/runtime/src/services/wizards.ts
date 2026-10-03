@@ -16,7 +16,7 @@ import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
-import { copyFiles, draftFiles, sameFiles } from "./files.js";
+import { copyFiles, draftFiles, sameFiles, seedFiles } from "./files.js";
 import { forgetWizardLinks } from "./links.js";
 import { defaultProject, ownedProject } from "./projects.js";
 
@@ -247,6 +247,9 @@ export async function createWizard(
     starter: input.definition === undefined ? (starter?.id ?? null) : null,
   });
   await putLink(shareToken, "wizard", id);
+  if (starter?.files && input.definition === undefined) {
+    await seedFiles(id, starter.files);
+  }
   if (input.note) {
     await addMessage(id, { role: "assistant", content: input.note, changed: true }, writer);
   } else if (starter && input.definition === undefined) {

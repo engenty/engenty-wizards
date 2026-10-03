@@ -193,6 +193,8 @@ export function OutputView({
   editable,
   draft,
   onDraft,
+  picked,
+  onPick,
 }: {
   /** `/api/runs/<id>` or `/api/shares/<token>` — where the output's files are served. */
   base: string;
@@ -201,12 +203,33 @@ export function OutputView({
   editable?: boolean;
   draft?: string;
   onDraft?: (text: string) => void;
+  /** Several results: the ones picked to be made again (from 0), and the tap that picks one. */
+  picked?: number[];
+  onPick?: (index: number) => void;
 }) {
   if (!output) {
     return null;
   }
   const assetUrl = (id: string) => withBase(`${base}/assets/${id}`);
   if (step.type === "widget") {
+    const film = output.assets?.find((a) => a.kind === "video");
+    if (film) {
+      const poster = output.assets?.find((a) => a.kind === "poster");
+      const tall = (step.size?.height ?? 0) > (step.size?.width ?? 1);
+      return (
+        // biome-ignore lint/a11y/useMediaCaption: the film's captions are part of the picture
+        <video
+          src={assetUrl(film.id)}
+          poster={poster ? assetUrl(poster.id) : undefined}
+          controls
+          playsInline
+          className={cn(
+            "mx-auto rounded-lg bg-black ring-1 ring-border-soft",
+            tall ? "max-h-[76vh]" : "w-full",
+          )}
+        />
+      );
+    }
     const html = output.assets?.find((a) => a.mime === "text/html");
     const size = step.size ?? { width: 1280, height: 720 };
     return html ? (
@@ -217,6 +240,62 @@ export function OutputView({
     const asset = output.assets?.[0];
     if (!asset) {
       return null;
+    }
+    if (step.asset === "voice") {
+      return (
+        <div className="flex flex-col gap-3">
+          {/* biome-ignore lint/a11y/useMediaCaption: what is said stands right below */}
+          <audio src={assetUrl(asset.id)} controls className="w-full" />
+          {output.text ? (
+            <p className="text-[14px] text-ink-2 leading-relaxed">{output.text}</p>
+          ) : null}
+        </div>
+      );
+    }
+    const several = (output.assets?.length ?? 0) > 1;
+    if (several && (step.asset === "image" || step.asset === "video")) {
+      const tall = step.options?.aspectRatio === "9:16" || step.options?.aspectRatio === "2:3";
+      return (
+        <div className={cn("grid gap-3", tall ? "grid-cols-2 sm:grid-cols-3" : "sm:grid-cols-2")}>
+          {output.assets?.map((a, i) => {
+            const on = picked?.includes(i);
+            return (
+              <figure
+                key={a.id}
+                className={cn(
+                  "relative overflow-hidden rounded-lg bg-paper-2 ring-1 ring-border-soft",
+                  on && "ring-2 ring-ember",
+                )}
+              >
+                {step.asset === "image" ? (
+                  <img src={assetUrl(a.id)} alt={`${step.title} ${i + 1}`} className="w-full" />
+                ) : (
+                  // biome-ignore lint/a11y/useMediaCaption: generated clips have no caption track to offer
+                  <video src={assetUrl(a.id)} controls playsInline loop className="w-full" />
+                )}
+                {onPick ? (
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => onPick(i)}
+                    className={cn(
+                      "absolute top-2 left-2 inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[12px] shadow-soft backdrop-blur coarse:h-11",
+                      on ? "bg-ember text-white" : "bg-card/90 text-ink-2 hover:text-ink",
+                    )}
+                  >
+                    {on ? <Check className="size-3.5" /> : null}
+                    {t(on ? "run.pickedItem" : "run.pickItem", { n: i + 1 })}
+                  </button>
+                ) : (
+                  <span className="absolute top-2 left-2 rounded-full bg-card/90 px-2.5 py-1 font-medium text-[12px] text-ink-2">
+                    {i + 1}
+                  </span>
+                )}
+              </figure>
+            );
+          })}
+        </div>
+      );
     }
     if (step.asset === "image") {
       return (
@@ -306,6 +385,7 @@ export function OutputView({
 const FORMAT_LABEL: Record<Format, string> = {
   png: "PNG",
   mp4: "MP4",
+  mp3: "MP3",
   pdf: "PDF",
   docx: "Word",
   html: "HTML",

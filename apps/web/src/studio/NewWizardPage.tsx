@@ -13,6 +13,7 @@ interface Starter {
   title: string;
   pitch: string;
   avatar: string;
+  group: "website" | null;
 }
 
 const IDEAS = {
@@ -46,7 +47,9 @@ export function NewWizardPage() {
     onSuccess: async ({ id }, starterId) => {
       await qc.invalidateQueries({ queryKey: ["projects"] });
       await qc.invalidateQueries({ queryKey: ["wizards"] });
-      navigate(starterId ? `/edit/${id}` : `/edit/${id}?prompt=${encodeURIComponent(prompt.trim())}`);
+      navigate(
+        starterId ? `/edit/${id}` : `/edit/${id}?prompt=${encodeURIComponent(prompt.trim())}`,
+      );
     },
   });
 
@@ -103,24 +106,35 @@ export function NewWizardPage() {
         ))}
       </div>
 
-      <h2 className="mt-16 text-center font-medium text-[13px] text-ink-3 uppercase tracking-[0.08em]">
-        {t("new.orStarter")}
-      </h2>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {starters.data?.map((s) => (
-          <Card
-            key={s.id}
-            className="flex cursor-pointer items-center gap-4 p-4 transition hover:shadow-elevated"
-            onClick={() => !create.isPending && create.mutate(s.id)}
-          >
-            <Mascot kind={s.avatar} size={48} interactive={false} />
-            <div className="min-w-0">
-              <div className="font-display font-semibold text-[15px]">{s.title}</div>
-              <div className="text-[13px] text-ink-3 leading-snug">{s.pitch}</div>
+      {(
+        [
+          [t("new.orStarter"), starters.data?.filter((s) => !s.group)],
+          [t("new.forWebsite"), starters.data?.filter((s) => s.group === "website")],
+        ] as const
+      ).map(([heading, list]) =>
+        list?.length ? (
+          <section key={heading}>
+            <h2 className="mt-16 text-center font-medium text-[13px] text-ink-3 uppercase tracking-[0.08em]">
+              {heading}
+            </h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {list.map((s) => (
+                <Card
+                  key={s.id}
+                  className="flex cursor-pointer items-center gap-4 p-4 transition hover:shadow-elevated"
+                  onClick={() => !create.isPending && create.mutate(s.id)}
+                >
+                  <Mascot kind={s.avatar} size={48} interactive={false} />
+                  <div className="min-w-0">
+                    <div className="font-display font-semibold text-[15px]">{s.title}</div>
+                    <div className="text-[13px] text-ink-3 leading-snug">{s.pitch}</div>
+                  </div>
+                </Card>
+              ))}
             </div>
-          </Card>
-        ))}
-      </div>
+          </section>
+        ) : null,
+      )}
     </div>
   );
 }

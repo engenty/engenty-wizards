@@ -543,7 +543,7 @@ function StepBody({
           <Section title="Was wird erzeugt?">
             <Segmented
               value={step.asset}
-              options={["image", "video", "document", "dashboard"]}
+              options={["image", "video", "voice", "document", "dashboard"]}
               onChange={(v: typeof step.asset) => set({ ...step, asset: v })}
             />
             <Textarea

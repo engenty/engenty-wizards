@@ -1,10 +1,12 @@
 import {
   branchValues,
+  dataRef,
   type Format,
   formatsFor,
   LIST_FORMATS,
   listRef,
   nextStepId,
+  type PageStep,
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
@@ -26,16 +28,17 @@ import { db, schema, withTenant } from "../db/client.js";
 import { env } from "../env.js";
 import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
+import { hasFfmpeg } from "../media/ffmpeg.js";
 import { ModelUnavailableError } from "../models.js";
 import { listRows, scopeOf } from "../store/index.js";
 import { activeRuns, indexRun, markRunActive } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
-import { hasFfmpeg } from "../widgets/render.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
+import { resolveRef } from "./template.js";
 import type { ProjectRow, RunRow, StepContext } from "./types.js";
 import { StepError } from "./types.js";
 
@@ -151,6 +154,10 @@ function friendly(err: unknown): string {
   // The model-gateway answers 402 once the tenant's credits are used up.
   if (/insufficient_credits|\b402\b/i.test(msg)) {
     return new NoCreditsError().message;
+  }
+  // A runtime that runs alone pays its provider itself: its admin can top the account up.
+  if (!managed && /minimum balance|insufficient_funds|top up your credits/i.test(msg)) {
+    return "Das Guthaben beim Modell-Anbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Bitte dort aufladen und noch einmal versuchen.";
   }
   if (/rate.?limit|429/i.test(msg)) {
     return "Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.";
@@ -338,6 +345,7 @@ async function drive(runId: string, signal: AbortSignal) {
       await syncRunCost(runId);
       state.outputs[step.id] = output;
       delete state.notes[step.id];
+      delete state.redo?.[step.id];
       const cursor = nextStepId(def, step.id, branchValues(state.values, state.outputs));
       await updateRun(runId, { state, cursor, status: cursor ? "running" : "done", error: null });
       await emitEvent(runId, step.id, "step_done", step.title);
@@ -433,7 +441,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
 
 export type ReviewAction =
   | { type: "accept"; edits?: Record<string, string> }
-  | { type: "regenerate"; target: string; note: string };
+  | { type: "regenerate"; target: string; note: string; items?: number[] };
 
 export async function reviewStep(runId: string, stepId: string, action: ReviewAction) {
   const run = await requireWaiting(runId, stepId);
@@ -458,6 +466,12 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
     throw new RunConflict("Unknown target");
   }
   state.notes[action.target] = action.note.slice(0, 2000) || "Bitte eine neue Variante.";
+  // A step with several results makes only the named ones again.
+  if (action.items?.length) {
+    state.redo = { ...state.redo, [action.target]: action.items };
+  } else {
+    delete state.redo?.[action.target];
+  }
   await updateRun(runId, { state, cursor: action.target, status: "running", error: null });
   await emitEvent(runId, action.target, "info", "Wird neu erstellt …");
   kick(runId);
@@ -499,20 +513,43 @@ export async function cancel(runId: string) {
 export async function availableFormats(step: Step, run: RunRow, wanted?: Format[]) {
   const possible = formatsFor(step);
   let formats = wanted ? wanted.filter((f) => possible.includes(f)) : possible;
+  const output = run.state.outputs[step.id];
   if (step.type === "widget" && formats.includes("mp4")) {
-    const output = run.state.outputs[step.id];
-    if (!output?.widget?.duration || !(await hasFfmpeg())) {
+    // A film is rendered when its step runs; any other widget on demand.
+    const has = step.video
+      ? output?.assets?.some((a) => a.kind === "video")
+      : output?.widget?.duration && (await hasFfmpeg());
+    if (!has) {
       formats = formats.filter((f) => f !== "mp4");
     }
   }
-  // A zip holds the files a step collected; without any there is nothing to zip.
-  if (
-    formats.includes("zip") &&
-    !run.state.outputs[step.id]?.assets?.some((a) => a.kind === "file")
-  ) {
-    formats = formats.filter((f) => f !== "zip");
+  // A zip holds the files a step collected, or its several results; with one there is nothing to zip.
+  if (formats.includes("zip")) {
+    const has =
+      step.type === "generate"
+        ? (output?.assets?.length ?? 0) > 1
+        : output?.assets?.some((a) => a.kind === "file");
+    if (!has) {
+      formats = formats.filter((f) => f !== "zip");
+    }
   }
   return formats;
+}
+
+/** What the page's fields start with, where they name an earlier step's result. */
+function prefillOf(step: PageStep, run: RunRow): Record<string, unknown> {
+  const scope = { def: run.definition, state: run.state, brand: {} };
+  const out: Record<string, unknown> = {};
+  for (const field of step.fields) {
+    if (!field.prefill) {
+      continue;
+    }
+    const value = resolveRef(dataRef(field.prefill), scope);
+    if (value !== undefined && value !== null && value !== "") {
+      out[field.id] = value;
+    }
+  }
+  return out;
 }
 
 export async function runView(run: RunRow, brand: RunView["brand"]): Promise<RunView> {
@@ -538,7 +575,11 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
         step?.type === "result" ? step.deliverables.find((d) => listRef(d.from) === id) : undefined;
       return {
         ...stored[id],
-        formats: deliverable ? deliverable.formats.filter((f) => LIST_FORMATS.includes(f)) : [],
+        formats: deliverable
+          ? deliverable.formats.filter(
+              (f) => LIST_FORMATS.includes(f) && (f !== "zip" || stored[id].def.check?.file),
+            )
+          : [],
         label: deliverable?.label ?? null,
       };
     });
@@ -569,6 +610,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     },
     step,
     values: run.state.values,
+    prefill: step?.type === "page" ? prefillOf(step, run) : {},
     outputs: Object.fromEntries(
       shownIds.map((id) => [id, run.state.outputs[id]]).filter(([, o]) => o),
     ),

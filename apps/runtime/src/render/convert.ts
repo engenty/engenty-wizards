@@ -16,6 +16,7 @@ export interface Converted {
 export const MIME: Record<Format, string> = {
   png: "image/png",
   mp4: "video/mp4",
+  mp3: "audio/mpeg",
   pdf: "application/pdf",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   html: "text/html",

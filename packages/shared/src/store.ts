@@ -14,6 +14,11 @@ export interface ListDef {
   columns: TableColumn[];
   /** Column whose value identifies a row: saving a row with a known key updates it. */
   key?: string;
+  /**
+   * The rows are gone through one by one in a review: `file` holds the path of a kept file
+   * shown beside the row, `status` is a select whose options are the answers (first = open).
+   */
+  check?: { file?: string; status?: string };
 }
 
 export interface ListRow {

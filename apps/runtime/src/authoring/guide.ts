@@ -20,6 +20,10 @@ type Wizard = {
 type List = {
   id, title, description?,
   key?: columnId                // rows are matched on this column: saving a row with a known key updates that row
+  check?: { file?: columnId, status?: columnId }
+                                // a review that shows the list lets the person go through it ROW BY ROW on a split screen:
+                                //   "file" = a text column holding the path of a kept file (PDF, photo), previewed beside the row;
+                                //   "status" = a select column whose options are the answer buttons (the FIRST option = not looked at yet)
   columns: Column[]             // { id (lowercase_slug), name (shown to the person), type, format?, required? }
 }
 //   type "text":    format? { style: "single"|"multiline" }
@@ -62,6 +66,8 @@ type Field = {
   scan?: boolean                // text: a "scan" button fills it from a QR code or barcode (serial number, ticket, article number)
   connection?: connectionId     // kind "connection": the page shows "connect your account"; with required the person must connect
   list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
+  prefill?: "steps.<id>.<key>"  // what the field starts with, from an earlier step. An "items" field takes a table whose
+                                //   columns are exactly its column ids — the step proposes the positions, the person corrects them
 }
 // kinds: text textarea number select multiselect date email url toggle color image file items connection list
 //        location audio signature
@@ -96,11 +102,17 @@ type AgentStep = {
 
 type GenerateStep = {
   type: "generate"
-  asset: "image"|"video"|"document"|"dashboard"
-  prompt: string                // the brief, with {{templates}}
-  options?: { aspectRatio?: "1:1"|"16:9"|"9:16"|"4:5"|"3:2"|"2:3", duration?: 4–10 (video seconds), style?: string,
+  asset: "image"|"video"|"voice"|"document"|"dashboard"
+  prompt: string                // the brief, with {{templates}}; for "voice" the exact text that is read aloud
+  options?: { aspectRatio?: "1:1"|"16:9"|"9:16"|"4:5"|"3:2"|"2:3", duration?: 4–10 (video seconds; 4, 6 or 8 are safe),
+              style?: string,   // image/video: the look · voice: how to speak ("ruhig, warm")
               template?: "invoice"|"offer"|"briefing"|"letter"|"report"|"free" }   // template for documents
-  referenceImage?: fieldId      // an earlier image field the image/video starts from
+  referenceImage?: fieldId | stepId   // the image the image/video starts from: an image field, or an earlier step that made images
+  each?: fieldId | stepId | "steps.<id>.<key>"
+                                // image/video: ONE RESULT PER ENTRY (at most 8) — per upload of an image field (multiple), per image
+                                //   of an earlier step, or per row of an agent step's table. The prompt reads the row as
+                                //   {{item.<column>}} (plus {{index}}, {{count}}); referenceImage gives entry n its n-th image.
+                                //   In a review the person can make single results again.
   working?: string
 }
 
@@ -110,6 +122,9 @@ type WidgetStep = {
   data: { [key]: string }       // what the widget gets as wizard.data: key → fieldId | steps.stepId | steps.stepId.key | brand.name | today
   sample?: string               // workspace path of example data (same shape as data) for previews
   size?: { width, height }      // design size in px, default 1280×720 (9:16 → 1080×1920)
+  video?: boolean               // a FILM: the timeline is rendered to an MP4 WITH SOUND when the step runs; the person sees and
+                                //   downloads that video. data may then name generate steps: "steps.<id>" of an image / video / voice
+                                //   step arrives as a URL (a list of URLs for a step with "each").
   working?: string
 }
 // an interactive HTML app written ONCE into the workspace; every run only brings new data (no model call, no cost)
@@ -119,11 +134,12 @@ type ReviewStep = { type: "review", show: (stepId | "lists.<listId>")[], edit?: 
 // a shown list is edited in place by the person
 
 type ResultStep = { type: "result", message?: string, deliverables: { from: stepId | "lists.<listId>", label?, formats: Format[] }[] }
-// formats per source: image→png · video→mp4 · document→pdf docx html md png · dashboard→html pdf png
+// formats per source: image→png · video→mp4 (several results: zip) · voice→mp3 · document→pdf docx html md png · dashboard→html pdf png
+//                     film widget (video: true)→mp4 png
 //                     widget→html png pdf mp4 json (mp4 only when the widget registers a timeline)
 //                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md (xlsx: one sheet per table)
 //                     agent, any format→zip: the FILES the step kept with mail_save / browser_download
-//                     lists.<id>→xlsx csv json md
+//                     lists.<id>→xlsx csv json md · zip (a list with check.file: the kept files its rows name, plus the list)
 
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{brand.name}} {{brand.details}} · {{today}}
@@ -149,6 +165,9 @@ ${sandboxGuideLine()}
 - Photos in documents: a document step can place the photos of an earlier "image" field and a "signature" (it gets them as asset:// images); say in its prompt where they go. A model only SEES a photo in an agent step, through read_document.
 - Papers and scans: a "file" field with multiple and camera. Agent steps read uploads with read_document; for invoices and receipts scan_documents returns the fields (vendor, number, date, totals, currency) exactly as printed.
 - Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
+- Going through documents one by one (receipts against payments): never one model step per document. One step reads them in batches (scan_documents takes 30 at once) and writes rows into a list with "check"; the review shows that list split-screen — the person answers each row beside its file, without any model call.
+- Video that convinces is built in stages, each with its own review: idea and script (agent, json with a table of shots) → one still per shot (generate image with "each", starting from the person's product photo) → one clip per still (generate video with "each" and referenceImage = the stills step) → a voice-over (generate voice) → a film widget (video: true) that cuts clips, captions, voice and a closing card with the call to action. The starters "facebook-video-ad" and "property-film" carry such a widget (film/film.js) to copy. Offer a cheaper path without clips: the film animates the stills.
+- Prices come from a file the admin keeps in the workspace (a CSV price list): the agent step looks them up with read_workspace_file and proposes positions as a table; the next page shows them in an "items" field with "prefill" for the person to correct; the runner computes the totals.
 - Every step a person sees later (review/result) must come from an earlier step id.
 - Write all wizard texts in the admin's language.`;
 
@@ -171,6 +190,10 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
 - Animation: call wizard.timeline({ duration: seconds, seek: t => draw(t) }) and drive your own
   play/pause and <input type=range> scrubber from it. seek(t) must draw time t synchronously — the MP4
   export steps through it frame by frame. In mode "export" hide all controls and do not autoplay.
+- A film (step.video): seek(t) may return a promise that resolves once the frame is drawn (set a clip's
+  currentTime, wait for "seeked", draw it to a canvas). Name the sound in the timeline:
+  audio: [{ src, start, duration?, volume? }] with the URLs from wizard.data (the voice-over, the clips
+  themselves for their own sound). Clips and images of the run arrive as URLs, not inlined.
 - Call wizard.ready() once the first frame is drawn. Lay out for the step's size and scale to fit
   the window on every "resize" event — the window can be 0×0 when your script first runs.
 - Plain HTML/CSS/JS, SVG or canvas. Calm design, one accent colour (brand.accent), legible labels.

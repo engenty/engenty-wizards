@@ -97,6 +97,15 @@ export async function renderDownload(
   const name = slug(baseName);
   const file = (ext: string) => `${name}.${ext}`;
 
+  if (step.type === "widget" && step.video) {
+    // A film was rendered when its step ran: the video and its poster are the files.
+    const asset = output.assets?.find((a) => a.kind === (format === "mp4" ? "video" : "poster"));
+    const found = asset ? await loadAsset(asset.id) : null;
+    return found
+      ? { data: new Uint8Array(found.data), mime: found.row.mime, filename: file(format) }
+      : null;
+  }
+
   if (step.type === "widget") {
     const source = output.assets?.find((a) => a.mime === "text/html");
     if (format === "json") {
@@ -134,7 +143,11 @@ export async function renderDownload(
     if (!asset) {
       return null;
     }
-    if (step.asset === "image" || step.asset === "video") {
+    if (format === "zip") {
+      const zip = await zipAssets(output.assets ?? []);
+      return zip ? { data: zip, mime: MIME.zip, filename: file("zip") } : null;
+    }
+    if (step.asset === "image" || step.asset === "video" || step.asset === "voice") {
       const found = await loadAsset(asset.id);
       return found
         ? {
@@ -239,14 +252,37 @@ async function zipAssets(assets: AssetRef[]): Promise<Uint8Array | null> {
   return Object.keys(entries).length ? zipSync(entries, { level: 6 }) : null;
 }
 
-/** A stored list in one format. Column labels head the spreadsheet; ids stay the JSON keys. */
+/**
+ * A stored list in one format. Column labels head the spreadsheet; ids stay the JSON keys.
+ * `files` reads a kept file by its path — a zip holds the files the rows name, and the list.
+ */
 export async function listDownload(
   def: ListDef,
   rows: ListRow[],
   format: Format,
   baseName: string,
+  files?: (path: string) => Promise<Uint8Array | null>,
 ): Promise<Download | null> {
   const name = slug(baseName);
+  if (format === "zip") {
+    const column = def.check?.file;
+    if (!column || !files) {
+      return null;
+    }
+    const entries: Record<string, Uint8Array> = {};
+    for (const row of rows) {
+      const path = String(row.cells[column] ?? "").trim();
+      const data = path && !(path in entries) ? await files(path) : null;
+      if (data) {
+        entries[path] = data;
+      }
+    }
+    const sheet = await listDownload(def, rows, "xlsx", baseName);
+    if (sheet) {
+      entries[sheet.filename] = sheet.data as Uint8Array;
+    }
+    return { data: zipSync(entries, { level: 6 }), mime: MIME.zip, filename: `${name}.zip` };
+  }
   const cells = rows.map((r) => r.cells);
   const headers = Object.fromEntries(def.columns.map((c) => [c.id, c.name]));
   const labelled = cells.map((row) =>

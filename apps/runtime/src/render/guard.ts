@@ -9,8 +9,15 @@ export const HTML_CSP =
 /** The response header for a generated document opened on its own: an opaque origin, scripts allowed. */
 export const HTML_RESPONSE_CSP = `sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; ${HTML_CSP}`;
 
-export function guardHtml(html: string): string {
-  const head = `<meta http-equiv="Content-Security-Policy" content="${HTML_CSP}"><base target="_blank">`;
+/**
+ * `media`: one more origin images, video and audio may come from — a film's page gets this
+ * run's clips from the renderer that way; they are too large to inline.
+ */
+export function guardHtml(html: string, media?: string): string {
+  const csp = media
+    ? HTML_CSP.replace("img-src", `img-src ${media}`).replace("media-src", `media-src ${media}`)
+    : HTML_CSP;
+  const head = `<meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank">`;
   if (/<head[^>]*>/i.test(html)) {
     return html.replace(/<head[^>]*>/i, (m) => `${m}${head}`);
   }

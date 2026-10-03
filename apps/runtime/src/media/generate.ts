@@ -1,13 +1,17 @@
-import { experimental_generateVideo, generateImage, generateText } from "ai";
+import { experimental_generateVideo, generateImage, generateSpeech, generateText } from "ai";
+import { extFor } from "../files/storage.js";
 import {
   type CallMeta,
   imageCostUsd,
   imageModel,
   isChatImageModel,
+  speechCostUsd,
+  speechModel,
   textModel,
   videoCostUsd,
   videoModel,
 } from "../models.js";
+import { toMp3 } from "./ffmpeg.js";
 
 export interface MediaReference {
   bytes: Uint8Array;
@@ -111,4 +115,34 @@ export async function generateVideoMedia(input: {
     mime: video.mediaType ?? "video/mp4",
     costUsd: videoClass.metered ? 0 : videoCostUsd(videoClass.ref, duration),
   };
+}
+
+/** A text read aloud, as MP3 where ffmpeg is at hand (else as the model gave it). */
+export async function generateSpeechMedia(input: {
+  call?: CallMeta;
+  text: string;
+  /** How to speak: "warm, ruhig, etwas schneller". */
+  style?: string;
+  abortSignal?: AbortSignal;
+}): Promise<GeneratedMedia> {
+  const speech = await speechModel(input.call);
+  const result = await generateSpeech({
+    model: speech.model,
+    text: input.text,
+    instructions: input.style || undefined,
+    abortSignal: input.abortSignal,
+  });
+  const audio = result.audio;
+  if (!audio?.uint8Array?.byteLength) {
+    throw new Error("The speech model returned no audio.");
+  }
+  const mime = audio.mediaType ?? "audio/mpeg";
+  const costUsd = speech.metered ? 0 : speechCostUsd(speech.ref, input.text.length);
+  if (mime !== "audio/mpeg") {
+    const mp3 = await toMp3(audio.uint8Array, extFor(mime) === "bin" ? "wav" : extFor(mime));
+    if (mp3) {
+      return { bytes: mp3, mime: "audio/mpeg", costUsd };
+    }
+  }
+  return { bytes: audio.uint8Array, mime, costUsd };
 }

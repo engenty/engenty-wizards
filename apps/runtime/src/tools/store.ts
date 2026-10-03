@@ -9,7 +9,7 @@ import { parseDocument, type ScanKind, scanDocument } from "../documents/parse.j
 import type { StepContext } from "../engine/types.js";
 import { loadAsset } from "../files/storage.js";
 import { deleteRows, listRows, readStoreFile, saveRows, storeFiles } from "../store/index.js";
-import { attempt, clip } from "./shared.js";
+import { attempt, clip, type FileKeeper } from "./shared.js";
 
 /** One upload of the person, as agents name it. */
 export interface UploadRef {
@@ -84,7 +84,7 @@ function describeColumns(def: ListDef): string {
  * What every agent step can do with the wizard's store and the person's files: read and write
  * the lists, read documents (PDF, scans, photos, Word, Excel, CSV, saved mails).
  */
-export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
+export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileKeeper) {
   const tools: Record<string, any> = {};
   const lists = ctx.def.lists ?? [];
   const charge = (usd: number) => ctx.chargeUsd(usd);
@@ -172,6 +172,43 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[]) {
         };
       }),
   });
+
+  if (uploads.length) {
+    tools.files_keep = createTool({
+      id: "files_keep",
+      description:
+        "Keep files the person gave in the wizard's files, several at once: each is stored under `path`, is there on the next run and belongs to this step's result. Returns the path each file now has.",
+      inputSchema: z.object({
+        items: z
+          .array(
+            z.object({
+              file: z.string().describe("An upload reference, upload:<id>."),
+              path: z.string().describe("e.g. belege/2026-09/2026-09-03_Notion_INV-123.pdf"),
+            }),
+          )
+          .min(1)
+          .max(40),
+      }),
+      execute: ({ items }) =>
+        attempt(async () => {
+          await ctx.emit("tool", `Legt ${items.length} Dateien ab`);
+          const kept: Record<string, unknown>[] = [];
+          for (const item of items) {
+            try {
+              const source = await resolveFile(ctx, item.file);
+              const file = await keeper.keep(item.path, source.data, {
+                mime: source.mime,
+                source: `Von der Person: ${source.name}`,
+              });
+              kept.push({ file: item.file, path: file.path });
+            } catch (err) {
+              kept.push({ file: item.file, error: String((err as Error).message).slice(0, 200) });
+            }
+          }
+          return { kept };
+        }),
+    });
+  }
 
   const fileHint = uploads.length
     ? ` The person gave: ${uploads.map((u) => `${u.ref} (${u.name})`).join(", ")}.`

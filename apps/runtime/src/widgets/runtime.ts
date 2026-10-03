@@ -9,10 +9,12 @@
  *   wizard.json(path)      a workspace JSON file, parsed
  *   wizard.url(path)       a workspace file as a data URL (images, fonts, audio)
  *   wizard.ready()         call once the first frame is drawn; exports wait for it
- *   wizard.timeline({ duration, seek, poster? })
- *                          an animation of `duration` seconds; seek(t) must draw time t
- *                          synchronously. Enables the MP4 export; `poster` is the second the
- *                          PNG/PDF show (default 0).
+ *   wizard.timeline({ duration, seek, poster?, audio? })
+ *                          an animation of `duration` seconds; seek(t) must draw time t —
+ *                          synchronously, or as a promise that resolves once it is drawn (a
+ *                          film waits for its clips). Enables the MP4 export; `poster` is the
+ *                          second the PNG/PDF show (default 0). A film names its sound in
+ *                          `audio`: [{ src, start, duration?, volume? }].
  */
 export const WIDGET_RUNTIME = `(function () {
   var el = document.getElementById("wizard-payload");

@@ -1,5 +1,7 @@
 import {
   type AgentStep,
+  allFields,
+  dataRef,
   type GenerateStep,
   isDecisionStep,
   type Step,
@@ -9,14 +11,20 @@ import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { loadAsset, loadAssetText } from "../files/storage.js";
-import { generateImageMedia, generateVideoMedia, type MediaReference } from "../media/generate.js";
+import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
+import {
+  type GeneratedMedia,
+  generateImageMedia,
+  generateSpeechMedia,
+  generateVideoMedia,
+  type MediaReference,
+} from "../media/generate.js";
 import { attachTools, costOf, textModel } from "../models.js";
 import { buildStepTools } from "../tools/index.js";
 import { personUploads } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { prepareInputs } from "./prepare.js";
-import { answersAsText, renderTemplate } from "./template.js";
+import { answersAsText, renderTemplate, resolveRef, type TemplateScope } from "./template.js";
 import { type StepContext, StepError } from "./types.js";
 
 function today(): string {
@@ -225,16 +233,61 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
 
 // --- generate ----------------------------------------------------------------
 
-async function referenceImage(
-  step: GenerateStep,
-  ctx: StepContext,
-): Promise<MediaReference | null> {
-  const id = step.referenceImage ? ctx.state.values[step.referenceImage] : null;
-  if (typeof id !== "string" || !id) {
-    return null;
+/** The images a name stands for: an image field's uploads, or the images an earlier step made. */
+function imagesOf(name: string, ctx: StepContext): string[] {
+  const field = allFields(ctx.def).find((f) => f.id === name);
+  if (field) {
+    const value = ctx.state.values[name];
+    return (Array.isArray(value) ? value : [value]).filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    );
   }
-  const found = await loadAsset(id);
-  return found ? { bytes: new Uint8Array(found.data), mediaType: found.row.mime } : null;
+  return (ctx.state.outputs[name]?.assets ?? [])
+    .filter((a) => a.mime.startsWith("image/") && a.kind !== "poster")
+    .map((a) => a.id);
+}
+
+async function loadReference(id: string | undefined, ctx: StepContext) {
+  const found = id ? await loadAsset(id) : null;
+  return found && found.row.runId === ctx.runId
+    ? ({ bytes: new Uint8Array(found.data), mediaType: found.row.mime } satisfies MediaReference)
+    : null;
+}
+
+/** One result a generate step makes: what its prompt reads as {{item}}, and the image it starts from. */
+interface Entry {
+  item: unknown;
+  index: number;
+  count: number;
+  reference: string | undefined;
+}
+
+/** A step makes at most this many results; more entries are left out. */
+const MAX_ENTRIES = 8;
+
+/** The entries of a step with `each` — or the single one of a step without. */
+function entriesOf(step: GenerateStep, ctx: StepContext): Entry[] {
+  const references = step.referenceImage ? imagesOf(step.referenceImage, ctx) : [];
+  if (!step.each) {
+    return [{ item: null, index: 0, count: 1, reference: references[0] }];
+  }
+  const ref = dataRef(step.each);
+  let items: { item: unknown; own?: string }[];
+  if (ref.startsWith("steps.") && ref.split(".").length > 2) {
+    const value = resolveRef(ref, ctx.scope);
+    items = (Array.isArray(value) ? value : []).map((item) => ({ item }));
+  } else {
+    // Images: every entry is one of them, and starts from it unless another image is named.
+    items = imagesOf(ref.replace(/^steps\./, ""), ctx).map((id) => ({ item: id, own: id }));
+  }
+  items = items.slice(0, MAX_ENTRIES);
+  return items.map(({ item, own }, index) => ({
+    item,
+    index,
+    count: items.length,
+    reference:
+      references.length > 1 ? (references[index] ?? references[0]) : (references[0] ?? own),
+  }));
 }
 
 const DOCUMENT_GUIDES: Record<string, string> = {
@@ -354,17 +407,23 @@ async function writeHtml(
 }
 
 /** For image/video: let a fast model turn the brief + answers into one strong visual prompt. */
-async function visualPrompt(step: GenerateStep, ctx: StepContext): Promise<string> {
-  const brief = renderTemplate(step.prompt, ctx.scope);
+async function visualPrompt(step: GenerateStep, ctx: StepContext, entry: Entry): Promise<string> {
+  const scope: TemplateScope = { ...ctx.scope, entry };
+  const brief = renderTemplate(step.prompt, scope);
   const note = ctx.state.notes[step.id];
   const prompter = await textModel("standard", ctx.call);
+  const from = entry.reference
+    ? step.asset === "video"
+      ? " The video STARTS FROM A GIVEN IMAGE: describe only what moves in it and how the camera moves; never re-describe or change what the image shows."
+      : " A REFERENCE IMAGE is given: say what to keep exactly as it is and what to change."
+    : "";
   const result = await generateText({
     model: prompter.model,
     abortSignal: ctx.signal,
     system:
       step.asset === "video"
-        ? "You write prompts for a text-to-video model. One paragraph, English, present tense: subject, action, setting, camera movement, lighting, mood, style. Any on-screen text in quotes. No preamble."
-        : "You write prompts for an image model. One paragraph, English: subject, composition, setting, lighting, colour palette, style. Any text that must appear in the image goes in quotes. No preamble.",
+        ? `You write prompts for a video model. One paragraph, English, present tense: subject, action, setting, camera movement, lighting, mood, style. Any on-screen text in quotes. No preamble.${from}`
+        : `You write prompts for an image model. One paragraph, English: subject, composition, setting, lighting, colour palette, style. Any text that must appear in the image goes in quotes. No preamble.${from}`,
     prompt: [
       `Brief:\n${brief}`,
       step.options?.style ? `Style: ${step.options.style}` : "",
@@ -377,48 +436,121 @@ async function visualPrompt(step: GenerateStep, ctx: StepContext): Promise<strin
   return result.text.trim() || brief;
 }
 
+/** Runs `work` over the entries, a few at a time, results in order. */
+async function inParallel<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>) {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await work(items[i]);
+      }
+    }),
+  );
+  return out;
+}
+
+/** Images and video clips: one per entry. A revision can name the entries to make again. */
+async function runMediaStep(
+  step: GenerateStep,
+  ctx: StepContext,
+  asset: "image" | "video",
+): Promise<StepOutput> {
+  const entries = entriesOf(step, ctx);
+  if (!entries.length) {
+    throw new StepError("Für diesen Schritt fehlen die Vorlagen (Bilder oder Szenen).");
+  }
+  const previous = ctx.state.outputs[step.id];
+  const before = previous?.assets?.filter((a) => a.kind === asset) ?? [];
+  const beforeText = (previous?.text ?? "").split("\n\n");
+  const redo = ctx.state.redo?.[step.id];
+  // Only the named entries are made again — as long as the rest is still there to keep.
+  const keep = (e: Entry) =>
+    Boolean(redo?.length) && before.length === entries.length && !redo?.includes(e.index);
+  const todo = entries.filter((e) => !keep(e));
+  if (asset === "video") {
+    await ctx.emit(
+      "info",
+      todo.length > 1
+        ? `${todo.length} Clips werden gerendert – das dauert einige Minuten.`
+        : "Das Video wird gerendert – das dauert meist 1–3 Minuten.",
+    );
+  }
+  let finished = 0;
+  const made = await inParallel(todo, 3, async (entry) => {
+    const prompt = await visualPrompt(step, ctx, entry);
+    const reference = await loadReference(entry.reference, ctx);
+    const media: GeneratedMedia =
+      asset === "image"
+        ? await generateImageMedia({
+            call: ctx.call,
+            prompt,
+            aspectRatio: step.options?.aspectRatio,
+            reference,
+            abortSignal: ctx.signal,
+          })
+        : await generateVideoMedia({
+            call: ctx.call,
+            prompt,
+            aspectRatio: step.options?.aspectRatio,
+            duration: step.options?.duration,
+            reference,
+            abortSignal: ctx.signal,
+          });
+    await ctx.chargeUsd(media.costUsd);
+    const n = entries.length > 1 ? `-${entry.index + 1}` : "";
+    const ref = await ctx.saveAsset({
+      stepId: step.id,
+      kind: asset,
+      mime: media.mime,
+      name: `${step.id}${n}.${asset === "image" ? "png" : extFor(media.mime)}`,
+      data: media.bytes,
+    });
+    finished++;
+    if (todo.length > 1) {
+      await ctx.emit("info", `${finished} von ${todo.length} fertig`);
+    }
+    return { index: entry.index, prompt, ref };
+  });
+  const byIndex = new Map(made.map((m) => [m.index, m]));
+  const assets: AssetRef[] = [];
+  const prompts: string[] = [];
+  for (const entry of entries) {
+    const fresh = byIndex.get(entry.index);
+    assets.push(fresh?.ref ?? before[entry.index]);
+    prompts.push(fresh?.prompt ?? beforeText[entry.index] ?? "");
+  }
+  return { text: prompts.join("\n\n"), assets, at: new Date().toISOString() };
+}
+
 export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Promise<StepOutput> {
   const at = new Date().toISOString();
   switch (step.asset) {
-    case "image": {
-      const prompt = await visualPrompt(step, ctx);
-      const media = await generateImageMedia({
+    case "image":
+    case "video":
+      return runMediaStep(step, ctx, step.asset);
+    case "voice": {
+      const text = renderTemplate(step.prompt, ctx.scope).trim().slice(0, 4000);
+      if (!text) {
+        throw new StepError("Es gibt keinen Text zum Vorlesen.");
+      }
+      const note = ctx.state.notes[step.id];
+      const media = await generateSpeechMedia({
         call: ctx.call,
-        prompt,
-        aspectRatio: step.options?.aspectRatio,
-        reference: await referenceImage(step, ctx),
+        text,
+        style: [step.options?.style, note].filter(Boolean).join(". ") || undefined,
         abortSignal: ctx.signal,
       });
       await ctx.chargeUsd(media.costUsd);
       const ref = await ctx.saveAsset({
         stepId: step.id,
-        kind: "image",
+        kind: "audio",
         mime: media.mime,
-        name: `${step.id}.png`,
+        name: `${step.id}.${extFor(media.mime)}`,
         data: media.bytes,
       });
-      return { text: prompt, assets: [ref], at };
-    }
-    case "video": {
-      const prompt = await visualPrompt(step, ctx);
-      await ctx.emit("info", "Das Video wird gerendert – das dauert meist 1–3 Minuten.");
-      const media = await generateVideoMedia({
-        call: ctx.call,
-        prompt,
-        aspectRatio: step.options?.aspectRatio,
-        duration: step.options?.duration,
-        reference: await referenceImage(step, ctx),
-        abortSignal: ctx.signal,
-      });
-      await ctx.chargeUsd(media.costUsd);
-      const ref = await ctx.saveAsset({
-        stepId: step.id,
-        kind: "video",
-        mime: media.mime,
-        name: `${step.id}.mp4`,
-        data: media.bytes,
-      });
-      return { text: prompt, assets: [ref], at };
+      return { text, assets: [ref], at };
     }
     case "document":
     case "dashboard": {

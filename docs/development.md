@@ -17,7 +17,8 @@ The Manage-App (accounts, tenants, credits, the model-gateway) is a separate, cl
 the two speak is in [manage-contract.md](manage-contract.md).
 
 A step names a **model class** — `classifier`, `standard`, `high`, `highest`, plus `image`,
-`video`, `audio` — and an optional effort hint, never a model. Which model serves a class is
+`video`, `audio` (listens to voice notes), `speech` (reads a voice-over aloud) — and an optional
+effort hint, never a model. Which model serves a class is
 bound outside the wizard: in the model-gateway, or under Settings → "Modelle & Konto".
 
 ## Layout
@@ -49,7 +50,8 @@ https://wizards.localhost. "Dev-Login" lets you in (local only); without `DEV_LO
 prints a one-time link at start.
 
 Local Chrome renders PDFs/PNGs (`CHROME_PATH`), ffmpeg encodes widget animations to MP4
-(`FFMPEG_PATH`). The shell/code tool runs in a sandbox per run, chosen with `SANDBOX`:
+(`FFMPEG_PATH`) and cuts films: a widget step with `video: true` draws clips and stills frame by
+frame and gets voice-over and clip sound mixed in. The shell/code tool runs in a sandbox per run, chosen with `SANDBOX`:
 `docker` needs Docker and the `engenty-sandbox` image; `agentos` runs an
 [agentOS](https://rivet.dev/agentos/) VM inside the server process (macOS and glibc Linux, no
 Docker) with a smaller toolset — sh, coreutils, node, npm, and Python as a separate tool without
@@ -68,6 +70,7 @@ the first start; the old file stays.
 ```bash
 pnpm fix && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to end via the API
+# { "$file": "path" } as a value uploads that file; API=http://127.0.0.1:<port> names another server
 ```
 
 `apps/runtime/test/tenants.test.ts` is the leak test: two tenants, two databases, nothing of one

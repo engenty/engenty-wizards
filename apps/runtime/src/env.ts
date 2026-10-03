@@ -166,6 +166,7 @@ export const env = {
     image: str("MODEL_IMAGE", "google/gemini-3.1-flash-image"),
     video: str("MODEL_VIDEO", "google/veo-3.1-fast-generate-001"),
     audio: str("MODEL_AUDIO", "google/gemini-3.5-flash-lite"),
+    speech: str("MODEL_SPEECH", "google/gemini-3.8-flash-tts"),
   },
 
   /**
