@@ -5,6 +5,7 @@ import { Logo, ThemeToggle } from "../brand";
 import { t } from "../lib/i18n";
 import { type Me, signOut, spendableCredits } from "../lib/session";
 import { cn } from "../ui";
+import { LangSwitch } from "./LangSwitch";
 
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
 const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
@@ -86,6 +87,10 @@ export function UserMenu({ me }: { me: Me }) {
               <CreditCard className="size-4" /> {t("nav.account")}
             </a>
           ) : null}
+          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[14px] text-ink-2">
+            {t("nav.language")}
+            <LangSwitch tone="surface" />
+          </div>
           {me.mode === "managed" ? (
             <button type="button" className={item} onClick={() => void signOut()}>
               <LogOut className="size-4" /> {t("nav.logout")}

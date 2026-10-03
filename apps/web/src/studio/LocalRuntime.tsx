@@ -3,9 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
+import { features } from "../lib/features";
 import { t } from "../lib/i18n";
 import { type LocalModels, type Me, useMe } from "../lib/session";
 import { Button, Card, Input, Label, Segmented } from "../ui";
+import { HarnessPanel, ModelTest } from "./Harness";
 
 /** Opens a page in the person's own browser — also from inside the desktop app's window. */
 export function openExternal(url: string) {
@@ -93,7 +95,7 @@ function Account({ me }: { me: Me }) {
   );
 }
 
-function OwnModels({ models }: { models: LocalModels }) {
+export function OwnModels({ models }: { models: LocalModels }) {
   const qc = useQueryClient();
   const [keys, setKeys] = useState<Partial<Record<KeyName, string>>>({});
   const [bindings, setBindings] = useState(models.bindings);
@@ -177,14 +179,49 @@ function OwnModels({ models }: { models: LocalModels }) {
   );
 }
 
+type Source = LocalModels["source"];
+
+/** Where the models of a runtime that runs alone come from; the choices this machine offers. */
+export function SourcePicker({ me }: { me: Me }) {
+  const qc = useQueryClient();
+  const models = me.models;
+  const source = useMutation({
+    mutationFn: (next: Source) => api.put("/api/studio/local/models", { source: next }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+  if (!models) {
+    return null;
+  }
+  const options: { value: Source; label: string }[] = [
+    // The installed clients, and the one chosen even if it went missing.
+    ...me.harnesses
+      .filter((h) => h.version !== null || models.source === h.id)
+      .map((h) => ({ value: h.id, label: h.name })),
+    { value: "own", label: t("local.sourceOwn") },
+    ...(features.account ? [{ value: "account" as const, label: t("local.sourceAccount") }] : []),
+  ];
+  if (options.length < 2) {
+    return null;
+  }
+  return (
+    <Segmented
+      value={options.find((o) => o.value === models.source)?.label ?? options[0].label}
+      options={options.map((o) => o.label)}
+      onChange={(label: string) => {
+        const next = options.find((o) => o.label === label)?.value;
+        if (!next || (next === "account" && !me.account)) {
+          return;
+        }
+        source.mutate(next);
+      }}
+    />
+  );
+}
+
 /** Settings of a runtime that runs alone: the linked account, and where its models come from. */
 export function LocalRuntimeCard() {
   const me = useMe();
   const qc = useQueryClient();
-  const source = useMutation({
-    mutationFn: (next: "account" | "own") => api.put("/api/studio/local/models", { source: next }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
-  });
   const chat = useMutation({
     mutationFn: (engine: "models" | "claude") => api.put("/api/studio/local/chat", { engine }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
@@ -193,37 +230,33 @@ export function LocalRuntimeCard() {
     return null;
   }
   const models = me.data.models;
-  const options = [
-    { value: "own", label: t("local.sourceOwn") },
-    { value: "account", label: t("local.sourceAccount") },
-  ];
   return (
     <Card className="p-6">
       <h2 className="font-display font-semibold text-lg">{t("local.title")}</h2>
       <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("local.hint")}</p>
-      <Label>{t("local.account")}</Label>
-      <Account me={me.data} />
-      <div className="mt-6">
-        <Label>{t("local.source")}</Label>
-        <Segmented
-          value={options.find((o) => o.value === models.source)?.label ?? options[0].label}
-          options={options.map((o) => o.label)}
-          onChange={(label: string) => {
-            const next = options.find((o) => o.label === label)?.value as "account" | "own";
-            if (next === "account" && !me.data?.account) {
-              return;
-            }
-            source.mutate(next);
-          }}
-        />
-        {models.source === "account" ? (
-          <p className="mt-3 text-[13px] text-ink-3">{t("local.sourceAccountHint")}</p>
-        ) : (
-          <div className="mt-5">
+      {features.account ? (
+        <div className="mb-6">
+          <Label>{t("local.account")}</Label>
+          <Account me={me.data} />
+        </div>
+      ) : null}
+      <Label>{t("local.source")}</Label>
+      <SourcePicker me={me.data} />
+      {me.data.harnesses.some((h) => h.id === models.source) ? (
+        <div className="mt-4 flex flex-col gap-4">
+          <HarnessPanel me={me.data} id={models.source as Exclude<Source, "own" | "account">} />
+          <div className="mt-2 border-border-soft border-t pt-5">
             <OwnModels models={models} />
           </div>
-        )}
-      </div>
+        </div>
+      ) : models.source === "account" ? (
+        <p className="mt-3 text-[13px] text-ink-3">{t("local.sourceAccountHint")}</p>
+      ) : (
+        <div className="mt-5 flex flex-col gap-5">
+          <OwnModels models={models} />
+          <ModelTest />
+        </div>
+      )}
       {me.data.subscriptions.includes("claude") ? (
         <div className="mt-6 border-border-soft border-t pt-5">
           <Label>{t("local.chat")}</Label>

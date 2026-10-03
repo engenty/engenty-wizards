@@ -5,26 +5,39 @@ import {
   type Effort,
   MODEL_CLASSES,
   type ModelClass,
+  TEXT_CLASSES,
   type TextClass,
 } from "@engenty-wizards/shared/definition";
 import type { LanguageModel } from "ai";
 import { accountToken } from "./auth/account.js";
 import { env } from "./env.js";
+import {
+  detectHarness,
+  type HarnessId,
+  HarnessModel,
+  harness,
+  isHarnessVendor,
+  notInstalled,
+} from "./harness/index.js";
 import { managed } from "./manage.js";
+import { ModelUnavailableError } from "./model-errors.js";
 import { vaultDelete, vaultGet, vaultSet } from "./secrets/vault.js";
 import { readSetting, writeSetting } from "./settings.js";
 import { currentTenantOrNull } from "./tenants/tenant.js";
 
+export { isHarnessVendor } from "./harness/index.js";
 /**
  * A step names a model class, never a model. Where the class runs is decided here:
  *  - a runtime of a Manage-App sends `wizards/<class>` to the model-gateway, which binds it,
  *    meters the call and books the tenant's credits;
  *  - a runtime that runs alone uses the linked account's credits through the same gateway, or
- *    resolves the class itself: own keys (AI Gateway, OpenAI, Anthropic) or a local model.
+ *    resolves the class itself: an AI client installed on the machine (Claude Code, Codex,
+ *    Gemini CLI, Cursor Agent — on its subscription), own keys (AI Gateway, OpenAI, Anthropic)
+ *    or a local model.
  * A local binding is `[provider:]vendor/model`, e.g. `anthropic/claude-haiku-4.5`,
- * `openai:gpt-5.4-mini`, `ollama:qwen3`.
+ * `openai:gpt-5.4-mini`, `ollama:qwen3`, `claude/sonnet`, `codex/default`.
  */
-export class ModelUnavailableError extends Error {}
+export { ModelUnavailableError } from "./model-errors.js";
 
 /** What a call is made for; the gateway books it on the run and step. */
 export interface CallMeta {
@@ -49,9 +62,11 @@ export interface ResolvedModel<M> {
 export const LOCAL_KEYS = ["gateway", "openai", "anthropic"] as const;
 export type LocalKey = (typeof LOCAL_KEYS)[number];
 
+/** A client's id = that installed client; `account` = the linked account's credits; `own` = own keys or a local model. */
+export type LocalSource = HarnessId | "account" | "own";
+
 export interface LocalModelSettings {
-  /** `account` = the linked account's credits; `own` = own keys or a local model. */
-  source: "account" | "own";
+  source: LocalSource;
   bindings: Partial<Record<ModelClass, string>>;
   ollamaUrl?: string;
 }
@@ -80,9 +95,10 @@ export async function loadLocalModels() {
 export function localModelSettings() {
   return {
     ...local.settings,
-    bindings: Object.fromEntries(
-      MODEL_CLASSES.map((c) => [c, local.settings.bindings[c] ?? env.models[c]]),
-    ) as Record<ModelClass, string>,
+    bindings: Object.fromEntries(MODEL_CLASSES.map((c) => [c, localRef(c)])) as Record<
+      ModelClass,
+      string
+    >,
     ollamaUrl: local.settings.ollamaUrl ?? env.ollamaUrl,
     keys: Object.fromEntries(LOCAL_KEYS.map((k) => [k, Boolean(local.keys[k])])) as Record<
       LocalKey,
@@ -92,7 +108,7 @@ export function localModelSettings() {
 }
 
 export async function saveLocalModels(input: {
-  source?: "account" | "own";
+  source?: LocalSource;
   bindings?: Partial<Record<ModelClass, string>>;
   ollamaUrl?: string;
   /** A key to store; an empty string removes it. */
@@ -222,15 +238,33 @@ function split(ref: string): { provider: string | null; vendor: string; model: s
 const vendorOf = (ref: string) => split(ref).vendor;
 
 function localRef(cls: ModelClass): string {
-  return local.settings.bindings[cls] ?? env.models[cls];
+  const bound = local.settings.bindings[cls];
+  const client = harness(local.settings.source);
+  if (client && (TEXT_CLASSES as readonly string[]).includes(cls)) {
+    // Text thinks on the installed client; a binding counts only where it names that client.
+    return bound?.startsWith(`${client.id}/`)
+      ? bound
+      : `${client.id}/${client.classes[cls as TextClass]}`;
+  }
+  return bound ?? env.models[cls];
 }
 
 function ownGateway() {
   return local.keys.gateway ? createGateway({ apiKey: local.keys.gateway }) : null;
 }
 
-function localLanguageModel(ref: string): { model: LanguageModel; gateway: boolean } {
+async function localLanguageModel(
+  ref: string,
+  meta: CallMeta,
+): Promise<{ model: LanguageModel; gateway: boolean }> {
   const { provider, vendor, model } = split(ref);
+  const client = harness(vendor);
+  if (client) {
+    if (!(await detectHarness(client.id))?.version) {
+      throw new ModelUnavailableError(notInstalled(client));
+    }
+    return { model: client.model(model, meta.effort), gateway: false };
+  }
   if (provider === "ollama") {
     const ollama = createOpenAI({
       baseURL: local.settings.ollamaUrl ?? env.ollamaUrl,
@@ -288,8 +322,15 @@ export async function textModel(
     return remote;
   }
   const ref = localRef(cls);
-  const { model, gateway } = localLanguageModel(ref);
+  const { model, gateway } = await localLanguageModel(ref, meta);
   return { model, ref, vendor: vendorOf(ref), gateway, metered: false };
+}
+
+/** Hands the tools an agent will call to a model that runs them itself (an installed AI client). */
+export function attachTools(resolved: ResolvedModel<unknown>, tools: Record<string, unknown>) {
+  if (resolved.model instanceof HarnessModel) {
+    resolved.model.attach(tools);
+  }
 }
 
 export async function imageModel(meta: CallMeta = {}) {
@@ -412,7 +453,10 @@ export function usageOf(u: any): TokenUsage {
 
 /** Provider cost of a text call a runtime that runs alone made; the gateway books the others itself. */
 export function costOf(resolved: ResolvedModel<unknown>, usage: any): number {
-  return resolved.metered ? 0 : tokenCostUsd(resolved.ref, usageOf(usage));
+  // An installed client answers on its subscription: nothing to book.
+  return resolved.metered || isHarnessVendor(resolved.vendor)
+    ? 0
+    : tokenCostUsd(resolved.ref, usageOf(usage));
 }
 
 export function tokenCostUsd(ref: string, usage: TokenUsage | undefined): number {

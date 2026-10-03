@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
-import { gatewayTools, type ResolvedModel } from "../models.js";
+import { gatewayTools, isHarnessVendor, type ResolvedModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import {
   type ExecResult,
@@ -47,6 +47,14 @@ export async function buildStepTools(
     // Anthropic models search natively; other models search through the AI Gateway's tool.
     if (resolved.vendor === "anthropic") {
       tools.web_search = anthropic.tools.webSearch_20250305({ maxUses: 8 });
+    } else if (isHarnessVendor(resolved.vendor)) {
+      // An installed client searches with its own tool; naming it here switches it on.
+      tools.web_search = createTool({
+        id: "web_search",
+        description: "Search the web.",
+        inputSchema: z.object({ query: z.string() }),
+        execute: async () => ({ error: "The client searches itself." }),
+      });
     } else if (resolved.gateway) {
       tools.web_search = gatewayTools.perplexitySearch({ maxResults: 8 });
     }

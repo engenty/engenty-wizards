@@ -1,40 +1,27 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { promisify } from "node:util";
 import { internalKey } from "../auth/keys.js";
 import { env } from "../env.js";
+import { CLAUDE_BIN as CLAUDE, claudeEnv } from "../harness/claude.js";
+import { detectHarness, signedOut } from "../harness/index.js";
+import { localModelSettings } from "../models.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteSetting, readSetting, writeSetting } from "../settings.js";
-
-const run = promisify(execFile);
-const CLAUDE = process.env.CLAUDE_BIN?.trim() || "claude";
 
 /**
  * The studio chat on the admin's own subscription: the installed Claude Code runs headless and
  * builds the wizard through this server's MCP tools — the same tools any MCP client uses. It
  * gets none of its own tools (no shell, no files), and its sign-in stays with it: this server
- * never sees a subscription token. Runs of wizards never go this way.
+ * never sees a subscription token. Runs of wizards go through it as a model (../harness/) when
+ * the settings name it as the source.
  */
 export type SubscriptionClient = "claude";
 
-let found: { at: number; value: SubscriptionClient[] } | null = null;
-
 /** The AI clients installed on this machine whose subscription can answer the studio chat. */
 export async function subscriptionClients(): Promise<SubscriptionClient[]> {
-  if (found && Date.now() - found.at < 60_000) {
-    return found.value;
-  }
-  const value: SubscriptionClient[] = [];
-  try {
-    await run(CLAUDE, ["--version"], { timeout: 5000 });
-    value.push("claude");
-  } catch {
-    // not installed
-  }
-  found = { at: Date.now(), value };
-  return value;
+  return (await detectHarness("claude"))?.version ? ["claude"] : [];
 }
 
 const workDir = join(env.dataDir, "subscription");
@@ -121,13 +108,8 @@ export async function subscriptionTurn(
     cwd: workDir,
     stdio: ["ignore", "pipe", "pipe"],
     signal: input.signal,
-    // The client's own sign-in is all it needs; no key of ours reaches it.
-    env: {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME,
-      USER: process.env.USER,
-      LANG: "en_US.UTF-8",
-    },
+    // The client's own sign-in, as the person's terminal has it; no key of ours reaches it.
+    env: await claudeEnv(),
   });
   let reply = "";
   let changed = false;
@@ -178,7 +160,7 @@ export async function subscriptionTurn(
     if (/authenticat|log ?in|oauth|credential/i.test(detail)) {
       throw new ServiceError(
         "refused",
-        "Claude Code ist auf diesem Gerät nicht angemeldet. Öffne ein Terminal, starte „claude“ und melde dich dort an.",
+        signedOut({ id: "claude", name: "Claude Code", install: "" }),
       );
     }
     throw new Error(`Claude Code: ${detail}`.slice(0, 500));
@@ -198,7 +180,11 @@ export async function chatEngine(textModelReady: boolean): Promise<ChatEngine> {
   if (chosen === "models" && textModelReady) {
     return "models";
   }
-  // Nothing chosen: a configured model answers; without one, the subscription does.
+  // Nothing chosen: where the client is the source of models, it answers the chat too.
+  if (clients.includes("claude") && localModelSettings().source === "claude") {
+    return "claude";
+  }
+  // Else a configured model answers; without one, the subscription does.
   return textModelReady || !clients.includes("claude") ? "models" : "claude";
 }
 

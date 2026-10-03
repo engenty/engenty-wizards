@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
 import { api } from "../lib/api";
@@ -10,6 +10,7 @@ import { Button } from "../ui";
 /**
  * The studio's front door. A runtime of a Manage-App sends the person there to sign in (or to
  * create an account); a runtime that runs alone is entered through the link it printed at start.
+ * Where the dev login is the only way in, there is nothing to choose: the door opens by itself.
  */
 export function SignInPage() {
   const config = useQuery({
@@ -20,6 +21,35 @@ export function SignInPage() {
   const [busy, setBusy] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
+  const auto = config.data?.mode === "local" && config.data.devLogin;
+  const [autoFailed, setAutoFailed] = useState(false);
+
+  useEffect(() => {
+    if (!auto || autoFailed) {
+      return;
+    }
+    let alive = true;
+    api
+      .post("/api/dev/login")
+      .then(() => qc.invalidateQueries())
+      .catch(() => {
+        if (alive) {
+          setAutoFailed(true);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [auto, autoFailed, qc]);
+
+  // Nothing to decide yet, or nothing to decide at all: the engenty alone, until the studio is there.
+  if (config.isLoading || (auto && !autoFailed)) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <Mascot kind="round" size={56} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">

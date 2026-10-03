@@ -74,4 +74,9 @@ const COPY = {
   },
 } as const;
 
-export const builderCopy = COPY[lang];
+type Copy = (typeof COPY)[keyof typeof COPY];
+
+/** The copy in the language in effect, looked up on every read: the language can change. */
+export const builderCopy = new Proxy({} as Copy, {
+  get: (_target, key) => COPY[lang][key as keyof Copy],
+});

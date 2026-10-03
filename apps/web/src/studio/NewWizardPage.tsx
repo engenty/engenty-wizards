@@ -15,20 +15,20 @@ interface Starter {
   avatar: string;
 }
 
-const IDEAS =
-  lang === "de"
-    ? [
-        "Stellenanzeige aus ein paar Stichworten, als PDF und LinkedIn-Post",
-        "Produktbeschreibung für den Onlineshop mit drei Bildvarianten",
-        "Wettbewerbsanalyse zu einer Firma mit Quellen",
-        "Lead aus einem Formular in unser CRM eintragen",
-      ]
-    : [
-        "A job ad from a few keywords, as PDF and LinkedIn post",
-        "A shop product description with three image variants",
-        "A competitor analysis for a company, with sources",
-        "Put a lead from a form into our CRM",
-      ];
+const IDEAS = {
+  de: [
+    "Stellenanzeige aus ein paar Stichworten, als PDF und LinkedIn-Post",
+    "Produktbeschreibung für den Onlineshop mit drei Bildvarianten",
+    "Wettbewerbsanalyse zu einer Firma mit Quellen",
+    "Lead aus einem Formular in unser CRM eintragen",
+  ],
+  en: [
+    "A job ad from a few keywords, as PDF and LinkedIn post",
+    "A shop product description with three image variants",
+    "A competitor analysis for a company, with sources",
+    "Put a lead from a form into our CRM",
+  ],
+};
 
 export function NewWizardPage() {
   const navigate = useNavigate();
@@ -91,7 +91,7 @@ export function NewWizardPage() {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        {IDEAS.map((idea) => (
+        {IDEAS[lang].map((idea) => (
           <button
             key={idea}
             type="button"

@@ -11,6 +11,7 @@ import { withTenant } from "./db/client.js";
 import { env } from "./env.js";
 import { linkPreview } from "./link-preview.js";
 import { discovery, managed } from "./manage.js";
+import { bridgeRequest } from "./mcp/bridge.js";
 import { mcpHandler } from "./mcp/handler.js";
 import { MCP_RESOURCE, SCOPES } from "./mcp/scopes.js";
 import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
@@ -68,7 +69,12 @@ app.get("/api/health", (c) => c.json({ ok: true }));
 app.route("/api", authRoutes);
 
 app.get("/api/config", (c) =>
-  c.json({ mode: managed ? "managed" : "local", devLogin: !managed && env.devLogin }),
+  c.json({
+    mode: managed ? "managed" : "local",
+    devLogin: !managed && env.devLogin,
+    /** The product's own site, for a runtime that runs alone. */
+    site: managed ? null : env.local.cloudUrl,
+  }),
 );
 
 // OAuth discovery for MCP clients (RFC 9728): the Manage-App is the authorization server.
@@ -100,6 +106,10 @@ app.use("/api/studio/*", async (c, next) => {
 
 const mcp = mcpHandler();
 app.on(["GET", "POST", "DELETE"], "/api/mcp", (c) => mcp(c.req.raw));
+// The tools of one model call, for the installed Claude Code while it answers that call.
+app.on(["GET", "POST", "DELETE"], "/api/mcp/bridge/:token", (c) =>
+  bridgeRequest(c.req.param("token"), c.req.raw),
+);
 
 app.route("/api/studio/wizards", wizardStream);
 app.route("/api/studio", studio);

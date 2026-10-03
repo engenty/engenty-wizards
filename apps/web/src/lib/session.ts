@@ -4,8 +4,25 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "./api";
 
+/** An AI client installed on this machine that can think for the app, on its own subscription. */
+export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
+
+export interface HarnessStatus {
+  id: HarnessId;
+  name: string;
+  install: string;
+  /** The client's own page. */
+  site: string;
+  /** Null: not installed. */
+  version: string | null;
+  auth: "subscription" | "api_key" | "none";
+  /** The sign-in opens the client's own app, which closes by itself once signed in. */
+  interactiveLogin: boolean;
+}
+
 export interface LocalModels {
-  source: "account" | "own";
+  /** A client's id = that installed client; `account` = the linked account; `own` = own keys or a local model. */
+  source: HarnessId | "account" | "own";
   bindings: Record<ModelClass, string>;
   ollamaUrl: string;
   keys: { gateway: boolean; openai: boolean; anthropic: boolean };
@@ -30,8 +47,12 @@ export interface Me {
     signedIn: boolean;
   } | null;
   models: LocalModels | null;
+  /** The AI clients this runtime can think with — installed or not, and how each is signed in. */
+  harnesses: HarnessStatus[];
   /** Installed AI clients whose subscription can answer the studio chat. */
   subscriptions: "claude"[];
+  /** A runtime that runs alone walks the person through its setup on first start. */
+  setupDone: boolean;
   /** What answers the studio chat. */
   chatEngine: "models" | "claude";
   aiReady: boolean;

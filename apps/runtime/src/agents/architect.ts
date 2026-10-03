@@ -16,7 +16,7 @@ import {
 } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
-import { costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
+import { attachTools, costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
@@ -395,6 +395,10 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
   let changed = false;
   // Building a wizard is the hardest job here: widgets are code.
   const resolved = await textModel("highest");
+  const tools = buildTools(input, resolved, () => {
+    changed = true;
+  });
+  attachTools(resolved, tools);
   const agent = new Agent({
     id: "architect",
     name: "Architect",
@@ -405,9 +409,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
     model: resolved.model as unknown as MastraModelConfig,
-    tools: buildTools(input, resolved, () => {
-      changed = true;
-    }),
+    tools,
   });
   const context = [
     `Current wizard (revision ${w.revision}):\n\`\`\`json\n${JSON.stringify(w.draft)}\n\`\`\``,

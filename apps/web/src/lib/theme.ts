@@ -16,8 +16,14 @@ function stored(): Theme | null {
   }
 }
 
-/** The visitor's pick, else the OS setting. */
+/** Pages shown right now that stand on a vivid ground of their own, whatever the theme. */
+let grounded = 0;
+
+/** The visitor's pick, else the OS setting; a page on its own ground is always dark. */
 function current(): Theme {
+  if (grounded > 0) {
+    return "dark";
+  }
   return stored() ?? (system.matches ? "dark" : "light");
 }
 
@@ -80,6 +86,24 @@ export function useTheme(): Theme {
  */
 export const stageFill = (kind: EngentyKind) =>
   `oklch(from ${ENGENTY_FILL[ENGENTY_KIND_FILL[kind] ?? "cobalt"]} 0.34 calc(c * 0.6) h)`;
+
+/**
+ * A page that stands on one vivid colour, like the landing page: while it is shown, the root
+ * takes that colour as its stage and the dark tokens derived from it, in either theme.
+ */
+export function useGround(color: string) {
+  useEffect(() => {
+    const root = document.documentElement;
+    grounded += 1;
+    root.style.setProperty("--stage", color);
+    apply();
+    return () => {
+      grounded -= 1;
+      root.style.removeProperty("--stage");
+      apply();
+    };
+  }, [color]);
+}
 
 /**
  * Dark pages take the colour of the wizard's engenty. Set on the root, like

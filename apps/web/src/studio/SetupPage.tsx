@@ -1,0 +1,526 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Check, RefreshCw } from "lucide-react";
+import { type CSSProperties, useState } from "react";
+import { useNavigate } from "react-router";
+import { Mascot } from "../brand";
+import { EngentyLogoMark } from "../engenty/logo";
+import { api } from "../lib/api";
+import { features } from "../lib/features";
+import { t } from "../lib/i18n";
+import { type LocalModels, useMe } from "../lib/session";
+import { useGround } from "../lib/theme";
+import { Button, cn } from "../ui";
+import { HarnessPanel, ModelTest } from "./Harness";
+import { LangSwitch } from "./LangSwitch";
+import { OwnModels, openExternal } from "./LocalRuntime";
+
+type Source = LocalModels["source"];
+
+/** The ground the setup stands on and the text on white, as on the landing page. */
+const GROUND = "oklch(50% 0.2 262)";
+const GROUND_INK = "oklch(32% 0.15 262)";
+const CREAM = "oklch(90% 0.1 80)";
+
+/** A step of the setup by its state: reached, the one to do now, still ahead. */
+const STEP_DONE = "oklch(88% 0.17 150)";
+const STEP_NOW = "oklch(88% 0.14 80)";
+const STEP_LATER = "rgb(255 255 255 / 0.38)";
+
+/** Secondary text, checks and errors a step brighter than the dark theme's: the ground is vivid. */
+const LEGIBLE = {
+  "--ink-2": "oklch(96% 0.02 262)",
+  "--ink-3": "oklch(90% 0.035 262)",
+  "--ink-4": "oklch(82% 0.05 262)",
+  "--moss": "oklch(90% 0.14 150)",
+  "--rose": "oklch(89% 0.09 45)",
+} as CSSProperties;
+
+const EASE = "ease-[cubic-bezier(0.3,0.7,0.2,1)]";
+
+/** The host of the start, beside the choices; on a narrow page it is scaled down. */
+const HOST = 220;
+
+/** Each choice has a host of its own: a new choice brings a new face along with its content. */
+const HOSTS: Record<Source, string> = {
+  codex: "dome",
+  claude: "oval",
+  gemini: "wedge",
+  cursor: "sprout",
+  own: "bean",
+  account: "drop",
+};
+
+/** The text on a button in the colour of a reached step. */
+const READY_INK = "oklch(27% 0.09 150)";
+
+/**
+ * A line of the list's heading: as wide as its text and shifted, not laid out, to the middle —
+ * so it keeps the column's full width and can travel to the left edge.
+ */
+const LINE =
+  "relative w-fit max-w-full transition-[left,translate] duration-700 ease-[cubic-bezier(0.3,0.7,0.2,1)] motion-reduce:transition-none";
+const LINE_MIDDLE = "left-1/2 -translate-x-1/2 text-center";
+/** Beside an opened choice the lines stand at the left edge; on a narrow page the list is alone again and they stay in the middle. */
+const LINE_LEFT =
+  "max-lg:left-1/2 max-lg:-translate-x-1/2 max-lg:text-center lg:left-0 lg:translate-x-0 lg:text-left";
+
+/** On a narrow page the choices and the opened choice take turns; each starts at the top. */
+function toTop() {
+  if (window.matchMedia("(max-width: 1023px)").matches) {
+    window.scrollTo({ top: 0 });
+  }
+}
+
+/** "Own keys" has no trace on the server until a key is saved; the tab remembers the pick. */
+const OWN_PICKED = "wizards.setup.own";
+
+function ownPicked(): boolean {
+  try {
+    return sessionStorage.getItem(OWN_PICKED) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberOwn(own: boolean) {
+  try {
+    if (own) {
+      sessionStorage.setItem(OWN_PICKED, "1");
+    } else {
+      sessionStorage.removeItem(OWN_PICKED);
+    }
+  } catch {
+    // the pick only lasts this page then
+  }
+}
+
+function Wordmark() {
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <EngentyLogoMark size={28} />
+      <span className="font-display font-semibold text-[17px] tracking-tight">
+        engenty
+        <span className="mr-[0.09em] ml-[0.06em]" style={{ color: CREAM }}>
+          .
+        </span>
+        <span className="font-normal text-white/70">wizards</span>
+      </span>
+    </span>
+  );
+}
+
+function Choice({
+  selected,
+  title,
+  description,
+  badge,
+  note,
+  onPick,
+}: {
+  selected: boolean;
+  title: string;
+  description: string;
+  /** Set on the row's edge: the choice the setup recommends. */
+  badge?: string;
+  /** How the choice stands right now, at the row's end. */
+  note?: string;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-pressed={selected}
+      className={cn(
+        "group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-[background-color,color,box-shadow] duration-300",
+        selected
+          ? "bg-white shadow-elevated"
+          : "bg-white/10 ring-1 ring-white/15 hover:bg-white/15",
+      )}
+      style={selected ? { color: GROUND_INK } : undefined}
+    >
+      {badge ? (
+        <span
+          className="absolute -top-2.5 right-4 rounded-full px-2.5 py-[3px] font-semibold text-[11px] leading-none tracking-wide shadow-[0_2px_8px_oklch(0%_0_0/0.22)]"
+          style={{ background: CREAM, color: GROUND_INK }}
+        >
+          {badge}
+        </span>
+      ) : null}
+      <span
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-300",
+          selected ? "border-transparent" : "border-white/40",
+        )}
+        style={selected ? { background: GROUND_INK } : undefined}
+      >
+        {selected ? <Check className="size-3.5 text-white" /> : null}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium text-[15px]">{title}</span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate text-[13px]",
+            selected ? "opacity-70" : "text-white/65",
+          )}
+        >
+          {description}
+        </span>
+      </span>
+      {note ? (
+        <span className={cn("shrink-0 text-[12px]", selected ? "opacity-70" : "text-white/65")}>
+          {note}
+        </span>
+      ) : null}
+      <ArrowRight
+        className={cn(
+          "size-4 shrink-0 transition",
+          selected
+            ? "opacity-70"
+            : "text-white/40 group-hover:translate-x-0.5 group-hover:text-white/80",
+        )}
+      />
+    </button>
+  );
+}
+
+/**
+ * Where the setup stands: what is chosen, its steps by name, then one dash per step. A step
+ * reached is green and checked, the one to do now amber, the ones ahead dim. The dashes fill
+ * like a strength meter: as many as the step the setup is on, amber on the way, all green once
+ * it works.
+ */
+function Stages({ name, at, done }: { name: string; at: number; done: boolean }) {
+  const stages = [t("setup.stage.connect"), t("setup.stage.test"), t("setup.stage.done")];
+  const level = done ? stages.length : at + 1;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-medium text-[12px] uppercase tracking-[0.14em]">
+      <span className="text-white/70">{name}</span>
+      <ol className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {stages.map((stage, i) => {
+          const reached = done || i < at;
+          return (
+            <li
+              key={stage}
+              aria-current={!reached && i === at ? "step" : undefined}
+              className="flex items-center gap-1 transition-colors duration-500"
+              style={{ color: reached ? STEP_DONE : i === at ? STEP_NOW : STEP_LATER }}
+            >
+              {reached ? <Check className="size-3.5" strokeWidth={3} /> : null}
+              {stage}
+            </li>
+          );
+        })}
+      </ol>
+      <span aria-hidden="true" className="flex gap-1.5">
+        {stages.map((stage, i) => (
+          <span
+            key={stage}
+            className="h-[3px] w-5 rounded-full transition-colors duration-500"
+            style={{
+              background: i < level ? (done ? STEP_DONE : STEP_NOW) : "rgb(255 255 255 / 0.22)",
+            }}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function FooterLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="transition hover:text-white"
+      onClick={(e) => {
+        // In the desktop app a page opens in the person's own browser.
+        e.preventDefault();
+        openExternal(href);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+/**
+ * Setup of a runtime that runs alone, as a wizard of its own: first only the question what the
+ * app thinks with, in the middle of the page. A choice steps the list aside and opens what that
+ * choice needs — the sign-in, the keys, the test call — its rows level with the list's. It stays
+ * in front until a test has worked; everything here is in the settings too.
+ */
+export function SetupPage() {
+  useGround(GROUND);
+  const me = useMe();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const config = useQuery({
+    queryKey: ["config"],
+    queryFn: () => api.get<{ site: string | null }>("/api/config"),
+  });
+  const [picked, setPicked] = useState(ownPicked);
+  // A narrow page shows the opened choice alone; the person goes back to the choices from there.
+  const [listOpen, setListOpen] = useState(false);
+  const choose = useMutation({
+    mutationFn: (source: Source) => api.put("/api/studio/local/models", { source }),
+    onSuccess: async (_saved, source) => {
+      // First what the server now says, then the move: the choice opens on its own state,
+      // never for a moment on the source it replaced.
+      await qc.invalidateQueries({ queryKey: ["me"] });
+      setPicked(true);
+      setListOpen(false);
+      toTop();
+      rememberOwn(source === "own");
+    },
+  });
+  const rescan = useMutation({
+    mutationFn: () =>
+      Promise.all(
+        (me.data?.harnesses ?? []).map((h) => api.post(`/api/studio/local/harness/${h.id}/detect`)),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+  if (!me.data?.models) {
+    return null;
+  }
+  const models = me.data.models;
+  const installed = me.data.harnesses.filter((h) => h.version !== null);
+  const missing = me.data.harnesses.filter((h) => h.version === null);
+  // A first start has nothing chosen yet; a source picked earlier (here or in the settings) stays picked.
+  const selected: Source | null =
+    picked || me.data.setupDone || models.source !== "own" ? models.source : null;
+  const client = me.data.harnesses.find((h) => h.id === selected);
+  const works = me.data.setupDone;
+  const hasKey = Object.values(models.keys).some(Boolean);
+  // Connect, test, done: where the chosen source stands.
+  const stage = works ? 2 : client ? (client.auth === "none" ? 0 : 1) : hasKey ? 1 : 0;
+  const heading = works
+    ? t("setup.h.done")
+    : client
+      ? client.version === null
+        ? t("setup.h.install", { name: client.name })
+        : client.auth === "none"
+          ? t("setup.h.signIn", { name: client.name })
+          : t("setup.h.test")
+      : hasKey
+        ? t("setup.h.test")
+        : t("setup.h.keys");
+  const site = features.site ? config.data?.site : null;
+  /** On a narrow page: the opened choice is all there is to see. */
+  const panelOnly = selected !== null && !listOpen;
+  /** The row that is lit: the one just clicked, at once; else the one in effect. */
+  const marked = choose.isPending ? (choose.variables ?? selected) : selected;
+  return (
+    <div className="flex min-h-dvh flex-col px-6 text-white sm:px-10" style={LEGIBLE}>
+      <header className="flex items-center justify-between pt-6 sm:pt-8">
+        <Wordmark />
+        <LangSwitch ink={GROUND_INK} />
+      </header>
+      <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col pt-6 pb-10 lg:pt-[6vh]">
+        {/* The host of the start takes no row of its own on a wide page: it stands large beside
+            the choices. On a narrow page there is no room beside anything, so it stands small
+            above them. A choice brings a host of its own, and this one steps out. */}
+        <div
+          aria-hidden="true"
+          className={cn(
+            "absolute top-6 left-1/2 z-10 origin-top -translate-x-1/2 transition-[opacity,scale,left] duration-500 motion-reduce:transition-none lg:top-[calc(6vh+5.25rem)] lg:origin-center lg:translate-x-0",
+            EASE,
+            selected
+              ? "lg:pointer-events-none lg:left-[calc(50%-560px)] lg:scale-75 lg:opacity-0"
+              : "lg:left-[calc(50%-508px)] lg:scale-100 lg:opacity-100",
+            panelOnly
+              ? "max-lg:pointer-events-none max-lg:scale-[0.4] max-lg:opacity-0"
+              : "max-lg:scale-[0.6] max-lg:opacity-100",
+          )}
+        >
+          <div className="animate-rise">
+            <Mascot kind="drop" size={HOST} fluffy coat="fur" />
+          </div>
+        </div>
+        <div
+          aria-hidden="true"
+          className={cn(
+            "shrink-0 transition-[height] duration-500 motion-reduce:transition-none lg:h-0",
+            EASE,
+            panelOnly ? "max-lg:h-0" : "max-lg:h-[148px]",
+          )}
+        />
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-14">
+          <section
+            className={cn(
+              "flex w-full shrink-0 animate-rise flex-col lg:w-[32rem] lg:transition-[margin] lg:duration-700 motion-reduce:transition-none",
+              EASE,
+              selected ? "lg:ml-0" : "lg:ml-[calc(50%-16rem)]",
+              panelOnly ? "max-lg:hidden" : "",
+            )}
+          >
+            {/* Centred over the list while it stands alone; at the left edge, like the other
+                column's lines, once a choice is open. */}
+            <div className="flex flex-col lg:min-h-[6.5rem]">
+              <p
+                className={cn(
+                  LINE,
+                  "font-medium text-[12px] text-white/70 uppercase tracking-[0.16em]",
+                  selected ? LINE_LEFT : LINE_MIDDLE,
+                )}
+              >
+                {t("setup.title")}
+              </p>
+              <h1
+                className={cn(
+                  LINE,
+                  "mt-2 font-display font-semibold text-[26px] leading-[1.08] tracking-[-0.02em] sm:text-[28px]",
+                  selected ? LINE_LEFT : LINE_MIDDLE,
+                )}
+              >
+                {t("setup.source")}
+              </h1>
+              <p
+                className={cn(
+                  LINE,
+                  "mt-2.5 text-[15px] text-white/75 leading-relaxed",
+                  selected ? LINE_LEFT : LINE_MIDDLE,
+                )}
+              >
+                {t("setup.sub")}
+              </p>
+            </div>
+            <div className="mt-5 flex flex-col gap-2.5">
+              {installed.map((h, i) => (
+                <Choice
+                  key={h.id}
+                  selected={marked === h.id}
+                  title={h.name}
+                  description={t(`harness.desc.${h.id}`)}
+                  badge={i === 0 ? t("setup.recommended") : undefined}
+                  note={h.auth === "subscription" ? t("harness.ready") : undefined}
+                  onPick={() => choose.mutate(h.id)}
+                />
+              ))}
+              <Choice
+                selected={marked === "own"}
+                title={t("local.sourceOwn")}
+                description={t("setup.ownDesc")}
+                onPick={() => choose.mutate("own")}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-white/60">
+              <span>
+                {installed.length
+                  ? missing.length
+                    ? t("setup.others", { names: missing.map((h) => h.name).join(", ") })
+                    : null
+                  : t("setup.noHarness")}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                busy={rescan.isPending}
+                onClick={() => rescan.mutate()}
+              >
+                <RefreshCw className="size-3.5" /> {t("local.recheck")}
+              </Button>
+            </div>
+          </section>
+          {selected ? (
+            <section
+              key={selected}
+              className={cn("min-w-0 flex-1 animate-settle", listOpen ? "max-lg:hidden" : "")}
+            >
+              {/* On a narrow page the opened choice stands alone: this leads back to the choices. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setListOpen(true);
+                  toTop();
+                }}
+                className="-ml-1.5 mb-5 inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-[14px] text-white/80 transition hover:text-white lg:hidden"
+              >
+                <ArrowLeft className="size-4" /> {t("run.back")}
+              </button>
+              <div className="relative">
+                {/* This choice's host stands on the box's corner, under the line of steps; it
+                  comes and goes with the choice. The heading keeps clear of it. */}
+                <div aria-hidden="true" className="absolute top-6 right-2 z-10">
+                  <Mascot kind={HOSTS[selected]} size={120} fluffy coat="fur" />
+                </div>
+                <div className="min-h-[6.5rem]">
+                  <Stages name={client?.name ?? t("local.sourceOwn")} at={stage} done={works} />
+                  <h2
+                    key={heading}
+                    className="mt-2 animate-rise pr-32 font-display font-semibold text-[clamp(28px,3vw,40px)] leading-[1.06] tracking-[-0.03em]"
+                  >
+                    {heading}
+                  </h2>
+                </div>
+                <div className="mt-5 rounded-2xl bg-white/[0.07] p-5 ring-1 ring-white/12 sm:p-6">
+                  {client ? (
+                    <HarnessPanel me={me.data} id={client.id} autoTest={!works} />
+                  ) : (
+                    <div className="flex flex-col gap-5">
+                      <OwnModels models={models} />
+                      <ModelTest />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-9">
+                  {works ? (
+                    <p
+                      className="mb-3 flex animate-rise items-center gap-2 font-medium text-[15px]"
+                      style={{ color: STEP_DONE }}
+                    >
+                      <Check className="size-4" strokeWidth={3} />
+                      {t("setup.ready")}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Dim while the way is not open; in the colour of a reached step once it is. */}
+                    <button
+                      type="button"
+                      disabled={!works}
+                      onClick={() => navigate("/", { replace: true })}
+                      className={cn(
+                        "group inline-flex h-12 items-center gap-2.5 rounded-full px-6 font-semibold text-[16px] transition-[background-color,color,box-shadow,filter] duration-300",
+                        works
+                          ? "shadow-[0_6px_24px_oklch(88%_0.17_150/0.35)] hover:brightness-105"
+                          : "cursor-not-allowed bg-white/20 text-white/65",
+                      )}
+                      style={works ? { background: STEP_DONE, color: READY_INK } : undefined}
+                    >
+                      {t("setup.done")}
+                      <span
+                        aria-hidden="true"
+                        className="transition-transform group-enabled:group-hover:translate-x-0.5"
+                      >
+                        →
+                      </span>
+                    </button>
+                    {works ? null : (
+                      <span className="text-[13px] text-white/65">{t("setup.untilWorks")}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+        </div>
+      </main>
+      {/* One quiet line at the foot: whose app this is, where it runs, and the clients' own pages. */}
+      <footer className="mx-auto flex w-full max-w-6xl flex-col gap-2 pb-6 text-[12px] text-white/55 sm:flex-row sm:items-center sm:justify-between sm:pb-8">
+        <span>
+          © {new Date().getFullYear()} engenty · {t("setup.local")}
+        </span>
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {site ? <FooterLink href={site}>{new URL(site).host}</FooterLink> : null}
+          {me.data.harnesses.map((h) => (
+            <FooterLink key={h.id} href={h.site}>
+              {h.name}
+            </FooterLink>
+          ))}
+        </nav>
+      </footer>
+    </div>
+  );
+}

@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Plug, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
+import { features } from "../lib/features";
 import { t } from "../lib/i18n";
 import { Button, Card, Chip, cn, IconButton, Input, Spinner } from "../ui";
 
@@ -262,7 +263,9 @@ export function Connectors({ projectId }: { projectId: string }) {
     onSuccess: setService,
   });
   const connectors = list.data ?? [];
-  const builtin = connectors.filter((c) => c.sourceKind === "builtin");
+  const builtin = connectors.filter(
+    (c) => c.sourceKind === "builtin" && (features.unsetConnectors || c.usable),
+  );
   const imported = connectors.filter((c) => c.sourceKind !== "builtin");
   return (
     <Card className="p-6">

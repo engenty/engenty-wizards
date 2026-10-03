@@ -1,6 +1,7 @@
 import { lazy, type ReactNode, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { Mascot } from "./brand";
+import { useLang } from "./lib/i18n";
 import { useMe } from "./lib/session";
 import { AppFrame } from "./studio/AppFrame";
 import { SignInPage } from "./studio/SignInPage";
@@ -20,6 +21,7 @@ const NewWizardPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./studio/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
+const SetupPage = lazy(() => import("./studio/SetupPage").then((m) => ({ default: m.SetupPage })));
 
 const EngentyBuilder = import.meta.env.DEV
   ? lazy(() => import("./dev/EngentyBuilder").then((m) => ({ default: m.EngentyBuilder })))
@@ -35,16 +37,23 @@ function Splash() {
 
 function Studio({ children, bare }: { children: ReactNode; bare?: boolean }) {
   const me = useMe();
+  const location = useLocation();
   if (me.isLoading) {
     return <Splash />;
   }
   if (!me.data) {
     return <SignInPage />;
   }
+  // A runtime that runs alone is set up once, before anything else.
+  if (me.data.mode === "local" && !me.data.setupDone && location.pathname !== "/setup") {
+    return <Navigate to="/setup" replace />;
+  }
   return bare ? children : <AppFrame me={me.data}>{children}</AppFrame>;
 }
 
 export function App() {
+  // A switch of language renders the whole app again, in place.
+  useLang();
   return (
     <Suspense fallback={<Splash />}>
       <Routes>
@@ -81,6 +90,14 @@ export function App() {
           element={
             <Studio>
               <SettingsPage />
+            </Studio>
+          }
+        />
+        <Route
+          path="/setup"
+          element={
+            <Studio bare>
+              <SetupPage />
             </Studio>
           }
         />

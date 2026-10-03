@@ -15,7 +15,7 @@ workspace and only get new data per run. Anyone can share a finished result as a
 | What | one person, one tenant, on this machine: the desktop app, `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
 | Sign-in | a one-time link printed at start (the desktop app opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
 | Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
-| Models | own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
+| Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Gemini CLI, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
 | Studio chat | a model of class `highest`, or the admin's own Claude subscription (the installed Claude Code runs headless) | a model of class `highest` |
 | Files | `DATA_DIR/objects` | an S3-compatible bucket (R2) |
 
@@ -190,6 +190,7 @@ open editor.
 | Tenants: context, one database each, the control database | `apps/runtime/src/tenants/tenant.ts`, `apps/runtime/src/db/client.ts`, `apps/runtime/src/tenants/control.ts` |
 | Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `apps/runtime/src/auth/`, `apps/runtime/src/manage.ts` |
 | Model classes: gateway, own keys, local model | `apps/runtime/src/models.ts` |
+| Installed AI clients as models (Claude Code, Codex, Gemini CLI, Cursor Agent): headless calls, tools over MCP, sign-in in an inline terminal; first-start setup | `apps/runtime/src/harness/`, `apps/runtime/src/mcp/bridge.ts`, `apps/web/src/studio/{SetupPage,Harness,Terminal}.tsx` |
 | Credits: balance, reservation, cost per step; estimate before a run | `apps/runtime/src/credits/credits.ts`, `apps/runtime/src/credits/estimate.ts` |
 | Studio chat on the Claude subscription | `apps/runtime/src/agents/subscription.ts` |
 | Publish to the cloud, import API | `apps/runtime/src/services/cloud.ts`, `apps/runtime/src/routes/api.ts` |

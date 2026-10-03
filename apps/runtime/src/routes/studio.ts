@@ -1,4 +1,7 @@
-import { MODEL_CLASSES } from "@engenty-wizards/shared/definition";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import { generateText } from "ai";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
@@ -19,8 +22,29 @@ import {
 import { balanceCredits, canSpend } from "../credits/credits.js";
 import { estimateRun } from "../credits/estimate.js";
 import { env } from "../env.js";
+import { freshAuth, loginEnv } from "../harness/env.js";
+import {
+  detectHarness,
+  detectHarnesses,
+  HARNESS_IDS,
+  type HarnessId,
+  harness,
+} from "../harness/index.js";
+import {
+  closeTerminal,
+  openTerminal,
+  resizeTerminal,
+  subscribeTerminal,
+  writeTerminal,
+} from "../harness/terminal.js";
 import { managed } from "../manage.js";
-import { hasTextModel, LOCAL_KEYS, localModelSettings, saveLocalModels } from "../models.js";
+import {
+  hasTextModel,
+  LOCAL_KEYS,
+  localModelSettings,
+  saveLocalModels,
+  textModel,
+} from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { architectTurn } from "../services/architect.js";
 import { cloudCopy, publishToCloud } from "../services/cloud.js";
@@ -51,9 +75,30 @@ import {
   wizardState,
   writeDraft,
 } from "../services/wizards.js";
+import { readSetting, writeSetting } from "../settings.js";
 import { STARTERS } from "../starters/index.js";
 
 type Vars = { Variables: { user: SessionUser } };
+
+/** The model sources a test call has worked on: the setup is done for those, not for the others. */
+async function testedSources(): Promise<string[]> {
+  const tested = await readSetting<unknown>("setup-done");
+  return Array.isArray(tested) ? (tested as string[]) : [];
+}
+
+/** The chosen source has passed a test call and can still answer: its client is there and signed in. */
+async function setupDone(): Promise<boolean> {
+  const source = localModelSettings().source;
+  if (!(await testedSources()).includes(source)) {
+    return false;
+  }
+  const client = harness(source);
+  if (client) {
+    const status = await detectHarness(client.id);
+    return Boolean(status?.version) && status?.auth !== "none";
+  }
+  return hasTextModel();
+}
 
 export const studio = new Hono<Vars>()
   .get("/me", async (c) => {
@@ -80,8 +125,12 @@ export const studio = new Hono<Vars>()
           }
         : null,
       models: managed ? null : localModelSettings(),
+      /** The AI clients this runtime can think with — installed or not, and how each is signed in. */
+      harnesses: managed ? [] : await detectHarnesses(),
       /** Installed AI clients whose subscription can answer the studio chat. */
       subscriptions: managed ? [] : await subscriptionClients(),
+      /** A runtime that runs alone keeps its setup in front until a test call has worked on the chosen source and the way is still open. */
+      setupDone: managed ? true : await setupDone(),
       /** What answers the studio chat: a model of class `highest`, or the admin's own subscription. */
       chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
@@ -362,7 +411,7 @@ export const studio = new Hono<Vars>()
     }
     const body = z
       .object({
-        source: z.enum(["account", "own"]).optional(),
+        source: z.enum([...HARNESS_IDS, "account", "own"]).optional(),
         bindings: z.partialRecord(z.enum(MODEL_CLASSES), z.string().max(120)).optional(),
         ollamaUrl: z.string().max(200).optional(),
         keys: z.partialRecord(z.enum(LOCAL_KEYS), z.string().max(400)).optional(),
@@ -370,6 +419,131 @@ export const studio = new Hono<Vars>()
       .parse(await c.req.json());
     await saveLocalModels(body);
     return c.json(localModelSettings());
+  })
+  // One short call on a class, as a run would make it: shows that the way to the model is open.
+  .post("/local/models/test", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const { cls } = z
+      .object({ cls: z.enum(TEXT_CLASSES).default("classifier") })
+      .parse(await c.req.json().catch(() => ({})));
+    const started = Date.now();
+    // The source this call runs on: the person may pick another one while it is under way.
+    const source = localModelSettings().source;
+    try {
+      const resolved = await textModel(cls);
+      const result = await generateText({
+        model: resolved.model,
+        prompt: "Reply with the single word: OK",
+        maxOutputTokens: 20,
+        abortSignal: AbortSignal.timeout(120_000),
+      });
+      // A working call is what ends the setup — for the source it ran on.
+      const tested = await testedSources();
+      if (!tested.includes(source)) {
+        await writeSetting("setup-done", [...tested, source]);
+      }
+      return c.json({
+        ok: true,
+        ref: resolved.ref,
+        reply: result.text.trim().slice(0, 200),
+        ms: Date.now() - started,
+      });
+    } catch (err) {
+      const message = (err as Error)?.message ?? String(err);
+      return c.json({ ok: false, error: message.slice(0, 500), ms: Date.now() - started });
+    }
+  })
+  // --- the AI clients on this machine: looked at afresh, signed in through the inline terminal ----
+  .post("/local/harness/:id/detect", async (c) => {
+    const id = c.req.param("id") as HarnessId;
+    if (managed || !harness(id)) {
+      return c.notFound();
+    }
+    return c.json({ harness: await detectHarness(id, true) });
+  })
+  .post("/local/harness/:id/login", async (c) => {
+    const id = c.req.param("id") as HarnessId;
+    const client = harness(id);
+    if (managed || !client) {
+      return c.notFound();
+    }
+    const { cols, rows } = z
+      .object({
+        cols: z.number().int().min(10).max(500).optional(),
+        rows: z.number().int().min(4).max(200).optional(),
+      })
+      .parse(await c.req.json().catch(() => ({})));
+    const cwd = join(env.dataDir, "harness");
+    mkdirSync(cwd, { recursive: true });
+    const terminal = await openTerminal({
+      bin: client.bin,
+      args: client.login.args,
+      cwd,
+      env: { ...(await loginEnv(client)), ...client.login.env },
+      cols,
+      rows,
+      // Signed in: the client says so on its own, and the settings learn it right away.
+      until: async () => (await freshAuth(client)) !== "none",
+      onDone: () => void detectHarness(id, true),
+    });
+    return c.json({ terminal });
+  })
+  .get("/local/terminal/:id/stream", (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const id = c.req.param("id");
+    return streamSSE(c, async (stream) => {
+      let ended = false;
+      const done = new Promise<void>((resolve) => {
+        const unsubscribe = subscribeTerminal(id, (event) => {
+          void stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
+          if (event.type === "exit") {
+            ended = true;
+            resolve();
+          }
+        });
+        stream.onAbort(() => {
+          unsubscribe();
+          resolve();
+        });
+      });
+      // The page keeps the stream open while the terminal lives; a heartbeat keeps proxies from closing it.
+      const beat = setInterval(() => {
+        if (!ended) {
+          void stream.writeSSE({ event: "ping", data: "" });
+        }
+      }, 15_000);
+      await done;
+      clearInterval(beat);
+    });
+  })
+  .post("/local/terminal/:id/input", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const { data } = z.object({ data: z.string().max(10_000) }).parse(await c.req.json());
+    writeTerminal(c.req.param("id"), data);
+    return c.json({ ok: true });
+  })
+  .post("/local/terminal/:id/resize", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const { cols, rows } = z
+      .object({ cols: z.number().int().min(10).max(500), rows: z.number().int().min(4).max(200) })
+      .parse(await c.req.json());
+    resizeTerminal(c.req.param("id"), cols, rows);
+    return c.json({ ok: true });
+  })
+  .delete("/local/terminal/:id", (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    closeTerminal(c.req.param("id"));
+    return c.json({ ok: true });
   })
   .put("/local/chat", async (c) => {
     if (managed) {

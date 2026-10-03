@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 const de = {
   "brand.tagline": "Baue KI-Wizards, ohne Code.",
   "brand.sub":
@@ -67,6 +69,55 @@ const de = {
   "local.chatClaude": "Claude-Abo (Claude Code)",
   "local.subscription":
     "Mit dem Abo baut das auf diesem Gerät installierte Claude Code den Wizard – mit deiner Anmeldung dort. Läufe nutzen weiter Schlüssel oder Guthaben.",
+  "harness.hint":
+    "Texte denkt das auf diesem Gerät installierte {name} – mit deinem {sub} und deiner Anmeldung dort. Kein Schlüssel nötig. Bilder, Videos und Audio brauchen weiter einen Schlüssel.",
+  "harness.found": "{name} {version} gefunden",
+  "harness.missing": "{name} ist auf diesem Gerät nicht installiert.",
+  "harness.install": "Installieren:",
+  "harness.authSubscription": "Angemeldet mit deinem {sub}.",
+  "harness.authKey":
+    "Angemeldet mit einem API-Schlüssel aus deiner Shell – nicht mit dem Abo. Melde dich hier an, damit es über dein {sub} läuft.",
+  "harness.authNone": "Noch nicht angemeldet.",
+  "harness.signIn": "Hier anmelden",
+  "harness.signingIn":
+    "Die Anmeldung läuft im Terminal unten – dein Browser öffnet sich dafür. Das Terminal schließt sich, sobald die Anmeldung da ist.",
+  "harness.signInInteractive":
+    "Unten startet {name}. Wähle dort die Anmeldung mit deinem {sub} und melde dich im Browser an. Das Terminal schließt sich, sobald die Anmeldung da ist.",
+  "harness.loginEnded": "Die Anmeldung wurde beendet, ohne dass {name} angemeldet ist.",
+  "harness.sub.claude": "Claude-Abo",
+  "harness.sub.codex": "ChatGPT-Abo",
+  "harness.sub.gemini": "Google-Konto",
+  "harness.sub.cursor": "Cursor-Abo",
+  "harness.desc.claude": "Mit deinem Claude-Abo – kein Schlüssel nötig.",
+  "harness.desc.codex": "Mit deinem ChatGPT-Abo – kein Schlüssel nötig.",
+  "harness.desc.gemini": "Mit deinem Google-Konto – kein Schlüssel nötig.",
+  "harness.desc.cursor": "Mit deinem Cursor-Abo – kein Schlüssel nötig.",
+  "harness.ready": "angemeldet",
+  "local.recheck": "Erneut prüfen",
+  "local.test": "Testen",
+  "local.testHint": "Ein kurzer Aufruf zeigt, ob der Weg zum Modell offen ist.",
+  "local.testOk": "Antwort in {s} s über {ref}: „{reply}“",
+  "local.testFailed": "Der Test hat nicht geklappt: {error}",
+  "setup.title": "Setup",
+  "setup.sub": "Engenty kann deine vorhandenen Konten auf deinem Computer nutzen.",
+  "setup.source": "Womit soll die Engenty denken?",
+  "setup.local": "Läuft lokal auf diesem Gerät.",
+  "setup.stage.connect": "Verbinden",
+  "setup.stage.test": "Testen",
+  "setup.stage.done": "Fertig",
+  "setup.h.install": "Installiere {name}",
+  "setup.h.signIn": "Melde {name} an",
+  "setup.h.keys": "Trage einen Schlüssel ein",
+  "setup.h.test": "Ein kurzer Test",
+  "setup.h.done": "Verbunden.",
+  "setup.ready": "Alles bereit.",
+  "setup.others": "Auch möglich, sobald installiert: {names}.",
+  "setup.noHarness":
+    "Kein KI-Client gefunden. Installiere Codex, Claude Code, Gemini CLI oder Cursor Agent – oder trage eigene Schlüssel ein.",
+  "setup.ownDesc": "AI Gateway, OpenAI, Anthropic oder Ollama.",
+  "setup.recommended": "Empfohlen",
+  "setup.done": "Zum Studio",
+  "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
   "cloud.title": "In der Cloud",
   "cloud.publish": "Veröffentlichen",
   "cloud.update": "Aktualisieren",
@@ -76,6 +127,7 @@ const de = {
   "nav.wizards": "Wizards",
   "nav.settings": "Einstellungen",
   "nav.logout": "Abmelden",
+  "nav.language": "Sprache",
   "nav.credits": "{n} Credits",
   "footer.billing": "Guthaben",
   "footer.usage": "Verbrauch",
@@ -463,6 +515,55 @@ const en: Record<Key, string> = {
   "local.chatClaude": "Claude subscription (Claude Code)",
   "local.subscription":
     "With the subscription, the Claude Code installed on this device builds the wizard — on your sign-in there. Runs keep using keys or credits.",
+  "harness.hint":
+    "Text thinks on the {name} installed on this device — on your {sub} and your sign-in there. No key needed. Images, video and audio still need a key.",
+  "harness.found": "{name} {version} found",
+  "harness.missing": "{name} is not installed on this device.",
+  "harness.install": "Install:",
+  "harness.authSubscription": "Signed in with your {sub}.",
+  "harness.authKey":
+    "Signed in with an API key from your shell — not the subscription. Sign in here so it runs on your {sub}.",
+  "harness.authNone": "Not signed in yet.",
+  "harness.signIn": "Sign in here",
+  "harness.signingIn":
+    "The sign-in runs in the terminal below — your browser opens for it. The terminal closes once the sign-in is there.",
+  "harness.signInInteractive":
+    "{name} starts below. Pick the sign-in with your {sub} there and sign in in the browser. The terminal closes once the sign-in is there.",
+  "harness.loginEnded": "The sign-in ended without {name} being signed in.",
+  "harness.sub.claude": "Claude subscription",
+  "harness.sub.codex": "ChatGPT subscription",
+  "harness.sub.gemini": "Google account",
+  "harness.sub.cursor": "Cursor subscription",
+  "harness.desc.claude": "On your Claude subscription — no key needed.",
+  "harness.desc.codex": "On your ChatGPT subscription — no key needed.",
+  "harness.desc.gemini": "On your Google account — no key needed.",
+  "harness.desc.cursor": "On your Cursor subscription — no key needed.",
+  "harness.ready": "signed in",
+  "local.recheck": "Check again",
+  "local.test": "Test",
+  "local.testHint": "One short call shows whether the way to the model is open.",
+  "local.testOk": "Answered in {s} s on {ref}: “{reply}”",
+  "local.testFailed": "The test did not work: {error}",
+  "setup.title": "Setup",
+  "setup.sub": "Engenty can use your existing accounts on your computer.",
+  "setup.source": "Choose your Engine",
+  "setup.local": "Runs locally on this device.",
+  "setup.stage.connect": "Connect",
+  "setup.stage.test": "Test",
+  "setup.stage.done": "Done",
+  "setup.h.install": "Install {name}",
+  "setup.h.signIn": "Sign in to {name}",
+  "setup.h.keys": "Enter a key",
+  "setup.h.test": "One short test",
+  "setup.h.done": "Connected.",
+  "setup.ready": "All set.",
+  "setup.others": "Also possible once installed: {names}.",
+  "setup.noHarness":
+    "No AI client found. Install Codex, Claude Code, Gemini CLI or Cursor Agent — or enter your own keys.",
+  "setup.ownDesc": "AI Gateway, OpenAI, Anthropic or Ollama.",
+  "setup.recommended": "Recommended",
+  "setup.done": "Open the studio",
+  "setup.untilWorks": "The studio opens once the test works.",
   "cloud.title": "In the cloud",
   "cloud.publish": "Publish",
   "cloud.update": "Update",
@@ -472,6 +573,7 @@ const en: Record<Key, string> = {
   "nav.wizards": "Wizards",
   "nav.settings": "Settings",
   "nav.logout": "Sign out",
+  "nav.language": "Language",
   "nav.credits": "{n} credits",
   "footer.billing": "Credits",
   "footer.usage": "Usage",
@@ -783,12 +885,62 @@ const en: Record<Key, string> = {
   "common.error": "Error",
 };
 
-export const lang: "de" | "en" =
-  typeof navigator !== "undefined" && !navigator.language.toLowerCase().startsWith("de")
-    ? "en"
-    : "de";
+export type Lang = "de" | "en";
 
-const dict = lang === "de" ? de : en;
+const LANG_KEY = "wizards.lang";
+
+function storedLang(): Lang | null {
+  try {
+    const pick = localStorage.getItem(LANG_KEY);
+    return pick === "de" || pick === "en" ? pick : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The language in effect: the person's pick, else the browser's. It changes when the person
+ * switches, so read it where it is used — while rendering or in a function — never once at the
+ * top of a module.
+ */
+export let lang: Lang =
+  storedLang() ??
+  (typeof navigator !== "undefined" && !navigator.language.toLowerCase().startsWith("de")
+    ? "en"
+    : "de");
+
+let dict = lang === "de" ? de : en;
+
+const listeners = new Set<() => void>();
+
+/** Switches the language in place and keeps the pick: the app renders again, nothing reloads. */
+export function setLang(next: Lang) {
+  if (next === lang) {
+    return;
+  }
+  lang = next;
+  dict = next === "de" ? de : en;
+  document.documentElement.lang = next;
+  try {
+    localStorage.setItem(LANG_KEY, next);
+  } catch {
+    // the pick only lasts this page then
+  }
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+/** The language, for a component that must render again when it changes — the app's root does. */
+export function useLang(): Lang {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => lang,
+  );
+}
 
 export function t(key: Key, vars?: Record<string, string | number>): string {
   let s: string = dict[key] ?? de[key] ?? key;

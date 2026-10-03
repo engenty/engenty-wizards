@@ -11,7 +11,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { loadAsset, loadAssetText } from "../files/storage.js";
 import { generateImageMedia, generateVideoMedia, type MediaReference } from "../media/generate.js";
-import { costOf, textModel } from "../models.js";
+import { attachTools, costOf, textModel } from "../models.js";
 import { buildStepTools } from "../tools/index.js";
 import { personUploads } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
@@ -139,6 +139,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
   const resolved = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const uploads = await personUploads(ctx);
   const { tools, assets, close } = await buildStepTools(step, ctx, resolved, uploads);
+  attachTools(resolved, tools);
   try {
     const formatHint =
       step.output.format === "markdown"

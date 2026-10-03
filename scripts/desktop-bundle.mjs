@@ -203,6 +203,12 @@ function prune(dir) {
   }
 }
 prune(modules);
+// node-pty forks a prebuilt helper; an install without scripts leaves it without the execute bit.
+for (const file of walk(modules)) {
+  if (file.endsWith("/spawn-helper")) {
+    chmodSync(file, 0o755);
+  }
+}
 rmSync(join(modules, ".modules.yaml"), { force: true });
 rmSync(join(modules, ".pnpm-workspace-state-v1.json"), { force: true });
 
