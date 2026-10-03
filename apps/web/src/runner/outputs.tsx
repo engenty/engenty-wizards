@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { t } from "../lib/i18n";
 import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
@@ -204,7 +205,7 @@ export function OutputView({
   if (!output) {
     return null;
   }
-  const assetUrl = (id: string) => `${base}/assets/${id}`;
+  const assetUrl = (id: string) => withBase(`${base}/assets/${id}`);
   if (step.type === "widget") {
     const html = output.assets?.find((a) => a.mime === "text/html");
     const size = step.size ?? { width: 1280, height: 720 };
@@ -391,7 +392,7 @@ export function DownloadButtons({
   /** Named in the share sheet. */
   title?: string;
 }) {
-  const href = (f: Format) => `${base}/steps/${stepId}/download?format=${f}`;
+  const href = (f: Format) => withBase(`${base}/steps/${stepId}/download?format=${f}`);
   return (
     <div className="flex flex-wrap gap-2">
       {formats.map((f, i) => (

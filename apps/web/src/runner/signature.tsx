@@ -1,5 +1,6 @@
 import { Eraser, PenLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, Dialog, IconButton } from "../ui";
@@ -187,7 +188,7 @@ export function SignatureField({
             aria-label={t("sign.again")}
           >
             <img
-              src={`/api/runs/${runId}/assets/${id}`}
+              src={withBase(`/api/runs/${runId}/assets/${id}`)}
               alt={label}
               className="mx-auto h-20 object-contain"
             />

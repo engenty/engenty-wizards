@@ -8,7 +8,7 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { authRoutes, type Principal, principalOf } from "./auth/index.js";
 import { withTenant } from "./db/client.js";
-import { env } from "./env.js";
+import { basePath, env } from "./env.js";
 import { linkPreview } from "./link-preview.js";
 import { discovery, managed } from "./manage.js";
 import { bridgeRequest } from "./mcp/bridge.js";
@@ -147,8 +147,8 @@ if (existsSync(webDir)) {
     const token = c.req.path.match(/^\/r\/([A-Za-z0-9_-]{6,64})(?:\/|$)/)?.[1];
     const page = token
       ? html.replace(
-          'href="/manifest.webmanifest"',
-          `href="/api/public/wizards/${token}/manifest.webmanifest"`,
+          /href="[^"]*manifest\.webmanifest"/,
+          `href="${basePath}/api/public/wizards/${token}/manifest.webmanifest"`,
         )
       : html;
     return c.html(

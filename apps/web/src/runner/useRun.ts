@@ -1,5 +1,6 @@
 import type { RunView } from "@engenty-wizards/shared/run";
 import { useCallback, useEffect, useState } from "react";
+import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
 
 /** Two missed pings: the stream is taken for dead. */
@@ -48,7 +49,9 @@ export function useRun(runId: string | null) {
       if (stopped) {
         return;
       }
-      const stream = new EventSource(`/api/runs/${runId}/stream`, { withCredentials: true });
+      const stream = new EventSource(withBase(`/api/runs/${runId}/stream`), {
+        withCredentials: true,
+      });
       es = stream;
       lastHeard = Date.now();
       stream.addEventListener("view", (e) => {

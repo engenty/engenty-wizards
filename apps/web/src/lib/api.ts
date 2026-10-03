@@ -1,3 +1,4 @@
+import { withBase } from "./base";
 import { t } from "./i18n";
 
 export class ApiError extends Error {
@@ -16,7 +17,7 @@ export function isOffline(err: unknown): boolean {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(withBase(path), {
     method,
     credentials: "include",
     headers:
@@ -63,7 +64,7 @@ export async function postStream(
   onEvent: (event: string, data: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(path, {
+  const res = await fetch(withBase(path), {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json" },

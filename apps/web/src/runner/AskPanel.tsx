@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, cn, Input, Label, Switch } from "../ui";
@@ -161,7 +162,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
       <div className="overflow-hidden rounded-xl bg-paper-2 ring-1 ring-border-soft">
         <img
           ref={image}
-          src={`/api/runs/${runId}/browser/screen?t=${tick}`}
+          src={withBase(`/api/runs/${runId}/browser/screen?t=${tick}`)}
           alt={ask.site.host}
           onClick={click}
           className="block w-full cursor-pointer"

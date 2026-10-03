@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router";
+import { BASE } from "@/lib/base";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -72,7 +73,7 @@ function CopyLink({ token }: { token: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        void navigator.clipboard.writeText(`${window.location.origin}/r/${token}`);
+        void navigator.clipboard.writeText(`${window.location.origin}${BASE}/r/${token}`);
         setDone(true);
         setTimeout(() => setDone(false), 1500);
       }}

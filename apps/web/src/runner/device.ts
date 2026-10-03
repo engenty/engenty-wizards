@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { BASE } from "@/lib/base";
 
 /** A finger as the main pointer: a phone or a tablet. */
 export const isTouch =
@@ -168,7 +169,7 @@ export async function enableNotify(): Promise<NotifyState> {
   }
   if (hasNotifications && Notification.permission === "granted") {
     // Phones only show a page's notification through a service worker.
-    await navigator.serviceWorker?.register("/sw.js").catch(() => undefined);
+    await navigator.serviceWorker?.register(`${BASE}/sw.js`).catch(() => undefined);
   }
   for (const listener of listeners) {
     listener();

@@ -9,7 +9,7 @@ import {
   withTenant,
 } from "./db/client.js";
 import { resumeInterruptedRuns } from "./engine/runner.js";
-import { env } from "./env.js";
+import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
 import { loadCatalog, loadLocalModels } from "./models.js";
 import { closeBrowser } from "./render/chromium.js";
@@ -34,7 +34,17 @@ if (managed) {
 
 const { default: app } = await import("./app.js");
 
-const server = serve({ fetch: app.fetch, port: env.port, hostname: env.host }, (info) => {
+/** Behind a path (APP_URL ends in /w) the proxy may leave the prefix on; the routes know none. */
+function withoutBasePath(request: Request) {
+  const url = new URL(request.url);
+  if (basePath && (url.pathname === basePath || url.pathname.startsWith(`${basePath}/`))) {
+    url.pathname = url.pathname.slice(basePath.length) || "/";
+    return app.fetch(new Request(url, request));
+  }
+  return app.fetch(request);
+}
+
+const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.host }, (info) => {
   console.log(`engenty wizards on :${info.port} — ${env.appUrl}`);
   const entry = localEntryUrl();
   if (entry && !env.local.accessKey) {

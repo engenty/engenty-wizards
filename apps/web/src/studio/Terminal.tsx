@@ -3,6 +3,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal as Xterm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef } from "react";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { cn } from "../ui";
 import { openExternal } from "./LocalRuntime";
@@ -66,7 +67,7 @@ export function Terminal({
     const observer = new ResizeObserver(sync);
     observer.observe(el);
     const input = term.onData((data) => void api.post(`${path}/input`, { data }).catch(quiet));
-    const source = new EventSource(`${path}/stream`, { withCredentials: true });
+    const source = new EventSource(withBase(`${path}/stream`), { withCredentials: true });
     source.addEventListener("data", (e) => {
       term.write((JSON.parse((e as MessageEvent).data) as { data: string }).data);
     });

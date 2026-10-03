@@ -5,7 +5,7 @@ import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { nanoid } from "nanoid";
 import { control, controlDb } from "../db/client.js";
-import { env } from "../env.js";
+import { basePath, env } from "../env.js";
 import {
   discovery,
   managed,
@@ -66,7 +66,7 @@ function setLocalCookie(c: Context) {
     httpOnly: true,
     sameSite: "Strict",
     secure,
-    path: "/",
+    path: cookiePath,
     maxAge: 60 * 60 * 24 * 365,
   });
 }
@@ -104,10 +104,14 @@ type SessionRow = typeof control.session.$inferSelect;
 const sessions = new Map<string, { at: number; row: SessionRow }>();
 
 const client = () => ({ id: env.manage.clientId, secret: env.manage.clientSecret || undefined });
+/** Cookies and redirects stay under the path the app is served at. */
+const cookiePath = basePath || "/";
+const home = `${basePath}/`;
+
 const callbackUrl = () => `${env.appUrl}/api/auth/callback`;
 
 function safeReturn(path: string | undefined): string {
-  return path?.startsWith("/") && !path.startsWith("//") ? path : "/";
+  return path?.startsWith("/") && !path.startsWith("//") ? path : home;
 }
 
 function setSessionCookie(c: Context, id: string) {
@@ -115,7 +119,7 @@ function setSessionCookie(c: Context, id: string) {
     httpOnly: true,
     sameSite: "Lax",
     secure,
-    path: "/",
+    path: cookiePath,
     maxAge: SESSION_DAYS * 24 * 3600,
   });
 }
@@ -216,7 +220,7 @@ export const authRoutes = new Hono()
     }
     accessKey = null;
     setLocalCookie(c);
-    return c.redirect("/");
+    return c.redirect(home);
   })
   // Local development only: the "Dev-Login" button.
   .post("/dev/login", (c) => {
@@ -236,7 +240,7 @@ export const authRoutes = new Hono()
       httpOnly: true,
       sameSite: "Lax",
       secure,
-      path: "/api/auth",
+      path: `${basePath}/api/auth`,
       maxAge: 900,
     });
     const ticket = seal({ desktop, exp: Date.now() + 15 * 60_000 });
@@ -246,7 +250,7 @@ export const authRoutes = new Hono()
     const code = c.req.query("code") ?? "";
     const handoff = unseal<Handoff>(code);
     const desktop = getCookie(c, DESKTOP_COOKIE);
-    deleteCookie(c, DESKTOP_COOKIE, { path: "/api/auth" });
+    deleteCookie(c, DESKTOP_COOKIE, { path: `${basePath}/api/auth` });
     if (
       !managed ||
       !handoff ||
@@ -255,11 +259,11 @@ export const authRoutes = new Hono()
       !sameValue(desktop, handoff.desktop) ||
       usedHandoffs.has(handoff.sid)
     ) {
-      return c.redirect("/?signin=failed");
+      return c.redirect(`${home}?signin=failed`);
     }
     usedHandoffs.add(handoff.sid);
     setSessionCookie(c, handoff.sid);
-    return c.redirect("/");
+    return c.redirect(home);
   })
   .get("/auth/login", async (c) => {
     if (!managed) {
@@ -279,7 +283,7 @@ export const authRoutes = new Hono()
       httpOnly: true,
       sameSite: "Lax",
       secure,
-      path: "/api/auth",
+      path: `${basePath}/api/auth`,
       maxAge: 900,
     });
     const url = new URL(d.authorization_endpoint);
@@ -312,9 +316,9 @@ export const authRoutes = new Hono()
       }
     }
     const state = unseal<LoginState>(getCookie(c, STATE_COOKIE) ?? "");
-    deleteCookie(c, STATE_COOKIE, { path: "/api/auth" });
+    deleteCookie(c, STATE_COOKIE, { path: `${basePath}/api/auth` });
     if (!code || !state || state.exp < Date.now() || state.nonce !== rawState) {
-      return c.redirect("/?signin=failed");
+      return c.redirect(`${home}?signin=failed`);
     }
     try {
       const tokens = await tokenRequest(
@@ -357,7 +361,7 @@ export const authRoutes = new Hono()
       return c.redirect(state.returnTo);
     } catch (err) {
       console.error("[sign-in]", err);
-      return c.redirect("/?signin=failed");
+      return c.redirect(`${home}?signin=failed`);
     }
   })
   .post("/auth/sign-out", async (c) => {
@@ -366,7 +370,7 @@ export const authRoutes = new Hono()
       await controlDb.delete(control.session).where(eq(control.session.id, id));
       sessions.delete(id);
     }
-    deleteCookie(c, SESSION_COOKIE, { path: "/" });
-    deleteCookie(c, LOCAL_COOKIE, { path: "/" });
+    deleteCookie(c, SESSION_COOKIE, { path: cookiePath });
+    deleteCookie(c, LOCAL_COOKIE, { path: cookiePath });
     return c.json({ ok: true });
   });

@@ -3,6 +3,7 @@ import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "./api";
+import { BASE, withBase } from "./base";
 
 /** An AI client installed on this machine that can think for the app, on its own subscription. */
 export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
@@ -172,16 +173,16 @@ export function useRefreshMe() {
 }
 
 export async function signOut() {
-  await fetch("/api/auth/sign-out", {
+  await fetch(withBase("/api/auth/sign-out"), {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json" },
     body: "{}",
   });
-  window.location.href = "/";
+  window.location.href = `${BASE}/`;
 }
 
 /** Sign-in happens at the Manage-App; it sends the person back to `returnTo`. */
 export function signIn(returnTo = window.location.pathname) {
-  window.location.href = `/api/auth/login?return=${encodeURIComponent(returnTo)}`;
+  window.location.href = withBase(`/api/auth/login?return=${encodeURIComponent(returnTo)}`);
 }

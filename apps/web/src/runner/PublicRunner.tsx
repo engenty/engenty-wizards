@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, SquarePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -104,7 +105,11 @@ export function BrandHeader({ brand }: { brand: BrandView }) {
     <header className="safe-top">
       <div className="relative flex h-14 items-center justify-center px-5">
         {brand.logoUrl ? (
-          <img src={brand.logoUrl} alt={brand.name} className="h-7 max-w-[160px] object-contain" />
+          <img
+            src={withBase(brand.logoUrl)}
+            alt={brand.name}
+            className="h-7 max-w-[160px] object-contain"
+          />
         ) : brand.name ? (
           <span className="max-w-[60%] truncate font-display font-semibold text-[15px] text-ink-2 tracking-tight">
             {brand.name}
@@ -283,7 +288,7 @@ export function PublicRunner() {
         )}
       </div>
       <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
-        <a href="/" className="inline-block py-3.5 hover:text-ink-2">
+        <a href={`${BASE}/`} className="inline-block py-3.5 hover:text-ink-2">
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>
       </footer>

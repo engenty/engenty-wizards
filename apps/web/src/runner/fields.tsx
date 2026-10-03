@@ -2,6 +2,7 @@ import { type Field, itemsTotals } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { Camera, Film, ImagePlus, Paperclip, Plus, ScanLine, Trash2, Video, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "../ui";
@@ -256,7 +257,7 @@ function UploadField({
               >
                 {mime.startsWith("image/") ? (
                   <img
-                    src={`/api/runs/${runId}/assets/${id}`}
+                    src={withBase(`/api/runs/${runId}/assets/${id}`)}
                     alt=""
                     className="size-14 rounded-lg object-cover"
                   />

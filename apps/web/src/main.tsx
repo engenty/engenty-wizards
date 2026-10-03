@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
+import { BASE } from "./lib/base";
 import "./lib/theme";
 import "./styles/app.css";
 
@@ -13,7 +14,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={BASE}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

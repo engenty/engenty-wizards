@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { useParams } from "react-router";
+import { BASE } from "@/lib/base";
 import { BRAND, Mascot } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { lang, t } from "../lib/i18n";
@@ -106,7 +107,7 @@ export function SharePage() {
         ) : null}
       </main>
       <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
-        <a href="/" className="inline-block py-3.5 hover:text-ink-2">
+        <a href={`${BASE}/`} className="inline-block py-3.5 hover:text-ink-2">
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>
       </footer>

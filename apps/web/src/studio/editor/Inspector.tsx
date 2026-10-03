@@ -21,6 +21,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { HtmlFrame } from "../../runner/outputs";
@@ -295,7 +296,9 @@ function WidgetBody({
       <Section title="Vorschau mit Beispieldaten">
         {hasEntry ? (
           <HtmlFrame
-            src={`/api/studio/wizards/${wizardId}/widgets/${step.id}/preview?v=${version}`}
+            src={withBase(
+              `/api/studio/wizards/${wizardId}/widgets/${step.id}/preview?v=${version}`,
+            )}
             page={size.width}
             height={size.height}
             fit

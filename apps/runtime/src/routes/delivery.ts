@@ -1,25 +1,37 @@
+import { basePath } from "../env.js";
+
 /** Uploads stay small; a clip from the phone's camera is the one thing that needs more room. */
 export function uploadLimit(mime: string): number {
   return mime.startsWith("video/") ? 40_000_000 : 15_000_000;
 }
 
 export function wizardManifest(token: string, title: string, description: string) {
-  const start = `/r/${token}`;
+  const start = `${basePath}/r/${token}`;
   return {
     id: start,
     name: title,
     short_name: title.length > 14 ? `${title.slice(0, 13).trimEnd()}…` : title,
     description,
     start_url: start,
-    scope: "/",
+    scope: `${basePath}/`,
     display: "standalone",
     background_color: "#faf8f5",
     theme_color: "#faf8f5",
     icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       {
-        src: "/icons/icon-maskable-512.png",
+        src: `${basePath}/icons/icon-192.png`,
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: `${basePath}/icons/icon-512.png`,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: `${basePath}/icons/icon-maskable-512.png`,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

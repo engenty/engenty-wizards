@@ -3,6 +3,7 @@ import { mergeDrafts } from "@engenty-wizards/shared/merge";
 import { useQueryClient } from "@tanstack/react-query";
 import { GitMerge, Plug } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import type { WizardDetail } from "../lib/session";
@@ -127,7 +128,7 @@ export function useLiveDraft(wizardId: string | undefined) {
     if (!wizardId) {
       return;
     }
-    const source = new EventSource(`/api/studio/wizards/${wizardId}/stream`);
+    const source = new EventSource(withBase(`/api/studio/wizards/${wizardId}/stream`));
     source.addEventListener("change", (e) => {
       const change = JSON.parse((e as MessageEvent).data) as DraftChange;
       const current = qc.getQueryData<WizardDetail>(key);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BASE } from "@/lib/base";
 import { ENGENTY_KINDS, type EngentyKind } from "../engenty/colors";
 import { FluffyEngenty, type FluffyEngentyOverrides } from "../engenty/fluffy-engenty";
 import type { EngentyCoat } from "../engenty/fur-stage";
@@ -46,7 +47,7 @@ export function EngentyBuilder() {
             <h1 className="text-3xl font-semibold tracking-tight">Engenty Builder</h1>
             <p className="mt-2 text-sm text-muted-foreground">{copy.description}</p>
           </div>
-          <a href="/" className="text-sm underline underline-offset-4">
+          <a href={`${BASE}/`} className="text-sm underline underline-offset-4">
             {copy.back}
           </a>
         </header>

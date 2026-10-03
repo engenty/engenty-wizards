@@ -4,6 +4,7 @@ import type { ShownList } from "@engenty-wizards/shared/run";
 import type { ConnectionView, ConnectorOption, StoreFile } from "@engenty-wizards/shared/store";
 import { Check, Database, FileText, Link2, Plus, Trash2, Unplug } from "lucide-react";
 import { useEffect, useState } from "react";
+import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
 import { Button, cn, Dialog, IconButton, Input, Label, Spinner } from "../ui";
@@ -464,7 +465,7 @@ export function ListDownloads({ runId, list }: { runId: string; list: ShownList 
       {list.formats.map((f) => (
         <a
           key={f}
-          href={`/api/runs/${runId}/lists/${list.def.id}/download?format=${f}`}
+          href={withBase(`/api/runs/${runId}/lists/${list.def.id}/download?format=${f}`)}
           className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink coarse:h-11 coarse:px-4"
         >
           {LIST_FORMAT_LABEL[f] ?? f}
@@ -560,7 +561,7 @@ export function StoreButton({ runId }: { runId: string }) {
                   {data.files.map((f) => (
                     <li key={f.path} className="border-border-soft border-b last:border-0">
                       <a
-                        href={`/api/runs/${runId}/store/files/${f.path}`}
+                        href={withBase(`/api/runs/${runId}/store/files/${f.path}`)}
                         className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
                         title={f.source ?? undefined}
                       >

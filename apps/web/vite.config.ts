@@ -4,8 +4,11 @@ import react from "@vitejs/plugin-react";
 import { defaultClientConditions, defineConfig } from "vite";
 
 const apiPort = Number(process.env.API_PORT ?? 8891);
+// The path the app is served under, e.g. "/w" for https://engenty.ai/w. Empty: an origin's root.
+const basePath = (process.env.APP_BASE_PATH ?? "").replace(/\/+$/, "");
 
 export default defineConfig({
+  base: basePath ? `${basePath}/` : "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },

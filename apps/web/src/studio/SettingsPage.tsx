@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, KeyRound, Plus, Trash2, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useMe } from "../lib/session";
@@ -107,7 +108,7 @@ function ProjectForm({ project }: { project: Project }) {
               <div className="flex items-center gap-3">
                 {project.brand.logoAssetId ? (
                   <img
-                    src={`/api/public/logos/${project.brand.logoAssetId}`}
+                    src={withBase(`/api/public/logos/${project.brand.logoAssetId}`)}
                     alt=""
                     className="h-11 max-w-[140px] rounded-md object-contain"
                   />

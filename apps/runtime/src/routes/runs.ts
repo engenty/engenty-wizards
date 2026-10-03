@@ -35,7 +35,7 @@ import {
   runView,
   submitPage,
 } from "../engine/runner.js";
-import { env } from "../env.js";
+import { basePath, env } from "../env.js";
 import { loadAsset, saveAsset } from "../files/storage.js";
 import { reverseGeocode } from "../geocode.js";
 import { hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
@@ -82,7 +82,7 @@ function visitorId(c: Context, create: boolean): string | null {
       httpOnly: true,
       sameSite: "Lax",
       secure: env.appUrl.startsWith("https"),
-      path: "/",
+      path: basePath || "/",
       maxAge: 60 * 60 * 24 * 365,
     });
   }

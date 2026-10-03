@@ -142,10 +142,7 @@ export const env = {
     accessKey: str("LOCAL_ACCESS_KEY"),
     /** The Manage-App a local runtime links an account to (credits, publishing). */
     accountUrl: str("ACCOUNT_URL", "https://account.engenty.ai").replace(/\/$/, ""),
-    gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty.ai").replace(
-      /\/$/,
-      "",
-    ),
+    gatewayUrl: str("ACCOUNT_GATEWAY_URL", "https://gateway.engenty.ai").replace(/\/$/, ""),
     /** The cloud runtime "publish to the cloud" sends wizards to. */
     cloudUrl: str("CLOUD_URL", "https://engenty.ai/w").replace(/\/$/, ""),
   },
@@ -207,6 +204,13 @@ export const env = {
     storeTtlDays: num("STORE_TTL_DAYS", 400),
   },
 };
+
+/**
+ * The path APP_URL ends in: `/w` for https://engenty.ai/w, empty for an origin alone. The proxy
+ * may strip it or not, so the server takes both; what it writes into a cookie or a redirect
+ * carries it.
+ */
+export const basePath = new URL(env.appUrl).pathname.replace(/\/+$/, "");
 
 if (env.production) {
   const required = [

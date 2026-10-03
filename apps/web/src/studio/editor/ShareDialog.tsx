@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CloudUpload, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { BASE } from "@/lib/base";
 import { ApiError, api } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { useMe, type WizardDetail } from "../../lib/session";
@@ -81,7 +82,7 @@ export function ShareDialog({
     mutationFn: () => api.post(`/api/studio/wizards/${wizard.id}/rotate-link`),
     onSuccess: refresh,
   });
-  const url = `${window.location.origin}/r/${wizard.shareToken}`;
+  const url = `${window.location.origin}${BASE}/r/${wizard.shareToken}`;
   const me = useMe();
   const estimate = useEstimate(wizard.id, wizard.draft);
   const perDay =
