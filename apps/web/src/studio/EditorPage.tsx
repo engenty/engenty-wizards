@@ -26,6 +26,63 @@ const TAB_LABEL: Record<Tab, string> = {
   runs: "editor.runs",
 };
 
+const PANE_KEY = "wizards.editor.pane";
+const PANE_DEFAULT = 420;
+const PANE_MIN = 340;
+
+/** Room the diagram keeps next to the pane. */
+const paneMax = () => Math.max(PANE_MIN, window.innerWidth - 480);
+
+function storedPane(): number {
+  try {
+    const n = Number(localStorage.getItem(PANE_KEY));
+    return n ? Math.min(Math.max(n, PANE_MIN), paneMax()) : PANE_DEFAULT;
+  } catch {
+    return PANE_DEFAULT;
+  }
+}
+
+/** The side pane's width on wide screens, dragged at its left edge; remembered per browser. */
+function usePaneWidth() {
+  const [width, setWidth] = useState(storedPane);
+  const set = useCallback((next: number) => {
+    const w = Math.round(Math.min(Math.max(next, PANE_MIN), paneMax()));
+    setWidth(w);
+    try {
+      localStorage.setItem(PANE_KEY, String(w));
+    } catch {
+      // the width only lasts this page then
+    }
+  }, []);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = width;
+    const move = (ev: PointerEvent) => set(startW + startX - ev.clientX);
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.removeProperty("cursor");
+      document.body.style.removeProperty("user-select");
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 64 : 16;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      set(width + step);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      set(width - step);
+    }
+  };
+  return { width, onPointerDown, onKeyDown, reset: () => set(PANE_DEFAULT) };
+}
+
 export function EditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,6 +97,7 @@ export function EditorPage() {
   });
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
+  const pane = usePaneWidth();
   const [shareOpen, setShareOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<string | null>(null);
@@ -214,7 +272,25 @@ export function EditorPage() {
           )}
         </section>
 
-        <aside className="flex h-[55vh] min-h-0 w-full shrink-0 flex-col bg-card shadow-[0_0_0_1px_var(--border-soft)] lg:h-auto lg:w-[420px] lg:rounded-tl-3xl">
+        <aside
+          className="relative flex h-[55vh] min-h-0 w-full shrink-0 flex-col bg-card shadow-[0_0_0_1px_var(--border-soft)] lg:h-auto lg:w-(--pane) lg:rounded-tl-3xl"
+          style={{ "--pane": `${pane.width}px` } as React.CSSProperties}
+        >
+          {/* biome-ignore lint/a11y/useSemanticElements: a draggable splitter has no element of its own */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t("editor.resize")}
+            aria-valuenow={pane.width}
+            tabIndex={0}
+            title={t("editor.resize")}
+            onPointerDown={pane.onPointerDown}
+            onKeyDown={pane.onKeyDown}
+            onDoubleClick={pane.reset}
+            className="group -left-1.5 absolute inset-y-0 z-10 hidden w-3 cursor-col-resize outline-none lg:block"
+          >
+            <span className="absolute inset-y-6 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition group-hover:bg-ember/60 group-focus-visible:bg-ember group-active:bg-ember" />
+          </div>
           <nav className="flex shrink-0 gap-1 px-3 pt-3">
             {(["chat", "step", "files", "runs"] as Tab[]).map((k) => (
               <button

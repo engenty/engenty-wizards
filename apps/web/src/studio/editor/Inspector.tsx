@@ -843,7 +843,8 @@ const WIZARD = "__wizard";
 
 /**
  * The wizard's steps in a row, in run order, with the wizard's own settings first: one click or
- * the arrows move from step to step without going back to the diagram.
+ * the arrows (on screen or ← / → on the keyboard) move from step to step without going back to
+ * the diagram.
  */
 function StepNav({
   def,
@@ -865,6 +866,31 @@ function StepNav({
       onSelect(ids[next]);
     }
   };
+  const goRef = useRef(go);
+  goRef.current = go;
+  // ← / → step through while this tab is open, unless the keys belong to a field or a control.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
+        return;
+      }
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
+        return;
+      }
+      const el = e.target as HTMLElement | null;
+      if (
+        el?.closest(
+          'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="separator"], [role="slider"], [role="dialog"], .react-flow',
+        )
+      ) {
+        return;
+      }
+      e.preventDefault();
+      goRef.current(e.key === "ArrowLeft" ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const dot = "inline-flex size-8 shrink-0 items-center justify-center rounded-full transition";
   return (
     <div className="sticky top-0 z-10 flex items-center gap-1 border-border-soft border-b bg-card/95 px-2 py-2 backdrop-blur">
@@ -876,7 +902,7 @@ function StepNav({
       >
         <ChevronLeft className="size-4" />
       </IconButton>
-      <div className="flex min-w-0 flex-1 items-center overflow-x-auto py-1 [scrollbar-width:none]">
+      <div className="flex min-w-0 flex-1 items-center overflow-x-auto p-1 [scrollbar-width:none]">
         <button
           ref={selected === WIZARD ? current : undefined}
           type="button"
@@ -1036,7 +1062,7 @@ function StepInspector({
   const estimate = useEstimate(wizardId, def);
   return (
     <div>
-      <div className="flex items-center gap-2 px-5 pt-5">
+      <div className="flex items-center gap-2 px-5 py-4">
         <span
           className={cn(
             "inline-flex size-7 items-center justify-center rounded-md",
@@ -1051,7 +1077,7 @@ function StepInspector({
         <span className="ml-auto font-mono text-[11px] text-ink-4">{step.id}</span>
       </div>
       {stepIssues.length ? (
-        <div className="mx-5 mt-3 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
+        <div className="mx-5 mb-4 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
           {stepIssues.map((i, k) => (
             <div key={k}>{i.message}</div>
           ))}
