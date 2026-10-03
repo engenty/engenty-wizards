@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { Logo } from "../brand";
 import { t } from "../lib/i18n";
 import { type Me, signOut, spendableCredits } from "../lib/session";
-import { cn } from "../ui";
+import { cn, IconButton } from "../ui";
 import { LangSwitch } from "./LangSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
 
@@ -80,7 +80,14 @@ export function UserMenu({ me }: { me: Me }) {
             <div className="truncate font-medium text-[14px]">{me.user.name}</div>
             <div className="truncate text-[12px] text-ink-3">{me.user.email}</div>
           </div>
-          <button type="button" className={item} onClick={() => navigate("/settings")}>
+          <button
+            type="button"
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              navigate("/settings");
+            }}
+          >
             <Settings className="size-4" /> {t("nav.settings")}
           </button>
           {me.manageUrl ? (
@@ -114,6 +121,13 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
       <CreditsPill me={me} />
+      <IconButton
+        label={t("nav.settings")}
+        onClick={() => navigate("/settings")}
+        className="ring-1 ring-border-soft"
+      >
+        <Settings className="size-4" />
+      </IconButton>
       <UserMenu me={me} />
     </header>
   );
