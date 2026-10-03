@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -22,12 +23,45 @@ loadEnvFiles();
 
 const str = (key: string, fallback = ""): string => process.env[key]?.trim() || fallback;
 
-function sandboxEngine(): "docker" | "agentos" | "off" {
-  const engine = str("SANDBOX", "docker");
+/**
+ * Without `SANDBOX`: Docker when the sandbox image is on this machine, else agentOS when its
+ * packages are installed (a checkout has them, the image and the desktop app do not), else none.
+ * The image is not published, so a fresh install would otherwise offer a tool that cannot start.
+ */
+function sandboxEngine(image: string): "docker" | "agentos" | "off" {
+  const engine = str("SANDBOX");
   if (str("SANDBOX_ENABLED", "1") !== "1" || engine === "off") {
     return "off";
   }
-  return engine === "agentos" ? "agentos" : "docker";
+  if (engine) {
+    return engine === "agentos" ? "agentos" : "docker";
+  }
+  if (dockerHasImage(image)) {
+    return "docker";
+  }
+  return agentOsInstalled() ? "agentos" : "off";
+}
+
+function dockerHasImage(image: string): boolean {
+  try {
+    execFileSync("docker", ["image", "inspect", image], { stdio: "ignore", timeout: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** agentOS ships its sidecar for macOS and Linux on arm64 and x64 only. */
+function agentOsInstalled(): boolean {
+  if (!["darwin", "linux"].includes(process.platform) || !["arm64", "x64"].includes(process.arch)) {
+    return false;
+  }
+  try {
+    import.meta.resolve("@rivet-dev/agentos-core");
+    return true;
+  } catch {
+    return false;
+  }
 }
 const num = (key: string, fallback: number): number => {
   const v = Number(process.env[key]);
@@ -54,14 +88,21 @@ function appSecret(): string {
 }
 
 const manageUrl = str("MANAGE_URL").replace(/\/$/, "");
+const port = num("API_PORT", 8891);
+/** From source the Vite dev server on :5181 serves the pages; built, this server does. */
+const fromSource = import.meta.url.endsWith(".ts");
+const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
 
 export const env = {
   production: process.env.NODE_ENV === "production",
-  port: num("API_PORT", 8891),
+  port,
   /** Listen address; a runtime that runs alone stays on the loopback interface. */
   host: str("API_HOST", manageUrl ? "0.0.0.0" : "127.0.0.1"),
   /** The origin people open, e.g. https://wizards.localhost — auth callbacks and links use it. */
-  appUrl: str("APP_URL", "http://localhost:5181").replace(/\/$/, ""),
+  appUrl: str("APP_URL", fromSource ? "http://localhost:5181" : `http://localhost:${port}`).replace(
+    /\/$/,
+    "",
+  ),
   /** More host names this server answers under, besides APP_URL's and the loopback names. */
   allowedHosts: str("ALLOWED_HOSTS")
     .split(",")
@@ -141,8 +182,8 @@ export const env = {
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
   /** What runs an agent's shell and code: a Docker container, an agentOS VM, or nothing. */
-  sandbox: sandboxEngine(),
-  sandboxImage: str("SANDBOX_IMAGE", "engenty-sandbox:latest"),
+  sandbox: sandboxEngine(sandboxImage),
+  sandboxImage,
 
   /** Assets and workspace files in an S3-compatible bucket (R2); empty = the data folder. */
   s3: {
