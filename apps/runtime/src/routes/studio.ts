@@ -38,10 +38,12 @@ import {
   writeTerminal,
 } from "../harness/terminal.js";
 import { managed } from "../manage.js";
+import { transcribeAudio } from "../media/transcribe.js";
 import {
   hasTextModel,
   LOCAL_KEYS,
   localModelSettings,
+  ModelUnavailableError,
   saveLocalModels,
   textModel,
 } from "../models.js";
@@ -341,6 +343,28 @@ export const studio = new Hono<Vars>()
         });
       }
     });
+  })
+  // What the admin says into the composer, written down — where the browser cannot do it itself.
+  .post("/transcribe", async (c) => {
+    const file = (await c.req.formData()).get("file");
+    if (!(file instanceof File) || !file.size || file.size > 10_000_000) {
+      throw new ServiceError("invalid", "Bitte eine Aufnahme bis 10 MB.");
+    }
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    try {
+      const { text } = await transcribeAudio({
+        bytes: new Uint8Array(await file.arrayBuffer()),
+        mediaType: file.type || "audio/webm",
+      });
+      return c.json({ text });
+    } catch (err) {
+      if (err instanceof ModelUnavailableError) {
+        throw new ServiceError("refused", err.message);
+      }
+      throw err;
+    }
   })
   .post("/wizards/:id/test-runs", async (c) =>
     c.json(await startTestRun(c.get("user").id, c.req.param("id"))),
