@@ -283,38 +283,57 @@ const de = {
   "settings.save": "Speichern",
   "settings.saved": "Gespeichert",
   "settings.delete": "Projekt löschen",
-  "settings.connect": "Mit Claude Code & Co. bauen",
-  "settings.connectHint":
-    "Baue und ändere Wizards direkt in Claude Code, Cursor oder Codex – mit deinem eigenen Abo. Testläufe verbrauchen Guthaben.",
-  "settings.keyName": "Name des Schlüssels",
-  "settings.createKey": "Schlüssel erstellen",
-  "settings.keyOnce":
-    "Der Schlüssel wird nur jetzt angezeigt. Für Claude Code ohne Browser-Anmeldung:",
-  "settings.keyOther": "Andere Clients: URL {url}, Header Authorization: Bearer <Schlüssel>",
   "settings.copy": "Kopieren",
   "settings.copied": "Kopiert",
   "settings.lastUsed": "zuletzt {when}",
   "settings.neverUsed": "noch nie benutzt",
   "settings.revoke": "Schlüssel löschen",
+  "mcp.nav": "KI-Clients (MCP)",
+  "mcp.title": "Wizards aus deinem KI-Client bauen",
+  "mcp.lead":
+    "engenty wizards ist ein MCP-Server. Trag ihn in Claude Code, Codex, Cursor oder Gemini CLI ein – dann baust und änderst du Wizards dort im Chat, mit deinem eigenen Abo.",
+  "mcp.yourClient": "Dein KI-Client",
+  "mcp.canTitle": "Was dein Client damit kann",
+  "mcp.can1": "Wizards anlegen, ändern und veröffentlichen",
+  "mcp.can2": "Vorlagen und Connectors finden und einbauen",
+  "mcp.can3": "Testläufe starten – die verbrauchen Guthaben",
+  "mcp.can4": "Dateien eines Wizards lesen und schreiben",
+  "mcp.notReverse":
+    "Nicht verwechseln mit „Verbundene Systeme (MCP)“ unter Connectors: Dort ruft engenty andere Server auf, hier ruft dein Client engenty auf.",
+  "mcp.setup": "Einrichten",
+  "mcp.pick": "Client wählen",
+  "mcp.notHere": "Geht mit diesem Server nicht",
+  "mcp.needsPublic":
+    "claude.ai verbindet sich von Anthropics Servern aus. Das geht nur, wenn dieser Server öffentlich über HTTPS erreichbar ist.",
+  "mcp.claudeAiLocal":
+    "claude.ai und die Konnektoren von Claude Desktop verbinden sich von Anthropics Servern aus – diesen Rechner erreichen sie nicht. Nimm Claude Code.",
+  "mcp.keyTitle": "Schlüssel erstellen",
+  "mcp.keyHint":
+    "Mit dem Schlüssel meldet sich dein Client an. Er wird nur einmal angezeigt und steht dann gleich im Befehl im nächsten Schritt.",
+  "mcp.keyCreate": "Schlüssel für {client} erstellen",
+  "mcp.keyReady": "Schlüssel erstellt – er steht schon im Befehl unten.",
+  "mcp.keyFirst": "Erst den Schlüssel erstellen – dann steht hier der fertige Befehl.",
+  "mcp.add": "Server eintragen",
+  "mcp.terminal": "Im Terminal ausführen:",
+  "mcp.ccPlugin": "Optional das Plugin – es bringt den Befehl /wizard mit:",
+  "mcp.codexKey": "Im Terminal ausführen – Codex liest den Schlüssel aus einer Umgebungsvariable:",
+  "mcp.cursor": "In ~/.cursor/mcp.json eintragen:",
+  "mcp.claudeAi":
+    "In claude.ai: Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, diese Adresse eintragen:",
+  "mcp.oauth": "Kein Schlüssel nötig: Beim ersten Aufruf meldet sich dein Client im Browser an.",
+  "mcp.try": "Ausprobieren",
+  "mcp.tryHint": "Starte deinen Client neu und schreib zum Beispiel:",
+  "mcp.tryPrompt":
+    "Bau mit engenty wizards einen Wizard, der aus einer Rechnung als PDF Betrag, Datum und Absender ausliest.",
+  "mcp.address": "MCP-Adresse",
+  "mcp.addressPublic": "Öffentlich erreichbar.",
+  "mcp.addressLocal": "Nur auf diesem Rechner erreichbar, und nur solange engenty wizards läuft.",
+  "mcp.keys": "Schlüssel",
+  "mcp.keysHint":
+    "Jeder Schlüssel meldet einen Client an und hat alle Rechte – behandle ihn wie ein Passwort. Löschst du ihn, ist der Client abgemeldet.",
   "editor.viaClient": "Über {client}",
   "editor.changedVia": "Geändert über {client}",
   "editor.merged": "Mit Änderungen von außen zusammengeführt",
-  "setup.ccPlugin": "Am einfachsten mit dem Plugin – es bringt den Befehl /wizard mit:",
-  "setup.ccServerOnly": "Oder nur den Server hinzufügen:",
-  "setup.ccServer": "Füge den Server hinzu:",
-  "setup.ccAuth":
-    "Beim ersten Aufruf meldest du dich im Browser an und erlaubst den Zugriff. Sonst in Claude Code: /mcp → engenty-wizards → Authenticate.",
-  "setup.claudeAi":
-    "Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen, und diese URL eintragen:",
-  "setup.needsPublic":
-    "Das geht nur, wenn dieser Server öffentlich über HTTPS erreichbar ist – lokal nicht.",
-  "setup.codex": "Im Terminal hinzufügen und anmelden:",
-  "setup.cursor":
-    "In ~/.cursor/mcp.json eintragen, dann in den Cursor-Einstellungen unter MCP auf Verbinden klicken:",
-  "setup.cursorFallback":
-    "Klappt die Anmeldung nicht, nimm einen API-Schlüssel (Tab „Scripts“) als Header Authorization: Bearer <Schlüssel>.",
-  "setup.scripts":
-    "Für Scripts und Programme ohne Browser-Anmeldung. Ein Schlüssel hat alle Rechte – behandle ihn wie ein Passwort.",
   "run.uploadMore": "Weitere Datei",
   "run.camera": "Kamera",
   "camera.title": "Mit der Kamera aufnehmen",
@@ -754,36 +773,57 @@ const en: Record<Key, string> = {
   "settings.save": "Save",
   "settings.saved": "Saved",
   "settings.delete": "Delete project",
-  "settings.connect": "Build with Claude Code & co.",
-  "settings.connectHint":
-    "Build and change wizards right in Claude Code, Cursor or Codex — on your own subscription. Test runs spend credits.",
-  "settings.keyName": "Key name",
-  "settings.createKey": "Create key",
-  "settings.keyOnce": "The key is shown only now. For Claude Code without the browser sign-in:",
-  "settings.keyOther": "Other clients: URL {url}, header Authorization: Bearer <key>",
   "settings.copy": "Copy",
   "settings.copied": "Copied",
   "settings.lastUsed": "last used {when}",
   "settings.neverUsed": "never used",
   "settings.revoke": "Delete key",
+  "mcp.nav": "AI clients (MCP)",
+  "mcp.title": "Build wizards from your AI client",
+  "mcp.lead":
+    "engenty wizards is an MCP server. Add it to Claude Code, Codex, Cursor or Gemini CLI, and you build and change wizards there in the chat — on your own subscription.",
+  "mcp.yourClient": "Your AI client",
+  "mcp.canTitle": "What your client can do with it",
+  "mcp.can1": "Create, change and publish wizards",
+  "mcp.can2": "Find and add starters and connectors",
+  "mcp.can3": "Start test runs — these spend credits",
+  "mcp.can4": "Read and write a wizard's files",
+  "mcp.notReverse":
+    "Not the same as “Connected systems (MCP)” under Connectors: there engenty calls other servers, here your client calls engenty.",
+  "mcp.setup": "Set up",
+  "mcp.pick": "Pick your client",
+  "mcp.notHere": "Not possible with this server",
+  "mcp.needsPublic":
+    "claude.ai connects from Anthropic's servers. That only works when this server is reachable publicly over HTTPS.",
+  "mcp.claudeAiLocal":
+    "claude.ai and Claude Desktop's connectors connect from Anthropic's servers — they cannot reach this computer. Use Claude Code.",
+  "mcp.keyTitle": "Create a key",
+  "mcp.keyHint":
+    "The key signs your client in. It is shown once and goes straight into the command in the next step.",
+  "mcp.keyCreate": "Create a key for {client}",
+  "mcp.keyReady": "Key created — it is already in the command below.",
+  "mcp.keyFirst": "Create the key first — then the finished command shows up here.",
+  "mcp.add": "Add the server",
+  "mcp.terminal": "Run in the terminal:",
+  "mcp.ccPlugin": "Optionally the plugin — it adds the /wizard command:",
+  "mcp.codexKey": "Run in the terminal — Codex reads the key from an environment variable:",
+  "mcp.cursor": "Put this into ~/.cursor/mcp.json:",
+  "mcp.claudeAi":
+    "In claude.ai: Settings → Connectors → Add custom connector, and enter this address:",
+  "mcp.oauth": "No key needed: on first use your client signs in in the browser.",
+  "mcp.try": "Try it",
+  "mcp.tryHint": "Restart your client and write, for example:",
+  "mcp.tryPrompt":
+    "Use engenty wizards to build a wizard that reads amount, date and sender from an invoice PDF.",
+  "mcp.address": "MCP address",
+  "mcp.addressPublic": "Reachable publicly.",
+  "mcp.addressLocal": "Reachable on this computer only, and only while engenty wizards runs.",
+  "mcp.keys": "Keys",
+  "mcp.keysHint":
+    "Each key signs one client in and has every right — treat it like a password. Delete it and that client is signed out.",
   "editor.viaClient": "Via {client}",
   "editor.changedVia": "Changed via {client}",
   "editor.merged": "Merged with changes from elsewhere",
-  "setup.ccPlugin": "Easiest with the plugin — it adds the /wizard command:",
-  "setup.ccServerOnly": "Or add just the server:",
-  "setup.ccServer": "Add the server:",
-  "setup.ccAuth":
-    "On first use you sign in in the browser and allow access. Otherwise in Claude Code: /mcp → engenty-wizards → Authenticate.",
-  "setup.claudeAi": "Settings → Connectors → Add custom connector, and enter this URL:",
-  "setup.needsPublic":
-    "This only works when this server is reachable publicly over HTTPS — not locally.",
-  "setup.codex": "Add it in the terminal and sign in:",
-  "setup.cursor":
-    "Put this into ~/.cursor/mcp.json, then click Connect under MCP in the Cursor settings:",
-  "setup.cursorFallback":
-    "If signing in does not work, use an API key (tab “Scripts”) as the header Authorization: Bearer <key>.",
-  "setup.scripts":
-    "For scripts and apps without a browser sign-in. A key has every right — treat it like a password.",
   "run.uploadMore": "Another file",
   "run.camera": "Camera",
   "camera.title": "Take a picture",
