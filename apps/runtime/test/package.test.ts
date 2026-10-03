@@ -63,7 +63,7 @@ beforeAll(async () => {
 describe("wizard packages", () => {
   it("exports the definition and the workspace as one zip", async () => {
     const { name, zip } = await inTenant(() => pkg.exportWizard(USER, sourceId));
-    expect(name).toBe("wetter-fur-koche.wizard.zip");
+    expect(name).toBe("wetter-fur-koche.wizard");
     const entries = unzipSync(zip);
     expect(Object.keys(entries).sort()).toEqual([
       "files/img/pin.png",
@@ -80,7 +80,7 @@ describe("wizard packages", () => {
   it("imports a package as a new, unpublished wizard of another project", async () => {
     await inTenant(async () => {
       const { zip } = await pkg.exportWizard(USER, sourceId);
-      const { id, issues } = await pkg.importWizard(USER, otherProject, zip, "wetter.wizard.zip");
+      const { id, issues } = await pkg.importWizard(USER, otherProject, zip, "wetter.wizard");
       expect(issues).toEqual([]);
       expect(id).not.toBe(sourceId);
       const [source, copy] = [await wizards.ownedWizard(USER, sourceId), await wizards.ownedWizard(USER, id)];
@@ -90,7 +90,7 @@ describe("wizard packages", () => {
       expect(copy.shareToken).not.toBe(source.shareToken);
       expect(await files.draftFiles(id)).toEqual(await files.draftFiles(sourceId));
       const [note] = await wizards.wizardMessages(id);
-      expect(note.content).toContain("wetter.wizard.zip");
+      expect(note.content).toContain("„wetter.wizard“");
       expect(note.content).toContain("3 Dateien");
     });
   });

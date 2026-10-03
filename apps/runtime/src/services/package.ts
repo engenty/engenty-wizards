@@ -10,15 +10,17 @@ import { ownedProject } from "./projects.js";
 import { createWizard, deleteWizard, draftIssues, ownedWizard, parseDraft } from "./wizards.js";
 
 /**
- * A wizard as a file: a zip with `wizard.json` — the definition and what it needs from its
- * project — and the workspace under `files/`. What belongs to people (runs, lists, connected
+ * A wizard as a file, `<title>.wizard`: a zip with `wizard.json` — the definition and what it
+ * needs from its project — and the workspace under `files/`. What belongs to people (runs, lists, connected
  * accounts) and to the project (brand, credentials) stays where it is.
  */
 
 const FORMAT = "engenty-wizard";
 const MANIFEST = "wizard.json";
 const FILES = "files/";
-export const PACKAGE_EXTENSION = ".wizard.zip";
+export const PACKAGE_EXTENSION = ".wizard";
+/** A type of its own: under `application/zip` a browser may save the file as `.zip`. */
+export const PACKAGE_MIME = "application/vnd.engenty.wizard+zip";
 /** The workspace's 25 MB, with room for the manifest and the zip's own overhead. */
 export const PACKAGE_MAX_BYTES = 30_000_000;
 

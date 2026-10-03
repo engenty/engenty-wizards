@@ -8,7 +8,7 @@ import { t } from "../lib/i18n";
 import { useCurrentProject } from "../lib/session";
 import { Button, Dialog } from "../ui";
 
-/** Makes a new wizard in the current project of a package (`.wizard.zip`) and opens it. */
+/** Makes a new wizard in the current project of a package (`.wizard`) and opens it. */
 export function ImportWizard({
   variant = "secondary",
   label = t("home.import"),
@@ -45,7 +45,7 @@ export function ImportWizard({
         ref={input}
         hidden
         type="file"
-        accept=".zip,.json,application/zip,application/json"
+        // No `accept`: a phone greys out files whose extension it does not know.
         onChange={(e) => {
           const file = e.target.files?.[0];
           // The same file can be picked again after a failed try.

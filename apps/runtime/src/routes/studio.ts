@@ -57,6 +57,7 @@ import {
   importWizard,
   PACKAGE_EXTENSION,
   PACKAGE_MAX_BYTES,
+  PACKAGE_MIME,
 } from "../services/package.js";
 import {
   createProject,
@@ -261,7 +262,7 @@ export const studio = new Hono<Vars>()
   .get("/wizards/:id/export", async (c) => {
     const { name, zip } = await exportWizard(c.get("user").id, c.req.param("id"));
     return c.body(new Uint8Array(zip), 200, {
-      "content-type": "application/zip",
+      "content-type": PACKAGE_MIME,
       "content-disposition": `attachment; filename="${name}"`,
       "cache-control": "private, no-store",
     });
