@@ -1,6 +1,7 @@
 //! Menu bar and menu-bar icon.
 
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     tray::TrayIconBuilder,
     AppHandle,
@@ -10,6 +11,8 @@ use tauri_plugin_opener::OpenerExt;
 use crate::{commands, i18n::tr, quit, state::CLOUD_URL, window};
 
 const NAME: &str = "engenty wizards";
+/// The engenty's outline with its eye, black on clear: macOS draws it in the menu bar's colour.
+const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 
 pub fn handle(app: &AppHandle, id: &str) {
     match id {
@@ -161,9 +164,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
 
 /// The menu-bar icon: the app keeps running there while its window is closed.
 pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
-    let Some(icon) = app.default_window_icon().cloned() else {
-        return Ok(());
-    };
+    let icon = Image::from_bytes(TRAY_ICON)?;
     let open = MenuItem::with_id(
         app,
         "open",
@@ -190,6 +191,7 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&open, &reload, &change, &separator, &quit])?;
     TrayIconBuilder::with_id("engenty-wizards-tray")
         .icon(icon)
+        .icon_as_template(true)
         .tooltip(NAME)
         .menu(&menu)
         .show_menu_on_left_click(true)
