@@ -31,7 +31,8 @@ fn shut_down(app: &AppHandle) {
 }
 
 /// `engenty-wizards://w/<id>` opens that wizard; `new`, `settings` and the bare scheme work too;
-/// `signin?code=…` finishes a sign-in. Nothing else is taken from a link: any page on the web
+/// `new?starter=<id>` opens that template of the marketplace, as the template's own page links
+/// it; `signin?code=…` finishes a sign-in. Nothing else is taken from a link: any page on the web
 /// can send one.
 fn deep_link_path(url: &Url) -> Option<String> {
     if url.scheme() != "engenty-wizards" {
@@ -57,7 +58,17 @@ fn deep_link_path(url: &Url) -> Option<String> {
     }
     match parts.as_slice() {
         ["w", wizard] if id(wizard) => Some(format!("/edit/{wizard}")),
-        ["new"] => Some("/new".into()),
+        ["new"] => {
+            let starter = url
+                .query_pairs()
+                .find(|(key, _)| key == "starter")
+                .map(|(_, value)| value.to_string())
+                .filter(|value| !value.is_empty() && value.len() <= 64 && id(value));
+            Some(match starter {
+                Some(starter) => format!("/new?starter={starter}"),
+                None => "/new".into(),
+            })
+        }
         ["settings"] => Some("/settings".into()),
         [] => Some("/".into()),
         _ => None,
