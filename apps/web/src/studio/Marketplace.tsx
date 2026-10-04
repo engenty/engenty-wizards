@@ -810,7 +810,7 @@ export function MarketplaceBrowser({
     <div>
       {front ? (
         // The gallery's field: written into like a chat, two lines for a whole sentence.
-        <label className="relative mx-auto flex max-w-2xl items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
+        <label className="relative mx-auto flex max-w-lg items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
           {crew ? (
             <span className="-z-10 pointer-events-none absolute right-5 bottom-full flex items-end">
               {crew}
