@@ -240,7 +240,9 @@ banner_frame() {
     printf '\r   %s' "$line"
     case "$i" in
       3) printf '    %sengenty wizards%s' "$BOLD" "$RESET" ;;
-      4) printf '    %sFor the tasks that keep coming back.%s' "$DIM" "$RESET" ;;
+      4) printf '    %sMake a wish. Get your wizard.%s' "$DIM" "$RESET" ;;
+      5) printf '    %sIt guides you step by step.%s' "$DIM" "$RESET" ;;
+      6) printf '    %sLet AI do the work.%s' "$DIM" "$RESET" ;;
     esac
     printf '\n'
     i=$((i + 1))

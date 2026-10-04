@@ -5,8 +5,9 @@
 <h1 align="center">engenty wizards</h1>
 
 <p align="center">
-  For the tasks that keep coming back. Describe them once, engenty builds the wizard.<br>
-  The AI does the work and asks back when needed.
+  Make a wish. Get your wizard.<br>
+  It guides you step by step.<br>
+  Let AI do the work.
 </p>
 
 <p align="center">

@@ -125,7 +125,7 @@ writeFileSync(
       name: "engenty-wizards",
       version,
       description:
-        "For the tasks that keep coming back: describe them once, engenty builds the wizard. Runs on your machine, on the AI subscription you already have.",
+        "Make a wish. Get your wizard. It guides you step by step. Let AI do the work. Runs on your machine, on the AI subscription you already have.",
       license: pkg.license,
       homepage: "https://engenty.ai",
       repository: { type: "git", url: "git+https://github.com/engenty/engenty-wizards.git" },
