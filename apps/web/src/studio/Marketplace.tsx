@@ -58,10 +58,10 @@ import {
   useState,
 } from "react";
 import { Mascot } from "../brand";
-import type { EngentyKind } from "../engenty/colors";
+import { ENGENTY_FILL, ENGENTY_KIND_FILL, type EngentyKind } from "../engenty/colors";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
-import { stageFill } from "../lib/theme";
+import { useTheme } from "../lib/theme";
 import { Button, Card, Chip, cn, Dialog, Spinner } from "../ui";
 import { TYPE_TONE } from "./editor/meta";
 import type { PreviewStep } from "./FlowPreview";
@@ -301,7 +301,7 @@ function HeaderFact({ title, children }: { title: string; children: ReactNode })
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-2 border-white/20 border-l px-4 first:border-l-0 first:pl-0"
+      className="inline-flex items-center gap-2 border-border border-l px-4 first:border-l-0 first:pl-0"
     >
       {children}
     </span>
@@ -382,8 +382,13 @@ function EntryDialog({
     enabled: Boolean(entry?.usable),
     retry: false,
   });
-  // The stage the entry's engenty stands on: its own colour, deep.
-  const stage = stageFill((entry?.avatar || "round") as EngentyKind);
+  const dark = useTheme() === "dark";
+  // The header: in the dark the dialog's own colour under a spotlight; in the light a grey
+  // with a little of the engenty's colour in it.
+  const fill = ENGENTY_FILL[ENGENTY_KIND_FILL[(entry?.avatar || "round") as EngentyKind]];
+  const head = dark
+    ? "var(--card)"
+    : `color-mix(in oklch, ${fill ?? "var(--ink-4)"} 14%, var(--paper-2))`;
   return (
     <Dialog open={Boolean(entry)} onClose={onClose} wide bare>
       {entry ? (
@@ -399,16 +404,20 @@ function EntryDialog({
             <X className="size-4" />
           </button>
           <header
-            className="relative shrink-0 px-5 pt-5 pb-4 text-white sm:rounded-t-2xl sm:px-7"
-            style={{ background: stage, "--coin-bg": stage } as CSSProperties}
+            className="relative shrink-0 border-border-soft border-b px-5 pt-5 pb-4 text-ink sm:rounded-t-2xl sm:px-7"
+            style={{ background: head, "--coin-bg": head } as CSSProperties}
           >
-            {/* Soft spotlights, as on the landing page: light from the top right, a glow low left. */}
+            {/* A soft spotlight, as on the landing page: light from the top right. */}
             <span
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 overflow-hidden sm:rounded-t-2xl"
             >
-              <span className="-top-24 -right-16 absolute size-72 rounded-full bg-white opacity-20 blur-3xl" />
-              <span className="-bottom-32 -left-20 absolute size-72 rounded-full bg-white opacity-10 blur-3xl" />
+              <span
+                className={cn(
+                  "-top-28 -right-10 absolute size-80 rounded-full bg-white blur-3xl",
+                  dark ? "opacity-[0.14]" : "opacity-80",
+                )}
+              />
             </span>
             {/* The engenty stands on the header's lower edge, a little over it. */}
             <div className="-bottom-5 absolute right-9 z-10 max-sm:hidden">
@@ -418,14 +427,14 @@ function EntryDialog({
               <h2 className="font-display font-semibold text-[22px] leading-tight tracking-tight max-sm:pr-10">
                 {entry.title}
               </h2>
-              <p className="mt-1 text-[14px] text-white/85 leading-snug">
+              <p className="mt-1 text-[14px] text-ink-2 leading-snug">
                 {detail.data?.description || entry.pitch}
               </p>
             </div>
             {entry.usable ? (
-              <div className="-mx-5 sm:-mx-7 relative mt-3.5 flex flex-wrap items-center gap-y-2 border-white/20 border-t px-5 pt-3 font-medium text-[14px] sm:px-7 sm:pr-40">
+              <div className="-mx-5 sm:-mx-7 relative mt-3.5 flex flex-wrap items-center gap-y-2 border-border-soft border-t px-5 pt-3 font-medium text-[14px] sm:px-7 sm:pr-40">
                 <HeaderFact title={t("market.duration")}>
-                  <Clock className="size-4 text-white/75" />
+                  <Clock className="size-4 text-ink-3" />
                   {t("market.minutes", { n: entry.effort.minutes })}
                 </HeaderFact>
                 <HeaderFact title={t("market.cost")}>
