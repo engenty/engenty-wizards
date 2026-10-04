@@ -20,10 +20,11 @@ import {
 const WEIGHTS: CatalogFieldWeights = [
   ["title", 10],
   ["summary", 6],
-  ["terms", 5],
   ["category", 5],
   ["tags", 3],
 ];
+/** One search term of an entry, scored on its own. */
+const TERM_WEIGHT: CatalogFieldWeights = [["term", 7]];
 
 /** Words a sentence is full of and no entry is found by. */
 const STOP = new Set(
@@ -64,8 +65,6 @@ export function scoreEntry(entry: MarketplaceEntry, query: string): number {
   const record = {
     title: fold(entry.title),
     summary: fold(entry.pitch),
-    // A source that is older than this app does not send them.
-    terms: (entry.terms ?? []).map(fold),
     category: labels(USE_CASES, entry.useCases),
     tags: [
       ...labels(INDUSTRIES, entry.industries),
@@ -73,7 +72,14 @@ export function scoreEntry(entry: MarketplaceEntry, query: string): number {
       ...labels(CAPABILITIES, entry.capabilities),
     ].map(fold),
   };
-  const score = scoreCatalogEntry(record, terms.join(" "), WEIGHTS);
+  let score = scoreCatalogEntry(record, terms.join(" "), WEIGHTS);
+  // An entry's own search terms: each word of the query counts once, by the term it fits best.
+  // Scored as one long text they would count for less the more of them an entry has.
+  // A source that is older than this app does not send them.
+  const own = (entry.terms ?? []).map((term) => ({ term: fold(term) }));
+  for (const word of terms) {
+    score += Math.max(0, ...own.map((t) => scoreCatalogEntry(t, word, TERM_WEIGHT)));
+  }
   // German writes words together: "anzeige" is found inside "Videoanzeige" as well.
   const text = tokenizeCatalogText(`${record.title} ${record.summary}`).join(" ");
   const inside = terms.filter((term) => term.length >= 4 && text.includes(term)).length;
