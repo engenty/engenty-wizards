@@ -17,23 +17,26 @@ interface ChangelogRelease {
   commits: ChangelogCommit[];
 }
 
-/** The groups of cliff.toml: their name on the page and the colour of their dot. */
+/**
+ * The groups of cliff.toml: their name on the page and the colour of their dot. The names stay
+ * English in every language, like the entries they stand before.
+ */
 function groupOf(commit: ChangelogCommit): { label: string; dot: string } {
   switch (commit.group) {
     case "Added":
-      return { label: t("about.group.added"), dot: "bg-moss" };
+      return { label: "NEW", dot: "bg-moss" };
     case "Fixed":
-      return { label: t("about.group.fixed"), dot: "bg-amber" };
+      return { label: "FIXED", dot: "bg-amber" };
     case "Changed":
-      return { label: t("about.group.changed"), dot: "bg-cobalt" };
+      return { label: "CHANGED", dot: "bg-cobalt" };
     case "Performance":
-      return { label: t("about.group.performance"), dot: "bg-ember" };
+      return { label: "PERFORMANCE", dot: "bg-ember" };
     case "Deploy":
-      return { label: t("about.group.deploy"), dot: "bg-ink-4" };
+      return { label: "DEPLOY", dot: "bg-ink-4" };
     case "Docs":
-      return { label: t("about.group.docs"), dot: "bg-ink-4" };
+      return { label: "DOCS", dot: "bg-ink-4" };
     default:
-      return { label: t("about.group.other"), dot: "bg-ink-4" };
+      return { label: "OTHER", dot: "bg-ink-4" };
   }
 }
 
@@ -129,9 +132,9 @@ export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () 
                     <li key={commit.id} className="flex items-start gap-2.5 text-[14px]">
                       <span className={cn("mt-[7px] size-1.5 shrink-0 rounded-full", group.dot)} />
                       <span className="min-w-0 text-ink-2">
-                        <span className="font-medium text-ink">
+                        <span className="font-semibold text-[12px] text-ink tracking-wide">
                           {group.label}
-                          {commit.scope ? ` [${commit.scope}]` : ""}:
+                          {commit.scope ? ` [${commit.scope}]` : ""}
                         </span>{" "}
                         {upperFirst(commit.message)}
                         {commit.breaking ? (
