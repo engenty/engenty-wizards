@@ -26,7 +26,14 @@ import { buildStepTools } from "../tools/index.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { prepareInputs } from "./prepare.js";
-import { answersAsText, renderTemplate, resolveRef, type TemplateScope } from "./template.js";
+import {
+  answersAsText,
+  colorLine,
+  factLines,
+  renderTemplate,
+  resolveRef,
+  type TemplateScope,
+} from "./template.js";
 import { type StepContext, StepError } from "./types.js";
 
 function today(): string {
@@ -35,10 +42,24 @@ function today(): string {
 
 function brandBlock(ctx: StepContext): string {
   const b = ctx.scope.brand;
-  if (!b.name && !b.details) {
+  const parts = [
+    b.name,
+    b.about,
+    b.facts?.length ? `Facts:\n${factLines(b.facts)}` : "",
+    b.colors?.length ? `Colours (the first is the accent): ${colorLine(b.colors)}` : "",
+  ].filter(Boolean);
+  return parts.length ? `# WHO THIS WIZARD BELONGS TO\n${parts.join("\n")}` : "";
+}
+
+/** The project's documents, for a step that has the tools to search and read them. */
+function documentsBlock(ctx: StepContext): string {
+  const docs = ctx.projectFiles.filter((f) => f.kind === "document").slice(0, 40);
+  if (!docs.length) {
     return "";
   }
-  return `# WHO THIS WIZARD BELONGS TO\n${[b.name, b.details].filter(Boolean).join("\n")}`;
+  return `# THE PROJECT'S DOCUMENTS\nKnowledge the wizard's owner gave for all wizards. Find passages with project_search, read a whole document with project_document. Use them when the task touches what they cover.\n${docs
+    .map((d) => `- ${d.name}${d.description ? ` — ${d.description}` : ""}`)
+    .join("\n")}`;
 }
 
 /** Previous output of a step, for a revision. */
@@ -202,7 +223,13 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
         : step.output.format === "text"
           ? "Answer with the finished result as plain text — no Markdown, no preamble."
           : "Finish with everything the result needs in your final answer; it is turned into structured data afterwards.";
-    const system = [GROUND_RULES, `Today is ${today()}.`, brandBlock(ctx), formatHint]
+    const system = [
+      GROUND_RULES,
+      `Today is ${today()}.`,
+      brandBlock(ctx),
+      documentsBlock(ctx),
+      formatHint,
+    ]
       .filter(Boolean)
       .join("\n\n");
     const prompt = [
@@ -373,7 +400,7 @@ const DOCUMENT_GUIDES: Record<string, string> = {
   free: "A well-structured document fitting the brief.",
 };
 
-/** Images a document may place: earlier generated images, uploads, the project logo. */
+/** Images a document may place: earlier generated images, uploads, the project's logos and images. */
 function placeableImages(step: GenerateStep, ctx: StepContext): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
   const index = ctx.def.steps.indexOf(step);
@@ -405,8 +432,15 @@ function placeableImages(step: GenerateStep, ctx: StepContext): { id: string; la
       }
     }
   }
-  if (ctx.project.brand.logoAssetId) {
-    out.push({ id: ctx.project.brand.logoAssetId, label: "Company logo" });
+  const logos = ctx.projectFiles.filter((f) => f.kind === "logo");
+  for (const [i, f] of logos.entries()) {
+    const note = f.description ? `: ${f.description}` : "";
+    out.push({ id: f.id, label: `${i === 0 ? "Company logo" : "Logo variant"}${note}` });
+  }
+  for (const f of ctx.projectFiles) {
+    if (f.kind === "asset" && f.mime.startsWith("image/")) {
+      out.push({ id: f.id, label: `${f.description || f.name} (from the project's assets)` });
+    }
   }
   return out;
 }
@@ -418,7 +452,7 @@ async function writeHtml(
 ): Promise<string> {
   const brief = renderTemplate(step.prompt, ctx.scope);
   const images = placeableImages(step, ctx);
-  const accent = ctx.project.brand.accent ?? "#c4582c";
+  const accent = ctx.scope.brand.colors?.[0]?.value ?? "#c4582c";
   const guide =
     kind === "dashboard"
       ? [

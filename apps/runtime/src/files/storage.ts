@@ -98,6 +98,15 @@ export async function inlineAssetRefs(html: string): Promise<string> {
   return out;
 }
 
+/** Deletes one asset: its file and its row. */
+export async function removeAsset(id: string) {
+  const row = await db.query.asset.findFirst({ where: eq(schema.asset.id, id) });
+  if (row) {
+    await objects.remove(assetKey(row.path));
+    await db.delete(schema.asset).where(eq(schema.asset.id, id));
+  }
+}
+
 /** Deletes every file a run made (uploads, results, renders) and their rows. */
 export async function removeAssetFiles(runId: string) {
   const rows = await db.query.asset.findMany({ where: eq(schema.asset.runId, runId) });

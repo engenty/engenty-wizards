@@ -1,10 +1,12 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { generateText } from "ai";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
+import { runProjectAssistant } from "../agents/project-assistant.js";
 import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscription.js";
 import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
@@ -40,6 +42,7 @@ import {
 import { managed } from "../manage.js";
 import { transcribeAudio } from "../media/transcribe.js";
 import {
+  embeddingModel,
   hasTextModel,
   LOCAL_KEYS,
   localModelSettings,
@@ -61,13 +64,23 @@ import {
   PACKAGE_MIME,
 } from "../services/package.js";
 import {
+  addProjectFile,
+  fileView,
+  orderProjectFiles,
+  projectFileContent,
+  projectFiles,
+  reindexProjectFile,
+  removeProjectFile,
+  updateProjectFile,
+} from "../services/project-files.js";
+import { searchProject } from "../services/project-index.js";
+import {
   createProject,
   deleteProject,
   listProjects,
   maskedServers,
   ownedProject,
   projectPatchSchema,
-  setProjectLogo,
   updateProject,
 } from "../services/projects.js";
 import { listRuns, startTestRun } from "../services/runs.js";
@@ -86,6 +99,7 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
+import { byteRange } from "./delivery.js";
 
 type Vars = { Variables: { user: SessionUser } };
 
@@ -157,6 +171,7 @@ export const studio = new Hono<Vars>()
         id: p.id,
         name: p.name,
         brand: p.brand,
+        facts: p.facts,
         mcpServers: maskedServers(p),
         wizardCount: p.wizardCount,
       })),
@@ -171,12 +186,139 @@ export const studio = new Hono<Vars>()
     await updateProject(c.get("user").id, c.req.param("id"), patch);
     return c.json({ ok: true });
   })
-  .post("/projects/:id/logo", async (c) => {
+  // --- what a project holds for all its wizards: logos, assets, documents -------
+  .get("/projects/:id/files", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    return c.json({
+      files: (await projectFiles(project.id)).map(fileView),
+      /** Whether documents get vectors, or the index works on keywords alone. */
+      embeddings: Boolean(await embeddingModel().catch(() => null)),
+    });
+  })
+  .post("/projects/:id/files", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const kind = z.enum(PROJECT_FILE_KINDS).parse(c.req.query("kind"));
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File)) {
-      return c.json({ error: "Bitte ein Bild bis 2 MB wählen." }, 400);
+      throw new ServiceError("invalid", "Bitte eine Datei wählen.");
     }
-    return c.json(await setProjectLogo(c.get("user").id, c.req.param("id"), file));
+    const row = await addProjectFile(project.id, {
+      kind,
+      name: file.name,
+      mime: file.type.split(";")[0].trim().toLowerCase(),
+      data: new Uint8Array(await file.arrayBuffer()),
+    });
+    return c.json(fileView(row));
+  })
+  .put("/projects/:id/files/order", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const body = z
+      .object({ kind: z.enum(PROJECT_FILE_KINDS), ids: z.array(z.string()).max(200) })
+      .parse(await c.req.json());
+    await orderProjectFiles(project.id, body.kind, body.ids);
+    return c.json({ ok: true });
+  })
+  .patch("/projects/:id/files/:fileId", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const patch = z
+      .object({ name: z.string().max(120).optional(), description: z.string().max(600).optional() })
+      .parse(await c.req.json());
+    return c.json(fileView(await updateProjectFile(project.id, c.req.param("fileId"), patch)));
+  })
+  .post("/projects/:id/files/:fileId/reindex", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    return c.json(fileView(await reindexProjectFile(project.id, c.req.param("fileId"))));
+  })
+  .delete("/projects/:id/files/:fileId", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    await removeProjectFile(project.id, c.req.param("fileId"));
+    return c.json({ ok: true });
+  })
+  .get("/projects/:id/files/:fileId/content", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const { row, data } = await projectFileContent(project.id, c.req.param("fileId"));
+    const headers: Record<string, string> = {
+      "content-type": row.mime,
+      "cache-control": "private, max-age=3600",
+      // An uploaded SVG or HTML file is shown, never run.
+      "content-security-policy": "sandbox",
+      "x-content-type-options": "nosniff",
+    };
+    if (/^(audio|video)\//.test(row.mime)) {
+      headers["accept-ranges"] = "bytes";
+      const range = byteRange(c.req.header("range"), data.byteLength);
+      if (range === "unsatisfiable") {
+        return c.body(null, 416, { "content-range": `bytes */${data.byteLength}` });
+      }
+      if (range) {
+        headers["content-range"] = `bytes ${range.start}-${range.end}/${data.byteLength}`;
+        return c.body(new Uint8Array(data.subarray(range.start, range.end + 1)), 206, headers);
+      }
+    }
+    return c.body(new Uint8Array(data), 200, headers);
+  })
+  // What the document index finds for a question: the passages an agent step would get.
+  .post("/projects/:id/search", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const { query } = z.object({ query: z.string().min(1).max(400) }).parse(await c.req.json());
+    return c.json({ hits: await searchProject(project.id, query, 6) });
+  })
+  // The assistant fills the project in: from a description, a website, the files given.
+  .post("/projects/:id/assist", async (c) => {
+    const user = c.get("user");
+    const project = await ownedProject(user.id, c.req.param("id"));
+    const body = z
+      .object({
+        message: z.string().min(1).max(8000),
+        history: z
+          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) }))
+          .max(24)
+          .default([]),
+      })
+      .parse(await c.req.json());
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    return streamSSE(c, async (stream) => {
+      const abort = new AbortController();
+      stream.onAbort(() => abort.abort());
+      try {
+        const result = await runProjectAssistant({
+          userId: user.id,
+          projectId: project.id,
+          message: body.message,
+          history: body.history,
+          signal: abort.signal,
+          onText: (delta) => {
+            void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });
+          },
+          onActivity: (label) => {
+            void stream.writeSSE({ event: "activity", data: JSON.stringify(label) });
+          },
+          onChanged: () => {
+            void stream.writeSSE({ event: "changed", data: "1" });
+          },
+        });
+        await stream.writeSSE({
+          event: "done",
+          data: JSON.stringify({
+            reply: result.reply || (result.changed ? "Erledigt." : ""),
+            changed: result.changed,
+          }),
+        });
+      } catch (err) {
+        console.error("[project-assistant]", err);
+        await stream.writeSSE({
+          event: "error",
+          data: JSON.stringify({
+            message:
+              err instanceof ServiceError || err instanceof ModelUnavailableError
+                ? err.message
+                : "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen.",
+          }),
+        });
+      }
+    });
   })
   .delete("/projects/:id", async (c) => {
     await deleteProject(c.get("user").id, c.req.param("id"));

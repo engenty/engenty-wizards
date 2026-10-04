@@ -162,11 +162,19 @@ export function Footer({ me }: { me?: Me | null }) {
   );
 }
 
-export function AppFrame({ me, children }: { me: Me; children: ReactNode }) {
+/** `wide`: a page that lays out columns of its own takes the screen's width. */
+export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <TopBar me={me} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-12 sm:px-6">{children}</main>
+      <main
+        className={cn(
+          "mx-auto w-full flex-1 px-4 pt-6 pb-12 sm:px-6",
+          wide ? "max-w-[88rem]" : "max-w-5xl",
+        )}
+      >
+        {children}
+      </main>
       <Footer me={me} />
     </div>
   );

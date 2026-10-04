@@ -38,7 +38,7 @@ function Splash() {
   );
 }
 
-function Studio({ children, bare }: { children: ReactNode; bare?: boolean }) {
+function Studio({ children, bare, wide }: { children: ReactNode; bare?: boolean; wide?: boolean }) {
   const me = useMe();
   const location = useLocation();
   if (me.isLoading) {
@@ -51,7 +51,13 @@ function Studio({ children, bare }: { children: ReactNode; bare?: boolean }) {
   if (me.data.mode === "local" && !me.data.setupDone && location.pathname !== "/setup") {
     return <Navigate to="/setup" replace />;
   }
-  return bare ? children : <AppFrame me={me.data}>{children}</AppFrame>;
+  return bare ? (
+    children
+  ) : (
+    <AppFrame me={me.data} wide={wide}>
+      {children}
+    </AppFrame>
+  );
 }
 
 export function App() {
@@ -100,7 +106,7 @@ export function App() {
         <Route
           path="/settings/:section?"
           element={
-            <Studio>
+            <Studio wide>
               <SettingsPage />
             </Studio>
           }

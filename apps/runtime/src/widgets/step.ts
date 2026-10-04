@@ -10,16 +10,23 @@ import { resolveRef } from "../engine/template.js";
 import { type ProjectRow, type StepContext, StepError } from "../engine/types.js";
 import { extFor, loadAsset } from "../files/storage.js";
 import { type AiOrigin, markMedia } from "../media/marking.js";
+import { mainLogoId } from "../services/brand.js";
 import { snapshotFile } from "../services/files.js";
 import { bundleWidget, type WidgetBrand } from "./bundle.js";
 import { FILM_MEDIA_ORIGIN, type FilmMedia, probeWidget, renderFilm } from "./render.js";
 
 export async function widgetBrand(project: ProjectRow): Promise<WidgetBrand> {
-  const logo = project.brand.logoAssetId ? await loadAsset(project.brand.logoAssetId) : null;
+  const logoId = await mainLogoId(project.id);
+  const logo = logoId ? await loadAsset(logoId) : null;
+  const colors = project.brand.colors ?? [];
   return {
     name: project.brand.name ?? "",
-    accent: project.brand.accent || null,
+    accent: colors[0]?.value ?? null,
     logo: logo ? `data:${logo.row.mime};base64,${logo.data.toString("base64")}` : null,
+    colors,
+    facts: Object.fromEntries(
+      project.facts.filter((f) => f.value.trim()).map((f) => [f.key, f.value]),
+    ),
   };
 }
 

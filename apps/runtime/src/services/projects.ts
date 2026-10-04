@@ -1,13 +1,17 @@
-import { MAX_PROJECTS } from "@engenty-wizards/shared/projects";
+import {
+  FACT_TYPES,
+  MAX_PROJECTS,
+  PROJECT_LIMITS,
+  type ProjectFact,
+} from "@engenty-wizards/shared/projects";
 import { and, count, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
-import { saveAsset } from "../files/storage.js";
-import { putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { notFound, ServiceError } from "./errors.js";
 import { forgetWizardLinks } from "./links.js";
+import { removeProjectFiles } from "./project-files.js";
 
 export type ProjectRow = typeof schema.project.$inferSelect;
 
@@ -20,20 +24,28 @@ export const mcpServerSchema = z.object({
   headers: z.record(z.string(), z.string()).optional(),
 });
 
+export const brandColorSchema = z.object({
+  name: z.string().max(60),
+  value: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const projectFactSchema = z.object({
+  key: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  label: z.string().min(1).max(80),
+  value: z.string().max(4000),
+  type: z.enum(FACT_TYPES).optional(),
+});
+
 export const projectPatchSchema = z.object({
   name: z.string().min(1).max(80).optional(),
   brand: z
     .object({
       name: z.string().max(120).optional(),
-      details: z.string().max(4000).optional(),
-      accent: z
-        .string()
-        .regex(/^#[0-9a-fA-F]{6}$/)
-        .optional()
-        .or(z.literal("")),
-      logoAssetId: z.string().optional(),
+      about: z.string().max(8000).optional(),
+      colors: z.array(brandColorSchema).max(PROJECT_LIMITS.colors).optional(),
     })
     .optional(),
+  facts: z.array(projectFactSchema).max(PROJECT_LIMITS.facts).optional(),
   mcpServers: z.array(mcpServerSchema).max(10).optional(),
 });
 
@@ -132,37 +144,36 @@ export async function updateProject(
       : undefined;
     return { ...s, headers };
   });
+  if (patch.facts && new Set(patch.facts.map((f) => f.key)).size !== patch.facts.length) {
+    throw new ServiceError("invalid", "Zwei Einträge haben denselben Schlüssel.");
+  }
   await db
     .update(schema.project)
     .set({
       ...(patch.name ? { name: patch.name } : {}),
-      ...(patch.brand
-        ? { brand: { ...p.brand, ...patch.brand, accent: patch.brand.accent || undefined } }
-        : {}),
+      ...(patch.brand ? { brand: { ...p.brand, ...patch.brand } } : {}),
+      ...(patch.facts ? { facts: patch.facts } : {}),
       ...(mcpServers ? { mcpServers } : {}),
       updatedAt: new Date(),
     })
     .where(eq(schema.project.id, p.id));
 }
 
-export async function setProjectLogo(userId: string, projectId: string, file: File) {
-  const p = await ownedProject(userId, projectId);
-  if (!file.type.startsWith("image/") || file.size > 2_000_000) {
-    throw new ServiceError("invalid", "Bitte ein Bild bis 2 MB wählen.");
-  }
-  const ref = await saveAsset({
-    kind: "logo",
-    mime: file.type,
-    name: file.name,
-    data: new Uint8Array(await file.arrayBuffer()),
-  });
-  await db
-    .update(schema.project)
-    .set({ brand: { ...p.brand, logoAssetId: ref.id }, updatedAt: new Date() })
-    .where(eq(schema.project.id, p.id));
-  // The logo is shown on public pages, where only the control database knows the tenant.
-  await putLink(ref.id, "logo", ref.id);
-  return { id: ref.id };
+/** What a step knows of the project it runs in: who it is, its colours and its facts. */
+export interface ProjectProfile {
+  name: string;
+  about: string;
+  colors: { name: string; value: string }[];
+  facts: ProjectFact[];
+}
+
+export function projectProfile(p: ProjectRow): ProjectProfile {
+  return {
+    name: p.brand.name ?? "",
+    about: p.brand.about ?? "",
+    colors: p.brand.colors ?? [],
+    facts: p.facts.filter((f) => f.value.trim()),
+  };
 }
 
 export async function deleteProject(_userId: string, projectId: string) {
@@ -179,6 +190,7 @@ export async function deleteProject(_userId: string, projectId: string) {
   for (const w of wizards) {
     await forgetWizardLinks(w.id);
   }
+  await removeProjectFiles(projectId);
   await db
     .delete(schema.project)
     .where(and(eq(schema.project.id, projectId), eq(schema.project.tenantId, currentTenant())));

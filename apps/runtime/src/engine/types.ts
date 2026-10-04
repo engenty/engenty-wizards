@@ -10,6 +10,7 @@ import type { RunResources } from "./resources.js";
 import type { TemplateScope } from "./template.js";
 
 export type ProjectRow = typeof schema.project.$inferSelect;
+export type ProjectFileRow = typeof schema.projectFile.$inferSelect;
 export type RunRow = typeof schema.run.$inferSelect;
 
 export interface StepContext {
@@ -25,6 +26,8 @@ export interface StepContext {
   state: RunState;
   scope: TemplateScope;
   project: ProjectRow;
+  /** The project's logos, assets and documents that are ready to use. */
+  projectFiles: ProjectFileRow[];
   signal: AbortSignal;
   resources: RunResources;
   /** Tells the person what the step is doing; `asset` is a picture of the run it is about. */

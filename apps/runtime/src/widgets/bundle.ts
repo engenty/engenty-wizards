@@ -8,6 +8,10 @@ export interface WidgetBrand {
   name: string;
   accent: string | null;
   logo: string | null;
+  /** The project's colours by name; the first is the accent. */
+  colors?: { name: string; value: string }[];
+  /** The project's facts: key → value. */
+  facts?: Record<string, string>;
 }
 
 interface Loaded {

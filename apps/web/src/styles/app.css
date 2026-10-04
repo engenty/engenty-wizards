@@ -317,8 +317,25 @@ a,
     transform: none;
   }
 }
+/* Not kept after it ends: a transform that stays, even an empty one, would hold every
+   `position: fixed` element inside in place of the window. */
 .animate-rise {
-  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+/* The project assistant, once its card is scrolled away: it comes in from the lower edge. */
+@keyframes dock {
+  from {
+    opacity: 0;
+    transform: translateY(calc(100% + 16px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-dock {
+  animation: dock 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 /* The setup: what a choice needs comes in from the side once the choices have stepped aside. */
@@ -387,6 +404,7 @@ dialog.media-sheet::backdrop {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
+  .animate-dock,
   .animate-settle,
   .animate-breathe,
   .animate-pulse-dot {

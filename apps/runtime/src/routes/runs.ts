@@ -269,6 +269,8 @@ export const publicRoutes = new Hono()
     return c.body(new Uint8Array(found.data), 200, {
       "content-type": found.row.mime,
       "cache-control": "public, max-age=86400",
+      // An SVG logo is shown, never run.
+      "content-security-policy": "sandbox",
     });
   });
 

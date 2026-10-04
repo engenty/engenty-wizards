@@ -123,7 +123,7 @@ type GenerateStep = {
 type WidgetStep = {
   type: "widget"
   entry: string                 // workspace path of the widget's HTML, e.g. "weather/index.html"
-  data: { [key]: string }       // what the widget gets as wizard.data: key → fieldId | steps.stepId | steps.stepId.key | brand.name | today
+  data: { [key]: string }       // what the widget gets as wizard.data: key → fieldId | steps.stepId | steps.stepId.key | brand.name | facts.key | today
   sample?: string               // workspace path of example data (same shape as data) for previews
   size?: { width, height }      // design size in px, default 1280×720 (9:16 → 1080×1920)
   video?: boolean               // a FILM: the timeline is rendered to an MP4 WITH SOUND when the step runs; the person sees and
@@ -146,7 +146,9 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 //                     lists.<id>→xlsx csv json md · zip (a list with check.file: the kept files its rows name, plus the list)
 
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
-  · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{brand.name}} {{brand.details}} · {{today}}
+  · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{today}}
+  · the project (its settings): {{brand.name}} {{brand.about}} {{brand.colors}} · {{facts.key}} (one fact: address, VAT id, …) · {{facts}} (all facts)
+    — every AI step already knows them, name one only where the text must carry it; agent steps can also search the project's documents
   · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)
   · {{locationField}} {{locationField.lat|lng|accuracy|label|map}} · {{audioField}} (the transcript) · {{signatureField}} (asset://ID)
 A template may only use fields asked and steps run EARLIER.`;
@@ -191,7 +193,7 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
   <script src="lib/name.min.js">. Fetch reference data ONCE now (e.g. lake outlines
   from nominatim.openstreetmap.org/search?q=…&format=json&polygon_geojson=1&polygon_threshold=0.0005)
   and save it as a workspace file.
-- Runtime, window.wizard: data · brand {name, accent, logo} · ai "generated"|"edited"|null · mode "view"|"export" · file(path) ·
+- Runtime, window.wizard: data · brand {name, accent, logo, colors [{name, value}], facts {key: value}} · ai "generated"|"edited"|null · mode "view"|"export" · file(path) ·
   json(path) · url(path) (data URL for images/fonts) · ready() · timeline({ duration, seek, poster }).
 - Animation: call wizard.timeline({ duration: seconds, seek: t => draw(t) }) and drive your own
   play/pause and <input type=range> scrubber from it. seek(t) must draw time t synchronously — the MP4

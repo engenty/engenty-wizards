@@ -3,7 +3,8 @@
  * widget's own scripts; reads its payload from <script type="application/json" id="wizard-payload">.
  *
  *   wizard.data            the run's data (keys from the widget step's `data` map)
- *   wizard.brand           { name, accent, logo } — logo as a data URL or null
+ *   wizard.brand           { name, accent, logo, colors, facts } — logo as a data URL or null,
+ *                          colors [{ name, value }], facts { key: value }
  *   wizard.ai              "generated" | "edited" when the run's media in `data` was made or
  *                          changed by a model, else null — a film labels itself with it
  *   wizard.mode            "view" in the browser, "export" while a PNG/PDF/MP4 is rendered

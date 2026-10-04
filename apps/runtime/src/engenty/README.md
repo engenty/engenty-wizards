@@ -1,7 +1,7 @@
 # engenty framework code
 
 Files under `apps/runtime/src/engenty` and `packages/shared/src/engenty` are copies from the engenty monorepo
-(commit `e5719c500`). They are not edited here: change them upstream, then run
+(commit `63ab955a7`). They are not edited here: change them upstream, then run
 `node scripts/sync-engenty.mjs`. Only `shims/` is written for this product — it stands in for
 the engenty packages the copies import.
 
@@ -31,6 +31,8 @@ the engenty packages the copies import.
 - modules/connections/providers/external/src/invoke/mcp-client.ts → apps/runtime/src/engenty/connections-external/invoke/mcp-client.ts
 - modules/connections/providers/external/src/net/guarded-fetch.ts → apps/runtime/src/engenty/connections-external/net/guarded-fetch.ts
 - packages/web-ingest/src/lib/ssrf.ts → apps/runtime/src/engenty/web-ingest/ssrf.ts
+- packages/search-index/src/contracts.ts → apps/runtime/src/engenty/search-index/contracts.ts
+- packages/search-index/src/chunks.ts → apps/runtime/src/engenty/search-index/chunks.ts
 - modules/connections/providers/google/src/shared.ts → apps/runtime/src/engenty/connections-google/shared.ts
 - modules/connections/providers/google/src/definitions.ts → apps/runtime/src/engenty/connections-google/definitions.ts
 - modules/connections/providers/google/src/connectors/gmail.ts → apps/runtime/src/engenty/connections-google/connectors/gmail.ts

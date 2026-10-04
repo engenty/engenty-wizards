@@ -48,6 +48,11 @@ const SETS = [
   ],
   ["packages/web-ingest/src/lib", "apps/runtime/src/engenty/web-ingest", ["ssrf.ts"]],
   [
+    "packages/search-index/src",
+    "apps/runtime/src/engenty/search-index",
+    ["contracts.ts", "chunks.ts"],
+  ],
+  [
     "modules/connections/providers/google/src",
     "apps/runtime/src/engenty/connections-google",
     [

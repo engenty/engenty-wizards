@@ -1,4 +1,5 @@
 import type { ModelClass, WizardDefinition } from "@engenty-wizards/shared/definition";
+import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
@@ -89,7 +90,8 @@ export function useMe() {
 export interface Project {
   id: string;
   name: string;
-  brand: { name?: string; details?: string; accent?: string; logoAssetId?: string };
+  brand: { name?: string; about?: string; colors?: BrandColor[] };
+  facts: ProjectFact[];
   mcpServers: { id: string; name: string; url: string; headers?: Record<string, string> }[];
   wizardCount: number;
 }

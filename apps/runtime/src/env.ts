@@ -187,6 +187,8 @@ export const env = {
     video: str("MODEL_VIDEO", "google/veo-3.1-fast-generate-001"),
     audio: str("MODEL_AUDIO", "google/gemini-3.5-flash-lite"),
     speech: str("MODEL_SPEECH", "google/gemini-3.8-flash-tts"),
+    /** Vectors for a project's document index; not a class a step names. */
+    embedding: str("MODEL_EMBEDDING", "openai/text-embedding-3-small"),
   },
 
   /**

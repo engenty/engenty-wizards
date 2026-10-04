@@ -30,6 +30,8 @@ import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
 import { ModelUnavailableError } from "../models.js";
+import { projectFiles } from "../services/project-files.js";
+import { projectProfile } from "../services/projects.js";
 import { listRows, scopeOf } from "../store/index.js";
 import { activeRuns, indexRun, markRunActive } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
@@ -285,10 +287,11 @@ async function makeContext(
     scope: {
       def: run.definition,
       state,
-      brand: { name: project.brand.name, details: project.brand.details },
+      brand: projectProfile(project),
       lists: await storedLists(run),
     },
     project,
+    projectFiles: (await projectFiles(project.id)).filter((f) => f.status === "ready"),
     signal,
     resources,
     ask: (ask) =>

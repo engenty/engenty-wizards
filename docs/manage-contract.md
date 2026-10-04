@@ -107,5 +107,9 @@ object. Every other call, and a decision the model leaves open, is answered by t
 }
 ```
 
+A catalog that lists the class `embedding` (`"kind": "embedding"`) says the gateway also takes
+`wizards/embedding` on `/embedding-model`: the runtime then keeps vectors of a project's documents.
+Without it the runtime indexes them by keywords only and never calls that id.
+
 1 credit = 1 cent retail; credits = provider cost in cents × markup. The provider cost is the
 AI Gateway's cost of the call, which includes web-search fees.

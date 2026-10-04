@@ -1,8 +1,10 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { RunAsk, RunState } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
 import {
+  blob,
   index,
   integer,
   primaryKey,
@@ -27,11 +29,12 @@ export interface McpServerConfig {
 }
 
 export interface BrandConfig {
+  /** The title end users see: a company, a brand, an undertaking. */
   name?: string;
-  /** Free text: address, VAT id, bank details, tone — offered to every step as {{brand.details}}. */
-  details?: string;
-  accent?: string;
-  logoAssetId?: string;
+  /** Free text about it: what it does, for whom, in which tone it speaks. */
+  about?: string;
+  /** The first colour is the accent of documents, dashboards and public pages. */
+  colors?: BrandColor[];
 }
 
 export const project = sqliteTable(
@@ -41,6 +44,7 @@ export const project = sqliteTable(
     tenantId: text("tenant_id").notNull(),
     name: text("name").notNull(),
     brand: text("brand", { mode: "json" }).$type<BrandConfig>().notNull().default({}),
+    facts: text("facts", { mode: "json" }).$type<ProjectFact[]>().notNull().default([]),
     mcpServers: text("mcp_servers", { mode: "json" })
       .$type<McpServerConfig[]>()
       .notNull()
@@ -238,6 +242,69 @@ export const projectConnector = sqliteTable(
     updatedAt: updatedAt(),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.id] })],
+);
+
+/**
+ * What a project holds for all its wizards: logos, assets (images, graphics, videos) and
+ * documents. `id` is the asset the content lives in. The first logo is the one end users see.
+ */
+export const projectFile = sqliteTable(
+  "project_file",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["logo", "asset", "document"] }).notNull(),
+    name: text("name").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    description: text("description").notNull().default(""),
+    /** A web address the file was fetched from, when it was not uploaded. */
+    source: text("source"),
+    position: integer("position").notNull().default(0),
+    /** `pending` while it is read, described and indexed. */
+    status: text("status", { enum: ["pending", "ready", "failed"] })
+      .notNull()
+      .default("ready"),
+    error: text("error"),
+    /** A document's text as Markdown, in the blob store. */
+    textHash: text("text_hash"),
+    pages: integer("pages"),
+    chars: integer("chars"),
+    /** What the index holds of a document; `embeddings` includes the keywords. */
+    indexed: text("indexed", { enum: ["embeddings", "keywords"] }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("project_file_project").on(t.projectId, t.kind, t.position)],
+);
+
+/**
+ * The document index: passages of a project's documents. Keywords live in the FTS5 table
+ * `project_chunk_fts`, which triggers keep in step (see the migration); `embedding` is the
+ * passage's vector as float32 bytes, compared with libSQL's `vector_distance_cos`.
+ */
+export const projectChunk = sqliteTable(
+  "project_chunk",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    fileId: text("file_id")
+      .notNull()
+      .references(() => projectFile.id, { onDelete: "cascade" }),
+    idx: integer("idx").notNull(),
+    text: text("text").notNull(),
+    embedding: blob("embedding", { mode: "buffer" }),
+    /** The model the vector was made with; only vectors of one model are compared. */
+    model: text("model"),
+  },
+  (t) => [
+    index("project_chunk_project").on(t.projectId, t.model),
+    index("project_chunk_file").on(t.fileId),
+  ],
 );
 
 // --- The wizard's store ------------------------------------------------------

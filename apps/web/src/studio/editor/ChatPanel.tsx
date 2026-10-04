@@ -1,6 +1,17 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Mic, Paperclip, Plug, Plus, Sparkles, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  Mic,
+  Paperclip,
+  Plug,
+  Plus,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
@@ -11,7 +22,7 @@ import { useDictation } from "../../lib/speech";
 import { Markdown } from "../../runner/outputs";
 import { cn, IconButton, Spinner } from "../../ui";
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -149,13 +160,29 @@ export function useArchitectChat(
   return { messages, phase, activity, error, send };
 }
 
+/** What the panel shows and sends; the architect's chat and the project assistant both are one. */
+export type Chat = Pick<
+  ReturnType<typeof useArchitectChat>,
+  "messages" | "phase" | "activity" | "error" | "send"
+>;
+
 export function ChatPanel({
   chat,
   avatar,
+  hello = t("editor.chatHello"),
+  placeholder = t("editor.composer"),
+  changedLabel = "Ablauf aktualisiert",
+  compact,
 }: {
-  chat: ReturnType<typeof useArchitectChat>;
+  chat: Chat;
   avatar: string;
+  hello?: string;
+  placeholder?: string;
+  changedLabel?: string;
+  /** Only the composer and one line about the last turn; the thread opens on demand. */
+  compact?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -190,13 +217,43 @@ export function ChatPanel({
       setFiles(draft.files);
     }
   };
+  const thread = !compact || open;
+  const last = chat.messages.at(-1);
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      {compact && (last || chat.error) ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={t("editor.thread")}
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[13px] text-ink-3 transition hover:text-ink"
+        >
+          {last?.pending ? <Spinner className="size-3.5 shrink-0" /> : null}
+          <span className={cn("min-w-0 flex-1 truncate", chat.error && "text-rose")}>
+            {chat.error ??
+              (open
+                ? t("editor.thread")
+                : last?.pending
+                  ? (chat.activity ??
+                    (chat.phase === "building" ? t("editor.building") : t("editor.thinking")))
+                  : last?.content)}
+          </span>
+          {open ? (
+            <ChevronDown className="size-4 shrink-0" />
+          ) : (
+            <ChevronUp className="size-4 shrink-0" />
+          )}
+        </button>
+      ) : null}
+      <div
+        ref={scroller}
+        className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5", !thread && "hidden")}
+      >
         {chat.messages.length === 0 ? (
           <div className="flex items-start gap-3">
             <Mascot kind={avatar} size={32} interactive={false} />
-            <p className="pt-1 text-[14px] text-ink-2 leading-relaxed">{t("editor.chatHello")}</p>
+            <p className="pt-1 text-[14px] text-ink-2 leading-relaxed">{hello}</p>
           </div>
         ) : null}
         <div className="flex flex-col gap-4">
@@ -230,7 +287,7 @@ export function ChatPanel({
                   ) : null}
                   {m.changed ? (
                     <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[12px] text-ember-strong">
-                      <Sparkles className="size-3" /> Ablauf aktualisiert
+                      <Sparkles className="size-3" /> {changedLabel}
                     </div>
                   ) : null}
                 </div>
@@ -244,7 +301,7 @@ export function ChatPanel({
           </div>
         ) : null}
       </div>
-      <div className="p-3">
+      <div className={compact ? "p-2" : "p-3"}>
         <div className="rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
           {files.length ? (
             <ul className="flex flex-wrap gap-1.5 px-1 pt-1 pb-1.5">
@@ -296,7 +353,7 @@ export function ChatPanel({
                   void submit();
                 }
               }}
-              placeholder={speech.listening ? t("editor.listening") : t("editor.composer")}
+              placeholder={speech.listening ? t("editor.listening") : placeholder}
               className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[14px] outline-none placeholder:text-ink-4"
             />
             {speech.supported ? (

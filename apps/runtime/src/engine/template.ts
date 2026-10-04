@@ -7,13 +7,15 @@ import {
   locationText,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
+import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { RunState } from "@engenty-wizards/shared/run";
 import { type ListDef, type ListRow, listAsMarkdown } from "@engenty-wizards/shared/store";
 
 export interface TemplateScope {
   def: WizardDefinition;
   state: RunState;
-  brand: { name?: string; details?: string };
+  /** The project the wizard belongs to: who it is, its colours and its facts. */
+  brand: { name?: string; about?: string; colors?: BrandColor[]; facts?: ProjectFact[] };
   /** The wizard's stored lists as they are when the step starts. */
   lists?: Record<string, { def: ListDef; rows: ListRow[] }>;
   /** A generate step with `each`: the entry this result is made for. */
@@ -56,6 +58,33 @@ export function itemsAsMarkdown(
     `Total: ${money(totals.gross, totals.currency)}`,
   ].filter(Boolean);
   return [head, ...body, "", ...sums].join("\n");
+}
+
+/** Facts as lines a model reads: "Label: value". */
+export function factLines(facts: ProjectFact[]): string {
+  return facts.map((f) => `${f.label}: ${f.value}`).join("\n");
+}
+
+export function colorLine(colors: BrandColor[]): string {
+  return colors.map((c) => (c.name ? `${c.name} ${c.value}` : c.value)).join(", ");
+}
+
+function brandRef(brand: TemplateScope["brand"], key: string): unknown {
+  switch (key) {
+    case "name":
+      return brand.name ?? "";
+    case "about":
+      return brand.about ?? "";
+    // What the free "details" text once held is now the description and the facts.
+    case "details":
+      return [brand.about, factLines(brand.facts ?? [])].filter(Boolean).join("\n");
+    case "accent":
+      return brand.colors?.[0]?.value ?? "";
+    case "colors":
+      return colorLine(brand.colors ?? []);
+    default:
+      return "";
+  }
 }
 
 function stringify(v: unknown): string {
@@ -102,7 +131,11 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
     return cur;
   }
   if (head === "brand") {
-    return (brand as Record<string, unknown>)[rest[0] ?? "name"] ?? "";
+    return brandRef(brand, rest[0] ?? "name");
+  }
+  if (head === "facts") {
+    const facts = brand.facts ?? [];
+    return rest[0] ? (facts.find((f) => f.key === rest[0])?.value ?? "") : factLines(facts);
   }
   if (head === "steps") {
     const out = state.outputs[rest[0] ?? ""];

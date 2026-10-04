@@ -22,6 +22,13 @@
       "when": 1791071240061,
       "tag": "0002_cloudy_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791096208798,
+      "tag": "0003_brown_warbound",
+      "breakpoints": true
     }
   ]
 }

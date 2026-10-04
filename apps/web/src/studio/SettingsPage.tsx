@@ -1,17 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
-import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useMe } from "../lib/session";
-import { Button, Card, cn, IconButton, Input, Label, Select, Swatch, Textarea } from "../ui";
+import { Button, Card, cn, IconButton, Input, Select } from "../ui";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { LocalRuntimeCard } from "./LocalRuntime";
 import { MarketplaceAdmin } from "./MarketplaceAdmin";
 import { McpAccess } from "./McpAccess";
+import { ProjectSettings } from "./project/ProjectSettings";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -29,116 +29,6 @@ function slugId(name: string, taken: string[]): string {
     id = `${base}_${i++}`;
   }
   return id;
-}
-
-function ProjectForm({ project }: { project: Project }) {
-  const qc = useQueryClient();
-  const [name, setName] = useState(project.name);
-  const [brandName, setBrandName] = useState(project.brand.name ?? "");
-  const [details, setDetails] = useState(project.brand.details ?? "");
-  const [accent, setAccent] = useState(project.brand.accent ?? "");
-  const [saved, setSaved] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const save = useMutation({
-    mutationFn: () =>
-      api.patch(`/api/studio/projects/${project.id}`, {
-        name,
-        brand: { name: brandName, details, accent },
-      }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["projects"] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1800);
-    },
-  });
-  const logo = useMutation({
-    mutationFn: (file: File) => api.upload(`/api/studio/projects/${project.id}/logo`, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
-  });
-  const remove = useMutation({
-    mutationFn: () => api.del(`/api/studio/projects/${project.id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
-  });
-
-  return (
-    <div className="flex flex-col gap-6">
-      <Card className="p-6">
-        <h2 className="mb-5 font-display font-semibold text-lg">{t("settings.project")}</h2>
-        <Label>{t("settings.name")}</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </Card>
-
-      <Card className="p-6">
-        <h2 className="font-display font-semibold text-lg">{t("settings.brand")}</h2>
-        <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.brandHint")}</p>
-        <div className="flex flex-col gap-5">
-          <div>
-            <Label>{t("settings.brandName")}</Label>
-            <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} />
-          </div>
-          <div>
-            <Label>{t("settings.brandDetails")}</Label>
-            <Textarea minRows={4} value={details} onChange={(e) => setDetails(e.target.value)} />
-          </div>
-          <div className="flex flex-wrap gap-8">
-            <div>
-              <Label>{t("settings.accent")}</Label>
-              <div className="flex items-center gap-3">
-                <Swatch value={accent || "#e0531b"} onChange={(e) => setAccent(e.target.value)} />
-                <Input
-                  value={accent}
-                  placeholder="#e0531b"
-                  onChange={(e) => setAccent(e.target.value)}
-                  className="w-32"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>{t("settings.logo")}</Label>
-              <div className="flex items-center gap-3">
-                {project.brand.logoAssetId ? (
-                  <img
-                    src={withBase(`/api/public/logos/${project.brand.logoAssetId}`)}
-                    alt=""
-                    className="h-11 max-w-[140px] rounded-md object-contain"
-                  />
-                ) : null}
-                <Button
-                  variant="secondary"
-                  busy={logo.isPending}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  <Upload className="size-4" /> {t("settings.logo")}
-                </Button>
-                <input
-                  ref={fileInput}
-                  hidden
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => e.target.files?.[0] && logo.mutate(e.target.files[0])}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className="flex items-center justify-between">
-        <Button
-          variant="danger"
-          busy={remove.isPending}
-          onClick={() => confirm(`${t("settings.delete")}?`) && remove.mutate()}
-        >
-          {t("settings.delete")}
-        </Button>
-        <Button busy={save.isPending} onClick={() => save.mutate()}>
-          {saved ? t("settings.saved") : t("settings.save")}
-        </Button>
-      </div>
-      {save.error ? <p className="text-[14px] text-rose">{(save.error as Error).message}</p> : null}
-    </div>
-  );
 }
 
 /** The project's MCP servers, called with the admin's credentials; saved on their own. */
@@ -274,7 +164,8 @@ export function SettingsPage() {
   if (!current) {
     return <Navigate to="/settings/project" replace />;
   }
-  const scoped = current.id === "project" || current.id === "connectors";
+  // The project page brings its own switcher, next to the project's name.
+  const scoped = current.id === "connectors";
   return (
     <div className="animate-rise">
       <h1 className="font-display font-semibold text-[28px] tracking-tight">
@@ -307,7 +198,13 @@ export function SettingsPage() {
           onChange={(id) => navigate(`/settings/${id}`)}
           options={sections.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <div className={cn("min-w-0", current.id === "marketplace" ? "max-w-4xl" : "max-w-2xl")}>
+        <div
+          className={cn(
+            "min-w-0",
+            current.id === "marketplace" && "max-w-4xl",
+            current.id !== "project" && current.id !== "marketplace" && "max-w-2xl",
+          )}
+        >
           {current.id === "marketplace" ? (
             <div className="flex flex-col gap-6">
               <ProjectSwitcher />
@@ -319,7 +216,9 @@ export function SettingsPage() {
               <ProjectSwitcher />
             </div>
           ) : null}
-          {current.id === "project" && project ? <ProjectForm key={key} project={project} /> : null}
+          {current.id === "project" && project ? (
+            <ProjectSettings key={key} project={project} />
+          ) : null}
           {current.id === "connectors" && project ? (
             <div className="flex flex-col gap-6">
               <Connectors key={key} projectId={project.id} />

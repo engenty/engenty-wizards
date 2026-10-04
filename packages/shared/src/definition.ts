@@ -586,7 +586,7 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             message: `"{{${ref}}}" refers to a step that has not run before "${step.id}".`,
           });
         }
-      } else if (head === "brand" || head === "today" || head === "notes") {
+      } else if (head === "brand" || head === "facts" || head === "today" || head === "notes") {
         // provided by the runner
       } else if (head === "item" || head === "index" || head === "count") {
         if (step.type !== "generate" || !step.each) {

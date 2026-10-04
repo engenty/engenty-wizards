@@ -8,7 +8,7 @@ import {
   TEXT_CLASSES,
   type TextClass,
 } from "@engenty-wizards/shared/definition";
-import type { LanguageModel } from "ai";
+import type { EmbeddingModel, LanguageModel } from "ai";
 import { accountToken } from "./auth/account.js";
 import { env } from "./env.js";
 import {
@@ -180,7 +180,7 @@ function gatewayClient(access: GatewayAccess, meta: CallMeta) {
 
 export interface ClassPrice {
   model: string;
-  kind: "text" | "image" | "video" | "audio" | "speech";
+  kind: "text" | "image" | "video" | "audio" | "speech" | "embedding";
   inputCreditsPerMTok?: number;
   outputCreditsPerMTok?: number;
   creditsPerImage?: number;
@@ -189,7 +189,7 @@ export interface ClassPrice {
 
 export interface GatewayCatalog {
   markup: number;
-  classes: Partial<Record<ModelClass, ClassPrice | null>>;
+  classes: Partial<Record<ModelClass | "embedding", ClassPrice | null>>;
   webSearchCredits: number;
 }
 
@@ -420,6 +420,38 @@ export async function speechModel(meta: CallMeta = {}) {
     };
   }
   throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+}
+
+/**
+ * The model that turns passages and questions into vectors for a project's document index.
+ * Null where none is set up — an installed AI client has no such model — and the index then
+ * works on keywords alone.
+ */
+export async function embeddingModel(): Promise<{ model: EmbeddingModel; ref: string } | null> {
+  const access = await gatewayAccess().catch(() => null);
+  if (access) {
+    const bound = (await classCatalog())?.classes.embedding;
+    return bound
+      ? { model: gatewayClient(access, {}).embeddingModel("wizards/embedding"), ref: bound.model }
+      : null;
+  }
+  const ref = env.models.embedding;
+  const { provider, vendor, model } = split(ref);
+  if (provider === "ollama") {
+    const ollama = createOpenAI({
+      baseURL: local.settings.ollamaUrl ?? env.ollamaUrl,
+      apiKey: "ollama",
+    });
+    return { model: ollama.embedding(model ? `${vendor}/${model}` : vendor), ref };
+  }
+  const gateway = ownGateway();
+  if ((provider === null || provider === "gateway") && gateway) {
+    return { model: gateway.embeddingModel(`${vendor}/${model}`), ref };
+  }
+  if ((provider === "openai" || vendor === "openai") && local.keys.openai) {
+    return { model: createOpenAI({ apiKey: local.keys.openai }).embedding(model || vendor), ref };
+  }
+  return null;
 }
 
 /** Gemini image models are chat models answering with image files. */
