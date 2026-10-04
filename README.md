@@ -49,6 +49,9 @@ you through the rest:
 - **Google Chrome and ffmpeg** (optional): Chrome for PDF and PNG exports and for steps that use
   a browser, ffmpeg for MP4 videos of animated widgets.
 - **The Mac app** (optional): the studio in its own window and in the menu bar.
+- **Start at login** (optional): on a Mac the Mac app opens in the menu bar when you log in and
+  starts engenty wizards; on Linux a systemd user service does. Links and AI clients then always
+  reach it. `engenty-wizards autostart on` or `off` switches it later.
 
 Then it starts and the studio opens in your browser. Later, start it with:
 
@@ -142,7 +145,8 @@ AI clients' subscriptions live on your own computer. The code sandbox is off in 
 
 The setup offers it; `engenty-wizards app` installs it later. It is a window on the same
 install: it starts engenty wizards when you open it, keeps it running in the menu bar, and
-stops it when you quit. It can also connect to your own server instead.
+stops it when you quit. It can also connect to your own server instead. "Open at Login" in its
+menu opens it in the menu bar, without its window, whenever you log in.
 
 The app isn't signed with an Apple Developer ID yet, so it is not offered as a download: macOS
 would block a copy that came through a browser. Installed by the command above it opens

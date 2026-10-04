@@ -1,5 +1,6 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { autostartState, setAutostart } from "./autostart.js";
 import { appState } from "./desktop.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
@@ -12,11 +13,12 @@ import { bad, badge, cyan, dim, no, ok, tilde } from "./ui.js";
  */
 export async function status(paths: Layout, checks: boolean): Promise<number> {
   const { dataDir } = settings(paths);
-  const [running, clients, ffmpeg, app] = await Promise.all([
+  const [running, clients, ffmpeg, app, atLogin] = await Promise.all([
     runningRuntime(dataDir),
     detectClients(paths),
     findFfmpeg(),
     appState(),
+    autostartState(paths),
   ]);
   const chrome = findChrome();
   const row = (label: string, value: string) => console.log(`  ${label.padEnd(9)} ${value}`);
@@ -40,6 +42,12 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
     row(
       "Mac app",
       app ? `${ok} ${app.version ?? ""} ${dim(tilde(app.path))}` : `${no} not installed`,
+    );
+  }
+  if (!("unavailable" in atLogin)) {
+    row(
+      "At login",
+      atLogin.on ? `${ok} starts ${dim(`(${atLogin.how})`)}` : `${no} does not start`,
     );
   }
   for (const { client, path, version } of clients) {
@@ -105,4 +113,36 @@ export async function stop(paths: Layout): Promise<number> {
   }
   console.error(`The runtime (pid ${running.pid}) did not stop within 8 seconds.`);
   return 1;
+}
+
+/** `autostart [on|off]`: whether it starts at login, and the switch. */
+export async function autostart(paths: Layout, value: string): Promise<number> {
+  if (value && value !== "on" && value !== "off") {
+    console.error("autostart takes on or off.");
+    return 2;
+  }
+  let state = await autostartState(paths);
+  if (value && !("unavailable" in state)) {
+    try {
+      state = await setAutostart(paths, value === "on");
+    } catch (error) {
+      console.error(
+        `Starting at login could not be switched ${value}: ${(error as Error).message}`,
+      );
+      return 1;
+    }
+  }
+  if ("unavailable" in state) {
+    console.error(`Starting at login is not possible here: ${state.unavailable}.`);
+    return value ? 1 : 0;
+  }
+  console.log(
+    state.on
+      ? `${ok} engenty wizards starts at login: ${state.how}.`
+      : `${no} engenty wizards does not start at login. ${dim("`autostart on` switches it on.")}`,
+  );
+  if (state.on && process.platform === "linux") {
+    console.log(dim("  Before anybody logs in, too: loginctl enable-linger"));
+  }
+  return value && state.on !== (value === "on") ? 1 : 0;
 }

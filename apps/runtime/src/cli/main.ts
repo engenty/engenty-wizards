@@ -3,20 +3,21 @@ import { layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { command, openInstalledApp, setup } from "./setup.js";
 import { open, start } from "./start.js";
-import { status, stop } from "./status.js";
+import { autostart, status, stop } from "./status.js";
 import { dim, tilde } from "./ui.js";
 import { update } from "./update.js";
 
 const HELP = `engenty wizards ${packageVersion()}
 
   ${command()} [start]    start it and open the studio; the first time, the setup runs first
-  ${command()} setup      guided setup: an AI client to think with, ffmpeg, the Mac app
+  ${command()} setup      guided setup: an AI client to think with, ffmpeg, the Mac app, start at login
   ${command()} open       let this browser into the running studio (--print: only show the link)
   ${command()} status     what is installed and what runs
   ${command()} doctor     status, and what is wrong
   ${command()} stop       stop it; the data is kept
   ${command()} update     the newest version
   ${command()} app        install or update the Mac app
+  ${command()} autostart  start it at login: on, off (macOS: the Mac app; Linux: a systemd service)
 
   --yes, -y          ask nothing and install nothing optional
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
@@ -29,6 +30,8 @@ const HELP = `engenty wizards ${packageVersion()}
 
 interface Args {
   command: string;
+  /** What follows the command: \`autostart on\`. */
+  value: string;
   yes: boolean;
   open: boolean;
   print: boolean;
@@ -37,7 +40,15 @@ interface Args {
 }
 
 function parse(argv: string[]): Args | string {
-  const args: Args = { command: "", yes: false, open: true, print: false, app: false, clients: [] };
+  const args: Args = {
+    command: "",
+    value: "",
+    yes: false,
+    open: true,
+    print: false,
+    app: false,
+    clients: [],
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--yes" || arg === "-y") {
@@ -60,6 +71,8 @@ function parse(argv: string[]): Args | string {
       args.command = "version";
     } else if (arg.startsWith("-")) {
       return `Unknown option ${arg}.`;
+    } else if (args.command === "autostart" && !args.value) {
+      args.value = arg;
     } else if (args.command) {
       return `Unexpected argument ${arg}.`;
     } else {
@@ -113,6 +126,8 @@ async function main(argv: string[]): Promise<number> {
       return stop(paths);
     case "update":
       return update(paths);
+    case "autostart":
+      return autostart(paths, args.value);
     case "app":
       try {
         const path = await installApp(paths, packageVersion());

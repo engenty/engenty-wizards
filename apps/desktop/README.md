@@ -67,8 +67,9 @@ or an address), `ENGENTY_WIZARDS_APP_DIR` another folder.
 runs the installer it carries — `bash wizards.sh --no-setup --version <app version>` — and shows
 its lines in the window. That needs the network once and takes a minute or two (about 800 MB on disk).
 
-Then it picks a free loopback port (the one of the last start when it is still free — kept in
-`data/desktop.port` — so links into the local runtime outlive a restart) and a random access
+Then it picks a free loopback port — 24368, the port the command line uses too, else the one of
+the last start when it is still free (kept in `data/desktop.port`), so links into the local
+runtime and AI clients' MCP addresses outlive a restart — and a random access
 key, resolves the PATH of the person's login shell once (a GUI app gets a minimal one; the
 Studio chat runs the installed `claude`, widgets use `ffmpeg`), and starts
 `node --import watchdog.mjs apps/runtime/dist/index.js` in `~/.engenty/wizards` with
@@ -108,6 +109,13 @@ started is left running. If the app is killed instead, the watchdog inside the r
 within 2 s and ends it. A runtime that stops by itself is started again once; the second time
 the window shows the error with the end of its log. Closing the window keeps the app, and
 running wizards, alive in the Dock and the menu bar.
+
+**Open at Login** (app menu and tray menu): a LaunchAgent,
+`~/Library/LaunchAgents/com.engenty.wizards.login.plist`, that runs
+`open -g -a "engenty wizards.app" --args --at-login` at login. Started that way the app keeps its
+window closed and only starts the server; without a server chosen yet it shows the window, which
+asks for one. `engenty-wizards autostart on|off` writes and removes the same file; the file is
+all the state there is.
 
 **Logs:** `~/Library/Logs/com.engenty.wizards/` — `runtime.log` (stdout and stderr of the
 runtime the app started), `shell.log` (the app, and the installer's lines). Help → "Protokolle

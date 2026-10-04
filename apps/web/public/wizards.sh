@@ -12,7 +12,8 @@
 #   data/                    your wizards and results (made at the first start)
 #
 # Then the guided setup runs (`engenty-wizards setup`): an AI client to think with, ffmpeg,
-# the Mac app. Running the installer again updates an install; your data is kept.
+# the Mac app, starting at login. Running the installer again updates an install; your data is
+# kept.
 #
 #   --yes            ask nothing and install nothing optional
 #   --no-setup       only Node, the runtime and the command (what `update` and the Mac app run)

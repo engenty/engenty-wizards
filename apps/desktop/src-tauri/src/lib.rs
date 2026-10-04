@@ -5,6 +5,7 @@ mod commands;
 mod environment;
 mod i18n;
 mod log;
+mod login;
 mod menu;
 mod sidecar;
 mod state;
@@ -116,7 +117,9 @@ pub fn run() {
             );
             menu::install(&handle)?;
             menu::install_tray(&handle)?;
-            window::create(&handle)?;
+            // Opened at login, the app only starts its server, in the menu bar. Without a
+            // server chosen yet there is nothing to start: the window asks for one.
+            window::create(&handle, !(login::launched_at_login() && choice.is_some()))?;
 
             let links = handle.clone();
             app.deep_link().on_open_url(move |event| {

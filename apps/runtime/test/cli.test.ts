@@ -3,6 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localTicketExpiry, mintLocalTicket } from "../src/auth/local-ticket.js";
+import { loginItemText, unitText } from "../src/cli/autostart.js";
 import { installCommand } from "../src/cli/clients.js";
 import { appArchiveUrl } from "../src/cli/desktop.js";
 import { inherited, runtimeEnv, runtimePath } from "../src/cli/environment.js";
@@ -170,3 +171,42 @@ describe("the AI clients", () => {
     expect(suggestedClient([])).toBeNull();
   });
 });
+
+describe("starting at login on Linux", () => {
+  it("is a user service that runs the install's command without opening a browser", () => {
+    const unit = unitText("/home/a/.engenty/wizards/bin/engenty-wizards");
+    expect(unit).toContain('ExecStart="/home/a/.engenty/wizards/bin/engenty-wizards" start --no-open');
+    expect(unit).toContain("Restart=on-failure");
+    expect(unit).toContain("WantedBy=default.target");
+  });
+});
+
+describe("opening the Mac app at login", () => {
+  it("is a LaunchAgent that opens the app without its window, as the app's menu writes it", () => {
+    // The same text as login.rs writes: the app's menu and this command share the file.
+    expect(loginItemText("/Applications/engenty wizards.app")).toBe(LOGIN_ITEM_TEXT);
+  });
+});
+
+const LOGIN_ITEM_TEXT = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.engenty.wizards.login</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>-g</string>
+    <string>-a</string>
+    <string>/Applications/engenty wizards.app</string>
+    <string>--args</string>
+    <string>--at-login</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>
+`;

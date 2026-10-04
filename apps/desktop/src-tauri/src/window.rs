@@ -265,11 +265,13 @@ fn download_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-pub fn create(app: &AppHandle) -> tauri::Result<WebviewWindow> {
+/// The one window; `visible` false for a start at login, which only puts the app in the menu bar.
+pub fn create(app: &AppHandle, visible: bool) -> tauri::Result<WebviewWindow> {
     let handle = app.clone();
     let popups = app.clone();
     let builder = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
         .title("engenty wizards")
+        .visible(visible)
         .inner_size(1440.0, 900.0)
         .min_inner_size(900.0, 600.0)
         .background_color(PAPER)

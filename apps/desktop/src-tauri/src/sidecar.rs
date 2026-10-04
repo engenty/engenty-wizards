@@ -306,14 +306,19 @@ fn ensure_install(app: &AppHandle, generation: u64) -> Result<Install, String> {
     find_install(app).ok_or_else(|| "The installer ran, but the runtime is not there.".to_string())
 }
 
-/// A free loopback port — the one of the last start when it is still free, so that links into
-/// the local runtime (a published wizard opened in the browser, a bookmark) outlive a restart.
+/// The port the command line starts the runtime on, too: links into the local runtime (a
+/// published wizard opened in the browser, a bookmark, an AI client's MCP address) find it there,
+/// whichever of the two started it.
+const PORT: u16 = 24368;
+
+/// A free loopback port: 24368, else the one of the last start when it is still free, so that
+/// links outlive a restart, else any.
 fn free_port(app: &AppHandle) -> std::io::Result<u16> {
     let file = data_dir(app).join("desktop.port");
     let last = std::fs::read_to_string(&file)
         .ok()
         .and_then(|text| text.trim().parse::<u16>().ok());
-    if let Some(port) = last {
+    for port in [Some(PORT), last].into_iter().flatten() {
         if TcpListener::bind(("127.0.0.1", port)).is_ok() {
             return Ok(port);
         }

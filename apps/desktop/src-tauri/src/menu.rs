@@ -1,18 +1,52 @@
 //! Menu bar and menu-bar icon.
 
+use std::sync::Mutex;
+
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
+    menu::{CheckMenuItem, Menu, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
     tray::TrayIconBuilder,
-    AppHandle,
+    AppHandle, Wry,
 };
 use tauri_plugin_opener::OpenerExt;
 
-use crate::{commands, i18n::tr, quit, state::CLOUD_URL, window};
+use crate::{commands, i18n::tr, log, login, quit, state::CLOUD_URL, window};
 
 const NAME: &str = "engenty wizards";
 /// The engenty's outline with its eye, black on clear: macOS draws it in the menu bar's colour.
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
+
+/// "Open at Login" in the app menu and in the menu-bar icon's menu: both show the same.
+static LOGIN_ITEMS: Mutex<Vec<CheckMenuItem<Wry>>> = Mutex::new(Vec::new());
+
+fn login_item(app: &AppHandle) -> tauri::Result<CheckMenuItem<Wry>> {
+    let item = CheckMenuItem::with_id(
+        app,
+        "open-at-login",
+        tr("Beim Anmelden öffnen", "Open at Login"),
+        true,
+        login::enabled(),
+        None::<&str>,
+    )?;
+    LOGIN_ITEMS.lock().unwrap().push(item.clone());
+    Ok(item)
+}
+
+/// Switches the login item; both menus then show what the file says.
+fn toggle_login(app: &AppHandle) {
+    let on = !login::enabled();
+    match login::set(on) {
+        Ok(()) => log::line(
+            app,
+            format!("open at login: {}", if on { "on" } else { "off" }),
+        ),
+        Err(error) => log::line(app, format!("open at login could not be switched: {error}")),
+    }
+    let now = login::enabled();
+    for item in LOGIN_ITEMS.lock().unwrap().iter() {
+        let _ = item.set_checked(now);
+    }
+}
 
 pub fn handle(app: &AppHandle, id: &str) {
     match id {
@@ -28,6 +62,7 @@ pub fn handle(app: &AppHandle, id: &str) {
         "zoom-out" => window::zoom(app, Some(-0.1)),
         "zoom-reset" => window::zoom(app, None),
         "logs" => commands::open_logs(app.clone()),
+        "open-at-login" => toggle_login(app),
         "website" => {
             let _ = app.opener().open_url(CLOUD_URL, None::<&str>);
         }
@@ -56,6 +91,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
             tr("Server wechseln…", "Change Server…"),
             None,
         )?)
+        .item(&login_item(app)?)
         .separator()
         .item(&PredefinedMenuItem::hide(
             app,
@@ -188,7 +224,20 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
-    let menu = Menu::with_items(app, &[&open, &reload, &change, &separator, &quit])?;
+    let at_login = login_item(app)?;
+    let separator_2 = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &open,
+            &reload,
+            &change,
+            &separator,
+            &at_login,
+            &separator_2,
+            &quit,
+        ],
+    )?;
     TrayIconBuilder::with_id("engenty-wizards-tray")
         .icon(icon)
         .icon_as_template(true)

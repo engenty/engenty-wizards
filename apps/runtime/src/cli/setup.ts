@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import * as p from "@clack/prompts";
+import { autostartState, setAutostart } from "./autostart.js";
 import { installClient, installCommand } from "./clients.js";
 import { appState, installApp, openApp } from "./desktop.js";
 import { runLogged } from "./exec.js";
@@ -229,6 +230,52 @@ async function appStep(
   }
 }
 
+/**
+ * Starting at login: on a Mac the Mac app opens in the menu bar and starts the runtime, on Linux
+ * a systemd user service does. Asked, never assumed; `autostart off` undoes it.
+ */
+async function autostartStep(
+  paths: Layout,
+  interactive: boolean,
+): Promise<"cancelled" | undefined> {
+  const state = await autostartState(paths);
+  if ("unavailable" in state) {
+    return;
+  }
+  if (state.on) {
+    p.log.success(`Starts at login: ${dim(state.how)}`);
+    return;
+  }
+  if (!interactive) {
+    p.log.info(dim(`To start it at login: \`${command()} autostart on\``));
+    return;
+  }
+  const answer = await p.confirm({
+    message:
+      process.platform === "darwin"
+        ? "Open the Mac app when you log in? It starts engenty wizards in the menu bar, so links and AI clients always reach it."
+        : "Start engenty wizards when you log in? A systemd user service keeps it running, so links and AI clients always reach it.",
+    initialValue: true,
+  });
+  if (cancelled(answer)) {
+    return "cancelled";
+  }
+  if (!answer) {
+    p.log.info(dim(`Later: \`${command()} autostart on\``));
+    return;
+  }
+  try {
+    const after = await setAutostart(paths, true);
+    if ("on" in after && after.on) {
+      p.log.success(`Starts at login: ${dim(after.how)}`);
+    } else {
+      p.log.warn("Starting at login could not be switched on.");
+    }
+  } catch (error) {
+    p.log.warn(`Starting at login could not be switched on. ${(error as Error).message}`);
+  }
+}
+
 /** The line that puts `~/.local/bin` on the PATH, and the shell file it belongs in. */
 function pathLine(): { file: string; line: string } {
   const shell = process.env.SHELL ?? "";
@@ -300,6 +347,9 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   }
   const app = await appStep(paths, options, interactive);
   if (app === "cancelled") {
+    return null;
+  }
+  if ((await autostartStep(paths, interactive)) === "cancelled") {
     return null;
   }
   if ((await pathStep(interactive)) === "cancelled") {
