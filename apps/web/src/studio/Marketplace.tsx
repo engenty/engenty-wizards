@@ -801,7 +801,7 @@ export function MarketplaceBrowser({
   }
   return (
     <div>
-      <label className="mx-auto flex h-10 max-w-md items-center sm:h-11 gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
+      <label className="relative mx-auto flex h-10 max-w-md items-center sm:h-11 gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
         {thinking ? (
           <Spinner className="size-4 shrink-0 text-ink-3" />
         ) : byModel ? (
@@ -831,7 +831,7 @@ export function MarketplaceBrowser({
         ) : null}
       </label>
       {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
-      <div className="max-sm:-mx-4 mt-4 flex gap-2 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
+      <div className="max-sm:-mx-4 mt-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
         {[{ value: "", label: t("market.all") }, ...useCases].map((u) => (
           <button
             key={u.value}
@@ -839,10 +839,10 @@ export function MarketplaceBrowser({
             aria-pressed={filters.useCase === u.value}
             onClick={() => setFilters({ ...filters, useCase: u.value as UseCase | "" })}
             className={cn(
-              "h-9 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[13px] transition",
+              "h-7 shrink-0 whitespace-nowrap rounded-full px-2.5 text-[12.5px] transition",
               filters.useCase === u.value
-                ? "border-ember bg-ember-tint text-ink"
-                : "border-input bg-card text-ink-2 hover:border-ink-4 hover:text-ink",
+                ? "bg-card font-medium text-ink shadow-soft ring-1 ring-border-soft"
+                : "text-ink-3 hover:bg-card/60 hover:text-ink",
             )}
           >
             {u.label}
