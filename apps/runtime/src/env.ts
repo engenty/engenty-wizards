@@ -157,7 +157,7 @@ export const env = {
    * starred kept for offline use. `off` = none.
    */
   marketplace: {
-    url: str("MARKETPLACE_URL", "https://engenty.ai/gallery")
+    url: str("MARKETPLACE_URL", "https://engenty.ai/wizards")
       .replace(/^off$/, "")
       .replace(/\/+$/, ""),
   },

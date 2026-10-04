@@ -109,7 +109,8 @@ const sessions = new Map<string, { at: number; row: SessionRow }>();
 const client = () => ({ id: env.manage.clientId, secret: env.manage.clientSecret || undefined });
 /** Cookies and redirects stay under the path the app is served at. */
 const cookiePath = basePath || "/";
-const home = `${basePath}/`;
+/** Where a sign-in and the local link lead: the studio. */
+const home = `${basePath}/studio/`;
 
 const callbackUrl = () => `${env.appUrl}/api/auth/callback`;
 

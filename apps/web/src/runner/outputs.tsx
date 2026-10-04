@@ -4,7 +4,7 @@ import DOMPurify from "dompurify";
 import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
+import { asset, withBase } from "@/lib/base";
 import { t } from "../lib/i18n";
 import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
@@ -120,7 +120,7 @@ function AiIcon({
   const scale = size / art.h;
   return (
     <img
-      src={withBase(`/ai-labels/${art.file}-${tone}.svg`)}
+      src={asset(`ai-labels/${art.file}-${tone}.svg`)}
       alt=""
       draggable={false}
       className={cn("pointer-events-none absolute max-w-none select-none", className)}

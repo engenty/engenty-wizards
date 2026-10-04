@@ -12,10 +12,16 @@ const appVersion: string = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ).version;
 
-export default defineConfig({
-  base: basePath ? `${basePath}/` : "/",
+export default defineConfig(({ command }) => ({
+  // Built, the app's files sit below the studio (`/studio/assets`, `/studio/icons`): the root of
+  // the host belongs to others. The server serves `wizards.sh`, `embed.js` and `sw.js` at the
+  // root as well. In development everything is served at the root.
+  base: command === "build" ? `${basePath}/studio/` : "/",
   plugins: [react(), tailwindcss()],
-  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion) },
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
+    "import.meta.env.VITE_APP_BASE": JSON.stringify(basePath),
+  },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     // "wizards-source": the shared package is read as TypeScript, so the web app needs no build of it.
@@ -31,4 +37,4 @@ export default defineConfig({
     },
   },
   build: { outDir: "dist", emptyOutDir: true },
-});
+}));

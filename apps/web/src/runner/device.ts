@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { BASE } from "@/lib/base";
+import { asset, BASE } from "@/lib/base";
 
 /** A finger as the main pointer: a phone or a tablet. */
 export const isTouch =
@@ -216,8 +216,8 @@ export async function signalPerson(message: { title: string; body: string; tag: 
   const options = {
     body: message.body,
     tag: message.tag,
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: asset("icons/icon-192.png"),
+    badge: asset("icons/icon-192.png"),
     data: { url: location.href },
   };
   try {

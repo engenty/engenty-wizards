@@ -4,7 +4,7 @@ import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import { ApiError, api } from "./api";
-import { BASE, withBase } from "./base";
+import { STUDIO, withBase } from "./base";
 
 /** An AI client installed on this machine that can think for the app, on its own subscription. */
 export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
@@ -217,7 +217,7 @@ export async function signOut() {
     headers: { "content-type": "application/json" },
     body: "{}",
   });
-  window.location.href = `${BASE}/`;
+  window.location.href = `${STUDIO}/`;
 }
 
 /** Sign-in happens at the Manage-App; it sends the person back to `returnTo`. */

@@ -1,6 +1,7 @@
-import { lazy, type ReactNode, Suspense } from "react";
+import { lazy, type ReactNode, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { Mascot } from "./brand";
+import { STUDIO } from "./lib/base";
 import { useLang } from "./lib/i18n";
 import { useMe } from "./lib/session";
 import { AppFrame } from "./studio/AppFrame";
@@ -57,8 +58,8 @@ function Studio({ children, bare, wide }: { children: ReactNode; bare?: boolean;
   );
 }
 
-export function App() {
-  // A switch of language renders the whole app again, in place.
+/** The public pages: a wizard's link and a shared result, at the root of the host. */
+export function PublicApp() {
   useLang();
   return (
     <Suspense fallback={<Splash />}>
@@ -67,6 +68,27 @@ export function App() {
         <Route path="/w/:token" element={<PublicRunner />} />
         <Route path="/w/:token/:runId" element={<PublicRunner />} />
         <Route path="/s/:token" element={<SharePage />} />
+        <Route path="*" element={<ToStudio />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+/** In development every address is the app's; built, the server sends only these here. */
+function ToStudio() {
+  useEffect(() => {
+    window.location.replace(`${STUDIO}/`);
+  }, []);
+  return <Splash />;
+}
+
+/** The studio, below `/studio`: its addresses are written as if it stood at the root. */
+export function StudioApp() {
+  // A switch of language renders the whole app again, in place.
+  useLang();
+  return (
+    <Suspense fallback={<Splash />}>
+      <Routes>
         <Route
           path="/"
           element={

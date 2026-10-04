@@ -30,10 +30,10 @@ fn shut_down(app: &AppHandle) {
     sidecar::stop(app);
 }
 
-/// `engenty-wizards://w/<id>` opens that wizard; `new`, `settings` and the bare scheme work too;
-/// `new?starter=<id>` opens that template of the marketplace, as the template's own page links
-/// it; `signin?code=…` finishes a sign-in. Nothing else is taken from a link: any page on the web
-/// can send one.
+/// `engenty-wizards://w/<id>` opens that wizard in the studio (`/studio/…`); `new`, `settings`
+/// and the bare scheme work too; `new?starter=<id>` opens that template of the marketplace, as
+/// the template's own page links it; `signin?code=…` finishes a sign-in. Nothing else is taken
+/// from a link: any page on the web can send one.
 fn deep_link_path(url: &Url) -> Option<String> {
     if url.scheme() != "engenty-wizards" {
         return None;
@@ -57,7 +57,7 @@ fn deep_link_path(url: &Url) -> Option<String> {
         return sealed.then(|| format!("/api/auth/handoff?code={code}"));
     }
     match parts.as_slice() {
-        ["w", wizard] if id(wizard) => Some(format!("/edit/{wizard}")),
+        ["w", wizard] if id(wizard) => Some(format!("/studio/edit/{wizard}")),
         ["new"] => {
             let starter = url
                 .query_pairs()
@@ -65,12 +65,12 @@ fn deep_link_path(url: &Url) -> Option<String> {
                 .map(|(_, value)| value.to_string())
                 .filter(|value| !value.is_empty() && value.len() <= 64 && id(value));
             Some(match starter {
-                Some(starter) => format!("/new?starter={starter}"),
-                None => "/new".into(),
+                Some(starter) => format!("/studio/new?starter={starter}"),
+                None => "/studio/new".into(),
             })
         }
-        ["settings"] => Some("/settings".into()),
-        [] => Some("/".into()),
+        ["settings"] => Some("/studio/settings".into()),
+        [] => Some("/studio/".into()),
         _ => None,
     }
 }

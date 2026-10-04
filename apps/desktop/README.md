@@ -119,9 +119,10 @@ https address) and "engenty Cloud" (`CLOUD_URL` in `src/state.rs`). The choice i
 app menu and the tray opens the page again. With a remote server nothing is installed and no
 local runtime is started (one the app started is stopped).
 
-**Deep links:** `engenty-wizards://w/<id>` opens that wizard; `engenty-wizards://new` and
-`engenty-wizards://settings` work too; `engenty-wizards://new?starter=<id>` opens that template
-of the marketplace, as its page in the gallery links it. Nothing else is taken from a link.
+**Deep links:** `engenty-wizards://w/<id>` opens that wizard in the studio (`/studio/edit/<id>`);
+`engenty-wizards://new` and `engenty-wizards://settings` work too;
+`engenty-wizards://new?starter=<id>` opens that template of the marketplace, as its page at
+`engenty.ai/wizards/<id>` links it. Nothing else is taken from a link.
 
 **Development and tests:**
 

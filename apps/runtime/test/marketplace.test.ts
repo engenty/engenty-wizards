@@ -12,7 +12,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "wizards-marketplace-"));
 process.env.APP_URL = "http://localhost:5181";
-process.env.MARKETPLACE_URL = "http://market.test/gallery";
+process.env.MARKETPLACE_URL = "http://market.test/wizards";
 
 let client: typeof import("../src/db/client");
 let wizards: typeof import("../src/services/wizards");
@@ -106,7 +106,7 @@ async function marketplace(input: string | URL | Request, init?: RequestInit) {
   const lang = url.searchParams.get("lang") ?? "de";
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-  const path = url.pathname.replace("/gallery/api/v1", "");
+  const path = url.pathname.replace("/wizards/api/v1", "");
   const all = [...remote.entries.values()];
   if (path === "/entries") {
     const ids = url.searchParams.get("ids");
@@ -182,7 +182,7 @@ describe("searching", () => {
     expect(found.entries.map((e) => e.id)).toEqual(["invoice"]);
     expect(found.entries[0]).toMatchObject({ usable: true, starred: false, credits: null });
     expect(remote.calls[0]).toBe(
-      "GET /gallery/api/v1/entries?lang=de&limit=60&offset=0&q=Faktura&useCase=accounting",
+      "GET /wizards/api/v1/entries?lang=de&limit=60&offset=0&q=Faktura&useCase=accounting",
     );
   });
 
@@ -197,20 +197,20 @@ describe("what is kept for offline use", () => {
   it("is the starters and the starred entries, fetched again only when changed", async () => {
     const exports = () => remote.calls.filter((c) => c.endsWith("/export"));
     await market.syncMarketplace(true);
-    expect(exports()).toEqual(["GET /gallery/api/v1/entries/card/export"]);
+    expect(exports()).toEqual(["GET /wizards/api/v1/entries/card/export"]);
 
     // A star is kept at once; the sync it starts and this one are the same.
     await inTenant(() => market.starEntry(TENANT, "invoice", true));
     await market.syncMarketplace(true);
     expect(exports()).toEqual([
-      "GET /gallery/api/v1/entries/card/export",
-      "GET /gallery/api/v1/entries/invoice/export",
+      "GET /wizards/api/v1/entries/card/export",
+      "GET /wizards/api/v1/entries/invoice/export",
     ]);
 
     // Changed at the marketplace: its hash differs, so it comes again; the other does not.
     remote.entries.set("card", exportOf("card", { revision: 2, hash: "card-2" }));
     await market.syncMarketplace(true);
-    expect(exports().slice(2)).toEqual(["GET /gallery/api/v1/entries/card/export"]);
+    expect(exports().slice(2)).toEqual(["GET /wizards/api/v1/entries/card/export"]);
   });
 
   it("answers a search when the marketplace does not, scored the same way", async () => {
@@ -281,7 +281,7 @@ describe("an entry", () => {
     expect(w).toMatchObject({ title: "Greeting card", starter: "card", starterRevision: 1 });
     expect((await inTenant(() => files.draftFiles(id))).map((f) => f.path)).toEqual(["notes.md"]);
     await vi.waitFor(() =>
-      expect(remote.calls).toContain("POST /gallery/api/v1/entries/card/installs"),
+      expect(remote.calls).toContain("POST /wizards/api/v1/entries/card/installs"),
     );
     await expect(inTenant(() => wizards.createWizard("u", { starterId: "nope" }))).rejects.toThrow(
       /no starter/,

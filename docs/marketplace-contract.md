@@ -1,12 +1,12 @@
 # Contract between the runtime and the marketplace
 
 The marketplace is an app of its own: the wizards anyone can start from, their search, and their
-public pages (`/gallery`, `/gallery/<id>`). The runtime (this repo) is one of its clients. It
+public pages (`/wizards/`, `/wizards/<id>`). The runtime (this repo) is one of its clients. It
 searches the marketplace live, starts wizards from its entries, and keeps a few of them for
 offline use: the ones the marketplace marks as starters, and the ones a person starred. This file
 is what both sides implement; the types are `packages/shared/src/marketplace.ts`.
 
-`MARKETPLACE_URL` names the marketplace (default `https://engenty.ai/gallery`; `off` = none). Its
+`MARKETPLACE_URL` names the marketplace (default `https://engenty.ai/wizards`; `off` = none). Its
 API is below that address, at `/api/v1`. Every call is public and needs no token; publishing,
 verifying and voting will take a token of the Manage-App (scope `wizards:publish`).
 
@@ -51,8 +51,8 @@ verifying and voting will take a token of the Manage-App (scope `wizards:publish
 
 ## The pages
 
-The marketplace serves the gallery (`/gallery`) and each entry's page (`/gallery/<id>`, an
-address that stays) with their words in the HTML for search engines, `/gallery/sitemap.xml` and
+The marketplace serves the gallery (`/wizards/`) and each entry's page (`/wizards/<id>`, an
+address that stays) with their words in the HTML for search engines, `/wizards/sitemap.xml` and
 `/robots.txt`. An entry's page offers the app as the landing page does, and opens the template in
 an installed app with `engenty-wizards://new?starter=<id>` (`entryAppLink`) or in a runtime the
-visitor names at `<runtime>/new?starter=<id>`.
+visitor names at `<runtime>/studio/new?starter=<id>`.

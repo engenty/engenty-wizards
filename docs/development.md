@@ -66,6 +66,12 @@ The agent is told what the chosen sandbox runs (`apps/runtime/src/sandbox`).
 `APP_URL` defaults to `http://localhost:5181` from source (the Vite dev server) and to
 `http://localhost:<API_PORT>` when built (`pnpm start` serves the pages itself).
 
+Addresses: the studio is `/studio/…` (`/studio/new`, `/studio/edit/<id>`, `/studio/settings`),
+built with its files below it (`/studio/assets`, `/studio/icons`). A wizard's link is
+`/w/<token>`, a shared result `/s/<token>`, the API `/api/…`. Of the root the server serves only
+`/wizards.sh`, `/embed.js` and `/sw.js`, and sends `/` to `/studio/`; on engenty.ai the root is
+the landing page and `/wizards/` the marketplace.
+
 `.env.local` and `data/` in the repo root belong to `pnpm dev` and `pnpm start`. The installed
 command (`pnpm wizards`, `engenty-wizards`) uses `~/.engenty/wizards` instead: see
 [Local install](#local-install).
@@ -155,7 +161,9 @@ Alone, on your own server: see [Run it on a server](../README.md#run-it-on-a-ser
 README. One container: API + built SPA + Chromium, data on the `/data` volume.
 
 Managed (the cloud runtime): `compose.cloud.yaml` runs the app and a separate Chromium
-container that holds no secrets and reaches no database. Set the `MANAGE_*` block, `GATEWAY_URL`,
+container that holds no secrets and reaches no database. On engenty.ai the proxy sends the
+runtime only its own paths — `/studio`, `/api`, `/w`, `/s`, `/.well-known`, `/wizards.sh`,
+`/embed.js`, `/sw.js` — and the rest of the host to the landing page and the marketplace. Set the `MANAGE_*` block, `GATEWAY_URL`,
 `APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
 start; a new one migrates when it is first opened.
 
@@ -273,10 +281,10 @@ the person first, deleting always. `ENGENTY_INTEGRATIONS_REGISTRY_URL` points at
 ## Marketplace
 
 The wizards a person can start from on "new" are entries of the marketplace. The marketplace is
-an app of its own (the entries, their search, the public gallery at `/gallery` and each
+an app of its own (the entries, their search, the public gallery at `/wizards/` and each
 entry's page); this runtime is one of its clients. What both sides implement is
 [`docs/marketplace-contract.md`](marketplace-contract.md); `MARKETPLACE_URL` names the
-marketplace (default `https://engenty.ai/gallery`, `off` = none).
+marketplace (default `https://engenty.ai/wizards`, `off` = none).
 
 - **Search**: the "new" page asks `GET /api/studio/marketplace`, and the runtime asks the
   marketplace live (`/api/v1/entries`) — words, use case, industry, result, one page at a time,
@@ -293,7 +301,7 @@ marketplace (default `https://engenty.ai/gallery`, `off` = none).
   formula of `credits/estimate.ts` at the gateway's prices, else at list prices).
 - **Older apps**: an entry written in a newer definition version, or with anything this app's
   schema would drop, is listed as "needs a newer app" and cannot be started from.
-- **Starting from an entry** (`/new?starter=<id>`, the desktop app's
+- **Starting from an entry** (`/studio/new?starter=<id>`, the desktop app's
   `engenty-wizards://new?starter=<id>`): the wizard and its workspace files come from the
   marketplace, else from what is kept. The wizard is a copy: `wizard.starter` and
   `wizard.starter_revision` say where it came from, later revisions of the entry do not touch it.

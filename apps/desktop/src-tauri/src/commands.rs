@@ -108,7 +108,7 @@ pub fn enter_server(app: AppHandle) -> Result<(), String> {
         inner.choice.as_ref().and_then(Choice::remote_url)
     }
     .ok_or("no remote server chosen")?;
-    window::enter(&app, &url, &format!("{url}/"));
+    window::enter(&app, &url, &format!("{url}/studio/"));
     Ok(())
 }
 

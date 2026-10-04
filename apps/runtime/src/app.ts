@@ -139,11 +139,28 @@ async function previewFor(path: string): Promise<string | null> {
   return tenant ? withTenant(tenant, () => linkPreview(path)) : null;
 }
 
-// Production: the built SPA, with every unknown path falling back to index.html.
+/**
+ * Production: the built app. Its files and the studio's pages sit below `/studio`; the public
+ * pages are `/w/<token>` and `/s/<token>`. Of the root only what others fetch there is served:
+ * the installer, the embed script for websites, and the service worker of public wizards. The
+ * rest of the root belongs to others (the landing page); a runtime alone sends `/` to the studio.
+ */
 const webDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
+const ROOT_FILES = ["/wizards.sh", "/embed.js", "/sw.js"];
+const PAGES = /^\/(studio(\/|$)|w\/|s\/)/;
 if (existsSync(webDir)) {
-  app.use("/*", serveStatic({ root: webDir }));
+  for (const file of ROOT_FILES) {
+    app.get(file, serveStatic({ root: webDir }));
+  }
+  app.use(
+    "/studio/*",
+    serveStatic({ root: webDir, rewriteRequestPath: (path) => path.slice("/studio".length) }),
+  );
+  app.get("/", (c) => c.redirect(`${basePath}/studio/`));
   app.get("*", async (c) => {
+    if (!PAGES.test(c.req.path)) {
+      return c.text("Not found", 404);
+    }
     const html = await readFile(join(webDir, "index.html"), "utf8");
     const preview = await previewFor(c.req.path).catch(() => null);
     // A wizard's link installs as that wizard: its own name and start address on the home screen.

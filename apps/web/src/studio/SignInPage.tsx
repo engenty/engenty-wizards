@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
 import { api } from "../lib/api";
-import { withBase } from "../lib/base";
+import { STUDIO } from "../lib/base";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
@@ -27,12 +27,10 @@ export function SignInPage() {
   const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
   const auto = config.data?.mode === "local" && config.data.devLogin;
   const [autoFailed, setAutoFailed] = useState(false);
-  // While sign-up is closed, a visitor of the start page goes to the landing page; the sign-in
-  // itself stays at /sign-in.
-  const away =
-    config.data?.signedOutUrl && window.location.pathname === withBase("/") && !failed
-      ? config.data.signedOutUrl
-      : null;
+  // While sign-up is closed, a visitor of the studio's start page goes to the landing page; the
+  // sign-in itself stays at /studio/sign-in.
+  const start = window.location.pathname === STUDIO || window.location.pathname === `${STUDIO}/`;
+  const away = config.data?.signedOutUrl && start && !failed ? config.data.signedOutUrl : null;
 
   useEffect(() => {
     if (away) {

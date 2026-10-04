@@ -140,7 +140,7 @@ pub fn show_local(app: &AppHandle) -> bool {
             let url = sidecar
                 .entry
                 .take()
-                .unwrap_or_else(|| format!("{}/", sidecar.origin));
+                .unwrap_or_else(|| format!("{}/studio/", sidecar.origin));
             (sidecar.origin.clone(), url)
         })
     };
@@ -153,7 +153,7 @@ pub fn show_local(app: &AppHandle) -> bool {
     }
 }
 
-/// Opens a path of the studio (`/edit/<id>`), now or once the server is shown.
+/// Opens a path of the studio (`/studio/edit/<id>`), now or once the server is shown.
 pub fn open_path(app: &AppHandle, path: &str) {
     let origin = {
         let shell = app.state::<Shell>();
@@ -213,7 +213,7 @@ fn bounce(app: &AppHandle, url: &Url) {
                     && origin_of(url) != *origin
                     && Some(origin_of(url)) != home =>
             {
-                Some(format!("{origin}/"))
+                Some(format!("{origin}/studio/"))
             }
             _ => None,
         }
