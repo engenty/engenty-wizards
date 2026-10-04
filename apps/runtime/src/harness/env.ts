@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { EnvSpec, HarnessAuth } from "./types.js";
 
@@ -8,31 +8,39 @@ let shellEnv: Promise<Record<string, string>> | null = null;
 
 /** The person's login shell, asked once: a desktop app and a bare dev server start without its variables. */
 export function loginShellEnv(): Promise<Record<string, string>> {
-  shellEnv ??= (async () => {
+  shellEnv ??= new Promise<Record<string, string>>((done) => {
     const shell = process.env.SHELL || "/bin/zsh";
-    try {
-      const { stdout } = await run(shell, ["-l", "-i", "-c", "env"], {
-        timeout: 10_000,
-        maxBuffer: 4 * 1024 * 1024,
-        env: {
-          HOME: process.env.HOME,
-          USER: process.env.USER,
-          PATH: process.env.PATH,
-          TERM: "dumb",
-        },
-      });
+    // In a session of its own, away from the terminal `engenty-wizards` runs in: an interactive
+    // shell takes over that terminal for its job control and keeps it when it ends, and Ctrl-C
+    // then reaches nobody. (execFile cannot do this: it drops `detached`.)
+    const child = spawn(shell, ["-l", "-i", "-c", "env"], {
+      detached: true,
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 10_000,
+      env: {
+        HOME: process.env.HOME,
+        USER: process.env.USER,
+        PATH: process.env.PATH,
+        TERM: "dumb",
+      },
+    });
+    let stdout = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.on("error", () => done({}));
+    child.on("close", (code) => {
       const out: Record<string, string> = {};
-      for (const line of stdout.split("\n")) {
+      for (const line of code === 0 ? stdout.split("\n") : []) {
         const at = line.indexOf("=");
         if (at > 0) {
           out[line.slice(0, at)] = line.slice(at + 1);
         }
       }
-      return out;
-    } catch {
-      return {};
-    }
-  })();
+      done(out);
+    });
+  });
   return shellEnv;
 }
 
