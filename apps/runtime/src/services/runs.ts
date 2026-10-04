@@ -5,6 +5,7 @@ import { db, schema } from "../db/client.js";
 import { unattended } from "../engine/asks.js";
 import { emitEvent, recentEvents, subscribe } from "../engine/events.js";
 import { createRun, RunInputError, reviewStep, submitPage } from "../engine/runner.js";
+import { ModelUnavailableError } from "../model-errors.js";
 import { signedUrl } from "../secrets/signing.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { notFound, ServiceError } from "./errors.js";
@@ -32,6 +33,8 @@ export async function startTestRun(
     version: null,
     mode: "test",
     userId,
+  }).catch((err) => {
+    throw err instanceof ModelUnavailableError ? new ServiceError("refused", err.message) : err;
   });
   if (autopilot) {
     fly(runId, autopilot.answers, autopilot.acceptReviews);

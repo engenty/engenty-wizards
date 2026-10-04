@@ -5,6 +5,7 @@ import {
   wizardSchema,
 } from "@engenty-wizards/shared/definition";
 import {
+  type Capability,
   MARKETPLACE_LANGS,
   type MarketplaceEntry,
   type MarketplaceExport,
@@ -20,6 +21,7 @@ import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
 import { control, controlDb, db, schema, withTenant } from "../db/client.js";
+import { missingCapabilities } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
 import {
@@ -124,13 +126,18 @@ function keptItem(e: MarketplaceExport, lang: MarketplaceLang): MarketplaceItem 
 
 // --- searching -----------------------------------------------------------------------------
 
-/** A summary as this app shows it: whether it can read it, and whether it is starred. */
-function asEntry(summary: MarketplaceSummary, starred: Set<string>): MarketplaceEntry {
+/** A summary as this app shows it: whether it can read and run it, and whether it is starred. */
+function asEntry(
+  summary: MarketplaceSummary,
+  starred: Set<string>,
+  unavailable: Set<Capability>,
+): MarketplaceEntry {
   return {
     ...summary,
     credits: null,
     usable: summary.version <= DEFINITION_VERSION,
     starred: starred.has(summary.id),
+    missing: summary.capabilities.filter((c) => unavailable.has(c)),
   };
 }
 
@@ -146,6 +153,8 @@ export interface MarketplaceSearch extends MarketplaceFilters {
 export interface MarketplaceResult extends MarketplacePage<MarketplaceEntry> {
   /** True: the marketplace did not answer, and the result is what is kept here. */
   offline: boolean;
+  /** The capabilities this runtime has no model for. */
+  unavailable: Capability[];
 }
 
 /** Searches the marketplace; without an answer, what is kept here, scored the same way. */
@@ -153,6 +162,7 @@ export async function searchMarketplace(search: MarketplaceSearch): Promise<Mark
   const { q = "", lang, starred: onlyStarred, limit = 60, offset = 0, ...filters } = search;
   const stars = await starredIds();
   const starred = new Set(stars);
+  const unavailable = await missingCapabilities();
   const params = new URLSearchParams({ lang, limit: String(limit), offset: String(offset) });
   if (onlyStarred) {
     params.set("ids", stars.join(","));
@@ -173,15 +183,21 @@ export async function searchMarketplace(search: MarketplaceSearch): Promise<Mark
   if (remote) {
     return {
       ...remote,
-      entries: remote.entries.map((e) => asEntry(e, starred)),
+      entries: remote.entries.map((e) => asEntry(e, starred, unavailable)),
       offline: false,
+      unavailable: [...unavailable],
     };
   }
   const local = (await kept(onlyStarred ? stars : undefined)).map((e) => keptSummary(e, lang));
   const page = onlyStarred
     ? searchEntries(local, "", {}, { limit, offset })
     : searchEntries(local, q, filters, { limit, offset });
-  return { ...page, entries: page.entries.map((e) => asEntry(e, starred)), offline: true };
+  return {
+    ...page,
+    entries: page.entries.map((e) => asEntry(e, starred, unavailable)),
+    offline: true,
+    unavailable: [...unavailable],
+  };
 }
 
 // --- one entry -----------------------------------------------------------------------------
@@ -255,7 +271,7 @@ export async function marketplaceDetail(
     return null;
   }
   const { definition, files, ...summary } = found;
-  const entry = asEntry(summary, new Set(await starredIds()));
+  const entry = asEntry(summary, new Set(await starredIds()), await missingCapabilities());
   const parsed = readable(definition) ? wizardSchema.parse(definition) : null;
   if (!parsed) {
     return {

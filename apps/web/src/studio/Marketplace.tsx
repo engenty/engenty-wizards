@@ -64,6 +64,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { ENGENTY_FILL, ENGENTY_KIND_FILL, type EngentyKind } from "../engenty/colors";
 import { api } from "../lib/api";
@@ -82,14 +83,17 @@ type EntryDetail = MarketplaceEntry & WizardOutline;
 /** What a search answers: a page of entries, and whether the marketplace answered. */
 interface SearchPage extends MarketplacePage<MarketplaceEntry> {
   offline: boolean;
+  /** The capabilities this install has no model for. */
+  unavailable: Capability[];
 }
 
 interface Filters {
   useCase: UseCase | "";
   industry: Industry | "";
   format: ItemFormat | "";
+  capability: Capability | "";
 }
-const NO_FILTERS: Filters = { useCase: "", industry: "", format: "" };
+const NO_FILTERS: Filters = { useCase: "", industry: "", format: "", capability: "" };
 
 type Labels = Record<string, { de: string; en: string }>;
 const label = (labels: Labels, id: string) => labels[id]?.[lang] ?? id;
@@ -169,7 +173,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
       }}
       className={cn(
         "relative flex min-h-[124px] cursor-pointer flex-col gap-5 p-4 text-left transition sm:min-h-[136px] sm:p-5 hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-        !entry.usable && "opacity-60",
+        (!entry.usable || entry.missing.length > 0) && "opacity-60",
       )}
     >
       {/* engenty sits on the card's corner, a little over its edge. */}
@@ -189,7 +193,9 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
         <div className="mt-0.5 text-[13px] text-ink-3 leading-snug">{entry.pitch}</div>
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
-        {entry.usable ? (
+        {entry.usable && entry.missing.length ? (
+          <Chip tone="warn">{t("market.missing", { list: capabilityList(entry.missing) })}</Chip>
+        ) : entry.usable ? (
           <>
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3.5" /> {t("market.minutes", { n: entry.effort.minutes })}
@@ -219,6 +225,10 @@ function Fact({ title, children }: { title: string; children: ReactNode }) {
     </div>
   );
 }
+
+/** Capabilities by name, as one says them in a sentence. */
+const capabilityList = (capabilities: Capability[]) =>
+  capabilities.map((c) => label(CAPABILITIES, c)).join(", ");
 
 const CAPABILITY_ICONS: Record<Capability, LucideIcon> = {
   text: PenLine,
@@ -371,6 +381,7 @@ function EntryDialog({
   busy?: boolean;
 }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const detail = useQuery({
     queryKey: ["marketplace-entry", id, lang],
     queryFn: () =>
@@ -515,10 +526,22 @@ function EntryDialog({
                   <ul className="flex flex-col gap-2">
                     {entry.capabilities.map((c) => {
                       const Icon = CAPABILITY_ICONS[c];
+                      const missing = entry.missing.includes(c);
                       return (
-                        <li key={c} className="flex items-center gap-2.5 text-[14px] text-ink-2">
-                          <Icon className="size-4 shrink-0 text-cobalt" />
+                        <li
+                          key={c}
+                          className={cn(
+                            "flex items-center gap-2.5 text-[14px]",
+                            missing ? "text-ink-3" : "text-ink-2",
+                          )}
+                        >
+                          <Icon
+                            className={cn("size-4 shrink-0", missing ? "text-rose" : "text-cobalt")}
+                          />
                           {label(CAPABILITIES, c)}
+                          {missing ? (
+                            <span className="text-[12px] text-rose">{t("market.unavailable")}</span>
+                          ) : null}
                         </li>
                       );
                     })}
@@ -564,7 +587,21 @@ function EntryDialog({
             <Button variant="secondary" onClick={onClose}>
               {t("common.close")}
             </Button>
-            <Button disabled={!entry.usable} busy={busy} onClick={() => onUse(entry)}>
+            {entry.usable && entry.missing.length ? (
+              <Button variant="secondary" onClick={() => navigate("/settings/models")}>
+                {t("editor.models.settings")}
+              </Button>
+            ) : null}
+            <Button
+              disabled={!entry.usable || entry.missing.length > 0}
+              title={
+                entry.missing.length
+                  ? t("market.missingHint", { list: capabilityList(entry.missing) })
+                  : undefined
+              }
+              busy={busy}
+              onClick={() => onUse(entry)}
+            >
               {t("market.use")}
             </Button>
           </div>
@@ -580,6 +617,8 @@ interface FilterOption {
   /** Entries the option would leave, with the other filters as they are. */
   count: number;
   icon?: ReactNode;
+  /** This install has no model for it: shown, not to be picked. */
+  unavailable?: boolean;
 }
 
 /** A filter as a pill: its name, or its pick with a way to drop it; the options open below. */
@@ -672,14 +711,16 @@ function FilterMenu({
               type="button"
               role="option"
               aria-selected={o.value === value}
-              disabled={!o.count}
+              disabled={!o.count || o.unavailable}
               onClick={() => {
                 onChange(o.value === value ? "" : o.value);
                 setOpen(false);
               }}
               className={cn(
                 "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[14px] transition coarse:py-2.5",
-                o.count ? "text-ink-2 hover:bg-paper-2 hover:text-ink" : "text-ink-4",
+                o.count && !o.unavailable
+                  ? "text-ink-2 hover:bg-paper-2 hover:text-ink"
+                  : "text-ink-4",
                 o.value === value && "font-medium text-ink",
               )}
             >
@@ -687,6 +728,10 @@ function FilterMenu({
               <span className="flex-1 whitespace-nowrap">{o.label}</span>
               {o.value === value ? (
                 <Check className="size-4 text-ember" />
+              ) : o.unavailable ? (
+                <span className="whitespace-nowrap text-[12px] text-ink-4">
+                  {t("market.unavailable")}
+                </span>
               ) : (
                 <span className="text-[12px] text-ink-4 tabular-nums">{o.count}</span>
               )}
@@ -772,8 +817,10 @@ export function MarketplaceBrowser({
         label: label(labels, id),
         icon: icon?.(id),
         count: (first?.facets[key] as Record<string, number>)[id] ?? 0,
+        unavailable: key === "capability" && unavailable.has(id as Capability),
       }));
 
+  const unavailable = new Set(first?.unavailable ?? []);
   const useCases = options("useCase", USE_CASES);
   const menus: { key: keyof Filters; name: string; options: FilterOption[] }[] = [
     { key: "industry", name: t("market.industry"), options: options("industry", INDUSTRIES) },
@@ -783,6 +830,14 @@ export function MarketplaceBrowser({
       options: options("format", ITEM_FORMATS, (id) => (
         <FormatIcon format={id as ItemFormat} className="size-4 text-ink-3" />
       )),
+    },
+    {
+      key: "capability",
+      name: t("market.capability"),
+      options: options("capability", CAPABILITIES, (id) => {
+        const Icon = CAPABILITY_ICONS[id as Capability];
+        return <Icon className="size-4 text-ink-3" />;
+      }),
     },
   ];
   const narrowed = Boolean(query.trim()) || starred || Object.values(filters).some(Boolean);

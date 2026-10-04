@@ -5,6 +5,7 @@ import {
 } from "./engenty/search-index/catalog-lexical.js";
 import {
   CAPABILITIES,
+  type Capability,
   INDUSTRIES,
   type Industry,
   ITEM_FORMATS,
@@ -120,7 +121,8 @@ export function matchesFilters(e: MarketplaceSummary, f: MarketplaceFilters): bo
     (!f.industry ||
       e.industries.includes(f.industry) ||
       (f.industry !== "any" && e.industries.includes("any"))) &&
-    (!f.format || e.formats.includes(f.format))
+    (!f.format || e.formats.includes(f.format)) &&
+    (!f.capability || e.capabilities.includes(f.capability))
   );
 }
 
@@ -128,6 +130,7 @@ const FACETS = {
   useCase: (e: MarketplaceSummary) => e.useCases as string[],
   industry: (e: MarketplaceSummary) => e.industries as string[],
   format: (e: MarketplaceSummary) => e.formats as string[],
+  capability: (e: MarketplaceSummary) => e.capabilities as string[],
 } satisfies Record<keyof MarketplaceFacets, (e: MarketplaceSummary) => string[]>;
 
 /**
@@ -139,13 +142,21 @@ function facetsOf(
   found: readonly MarketplaceSummary[],
   filters: MarketplaceFilters,
 ): MarketplaceFacets {
-  const facets: MarketplaceFacets = { useCase: {}, industry: {}, format: {} };
+  const facets: Required<MarketplaceFacets> = {
+    useCase: {},
+    industry: {},
+    format: {},
+    capability: {},
+  };
   for (const key of Object.keys(FACETS) as (keyof MarketplaceFacets)[]) {
     const options = new Set(all.flatMap(FACETS[key]));
     const counts = facets[key] as Record<string, number>;
     for (const option of options) {
       counts[option] = found.filter((e) =>
-        matchesFilters(e, { ...filters, [key]: option as UseCase & Industry & ItemFormat }),
+        matchesFilters(e, {
+          ...filters,
+          [key]: option as UseCase & Industry & ItemFormat & Capability,
+        }),
       ).length;
     }
   }

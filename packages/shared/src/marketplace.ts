@@ -269,6 +269,7 @@ export interface MarketplaceFilters {
   useCase?: UseCase;
   industry?: Industry;
   format?: ItemFormat;
+  capability?: Capability;
 }
 
 /** Per option of a filter: the entries it would leave, with the other filters as they are. */
@@ -276,6 +277,8 @@ export interface MarketplaceFacets {
   useCase: Partial<Record<UseCase, number>>;
   industry: Partial<Record<Industry, number>>;
   format: Partial<Record<ItemFormat, number>>;
+  /** Optional: a marketplace older than this filter leaves it out. */
+  capability?: Partial<Record<Capability, number>>;
 }
 
 /** A page of a search: the entries, best first, how many there are, and the filters' counts. */
@@ -324,4 +327,6 @@ export interface MarketplaceEntry extends MarketplaceSummary {
   usable: boolean;
   /** The person keeps it for offline use. */
   starred: boolean;
+  /** What it needs that this runtime has no model for: a wizard made from it would not start. */
+  missing: Capability[];
 }

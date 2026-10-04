@@ -38,6 +38,7 @@ import { currentTenant } from "../tenants/tenant.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
+import { blockingMessage, missingModels } from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
 import { resolveRef } from "./template.js";
@@ -191,6 +192,11 @@ export async function createRun(input: {
   const id = nanoid(18);
   const first = input.definition.steps[0];
   const state: RunState = { values: {}, outputs: {}, history: [], notes: {} };
+  // A step every run passes through needs a model this runtime cannot serve: refuse before anything is held.
+  const blocked = blockingMessage(await missingModels(input.definition));
+  if (blocked) {
+    throw new ModelUnavailableError(blocked);
+  }
   // The run's expected cost is held before it starts; what it really costs is booked per call.
   const estimate = await estimateRun(input.wizardId, input.version, input.definition);
   if (!(await reserveForRun(id, estimate.reserve))) {

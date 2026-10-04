@@ -23,6 +23,7 @@ import {
 } from "../connectors/external.js";
 import { balanceCredits, canSpend } from "../credits/credits.js";
 import { estimateRun } from "../credits/estimate.js";
+import { missingModels } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { freshAuth, loginEnv } from "../harness/env.js";
 import {
@@ -502,6 +503,11 @@ export const studio = new Hono<Vars>()
   .get("/wizards/:id/estimate", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
     return c.json(await estimateRun(w.id, null, w.draft));
+  })
+  // The models the draft needs that this runtime cannot serve, by class, with the steps that call them.
+  .get("/wizards/:id/models", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    return c.json({ missing: await missingModels(w.draft) });
   })
   // A runtime that runs alone: the wizard's copy in the cloud of the linked account.
   .get("/wizards/:id/cloud", async (c) => {

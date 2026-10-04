@@ -1,11 +1,11 @@
-import type { RunView } from "@engenty-wizards/shared/run";
+import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Download, Play, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
-import { t } from "../lib/i18n";
+import { type Key, t } from "../lib/i18n";
 import { useMe, type WizardDetail } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, Spinner } from "../ui";
@@ -126,6 +126,14 @@ export function EditorPage() {
     }
   }, [params, wizard.data, chat, setParams]);
 
+  // Models the draft needs that this runtime cannot serve: a step on every path blocks the test.
+  const models = useQuery({
+    queryKey: ["wizard-models", id, wizard.data?.revision],
+    queryFn: () => api.get<{ missing: MissingModel[] }>(`/api/studio/wizards/${id}/models`),
+    enabled: Boolean(wizard.data),
+  });
+  const missing = models.data?.missing ?? [];
+  const blocked = missing.some((m) => m.blocking);
   const testRun = useMutation({
     mutationFn: () => api.post<{ runId: string }>(`/api/studio/wizards/${id}/test-runs`),
     onSuccess: ({ runId }) => setDrawerRun(runId),
@@ -207,7 +215,7 @@ export function EditorPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled={hasIssues || building}
+            disabled={hasIssues || building || blocked}
             busy={testRun.isPending}
             onClick={() => testRun.mutate()}
           >
@@ -259,6 +267,34 @@ export function EditorPage() {
                 }}
               >
                 {t("editor.fixWithChat")}
+              </Button>
+            </div>
+          ) : null}
+          {!hasIssues && !building && missing.length ? (
+            <div
+              className={cn(
+                "absolute top-3 right-3 left-3 z-10 mx-auto max-w-xl animate-rise rounded-xl bg-card p-4 shadow-elevated ring-1",
+                blocked ? "ring-rose/30" : "ring-amber/30",
+              )}
+            >
+              <p className="text-[14px]">
+                {t(blocked ? "editor.models.blocking" : "editor.models.optional")}
+              </p>
+              <ul className="mt-2 list-disc pl-5 text-[13px] text-ink-2">
+                {missing.map((m) => (
+                  <li key={m.cls}>
+                    <span className="text-ink">{t(`class.${m.cls}` as Key)}</span> (
+                    {m.steps.map((s) => `„${s.title}“`).join(", ")}): {m.problem}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="sm"
+                variant="quiet"
+                className="mt-3"
+                onClick={() => navigate("/settings/models")}
+              >
+                {t("editor.models.settings")}
               </Button>
             </div>
           ) : null}

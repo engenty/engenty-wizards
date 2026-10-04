@@ -238,6 +238,10 @@ const de = {
     "Die Verbindung ist abgebrochen. Was schon gebaut war, ist gespeichert – schick die Nachricht bitte noch einmal.",
   "editor.issues": "Bevor du testest oder teilst, braucht der Wizard noch Korrekturen:",
   "editor.fixWithChat": "Vom Assistenten beheben lassen",
+  "editor.models.blocking": "So kann der Wizard nicht starten. Es fehlen Modelle:",
+  "editor.models.optional":
+    "Diese Schritte laufen so nicht. Wähle beim Testen einen Weg ohne sie oder richte die Modelle ein:",
+  "editor.models.settings": "Modelle einrichten",
   "editor.prevStep": "Vorheriger Schritt",
   "editor.nextStep": "Nächster Schritt",
   "editor.deleteStep": "Schritt löschen",
@@ -304,6 +308,10 @@ const de = {
   "market.all": "Alle",
   "market.industry": "Branche",
   "market.format": "Ergebnis",
+  "market.capability": "Fähigkeit",
+  "market.unavailable": "nicht eingerichtet",
+  "market.missing": "Hier nicht eingerichtet: {list}",
+  "market.missingHint": "Dafür fehlt hier ein Modell: {list}. Richte es unter Modelle ein.",
   "market.none": "Keine Vorlage passt zu dieser Auswahl.",
   "market.notFound": "Diese Vorlage gibt es nicht (mehr).",
   "market.star": "Merken",
@@ -671,7 +679,7 @@ const de = {
   "project.assistantChanged": "Projekt aktualisiert",
 };
 
-type Key = keyof typeof de;
+export type Key = keyof typeof de;
 
 const en: Record<Key, string> = {
   "brand.tagline": "Build AI wizards, no code.",
@@ -908,6 +916,10 @@ const en: Record<Key, string> = {
     "The connection dropped. What was already built is saved – please send your message again.",
   "editor.issues": "Before you test or share, the wizard needs a few fixes:",
   "editor.fixWithChat": "Let the assistant fix it",
+  "editor.models.blocking": "The wizard can't start like this. Models are missing:",
+  "editor.models.optional":
+    "These steps won't run like this. Choose a path without them when testing, or set up the models:",
+  "editor.models.settings": "Set up models",
   "editor.prevStep": "Previous step",
   "editor.nextStep": "Next step",
   "editor.deleteStep": "Delete step",
@@ -972,6 +984,11 @@ const en: Record<Key, string> = {
   "market.all": "All",
   "market.industry": "Industry",
   "market.format": "Result",
+  "market.capability": "Capability",
+  "market.unavailable": "not set up",
+  "market.missing": "Not set up here: {list}",
+  "market.missingHint":
+    "This needs a model that isn't set up here: {list}. Set it up under Models.",
   "market.none": "No template matches this selection.",
   "market.notFound": "There is no such template (any more).",
   "market.star": "Star",

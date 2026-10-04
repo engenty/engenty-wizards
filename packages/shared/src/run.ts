@@ -1,4 +1,4 @@
-import type { Format, Step, WizardDefinition } from "./definition.js";
+import type { Format, ModelClass, Step, WizardDefinition } from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
 
 export type RunStatus = "waiting_input" | "running" | "done" | "failed" | "cancelled";
@@ -184,6 +184,16 @@ export interface StepEstimate {
 }
 
 /** What a run is expected to cost. `available` is false where no credits are involved. */
+/** A model class a wizard needs that this runtime cannot serve, with the steps that call it. */
+export interface MissingModel {
+  cls: ModelClass;
+  /** Why the class cannot run, as the person reads it. */
+  problem: string;
+  steps: { id: string; title: string }[];
+  /** A step that needs it lies on every path: the run cannot start. */
+  blocking: boolean;
+}
+
 export interface RunEstimate {
   available: boolean;
   credits: number;

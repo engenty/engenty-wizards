@@ -39,6 +39,7 @@ import { basePath, env } from "../env.js";
 import { loadAsset, saveAsset } from "../files/storage.js";
 import { reverseGeocode } from "../geocode.js";
 import { hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
+import { ModelUnavailableError } from "../model-errors.js";
 import { listDownload, renderDownload, stepHtml } from "../render/downloads.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { verifySignedUrl } from "../secrets/signing.js";
@@ -235,7 +236,7 @@ export const publicRoutes = new Hono()
       });
       return c.json({ runId });
     } catch (err) {
-      if (err instanceof NoCreditsError) {
+      if (err instanceof NoCreditsError || err instanceof ModelUnavailableError) {
         return c.json({ error: "Dieser Wizard ist gerade nicht verfügbar." }, 403);
       }
       throw err;

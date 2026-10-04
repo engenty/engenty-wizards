@@ -1,4 +1,9 @@
-import { INDUSTRY_IDS, ITEM_FORMAT_IDS, USE_CASE_IDS } from "@engenty-wizards/shared/marketplace";
+import {
+  CAPABILITY_IDS,
+  INDUSTRY_IDS,
+  ITEM_FORMAT_IDS,
+  USE_CASE_IDS,
+} from "@engenty-wizards/shared/marketplace";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { SessionUser } from "../auth/index.js";
@@ -15,6 +20,7 @@ const searchSchema = z.object({
   useCase: z.enum(USE_CASE_IDS).optional(),
   industry: z.enum(INDUSTRY_IDS).optional(),
   format: z.enum(ITEM_FORMAT_IDS).optional(),
+  capability: z.enum(CAPABILITY_IDS).optional(),
   starred: z
     .enum(["1", "0"])
     .optional()
