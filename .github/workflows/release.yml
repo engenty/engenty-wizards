@@ -1,8 +1,9 @@
 name: Release
 
 # A tag `v<version>` (the version of the root package.json) publishes what a local install is made
-# of on the GitHub release: the package `engenty-wizards` as a tarball and the Mac app's archive.
-# The installer (apps/web/public/wizards.sh) and `engenty-wizards app` fetch both from there.
+# of on the GitHub release: the package `engenty-wizards` as a tarball. The installer
+# (apps/web/public/wizards.sh) fetches it from there. The Mac app (apps/desktop) is not built or
+# offered for now: people install the studio as a Chrome app.
 # The installer itself reaches engenty.ai with the deploy the same tag starts (ci.yml).
 #
 # The package also goes to npm once the repository variable PUBLISH_NPM is `true` and the secret
@@ -18,11 +19,9 @@ on:
     paths:
       - apps/runtime/**
       - apps/web/public/wizards.sh
-      - apps/desktop/**
       - packages/**
       - bin/**
       - scripts/npm-package.mjs
-      - scripts/desktop-archive.mjs
       - package.json
       - pnpm-lock.yaml
       - .github/workflows/release.yml
@@ -97,33 +96,8 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' "$("$wizards" open --print)")" = 302
           "$wizards" stop
 
-  # Apple silicon only: an Intel build (runner `macos-26-intel`) was never made or tried.
-  mac-app:
-    runs-on: macos-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
-      - run: pnpm install --frozen-lockfile
-
-      # Ad-hoc signed until there is a Developer ID (apps/desktop/README.md): with
-      # APPLE_SIGNING_IDENTITY and the notarization variables set, Tauri signs and notarizes.
-      - name: Build and pack
-        run: node scripts/desktop-archive.mjs
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: mac-app
-          path: dist/desktop/*
-          if-no-files-found: error
-
   publish:
-    needs: [package, installer, mac-app]
+    needs: [package, installer]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -138,14 +112,13 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
-      - name: GitHub release with the package and the Mac app
+      - name: GitHub release with the package
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
-            artifacts/npm-package/*.tgz \
-            artifacts/mac-app/*.tar.gz artifacts/mac-app/*.tar.gz.sha256
+            artifacts/npm-package/*.tgz
 
       - name: npm
         if: vars.PUBLISH_NPM == 'true'

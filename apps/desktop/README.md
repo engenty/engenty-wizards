@@ -114,8 +114,9 @@ running wizards, alive in the Dock and the menu bar.
 `~/Library/LaunchAgents/com.engenty.wizards.login.plist`, that runs
 `open -g -a "engenty wizards.app" --args --at-login` at login. Started that way the app keeps its
 window closed and only starts the server; without a server chosen yet it shows the window, which
-asks for one. `engenty-wizards autostart on|off` writes and removes the same file; the file is
-all the state there is.
+asks for one. The file is all the state there is. Since the app is not offered (2026-10-04),
+`engenty-wizards autostart on|off` writes a LaunchAgent of the same name that runs the command
+itself (`start --no-open`); either one replaces the other.
 
 **Logs:** `~/Library/Logs/com.engenty.wizards/` — `runtime.log` (stdout and stderr of the
 runtime the app started), `shell.log` (the app, and the installer's lines). Help → "Protokolle

@@ -12,11 +12,11 @@
 #   data/                    your wizards and results (made at the first start)
 #
 # Then the guided setup runs (`engenty-wizards setup`): an AI client to think with, ffmpeg,
-# the Mac app, starting at login. Running the installer again updates an install; your data is
+# starting at login. Running the installer again updates an install; your data is
 # kept.
 #
 #   --yes            ask nothing and install nothing optional
-#   --no-setup       only Node, the runtime and the command (what `update` and the Mac app run)
+#   --no-setup       only Node, the runtime and the command (what `update` runs)
 #   --version <v>    this version instead of the newest
 #   --no-link        do not link the command into ~/.local/bin
 #
@@ -252,7 +252,7 @@ banner_frame() {
 }
 
 banner() {
-  # Only on a terminal: `update` and the Mac app read plain lines.
+  # Only on a terminal: `update` from the studio reads plain lines.
   if [ "$TTY" != 1 ]; then
     return
   fi

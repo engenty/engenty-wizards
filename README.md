@@ -48,9 +48,8 @@ you through the rest:
   installs them too. Or use an API key or [Ollama](https://ollama.com).
 - **Google Chrome and ffmpeg** (optional): Chrome for PDF and PNG exports and for steps that use
   a browser, ffmpeg for MP4 videos of animated widgets.
-- **The Mac app** (optional): the studio in its own window and in the menu bar.
-- **Start at login** (optional): on a Mac the Mac app opens in the menu bar when you log in and
-  starts engenty wizards; on Linux a systemd user service does. Links and AI clients then always
+- **Start at login** (optional): engenty wizards starts in the background when you log in (a
+  LaunchAgent on a Mac, a systemd user service on Linux). Links and AI clients then always
   reach it. `engenty-wizards autostart on` or `off` switches it later.
 
 Then it starts and the studio opens in your browser. Later, start it with:
@@ -62,6 +61,10 @@ engenty-wizards
 It runs while that terminal is open; Ctrl-C stops it. `engenty-wizards status` says what is
 installed and what runs, `engenty-wizards setup` runs the guided setup again, and
 `engenty-wizards --help` lists the rest.
+
+**Install it as an app.** In Chrome or Edge the studio installs as an app: its own window, its
+own icon in the Dock or taskbar. The studio offers it in a banner at the top; or click the install
+icon at the right of the address bar.
 
 ### From source
 
@@ -107,8 +110,7 @@ Your machine only answers on `localhost`. To let others open shared wizards, run
 
 Everything lives in `~/.engenty/wizards/data`: the databases and the files of your wizards and
 results. Keys you enter are kept in the Keychain on a Mac, elsewhere encrypted in that folder.
-Back up the folder; delete it to start over. The command line and the Mac app use the same
-data. Settings go into `~/.engenty/wizards/.env` (see [.env.example](.env.example));
+Back up the folder; delete it to start over. Settings go into `~/.engenty/wizards/.env` (see [.env.example](.env.example));
 `ENGENTY_HOME` moves the whole install.
 
 `pnpm start` in a checkout keeps its data in the `data` folder next to the code instead.
@@ -119,11 +121,12 @@ data. Settings go into `~/.engenty/wizards/.env` (see [.env.example](.env.exampl
 engenty-wizards update
 ```
 
-This runs the installer again without its questions and updates the Mac app if it is installed.
+This runs the installer again without its questions. The studio says when a newer release is
+out and can run the same update from its footer.
 From source: `git pull`, `pnpm install`, `pnpm build`. Your data is brought up to date at the
 next start.
 
-To remove engenty wizards, delete `~/.engenty/wizards` (your data is in its `data` folder) and
+To remove engenty wizards, run `engenty-wizards autostart off`, then delete `~/.engenty/wizards` (your data is in its `data` folder) and
 `~/.local/bin/engenty-wizards`.
 
 ## Run it on a server
@@ -141,17 +144,6 @@ docker compose logs     # shows the link to open once
 Point the proxy at port 8891. On a server, engenty thinks with your keys or Ollama; the
 AI clients' subscriptions live on your own computer. The code sandbox is off in this image.
 
-## Mac app
-
-The setup offers it; `engenty-wizards app` installs it later. It is a window on the same
-install: it starts engenty wizards when you open it, keeps it running in the menu bar, and
-stops it when you quit. It can also connect to your own server instead. "Open at Login" in its
-menu opens it in the menu bar, without its window, whenever you log in.
-
-The app isn't signed with an Apple Developer ID yet, so it is not offered as a download: macOS
-would block a copy that came through a browser. Installed by the command above it opens
-normally.
-
 ## Troubleshooting
 
 | | |
@@ -168,7 +160,7 @@ More settings: [.env.example](.env.example).
 
 ## For developers
 
-Development server, checks, how it is built, the managed mode and the desktop app:
+Development server, checks, how it is built, the managed mode:
 [docs/development.md](docs/development.md).
 
 ## License

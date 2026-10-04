@@ -4,7 +4,6 @@ import { delimiter, join } from "node:path";
 import * as p from "@clack/prompts";
 import { autostartState, setAutostart } from "./autostart.js";
 import { installClient, installCommand } from "./clients.js";
-import { appState, installApp, openApp } from "./desktop.js";
 import { runLogged } from "./exec.js";
 import {
   installedByScript,
@@ -32,12 +31,14 @@ export interface SetupOptions {
   yes: boolean;
   /** Clients to install without asking (`--client codex`). */
   clients: string[];
-  /** Install the Mac app without asking (`--app`). */
-  app: boolean;
 }
 
 /** What the person wants after the setup. */
-export type Next = "start" | "app" | "later";
+export type Next = "start" | "later";
+
+/** The studio as an app of its own: Chrome (or Edge) installs it from the page. */
+const CHROME_APP =
+  "Tip: in Chrome or Edge the studio installs as an app, in a window of its own with its own icon. The studio offers it at the top; or use the install icon in the address bar.";
 
 /** How this install is started, as the person types it. */
 export const command = () =>
@@ -188,51 +189,9 @@ async function toolsStep(interactive: boolean): Promise<"cancelled" | undefined>
   }
 }
 
-/** Installs or updates the Mac app; true when it is there afterwards. */
-async function appStep(
-  paths: Layout,
-  options: SetupOptions,
-  interactive: boolean,
-): Promise<boolean | "cancelled"> {
-  if (process.platform !== "darwin") {
-    return false;
-  }
-  const version = packageVersion();
-  const existing = await appState();
-  if (existing?.version === version) {
-    p.log.success(`Mac app ${version}: ${dim(tilde(existing.path))}`);
-    return true;
-  }
-  let wanted = options.app;
-  if (!wanted && interactive) {
-    const answer = await p.confirm({
-      message: existing
-        ? `Update the Mac app from ${existing.version ?? "an older version"} to ${version}?`
-        : "Install the Mac app? It shows the studio in its own window and keeps it in the menu bar.",
-      initialValue: true,
-    });
-    if (cancelled(answer)) {
-      return "cancelled";
-    }
-    wanted = answer;
-  }
-  if (!wanted) {
-    return Boolean(existing);
-  }
-  const spinner = busy("Fetching the Mac app");
-  try {
-    const path = await installApp(paths, version);
-    spinner.stop(`Mac app ${version}: ${dim(tilde(path))}`);
-    return true;
-  } catch (error) {
-    spinner.fail(`The Mac app was not installed. ${(error as Error).message}`);
-    return Boolean(existing);
-  }
-}
-
 /**
- * Starting at login: on a Mac the Mac app opens in the menu bar and starts the runtime, on Linux
- * a systemd user service does. Asked, never assumed; `autostart off` undoes it.
+ * Starting at login: on a Mac a LaunchAgent starts the runtime, on Linux a systemd user
+ * service does. Asked, never assumed; `autostart off` undoes it.
  */
 async function autostartStep(
   paths: Layout,
@@ -252,9 +211,7 @@ async function autostartStep(
   }
   const answer = await p.confirm({
     message:
-      process.platform === "darwin"
-        ? "Open the Mac app when you log in? It starts engenty wizards in the menu bar, so links and AI clients always reach it."
-        : "Start engenty wizards when you log in? A systemd user service keeps it running, so links and AI clients always reach it.",
+      "Start engenty wizards when you log in? It keeps running in the background, so links and AI clients always reach it.",
     initialValue: true,
   });
   if (cancelled(answer)) {
@@ -326,7 +283,7 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
 
 /**
  * The guided setup: what this machine has, what is missing, and what to install — an AI client
- * to think with, ffmpeg, the Mac app. Returns what to do next, or null when it was stopped.
+ * to think with, ffmpeg, starting at login. Returns what to do next, or null when it was stopped.
  */
 export async function setup(paths: Layout, options: SetupOptions): Promise<Next | null> {
   const interactive = !options.yes && Boolean(process.stdin.isTTY && process.stdout.isTTY);
@@ -345,10 +302,6 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   if ((await toolsStep(interactive)) === "cancelled") {
     return null;
   }
-  const app = await appStep(paths, options, interactive);
-  if (app === "cancelled") {
-    return null;
-  }
   if ((await autostartStep(paths, interactive)) === "cancelled") {
     return null;
   }
@@ -360,6 +313,7 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
     paths,
   );
 
+  p.log.info(CHROME_APP);
   if (!interactive) {
     p.outro(`Start it with ${cyan(command())}`);
     return "later";
@@ -367,15 +321,6 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   const next = await p.select<Next>({
     message: "All set. What next?",
     options: [
-      ...(app
-        ? [
-            {
-              value: "app" as const,
-              label: "Open the Mac app",
-              hint: "the studio in its own window",
-            },
-          ]
-        : []),
       { value: "start", label: "Start it here", hint: "the studio opens in your browser" },
       { value: "later", label: "Not now" },
     ],
@@ -386,18 +331,7 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   if (next === "later") {
     p.outro(`Start it with ${cyan(command())}`);
   } else {
-    p.outro(next === "app" ? "Opening the Mac app" : "Starting engenty wizards");
+    p.outro("Starting engenty wizards");
   }
   return next;
-}
-
-/** Opens the app after the setup; falls back to saying where it is. */
-export async function openInstalledApp(): Promise<number> {
-  const app = await appState();
-  if (!app) {
-    console.error("The Mac app is not installed.");
-    return 1;
-  }
-  await openApp(app.path);
-  return 0;
 }

@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localTicketExpiry, mintLocalTicket } from "../src/auth/local-ticket.js";
 import { loginItemText, unitText } from "../src/cli/autostart.js";
 import { installCommand } from "../src/cli/clients.js";
-import { appArchiveUrl } from "../src/cli/desktop.js";
 import { inherited, runtimeEnv, runtimePath } from "../src/cli/environment.js";
 import { layout, readEnvFile, wizardsHome } from "../src/cli/home.js";
 import { CLIENTS, nodeIsCurrent, suggestedClient } from "../src/cli/machine.js";
@@ -142,11 +141,6 @@ describe("the machine", () => {
     expect(nodeIsCurrent("22.20.0")).toBe(false);
   });
 
-  it("fetches the Mac app of its own version from the release", () => {
-    expect(appArchiveUrl("0.1.0", "arm64")).toBe(
-      "https://github.com/engenty/engenty-wizards/releases/download/v0.1.0/engenty-wizards-0.1.0-mac-arm64.tar.gz",
-    );
-  });
 });
 
 describe("the AI clients", () => {
@@ -181,32 +175,14 @@ describe("starting at login on Linux", () => {
   });
 });
 
-describe("opening the Mac app at login", () => {
-  it("is a LaunchAgent that opens the app without its window, as the app's menu writes it", () => {
-    // The same text as login.rs writes: the app's menu and this command share the file.
-    expect(loginItemText("/Applications/engenty wizards.app")).toBe(LOGIN_ITEM_TEXT);
+describe("starting at login on a Mac", () => {
+  it("is a LaunchAgent that runs the install's command without opening a browser", () => {
+    const plist = loginItemText("/Users/a&b/.engenty/wizards/bin/engenty-wizards", "/tmp/a.log");
+    expect(plist).toContain("<string>com.engenty.wizards.login</string>");
+    expect(plist).toContain(
+      "<string>/Users/a&amp;b/.engenty/wizards/bin/engenty-wizards</string>\n    <string>start</string>\n    <string>--no-open</string>",
+    );
+    expect(plist).toContain("<key>SuccessfulExit</key>\n    <false/>");
+    expect(plist).toContain("<string>/tmp/a.log</string>");
   });
 });
-
-const LOGIN_ITEM_TEXT = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.engenty.wizards.login</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/bin/open</string>
-    <string>-g</string>
-    <string>-a</string>
-    <string>/Applications/engenty wizards.app</string>
-    <string>--args</string>
-    <string>--at-login</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>ProcessType</key>
-  <string>Interactive</string>
-</dict>
-</plist>
-`;

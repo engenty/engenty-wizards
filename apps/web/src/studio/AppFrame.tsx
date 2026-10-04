@@ -6,6 +6,7 @@ import { Logo } from "../brand";
 import { t } from "../lib/i18n";
 import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
 import { cn, IconButton } from "../ui";
+import { InstallBanner } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -176,6 +177,7 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
 export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <InstallBanner />
       <TopBar me={me} />
       <main
         className={cn(

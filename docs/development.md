@@ -6,8 +6,8 @@ For working on the code. To install and use engenty wizards, see the [README](..
 
 | | Alone | Managed |
 |---|---|---|
-| What | one person, one tenant, on this machine: the local install (`engenty-wizards`, the desktop app), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
-| Sign-in | a one-time link at start (the command line and the desktop app open it themselves); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
+| What | one person, one tenant, on this machine: the local install (`engenty-wizards`), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
+| Sign-in | a one-time link at start (the command line opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
 | Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
 | Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Gemini CLI, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
 | Studio chat | a model of class `highest`, or the admin's own Claude subscription (the installed Claude Code runs headless) | a model of class `highest` |
@@ -31,9 +31,9 @@ A pnpm workspace:
 | `apps/web/` | the SPA: studio, public runner, share page |
 | `apps/runtime/src/cli/` | the `engenty-wizards` command of a local install: start, guided setup, status, update |
 | `apps/web/public/wizards.sh` | the installer, served by every runtime at `/wizards.sh` |
-| `apps/desktop/` | the desktop app (Tauri 2): a window on the local install or on a server |
+| `apps/desktop/` | the desktop app (Tauri 2), not built or offered for now: see [Desktop app](#desktop-app) |
 | `bin/` | the entry of the `engenty-wizards` command |
-| `scripts/` | `npm-package.mjs` (the npm package), `desktop-archive.mjs` (the Mac app's archive) |
+| `scripts/` | `npm-package.mjs` (the npm package), `desktop-archive.mjs` (the Mac app's archive, unused for now) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
 | `plugin/` | the Claude Code plugin template |
 | `deploy/` | the Chromium container of the cloud runtime |
@@ -180,16 +180,15 @@ tag. To go back to an older commit: `git push --force origin <commit>:deploy/run
 What people install is the package `engenty-wizards`, built like an npm package: the built
 runtime, the built SPA, the plugin template and the `engenty-wizards` command, with the shared
 package inside it. It is not on npm yet: the tarball is attached to the GitHub release
-`v<version>`, and npm installs it from that address. It gets onto a machine in two ways, and
-both keep their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
+`v<version>`, and npm installs it from that address. It gets onto a machine through the
+installer, which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
 
 | | Code | Node |
 |---|---|---|
 | `curl -fsSL https://engenty.ai/wizards.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
-| the desktop app's first start | as the installer: the app runs `wizards.sh` it carries | as the installer |
 
 Once the package is on npm (the repository variable `PUBLISH_NPM`, below), `npx engenty-wizards`
-is a third way: the code in npm's cache, on the person's own Node 24.11 or newer.
+is a second way: the code in npm's cache, on the person's own Node 24.11 or newer.
 
 ```bash
 pnpm package                       # node scripts/npm-package.mjs → dist/npm/engenty-wizards-<version>.tgz
@@ -220,7 +219,7 @@ ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/engenty-wiza
 How the pieces share one install:
 
 - The runtime leaves `running.json` in its data folder while it runs (`apps/runtime/src/running.ts`).
-  The command line and the desktop app look there before starting one, and open the running one
+  The command line looks there before starting one, and open the running one
   instead: two runtimes would write the same databases.
 - Entering a runtime that already runs needs no restart: `engenty-wizards open` signs a ticket
   for `/api/local/enter` with the data folder's secret (`apps/runtime/src/auth/local-ticket.ts`),
@@ -233,13 +232,18 @@ How the pieces share one install:
 
 A release is a tag `v<version>` (the version of the root package.json):
 `.github/workflows/release.yml` packs the package, runs the installer with it on Linux and
-macOS, builds the Mac app, and attaches the tarball and the app's archive to the GitHub release.
+macOS, and attaches the tarball to the GitHub release.
 With the repository variable `PUBLISH_NPM=true` and the secret `NPM_TOKEN` it also publishes to
 npm. The same tag deploys the cloud runtime, which puts the current `wizards.sh` on
 `engenty.ai`. On a pull request the same workflow builds and tests everything and publishes
 nothing.
 
 ## Desktop app
+
+Not built, released or offered for now (decided 2026-10-04): it is unsigned, so it could only
+come through the installer, and a Chrome app does what it did. The studio is a web app with a
+manifest (`apps/web/public/manifest.webmanifest`); Chrome and Edge install it as an app, and the
+studio offers that in a banner (`apps/web/src/studio/InstallBanner.tsx`). The code stays.
 
 `apps/desktop/` is a Tauri 2 app (macOS first): a window on the local install or on a server. It
 brings no runtime along. On its first start with "this Mac" it runs the installer it carries,
@@ -305,8 +309,7 @@ marketplace (default `https://engenty.ai/wizards`, `off` = none).
   formula of `credits/estimate.ts` at the gateway's prices, else at list prices).
 - **Older apps**: an entry written in a newer definition version, or with anything this app's
   schema would drop, is listed as "needs a newer app" and cannot be started from.
-- **Starting from an entry** (`/studio/new?starter=<id>`, the desktop app's
-  `engenty-wizards://new?starter=<id>`): the wizard and its workspace files come from the
+- **Starting from an entry** (`/studio/new?starter=<id>`): the wizard and its workspace files come from the
   marketplace, else from what is kept. The wizard is a copy: `wizard.starter` and
   `wizard.starter_revision` say where it came from, later revisions of the entry do not touch it.
   The marketplace counts it.

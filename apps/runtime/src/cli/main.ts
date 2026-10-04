@@ -1,27 +1,23 @@
-import { installApp } from "./desktop.js";
 import { layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
-import { command, openInstalledApp, setup } from "./setup.js";
+import { command, setup } from "./setup.js";
 import { open, start } from "./start.js";
 import { autostart, status, stop } from "./status.js";
-import { dim, tilde } from "./ui.js";
 import { update } from "./update.js";
 
 const HELP = `engenty wizards ${packageVersion()}
 
   ${command()} [start]    start it and open the studio; the first time, the setup runs first
-  ${command()} setup      guided setup: an AI client to think with, ffmpeg, the Mac app, start at login
+  ${command()} setup      guided setup: an AI client to think with, ffmpeg, start at login
   ${command()} open       let this browser into the running studio (--print: only show the link)
   ${command()} status     what is installed and what runs
   ${command()} doctor     status, and what is wrong
   ${command()} stop       stop it; the data is kept
   ${command()} update     the newest version
-  ${command()} app        install or update the Mac app
-  ${command()} autostart  start it at login: on, off (macOS: the Mac app; Linux: a systemd service)
+  ${command()} autostart  start it at login: on, off (macOS: a LaunchAgent; Linux: a systemd service)
 
   --yes, -y          ask nothing and install nothing optional
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
-  --app              install the Mac app without asking
   --no-open          start without opening the browser
   --version, --help
 
@@ -35,7 +31,6 @@ interface Args {
   yes: boolean;
   open: boolean;
   print: boolean;
-  app: boolean;
   clients: string[];
 }
 
@@ -46,7 +41,6 @@ function parse(argv: string[]): Args | string {
     yes: false,
     open: true,
     print: false,
-    app: false,
     clients: [],
   };
   for (let i = 0; i < argv.length; i++) {
@@ -57,8 +51,6 @@ function parse(argv: string[]): Args | string {
       args.open = false;
     } else if (arg === "--print") {
       args.print = true;
-    } else if (arg === "--app") {
-      args.app = true;
     } else if (arg === "--client") {
       const id = argv[++i];
       if (!CLIENTS.some((client) => client.id === id)) {
@@ -90,7 +82,7 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
   const paths = layout();
-  const setupOptions = { yes: args.yes, clients: args.clients, app: args.app };
+  const setupOptions = { yes: args.yes, clients: args.clients };
   switch (args.command) {
     case "help":
       console.log(HELP);
@@ -104,16 +96,13 @@ async function main(argv: string[]): Promise<number> {
       if (first && !args.yes && process.stdin.isTTY && process.stdout.isTTY) {
         const next = await setup(paths, setupOptions);
         if (next !== "start") {
-          return next === "app" ? openInstalledApp() : next === null ? 130 : 0;
+          return next === null ? 130 : 0;
         }
       }
       return start(paths, { open: args.open });
     }
     case "setup": {
       const next = await setup(paths, setupOptions);
-      if (next === "app") {
-        return openInstalledApp();
-      }
       return next === "start" ? start(paths, { open: args.open }) : next === null ? 130 : 0;
     }
     case "open":
@@ -128,15 +117,6 @@ async function main(argv: string[]): Promise<number> {
       return update(paths);
     case "autostart":
       return autostart(paths, args.value);
-    case "app":
-      try {
-        const path = await installApp(paths, packageVersion());
-        console.log(`Mac app ${packageVersion()}: ${dim(tilde(path))}`);
-        return 0;
-      } catch (error) {
-        console.error((error as Error).message);
-        return 1;
-      }
     default:
       console.error(`Unknown command ${args.command}.\n\n${HELP}`);
       return 2;

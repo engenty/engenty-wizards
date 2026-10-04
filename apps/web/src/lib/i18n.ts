@@ -583,6 +583,12 @@ const de = {
   "notify.needsYou": "Der Wizard braucht dich kurz.",
   "install.add": "Zum Startbildschirm hinzufügen",
   "install.ios": "Tippe unten auf „Teilen“ und dann auf „Zum Home-Bildschirm“.",
+  "install.app.offer":
+    "Installiere das Studio als App: eigenes Fenster, eigenes Symbol im Dock oder in der Taskleiste.",
+  "install.app.browser":
+    "In Chrome oder Edge lässt sich das Studio als App installieren: eigenes Fenster, eigenes Symbol.",
+  "install.app.action": "Als App installieren",
+  "install.app.close": "Schließen",
   "common.offline": "Keine Verbindung. Prüfe dein Netz und versuch es noch einmal.",
   "common.retry": "Erneut versuchen",
   "common.cancel": "Abbrechen",
@@ -1248,6 +1254,12 @@ const en: Record<Key, string> = {
   "notify.needsYou": "The wizard needs you for a moment.",
   "install.add": "Add to home screen",
   "install.ios": "Tap “Share” below, then “Add to Home Screen”.",
+  "install.app.offer":
+    "Install the studio as an app: its own window, its own icon in the Dock or taskbar.",
+  "install.app.browser":
+    "In Chrome or Edge the studio installs as an app: its own window, its own icon.",
+  "install.app.action": "Install as app",
+  "install.app.close": "Close",
   "common.offline": "No connection. Check your network and try again.",
   "common.retry": "Try again",
   "common.cancel": "Cancel",

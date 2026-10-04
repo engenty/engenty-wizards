@@ -1,7 +1,6 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { autostartState, setAutostart } from "./autostart.js";
-import { appState } from "./desktop.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
 import { runningRuntime, settings } from "./start.js";
@@ -13,11 +12,10 @@ import { bad, badge, cyan, dim, no, ok, tilde } from "./ui.js";
  */
 export async function status(paths: Layout, checks: boolean): Promise<number> {
   const { dataDir } = settings(paths);
-  const [running, clients, ffmpeg, app, atLogin] = await Promise.all([
+  const [running, clients, ffmpeg, atLogin] = await Promise.all([
     runningRuntime(dataDir),
     detectClients(paths),
     findFfmpeg(),
-    appState(),
     autostartState(paths),
   ]);
   const chrome = findChrome();
@@ -38,12 +36,6 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
       ? `${ok} ${cyan(running.url)} ${dim(`pid ${running.pid}, since ${running.startedAt}`)}`
       : `${no} not running`,
   );
-  if (process.platform === "darwin") {
-    row(
-      "Mac app",
-      app ? `${ok} ${app.version ?? ""} ${dim(tilde(app.path))}` : `${no} not installed`,
-    );
-  }
   if (!("unavailable" in atLogin)) {
     row(
       "At login",
