@@ -126,15 +126,149 @@ style() {
   FRAMES=(◒ ◐ ◓ ◑)
 }
 
+# The tall engenty, the rose one with one eye, in pixels: two rows of them make one line of half
+# blocks. . nothing  R rose  r its shade  K the mouth. The eye goes on top.
+ENGENTY=(
+  "....R...."
+  "...RRR..."
+  "..RRRRR.."
+  "..RRRRR.."
+  ".RRRRRRr."
+  ".RRRRRRr."
+  "RRRRRRRRr"
+  "RRRRRRRRr"
+  "RRRRRRRRr"
+  "RRRRRRRRr"
+  ".RRRKRRr."
+  ".RRRRRRr."
+  ".rRRRRrr."
+  "..rrrrr.."
+)
+# Its tip swaying to one side or the other, like a flame.
+ENGENTY_LEFT=("...R....." "..RRR...." "..RRRR..." ".RRRRRR..")
+ENGENTY_RIGHT=(".....R..." "....RRR.." "...RRRR.." "..RRRRRR.")
+
+# The eye: five rows of five pixels from the body's fifth row. W white, K pupil, . the body.
+eye_rows() {
+  case "$1" in
+    left) EYE=(".WWW." "WWWWW" "KKWWW" "KKWWW" ".WWW.") ;;
+    right) EYE=(".WWW." "WWWWW" "WWWKK" "WWWKK" ".WWW.") ;;
+    up) EYE=(".WKK." "WWKKW" "WWWWW" "WWWWW" ".WWW.") ;;
+    shut) EYE=("....." "....." "K...K" ".KKK." ".....") ;;
+    *) EYE=(".WWW." "WWWWW" "WWKKW" "WWKKW" ".WWW.") ;;
+  esac
+}
+
+# Sets C to the colour of a pixel, as a foreground (3) or background (4) parameter.
+pixel_colour() {
+  case "$1" in
+    R) C="${2}8;2;240;36;86" ;;
+    r) C="${2}8;2;188;18;62" ;;
+    W) C="${2}8;2;255;255;255" ;;
+    K) C="${2}8;2;46;8;20" ;;
+    S) C="${2}8;2;96;96;96" ;;
+  esac
+}
+
+# One picture of the engenty, into PICTURE: 9 lines of 9 columns. $1 the tip (still, left,
+# right), $2 the eye, $3 how many pixels it is off the ground (0 to 2).
+engenty_picture() {
+  local tip="$1" lift="${3:-0}" rows=() y x row top bottom line pixel
+  eye_rows "$2"
+  # Two rows of air for a hop, fourteen of engenty, its shadow and a row below that.
+  for y in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
+    row="........."
+    if [ "$y" -ge $((2 - lift)) ] && [ "$y" -lt $((16 - lift)) ]; then
+      x=$((y - 2 + lift))
+      row="${ENGENTY[x]}"
+      [ "$tip" = left ] && [ "$x" -lt 4 ] && row="${ENGENTY_LEFT[x]}"
+      [ "$tip" = right ] && [ "$x" -lt 4 ] && row="${ENGENTY_RIGHT[x]}"
+      if [ "$x" -ge 4 ] && [ "$x" -lt 9 ]; then
+        pixel="${EYE[x - 4]}"
+        line=""
+        for top in 0 1 2 3 4; do
+          if [ "${pixel:top:1}" = "." ]; then line="$line${row:top+2:1}"; else line="$line${pixel:top:1}"; fi
+        done
+        row="${row:0:2}$line${row:7}"
+      fi
+    fi
+    # The shadow shrinks as the engenty leaves the ground.
+    if [ "$y" = 16 ]; then
+      case "$lift" in
+        0) row="..SSSSS.." ;;
+        1) row="...SSS..." ;;
+        *) row="....S...." ;;
+      esac
+    fi
+    rows+=("$row")
+  done
+  PICTURE=()
+  for y in 0 2 4 6 8 10 12 14 16; do
+    line=""
+    for x in 0 1 2 3 4 5 6 7 8; do
+      top="${rows[y]:x:1}"
+      bottom="${rows[y + 1]:x:1}"
+      if [ "$top" = "." ] && [ "$bottom" = "." ]; then
+        line="$line$RESET "
+      elif [ "$top" = "$bottom" ]; then
+        pixel_colour "$top" 3
+        line="$line$RESET"$'\033['"${C}m█"
+      elif [ "$top" = "." ]; then
+        pixel_colour "$bottom" 3
+        line="$line$RESET"$'\033['"${C}m▄"
+      elif [ "$bottom" = "." ]; then
+        pixel_colour "$top" 3
+        line="$line$RESET"$'\033['"${C}m▀"
+      else
+        pixel_colour "$top" 3
+        top="$C"
+        pixel_colour "$bottom" 4
+        line="$line$RESET"$'\033['"$top;${C}m▀"
+      fi
+    done
+    PICTURE+=("$line$RESET")
+  done
+}
+
+# Prints a picture with the name beside it, over the one before, and holds it for $4 seconds.
+banner_frame() {
+  local i=0 line
+  engenty_picture "$1" "$2" "$3"
+  [ -n "${BANNER_DRAWN:-}" ] && printf '\033[9A'
+  BANNER_DRAWN=1
+  for line in "${PICTURE[@]}"; do
+    printf '\r   %s' "$line"
+    case "$i" in
+      3) printf '    %sengenty wizards%s' "$BOLD" "$RESET" ;;
+      4) printf '    %sFor the tasks that keep coming back.%s' "$DIM" "$RESET" ;;
+    esac
+    printf '\n'
+    i=$((i + 1))
+  done
+  sleep "$4"
+}
+
 banner() {
   # Only on a terminal: `update` and the Mac app read plain lines.
   if [ "$TTY" != 1 ]; then
     return
   fi
-  printf '\n'
-  printf '   %s▄██████▄%s\n' "$ORANGE" "$RESET"
-  printf '   %s██%s ● ● %s██%s   %sengenty wizards%s\n' "$ORANGE" "$RESET$BOLD" "$RESET$ORANGE" "$RESET" "$BOLD" "$RESET"
-  printf '   %s▀██████▀%s   %sFor the tasks that keep coming back.%s\n\n' "$ORANGE" "$RESET" "$DIM" "$RESET"
+  printf '\n%s' "$HIDE"
+  # It wakes up, looks around, hops and blinks: a second and a half.
+  banner_frame still shut 0 .25
+  banner_frame still open 0 .2
+  banner_frame still left 0 .18
+  banner_frame still right 0 .18
+  banner_frame still open 0 .1
+  banner_frame still up 1 .07
+  banner_frame left up 2 .1
+  banner_frame still open 1 .07
+  banner_frame right open 0 .09
+  banner_frame left open 0 .09
+  banner_frame still open 0 .12
+  banner_frame still shut 0 .06
+  banner_frame still open 0 0
+  printf '%s\n' "$SHOW"
 }
 
 tilde() {
