@@ -1,0 +1,86 @@
+name: CI
+
+# The checks of docs/development.md on every push to main and every pull request. A green push to
+# main then moves the branch `deploy/runtime` to that commit; the server deploys what that branch
+# points at (Coolify resource `runtime`, Auto Deploy). No secret and no call to the server from here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # On main a running check finishes, so every deploy is of a commit that passed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # The pnpm version is the `packageManager` of package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every branch with its history: the step compares against the deploy branch.
+          fetch-depth: 0
+
+      - name: Move deploy/runtime
+        run: |
+          set -euo pipefail
+          branch=deploy/runtime
+          # What the two images are built from (apps/runtime/Dockerfile, deploy/Dockerfile.browser).
+          paths=(
+            apps/runtime apps/web packages plugin deploy
+            compose.cloud.yaml .dockerignore
+            package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json
+            ':(exclude)apps/runtime/test'
+          )
+          if git rev-parse --quiet --verify "origin/$branch" >/dev/null; then
+            if ! git merge-base --is-ancestor "origin/$branch" "$GITHUB_SHA"; then
+              echo "$branch is not behind this commit (moved by hand, or a newer run was first): left as it is."
+              exit 0
+            fi
+            if git diff --quiet "origin/$branch" "$GITHUB_SHA" -- "${paths[@]}"; then
+              echo "Nothing the runtime is built from changed since $(git rev-parse --short "origin/$branch"): no deploy."
+              exit 0
+            fi
+          fi
+          git push origin "$GITHUB_SHA:refs/heads/$branch"
+          echo "$branch now at $(git rev-parse --short "$GITHUB_SHA"): the server deploys it."

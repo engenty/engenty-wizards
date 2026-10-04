@@ -91,6 +91,9 @@ node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to
 visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
 Manage-App.
 
+GitHub runs lint, typecheck, test and build on every push to `main` and every pull request
+(`.github/workflows/ci.yml`).
+
 ## Deploy
 
 Alone, on your own server: see [Run it on a server](../README.md#run-it-on-a-server) in the
@@ -100,6 +103,11 @@ Managed (the cloud runtime): `compose.cloud.yaml` runs the app and a separate Ch
 container that holds no secrets and reaches no database. Set the `MANAGE_*` block, `GATEWAY_URL`,
 `APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
 start; a new one migrates when it is first opened.
+
+engenty's own cloud runtime deploys from the branch `deploy/runtime`. After a green push to `main`
+the same workflow moves that branch to the commit, if something the images are built from changed
+(not for docs, tests or the desktop app), and the server deploys what the branch points at. To go
+back to an older commit: `git push --force origin <commit>:deploy/runtime`.
 
 ## Desktop app
 
