@@ -1,0 +1,190 @@
+import { ExternalLink } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { lang, t } from "../lib/i18n";
+import { Dialog, Empty, Input, Spinner } from "../ui";
+import { ENGENTY_CREDITS, HIGHLIGHT_CREDITS, type ProductCredit } from "./product-credits";
+
+interface OssCredit {
+  name: string;
+  version: string;
+  license: string;
+  homepage?: string;
+}
+
+interface OssCreditGroup {
+  id: string;
+  kind: "root" | "app" | "package";
+  label: string;
+  packages: OssCredit[];
+}
+
+/** apps/web/src/about/oss-credits.json, written by `pnpm about:data`. */
+interface OssCreditsData {
+  shared: OssCredit[];
+  groups: OssCreditGroup[];
+}
+
+const matches = (query: string, ...texts: (string | undefined)[]) =>
+  texts.some((text) => text?.toLowerCase().includes(query));
+
+function CreditRow({
+  name,
+  homepage,
+  version,
+  license,
+  description,
+}: {
+  name: string;
+  homepage?: string;
+  version?: string;
+  license: string;
+  description?: string;
+}) {
+  return (
+    <li className="py-2.5">
+      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+        {homepage ? (
+          <a
+            href={homepage}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-[14px] text-ink underline-offset-4 hover:underline"
+          >
+            {name}
+            <ExternalLink aria-hidden className="size-3 text-ink-4" />
+          </a>
+        ) : (
+          <span className="font-medium text-[14px] text-ink">{name}</span>
+        )}
+        {version ? <span className="text-[12px] text-ink-3 tabular-nums">{version}</span> : null}
+        <span className="text-[12px] text-ink-3">{license}</span>
+      </div>
+      {description ? <p className="mt-0.5 text-[13px] text-ink-3">{description}</p> : null}
+    </li>
+  );
+}
+
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h3 className="border-border-soft border-b pb-2 font-display font-semibold text-[16px]">
+        {title}
+      </h3>
+      {hint ? <p className="mt-2 text-[13px] text-ink-3">{hint}</p> : null}
+      {children}
+    </section>
+  );
+}
+
+function ProductList({ credits }: { credits: ProductCredit[] }) {
+  return (
+    <ul className="divide-y divide-border-soft">
+      {credits.map((credit) => (
+        <CreditRow
+          key={credit.name}
+          name={credit.name}
+          homepage={credit.homepage}
+          license={credit.license}
+          description={credit.description[lang]}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function PackageList({ label, packages }: { label: string; packages: OssCredit[] }) {
+  return (
+    <div className="mt-4">
+      <h4 className="font-medium text-[12px] text-ink-3 tracking-wide">{label}</h4>
+      <ul className="divide-y divide-border-soft">
+        {packages.map((pkg) => (
+          <CreditRow key={pkg.name} {...pkg} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** engenty wizards and the open-source software it builds on. */
+export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [data, setData] = useState<OssCreditsData | null>(null);
+  const [query, setQuery] = useState("");
+
+  // The list of dependencies is its own chunk, fetched when the dialog first opens.
+  useEffect(() => {
+    if (!open || data) {
+      return;
+    }
+    let cancelled = false;
+    void import("./oss-credits.json").then((mod) => {
+      if (!cancelled) {
+        setData(mod.default as OssCreditsData);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, data]);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+    }
+  }, [open]);
+
+  const q = query.trim().toLowerCase();
+  const product = (credits: ProductCredit[]) =>
+    q
+      ? credits.filter((c) => matches(q, c.name, c.license, c.description.de, c.description.en))
+      : credits;
+  const oss = (packages: OssCredit[]) =>
+    q ? packages.filter((p) => matches(q, p.name, p.license, p.version)) : packages;
+
+  const own = product(ENGENTY_CREDITS);
+  const builtWith = product(HIGHLIGHT_CREDITS);
+  const lists = data
+    ? [
+        { id: "shared", label: t("about.creditsShared"), packages: oss(data.shared) },
+        ...data.groups.map((group) => ({
+          id: group.id,
+          label: group.label,
+          packages: oss(group.packages),
+        })),
+      ].filter((list) => list.packages.length > 0)
+    : [];
+  const nothing = own.length === 0 && builtWith.length === 0 && lists.length === 0;
+
+  return (
+    <Dialog open={open} onClose={onClose} title={t("about.credits")} wide>
+      <p className="-mt-3 mb-4 text-[14px] text-ink-3">{t("about.creditsHint")}</p>
+      <Input
+        type="search"
+        value={query}
+        placeholder={t("about.search")}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {own.length > 0 ? (
+        <Section title={t("about.creditsProduct")}>
+          <ProductList credits={own} />
+        </Section>
+      ) : null}
+      {builtWith.length > 0 ? (
+        <Section title={t("about.creditsBuiltWith")}>
+          <ProductList credits={builtWith} />
+        </Section>
+      ) : null}
+      {data === null ? (
+        <div className="flex justify-center py-10 text-ink-3">
+          <Spinner />
+        </div>
+      ) : lists.length > 0 ? (
+        <Section title={t("about.creditsDeps")} hint={q ? undefined : t("about.creditsDepsHint")}>
+          {lists.map((list) => (
+            <PackageList key={list.id} label={list.label} packages={list.packages} />
+          ))}
+        </Section>
+      ) : null}
+      {data !== null && nothing ? <Empty>{t("about.noMatches")}</Empty> : null}
+    </Dialog>
+  );
+}

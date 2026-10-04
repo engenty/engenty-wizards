@@ -1,6 +1,7 @@
 import { CreditCard, LogOut, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { t } from "../lib/i18n";
 import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
@@ -138,7 +139,10 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   );
 }
 
-/** One quiet line at the foot of a page: the places around the account, for someone signed in. */
+/**
+ * One quiet line at the foot of a page: the places around the account, for someone signed in,
+ * and what this app is.
+ */
 export function Footer({ me }: { me?: Me | null }) {
   const base = me ? accountBase(me) : null;
   const links = base
@@ -163,6 +167,7 @@ export function Footer({ me }: { me?: Me | null }) {
           {link.label}
         </a>
       ))}
+      <AboutLinks />
     </footer>
   );
 }

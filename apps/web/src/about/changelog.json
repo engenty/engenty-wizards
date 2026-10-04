@@ -1,0 +1,358 @@
+[
+  {
+    "version": null,
+    "timestamp": null,
+    "commits": [
+      {
+        "id": "fbee998",
+        "message": "the gallery says what it is, compact and from the left; its search is a two-line field to write into",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "478f271",
+        "message": "the gallery opens with one question and the search field; quieter filter chips",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "15d7f94",
+        "message": "the marketplace search asks the model for the signed-in tenant; a sentence without a model keeps only close finds",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c254357",
+        "message": "a marketplace of wizards to start from, with a gallery, admin, translation and search",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4d6e270",
+        "message": "AI media is marked in its file and labelled with the EU icons (AI Act, Art. 50)",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "f86f070",
+        "message": "two writers of the same blob no longer share a temporary file",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c6a06cc",
+        "message": "plan for definition versions and importing older packages",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "a37e826",
+        "message": "wizard packages carry their own extension, .wizard",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e104574",
+        "message": "wizards export as a package (.wizard.zip) and import into a project",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "b389539",
+        "message": "the editor pane's resize handle is a short, thick pill",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "670c3ce",
+        "message": "chat composer takes files (+) and dictation",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "766f6fd",
+        "message": "editor side pane resizable; Steps tab steps with ← / →, header and strip spacing fixed",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8205c88",
+        "message": "the arrow on a live wizard's card opens it in a new tab",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "2696a50",
+        "message": "the AI clients page says it is an MCP server and sets a client up step by step",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "6004a7d",
+        "message": "settings in sub-pages with a nav on the left (a dropdown on phones); MCP servers under Connectors",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "49054fa",
+        "message": "settings button in the top bar; the user menu closes on Einstellungen",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "65c9867",
+        "message": "at most 5 projects per tenant",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "7ecca24",
+        "message": "the project switcher switches the wizard list",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c037604",
+        "message": "light / dark in the user menu, in place of the top bar's toggle",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "ef464ab",
+        "message": "upload limits and sorting, pictures while a step works, faster photo steps, a feedback box on reviews",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "1cbc02f",
+        "message": "starters for receipts, video ad, property film, window offer, menu plan and ten website helpers",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8069115",
+        "message": "photos reach an installed AI client, and a photo without text is described",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "013f7df",
+        "message": "embed a wizard in a website, inline or behind a button that opens it in a window",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "78c2a2a",
+        "message": "the editor at /edit/<id>, signed-out visitors of the start page go to SIGNED_OUT_URL",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "deb4942",
+        "message": "wizards at /w/<token>, the app at the root of https://engenty.ai",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "b811b4c",
+        "message": "serve the app under a path (https://engenty.ai/w)",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4821fb1",
+        "message": "the hosted addresses (engenty.ai) as defaults, no private repo names in the public sources",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "ca2207e",
+        "message": "the drop engenty as app icon, tray icon and favicon",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "90fcbce",
+        "message": "a README for people who install it, developer notes in docs/development.md",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4b0c54a",
+        "message": "a built runtime links to its own port, the sandbox falls back to agentOS",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "7071edf",
+        "message": "no links to the clients' pages, a placeholder dot in the footer",
+        "group": "Fixed",
+        "scope": "setup",
+        "breaking": false
+      },
+      {
+        "id": "14171bf",
+        "message": "installed AI clients as the model of a local runtime, first-start setup as a wizard",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "ca3f3a7",
+        "message": "align vertical head turn with pointer gaze",
+        "group": "Fixed",
+        "scope": "engenty",
+        "breaking": false
+      },
+      {
+        "id": "e1f04ff",
+        "message": "add furry and jelly renderers with an interactive builder",
+        "group": "Added",
+        "scope": "engenty",
+        "breaking": false
+      },
+      {
+        "id": "99207af",
+        "message": "whole credits in the top bar, a footer line with the account's places",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e498ab1",
+        "message": "decision steps — yes/no and choice output fields, branches on step outputs",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e83a433",
+        "message": "pnpm workspace with apps/ and packages/",
+        "group": "Changed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "281e3a3",
+        "message": "desktop app — Tauri shell with the runtime as a Node sidecar",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "9296521",
+        "message": "a database per tenant, model classes, sign-in at the Manage-App, phone inputs",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "63b1693",
+        "message": "engenty's built-in connectors — Gmail, Drive, Calendar, Contacts, Outlook, OneDrive, Slack, GitHub, HubSpot, S3",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "cd431c9",
+        "message": "connectors from the integrations registry, asked-first changes in connected accounts",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8dbe30d",
+        "message": "harden browser and file downloads, step navigation in the inspector, store and mailbox docs",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "54370e8",
+        "message": "light/dark mode with engenty-coloured dark pages, jelly and fur coats, quiet focus rings",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "371b033",
+        "message": "lists and connections kept between runs, mail and browser tools, camera and ask panel",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "07df228",
+        "message": "setup per AI client and a self-served plugin with /wizard",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "de27ae8",
+        "message": "interactive widgets with a workspace per wizard, shareable results",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "12854e1",
+        "message": "live studio — MCP and other edits show up without a reload",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "7f72420",
+        "message": "OAuth sign-in for MCP clients, connected apps in settings",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "3014699",
+        "message": "MCP endpoint for authoring wizards with personal API keys",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "985e612",
+        "message": "engenty wizards — prompt-built AI wizards with shareable links",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  }
+]

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -6,10 +7,15 @@ import { defaultClientConditions, defineConfig } from "vite";
 const apiPort = Number(process.env.API_PORT ?? 8891);
 // The path the app is served under, e.g. "/wizards" for https://example.com/wizards. Empty: an origin's root.
 const basePath = (process.env.APP_BASE_PATH ?? "").replace(/\/+$/, "");
+// The release the app says it is: the version of the root package.json.
+const appVersion: string = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+).version;
 
 export default defineConfig({
   base: basePath ? `${basePath}/` : "/",
   plugins: [react(), tailwindcss()],
+  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion) },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     // "wizards-source": the shared package is read as TypeScript, so the web app needs no build of it.

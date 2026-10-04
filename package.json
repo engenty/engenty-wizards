@@ -16,6 +16,9 @@
     "build": "pnpm -r build",
     "start": "node apps/runtime/dist/index.js",
     "db:generate": "pnpm --filter @engenty-wizards/runtime db:generate",
+    "about:data": "node scripts/write-about-data.mjs",
+    "release": "node scripts/release.mjs",
+    "release:changelog": "node scripts/release.mjs --changelog",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "biome check .",
@@ -24,6 +27,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "concurrently": "^10.0.5",
+    "git-cliff": "^2.14.2",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   }

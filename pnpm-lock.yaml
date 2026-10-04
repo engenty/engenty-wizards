@@ -14,6 +14,9 @@ importers:
       concurrently:
         specifier: ^10.0.5
         version: 10.0.5
+      git-cliff:
+        specifier: ^2.14.2
+        version: 2.14.2
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -3261,6 +3264,41 @@ packages:
   get-uri@6.0.5:
     resolution: {integrity: sha512-b1O07XYq8eRuVzBNgJLstU6FYc1tS6wnMtF1I1D9lE8LxZSOGZ7LhxN54yPP6mGw5f2CkXY2BQUL9Fx41qvcIg==}
     engines: {node: '>= 14'}
+
+  git-cliff-darwin-arm64@2.14.2:
+    resolution: {integrity: sha512-Ylk39hv5flEUrXeoGvH6M3WjHBNERFH7a9DVEcGU2a8Q7a7fPtVasNk1fMuJ7CVbZCRIzUNyQV0ejRpxBdFnag==}
+    cpu: [arm64]
+    os: [darwin]
+
+  git-cliff-darwin-x64@2.14.2:
+    resolution: {integrity: sha512-3FZNm0BGCIim/3G6uHSWAakrCaGmC47lcI+Cob9CZPMBYHKrenYk0i6B8MlObSXr2Lr7Ve1BpGbd/foQg4NOiA==}
+    cpu: [x64]
+    os: [darwin]
+
+  git-cliff-linux-arm64@2.14.2:
+    resolution: {integrity: sha512-3oMDpoyfsy2angD9ulcCBtyWCkzZqN3spmmtb0jic8OKAu1p+CALS8oep7J8AdgkDojuLo6bdHiSZIM9PeTxmQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  git-cliff-linux-x64@2.14.2:
+    resolution: {integrity: sha512-4EaBYwBiCupECZ2rzC6CelNSGYvkvtJeja4wXLDGtfKnRhCN/WNoqbM+hvrtm32uf5qovfoNoDA906F8itw+oQ==}
+    cpu: [x64]
+    os: [linux]
+
+  git-cliff-windows-arm64@2.14.2:
+    resolution: {integrity: sha512-0oc0xD/6A+BvInz8imBJulXVOlR9M0nL+d3ibL0lwJvxUVTMQzvoCnsn9OxpsdzXrEisnTvaf+GExoKVJkUcDw==}
+    cpu: [arm64]
+    os: [win32]
+
+  git-cliff-windows-x64@2.14.2:
+    resolution: {integrity: sha512-RFmCMiwGMU8O+rF//wxT7L10ssoDtzI+QFxlbjpA8E1BAEafkmLTQkKalT88ipEweD46P+Sfc20v8RXuE7V/UA==}
+    cpu: [x64]
+    os: [win32]
+
+  git-cliff@2.14.2:
+    resolution: {integrity: sha512-hlXIq4k2Tdj9C59WsD7FsLE0xRGFDozTUuoeqg9toMyVohaVxXiSiLnhM/IQyCmhOh5M4zuNckr2o8qMeuffbg==}
+    engines: {node: ^18.19 || >=20.6}
+    hasBin: true
 
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
@@ -8168,6 +8206,35 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  git-cliff-darwin-arm64@2.14.2:
+    optional: true
+
+  git-cliff-darwin-x64@2.14.2:
+    optional: true
+
+  git-cliff-linux-arm64@2.14.2:
+    optional: true
+
+  git-cliff-linux-x64@2.14.2:
+    optional: true
+
+  git-cliff-windows-arm64@2.14.2:
+    optional: true
+
+  git-cliff-windows-x64@2.14.2:
+    optional: true
+
+  git-cliff@2.14.2:
+    dependencies:
+      execa: 9.6.1
+    optionalDependencies:
+      git-cliff-darwin-arm64: 2.14.2
+      git-cliff-darwin-x64: 2.14.2
+      git-cliff-linux-arm64: 2.14.2
+      git-cliff-linux-x64: 2.14.2
+      git-cliff-windows-arm64: 2.14.2
+      git-cliff-windows-x64: 2.14.2
 
   github-from-package@0.0.0: {}
 

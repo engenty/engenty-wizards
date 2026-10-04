@@ -94,6 +94,53 @@ Manage-App.
 GitHub runs lint, typecheck, test and build on every push to `main` and every pull request
 (`.github/workflows/ci.yml`).
 
+## Releases and changelog
+
+The version is the `version` of the root `package.json`; a release is the tag `vX.Y.Z` on `main`.
+Before `1.0` a **minor** bump is a notable or breaking change, a **patch** is fixes and small
+features. The version says which release this is; the commit says which build.
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org). The type decides the
+group in the changelog, a scope (`fix(runner): …`) shows in brackets, `!` marks a breaking change:
+
+| Type | Group |
+|---|---|
+| `feat` | Added |
+| `fix` | Fixed |
+| `perf` | Performance |
+| `refactor` | Changed |
+| `deploy` | Deploy |
+| `docs` | Docs |
+| `chore`, `ci`, `test`, `build`, `style`, merges | left out |
+| anything else | Other |
+
+```bash
+pnpm release               # shows the changes, asks patch / minor / major, lets you edit the entry,
+                           # then writes the files below, bumps package.json, commits and tags — locally
+pnpm release --changelog   # only refreshes the files; commits since the last tag stay under "Unreleased"
+pnpm about:data            # only the app's copies: changelog and open-source credits
+git push origin main --follow-tags
+```
+
+`RELEASE_BUMP=patch|minor|major|current` skips the questions; `current` releases the version
+`package.json` already has, as long as it has no tag (the first release). The format and the
+groups are in `cliff.toml` ([git-cliff](https://git-cliff.org)), the steps in `scripts/release.mjs`.
+
+| File | What it is |
+|---|---|
+| `CHANGELOG.md` | the changelog to read, one block per release |
+| `changelog.json` | the same as data: git-cliff's context |
+| `apps/web/src/about/changelog.json` | what the app shows, cut down from `changelog.json` |
+| `apps/web/src/about/oss-credits.json` | the direct dependencies of the workspace with version and license (`pnpm licenses list`), shared ones first, then per app |
+| `apps/web/src/about/product-credits.ts` | written by hand: the product and what it is mainly built with |
+
+None of them is edited by hand except `product-credits.ts`. In the app, the studio's footer shows
+the version and opens the changelog and the open-source credits (`apps/web/src/about/`). The
+credits list what `package.json` files name; the Rust crates of the desktop app are not in it.
+
+The tag starts nothing. The cloud runtime follows `main` (see [Deploy](#deploy)), so it can be
+ahead of the last release; it shows the changelog as it was last written.
+
 ## Deploy
 
 Alone, on your own server: see [Run it on a server](../README.md#run-it-on-a-server) in the
@@ -257,3 +304,4 @@ open editor.
 | Live editor (SSE stream, merge of concurrent edits) | `apps/runtime/src/routes/wizard-stream.ts`, `apps/web/src/studio/live.tsx` |
 | Claude Code plugin template | `plugin/`, `apps/runtime/src/plugin.ts` |
 | Share sheet and shared result page | `apps/web/src/share/` |
+| Changelog and open-source credits: generated from the commits and the dependencies, shown in the studio's footer | `cliff.toml`, `scripts/release.mjs`, `scripts/write-about-data.mjs`, `apps/web/src/about/` |
