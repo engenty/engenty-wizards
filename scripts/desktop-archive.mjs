@@ -4,8 +4,8 @@
 //
 //   node scripts/desktop-archive.mjs [--skip-build] [--debug]
 //
-// Out: dist/desktop/. Attach both files to the GitHub release `v<version>`: `engenty-wizards app`
-// and the setup fetch them from there (apps/runtime/src/cli/desktop.ts).
+// Out: dist/desktop/. Not attached to releases since 2026-10-04: the Mac app is not offered, and
+// nothing fetches the archive any more.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";

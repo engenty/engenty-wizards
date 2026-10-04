@@ -50,14 +50,14 @@ The app version is the root `package.json` version.
 
 ## How it gets onto a Mac
 
-Not as a download from a web page: the build is not signed with a Developer ID (below), and
-macOS blocks such an app when a browser fetched it. The setup and `engenty-wizards app` fetch
-the archive from the GitHub release `v<version>` themselves, check it against its `.sha256`,
-verify the bundle's signature and copy it to `/Applications` (`~/Applications` when that is not
-writable). A file fetched that way carries no `com.apple.quarantine` attribute, so Gatekeeper
-does not assess it; the ad-hoc signature is what Apple silicon asks for.
-`apps/runtime/src/cli/desktop.ts` does this; `ENGENTY_WIZARDS_APP` names another archive (a path
-or an address), `ENGENTY_WIZARDS_APP_DIR` another folder.
+It doesn't, for now (decided 2026-10-04): it is neither built for releases nor offered, and
+the studio is installed as a Chrome app instead. A download from a web page would not work
+either: the build is not signed with a Developer ID (below), and macOS blocks such an app when
+a browser fetched it. Until 2026-10-04 the setup and `engenty-wizards app` fetched the archive
+from the GitHub release and copied it to `/Applications`; a file fetched that way carries no
+`com.apple.quarantine` attribute, so Gatekeeper does not assess it. That code is gone; to try
+the app, build it (`pnpm tauri build --bundles app`) and open the bundle from
+`src-tauri/target`.
 
 ## What the app does
 
