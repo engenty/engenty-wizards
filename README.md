@@ -31,45 +31,48 @@
 
 ## Install
 
-You need:
+On macOS or Linux, in a terminal:
 
-| | |
-|---|---|
-| macOS or Linux | |
-| [Node.js](https://nodejs.org) 24.11 or newer | check with `node -v` |
-| pnpm 10 | `corepack enable`, or `npm install -g pnpm` |
-| Something to think with | Codex, Claude Code, Gemini CLI or Cursor Agent, signed in — or an API key, or [Ollama](https://ollama.com) |
-| Google Chrome (optional) | for PDF and PNG exports and for steps that use a browser |
-| ffmpeg (optional) | for MP4 videos of animated widgets |
+```bash
+curl -fsSL https://engenty.ai/wizards.sh | bash
+```
 
-Get it and build it:
+It needs nothing but `curl` and asks for no password. It brings its own Node.js (a Node you
+already have is left alone), installs engenty wizards into `~/.engenty/wizards` and then walks
+you through the rest:
+
+- **Something to think with.** It looks for Codex, Claude Code, Gemini CLI and Cursor Agent and
+  offers to install one if there is none. Or use an API key or [Ollama](https://ollama.com).
+- **Google Chrome and ffmpeg** (optional): Chrome for PDF and PNG exports and for steps that use
+  a browser, ffmpeg for MP4 videos of animated widgets.
+- **The Mac app** (optional): the studio in its own window and in the menu bar.
+
+Then it starts and the studio opens in your browser. Later, start it with:
+
+```bash
+engenty-wizards
+```
+
+It runs while that terminal is open; Ctrl-C stops it. `engenty-wizards status` says what is
+installed and what runs, `engenty-wizards setup` runs the guided setup again, and
+`engenty-wizards --help` lists the rest.
+
+### From source
+
+You need Node.js 24.11 or newer and pnpm 10 (`corepack enable`).
 
 ```bash
 git clone https://github.com/engenty/engenty-wizards.git
 cd engenty-wizards
 pnpm install
 pnpm build
+pnpm wizards
 ```
 
 pnpm may list "Ignored build scripts" — that's expected, nothing to do.
 
-Start it:
-
-```bash
-pnpm start
-```
-
-It prints a link:
-
-```text
-engenty wizards on :8891 — http://localhost:8891
-Open the studio: http://localhost:8891/api/local/enter?k=…
-```
-
-Open that link in your browser. It lets this browser in and works once; if you lose the
-session, restart and open the new link.
-
-Code steps (shell, Node, Python) run in a sandbox inside engenty wizards; nothing to set up.
+Code steps (shell, Node, Python) run in a sandbox when Docker and the sandbox image are on the
+machine; a checkout brings its own sandbox, the installed version has none yet.
 
 ## First start
 
@@ -96,19 +99,26 @@ Your machine only answers on `localhost`. To let others open shared wizards, run
 
 ## Your data
 
-Everything lives in the `data` folder next to the code: the databases, the files of your
-wizards and results, and the keys you enter (encrypted). Back up that folder; delete it to
-start over. `DATA_DIR` in `.env` moves it.
+Everything lives in `~/.engenty/wizards/data`: the databases and the files of your wizards and
+results. Keys you enter are kept in the Keychain on a Mac, elsewhere encrypted in that folder.
+Back up the folder; delete it to start over. The command line and the Mac app use the same
+data. Settings go into `~/.engenty/wizards/.env` (see [.env.example](.env.example));
+`ENGENTY_HOME` moves the whole install.
+
+`pnpm start` in a checkout keeps its data in the `data` folder next to the code instead.
 
 ## Update
 
 ```bash
-git pull
-pnpm install
-pnpm build
+engenty-wizards update
 ```
 
-Then start it again. Your data is brought up to date at start.
+This runs the installer again without its questions and updates the Mac app if it is installed.
+From source: `git pull`, `pnpm install`, `pnpm build`. Your data is brought up to date at the
+next start.
+
+To remove engenty wizards, delete `~/.engenty/wizards` (your data is in its `data` folder) and
+`~/.local/bin/engenty-wizards`.
 
 ## Run it on a server
 
@@ -127,18 +137,25 @@ AI clients' subscriptions live on your own computer. The code sandbox is off in 
 
 ## Mac app
 
-A Mac app that brings everything along is on its way. It isn't signed yet, so it isn't offered
-for download here.
+The setup offers it; `engenty-wizards app` installs it later. It is a window on the same
+install: it starts engenty wizards when you open it, keeps it running in the menu bar, and
+stops it when you quit. It can also connect to your own server instead.
+
+The app isn't signed with an Apple Developer ID yet, so it is not offered as a download: macOS
+would block a copy that came through a browser. Installed by the command above it opens
+normally.
 
 ## Troubleshooting
 
 | | |
 |---|---|
-| "This link is no longer valid" | The link works once. Restart and open the new one. |
-| You open it under another address | Set `APP_URL` in a `.env` file to the address you open. |
+| "This link is no longer valid" | The link works once. `engenty-wizards open` gives this browser a new one. |
+| `engenty-wizards`: command not found | Open a new terminal, or run `~/.local/bin/engenty-wizards`. |
+| You open it under another address | Set `APP_URL` in `~/.engenty/wizards/.env` to the address you open. |
 | An AI client shows as not signed in | Sign it in on the setup page, or in your own terminal (e.g. `claude`, `codex login`), then "Check again". |
 | PDF or PNG export fails | Install Google Chrome, or set `CHROME_PATH` to Chrome or Chromium. |
-| Port 8891 is taken | Set `API_PORT` in a `.env` file, e.g. `API_PORT=8900`. |
+| Port 8891 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env`. |
+| Something else | `engenty-wizards doctor` checks the install. |
 
 More settings: [.env.example](.env.example).
 

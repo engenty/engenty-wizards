@@ -6,8 +6,8 @@ For working on the code. To install and use engenty wizards, see the [README](..
 
 | | Alone | Managed |
 |---|---|---|
-| What | one person, one tenant, on this machine: the desktop app, `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
-| Sign-in | a one-time link printed at start (the desktop app opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
+| What | one person, one tenant, on this machine: the local install (`engenty-wizards`, the desktop app), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
+| Sign-in | a one-time link at start (the command line and the desktop app open it themselves); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
 | Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
 | Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Gemini CLI, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
 | Studio chat | a model of class `highest`, or the admin's own Claude subscription (the installed Claude Code runs headless) | a model of class `highest` |
@@ -29,7 +29,11 @@ A pnpm workspace:
 |---|---|
 | `apps/runtime/` | the server: API, step runner, databases, models (`src/`), its tests (`test/`) |
 | `apps/web/` | the SPA: studio, public runner, share page |
-| `apps/desktop/` | the desktop app (Tauri 2) around both |
+| `apps/runtime/src/cli/` | the `engenty-wizards` command of a local install: start, guided setup, status, update |
+| `apps/web/public/wizards.sh` | the installer, served by every runtime at `/wizards.sh` |
+| `apps/desktop/` | the desktop app (Tauri 2): a window on the local install or on a server |
+| `bin/` | the entry of the `engenty-wizards` command |
+| `scripts/` | `npm-package.mjs` (the npm package), `desktop-archive.mjs` (the Mac app's archive) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
 | `plugin/` | the Claude Code plugin template |
 | `deploy/` | the Chromium container of the cloud runtime |
@@ -61,6 +65,10 @@ The agent is told what the chosen sandbox runs (`apps/runtime/src/sandbox`).
 
 `APP_URL` defaults to `http://localhost:5181` from source (the Vite dev server) and to
 `http://localhost:<API_PORT>` when built (`pnpm start` serves the pages itself).
+
+`.env.local` and `data/` in the repo root belong to `pnpm dev` and `pnpm start`. The installed
+command (`pnpm wizards`, `engenty-wizards`) uses `~/.engenty/wizards` instead: see
+[Local install](#local-install).
 
 A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
 the first start; the old file stays.
@@ -156,15 +164,79 @@ the same workflow moves that branch to the commit, if something the images are b
 (not for docs, tests or the desktop app), and the server deploys what the branch points at. To go
 back to an older commit: `git push --force origin <commit>:deploy/runtime`.
 
-## Desktop app
+## Local install
 
-`apps/desktop/` is a Tauri 2 app (macOS first) that brings this runtime along as a Node sidecar on
-the loopback interface and shows the studio in its window. Data lives in the app's data folder,
-keys in the Keychain. An account is optional; sign-in runs in the system browser.
+What people install is the package `engenty-wizards`, built like an npm package: the built
+runtime, the built SPA, the plugin template and the `engenty-wizards` command, with the shared
+package inside it. It is not on npm yet: the tarball is attached to the GitHub release
+`v<version>`, and npm installs it from that address. It gets onto a machine in two ways, and
+both keep their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
+
+| | Code | Node |
+|---|---|---|
+| `curl -fsSL https://engenty.ai/wizards.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
+| the desktop app's first start | as the installer: the app runs `wizards.sh` it carries | as the installer |
+
+Once the package is on npm (the repository variable `PUBLISH_NPM`, below), `npx engenty-wizards`
+is a third way: the code in npm's cache, on the person's own Node 24.11 or newer.
 
 ```bash
-node scripts/desktop-bundle.mjs          # the runtime + production node_modules + Node
-cd apps/desktop && pnpm tauri build --bundles app
+pnpm package                       # node scripts/npm-package.mjs → dist/npm/engenty-wizards-<version>.tgz
+pnpm wizards status                # the command from the checkout (node bin/engenty-wizards.mjs)
+```
+
+`scripts/npm-package.mjs` stages `apps/runtime/dist`, `apps/web/dist`, `plugin/` and `bin/` in the
+checkout's layout and writes the package.json: the runtime's dependencies at the exact versions
+of the root lockfile, the shared package bundled. Dependencies of dependencies are resolved by
+npm at install time.
+
+`apps/web/public/wizards.sh` is the installer (bash 3.2, `shellcheck` clean). It downloads the
+pinned Node from nodejs.org and checks it against `SHASUMS256.txt`, asks GitHub for the newest
+release, installs that release's tarball with that Node's npm
+(`--ignore-scripts --legacy-peer-deps`), writes the command to
+`~/.engenty/wizards/bin` and links it into `~/.local/bin`, then hands over to
+`engenty-wizards setup`. The setup (`apps/runtime/src/cli/setup.ts`) asks; the script does not.
+It lives in the SPA's `public/` folder, so every runtime serves it — `engenty.ai` included.
+
+To try the installer against a checkout, without npm and without touching `~/.engenty`:
+
+```bash
+pnpm package
+ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/engenty-wizards-<version>.tgz \
+  bash apps/web/public/wizards.sh --no-link
+```
+
+How the pieces share one install:
+
+- The runtime leaves `running.json` in its data folder while it runs (`apps/runtime/src/running.ts`).
+  The command line and the desktop app look there before starting one, and open the running one
+  instead: two runtimes would write the same databases.
+- Entering a runtime that already runs needs no restart: `engenty-wizards open` signs a ticket
+  for `/api/local/enter` with the data folder's secret (`apps/runtime/src/auth/local-ticket.ts`),
+  good for a minute and for one use. Who can read that secret can already make the studio's cookie.
+- The command line starts the runtime with a short list of the terminal's variables
+  (`apps/runtime/src/cli/environment.ts`); everything else comes from `~/.engenty/wizards/.env`.
+  A key or a database address the shell exports for another project does not reach it.
+- AI clients the setup installs from npm go into `~/.engenty/wizards/clients`; its `bin` and the
+  install's Node are first on the runtime's PATH.
+
+A release is a tag `v<version>` (the version of the root package.json):
+`.github/workflows/release.yml` packs the package, runs the installer with it on Linux and
+macOS, builds the Mac app, and attaches the tarball and the app's archive to the GitHub release.
+With the repository variable `PUBLISH_NPM=true` and the secret `NPM_TOKEN` it also publishes to
+npm. A deploy (a push to `main`) puts the current `wizards.sh` on `engenty.ai`. On a pull
+request the same workflow builds and tests everything and publishes nothing.
+
+## Desktop app
+
+`apps/desktop/` is a Tauri 2 app (macOS first): a window on the local install or on a server. It
+brings no runtime along. On its first start with "this Mac" it runs the installer it carries,
+then starts the runtime in `~/.engenty/wizards` on the loopback interface and shows the studio.
+Keys live in the Keychain. An account is optional; sign-in runs in the system browser.
+
+```bash
+cd apps/desktop && pnpm tauri build --bundles app     # the app
+node scripts/desktop-archive.mjs                      # the app, packed for the release: dist/desktop/
 ```
 
 Signing, notarization and the app's rules for what a page in its window may do:
