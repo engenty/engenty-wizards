@@ -4,6 +4,13 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.2] - 2026-10-04
+- ADDED A marketplace entry opens in the local studio at localhost:24368 instead of the Mac app's engenty-wizards:// link
+- ADDED The Mac app is no longer built or offered; the studio offers to install itself as a Chrome app in a banner, starting at login on a Mac is a LaunchAgent that runs the command, and the setup, README and docs point there
+- ADDED Engenty wizards starts at login — the Mac app opens in the menu bar without its window ("Open at Login" in its menus), on Linux a systemd user service; the setup asks, `engenty-wizards autostart on|off` switches it, and the Mac app's server takes port 24368 too
+- ADDED The setup page installs a missing AI client in its own terminal, and both setups suggest the client whose app is on the Mac — its subscription is most likely already paid for
+- FIXED An inline terminal's stream sends its last lines and its end before it closes; a page that opens it afterwards gets them all
+
 ## [0.1.1] - 2026-10-04
 - ADDED The studio says when a newer release is out and, on an install made by wizards.sh, updates it from the footer
 - ADDED The local runtime listens on 24368, AGENT on a phone keypad; the Docker image stays on 8891

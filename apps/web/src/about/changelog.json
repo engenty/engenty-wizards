@@ -1,7 +1,48 @@
 [
   {
+    "version": "v0.1.2",
+    "timestamp": 1791140119,
+    "commits": [
+      {
+        "id": "4bc37b9",
+        "message": "a marketplace entry opens in the local studio at localhost:24368 instead of the Mac app's engenty-wizards:// link",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e09e748",
+        "message": "the Mac app is no longer built or offered; the studio offers to install itself as a Chrome app in a banner, starting at login on a Mac is a LaunchAgent that runs the command, and the setup, README and docs point there",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "ab10b49",
+        "message": "engenty wizards starts at login — the Mac app opens in the menu bar without its window (\"Open at Login\" in its menus), on Linux a systemd user service; the setup asks, `engenty-wizards autostart on|off` switches it, and the Mac app's server takes port 24368 too",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "239e338",
+        "message": "the setup page installs a missing AI client in its own terminal, and both setups suggest the client whose app is on the Mac — its subscription is most likely already paid for",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "b479df7",
+        "message": "an inline terminal's stream sends its last lines and its end before it closes; a page that opens it afterwards gets them all",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.1",
-    "timestamp": 1791138126,
+    "timestamp": 1791138130,
     "commits": [
       {
         "id": "21f70df",
