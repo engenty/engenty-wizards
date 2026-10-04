@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.3] - 2026-10-04
+- FIXED **[release]** The publish job fetches the package artifact by name; with one artifact left it no longer lands in its own folder
+
 ## [0.1.2] - 2026-10-04
 - ADDED A marketplace entry opens in the local studio at localhost:24368 instead of the Mac app's engenty-wizards:// link
 - ADDED The Mac app is no longer built or offered; the studio offers to install itself as a Chrome app in a banner, starting at login on a Mac is a LaunchAgent that runs the command, and the setup, README and docs point there
