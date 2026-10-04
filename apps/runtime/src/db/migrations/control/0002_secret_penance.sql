@@ -1,0 +1,1 @@
+ALTER TABLE `marketplace_item` ADD `search_terms` text DEFAULT '[]' NOT NULL;

@@ -15,6 +15,13 @@
       "when": 1791071240355,
       "tag": "0001_gorgeous_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791099290898,
+      "tag": "0002_secret_penance",
+      "breakpoints": true
     }
   ]
 }

@@ -18,4 +18,10 @@ export interface StarterListing {
   revision: number;
   industries: Industry[];
   useCases: UseCase[];
+  /**
+   * What people ask for when they mean this starter, German and English: the thing made, the
+   * occasion, who needs it, other names for it. Searched, never shown; changing it needs no
+   * new revision.
+   */
+  search: string[];
 }

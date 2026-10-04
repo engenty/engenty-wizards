@@ -237,6 +237,8 @@ export interface MarketplaceEntry {
   language: MarketplaceLang;
   title: string;
   pitch: string;
+  /** What people ask for when they mean this entry: searched, never shown. */
+  terms: string[];
   avatar: string;
   formats: ItemFormat[];
   industries: Industry[];

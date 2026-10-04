@@ -178,6 +178,11 @@ marketplace, and the cloud runtime is the one every other runtime takes its entr
   8 s, or beyond 30 calls a minute the order by words stands. There are no embeddings: the model
   reads the whole list. A managed runtime's gateway answers only for a tenant, so the gallery
   there searches by words alone; of a sentence's finds, those close to the best are kept.
+- **Search terms** (`marketplace_item.search_terms`): what people ask for when they mean an
+  entry, German and English — "Reel", "Kostenvoranschlag". The search by words reads them; they
+  are never shown. The base set's are written in `starters/catalog.ts` and follow the repo
+  without a new revision; for an admin's entry the `classifier` model writes them when it is
+  added.
 - **Languages**: an entry is written in one language. Adding it translates it into the others
   with a model of class `high`, beside the request; an admin can start a translation again. A
   translation that changes steps or fields, or brings new issues, is thrown away. Where no

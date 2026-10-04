@@ -112,6 +112,11 @@ export const marketplaceItem = sqliteTable(
     industries: text("industries", { mode: "json" }).$type<Industry[]>().notNull(),
     useCases: text("use_cases", { mode: "json" }).$type<UseCase[]>().notNull(),
     capabilities: text("capabilities", { mode: "json" }).$type<Capability[]>().notNull(),
+    /** What people ask for when they mean this entry, in every language: searched, never shown. */
+    searchTerms: text("search_terms", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'`),
     /** A run's price in credits as last estimated, and what it rarely exceeds. */
     credits: integer("credits"),
     creditsHigh: integer("credits_high"),

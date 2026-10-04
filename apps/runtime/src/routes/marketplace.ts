@@ -30,6 +30,7 @@ import {
   translateItem,
   translateMissing,
   updateItem,
+  writeSearchTerms,
 } from "../services/marketplace-admin.js";
 import { searchMarketplace } from "../services/marketplace-search.js";
 
@@ -182,6 +183,12 @@ export const marketplaceStudio = new Hono<{ Variables: { user: SessionUser } }>(
     const made = await publishToMarketplace(user, input);
     // The other languages follow beside this request: the entry is listed in its own right away.
     void translateMissing(user, made.id).catch(() => undefined);
+    // So do the words it is found by, unless the admin gave them.
+    if (!input.searchTerms) {
+      void writeSearchTerms(user, made.id).catch((err) =>
+        console.error(`[marketplace] search terms ${made.id}:`, (err as Error).message),
+      );
+    }
     return c.json(made);
   })
   .post("/admin/sync", async (c) => {

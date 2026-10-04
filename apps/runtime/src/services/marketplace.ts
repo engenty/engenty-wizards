@@ -117,6 +117,7 @@ function entry(item: ItemRow, text: TextRow, live: Credits): MarketplaceEntry {
     language: text.language,
     title: text.title,
     pitch: text.pitch,
+    terms: item.searchTerms,
     avatar: item.avatar,
     formats: item.formats,
     industries: item.industries,
@@ -332,6 +333,7 @@ export async function writeContent(
       | "industries"
       | "useCases"
       | "formats"
+      | "searchTerms"
       | "position"
       | "updatedBy"
     >
@@ -393,11 +395,22 @@ export async function seedMarketplace(): Promise<{ added: number; updated: numbe
       revision: 1,
       industries: ["any" as const],
       useCases: starter.group === "website" ? ["website" as const] : [],
+      search: [],
     };
     const row = await controlDb.query.marketplaceItem.findFirst({
       where: eq(control.marketplaceItem.id, starter.id),
     });
     if (row && (row.origin !== "base" || (row.baseRevision ?? 0) >= listing.revision)) {
+      // The words an entry is found by are not its wizard: they follow the repo as they are.
+      if (
+        row.origin === "base" &&
+        JSON.stringify(row.searchTerms) !== JSON.stringify(listing.search)
+      ) {
+        await controlDb
+          .update(control.marketplaceItem)
+          .set({ searchTerms: listing.search })
+          .where(eq(control.marketplaceItem.id, row.id));
+      }
       continue;
     }
     const content: ItemContent = {
@@ -411,13 +424,14 @@ export async function seedMarketplace(): Promise<{ added: number; updated: numbe
       starter.id,
       content,
       row
-        ? { baseRevision: listing.revision }
+        ? { baseRevision: listing.revision, searchTerms: listing.search }
         : {
             status: "published",
             origin: "base",
             baseRevision: listing.revision,
             industries: listing.industries,
             useCases: listing.useCases,
+            searchTerms: listing.search,
             position: (index + 1) * 10,
           },
     );
@@ -445,6 +459,8 @@ export interface MarketplaceExport {
   formats: ItemRow["formats"];
   industries: ItemRow["industries"];
   useCases: ItemRow["useCases"];
+  /** Not sent by a source that is older than this app. */
+  searchTerms?: string[];
   position: number;
   credits: number | null;
   creditsHigh: number | null;
@@ -491,6 +507,7 @@ export async function exportItem(id: string): Promise<MarketplaceExport | null> 
     formats: item.formats,
     industries: item.industries,
     useCases: item.useCases,
+    searchTerms: item.searchTerms,
     position: item.position,
     credits: item.credits,
     creditsHigh: item.creditsHigh,
@@ -568,6 +585,7 @@ async function takeOver(source: string): Promise<void> {
         formats: full.formats,
         industries: full.industries,
         useCases: full.useCases,
+        searchTerms: full.searchTerms ?? [],
         position: full.position,
       },
     );

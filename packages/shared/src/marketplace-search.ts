@@ -20,6 +20,7 @@ import {
 const WEIGHTS: CatalogFieldWeights = [
   ["title", 10],
   ["summary", 6],
+  ["terms", 5],
   ["category", 5],
   ["tags", 3],
 ];
@@ -63,6 +64,8 @@ export function scoreEntry(entry: MarketplaceEntry, query: string): number {
   const record = {
     title: fold(entry.title),
     summary: fold(entry.pitch),
+    // A source that is older than this app does not send them.
+    terms: (entry.terms ?? []).map(fold),
     category: labels(USE_CASES, entry.useCases),
     tags: [
       ...labels(INDUSTRIES, entry.industries),

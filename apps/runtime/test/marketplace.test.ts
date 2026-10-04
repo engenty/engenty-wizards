@@ -171,6 +171,29 @@ describe("searching", () => {
   });
 });
 
+describe("the words an entry is found by", () => {
+  it("come with the base set and find what title and pitch do not name", async () => {
+    const result = await search.searchMarketplace("Reel", "de");
+    expect(result.ids).toEqual(["facebook-video-ad"]);
+    model.fits = null;
+    const sentence = await search.searchMarketplace(
+      "Ich brauche ein kurzes Video für meine Bäckerei",
+      "de",
+    );
+    expect(sentence.judged).toBe(false);
+    expect(sentence.ids[0]).toBe("facebook-video-ad");
+  });
+
+  it("follow the repo without a new revision", async () => {
+    await client.controlDb
+      .update(client.control.marketplaceItem)
+      .set({ searchTerms: ["veraltet"] })
+      .where(eq(client.control.marketplaceItem.id, "invoice"));
+    expect(await market.seedMarketplace()).toEqual({ added: 0, updated: 0 });
+    expect((await item("invoice"))!.searchTerms).toContain("Faktura");
+  });
+});
+
 describe("starting from an entry", () => {
   it("makes a wizard with the entry's workspace and counts it", async () => {
     await inTenant(async () => {
