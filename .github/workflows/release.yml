@@ -106,7 +106,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          path: artifacts
+          name: npm-package
+          path: artifacts/npm-package
       - uses: actions/setup-node@v7
         with:
           node-version: 24
