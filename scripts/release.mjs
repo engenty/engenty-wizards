@@ -324,7 +324,7 @@ async function main() {
   git(`tag -a ${tag} -m "chore(release): ${tag}"`);
   out(`\n${c.green("✔")} Released ${c.b(tag)} locally. Nothing pushed yet.`);
   out(c.dim("  Push the commit and its tag:  git push origin main --follow-tags"));
-  out(c.dim("  A green CI run on main then moves deploy/runtime; the tag itself starts nothing."));
+  out(c.dim("  The tag ships: release.yml publishes the local install, ci.yml deploys the cloud runtime."));
 }
 
 main().catch((e) => die(e?.stderr?.toString().trim() || e?.message || String(e)));

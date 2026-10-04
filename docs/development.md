@@ -105,8 +105,8 @@ node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to
 visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
 Manage-App.
 
-GitHub runs lint, typecheck, test and build on every push to `main` and every pull request
-(`.github/workflows/ci.yml`).
+GitHub runs lint, typecheck, test and build on every push to `main`, every pull request and
+every release tag (`.github/workflows/ci.yml`).
 
 ## Releases and changelog
 
@@ -152,8 +152,10 @@ None of them is edited by hand except `product-credits.ts`. In the app, the stud
 the version and opens the changelog and the open-source credits (`apps/web/src/about/`). The
 credits list what `package.json` files name; the Rust crates of the desktop app are not in it.
 
-The tag starts nothing. The cloud runtime follows `main` (see [Deploy](#deploy)), so it can be
-ahead of the last release; it shows the changelog as it was last written.
+The tag is what ships: it deploys the cloud runtime (see [Deploy](#deploy)) and publishes the
+local install (see [Local install](#local-install)). A push to `main` without a tag runs the
+checks and nothing else, so the cloud runtime and a fresh local install are the same release.
+Always tag through `pnpm release`: a tag set by hand leaves the changelog files as they were.
 
 ## Deploy
 
@@ -167,10 +169,11 @@ runtime only its own paths — `/studio`, `/api`, `/w`, `/s`, `/.well-known`, `/
 `APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
 start; a new one migrates when it is first opened.
 
-engenty's own cloud runtime deploys from the branch `deploy/runtime`. After a green push to `main`
-the same workflow moves that branch to the commit, if something the images are built from changed
-(not for docs, tests or the desktop app), and the server deploys what the branch points at. To go
-back to an older commit: `git push --force origin <commit>:deploy/runtime`.
+engenty's own cloud runtime deploys from the branch `deploy/runtime`. A release tag `v<version>`
+on `main` runs the checks; when they are green the same workflow (`.github/workflows/ci.yml`)
+moves that branch to the tag's commit, and the server deploys what the branch points at. A push
+to `main` without a tag deploys nothing. To deploy a tag again, run the workflow by hand on that
+tag. To go back to an older commit: `git push --force origin <commit>:deploy/runtime`.
 
 ## Local install
 
@@ -232,8 +235,9 @@ A release is a tag `v<version>` (the version of the root package.json):
 `.github/workflows/release.yml` packs the package, runs the installer with it on Linux and
 macOS, builds the Mac app, and attaches the tarball and the app's archive to the GitHub release.
 With the repository variable `PUBLISH_NPM=true` and the secret `NPM_TOKEN` it also publishes to
-npm. A deploy (a push to `main`) puts the current `wizards.sh` on `engenty.ai`. On a pull
-request the same workflow builds and tests everything and publishes nothing.
+npm. The same tag deploys the cloud runtime, which puts the current `wizards.sh` on
+`engenty.ai`. On a pull request the same workflow builds and tests everything and publishes
+nothing.
 
 ## Desktop app
 

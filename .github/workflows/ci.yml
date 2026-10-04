@@ -1,18 +1,23 @@
 name: CI
 
-# The checks of docs/development.md on every push to main and every pull request. A green push to
-# main then moves the branch `deploy/runtime` to that commit; the server deploys what that branch
-# points at (Coolify resource `runtime`, Auto Deploy). No secret and no call to the server from here.
+# The checks of docs/development.md on every push to main, every pull request and every release
+# tag. A push to main deploys nothing. A green release tag `v<version>` (pnpm release) moves the
+# branch `deploy/runtime` to its commit; the server deploys what that branch points at (Coolify
+# resource `runtime`, Auto Deploy). No secret and no call to the server from here.
+#   pnpm release                         # commit + tag vX.Y.Z, locally
+#   git push origin main --follow-tags   # the tag is what deploys
+# Run by hand on a tag (workflow_dispatch), it deploys that tag again.
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # On main a running check finishes, so every deploy is of a commit that passed.
+  # On main and on a tag a running check finishes, so every deploy is of a commit that passed.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -20,6 +25,10 @@ permissions:
 
 jobs:
   verify:
+    # A release commit reaches main together with its tag: the tag's run checks that commit.
+    if: >-
+      ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+        startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -50,7 +59,7 @@ jobs:
 
   deploy:
     needs: verify
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -61,10 +70,18 @@ jobs:
           # Every branch with its history: the step compares against the deploy branch.
           fetch-depth: 0
 
+      - name: The tag is the version, on main
+        run: |
+          set -euo pipefail
+          test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+          git merge-base --is-ancestor "$GITHUB_SHA^{commit}" origin/main
+
       - name: Move deploy/runtime
         run: |
           set -euo pipefail
           branch=deploy/runtime
+          # The commit the tag points at.
+          commit="$(git rev-parse "$GITHUB_SHA^{commit}")"
           # What the two images are built from (apps/runtime/Dockerfile, deploy/Dockerfile.browser).
           paths=(
             apps/runtime apps/web packages plugin deploy
@@ -73,14 +90,14 @@ jobs:
             ':(exclude)apps/runtime/test'
           )
           if git rev-parse --quiet --verify "origin/$branch" >/dev/null; then
-            if ! git merge-base --is-ancestor "origin/$branch" "$GITHUB_SHA"; then
+            if ! git merge-base --is-ancestor "origin/$branch" "$commit"; then
               echo "$branch is not behind this commit (moved by hand, or a newer run was first): left as it is."
               exit 0
             fi
-            if git diff --quiet "origin/$branch" "$GITHUB_SHA" -- "${paths[@]}"; then
+            if git diff --quiet "origin/$branch" "$commit" -- "${paths[@]}"; then
               echo "Nothing the runtime is built from changed since $(git rev-parse --short "origin/$branch"): no deploy."
               exit 0
             fi
           fi
-          git push origin "$GITHUB_SHA:refs/heads/$branch"
-          echo "$branch now at $(git rev-parse --short "$GITHUB_SHA"): the server deploys it."
+          git push origin "$commit:refs/heads/$branch"
+          echo "$branch now at $(git rev-parse --short "$commit"): the server deploys it."

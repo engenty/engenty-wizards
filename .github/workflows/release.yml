@@ -3,7 +3,7 @@ name: Release
 # A tag `v<version>` (the version of the root package.json) publishes what a local install is made
 # of on the GitHub release: the package `engenty-wizards` as a tarball and the Mac app's archive.
 # The installer (apps/web/public/wizards.sh) and `engenty-wizards app` fetch both from there.
-# The installer itself reaches engenty.ai with the next deploy (ci.yml).
+# The installer itself reaches engenty.ai with the deploy the same tag starts (ci.yml).
 #
 # The package also goes to npm once the repository variable PUBLISH_NPM is `true` and the secret
 # NPM_TOKEN holds a token that may publish `engenty-wizards`; until then `npx engenty-wizards`
