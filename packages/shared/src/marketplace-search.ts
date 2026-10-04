@@ -6,15 +6,21 @@ import {
 import {
   CAPABILITIES,
   INDUSTRIES,
+  type Industry,
   ITEM_FORMATS,
-  type MarketplaceEntry,
+  type ItemFormat,
+  type MarketplaceFacets,
+  type MarketplaceFilters,
+  type MarketplacePage,
+  type MarketplaceSummary,
   USE_CASES,
+  type UseCase,
 } from "./marketplace.js";
 
 /**
- * Searching the marketplace. Every keystroke is scored by words (BM25 with prefixes and
- * inflections, the scoring engenty's catalogs use); a whole sentence is also read by a model,
- * which sorts the entries and drops what does not fit — see the runtime's `searchMarketplace`.
+ * Searching the marketplace by words: BM25 with prefixes and inflections, the scoring engenty's
+ * catalogs use. The marketplace answers every search with it; an app that cannot reach the
+ * marketplace searches what it keeps the same way.
  */
 
 const WEIGHTS: CatalogFieldWeights = [
@@ -51,7 +57,7 @@ export function searchTerms(query: string): string[] {
   return kept.length ? kept : words;
 }
 
-/** From this many words on a query is a sentence, and a model reads the entries for it. */
+/** From this many words on a query is a sentence: it shares some word with nearly every entry. */
 export const SENTENCE_WORDS = 3;
 /** Of a sentence's finds by words, those with at least this share of the best score are kept. */
 const SENTENCE_SHARE = 0.4;
@@ -62,7 +68,7 @@ const labels = (all: Record<string, { de: string; en: string }>, ids: string[]) 
   ids.flatMap((id) => (all[id] ? [all[id].de, all[id].en] : []));
 
 /** How well an entry answers the query by its words; 0 when it does not at all. */
-export function scoreEntry(entry: MarketplaceEntry, query: string): number {
+export function scoreEntry(entry: MarketplaceSummary, query: string): number {
   const terms = searchTerms(query);
   if (!terms.length) {
     return 0;
@@ -80,8 +86,7 @@ export function scoreEntry(entry: MarketplaceEntry, query: string): number {
   let score = scoreCatalogEntry(record, terms.join(" "), WEIGHTS);
   // An entry's own search terms: each word of the query counts once, by the term it fits best.
   // Scored as one long text they would count for less the more of them an entry has.
-  // A source that is older than this app does not send them.
-  const own = (entry.terms ?? []).map((term) => ({ term: fold(term) }));
+  const own = entry.terms.map((term) => ({ term: fold(term) }));
   for (const word of terms) {
     score += Math.max(0, ...own.map((t) => scoreCatalogEntry(t, word, TERM_WEIGHT)));
   }
@@ -92,7 +97,10 @@ export function scoreEntry(entry: MarketplaceEntry, query: string): number {
 }
 
 /** The entries a query finds by its words, best first. An empty query keeps the list as it is. */
-export function rankEntries<T extends MarketplaceEntry>(entries: readonly T[], query: string): T[] {
+export function rankEntries<T extends MarketplaceSummary>(
+  entries: readonly T[],
+  query: string,
+): T[] {
   if (!query.trim()) {
     return [...entries];
   }
@@ -103,4 +111,64 @@ export function rankEntries<T extends MarketplaceEntry>(entries: readonly T[], q
   // A sentence shares some word with nearly every entry: only what comes close to the best counts.
   const least = isSentence(query) ? (rows[0]?.score ?? 0) * SENTENCE_SHARE : 0;
   return rows.filter((row) => row.score >= least).map((row) => row.entry);
+}
+
+/** Whether an entry passes the filters. An entry made for any industry passes every industry. */
+export function matchesFilters(e: MarketplaceSummary, f: MarketplaceFilters): boolean {
+  return (
+    (!f.useCase || e.useCases.includes(f.useCase)) &&
+    (!f.industry ||
+      e.industries.includes(f.industry) ||
+      (f.industry !== "any" && e.industries.includes("any"))) &&
+    (!f.format || e.formats.includes(f.format))
+  );
+}
+
+const FACETS = {
+  useCase: (e: MarketplaceSummary) => e.useCases as string[],
+  industry: (e: MarketplaceSummary) => e.industries as string[],
+  format: (e: MarketplaceSummary) => e.formats as string[],
+} satisfies Record<keyof MarketplaceFacets, (e: MarketplaceSummary) => string[]>;
+
+/**
+ * Per option of each filter, the found entries it would leave with the other filters as they
+ * are. An option no entry has at all is left out.
+ */
+function facetsOf(
+  all: readonly MarketplaceSummary[],
+  found: readonly MarketplaceSummary[],
+  filters: MarketplaceFilters,
+): MarketplaceFacets {
+  const facets: MarketplaceFacets = { useCase: {}, industry: {}, format: {} };
+  for (const key of Object.keys(FACETS) as (keyof MarketplaceFacets)[]) {
+    const options = new Set(all.flatMap(FACETS[key]));
+    const counts = facets[key] as Record<string, number>;
+    for (const option of options) {
+      counts[option] = found.filter((e) =>
+        matchesFilters(e, { ...filters, [key]: option as UseCase & Industry & ItemFormat }),
+      ).length;
+    }
+  }
+  return facets;
+}
+
+/**
+ * A search as the marketplace answers it: the entries the words find, best first (an empty
+ * query keeps the order given), narrowed by the filters, one page of them, and the counts.
+ */
+export function searchEntries<T extends MarketplaceSummary>(
+  entries: readonly T[],
+  query: string,
+  filters: MarketplaceFilters = {},
+  page: { limit?: number; offset?: number } = {},
+): MarketplacePage<T> {
+  const found = rankEntries(entries, query);
+  const shown = found.filter((e) => matchesFilters(e, filters));
+  const offset = Math.max(0, page.offset ?? 0);
+  return {
+    entries: shown.slice(offset, offset + Math.max(1, page.limit ?? 60)),
+    total: shown.length,
+    all: entries.length,
+    facets: facetsOf(entries, found, filters),
+  };
 }

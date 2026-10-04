@@ -1,22 +1,28 @@
-import { type WizardDefinition, wizardSchema } from "@engenty-wizards/shared/definition";
 import {
-  capabilitiesOf,
-  costTierOf,
-  effortOf,
-  formatsOf,
+  DEFINITION_VERSION,
+  readable,
+  type WizardDefinition,
+  wizardSchema,
+} from "@engenty-wizards/shared/definition";
+import {
   MARKETPLACE_LANGS,
-  type MarketplaceAdminEntry,
   type MarketplaceEntry,
+  type MarketplaceExport,
+  type MarketplaceFilters,
+  type MarketplaceItem,
   type MarketplaceLang,
+  type MarketplacePage,
+  type MarketplaceSummary,
+  type MarketplaceSyncItem,
 } from "@engenty-wizards/shared/marketplace";
-import { asc, eq, sql } from "drizzle-orm";
-import type { Principal } from "../auth/index.js";
+import { type WizardOutline, wizardOutline } from "@engenty-wizards/shared/marketplace-entry";
+import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
-import { control, controlDb } from "../db/client.js";
+import { control, controlDb, db, schema, withTenant } from "../db/client.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
 import {
-  type ClassPrice,
   classCatalog,
   type GatewayCatalog,
   imageCostUsd,
@@ -25,114 +31,171 @@ import {
   WEB_SEARCH_COST_USD,
 } from "../models.js";
 import { readSetting, writeSetting } from "../settings.js";
-import { STARTER_LISTINGS } from "../starters/catalog.js";
-import { STARTERS } from "../starters/index.js";
+import { LOCAL_TENANT } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
 
 /**
- * The marketplace: wizards anyone can start from, in the control database. The base set comes
- * from the repo at start, admins add and change entries, and a runtime that runs alone takes
- * over what its source runtime lists — so a new entry needs no new app.
+ * The marketplace is an app of its own; this runtime is one of its clients
+ * (docs/marketplace-contract.md). It searches the marketplace live and starts wizards from its
+ * entries. Its starters and what people starred are kept in the control database, so the list
+ * and starting a wizard work without a connection too.
  */
-
-export type ItemRow = typeof control.marketplaceItem.$inferSelect;
-export type TextRow = typeof control.marketplaceText.$inferSelect;
 
 export const asLang = (raw: string | undefined | null): MarketplaceLang =>
   (MARKETPLACE_LANGS as readonly string[]).includes(raw ?? "") ? (raw as MarketplaceLang) : "de";
 
-/** Who may add and change entries. */
-export function isMarketplaceAdmin(user: Pick<Principal, "email">): boolean {
-  return env.marketplace.admins.includes(managed ? user.email.toLowerCase() : "local");
-}
+/** A search waits this long for the marketplace; then it searches what is kept here. */
+const TIMEOUT_MS = 5000;
 
-export function requireAdmin(user: Pick<Principal, "email">) {
-  if (!isMarketplaceAdmin(user)) {
-    throw new ServiceError("refused", "Only a marketplace admin may do that.");
+/** One call to the marketplace's API; null without an answer, or with an error. */
+async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
+  if (!env.marketplace.url) {
+    return null;
+  }
+  try {
+    const res = await fetch(`${env.marketplace.url}/api/v1${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return res.status === 204 ? ({} as T) : ((await res.json()) as T);
+  } catch {
+    return null;
   }
 }
 
-// --- can this app read the entry? -----------------------------------------------------
-// The schema drops what it does not know. An entry written for a newer app would be read
-// without complaint and run wrongly, so a definition counts only when nothing of it is lost.
+// --- stars: a person's own, in the tenant's database ------------------------------------
 
-function keepsAll(given: unknown, read: unknown): boolean {
-  if (Array.isArray(given)) {
-    return Array.isArray(read) && given.every((v, i) => keepsAll(v, read[i]));
+async function starredIds(): Promise<string[]> {
+  const rows = await db
+    .select({ id: schema.marketplaceStar.entryId })
+    .from(schema.marketplaceStar)
+    .orderBy(schema.marketplaceStar.createdAt);
+  return rows.map((r) => r.id);
+}
+
+/** Stars an entry or takes the star away; a starred entry is kept for offline use. */
+export async function starEntry(tenantId: string, entryId: string, on: boolean) {
+  if (on) {
+    await db.insert(schema.marketplaceStar).values({ tenantId, entryId }).onConflictDoNothing();
+  } else {
+    await db
+      .delete(schema.marketplaceStar)
+      .where(
+        and(
+          eq(schema.marketplaceStar.tenantId, tenantId),
+          eq(schema.marketplaceStar.entryId, entryId),
+        ),
+      );
   }
-  if (given && typeof given === "object") {
-    return (
-      Boolean(read) &&
-      typeof read === "object" &&
-      Object.entries(given).every(
-        ([k, v]) => v === undefined || (k in (read as object) && keepsAll(v, (read as never)[k])),
-      )
-    );
-  }
-  return true;
+  // What is kept follows at once, beside the request.
+  void syncMarketplace(true).catch(() => undefined);
 }
 
-export function readable(definition: unknown): boolean {
-  const parsed = wizardSchema.safeParse(definition);
-  return parsed.success && keepsAll(definition, parsed.data);
+// --- what is kept for offline use --------------------------------------------------------
+
+async function kept(ids?: string[]): Promise<MarketplaceExport[]> {
+  const rows = await controlDb
+    .select({ entry: control.marketplaceCache.entry })
+    .from(control.marketplaceCache)
+    .where(ids ? inArray(control.marketplaceCache.id, ids) : undefined);
+  return rows.map((r) => r.entry);
 }
 
-const usable = new Map<string, boolean>();
-function isUsable(text: TextRow): boolean {
-  const key = `${text.itemId}:${text.language}:${text.revision}`;
-  let known = usable.get(key);
-  if (known === undefined) {
-    known = readable(text.definition);
-    usable.set(key, known);
-  }
-  return known;
+/** The words of a kept entry in a language: a translation where it has one, else its own. */
+function textIn(e: MarketplaceExport, lang: MarketplaceLang) {
+  return e.texts.find((t) => t.language === lang) ?? e.texts.find((t) => t.language === e.language);
 }
 
-// --- reading ----------------------------------------------------------------------------
-
-async function rows(): Promise<{ item: ItemRow; texts: TextRow[] }[]> {
-  const items = await controlDb
-    .select()
-    .from(control.marketplaceItem)
-    .orderBy(asc(control.marketplaceItem.position), asc(control.marketplaceItem.id));
-  const texts = await controlDb.select().from(control.marketplaceText);
-  return items.map((item) => ({ item, texts: texts.filter((t) => t.itemId === item.id) }));
+function keptSummary(e: MarketplaceExport, lang: MarketplaceLang): MarketplaceSummary {
+  const { texts: _texts, files: _files, ...summary } = e;
+  const text = textIn(e, lang);
+  return text
+    ? { ...summary, language: text.language, title: text.title, pitch: text.pitch }
+    : summary;
 }
 
-/** The entry's words in a language: a translation of the current revision, else its own. */
-function textFor(item: ItemRow, texts: TextRow[], lang: MarketplaceLang): TextRow | undefined {
-  return (
-    texts.find((t) => t.language === lang && t.revision === item.revision) ??
-    texts.find((t) => t.language === item.language)
-  );
+function keptItem(e: MarketplaceExport, lang: MarketplaceLang): MarketplaceItem | null {
+  const text = textIn(e, lang);
+  return text ? { ...keptSummary(e, lang), definition: text.definition, files: e.files } : null;
 }
 
-type Credits = MarketplaceEntry["credits"];
+// --- searching -----------------------------------------------------------------------------
 
-function entry(item: ItemRow, text: TextRow, live: Credits): MarketplaceEntry {
-  const ok = isUsable(text);
+/** A summary as this app shows it: whether it can read it, and whether it is starred. */
+function asEntry(summary: MarketplaceSummary, starred: Set<string>): MarketplaceEntry {
   return {
-    id: item.id,
-    revision: item.revision,
-    language: text.language,
-    title: text.title,
-    pitch: text.pitch,
-    terms: item.searchTerms,
-    avatar: item.avatar,
-    formats: item.formats,
-    industries: item.industries,
-    useCases: item.useCases,
-    capabilities: item.capabilities,
-    effort: ok ? effortOf(text.definition) : { fields: 0, required: 0, reviews: 0, minutes: 0 },
-    costTier: costTierOf(item.capabilities),
-    credits:
-      live ??
-      (item.credits === null
-        ? null
-        : { credits: item.credits, high: item.creditsHigh ?? item.credits }),
-    steps: text.definition.steps.length,
-    usable: ok,
+    ...summary,
+    credits: null,
+    usable: summary.version <= DEFINITION_VERSION,
+    starred: starred.has(summary.id),
   };
+}
+
+export interface MarketplaceSearch extends MarketplaceFilters {
+  q?: string;
+  lang: MarketplaceLang;
+  /** Only the starred entries. */
+  starred?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface MarketplaceResult extends MarketplacePage<MarketplaceEntry> {
+  /** True: the marketplace did not answer, and the result is what is kept here. */
+  offline: boolean;
+}
+
+/** Searches the marketplace; without an answer, what is kept here, scored the same way. */
+export async function searchMarketplace(search: MarketplaceSearch): Promise<MarketplaceResult> {
+  const { q = "", lang, starred: onlyStarred, limit = 60, offset = 0, ...filters } = search;
+  const stars = await starredIds();
+  const starred = new Set(stars);
+  const params = new URLSearchParams({ lang, limit: String(limit), offset: String(offset) });
+  if (onlyStarred) {
+    params.set("ids", stars.join(","));
+  } else {
+    if (q.trim()) {
+      params.set("q", q.trim());
+    }
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) {
+        params.set(key, value);
+      }
+    }
+  }
+  const remote =
+    onlyStarred && !stars.length
+      ? { entries: [], total: 0, all: 0, facets: { useCase: {}, industry: {}, format: {} } }
+      : await call<MarketplacePage>(`/entries?${params}`);
+  if (remote) {
+    return {
+      ...remote,
+      entries: remote.entries.map((e) => asEntry(e, starred)),
+      offline: false,
+    };
+  }
+  const local = (await kept(onlyStarred ? stars : undefined)).map((e) => keptSummary(e, lang));
+  const page = onlyStarred
+    ? searchEntries(local, "", {}, { limit, offset })
+    : searchEntries(local, q, filters, { limit, offset });
+  return { ...page, entries: page.entries.map((e) => asEntry(e, starred)), offline: true };
+}
+
+// --- one entry -----------------------------------------------------------------------------
+
+/** An entry with its wizard: from the marketplace, else from what is kept here. */
+async function fetchItem(id: string, lang: MarketplaceLang): Promise<MarketplaceItem | null> {
+  const remote = await call<MarketplaceItem>(
+    `/entries/${encodeURIComponent(id)}?lang=${encodeURIComponent(lang)}`,
+  );
+  if (remote) {
+    return remote;
+  }
+  const [local] = await kept([id]);
+  return local ? keptItem(local, lang) : null;
 }
 
 const CREDITS_PER_USD = 100;
@@ -143,9 +206,9 @@ const CREDITS_PER_USD = 100;
  * paid for another way.
  */
 function listPrices(): GatewayCatalog {
-  const text = (ref: string): ClassPrice => ({
+  const text = (ref: string) => ({
     model: ref,
-    kind: "text",
+    kind: "text" as const,
     inputCreditsPerMTok: tokenCostUsd(ref, { inputTokens: 1e6 }) * CREDITS_PER_USD,
     outputCreditsPerMTok: tokenCostUsd(ref, { outputTokens: 1e6 }) * CREDITS_PER_USD,
   });
@@ -173,49 +236,42 @@ function listPrices(): GatewayCatalog {
 }
 
 /** What a run costs: at the gateway's prices where there is one, else at list prices. */
-async function priced(definition: WizardDefinition): Promise<NonNullable<Credits>> {
+async function priced(definition: WizardDefinition) {
   const catalog = await classCatalog().catch(() => null);
-  return formulaEstimate(definition, catalog ?? listPrices());
+  const price = formulaEstimate(definition, catalog ?? listPrices());
+  return { credits: Math.round(price.credits), high: price.high };
 }
 
-/** The published entries, in a language. `live` prices them now instead of using the stored estimate. */
-export async function listMarketplace(
-  lang: MarketplaceLang,
-  options: { live?: boolean } = {},
-): Promise<MarketplaceEntry[]> {
-  const out: MarketplaceEntry[] = [];
-  for (const { item, texts } of await rows()) {
-    const text = item.status === "published" ? textFor(item, texts, lang) : undefined;
-    if (text) {
-      // A row from before estimates were stored is priced now as well.
-      const now = (options.live || item.credits === null) && isUsable(text);
-      const live = now ? await priced(text.definition) : null;
-      out.push(entry(item, text, live));
-    }
-  }
-  return out;
-}
+/** One entry as the app's dialog shows it: what the wizard does, makes, needs and costs. */
+export interface MarketplaceDetail extends MarketplaceEntry, WizardOutline {}
 
-export async function listMarketplaceAdmin(
+/** An entry in a language with its wizard read against this app; null where there is none. */
+export async function marketplaceDetail(
+  id: string,
   lang: MarketplaceLang,
-): Promise<MarketplaceAdminEntry[]> {
-  const out: MarketplaceAdminEntry[] = [];
-  for (const { item, texts } of await rows()) {
-    const text = textFor(item, texts, lang);
-    if (text) {
-      out.push({
-        ...entry(item, text, null),
-        status: item.status,
-        origin: item.origin,
-        sourceLanguage: item.language,
-        languages: texts.filter((t) => t.revision === item.revision).map((t) => t.language),
-        position: item.position,
-        installs: item.installs,
-        updatedAt: item.updatedAt.getTime(),
-      });
-    }
+): Promise<MarketplaceDetail | null> {
+  const found = await fetchItem(id, lang);
+  if (!found) {
+    return null;
   }
-  return out;
+  const { definition, files, ...summary } = found;
+  const entry = asEntry(summary, new Set(await starredIds()));
+  const parsed = readable(definition) ? wizardSchema.parse(definition) : null;
+  if (!parsed) {
+    return {
+      ...entry,
+      usable: false,
+      description: "",
+      outline: [],
+      results: [],
+      files: Object.keys(files),
+    };
+  }
+  return {
+    ...entry,
+    credits: await priced(parsed),
+    ...wizardOutline(parsed, Object.keys(files), lang),
+  };
 }
 
 export interface MarketplaceWizard {
@@ -227,416 +283,101 @@ export interface MarketplaceWizard {
   files: Record<string, Buffer>;
 }
 
-async function filesOf(itemId: string): Promise<Record<string, Buffer>> {
-  const files = await controlDb
-    .select()
-    .from(control.marketplaceFile)
-    .where(eq(control.marketplaceFile.itemId, itemId));
-  return Object.fromEntries(files.map((f) => [f.path, Buffer.from(f.data)]));
-}
-
-/** An entry's wizard and workspace in a language. Drafts are there for admins only. */
+/** An entry's wizard and workspace in a language: what a wizard is made from. */
 export async function marketplaceWizard(
   id: string,
   lang: MarketplaceLang,
-  options: { drafts?: boolean } = {},
 ): Promise<MarketplaceWizard | null> {
-  const item = await controlDb.query.marketplaceItem.findFirst({
-    where: eq(control.marketplaceItem.id, id),
-  });
-  if (!item || (item.status === "draft" && !options.drafts)) {
+  const found = await fetchItem(id, lang);
+  if (!found) {
     return null;
   }
-  const texts = await controlDb
-    .select()
-    .from(control.marketplaceText)
-    .where(eq(control.marketplaceText.itemId, id));
-  const text = textFor(item, texts, lang);
-  if (!text) {
-    return null;
-  }
-  if (!isUsable(text)) {
+  if (!readable(found.definition)) {
     throw new ServiceError(
       "refused",
       "Diese Vorlage braucht eine neuere Version der App. Bitte aktualisiere die App.",
     );
   }
   return {
-    id: item.id,
-    revision: item.revision,
-    title: text.title,
-    language: text.language,
-    definition: wizardSchema.parse(text.definition),
-    files: await filesOf(id),
+    id: found.id,
+    revision: found.revision,
+    title: found.title,
+    language: found.language,
+    definition: wizardSchema.parse(found.definition),
+    files: Object.fromEntries(
+      Object.entries(found.files).map(([path, data]) => [path, Buffer.from(data, "base64")]),
+    ),
   };
 }
 
+/** Tells the marketplace a wizard was made from an entry. */
 export async function countInstall(id: string) {
-  await controlDb
-    .update(control.marketplaceItem)
-    .set({ installs: sql`${control.marketplaceItem.installs} + 1` })
-    .where(eq(control.marketplaceItem.id, id));
+  await call(`/entries/${encodeURIComponent(id)}/installs`, { method: "POST" });
 }
 
-// --- writing ----------------------------------------------------------------------------
+// --- keeping the starters and the starred ones ----------------------------------------------
 
-export interface ItemContent {
-  language: MarketplaceLang;
-  title: string;
-  pitch: string;
-  definition: WizardDefinition;
-  files: Record<string, string | Uint8Array>;
-}
-
-async function putFiles(itemId: string, files: ItemContent["files"]) {
-  await controlDb.delete(control.marketplaceFile).where(eq(control.marketplaceFile.itemId, itemId));
-  for (const [path, content] of Object.entries(files)) {
-    await controlDb.insert(control.marketplaceFile).values({
-      itemId,
-      path,
-      data: typeof content === "string" ? Buffer.from(content, "utf8") : Buffer.from(content),
-    });
-  }
-}
-
-export async function putText(
-  itemId: string,
-  revision: number,
-  text: Pick<ItemContent, "language" | "title" | "pitch" | "definition">,
-  machine = false,
-) {
-  const values = { itemId, revision, machine, ...text };
-  usable.delete(`${itemId}:${text.language}:${revision}`);
-  await controlDb
-    .insert(control.marketplaceText)
-    .values(values)
-    .onConflictDoUpdate({
-      target: [control.marketplaceText.itemId, control.marketplaceText.language],
-      set: values,
-    });
-}
-
-/**
- * Writes an entry's wizard: a new entry, or the next revision of an existing one. What follows
- * from the definition — capabilities, the estimate — is worked out here; translations of the
- * revision before are out of date from now on.
- */
-export async function writeContent(
-  id: string,
-  content: ItemContent,
-  meta: Partial<
-    Pick<
-      ItemRow,
-      | "status"
-      | "origin"
-      | "baseRevision"
-      | "industries"
-      | "useCases"
-      | "formats"
-      | "searchTerms"
-      | "position"
-      | "updatedBy"
-    >
-  > & { revision?: number } = {},
-): Promise<ItemRow> {
-  const before = await controlDb.query.marketplaceItem.findFirst({
-    where: eq(control.marketplaceItem.id, id),
-  });
-  const { revision: given, ...rest } = meta;
-  const revision = given ?? (before ? before.revision + 1 : 1);
-  // An entry taken over from a newer runtime may hold what this app cannot read yet.
-  const known = readable(content.definition);
-  const capabilities = known ? capabilitiesOf(content.definition) : (before?.capabilities ?? []);
-  const price = known ? await priced(content.definition) : null;
-  const formats = rest.formats ?? (known ? formatsOf(content.definition) : ["text" as const]);
-  const derived = {
-    revision,
-    language: content.language,
-    avatar: content.definition.avatar ?? "round",
-    capabilities,
-    credits: price ? Math.round(price.credits) : (before?.credits ?? null),
-    creditsHigh: price ? price.high : (before?.creditsHigh ?? null),
-    updatedAt: new Date(),
-  };
-  if (before) {
-    await controlDb
-      .update(control.marketplaceItem)
-      .set({ ...derived, ...rest, formats })
-      .where(eq(control.marketplaceItem.id, id));
-  } else {
-    await controlDb.insert(control.marketplaceItem).values({
-      id,
-      ...derived,
-      industries: ["any"],
-      useCases: [],
-      ...rest,
-      formats,
-    });
-  }
-  await putText(id, revision, content);
-  await putFiles(id, content.files);
-  return (await controlDb.query.marketplaceItem.findFirst({
-    where: eq(control.marketplaceItem.id, id),
-  }))!;
-}
-
-// --- the base set -----------------------------------------------------------------------
-
-/**
- * Brings the repo's starters into the database: a starter the database does not know is added,
- * one whose revision in the repo went up replaces its row — unless an admin changed that row,
- * which then belongs to the database. Runs at every start, after the migrations.
- */
-export async function seedMarketplace(): Promise<{ added: number; updated: number }> {
-  let added = 0;
-  let updated = 0;
-  for (const [index, starter] of STARTERS.entries()) {
-    const listing = STARTER_LISTINGS[starter.id] ?? {
-      revision: 1,
-      industries: ["any" as const],
-      useCases: starter.group === "website" ? ["website" as const] : [],
-      search: [],
-    };
-    const row = await controlDb.query.marketplaceItem.findFirst({
-      where: eq(control.marketplaceItem.id, starter.id),
-    });
-    if (row && (row.origin !== "base" || (row.baseRevision ?? 0) >= listing.revision)) {
-      // The words an entry is found by are not its wizard: they follow the repo as they are.
-      if (
-        row.origin === "base" &&
-        JSON.stringify(row.searchTerms) !== JSON.stringify(listing.search)
-      ) {
-        await controlDb
-          .update(control.marketplaceItem)
-          .set({ searchTerms: listing.search })
-          .where(eq(control.marketplaceItem.id, row.id));
-      }
-      continue;
-    }
-    const content: ItemContent = {
-      language: "de",
-      title: starter.title,
-      pitch: starter.pitch,
-      definition: wizardSchema.parse(starter.definition),
-      files: starter.files ?? {},
-    };
-    await writeContent(
-      starter.id,
-      content,
-      row
-        ? { baseRevision: listing.revision, searchTerms: listing.search }
-        : {
-            status: "published",
-            origin: "base",
-            baseRevision: listing.revision,
-            industries: listing.industries,
-            useCases: listing.useCases,
-            searchTerms: listing.search,
-            position: (index + 1) * 10,
-          },
-    );
-    if (row) {
-      updated += 1;
-    } else {
-      added += 1;
-    }
-  }
-  return { added, updated };
-}
-
-// --- a runtime that runs alone takes its entries from its source ---------------------------
-
-/** What the source lists: enough to see what changed. */
-export interface MarketplaceIndex {
-  items: { id: string; revision: number; status: "published" | "unlisted" }[];
-}
-
-/** One entry in full, as one runtime hands it to another. */
-export interface MarketplaceExport {
-  id: string;
-  revision: number;
-  language: MarketplaceLang;
-  formats: ItemRow["formats"];
-  industries: ItemRow["industries"];
-  useCases: ItemRow["useCases"];
-  /** Not sent by a source that is older than this app. */
-  searchTerms?: string[];
-  position: number;
-  credits: number | null;
-  creditsHigh: number | null;
-  texts: {
-    language: MarketplaceLang;
-    title: string;
-    pitch: string;
-    definition: unknown;
-    machine: boolean;
-  }[];
-  /** path → base64 */
-  files: Record<string, string>;
-}
-
-export async function marketplaceIndex(): Promise<MarketplaceIndex> {
-  const items = await controlDb
-    .select({
-      id: control.marketplaceItem.id,
-      revision: control.marketplaceItem.revision,
-      status: control.marketplaceItem.status,
-    })
-    .from(control.marketplaceItem);
-  return {
-    items: items.filter((i) => i.status !== "draft") as MarketplaceIndex["items"],
-  };
-}
-
-export async function exportItem(id: string): Promise<MarketplaceExport | null> {
-  const item = await controlDb.query.marketplaceItem.findFirst({
-    where: eq(control.marketplaceItem.id, id),
-  });
-  if (item?.status !== "published") {
-    return null;
-  }
-  const texts = await controlDb
-    .select()
-    .from(control.marketplaceText)
-    .where(eq(control.marketplaceText.itemId, id));
-  const files = await filesOf(id);
-  return {
-    id: item.id,
-    revision: item.revision,
-    language: item.language,
-    formats: item.formats,
-    industries: item.industries,
-    useCases: item.useCases,
-    searchTerms: item.searchTerms,
-    position: item.position,
-    credits: item.credits,
-    creditsHigh: item.creditsHigh,
-    texts: texts
-      .filter((t) => t.revision === item.revision)
-      .map(({ language, title, pitch, definition, machine }) => ({
-        language,
-        title,
-        pitch,
-        definition,
-        machine,
-      })),
-    files: Object.fromEntries(Object.entries(files).map(([p, d]) => [p, d.toString("base64")])),
-  };
-}
-
-const SYNCED = "marketplace:synced";
+// Not the key the copying into the database used before: the first look after an update is
+// not held back.
+const SYNCED = "marketplace:kept";
 const SYNC_EVERY_MS = 3600_000;
 let syncing: Promise<void> | null = null;
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(20_000) }).catch(() => null);
-  return res?.ok ? ((await res.json().catch(() => null)) as T | null) : null;
+/** The stars that count for what is kept: a runtime that runs alone has one person's. */
+async function keptStars(): Promise<string[]> {
+  return managed ? [] : withTenant(LOCAL_TENANT, starredIds);
 }
 
-async function takeOver(source: string): Promise<void> {
-  const index = await fetchJson<MarketplaceIndex>(`${source}/api/public/marketplace/index`);
-  if (!index?.items) {
+async function takeOver(): Promise<void> {
+  const list = await call<{ items: MarketplaceSyncItem[] }>(
+    `/sync?ids=${encodeURIComponent((await keptStars()).join(","))}`,
+  );
+  if (!list?.items) {
     return;
   }
-  const local = await controlDb.select().from(control.marketplaceItem);
-  const listed = new Set(index.items.map((i) => i.id));
-  for (const remote of index.items) {
-    const row = local.find((r) => r.id === remote.id);
-    // What an admin made on this machine stays as it is.
-    if (row?.origin === "admin") {
+  const have = await controlDb
+    .select({ id: control.marketplaceCache.id, hash: control.marketplaceCache.hash })
+    .from(control.marketplaceCache);
+  for (const item of list.items) {
+    if (have.some((h) => h.id === item.id && h.hash === item.hash)) {
       continue;
     }
-    if (remote.status !== "published") {
-      if (row?.status === "published") {
-        await controlDb
-          .update(control.marketplaceItem)
-          .set({ status: remote.status })
-          .where(eq(control.marketplaceItem.id, row.id));
-      }
+    const entry = await call<MarketplaceExport>(`/entries/${encodeURIComponent(item.id)}/export`);
+    if (!entry) {
       continue;
     }
-    if (row?.origin === "cloud" && row.revision === remote.revision && row.status === "published") {
-      continue;
-    }
-    const full = await fetchJson<MarketplaceExport>(
-      `${source}/api/public/marketplace/${encodeURIComponent(remote.id)}/export`,
-    );
-    const own = full?.texts.find((t) => t.language === full.language);
-    if (!full || !own) {
-      continue;
-    }
-    // An entry this app cannot read yet is kept as it comes: the list marks it, and an
-    // updated app reads the same row.
-    await writeContent(
-      full.id,
-      {
-        language: full.language,
-        title: own.title,
-        pitch: own.pitch,
-        definition: own.definition as WizardDefinition,
-        files: Object.fromEntries(
-          Object.entries(full.files).map(([p, d]) => [p, Buffer.from(d, "base64")]),
-        ),
-      },
-      {
-        revision: full.revision,
-        status: "published",
-        origin: "cloud",
-        formats: full.formats,
-        industries: full.industries,
-        useCases: full.useCases,
-        searchTerms: full.searchTerms ?? [],
-        position: full.position,
-      },
-    );
-    if (full.credits !== null) {
-      await controlDb
-        .update(control.marketplaceItem)
-        .set({ credits: full.credits, creditsHigh: full.creditsHigh })
-        .where(eq(control.marketplaceItem.id, full.id));
-    }
-    for (const text of full.texts) {
-      if (text.language !== full.language) {
-        await putText(
-          full.id,
-          full.revision,
-          { ...text, definition: text.definition as WizardDefinition },
-          text.machine,
-        );
-      }
-    }
+    const values = { id: entry.id, hash: entry.hash, entry, fetchedAt: new Date() };
+    await controlDb
+      .insert(control.marketplaceCache)
+      .values(values)
+      .onConflictDoUpdate({ target: control.marketplaceCache.id, set: values });
   }
-  // What the source no longer lists goes out of the list here too.
-  for (const row of local) {
-    if (row.origin === "cloud" && row.status === "published" && !listed.has(row.id)) {
-      await controlDb
-        .update(control.marketplaceItem)
-        .set({ status: "unlisted" })
-        .where(eq(control.marketplaceItem.id, row.id));
-    }
-  }
+  // What the marketplace no longer lists here is not kept either.
+  await controlDb.delete(control.marketplaceCache).where(
+    notInArray(
+      control.marketplaceCache.id,
+      list.items.map((i) => i.id),
+    ),
+  );
   await writeSetting(SYNCED, Date.now());
 }
 
 /**
- * Takes over the source's entries when the last look is older than an hour. The first look
- * ever is waited for, briefly; later ones run beside the request that asked.
+ * Keeps the marketplace's starters and the starred entries, by hash: an entry is fetched again
+ * only when it changed. At most once an hour unless forced.
  */
 export async function syncMarketplace(force = false): Promise<void> {
-  const source = env.marketplace.sourceUrl;
-  if (!source || source === env.appUrl) {
+  if (!env.marketplace.url) {
     return;
   }
   const last = await readSetting<number>(SYNCED);
   if (!force && last && Date.now() - last < SYNC_EVERY_MS) {
     return;
   }
-  syncing ??= takeOver(source)
-    .catch((err) => console.error("[marketplace]", err))
+  syncing ??= takeOver()
+    .catch((err) => console.error("[marketplace]", (err as Error).message))
     .finally(() => {
       syncing = null;
     });
-  if (force || !last) {
-    await Promise.race([syncing, new Promise((r) => setTimeout(r, force ? 60_000 : 4_000))]);
-  }
+  await syncing;
 }

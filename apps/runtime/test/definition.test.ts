@@ -7,16 +7,16 @@ import {
   nextStepId,
   parseWizard,
 } from "@engenty-wizards/shared/definition";
-import { STARTERS } from "../src/starters/index";
+import { EXAMPLE_WIZARD } from "../src/authoring/example";
 
-describe("starters", () => {
-  for (const s of STARTERS) {
-    it(`${s.id} is a valid wizard`, () => {
-      const parsed = parseWizard(s.definition);
-      expect(parsed.ok).toBe(true);
-      expect(parsed.issues).toEqual([]);
-    });
-  }
+// The marketplace's entries are checked where they live (the marketplace app); the guide's
+// example is this repo's own.
+describe("the authoring guide's example", () => {
+  it("is a valid wizard", () => {
+    const parsed = parseWizard(EXAMPLE_WIZARD);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.issues).toEqual([]);
+  });
 });
 
 describe("validator", () => {
@@ -164,13 +164,21 @@ describe("line items", () => {
   });
 });
 
-describe("starters with files", () => {
-  for (const s of STARTERS.filter((x) => x.files)) {
-    it(`${s.id} ships every file its widgets name`, () => {
-      const parsed = parseWizard(s.definition, Object.keys(s.files ?? {}));
-      expect(parsed.issues).toEqual([]);
-    });
-  }
+describe("a widget's files", () => {
+  const film = {
+    title: "x",
+    steps: [
+      { id: "w", type: "widget", title: "W", entry: "film/ad.html", sample: "film/ad.sample.json" },
+      { id: "r", type: "result", title: "R", deliverables: [{ from: "w", formats: ["mp4"] }] },
+    ],
+  };
+  it("are all there", () => {
+    expect(parseWizard(film, ["film/ad.html", "film/ad.sample.json"]).issues).toEqual([]);
+  });
+  it("are named where one is missing", () => {
+    const { issues } = parseWizard(film, ["film/ad.html"]);
+    expect(issues.map((i) => i.stepId)).toEqual(["w"]);
+  });
 });
 
 describe("one result per entry, prefilled fields, lists gone through row by row", () => {

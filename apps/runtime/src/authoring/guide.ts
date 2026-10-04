@@ -1,5 +1,5 @@
 import { sandboxGuideLine } from "../sandbox/index.js";
-import { STARTERS } from "../starters/index.js";
+import { EXAMPLE_WIZARD } from "./example.js";
 
 /**
  * How a wizard is written down and what makes a good one. The studio's architect and the MCP
@@ -241,7 +241,7 @@ export function mcpServersLine(mcp: GuideServer[]): string {
 }
 
 export function exampleWizard(): string {
-  return JSON.stringify(STARTERS.find((s) => s.id === "tweet")!.definition, null, 2);
+  return JSON.stringify(EXAMPLE_WIZARD, null, 2);
 }
 
 /** The guide an MCP client reads before it writes a wizard. */

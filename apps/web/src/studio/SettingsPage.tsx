@@ -10,7 +10,6 @@ import { Account } from "./Account";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { LocalRuntimeCard } from "./LocalRuntime";
-import { MarketplaceAdmin } from "./MarketplaceAdmin";
 import { McpAccess } from "./McpAccess";
 import { ProjectSettings } from "./project/ProjectSettings";
 import { settingsSections } from "./settings-sections";
@@ -190,19 +189,7 @@ export function SettingsPage() {
           onChange={(id) => navigate(`/settings/${id}`)}
           options={sections.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <div
-          className={cn(
-            "min-w-0",
-            current.id === "marketplace" && "max-w-4xl",
-            current.id !== "project" && current.id !== "marketplace" && "max-w-2xl",
-          )}
-        >
-          {current.id === "marketplace" ? (
-            <div className="flex flex-col gap-6">
-              <ProjectSwitcher />
-              <MarketplaceAdmin />
-            </div>
-          ) : null}
+        <div className={cn("min-w-0", current.id !== "project" && "max-w-2xl")}>
           {scoped ? (
             <div className="mb-6">
               <ProjectSwitcher />

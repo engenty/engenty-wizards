@@ -384,3 +384,14 @@ export const storeSecret = sqliteTable(
   },
   (t) => [uniqueIndex("store_secret_slot").on(t.wizardId, t.holder, t.slot)],
 );
+
+/** Marketplace entries starred here: the runtime keeps them for offline use. */
+export const marketplaceStar = sqliteTable(
+  "marketplace_star",
+  {
+    tenantId: text("tenant_id").notNull(),
+    entryId: text("entry_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.entryId] })],
+);

@@ -260,7 +260,8 @@ export async function createWizard(
   await putLink(shareToken, "wizard", id);
   if (fromStarter) {
     await seedFiles(id, fromStarter.files);
-    await countInstall(fromStarter.id);
+    // Counted at the marketplace, beside the request.
+    void countInstall(fromStarter.id);
   }
   if (input.note) {
     await addMessage(id, { role: "assistant", content: input.note, changed: true }, writer);

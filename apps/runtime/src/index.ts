@@ -14,7 +14,7 @@ import { managed } from "./manage.js";
 import { loadCatalog, loadLocalModels } from "./models.js";
 import { closeBrowser } from "./render/chromium.js";
 import { clearRunning, writeRunning } from "./running.js";
-import { seedMarketplace, syncMarketplace } from "./services/marketplace.js";
+import { syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
@@ -34,15 +34,9 @@ if (managed) {
   void loadCatalog();
 }
 
-// The marketplace: what the repo ships goes into the database, then the source's entries.
-await seedMarketplace()
-  .then(({ added, updated }) => {
-    if (added || updated) {
-      console.log(`marketplace: ${added} added, ${updated} updated from the base set`);
-    }
-  })
-  .catch((err) => console.error("[marketplace]", err));
+// The marketplace's starters and the starred entries, kept for offline use; checked hourly.
 void syncMarketplace();
+setInterval(() => void syncMarketplace(), 3600_000).unref();
 
 const { default: app } = await import("./app.js");
 

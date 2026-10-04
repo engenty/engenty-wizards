@@ -105,7 +105,6 @@ export function NewWizardPage() {
           {t("new.orStarter")}
         </h2>
         <MarketplaceBrowser
-          source="studio"
           open={params.get("starter")}
           busy={create.isPending && Boolean(create.variables)}
           onUse={(entry) => project && !create.isPending && create.mutate(entry.id)}

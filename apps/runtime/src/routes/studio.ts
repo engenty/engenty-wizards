@@ -55,7 +55,6 @@ import { architectTurn } from "../services/architect.js";
 import { cloudCopy, publishToCloud } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
-import { isMarketplaceAdmin } from "../services/marketplace.js";
 import {
   exportWizard,
   importWizard,
@@ -164,8 +163,6 @@ export const studio = new Hono<Vars>()
       chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
       mcpUrl: `${env.appUrl}/api/mcp`,
-      /** May add and change marketplace entries. */
-      marketplaceAdmin: isMarketplaceAdmin(user),
       /** One project: the studio shows no project switcher. */
       limits: { projects: await projectLimit() },
     });

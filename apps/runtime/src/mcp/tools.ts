@@ -6,7 +6,7 @@ import { importFromRegistry, listConnectors, searchRegistry } from "../connector
 import { RunConflict } from "../engine/runner.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
-import { listMarketplace, marketplaceWizard } from "../services/marketplace.js";
+import { marketplaceWizard, searchMarketplace } from "../services/marketplace.js";
 import { defaultProject, listProjects, ownedProject } from "../services/projects.js";
 import { startTestRun, testRunReport } from "../services/runs.js";
 import { checkDraftWidget } from "../services/widgets.js";
@@ -176,13 +176,13 @@ export function registerTools(server: McpServer, who: Principal) {
     {
       title: "List starters",
       description:
-        "The marketplace's ready-made wizards (tweet with image, video ad, research briefing, dashboard, invoice, offer …), with what each makes and needs.",
-      input: z.object({}),
+        "The marketplace's ready-made wizards (tweet with image, video ad, research briefing, dashboard, invoice, offer …), with what each makes and needs. Give a query to search them; without one you get the starters.",
+      input: z.object({ query: z.string().max(200).optional() }),
       readOnly: true,
     },
-    async () =>
-      (await listMarketplace("de"))
-        .filter((s) => s.usable)
+    async ({ query }) =>
+      (await searchMarketplace({ q: query ?? "", lang: "de", limit: 30 })).entries
+        .filter((s) => s.usable && (query?.trim() || s.starter))
         .map((s) => ({
           id: s.id,
           title: s.title,

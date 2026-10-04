@@ -1,46 +1,26 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { eq } from "drizzle-orm";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import type {
+  MarketplaceExport,
+  MarketplaceItem,
+  MarketplacePage,
+  MarketplaceSummary,
+} from "@engenty-wizards/shared/marketplace";
+import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "wizards-marketplace-"));
 process.env.APP_URL = "http://localhost:5181";
-process.env.MARKETPLACE_ADMINS = "local";
-process.env.MARKETPLACE_URL = "http://source.test";
-
-// The translation's model call: answers with whatever the test puts here.
-const model = vi.hoisted(() => ({
-  answer: "",
-  /** The search's judge: the indexes it keeps, or null for a model that does not answer. */
-  fits: null as number[] | null,
-  calls: 0,
-}));
-vi.mock("ai", async (original) => ({
-  ...(await original<typeof import("ai")>()),
-  generateText: async () => {
-    model.calls++;
-    if (model.answer === "" && !model.fits) {
-      throw new Error("no model");
-    }
-    return { text: model.answer, output: { fits: model.fits ?? [] } };
-  },
-}));
-vi.mock("../src/models.js", async (original) => ({
-  ...(await original<typeof import("../src/models")>()),
-  textModel: async () => ({ model: {}, ref: "test", vendor: "test", gateway: false, metered: false }),
-}));
+process.env.MARKETPLACE_URL = "http://market.test/gallery";
 
 let client: typeof import("../src/db/client");
 let wizards: typeof import("../src/services/wizards");
 let files: typeof import("../src/services/files");
 let market: typeof import("../src/services/marketplace");
-let admin: typeof import("../src/services/marketplace-admin");
-let starters: typeof import("../src/starters/index");
-let search: typeof import("../src/services/marketplace-search");
 
-const TENANT = "tenant-m";
-const ADMIN = { id: "local", tenantId: TENANT, role: "owner" as const, name: "A", email: "" };
+/** A runtime that runs alone: its one person's stars are the ones it keeps. */
+const TENANT = "local";
 const inTenant = <T>(fn: () => Promise<T>) => client.withTenant(TENANT, fn);
 
 const definition = {
@@ -65,19 +45,111 @@ const definition = {
       tools: [],
       output: { format: "text" },
     },
-    {
-      id: "done",
-      type: "result",
-      title: "Fertig",
-      deliverables: [{ from: "card", formats: ["txt"] }],
-    },
+    { id: "done", type: "result", title: "Fertig", deliverables: [{ from: "card", formats: ["txt"] }] },
   ],
 };
 
-const item = (id: string) =>
-  client.controlDb.query.marketplaceItem.findFirst({
-    where: eq(client.control.marketplaceItem.id, id),
-  });
+function exportOf(id: string, over: Partial<MarketplaceExport> = {}): MarketplaceExport {
+  return {
+    id,
+    revision: 1,
+    hash: `${id}-1`,
+    updatedAt: "2026-10-04T10:00:00.000Z",
+    starter: true,
+    language: "de",
+    title: id === "card" ? "Grußkarte" : "Rechnung",
+    pitch: id === "card" ? "Eine Karte zum Anlass." : "Eine Rechnung als PDF.",
+    terms: id === "card" ? ["Glückwunsch"] : ["Faktura"],
+    avatar: "round",
+    formats: ["text"],
+    industries: ["any"],
+    useCases: id === "card" ? ["marketing"] : ["accounting"],
+    capabilities: ["text"],
+    effort: { fields: 1, required: 0, reviews: 0, minutes: 1 },
+    costTier: "low",
+    steps: 3,
+    version: 1,
+    texts: [
+      { language: "de", title: "Grußkarte", pitch: "Eine Karte.", definition, machine: false },
+      {
+        language: "en",
+        title: "Greeting card",
+        pitch: "A card.",
+        definition: { ...definition, title: "Greeting card" },
+        machine: true,
+      },
+    ],
+    files: { "notes.md": Buffer.from("# Anlässe").toString("base64") },
+    ...over,
+  };
+}
+
+/** The marketplace as the contract describes it, for the entries the test puts here. */
+const remote = {
+  online: true,
+  entries: new Map<string, MarketplaceExport>(),
+  calls: [] as string[],
+};
+
+function summaryOf(e: MarketplaceExport, lang: string): MarketplaceSummary {
+  const { texts, files: _files, ...summary } = e;
+  const text = texts.find((t) => t.language === lang) ?? texts[0];
+  return { ...summary, language: text.language, title: text.title, pitch: text.pitch };
+}
+
+async function marketplace(input: string | URL | Request, init?: RequestInit) {
+  const url = new URL(String(input));
+  remote.calls.push(`${init?.method ?? "GET"} ${url.pathname}${url.search}`);
+  if (!remote.online) {
+    throw new TypeError("fetch failed");
+  }
+  const lang = url.searchParams.get("lang") ?? "de";
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  const path = url.pathname.replace("/gallery/api/v1", "");
+  const all = [...remote.entries.values()];
+  if (path === "/entries") {
+    const ids = url.searchParams.get("ids");
+    const summaries = all.map((e) => summaryOf(e, lang));
+    const page: MarketplacePage = ids
+      ? {
+          entries: ids.split(",").flatMap((id) => summaries.find((s) => s.id === id) ?? []),
+          total: 0,
+          all: summaries.length,
+          facets: { useCase: {}, industry: {}, format: {} },
+        }
+      : searchEntries(summaries, url.searchParams.get("q") ?? "", {
+          useCase: (url.searchParams.get("useCase") ?? undefined) as never,
+        });
+    return json(page);
+  }
+  if (path === "/sync") {
+    const named = (url.searchParams.get("ids") ?? "").split(",");
+    return json({
+      items: all
+        .filter((e) => e.starter || named.includes(e.id))
+        .map(({ id, hash, updatedAt }) => ({ id, hash, updatedAt })),
+    });
+  }
+  const m = path.match(/^\/entries\/([^/]+)(\/export|\/installs)?$/);
+  const entry = m ? remote.entries.get(decodeURIComponent(m[1])) : undefined;
+  if (!entry) {
+    return json({ error: "not found" }, 404);
+  }
+  if (m?.[2] === "/installs") {
+    return new Response(null, { status: 204 });
+  }
+  if (m?.[2] === "/export") {
+    return json(entry);
+  }
+  const text = entry.texts.find((t) => t.language === lang) ?? entry.texts[0];
+  const item: MarketplaceItem = {
+    ...summaryOf(entry, lang),
+    definition: text.definition,
+    files: entry.files,
+  };
+  return json(item);
+}
 
 beforeAll(async () => {
   client = await import("../src/db/client");
@@ -85,318 +157,134 @@ beforeAll(async () => {
   wizards = await import("../src/services/wizards");
   files = await import("../src/services/files");
   market = await import("../src/services/marketplace");
-  admin = await import("../src/services/marketplace-admin");
-  starters = await import("../src/starters/index");
-  search = await import("../src/services/marketplace-search");
+});
+
+beforeEach(() => {
+  remote.online = true;
+  remote.calls = [];
+  remote.entries = new Map([
+    ["card", exportOf("card")],
+    ["invoice", exportOf("invoice", { starter: false })],
+  ]);
+  vi.stubGlobal("fetch", vi.fn(marketplace));
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("the base set", () => {
-  it("goes into the database once", async () => {
-    const first = await market.seedMarketplace();
-    expect(first).toEqual({ added: starters.STARTERS.length, updated: 0 });
-    expect(await market.seedMarketplace()).toEqual({ added: 0, updated: 0 });
-  });
-
-  it("is listed with what follows from each wizard", async () => {
-    const list = await market.listMarketplace("de");
-    expect(list.map((e) => e.id)).toEqual(starters.STARTERS.map((s) => s.id));
-    for (const e of list) {
-      expect(e.usable).toBe(true);
-      expect(e.formats.length).toBeGreaterThan(0);
-      expect(e.industries.length).toBeGreaterThan(0);
-      expect(e.effort.minutes).toBeGreaterThan(0);
-    }
-    const ad = list.find((e) => e.id === "facebook-video-ad")!;
-    expect(ad.capabilities).toContain("video");
-    expect(ad.costTier).toBe("high");
-    expect(ad.formats).toContain("video");
-    expect(list.find((e) => e.id === "invoice")!.formats).toContain("document");
-    expect(list.find((e) => e.id === "web-faq")!.useCases).toContain("website");
-  });
-
-  it("takes a starter whose revision went up in the repo, and keeps what an admin changed", async () => {
-    const { controlDb, control } = client;
-    await controlDb
-      .update(control.marketplaceItem)
-      .set({ baseRevision: 0, industries: ["retail"] })
-      .where(eq(control.marketplaceItem.id, "tweet"));
-    await controlDb
-      .update(control.marketplaceItem)
-      .set({ baseRevision: 0, origin: "admin" })
-      .where(eq(control.marketplaceItem.id, "offer"));
-    expect(await market.seedMarketplace()).toEqual({ added: 0, updated: 1 });
-    const tweet = (await item("tweet"))!;
-    expect(tweet.revision).toBe(2);
-    expect(tweet.baseRevision).toBe(1);
-    // How an admin sorted the entry stays.
-    expect(tweet.industries).toEqual(["retail"]);
-    expect((await item("offer"))!.revision).toBe(1);
-  });
-});
-
 describe("searching", () => {
-  it("finds entries by their words, the title first, without a model", async () => {
-    const all = await market.listMarketplace("de");
-    const word = all[0]!.title.split(/\s+/).find((w) => w.length > 4)!;
-    const calls = model.calls;
-    const result = await search.searchMarketplace(word.slice(0, -1), "de");
-    expect(result.judged).toBe(false);
-    expect(result.ids).toContain(all[0]!.id);
-    expect(model.calls).toBe(calls);
-    expect((await search.searchMarketplace("xyzzy", "de")).ids).toEqual([]);
-  });
-
-  it("lets a model sort a sentence and drop what does not fit, once per question", async () => {
-    const all = await market.listMarketplace("de");
-    const question = `ich brauche etwas wie ${all[0]!.title}`;
-    model.fits = [0];
-    const calls = model.calls;
-    const result = await search.searchMarketplace(question, "de");
-    expect(result).toEqual({ ids: [all[0]!.id], judged: true });
-    model.fits = [1, 0];
-    expect(await search.searchMarketplace(`${question}  `, "de")).toEqual(result);
-    expect(model.calls).toBe(calls + 1);
-    model.fits = null;
-  });
-
-  it("keeps the order by words when the model does not answer", async () => {
-    const all = await market.listMarketplace("de");
-    const result = await search.searchMarketplace(`bitte einmal ${all[0]!.title}`, "de");
-    expect(result.judged).toBe(false);
-    expect(result.ids[0]).toBe(all[0]!.id);
-  });
-});
-
-describe("the words an entry is found by", () => {
-  it("come with the base set and find what title and pitch do not name", async () => {
-    const result = await search.searchMarketplace("Reel", "de");
-    expect(result.ids).toEqual(["facebook-video-ad"]);
-    model.fits = null;
-    const sentence = await search.searchMarketplace(
-      "Ich brauche ein kurzes Video für meine Bäckerei",
-      "de",
+  it("asks the marketplace and reads each entry against this app", async () => {
+    const found = await inTenant(() =>
+      market.searchMarketplace({ q: "Faktura", lang: "de", useCase: "accounting" }),
     );
-    expect(sentence.judged).toBe(false);
-    expect(sentence.ids[0]).toBe("facebook-video-ad");
-    const english = await search.searchMarketplace("I need a quote for a customer", "en");
-    expect(english.ids[0]).toBe("offer");
-    const hiring = await search.searchMarketplace("Wir suchen neue Mitarbeiter für das Team", "de");
-    expect(hiring.ids[0]).toBe("web-application");
-  });
-
-  it("follow the repo without a new revision", async () => {
-    await client.controlDb
-      .update(client.control.marketplaceItem)
-      .set({ searchTerms: ["veraltet"] })
-      .where(eq(client.control.marketplaceItem.id, "invoice"));
-    expect(await market.seedMarketplace()).toEqual({ added: 0, updated: 0 });
-    expect((await item("invoice"))!.searchTerms).toContain("Faktura");
-  });
-});
-
-describe("starting from an entry", () => {
-  it("makes a wizard with the entry's workspace and counts it", async () => {
-    await inTenant(async () => {
-      const { id } = await wizards.createWizard("u", { starterId: "property-film" });
-      const w = await wizards.ownedWizard("u", id);
-      expect(w.starter).toBe("property-film");
-      expect(w.starterRevision).toBe(1);
-      const starter = starters.STARTERS.find((s) => s.id === "property-film")!;
-      expect((await files.draftFiles(id)).map((f) => f.path).sort()).toEqual(
-        Object.keys(starter.files ?? {}).sort(),
-      );
-      expect(await wizards.draftIssues(w)).toEqual([]);
-    });
-    expect((await item("property-film"))!.installs).toBe(1);
-  });
-
-  it("refuses an entry that is not there", async () => {
-    await expect(
-      inTenant(() => wizards.createWizard("u", { starterId: "nope" })),
-    ).rejects.toThrow(/no starter/);
-  });
-});
-
-describe("reading an entry written for a newer app", () => {
-  it("counts a definition only when nothing of it is lost", () => {
-    expect(market.readable(definition)).toBe(true);
-    const newer = structuredClone(definition) as any;
-    newer.steps[1].somethingNew = { deep: true };
-    expect(market.readable(newer)).toBe(false);
-    const unknownStep = structuredClone(definition) as any;
-    unknownStep.steps[1].type = "teleport";
-    expect(market.readable(unknownStep)).toBe(false);
-  });
-});
-
-describe("an admin", () => {
-  let wizardId: string;
-  let itemId: string;
-
-  it("puts a wizard of their own into the marketplace", async () => {
-    await inTenant(async () => {
-      wizardId = (await wizards.createWizard("local", { definition })).id;
-      const made = await admin.publishToMarketplace(ADMIN, {
-        wizardId,
-        language: "de",
-        status: "published",
-        industries: ["events"],
-        useCases: ["marketing"],
-      });
-      itemId = made.id;
-      expect(made).toEqual({ id: "grusskarte", revision: 1 });
-    });
-    const entry = (await market.listMarketplace("de")).find((e) => e.id === itemId)!;
-    expect(entry.title).toBe("Grußkarte");
-    expect(entry.industries).toEqual(["events"]);
-    expect(entry.capabilities).toEqual(["text"]);
-    expect(entry.formats).toEqual(["text"]);
-  });
-
-  it("keeps a translation next to the original, and drops one that changed the wizard", async () => {
-    const translated = structuredClone(definition) as any;
-    translated.title = "Greeting card";
-    translated.steps[0].fields[0].options = ["Birthday", "Wedding"];
-    model.answer = `\`\`\`json\n${JSON.stringify({
-      title: "Greeting card",
-      pitch: "A card for the occasion.",
-      definition: translated,
-    })}\n\`\`\``;
-    await inTenant(() => admin.translateItem(ADMIN, itemId, "en"));
-    const en = (await market.listMarketplace("en")).find((e) => e.id === itemId)!;
-    expect(en.title).toBe("Greeting card");
-    expect(en.language).toBe("en");
-    expect((await market.marketplaceWizard(itemId, "en"))!.definition.title).toBe("Greeting card");
-    // An untranslated entry is listed in its own language.
-    expect((await market.listMarketplace("en")).find((e) => e.id === "invoice")!.language).toBe(
-      "de",
-    );
-
-    const broken = structuredClone(translated);
-    broken.steps[0].fields[0].id = "event";
-    model.answer = JSON.stringify({ title: "x", pitch: "y", definition: broken });
-    await expect(inTenant(() => admin.translateItem(ADMIN, itemId, "en"))).rejects.toThrow(
-      /Übersetzung/,
+    expect(found.offline).toBe(false);
+    expect(found.entries.map((e) => e.id)).toEqual(["invoice"]);
+    expect(found.entries[0]).toMatchObject({ usable: true, starred: false, credits: null });
+    expect(remote.calls[0]).toBe(
+      "GET /gallery/api/v1/entries?lang=de&limit=60&offset=0&q=Faktura&useCase=accounting",
     );
   });
 
-  it("writes the next revision, which puts the translation out of date", async () => {
-    await inTenant(async () => {
-      const made = await admin.publishToMarketplace(ADMIN, { wizardId, itemId, language: "de" });
-      expect(made.revision).toBe(2);
-    });
-    const en = (await market.listMarketplace("en")).find((e) => e.id === itemId)!;
-    expect(en.language).toBe("de");
-    const row = (await market.listMarketplaceAdmin("de")).find((e) => e.id === itemId)!;
-    expect(row.languages).toEqual(["de"]);
-    // What the admin set before stays.
-    expect(row.industries).toEqual(["events"]);
-    expect(row.status).toBe("published");
-  });
-
-  it("unlists and removes", async () => {
-    await admin.updateItem(ADMIN, itemId, { status: "unlisted", title: "Karte" });
-    expect((await market.listMarketplace("de")).some((e) => e.id === itemId)).toBe(false);
-    expect((await market.listMarketplaceAdmin("de")).find((e) => e.id === itemId)!.title).toBe(
-      "Karte",
-    );
-    expect(await admin.deleteItem(ADMIN, itemId)).toEqual({ deleted: true });
-    expect(await item(itemId)).toBeUndefined();
-    // One of the base set would come back at the next start.
-    expect(await admin.deleteItem(ADMIN, "damage")).toEqual({ deleted: false });
-    expect((await item("damage"))!.status).toBe("unlisted");
-  });
-
-  it("is the one person of a runtime that runs alone, when MARKETPLACE_ADMINS names `local`", () => {
-    expect(market.isMarketplaceAdmin({ email: "" })).toBe(true);
+  it("marks an entry written for a newer app", async () => {
+    remote.entries.set("card", exportOf("card", { version: 99 }));
+    const found = await inTenant(() => market.searchMarketplace({ lang: "de" }));
+    expect(found.entries.find((e) => e.id === "card")?.usable).toBe(false);
   });
 });
 
-describe("a runtime that runs alone", () => {
-  const remote = (id: string, revision: number, def: unknown) => ({
-    id,
-    revision,
-    language: "de",
-    formats: ["text"],
-    industries: ["retail"],
-    useCases: ["sales"],
-    position: 5,
-    credits: 12,
-    creditsHigh: 30,
-    texts: [
-      { language: "de", title: `${id} de`, pitch: "p", definition: def, machine: false },
-      { language: "en", title: `${id} en`, pitch: "p", definition: def, machine: true },
-    ],
-    files: { "notes.md": Buffer.from("hello").toString("base64") },
-  });
-
-  function source(items: Record<string, ReturnType<typeof remote>>, unlisted: string[] = []) {
-    vi.stubGlobal("fetch", async (url: string) => {
-      const path = new URL(url).pathname;
-      const json = (body: unknown) => new Response(JSON.stringify(body));
-      if (path === "/api/public/marketplace/index") {
-        return json({
-          items: [
-            ...Object.values(items).map((i) => ({
-              id: i.id,
-              revision: i.revision,
-              status: "published",
-            })),
-            ...unlisted.map((id) => ({ id, revision: 1, status: "unlisted" })),
-          ],
-        });
-      }
-      const id = path.match(/marketplace\/([^/]+)\/export$/)?.[1];
-      return id && items[id] ? json(items[id]) : new Response("", { status: 404 });
-    });
-  }
-
-  it("takes over what its source lists", async () => {
-    const newer = structuredClone(definition) as any;
-    newer.steps[1].somethingNew = true;
-    source({
-      fresh: remote("fresh", 3, definition),
-      future: remote("future", 1, newer),
-      invoice: remote("invoice", 7, definition),
-    });
+describe("what is kept for offline use", () => {
+  it("is the starters and the starred entries, fetched again only when changed", async () => {
+    const exports = () => remote.calls.filter((c) => c.endsWith("/export"));
     await market.syncMarketplace(true);
+    expect(exports()).toEqual(["GET /gallery/api/v1/entries/card/export"]);
 
-    const list = await market.listMarketplace("en");
-    const fresh = list.find((e) => e.id === "fresh")!;
-    expect(fresh).toMatchObject({ title: "fresh en", revision: 3, usable: true });
-    expect(fresh.credits).toEqual({ credits: 12, high: 30 });
-    expect((await market.marketplaceWizard("fresh", "de"))!.files["notes.md"].toString()).toBe(
-      "hello",
-    );
-    // The source's version of a base entry replaces the one the app shipped.
-    expect((await item("invoice"))!).toMatchObject({ origin: "cloud", revision: 7 });
-
-    // An entry for a newer app is listed as such and cannot be started from.
-    expect(list.find((e) => e.id === "future")!.usable).toBe(false);
-    await expect(market.marketplaceWizard("future", "de")).rejects.toThrow(/neuere Version/);
-  });
-
-  it("drops what the source no longer lists, and leaves an admin's own entries", async () => {
-    await client.controlDb
-      .update(client.control.marketplaceItem)
-      .set({ origin: "admin" })
-      .where(eq(client.control.marketplaceItem.id, "future"));
-    source({ invoice: remote("invoice", 7, definition) }, ["fresh"]);
+    // A star is kept at once; the sync it starts and this one are the same.
+    await inTenant(() => market.starEntry(TENANT, "invoice", true));
     await market.syncMarketplace(true);
-    expect((await item("fresh"))!.status).toBe("unlisted");
-    expect((await item("future"))!.status).toBe("published");
-    expect((await item("invoice"))!.status).toBe("published");
+    expect(exports()).toEqual([
+      "GET /gallery/api/v1/entries/card/export",
+      "GET /gallery/api/v1/entries/invoice/export",
+    ]);
+
+    // Changed at the marketplace: its hash differs, so it comes again; the other does not.
+    remote.entries.set("card", exportOf("card", { revision: 2, hash: "card-2" }));
+    await market.syncMarketplace(true);
+    expect(exports().slice(2)).toEqual(["GET /gallery/api/v1/entries/card/export"]);
   });
 
-  it("keeps what it has when the source does not answer", async () => {
-    vi.stubGlobal("fetch", async () => {
-      throw new Error("offline");
+  it("answers a search when the marketplace does not, scored the same way", async () => {
+    remote.online = false;
+    const found = await inTenant(() => market.searchMarketplace({ q: "Faktura", lang: "en" }));
+    expect(found.offline).toBe(true);
+    expect(found.entries.map((e) => [e.id, e.title, e.starred])).toEqual([
+      ["invoice", "Greeting card", true],
+    ]);
+    const starred = await inTenant(() => market.searchMarketplace({ lang: "de", starred: true }));
+    expect(starred.entries.map((e) => e.id)).toEqual(["invoice"]);
+  });
+
+  it("forgets what the marketplace no longer lists", async () => {
+    remote.entries.delete("card");
+    await inTenant(() => market.starEntry(TENANT, "invoice", false));
+    await market.syncMarketplace(true);
+    remote.online = false;
+    const found = await inTenant(() => market.searchMarketplace({ lang: "de" }));
+    expect(found.entries).toEqual([]);
+  });
+});
+
+describe("an entry", () => {
+  it("shows what its wizard does, makes and costs", async () => {
+    const detail = await inTenant(() => market.marketplaceDetail("card", "de"));
+    expect(detail).toMatchObject({
+      id: "card",
+      usable: true,
+      description: "Eine Karte zum Anlass.",
+      outline: [
+        { id: "start", type: "page", title: "Anlass" },
+        { id: "card", type: "agent", title: "Karte schreiben" },
+        { id: "done", type: "result", title: "Fertig" },
+      ],
+      results: [{ title: "Karte schreiben", kind: "text", formats: ["txt"] }],
+      files: ["notes.md"],
     });
-    await market.syncMarketplace(true);
-    expect((await market.listMarketplace("de")).length).toBeGreaterThan(15);
+    expect(detail?.credits?.credits).toBeGreaterThan(0);
+  });
+
+  it("cannot be started where this app would lose part of its wizard", async () => {
+    remote.entries.set(
+      "card",
+      exportOf("card", {
+        texts: [
+          {
+            language: "de",
+            title: "Grußkarte",
+            pitch: "",
+            definition: { ...definition, sparkle: true },
+            machine: false,
+          },
+        ],
+      }),
+    );
+    expect((await inTenant(() => market.marketplaceDetail("card", "de")))?.usable).toBe(false);
+    await expect(inTenant(() => wizards.createWizard("u", { starterId: "card" }))).rejects.toThrow(
+      /neuere Version/,
+    );
+  });
+
+  it("becomes a wizard of its own, with its files, and is counted", async () => {
+    const { id } = await inTenant(() =>
+      wizards.createWizard("u", { starterId: "card", lang: "en" }),
+    );
+    const w = await inTenant(() => wizards.ownedWizard("u", id));
+    expect(w).toMatchObject({ title: "Greeting card", starter: "card", starterRevision: 1 });
+    expect((await inTenant(() => files.draftFiles(id))).map((f) => f.path)).toEqual(["notes.md"]);
+    await vi.waitFor(() =>
+      expect(remote.calls).toContain("POST /gallery/api/v1/entries/card/installs"),
+    );
+    await expect(inTenant(() => wizards.createWizard("u", { starterId: "nope" }))).rejects.toThrow(
+      /no starter/,
+    );
   });
 });

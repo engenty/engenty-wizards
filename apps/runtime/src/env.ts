@@ -152,24 +152,14 @@ export const env = {
     cloudUrl: str("CLOUD_URL", "https://engenty.ai").replace(/\/$/, ""),
   },
 
-  /** The marketplace: wizards anyone can start from, kept in the control database. */
+  /**
+   * The marketplace (docs/marketplace-contract.md): searched live, its starters and what people
+   * starred kept for offline use. `off` = none.
+   */
   marketplace: {
-    /**
-     * Who may add and change entries: e-mail addresses of people signed in at the Manage-App.
-     * `local` stands for the one person of a runtime that runs alone.
-     */
-    admins: str("MARKETPLACE_ADMINS")
-      .split(",")
-      .map((a) => a.trim().toLowerCase())
-      .filter(Boolean),
-    /** The runtime a runtime that runs alone takes its entries from; `off` = only its own. */
-    sourceUrl: manageUrl
-      ? ""
-      : str("MARKETPLACE_URL", str("CLOUD_URL", "https://engenty.ai"))
-          .replace(/^off$/, "")
-          .replace(/\/$/, ""),
-    /** Shows the gallery at /gallery to people who are not signed in. */
-    gallery: str("MARKETPLACE_GALLERY") === "1",
+    url: str("MARKETPLACE_URL", "https://engenty.ai/gallery")
+      .replace(/^off$/, "")
+      .replace(/\/+$/, ""),
   },
 
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),

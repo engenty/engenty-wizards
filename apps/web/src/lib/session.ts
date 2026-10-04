@@ -77,8 +77,6 @@ export interface Me {
   aiReady: boolean;
   /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
   mcpUrl: string;
-  /** May add and change marketplace entries. */
-  marketplaceAdmin: boolean;
   /** `projects`: how many projects the tenant works with. */
   limits: { projects: number };
 }

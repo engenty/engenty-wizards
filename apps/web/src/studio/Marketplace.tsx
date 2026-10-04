@@ -8,11 +8,18 @@ import {
   ITEM_FORMATS,
   type ItemFormat,
   type MarketplaceEntry,
+  type MarketplacePage,
   USE_CASES,
   type UseCase,
 } from "@engenty-wizards/shared/marketplace";
-import { isSentence, rankEntries } from "@engenty-wizards/shared/marketplace-search";
-import { useQuery } from "@tanstack/react-query";
+import type { OutlineStep, WizardOutline } from "@engenty-wizards/shared/marketplace-entry";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   AppWindow,
   AudioLines,
@@ -24,6 +31,7 @@ import {
   CircleEuro,
   Clapperboard,
   Clock,
+  CloudOff,
   Coins,
   Eye,
   FileText,
@@ -38,7 +46,7 @@ import {
   Plug,
   ScanText,
   Search,
-  Sparkles,
+  Star,
   Table2,
   Terminal,
   Type,
@@ -53,7 +61,6 @@ import {
   type ReactNode,
   Suspense,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -69,26 +76,12 @@ import type { PreviewStep } from "./FlowPreview";
 // The diagram brings its own library: loaded when a template is opened, not with the list.
 const FlowPreview = lazy(() => import("./FlowPreview"));
 
-/** A step as the flow shows it: what happens there, not how. */
-interface OutlineStep {
-  id: string;
-  type: string;
-  title: string;
-  /** What a generate step makes. */
-  asset?: string;
-  /** A widget step that cuts a film. */
-  video?: boolean;
-  /** Where the flow goes on instead of the next step, and when. `to` is a step's id or `end`. */
-  branches?: { to: string; when: string }[];
-}
+/** One entry with what its wizard does, makes, needs and costs: what the dialog shows. */
+type EntryDetail = MarketplaceEntry & WizardOutline;
 
-/** One entry with what the gallery shows of its wizard. */
-interface EntryDetail extends MarketplaceEntry {
-  description: string;
-  outline: OutlineStep[];
-  /** What a person takes along at the end: each thing by name, with the files it comes as. */
-  results: { title: string; kind: ItemFormat; formats: string[] }[];
-  files: string[];
+/** What a search answers: a page of entries, and whether the marketplace answered. */
+interface SearchPage extends MarketplacePage<MarketplaceEntry> {
+  offline: boolean;
 }
 
 interface Filters {
@@ -162,16 +155,6 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
   );
 }
 
-export function useMarketplace(source: "studio" | "public") {
-  return useQuery({
-    queryKey: ["marketplace", source, lang],
-    queryFn: () =>
-      api.get<MarketplaceEntry[]>(
-        `${source === "studio" ? "/api/studio/marketplace" : "/api/public/marketplace"}?lang=${lang}`,
-      ),
-  });
-}
-
 function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => void }) {
   return (
     <Card
@@ -194,7 +177,15 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
         <Mascot kind={entry.avatar} size={68} interactive={false} />
       </span>
       <div className="min-w-0 pr-20">
-        <div className="font-display font-semibold text-[15px]">{entry.title}</div>
+        <div className="flex items-center gap-1.5 font-display font-semibold text-[15px]">
+          {entry.title}
+          {entry.starred ? (
+            <Star
+              className="size-3.5 shrink-0 fill-amber text-amber"
+              aria-label={t("market.starred")}
+            />
+          ) : null}
+        </div>
         <div className="mt-0.5 text-[13px] text-ink-3 leading-snug">{entry.pitch}</div>
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
@@ -365,22 +356,40 @@ function FadeScroll({ className, children }: { className?: string; children: Rea
   );
 }
 
+/** `fallback`: the entry as the list has it, shown until the marketplace has answered. */
 function EntryDialog({
-  entry,
+  id,
+  fallback,
   onClose,
   onUse,
   busy,
 }: {
-  entry: MarketplaceEntry | null;
+  id: string | null;
+  fallback: MarketplaceEntry | null;
   onClose: () => void;
   onUse: (entry: MarketplaceEntry) => void;
   busy?: boolean;
 }) {
+  const qc = useQueryClient();
   const detail = useQuery({
-    queryKey: ["marketplace-entry", entry?.id, entry?.revision, lang],
-    queryFn: () => api.get<EntryDetail>(`/api/public/marketplace/${entry!.id}?lang=${lang}`),
-    enabled: Boolean(entry?.usable),
+    queryKey: ["marketplace-entry", id, lang],
+    queryFn: () =>
+      api.get<EntryDetail>(`/api/studio/marketplace/${encodeURIComponent(id!)}?lang=${lang}`),
+    enabled: Boolean(id),
     retry: false,
+  });
+  const entry = detail.data ?? fallback;
+  // A starred entry is kept on this machine, for use without a connection.
+  const star = useMutation({
+    mutationFn: (on: boolean) => {
+      const path = `/api/studio/marketplace/${encodeURIComponent(id!)}/star`;
+      return on ? api.put(path) : api.del(path);
+    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["marketplace"] }),
+        qc.invalidateQueries({ queryKey: ["marketplace-entry", id] }),
+      ]),
   });
   const dark = useTheme() === "dark";
   // The header: in the dark the dialog's own colour under a spotlight; in the light a grey
@@ -390,8 +399,21 @@ function EntryDialog({
     ? "var(--card)"
     : `color-mix(in oklch, ${fill ?? "var(--ink-4)"} 14%, var(--paper-2))`;
   return (
-    <Dialog open={Boolean(entry)} onClose={onClose} wide bare>
-      {entry ? (
+    <Dialog open={Boolean(id)} onClose={onClose} wide bare>
+      {!entry ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl bg-card p-8 text-[14px] text-ink-2 shadow-overlay">
+          {detail.isLoading ? (
+            <Spinner className="size-6 text-ink-3" />
+          ) : (
+            <>
+              <p>{t("market.notFound")}</p>
+              <Button variant="secondary" onClick={onClose}>
+                {t("common.close")}
+              </Button>
+            </>
+          )}
+        </div>
+      ) : (
         // As high as the window allows: the header and the buttons stay, the flow scrolls.
         // On a phone the panel is the whole screen.
         <div className="relative flex max-h-[calc(100dvh-48px)] flex-col rounded-2xl bg-card shadow-overlay max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none">
@@ -526,6 +548,19 @@ function EntryDialog({
             </div>
           )}
           <div className="flex shrink-0 justify-end gap-2 px-5 pt-4 pb-5 max-sm:border-border-soft max-sm:border-t sm:px-7 sm:pb-6">
+            <Button
+              variant="ghost"
+              className="mr-auto"
+              title={t("market.starHint")}
+              aria-pressed={entry.starred}
+              busy={star.isPending}
+              onClick={() => star.mutate(!entry.starred)}
+            >
+              <Star className={cn("size-4", entry.starred && "fill-amber text-amber")} />
+              <span className="max-sm:sr-only">
+                {t(entry.starred ? "market.starred" : "market.star")}
+              </span>
+            </Button>
             <Button variant="secondary" onClick={onClose}>
               {t("common.close")}
             </Button>
@@ -534,7 +569,7 @@ function EntryDialog({
             </Button>
           </div>
         </div>
-      ) : null}
+      )}
     </Dialog>
   );
 }
@@ -663,18 +698,6 @@ function FilterMenu({
   );
 }
 
-/** `found`: the entries the search left, or null without a search. */
-function matches(e: MarketplaceEntry, f: Filters, found: Set<string> | null): boolean {
-  return (
-    (!found || found.has(e.id)) &&
-    (!f.useCase || e.useCases.includes(f.useCase)) &&
-    (!f.industry ||
-      e.industries.includes(f.industry) ||
-      (f.industry !== "any" && e.industries.includes("any"))) &&
-    (!f.format || e.formats.includes(f.format))
-  );
-}
-
 /** A value once it has stopped changing for a moment: what is typed, when the typing pauses. */
 function useSettled<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value);
@@ -685,77 +708,70 @@ function useSettled<T>(value: T, ms: number): T {
   return settled;
 }
 
+const PAGE = 60;
+
 /**
- * The marketplace as a person browses it: search, the four ways to narrow the list, and a card
- * per entry that opens with what the wizard makes, needs and costs.
+ * The marketplace as a person browses it: a search the marketplace answers live, the ways to
+ * narrow it, the starred entries, and a card per entry that opens with what the wizard makes,
+ * needs and costs. Without a connection it shows what this machine keeps.
  */
 export function MarketplaceBrowser({
-  source,
   onUse,
   busy,
   open: opened,
-  front,
-  crew,
 }: {
-  source: "studio" | "public";
   onUse: (entry: MarketplaceEntry) => void;
   busy?: boolean;
   /** An entry to open at once (a link from the gallery). */
   open?: string | null;
-  /** The gallery: the search is a field to write a sentence into, and everything starts left. */
-  front?: boolean;
-  /** What stands on that field's upper edge. */
-  crew?: ReactNode;
 }) {
-  const entries = useMarketplace(source);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [starred, setStarred] = useState(false);
   const [picked, setPicked] = useState<string | null>(opened ?? null);
-  const all = entries.data ?? [];
-  const q = query.trim();
-  const asked = useSettled(q, 450);
+  const q = useSettled(query.trim(), 250);
 
-  // Every keystroke is answered by words at once; a sentence is also read by a model, which
-  // sorts the entries and drops what does not fit.
-  const judged = useQuery({
-    queryKey: ["marketplace-search", source, lang, asked],
-    queryFn: () =>
-      api.post<{ ids: string[]; judged: boolean }>(
-        `${source === "studio" ? "/api/studio/marketplace" : "/api/public/marketplace"}/search`,
-        { q: asked, lang },
-      ),
-    enabled: isSentence(asked),
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
+  const search = useInfiniteQuery({
+    queryKey: ["marketplace", lang, q, filters, starred],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ lang, limit: String(PAGE), offset: String(pageParam) });
+      if (q) {
+        params.set("q", q);
+      }
+      for (const [key, value] of Object.entries(filters)) {
+        if (value) {
+          params.set(key, value);
+        }
+      }
+      if (starred) {
+        params.set("starred", "1");
+      }
+      return api.get<SearchPage>(`/api/studio/marketplace?${params}`);
+    },
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => {
+      const had = pages.reduce((sum, p) => sum + p.entries.length, 0);
+      return had < last.total ? had : undefined;
+    },
+    placeholderData: keepPreviousData,
   });
-  const byModel = asked === q && judged.data?.judged ? judged.data.ids : null;
-  const thinking = isSentence(q) && (asked !== q || judged.isFetching);
-
-  const ordered = useMemo(() => {
-    if (!q) {
-      return all;
-    }
-    if (byModel) {
-      return byModel.flatMap((id) => all.find((e) => e.id === id) ?? []);
-    }
-    return rankEntries(all, q);
-  }, [all, q, byModel]);
-  const found = useMemo(() => (q ? new Set(ordered.map((e) => e.id)) : null), [q, ordered]);
-  const shown = useMemo(
-    () => ordered.filter((e) => matches(e, filters, found)),
-    [ordered, filters, found],
-  );
+  const first = search.data?.pages[0];
+  const shown = search.data?.pages.flatMap((p) => p.entries) ?? [];
+  const all = first?.all ?? 0;
+  const thinking = query.trim() !== q || (search.isFetching && !search.isFetchingNextPage);
 
   /** The options of one filter, each with what it would leave of the list. */
   const options = (key: keyof Filters, labels: Labels, icon?: (id: string) => ReactNode) =>
     Object.keys(labels)
       // An option no entry has at all is not offered.
-      .filter((id) => all.some((e) => matches(e, { ...NO_FILTERS, [key]: id }, null)))
+      .filter(
+        (id) => (first?.facets[key] as Record<string, number> | undefined)?.[id] !== undefined,
+      )
       .map((id) => ({
         value: id,
         label: label(labels, id),
         icon: icon?.(id),
-        count: all.filter((e) => matches(e, { ...filters, [key]: id }, found)).length,
+        count: (first?.facets[key] as Record<string, number>)[id] ?? 0,
       }));
 
   const useCases = options("useCase", USE_CASES);
@@ -769,32 +785,30 @@ export function MarketplaceBrowser({
       )),
     },
   ];
-  const narrowed = Boolean(q) || Object.values(filters).some(Boolean);
+  const narrowed = Boolean(query.trim()) || starred || Object.values(filters).some(Boolean);
   const reset = () => {
     setFilters(NO_FILTERS);
     setQuery("");
+    setStarred(false);
   };
 
-  if (entries.isLoading) {
+  if (search.isLoading) {
     return (
       <div className="flex justify-center py-10">
         <Spinner className="size-6 text-ink-3" />
       </div>
     );
   }
-  if (!all.length) {
-    return null;
+  const offline = first?.offline ? (
+    <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-ink-3">
+      <CloudOff className="size-4 shrink-0" />
+      {t("market.offline")}
+    </p>
+  ) : null;
+  // No marketplace, and nothing kept: the page has only the prompt.
+  if (!all && !narrowed) {
+    return offline;
   }
-  /** What the search is doing: looking by words, waiting for the model, or sorted by it. */
-  const status = thinking ? (
-    <Spinner className="size-4 shrink-0 text-ink-3" />
-  ) : byModel ? (
-    <span title={t("market.judged")} className="flex shrink-0">
-      <Sparkles className="size-4 text-ember-strong" />
-    </span>
-  ) : (
-    <Search className="size-4 shrink-0 text-ink-3" />
-  );
   const clear = query ? (
     <button
       type="button"
@@ -805,76 +819,71 @@ export function MarketplaceBrowser({
       <X className="size-4" />
     </button>
   ) : null;
+  const chip = (pressed: boolean) =>
+    cn(
+      "inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[12.5px] transition",
+      pressed
+        ? "bg-card font-medium text-ink shadow-soft ring-1 ring-border-soft"
+        : "text-ink-3 hover:bg-card/60 hover:text-ink",
+    );
 
   return (
     <div>
-      {front ? (
-        // The gallery's field: written into like a chat, two lines for a whole sentence.
-        <label className="relative mx-auto flex max-w-lg items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
-          {crew ? (
-            <span className="-z-10 pointer-events-none absolute right-5 bottom-full flex items-end">
-              {crew}
-            </span>
-          ) : null}
-          <span className="mt-[5px] flex shrink-0">{status}</span>
-          <textarea
-            rows={2}
-            value={query}
-            onChange={(e) => setQuery(e.target.value.replace(/\n/g, " "))}
-            placeholder={t("market.describe")}
-            aria-label={t("market.search")}
-            className="min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-ink-4"
-          />
-          {clear}
-        </label>
-      ) : (
-        <label className="relative mx-auto flex h-10 max-w-md items-center gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus sm:h-11">
-          {status}
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("market.search")}
-            aria-label={t("market.search")}
-            className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
-          />
-          {clear}
-        </label>
-      )}
-      {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
-      <div
-        className={cn(
-          "max-sm:-mx-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden",
-          front ? "mt-3" : "mt-4",
+      <label className="relative mx-auto flex h-10 max-w-md items-center gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus sm:h-11">
+        {thinking ? (
+          <Spinner className="size-4 shrink-0 text-ink-3" />
+        ) : (
+          <Search className="size-4 shrink-0 text-ink-3" />
         )}
-      >
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("market.search")}
+          aria-label={t("market.search")}
+          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {clear}
+      </label>
+      {offline}
+      {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
+      <div className="max-sm:-mx-4 mt-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
         {[{ value: "", label: t("market.all") }, ...useCases].map((u) => (
           <button
             key={u.value}
             type="button"
-            aria-pressed={filters.useCase === u.value}
-            onClick={() => setFilters({ ...filters, useCase: u.value as UseCase | "" })}
-            className={cn(
-              "h-7 shrink-0 whitespace-nowrap rounded-full px-2.5 text-[12.5px] transition",
-              filters.useCase === u.value
-                ? "bg-card font-medium text-ink shadow-soft ring-1 ring-border-soft"
-                : "text-ink-3 hover:bg-card/60 hover:text-ink",
-            )}
+            aria-pressed={!starred && filters.useCase === u.value}
+            onClick={() => {
+              setStarred(false);
+              setFilters({ ...filters, useCase: u.value as UseCase | "" });
+            }}
+            className={chip(!starred && filters.useCase === u.value)}
           >
             {u.label}
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={starred}
+          onClick={() => setStarred(!starred)}
+          className={chip(starred)}
+        >
+          <Star className={cn("size-3.5", starred && "fill-amber text-amber")} />
+          {t("market.starred")}
+        </button>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-1 gap-y-2 sm:mt-6">
-        {menus.map((m) => (
-          <FilterMenu
-            key={m.key}
-            name={m.name}
-            value={filters[m.key]}
-            options={m.options}
-            onChange={(v) => setFilters({ ...filters, [m.key]: v })}
-          />
-        ))}
+        {starred
+          ? null
+          : menus.map((m) => (
+              <FilterMenu
+                key={m.key}
+                name={m.name}
+                value={filters[m.key]}
+                options={m.options}
+                onChange={(v) => setFilters({ ...filters, [m.key]: v })}
+              />
+            ))}
         {/* Reset stands before the count, so the count never moves. */}
         <span className="ml-auto flex items-center gap-3 whitespace-nowrap pl-2 text-[13px] text-ink-3">
           {narrowed ? (
@@ -891,13 +900,13 @@ export function MarketplaceBrowser({
           {/* A phone has no room for the noun beside the reset link. */}
           {narrowed ? (
             <span className="tabular-nums sm:hidden">
-              {t("market.countOfShort", { n: shown.length, all: all.length })}
+              {t("market.countOfShort", { n: first?.total ?? 0, all })}
             </span>
           ) : null}
           <span className={cn("tabular-nums", narrowed && "max-sm:hidden")}>
             {narrowed
-              ? t("market.countOf", { n: shown.length, all: all.length })
-              : t("market.count", { n: all.length })}
+              ? t("market.countOf", { n: first?.total ?? 0, all })
+              : t("market.count", { n: all })}
           </span>
         </span>
       </div>
@@ -909,14 +918,26 @@ export function MarketplaceBrowser({
         </div>
       ) : (
         <div className="py-10 text-center text-[14px] text-ink-3">
-          <p>{t("market.none")}</p>
+          <p>{t(starred ? "market.noneStarred" : "market.none")}</p>
           <Button variant="ghost" className="mt-2" onClick={reset}>
             {t("market.reset")}
           </Button>
         </div>
       )}
+      {search.hasNextPage ? (
+        <div className="mt-6 flex justify-center">
+          <Button
+            variant="secondary"
+            busy={search.isFetchingNextPage}
+            onClick={() => void search.fetchNextPage()}
+          >
+            {t("market.more")}
+          </Button>
+        </div>
+      ) : null}
       <EntryDialog
-        entry={all.find((e) => e.id === picked) ?? null}
+        id={picked}
+        fallback={shown.find((e) => e.id === picked) ?? null}
         onClose={() => setPicked(null)}
         onUse={onUse}
         busy={busy}

@@ -226,14 +226,24 @@ export function costTierOf(capabilities: Capability[]): CostTier {
     : "low";
 }
 
-export type ItemStatus = "draft" | "published" | "unlisted";
+/** The link that opens an entry in the installed desktop app (`/new?starter=<id>` there). */
+export const entryAppLink = (id: string) =>
+  `engenty-wizards://new?starter=${encodeURIComponent(id)}`;
 
-/** One entry as a list shows it. */
-export interface MarketplaceEntry {
+// --- what the marketplace answers (docs/marketplace-contract.md) -----------------------------
+
+/** One entry as the marketplace lists it, in a language. */
+export interface MarketplaceSummary {
   id: string;
-  /** Goes up with every change of the entry's wizard. */
+  /** Goes up whenever the entry changes. */
   revision: number;
-  /** The language of `title` and `pitch`; the entry's own when no translation exists yet. */
+  /** Of everything the entry is made of, every language and file: changes with any of it. */
+  hash: string;
+  /** When the entry last changed, ISO 8601. */
+  updatedAt: string;
+  /** One of the entries an app keeps for offline use without being asked. */
+  starter: boolean;
+  /** The language of `title` and `pitch`; the entry's own where it is not translated. */
   language: MarketplaceLang;
   title: string;
   pitch: string;
@@ -246,21 +256,69 @@ export interface MarketplaceEntry {
   capabilities: Capability[];
   effort: Effort;
   costTier: CostTier;
-  /** A run's price in credits and what it rarely exceeds; null where no prices are known. */
-  credits: { credits: number; high: number } | null;
   steps: number;
-  /** False: this app is older than the entry and would read its wizard wrongly. */
-  usable: boolean;
+  /** The definition version the entry's wizard is written in (`DEFINITION_VERSION`). */
+  version: number;
 }
 
-/** What an admin sees on top. */
-export interface MarketplaceAdminEntry extends MarketplaceEntry {
-  status: ItemStatus;
-  origin: "base" | "admin" | "cloud";
-  sourceLanguage: MarketplaceLang;
-  /** Languages a current translation exists in, the entry's own included. */
-  languages: MarketplaceLang[];
-  position: number;
-  installs: number;
-  updatedAt: number;
+/** What a search narrows by, besides its words. */
+export interface MarketplaceFilters {
+  useCase?: UseCase;
+  industry?: Industry;
+  format?: ItemFormat;
+}
+
+/** Per option of a filter: the entries it would leave, with the other filters as they are. */
+export interface MarketplaceFacets {
+  useCase: Partial<Record<UseCase, number>>;
+  industry: Partial<Record<Industry, number>>;
+  format: Partial<Record<ItemFormat, number>>;
+}
+
+/** A page of a search: the entries, best first, how many there are, and the filters' counts. */
+export interface MarketplacePage<T extends MarketplaceSummary = MarketplaceSummary> {
+  entries: T[];
+  total: number;
+  /** Every published entry, before words and filters. */
+  all: number;
+  facets: MarketplaceFacets;
+}
+
+/** One entry with its wizard in a language: what an app starts a wizard from. */
+export interface MarketplaceItem extends MarketplaceSummary {
+  /** The wizard as written; an app reads it with its own schema. */
+  definition: unknown;
+  /** The workspace it starts with: path → base64. */
+  files: Record<string, string>;
+}
+
+/** Everything of an entry, every language: what an app keeps for offline use. */
+export interface MarketplaceExport extends MarketplaceSummary {
+  texts: {
+    language: MarketplaceLang;
+    title: string;
+    pitch: string;
+    definition: unknown;
+    /** Written by a model, not by a person. */
+    machine: boolean;
+  }[];
+  /** path → base64 */
+  files: Record<string, string>;
+}
+
+/** What an app compares with what it keeps: an entry changed where its hash differs. */
+export interface MarketplaceSyncItem {
+  id: string;
+  hash: string;
+  updatedAt: string;
+}
+
+/** One entry as the app shows it: the summary, read against this app. */
+export interface MarketplaceEntry extends MarketplaceSummary {
+  /** A run's price in credits and what it rarely exceeds; null where it is not worked out. */
+  credits: { credits: number; high: number } | null;
+  /** False: this app is older than the entry and would read its wizard wrongly. */
+  usable: boolean;
+  /** The person keeps it for offline use. */
+  starred: boolean;
 }

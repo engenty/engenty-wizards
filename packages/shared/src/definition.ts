@@ -385,8 +385,11 @@ export const connectionSchema = z.object({
   description: z.string().optional(),
 });
 
+/** The version of the definition this app writes and reads; raised only by a breaking change. */
+export const DEFINITION_VERSION = 1 as const;
+
 export const wizardSchema = z.object({
-  version: z.literal(1).default(1),
+  version: z.literal(DEFINITION_VERSION).default(DEFINITION_VERSION),
   title: z.string().min(1),
   description: z.string().default(""),
   avatar: z.enum(ENGENTY_KINDS).default("round"),
@@ -863,4 +866,30 @@ function round2(n: number): number {
 
 export function allFields(def: WizardDefinition): Field[] {
   return def.steps.flatMap((s) => (s.type === "page" ? s.fields : []));
+}
+
+// --- can this app read a definition? ---------------------------------------------------------
+// The schema drops what it does not know. A definition written for a newer app would be read
+// without complaint and run wrongly, so it counts only when nothing of it is lost.
+
+function keepsAll(given: unknown, read: unknown): boolean {
+  if (Array.isArray(given)) {
+    return Array.isArray(read) && given.every((v, i) => keepsAll(v, read[i]));
+  }
+  if (given && typeof given === "object") {
+    return (
+      Boolean(read) &&
+      typeof read === "object" &&
+      Object.entries(given).every(
+        ([k, v]) => v === undefined || (k in (read as object) && keepsAll(v, (read as never)[k])),
+      )
+    );
+  }
+  return true;
+}
+
+/** True when this app's schema reads the definition without losing anything of it. */
+export function readable(definition: unknown): boolean {
+  const parsed = wizardSchema.safeParse(definition);
+  return parsed.success && keepsAll(definition, parsed.data);
 }
