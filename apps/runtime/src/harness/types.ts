@@ -1,5 +1,5 @@
 import type { Effort, TextClass } from "@engenty-wizards/shared/definition";
-import type { HarnessModel } from "./model.js";
+import type { HarnessImageModel, HarnessModel } from "./model.js";
 
 /**
  * A harness is an AI client installed on this machine — Claude Code, Codex, Gemini CLI, Cursor
@@ -36,6 +36,11 @@ export interface Harness extends EnvSpec {
    */
   login: { args: string[]; env?: Record<string, string>; interactive: boolean };
   model(alias: string, effort?: Effort): HarnessModel;
+  /**
+   * A client that also makes images on the sign-in: the alias the image class runs on unless a
+   * binding names another, and the model for it. Video and speech no client makes.
+   */
+  image?: { alias: string; model(alias: string): HarnessImageModel };
   /** What to tell the person when the signed-in account cannot pay for the call. */
   exhausted?: string;
 }

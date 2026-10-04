@@ -5,6 +5,7 @@ import {
   imageCostUsd,
   imageModel,
   isChatImageModel,
+  isHarnessVendor,
   speechCostUsd,
   speechModel,
   textModel,
@@ -40,7 +41,8 @@ export async function generateImageMedia(input: {
   const { prompt, reference, abortSignal } = input;
   const aspect = (input.aspectRatio ?? "1:1") as Aspect;
   const image = await imageModel(input.call);
-  const costUsd = image.metered ? 0 : imageCostUsd(image.ref);
+  // The gateway books its own calls; a client's images are part of the person's subscription.
+  const costUsd = image.metered || isHarnessVendor(image.vendor) ? 0 : imageCostUsd(image.ref);
   if (isChatImageModel(image.ref)) {
     const chat = await textModel("image", input.call);
     const text = `${prompt}\n\nAspect ratio: ${aspect}. Return exactly one image.`;

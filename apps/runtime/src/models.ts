@@ -18,6 +18,7 @@ import {
   harness,
   isHarnessVendor,
   notInstalled,
+  signedOut,
 } from "./harness/index.js";
 import { managed } from "./manage.js";
 import { ModelUnavailableError } from "./model-errors.js";
@@ -246,7 +247,19 @@ function localRef(cls: ModelClass): string {
       ? bound
       : `${client.id}/${client.classes[cls as TextClass]}`;
   }
-  return bound ?? env.models[cls];
+  if (bound) {
+    return bound;
+  }
+  // A client that makes images on the sign-in makes them too, before any key is paid for.
+  if (cls === "image" && client?.image) {
+    return `${client.id}/${client.image.alias}`;
+  }
+  // The defaults for images, video and sound name gateway models; without a gateway key nothing
+  // reaches them, so the class stays empty instead of showing a model that cannot run.
+  if (!(TEXT_CLASSES as readonly string[]).includes(cls) && !local.keys.gateway) {
+    return "";
+  }
+  return env.models[cls];
 }
 
 function ownGateway() {
@@ -257,6 +270,9 @@ async function localLanguageModel(
   ref: string,
   meta: CallMeta,
 ): Promise<{ model: LanguageModel; gateway: boolean }> {
+  if (!ref) {
+    throw new ModelUnavailableError("Für diese Klasse ist kein Modell eingerichtet.");
+  }
   const { provider, vendor, model } = split(ref);
   const client = harness(vendor);
   if (client) {
@@ -340,6 +356,13 @@ export async function imageModel(meta: CallMeta = {}) {
   }
   const ref = localRef("image");
   const { vendor, model } = split(ref);
+  const client = harness(vendor);
+  if (client?.image) {
+    if (!(await detectHarness(client.id))?.version) {
+      throw new ModelUnavailableError(notInstalled(client));
+    }
+    return { model: client.image.model(model), ref, vendor, gateway: false, metered: false };
+  }
   const gateway = ownGateway();
   if (gateway) {
     return {
@@ -463,6 +486,37 @@ export function isChatImageModel(ref: string): boolean {
 export const gatewayTools = createGateway({ apiKey: "unused" }).tools;
 
 /** Whether any text model can answer at all: the studio says so before the first chat turn. */
+/**
+ * Whether a class can run here, found out without calling it: null, or what the person reads.
+ * A class the gateway serves counts as there unless its catalog leaves it unbound.
+ */
+export async function classProblem(cls: ModelClass): Promise<string | null> {
+  try {
+    const resolved =
+      cls === "image"
+        ? await imageModel()
+        : cls === "video"
+          ? await videoModel()
+          : cls === "speech"
+            ? await speechModel()
+            : await textModel(cls);
+    if (resolved.metered) {
+      const bound = (await classCatalog())?.classes;
+      return bound && !bound[cls] ? "Dafür ist beim Konto kein Modell eingerichtet." : null;
+    }
+    const client = harness(resolved.vendor);
+    if (client && (await detectHarness(client.id))?.auth === "none") {
+      return signedOut(client);
+    }
+    return null;
+  } catch (err) {
+    if (err instanceof ModelUnavailableError) {
+      return err.message;
+    }
+    throw err;
+  }
+}
+
 export async function hasTextModel(): Promise<boolean> {
   try {
     await textModel("standard");

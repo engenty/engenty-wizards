@@ -1,24 +1,28 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Effort } from "@engenty-wizards/shared/definition";
-import type { LanguageModel } from "ai";
+import type { ImageModel, LanguageModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
 import { type BridgeTool, openBridge } from "../mcp/bridge.js";
 import { ModelUnavailableError } from "../model-errors.js";
-import { jsonInstruction, parseJsonAnswer, renderPrompt } from "./prompt.js";
+import { extensionOf, jsonInstruction, parseJsonAnswer, renderPrompt } from "./prompt.js";
 import type { Harness } from "./types.js";
 
 /**
  * An installed AI client as a model: every call runs the client once, headless, on the person's
  * own sign-in. A call with tools hands them to the client over MCP (../mcp/bridge.ts) and lets
  * it work through them itself; a call that wants structured output has the client validate it
- * against the schema where it can, else asks for JSON and parses it. Text only: images, video
- * and audio stay with keys.
+ * against the schema where it can, else asks for JSON and parses it. A client that makes images
+ * on the sign-in (Codex) is an image model as well (HarnessImageModel); video and audio stay
+ * with keys.
  */
 
 type V3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
+type ImageV3 = Extract<ImageModel, { specificationVersion: "v3" }>;
+type ImageCallOptions = Parameters<ImageV3["doGenerate"]>[0];
+type ImageResult = Awaited<ReturnType<ImageV3["doGenerate"]>>;
 type CallOptions = Parameters<V3["doGenerate"]>[0];
 type GenerateResult = Awaited<ReturnType<V3["doGenerate"]>>;
 type StreamResult = Awaited<ReturnType<V3["doStream"]>>;
@@ -292,5 +296,78 @@ export abstract class HarnessModel implements V3 {
         },
       }),
     };
+  }
+}
+
+/** One image call, as the client is asked for it. */
+export interface HarnessImageCall {
+  /** A folder of this call alone, with the reference images in it; deleted afterwards. */
+  dir: string;
+  prompt: string;
+  /** The reference images, as paths in `dir`. */
+  files: string[];
+  aspectRatio?: string;
+  signal?: AbortSignal;
+}
+
+/** A client that makes images on the person's sign-in: one client run per image. */
+export abstract class HarnessImageModel implements ImageV3 {
+  readonly specificationVersion = "v3" as const;
+  abstract readonly provider: string;
+  readonly modelId: string;
+  readonly maxImagesPerCall = 1;
+  protected readonly harness: HarnessMeta;
+
+  constructor(harness: HarnessMeta, alias: string) {
+    this.harness = harness;
+    this.modelId = alias;
+  }
+
+  /** Runs the client once and hands back the image it made. */
+  protected abstract invoke(call: HarnessImageCall): Promise<Uint8Array>;
+
+  async doGenerate(options: ImageCallOptions): Promise<ImageResult> {
+    const dir = join(workDir, nanoid(10));
+    mkdirSync(dir, { recursive: true });
+    const warnings: ImageResult["warnings"] = [];
+    const files: string[] = [];
+    for (const file of options.files ?? []) {
+      if (file.type !== "file") {
+        warnings.push({ type: "unsupported", feature: "image url" });
+        continue;
+      }
+      const path = join(dir, `ref-${files.length + 1}.${extensionOf(file.mediaType)}`);
+      writeFileSync(
+        path,
+        typeof file.data === "string" ? Buffer.from(file.data, "base64") : file.data,
+      );
+      files.push(path);
+    }
+    for (const key of ["size", "seed", "mask"] as const) {
+      if (options[key] !== undefined) {
+        warnings.push({ type: "unsupported", feature: key });
+      }
+    }
+    try {
+      const image = await this.invoke({
+        dir,
+        prompt: options.prompt ?? "",
+        files,
+        aspectRatio: options.aspectRatio,
+        signal: options.abortSignal,
+      });
+      return {
+        images: [image],
+        warnings,
+        response: { timestamp: new Date(), modelId: this.modelId, headers: undefined },
+      };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new ModelUnavailableError(notInstalled(this.harness));
+      }
+      throw err;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 }

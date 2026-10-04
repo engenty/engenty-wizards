@@ -9,7 +9,7 @@ export type Message = CallOptions["prompt"][number];
 export type Warning = GenerateResult["warnings"][number];
 
 /** The extension a saved attachment gets, so the client reads it as what it is. */
-function extensionOf(mediaType: string, filename?: string): string {
+export function extensionOf(mediaType: string, filename?: string): string {
   const own = filename?.match(/\.([a-z0-9]{1,5})$/i)?.[1];
   if (own) {
     return own.toLowerCase();

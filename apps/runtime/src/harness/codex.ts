@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Effort, TextClass } from "@engenty-wizards/shared/definition";
 import { resolveEnv, run } from "./env.js";
@@ -6,6 +7,8 @@ import {
   failureOf,
   type HarnessAnswer,
   type HarnessCall,
+  type HarnessImageCall,
+  HarnessImageModel,
   HarnessModel,
   runClient,
 } from "./model.js";
@@ -19,12 +22,16 @@ import type { EnvSpec, Harness, HarnessAuth } from "./types.js";
 
 export const CODEX_BIN = process.env.CODEX_BIN?.trim() || "codex";
 
-/** "default" = the model the client picks itself; a binding `codex/<model>` names one. */
+/**
+ * Models a ChatGPT sign-in runs (checked 2026-10-04): Luna for small calls, Sol as the
+ * workhorse, Astra for the hardest work. A binding `codex/<model>` names another;
+ * `codex/default` = the model the client picks itself.
+ */
 const CLASSES: Record<TextClass, string> = {
-  classifier: "default",
-  standard: "default",
-  high: "default",
-  highest: "default",
+  classifier: "gpt-6-luna",
+  standard: "gpt-6.1-sol",
+  high: "gpt-6.1-sol",
+  highest: "gpt-6-astra",
 };
 
 const spec: EnvSpec = {
@@ -170,6 +177,79 @@ class CodexModel extends HarnessModel {
   }
 }
 
+/**
+ * Images: `codex exec` with the built-in image tool, the reference photos attached with `-i`.
+ * Codex keeps what it made under CODEX_HOME/generated_images/<thread>; the file is read from
+ * there and that folder removed. `codex/image` runs the tool on the standard model.
+ */
+class CodexImageModel extends HarnessImageModel {
+  readonly provider = "codex";
+
+  protected async invoke(call: HarnessImageCall): Promise<Uint8Array> {
+    const prompt = [
+      call.prompt,
+      call.files.length
+        ? "Work from the attached image(s): edit them as described, keeping what is not to change."
+        : "",
+      call.aspectRatio ? `Aspect ratio: ${call.aspectRatio}.` : "",
+      "Make exactly one image with your image generation tool. Write no files yourself and run no commands. Reply only with: done",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const args = [
+      "exec",
+      "-",
+      "--json",
+      "--ephemeral",
+      "--skip-git-repo-check",
+      "--ignore-user-config",
+      "-s",
+      "read-only",
+      "-C",
+      call.dir,
+      "-c",
+      'approval_policy="never"',
+      "-c",
+      'web_search="disabled"',
+      "-m",
+      this.modelId === "image" ? CLASSES.standard : this.modelId,
+    ];
+    for (const file of call.files) {
+      args.push("-i", file);
+    }
+    const { env } = await resolveEnv(spec);
+    const { stdout, stderr, code } = await runClient(CODEX_BIN, args, {
+      cwd: call.dir,
+      env,
+      signal: call.signal,
+      stdin: prompt,
+    });
+    const { answer, failure } = codexAnswer(stdout);
+    if (failure || !answer?.sessionId) {
+      throw failureOf(this.harness, failure ?? stderr.trim() ?? `exit ${code}`);
+    }
+    const folder = join(
+      env.CODEX_HOME?.trim() || join(homedir(), ".codex"),
+      "generated_images",
+      answer.sessionId,
+    );
+    try {
+      const made = existsSync(folder)
+        ? readdirSync(folder)
+            .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+            .map((f) => join(folder, f))
+            .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
+        : [];
+      if (!made[0]) {
+        throw new Error(`Codex made no image: ${answer.text.slice(0, 300)}`);
+      }
+      return new Uint8Array(readFileSync(made[0]));
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  }
+}
+
 export const codex: Harness = {
   ...spec,
   name: "Codex",
@@ -186,6 +266,7 @@ export const codex: Harness = {
   },
   login: { args: ["login"], interactive: false },
   model: (alias: string, effort?: Effort) => new CodexModel(codex, alias || "default", effort),
+  image: { alias: "image", model: (alias: string) => new CodexImageModel(codex, alias || "image") },
   exhausted:
     "Das Kontingent des ChatGPT-Kontos, mit dem Codex angemeldet ist, ist aufgebraucht. Später noch einmal versuchen oder einen anderen Client wählen.",
 };
