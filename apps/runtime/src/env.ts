@@ -88,7 +88,7 @@ function appSecret(): string {
 }
 
 const manageUrl = str("MANAGE_URL").replace(/\/$/, "");
-const port = num("API_PORT", 8891);
+const port = num("API_PORT", 24368);
 /** From source the Vite dev server on :5181 serves the pages; built, this server does. */
 const fromSource = import.meta.url.endsWith(".ts");
 const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");

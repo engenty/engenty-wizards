@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defaultClientConditions, defineConfig } from "vite";
 
-const apiPort = Number(process.env.API_PORT ?? 8891);
+const apiPort = Number(process.env.API_PORT ?? 24368);
 // The path the app is served under, e.g. "/wizards" for https://example.com/wizards. Empty: an origin's root.
 const basePath = (process.env.APP_BASE_PATH ?? "").replace(/\/+$/, "");
 // The release the app says it is: the version of the root package.json.

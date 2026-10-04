@@ -154,7 +154,7 @@ normally.
 | You open it under another address | Set `APP_URL` in `~/.engenty/wizards/.env` to the address you open. |
 | An AI client shows as not signed in | Sign it in on the setup page, or in your own terminal (e.g. `claude`, `codex login`), then "Check again". |
 | PDF or PNG export fails | Install Google Chrome, or set `CHROME_PATH` to Chrome or Chromium. |
-| Port 8891 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env`. |
+| Port 24368 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env`. |
 | Something else | `engenty-wizards doctor` checks the install. |
 
 More settings: [.env.example](.env.example).

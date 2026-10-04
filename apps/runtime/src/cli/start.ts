@@ -10,7 +10,7 @@ import { runtimeEnv } from "./environment.js";
 import { type Layout, packageRoot, readEnvFile } from "./home.js";
 import { findOnPath } from "./machine.js";
 
-const DEFAULT_PORT = 8891;
+const DEFAULT_PORT = 24368;
 const START_TIMEOUT_MS = 60_000;
 
 /** The settings this install starts with: its `.env`, overridden by the terminal's variables. */

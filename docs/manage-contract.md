@@ -4,7 +4,7 @@ The runtime (this repo) runs alone with own keys or a local model. When `MANAGE_
 signs people in at a Manage-App, verifies that app's tokens, and sends model calls to its
 model-gateway. This file is what both sides implement.
 
-Local defaults: runtime API `:8891` (web `:5181`), Manage-App `:8892` (web `:5182`),
+Local defaults: runtime API `:24368` (web `:5181`), Manage-App `:8892` (web `:5182`),
 model-gateway `:8893`.
 
 ## Tokens

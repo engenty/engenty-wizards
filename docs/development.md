@@ -46,7 +46,7 @@ run from there.
 ```bash
 pnpm install
 cp .env.example .env.local   # set AI_GATEWAY_API_KEY (or another key); DEV_LOGIN=1
-pnpm dev                     # web on :5181, API on :8891
+pnpm dev                     # web on :5181, API on :24368
 ```
 
 With Portless: `portless alias wizards 5181`, set `APP_URL=https://wizards.localhost`, open

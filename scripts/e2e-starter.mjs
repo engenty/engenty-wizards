@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, extname } from "node:path";
 
-const base = process.env.API ?? "http://127.0.0.1:8891";
+const base = process.env.API ?? "http://127.0.0.1:24368";
 const [starterId, answersJson = "{}", outDir] = process.argv.slice(2);
 const answers = JSON.parse(answersJson);
 
