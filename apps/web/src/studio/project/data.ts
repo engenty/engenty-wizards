@@ -66,6 +66,32 @@ export function useFileActions(projectId: string) {
   };
 }
 
+export type Layout = "list" | "cards";
+
+/** List or cards for one section, as the person last had it in this browser. */
+export function useLayout(section: string, fallback: Layout): [Layout, () => void] {
+  const key = `wz.layout.${section}`;
+  const [layout, setLayout] = useState<Layout>(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored === "list" || stored === "cards" ? stored : fallback;
+    } catch {
+      return fallback;
+    }
+  });
+  const toggle = () =>
+    setLayout((now) => {
+      const next = now === "list" ? "cards" : "list";
+      try {
+        localStorage.setItem(key, next);
+      } catch {
+        // per-browser convenience only
+      }
+      return next;
+    });
+  return [layout, toggle];
+}
+
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
 /**

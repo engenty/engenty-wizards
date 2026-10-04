@@ -1,24 +1,12 @@
 import type { ProjectFileView } from "@engenty-wizards/shared/projects";
-import {
-  FileSpreadsheet,
-  FileText,
-  Film,
-  Music,
-  Plus,
-  RefreshCw,
-  Search,
-  Star,
-  Trash2,
-  Upload,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { api } from "../../lib/api";
+import { ExternalLink, Eye, Film, Music, Plus, Star, Trash2, Upload } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { t } from "../../lib/i18n";
-import { Chip, cn, IconButton, Input, Spinner, Textarea } from "../../ui";
-import { fileSize, fileUrl, type ProjectFiles, useFileActions } from "./data";
-import { DropArea, Section } from "./Section";
+import { Chip, cn, Dialog, IconButton, Spinner } from "../../ui";
+import { fileSize, fileUrl, type ProjectFiles, useFileActions, useLayout } from "./data";
+import { DropArea, ListControls, SearchField, Section } from "./Section";
 
-type Actions = ReturnType<typeof useFileActions>;
+export type Actions = ReturnType<typeof useFileActions>;
 
 /** A grid both dark and light logos stand out on, as image editors show transparency. */
 const CHECKER = {
@@ -26,24 +14,36 @@ const CHECKER = {
   backgroundSize: "16px 16px",
 };
 
-/** The file's description: the person's text, or what the model wrote once it had looked. */
-function Description({ file, actions }: { file: ProjectFileView; actions: Actions }) {
+/**
+ * The file's description: the person's text, or what the model wrote once it had looked. It
+ * reads as text and is edited in place; a click into it is all it takes.
+ */
+export function Description({ file, actions }: { file: ProjectFileView; actions: Actions }) {
   const [text, setText] = useState(file.description);
   const server = useRef(file.description);
+  const area = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (file.description !== server.current) {
-      // What arrives from the server replaces the field unless the person is writing in it.
+      // What arrives from the server replaces the text unless the person is writing in it.
       setText((mine) => (mine === server.current ? file.description : mine));
       server.current = file.description;
     }
   }, [file.description]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the height follows the text
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [text]);
   const looking = file.status === "pending" && !text;
   return (
-    <Textarea
+    <textarea
+      ref={area}
       rows={1}
-      minRows={1}
-      maxRows={5}
       value={text}
+      maxLength={600}
       placeholder={looking ? t("project.describing") : t("project.description")}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
@@ -52,18 +52,27 @@ function Description({ file, actions }: { file: ProjectFileView; actions: Action
           void actions.describe(file.id, text.trim());
         }
       }}
-      className="px-2.5 py-1.5 text-[13px]"
+      className="-mx-1 block w-[calc(100%+0.5rem)] resize-none overflow-hidden rounded-md bg-transparent px-1 py-0.5 text-[13px] text-ink-2 leading-snug outline-none transition placeholder:text-ink-4 hover:bg-paper-2 focus:bg-card focus:text-ink focus:ring-1 focus:ring-border"
     />
   );
 }
 
-function remove(file: ProjectFileView, actions: Actions) {
+export function remove(file: ProjectFileView, actions: Actions) {
   if (confirm(t("project.removeConfirm", { name: file.name }))) {
     void actions.remove(file.id);
   }
 }
 
-function Preview({ projectId, file }: { projectId: string; file: ProjectFileView }) {
+function Preview({
+  projectId,
+  file,
+  small,
+}: {
+  projectId: string;
+  file: ProjectFileView;
+  /** A thumbnail in a list row: a clip shows its first frame without controls. */
+  small?: boolean;
+}) {
   const src = fileUrl(projectId, file.id);
   if (file.mime.startsWith("image/")) {
     return (
@@ -78,12 +87,21 @@ function Preview({ projectId, file }: { projectId: string; file: ProjectFileView
   if (file.mime.startsWith("video/")) {
     return (
       // biome-ignore lint/a11y/useMediaCaption: a preview of the admin's own clip
-      <video src={`${src}#t=0.1`} preload="metadata" controls className="size-full object-cover" />
+      <video
+        src={`${src}#t=0.1`}
+        preload="metadata"
+        controls={!small}
+        className="size-full object-cover"
+      />
     );
   }
   return (
     <div className="flex size-full items-center justify-center text-ink-3">
-      {file.mime.startsWith("audio/") ? <Music className="size-7" /> : <Film className="size-7" />}
+      {file.mime.startsWith("audio/") ? (
+        <Music className={small ? "size-5" : "size-7"} />
+      ) : (
+        <Film className={small ? "size-5" : "size-7"} />
+      )}
     </div>
   );
 }
@@ -95,76 +113,99 @@ function Tiles({
   actions,
   accept,
   addLabel,
+  onPreview,
 }: {
   projectId: string;
   kind: "logo" | "asset";
   files: ProjectFileView[];
   actions: Actions;
-  accept: string;
-  addLabel: string;
+  /** With these, the grid ends in a tile that takes new files. */
+  accept?: string;
+  addLabel?: string;
+  /** Opens a file large; without it the tiles are not clickable. */
+  onPreview?: (file: ProjectFileView) => void;
 }) {
   return (
-    <>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-        {files.map((file, i) => (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-3">
+      {files.map((file, i) => (
+        <div
+          key={file.id}
+          className="group relative flex flex-col gap-1.5 rounded-lg bg-paper p-2 pb-2.5 ring-1 ring-border-soft"
+        >
+          {kind === "logo" && i === 0 ? (
+            <span className="absolute -top-3 left-3 z-10 rounded-full ring-2 ring-card">
+              <Chip tone="ember">{t("project.logoMain")}</Chip>
+            </span>
+          ) : null}
           <div
-            key={file.id}
-            className="group flex flex-col gap-2 rounded-lg bg-paper p-2 ring-1 ring-border-soft"
+            className="relative h-28 overflow-hidden rounded-md bg-paper-2"
+            style={kind === "logo" ? CHECKER : undefined}
           >
-            <div
-              className="relative h-28 overflow-hidden rounded-md bg-paper-2"
-              style={kind === "logo" ? CHECKER : undefined}
-            >
+            {onPreview && file.mime.startsWith("image/") ? (
+              <button
+                type="button"
+                aria-label={`${t("project.preview")}: ${file.name}`}
+                onClick={() => onPreview(file)}
+                className="block size-full cursor-zoom-in"
+              >
+                <Preview projectId={projectId} file={file} />
+              </button>
+            ) : (
               <Preview projectId={projectId} file={file} />
-              {kind === "logo" && i === 0 ? (
-                <span className="absolute top-1.5 left-1.5">
-                  <Chip tone="ember">{t("project.logoMain")}</Chip>
-                </span>
-              ) : null}
-              <div className="absolute top-1 right-1 flex gap-1 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100 coarse:opacity-100">
-                {kind === "logo" && i > 0 ? (
-                  <IconButton
-                    label={t("project.logoMakeMain")}
-                    onClick={() =>
-                      actions.order("logo", [
-                        file.id,
-                        ...files.filter((f) => f.id !== file.id).map((f) => f.id),
-                      ])
-                    }
-                    className="size-8 bg-card shadow-soft"
-                  >
-                    <Star className="size-4" />
-                  </IconButton>
-                ) : null}
+            )}
+            <div className="absolute top-1 right-1 flex gap-1 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100 coarse:opacity-100">
+              {onPreview ? (
                 <IconButton
-                  label={t("project.remove")}
-                  onClick={() => remove(file, actions)}
-                  className="size-8 bg-card shadow-soft hover:text-rose"
+                  label={t("project.preview")}
+                  onClick={() => onPreview(file)}
+                  className="size-8 bg-card shadow-soft"
                 >
-                  <Trash2 className="size-4" />
+                  <Eye className="size-4" />
                 </IconButton>
-              </div>
+              ) : null}
+              {kind === "logo" && i > 0 ? (
+                <IconButton
+                  label={t("project.logoMakeMain")}
+                  onClick={() =>
+                    actions.order("logo", [
+                      file.id,
+                      ...files.filter((f) => f.id !== file.id).map((f) => f.id),
+                    ])
+                  }
+                  className="size-8 bg-card shadow-soft"
+                >
+                  <Star className="size-4" />
+                </IconButton>
+              ) : null}
+              <IconButton
+                label={t("project.remove")}
+                onClick={() => remove(file, actions)}
+                className="size-8 bg-card shadow-soft hover:text-rose"
+              >
+                <Trash2 className="size-4" />
+              </IconButton>
             </div>
-            {kind === "asset" ? (
-              <div className="truncate px-0.5 text-[12px] text-ink-3" title={file.name}>
-                {file.name}
-              </div>
-            ) : null}
-            <Description file={file} actions={actions} />
           </div>
-        ))}
+          {kind === "asset" ? (
+            <div className="truncate px-0.5 text-[12px] text-ink-3" title={file.name}>
+              {file.name}
+            </div>
+          ) : null}
+          <Description file={file} actions={actions} />
+        </div>
+      ))}
+      {addLabel ? (
         <DropArea
           accept={accept}
-          multiple={kind === "asset"}
+          multiple={false}
           onFiles={(picked) => actions.upload(kind, picked)}
           className="min-h-28 flex-col p-3"
         >
           {actions.busy ? <Spinner className="size-5" /> : <Plus className="size-5" />}
           {addLabel}
         </DropArea>
-      </div>
-      {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
-    </>
+      ) : null}
+    </div>
   );
 }
 
@@ -180,69 +221,106 @@ export function Logos({ projectId, data }: { projectId: string; data: ProjectFil
         accept="image/*"
         addLabel={t("project.logoAdd")}
       />
+      {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
     </Section>
   );
 }
 
-export function Assets({ projectId, data }: { projectId: string; data: ProjectFiles }) {
-  const actions = useFileActions(projectId);
-  return (
-    <Section title={t("project.assets")} hint={t("project.assetsHint")}>
-      <Tiles
-        projectId={projectId}
-        kind="asset"
-        files={data.files.filter((f) => f.kind === "asset")}
-        actions={actions}
-        accept="image/*,video/*,audio/*"
-        addLabel={t("project.assetAdd")}
-      />
-    </Section>
-  );
-}
+const assetMeta = (file: ProjectFileView) =>
+  [
+    (file.name.includes(".") ? file.name.split(".").pop() : file.mime.split("/").pop())
+      ?.toUpperCase()
+      .slice(0, 5),
+    fileSize(file.size),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-function typeLabel(file: ProjectFileView): string {
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "";
-  return (ext || file.mime.split("/").pop() || "").toUpperCase().slice(0, 5);
-}
-
-function DocumentRow({ file, actions }: { file: ProjectFileView; actions: Actions }) {
-  const table = /sheet|csv|excel/.test(file.mime);
+/** An asset, opened: the picture large, a clip or a recording with its player. */
+function AssetPreview({
+  projectId,
+  file,
+  actions,
+  onClose,
+}: {
+  projectId: string;
+  file: ProjectFileView;
+  actions: Actions;
+  onClose: () => void;
+}) {
+  const src = fileUrl(projectId, file.id);
   return (
-    <li className="flex gap-3 rounded-lg bg-paper p-3 ring-1 ring-border-soft">
-      <div className="mt-0.5 text-ink-3">
-        {table ? <FileSpreadsheet className="size-5" /> : <FileText className="size-5" />}
+    <Dialog open onClose={onClose} wide="page" title={file.name}>
+      <div className="-mt-2 mb-4 flex items-center justify-between gap-3">
+        <span className="text-[13px] text-ink-3">{assetMeta(file)}</span>
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={t("project.openOriginal")}
+          title={t("project.openOriginal")}
+          className="inline-flex size-9 items-center justify-center rounded-full text-ink-3 transition hover:bg-accent hover:text-ink"
+        >
+          <ExternalLink className="size-4" />
+        </a>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="min-w-0 truncate font-medium text-[14px]" title={file.name}>
+      {file.mime.startsWith("image/") ? (
+        <div className="overflow-hidden rounded-lg" style={CHECKER}>
+          <img src={src} alt="" className="mx-auto max-h-[68dvh] object-contain" />
+        </div>
+      ) : file.mime.startsWith("video/") ? (
+        // biome-ignore lint/a11y/useMediaCaption: the admin's own clip
+        <video src={src} controls className="max-h-[68dvh] w-full rounded-lg bg-black" />
+      ) : (
+        // biome-ignore lint/a11y/useMediaCaption: the admin's own recording
+        <audio src={src} controls className="w-full" />
+      )}
+      <div className="mt-4">
+        <Description file={file} actions={actions} />
+      </div>
+    </Dialog>
+  );
+}
+
+function AssetRow({
+  projectId,
+  file,
+  actions,
+  onPreview,
+}: {
+  projectId: string;
+  file: ProjectFileView;
+  actions: Actions;
+  onPreview: () => void;
+}) {
+  return (
+    <li className="flex items-start gap-3 rounded-lg bg-paper p-2 ring-1 ring-border-soft">
+      <button
+        type="button"
+        aria-label={`${t("project.preview")}: ${file.name}`}
+        onClick={onPreview}
+        className="size-14 shrink-0 cursor-zoom-in overflow-hidden rounded-md bg-paper-2"
+      >
+        <Preview projectId={projectId} file={file} small />
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <button
+            type="button"
+            onClick={onPreview}
+            title={file.name}
+            className="min-w-0 truncate font-medium text-[14px] hover:underline"
+          >
             {file.name}
-          </span>
-          <span className="text-[12px] text-ink-3">
-            {[
-              typeLabel(file),
-              file.pages ? t("project.pages", { n: file.pages }) : null,
-              fileSize(file.size),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-          {file.status === "pending" ? (
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-3">
-              <Spinner className="size-3" /> {t("project.reading")}
-            </span>
-          ) : file.status === "failed" ? (
-            <span className="text-[12px] text-rose">{file.error}</span>
-          ) : file.indexed ? (
-            <Chip tone="live">
-              {file.indexed === "embeddings" ? t("project.indexed") : t("project.indexedKeywords")}
-            </Chip>
-          ) : (
-            <Chip tone="warn">{t("project.notIndexed")}</Chip>
-          )}
+          </button>
+          <span className="text-[12px] text-ink-3">{assetMeta(file)}</span>
         </div>
         <Description file={file} actions={actions} />
       </div>
-      <div className="flex shrink-0 flex-col">
+      <div className="flex shrink-0 items-start">
+        <IconButton label={t("project.preview")} onClick={onPreview}>
+          <Eye className="size-4" />
+        </IconButton>
         <IconButton
           label={t("project.remove")}
           onClick={() => remove(file, actions)}
@@ -250,97 +328,71 @@ function DocumentRow({ file, actions }: { file: ProjectFileView; actions: Action
         >
           <Trash2 className="size-4" />
         </IconButton>
-        {file.status !== "pending" ? (
-          <IconButton label={t("project.reindex")} onClick={() => actions.reindex(file.id)}>
-            <RefreshCw className="size-4" />
-          </IconButton>
-        ) : null}
       </div>
     </li>
   );
 }
 
-/** Asks the index what an agent step would ask it, and shows the passages it would get. */
-function SearchTest({ projectId }: { projectId: string }) {
-  const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<{ name: string; text: string }[] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const search = async () => {
-    if (!query.trim()) {
-      setHits(null);
-      return;
-    }
-    setBusy(true);
-    try {
-      const found = await api.post<{ hits: { name: string; text: string }[] }>(
-        `/api/studio/projects/${projectId}/search`,
-        { query },
-      );
-      setHits(found.hits);
-    } catch {
-      setHits([]);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="mt-4">
-      <div className="relative">
-        <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 size-4 text-ink-4" />
-        <Input
-          value={query}
-          placeholder={t("project.searchTest")}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && void search()}
-          className="pl-9"
-        />
-        {busy ? (
-          <Spinner className="-translate-y-1/2 absolute top-1/2 right-3 size-4 text-ink-3" />
-        ) : null}
-      </div>
-      {hits ? (
-        hits.length ? (
-          <ul className="mt-3 flex flex-col gap-2">
-            {hits.map((hit, i) => (
-              <li key={i} className="rounded-lg bg-paper-2 px-3 py-2 text-[13px]">
-                <div className="mb-0.5 font-medium text-[12px] text-ink-3">{hit.name}</div>
-                <p className="line-clamp-3 whitespace-pre-line text-ink-2">{hit.text}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-[13px] text-ink-3">{t("project.searchNone")}</p>
-        )
-      ) : null}
-    </div>
-  );
-}
-
-export function Documents({ projectId, data }: { projectId: string; data: ProjectFiles }) {
+export function Assets({ projectId, data }: { projectId: string; data: ProjectFiles }) {
   const actions = useFileActions(projectId);
-  const docs = data.files.filter((f) => f.kind === "document");
+  const [layout, toggleLayout] = useLayout("assets", "cards");
+  const [filter, setFilter] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const all = data.files.filter((f) => f.kind === "asset");
+  const preview = all.find((f) => f.id === previewId);
+  const words = filter.trim().toLowerCase();
+  const files = words
+    ? all.filter((f) => `${f.name} ${f.description}`.toLowerCase().includes(words))
+    : all;
   return (
-    <Section title={t("project.documents")} hint={t("project.documentsHint")}>
-      {docs.length ? (
-        <ul className="mb-3 flex flex-col gap-2">
-          {docs.map((file) => (
-            <DocumentRow key={file.id} file={file} actions={actions} />
-          ))}
-        </ul>
+    <Section title={t("project.assets")} hint={t("project.assetsHint")}>
+      {all.length ? (
+        <ListControls layout={layout} onToggle={toggleLayout}>
+          <SearchField value={filter} onChange={setFilter} placeholder={t("project.assetSearch")} />
+        </ListControls>
+      ) : null}
+      {files.length ? (
+        <div className="mb-3">
+          {layout === "cards" ? (
+            <Tiles
+              projectId={projectId}
+              kind="asset"
+              files={files}
+              actions={actions}
+              onPreview={(file) => setPreviewId(file.id)}
+            />
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {files.map((file) => (
+                <AssetRow
+                  key={file.id}
+                  projectId={projectId}
+                  file={file}
+                  actions={actions}
+                  onPreview={() => setPreviewId(file.id)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
       ) : null}
       <DropArea
-        accept=".pdf,.docx,.doc,.xlsx,.csv,.tsv,.txt,.md,.json,.html,.eml,image/*"
-        onFiles={(picked) => actions.upload("document", picked)}
+        accept="image/*,video/*,audio/*"
+        onFiles={(picked) => actions.upload("asset", picked)}
         className="h-16 w-full"
       >
         {actions.busy ? <Spinner className="size-4" /> : <Upload className="size-4" />}
-        {t("project.drop")} <span className="underline">{t("project.documentAdd")}</span>
+        {t("project.drop")} <span className="underline">{t("project.assetAdd")}</span>
       </DropArea>
       {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
-      {docs.length && !data.embeddings ? (
-        <p className="mt-3 text-[13px] text-ink-3">{t("project.keywordsOnly")}</p>
+      {preview ? (
+        <AssetPreview
+          projectId={projectId}
+          file={preview}
+          actions={actions}
+          onClose={() => setPreviewId(null)}
+        />
       ) : null}
-      {docs.some((f) => f.indexed) ? <SearchTest projectId={projectId} /> : null}
     </Section>
   );
 }

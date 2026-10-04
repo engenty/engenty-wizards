@@ -28,8 +28,27 @@ export interface LocalModels {
   keys: { gateway: boolean; openai: boolean; anthropic: boolean };
 }
 
+/** What the person says about themselves; the avatar shows the name's initials. */
+export interface UserProfile {
+  name: string;
+  about: string;
+  email: string;
+  phone: string;
+}
+
+/** The first letters of a name's words, at most two: what an avatar without a picture shows. */
+export function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export interface Me {
   user: { id: string; name: string; email: string; image?: string | null };
+  profile: UserProfile;
   tenant: { id: string; role: "owner" | "admin" | "member" };
   /** `managed`: signed in at the Manage-App. `local`: this runtime runs alone (desktop app, own machine). */
   mode: "managed" | "local";
@@ -60,6 +79,13 @@ export interface Me {
   mcpUrl: string;
   /** May add and change marketplace entries. */
   marketplaceAdmin: boolean;
+  /** `projects`: how many projects the tenant works with. */
+  limits: { projects: number };
+}
+
+/** Whether the studio deals with several projects at all: with one, there is nothing to switch. */
+export function useManyProjects(): boolean {
+  return (useMe().data?.limits.projects ?? 1) > 1;
 }
 
 /** The credits a person can spend right now, wherever they come from. */

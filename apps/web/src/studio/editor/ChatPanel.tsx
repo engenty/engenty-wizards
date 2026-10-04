@@ -12,7 +12,7 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
 import { withBase } from "../../lib/base";
@@ -173,6 +173,7 @@ export function ChatPanel({
   placeholder = t("editor.composer"),
   changedLabel = "Ablauf aktualisiert",
   compact,
+  intro,
 }: {
   chat: Chat;
   avatar: string;
@@ -181,6 +182,8 @@ export function ChatPanel({
   changedLabel?: string;
   /** Only the composer and one line about the last turn; the thread opens on demand. */
   compact?: boolean;
+  /** What an empty thread shows in place of the avatar with `hello`. */
+  intro?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -250,12 +253,14 @@ export function ChatPanel({
         ref={scroller}
         className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5", !thread && "hidden")}
       >
-        {chat.messages.length === 0 ? (
-          <div className="flex items-start gap-3">
-            <Mascot kind={avatar} size={32} interactive={false} />
-            <p className="pt-1 text-[14px] text-ink-2 leading-relaxed">{hello}</p>
-          </div>
-        ) : null}
+        {chat.messages.length === 0
+          ? (intro ?? (
+              <div className="flex items-start gap-3">
+                <Mascot kind={avatar} size={32} interactive={false} />
+                <p className="pt-1 text-[14px] text-ink-2 leading-relaxed">{hello}</p>
+              </div>
+            ))
+          : null}
         <div className="flex flex-col gap-4">
           {chat.messages.map((m) =>
             m.role === "user" ? (

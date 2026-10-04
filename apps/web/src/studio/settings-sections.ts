@@ -1,0 +1,41 @@
+import {
+  Cpu,
+  FolderCog,
+  type LucideIcon,
+  Plug,
+  Store,
+  TerminalSquare,
+  UserRound,
+} from "lucide-react";
+import { t } from "../lib/i18n";
+import type { Me } from "../lib/session";
+
+export type SettingsSection =
+  | "project"
+  | "connectors"
+  | "models"
+  | "build"
+  | "marketplace"
+  | "account";
+
+/**
+ * The sections of the settings, in the order of their list. `menu`: the user menu links to it
+ * directly.
+ */
+export function settingsSections(
+  me: Me | null | undefined,
+): { id: SettingsSection; label: string; icon: LucideIcon; menu: boolean }[] {
+  return [
+    { id: "account", label: t("account.title"), icon: UserRound, menu: true },
+    { id: "project", label: t("settings.project"), icon: FolderCog, menu: true },
+    { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },
+    // Models are chosen on the machine only when the runtime runs alone.
+    ...(me?.mode === "local"
+      ? [{ id: "models" as const, label: t("local.title"), icon: Cpu, menu: true }]
+      : []),
+    { id: "build", label: t("mcp.nav"), icon: TerminalSquare, menu: false },
+    ...(me?.marketplaceAdmin
+      ? [{ id: "marketplace" as const, label: t("market.admin"), icon: Store, menu: true }]
+      : []),
+  ];
+}

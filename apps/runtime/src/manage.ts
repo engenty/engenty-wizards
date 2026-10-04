@@ -144,7 +144,7 @@ export interface TenantInfo {
   name: string;
   status: "active" | "suspended" | "deleted";
   balanceCredits: number;
-  limits: { concurrentRuns: number };
+  limits: { concurrentRuns: number; projects?: number };
   db: { url: string } | null;
 }
 

@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 process.env.DATA_DIR = mkdtempSync(join(tmpdir(), "wizards-package-"));
 process.env.APP_URL = "http://localhost:5181";
+process.env.LIMIT_PROJECTS = "5";
 
 let client: typeof import("../src/db/client");
 let wizards: typeof import("../src/services/wizards");

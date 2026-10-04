@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { type Project, useCurrentProject, useMe } from "../lib/session";
+import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
 import { Button, Card, cn, IconButton, Input, Select } from "../ui";
+import { Account } from "./Account";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { LocalRuntimeCard } from "./LocalRuntime";
 import { MarketplaceAdmin } from "./MarketplaceAdmin";
 import { McpAccess } from "./McpAccess";
 import { ProjectSettings } from "./project/ProjectSettings";
+import { settingsSections } from "./settings-sections";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -140,32 +142,22 @@ function McpServers({ project }: { project: Project }) {
   );
 }
 
-type Section = "project" | "connectors" | "models" | "build" | "marketplace";
-
 /** Section of the settings at /settings/<section>; the left list on wide screens, a dropdown on narrow ones. */
 export function SettingsPage() {
   const { section } = useParams();
   const navigate = useNavigate();
   const me = useMe();
   const { project } = useCurrentProject();
+  const many = useManyProjects();
   const [key, setKey] = useState(project?.id);
   useEffect(() => setKey(project?.id), [project?.id]);
-  const sections: { id: Section; label: string }[] = [
-    { id: "project", label: t("settings.project") },
-    { id: "connectors", label: t("connectors.title") },
-    // Models and the account are chosen on the machine only when the runtime runs alone.
-    ...(me.data?.mode === "local" ? [{ id: "models" as const, label: t("local.title") }] : []),
-    { id: "build", label: t("mcp.nav") },
-    ...(me.data?.marketplaceAdmin
-      ? [{ id: "marketplace" as const, label: t("market.admin") }]
-      : []),
-  ];
+  const sections = settingsSections(me.data);
   const current = sections.find((s) => s.id === section);
   if (!current) {
     return <Navigate to="/settings/project" replace />;
   }
   // The project page brings its own switcher, next to the project's name.
-  const scoped = current.id === "connectors";
+  const scoped = current.id === "connectors" && many;
   return (
     <div className="animate-rise">
       <h1 className="font-display font-semibold text-[28px] tracking-tight">
@@ -227,6 +219,7 @@ export function SettingsPage() {
           ) : null}
           {current.id === "models" ? <LocalRuntimeCard /> : null}
           {current.id === "build" ? <McpAccess /> : null}
+          {current.id === "account" && me.data ? <Account me={me.data} /> : null}
         </div>
       </div>
     </div>

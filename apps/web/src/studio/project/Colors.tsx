@@ -3,11 +3,65 @@ import { PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
 import { ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { t } from "../../lib/i18n";
-import { Button, Chip, IconButton, Input, Swatch } from "../../ui";
+import { Button, Chip, Dialog, IconButton, Input, Label, Swatch } from "../../ui";
 import { useAutosave } from "./data";
 import { Section } from "./Section";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** A new colour: its value and what it is for, then it joins the list. */
+function AddColor({ onAdd, onClose }: { onAdd: (color: BrandColor) => void; onClose: () => void }) {
+  const [value, setValue] = useState("#e0531b");
+  const [name, setName] = useState("");
+  const valid = HEX.test(value);
+  return (
+    <Dialog open onClose={onClose} title={t("project.colorAddTitle")}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) {
+            onAdd({ name: name.trim(), value: value.toLowerCase() });
+            onClose();
+          }
+        }}
+        className="flex flex-col gap-5"
+      >
+        <div>
+          <Label>{t("project.colorValue")}</Label>
+          <div className="flex items-center gap-2">
+            <Swatch value={valid ? value : "#888888"} onChange={(e) => setValue(e.target.value)} />
+            <Input
+              value={value}
+              placeholder="#e0531b"
+              spellCheck={false}
+              onChange={(e) => setValue(e.target.value.trim())}
+              className="font-mono text-[14px]"
+            />
+          </div>
+        </div>
+        <div>
+          <Label>{t("project.colorUseLabel")}</Label>
+          <Input
+            autoFocus
+            value={name}
+            maxLength={120}
+            placeholder={t("project.colorName")}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.colorUse")}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" disabled={!valid}>
+            {t("project.add")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
 
 /** The brand's colours by name; the first one is the accent. */
 export function Colors({
@@ -19,6 +73,7 @@ export function Colors({
 }) {
   const next = useRef(0);
   const [rows, setRows] = useState(() => colors.map((c) => ({ ...c, id: `c${next.current++}` })));
+  const [adding, setAdding] = useState(false);
   // A value still being typed is not a colour yet: it is saved once it is one.
   const status = useAutosave(
     rows.filter((r) => HEX.test(r.value)).map(({ name, value }) => ({ name: name.trim(), value })),
@@ -38,6 +93,7 @@ export function Colors({
             <Input
               value={row.name}
               placeholder={t("project.colorName")}
+              maxLength={120}
               onChange={(e) => set(row.id, { name: e.target.value })}
               className="min-w-0 flex-1"
             />
@@ -72,17 +128,24 @@ export function Colors({
           </div>
         ))}
       </div>
+      {rows.length ? (
+        <p className="mt-1.5 text-[13px] text-ink-3">{t("project.colorUse")}</p>
+      ) : null}
       {rows.length < PROJECT_LIMITS.colors ? (
         <Button
           variant="secondary"
           size="sm"
           className={rows.length ? "mt-3" : undefined}
-          onClick={() =>
-            setRows((all) => [...all, { id: `c${next.current++}`, name: "", value: "#e0531b" }])
-          }
+          onClick={() => setAdding(true)}
         >
           <Plus className="size-4" /> {t("project.colorAdd")}
         </Button>
+      ) : null}
+      {adding ? (
+        <AddColor
+          onClose={() => setAdding(false)}
+          onAdd={(color) => setRows((all) => [...all, { ...color, id: `c${next.current++}` }])}
+        />
       ) : null}
     </Section>
   );

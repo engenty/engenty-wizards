@@ -1,4 +1,3 @@
-import { MAX_PROJECTS } from "@engenty-wizards/shared/projects";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
 import { useState } from "react";
@@ -7,13 +6,15 @@ import { BASE } from "@/lib/base";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { useCurrentProject, type WizardSummary } from "../lib/session";
+import { useCurrentProject, useMe, type WizardSummary } from "../lib/session";
 import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
 import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
 
+/** Picks the project the studio looks at. Nothing where the tenant works with one project. */
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
+  const limit = useMe().data?.limits.projects ?? 1;
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -26,7 +27,7 @@ export function ProjectSwitcher() {
       setName("");
     },
   });
-  if (!project) {
+  if (!project || limit <= 1) {
     return null;
   }
   return (
@@ -37,11 +38,11 @@ export function ProjectSwitcher() {
         onChange={(v) => (v === "__new" ? setOpen(true) : select(v))}
         options={[
           ...projects.map((p) => ({ value: p.id, label: p.name })),
-          projects.length < MAX_PROJECTS
+          projects.length < limit
             ? { value: "__new", label: `+ ${t("home.newProject")}` }
             : {
                 value: "__new",
-                label: t("home.projectLimit", { n: MAX_PROJECTS }),
+                label: t("home.projectLimit", { n: limit }),
                 disabled: true,
               },
         ]}

@@ -226,6 +226,11 @@ export const env = {
     defaultDailyRuns: num("LIMIT_DEFAULT_DAILY_RUNS", 50),
     /** Runs of one tenant that work at the same time; the Manage-App can set another number per tenant. */
     concurrentRuns: num("LIMIT_CONCURRENT_RUNS", 4),
+    /**
+     * Projects a tenant works with. One: the studio shows no project switcher. The Manage-App
+     * can set another number per tenant; the database holds any number either way.
+     */
+    projects: num("LIMIT_PROJECTS", 1),
     /** End-user runs (no account) and their shared links are deleted after this many days. */
     resultTtlDays: num("RESULT_TTL_DAYS", 7),
     /** What a wizard keeps for a person (lists, files, accounts) goes when unused this long. */

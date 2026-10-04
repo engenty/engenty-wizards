@@ -7,6 +7,11 @@ import { BASE } from "./lib/base";
 import "./lib/theme";
 import "./styles/app.css";
 
+// The desktop app's window is marked: there, what can be clicked keeps the arrow, as apps do.
+if ("engentyDesktop" in window) {
+  document.documentElement.dataset.desktop = "";
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });

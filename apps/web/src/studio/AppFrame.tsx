@@ -3,9 +3,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Logo } from "../brand";
 import { t } from "../lib/i18n";
-import { type Me, signOut, spendableCredits } from "../lib/session";
+import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
 import { cn, IconButton } from "../ui";
 import { LangSwitch } from "./LangSwitch";
+import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
 
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
@@ -52,12 +53,7 @@ export function UserMenu({ me }: { me: Me }) {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
-  const initials = me.user.name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = initialsOf(me.user.name);
   const item =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
   return (
@@ -80,16 +76,25 @@ export function UserMenu({ me }: { me: Me }) {
             <div className="truncate font-medium text-[14px]">{me.user.name}</div>
             <div className="truncate text-[12px] text-ink-3">{me.user.email}</div>
           </div>
-          <button
-            type="button"
-            className={item}
-            onClick={() => {
-              setOpen(false);
-              navigate("/settings");
-            }}
-          >
-            <Settings className="size-4" /> {t("nav.settings")}
-          </button>
+          <div className="px-3 pt-1.5 pb-1 font-medium text-[11px] text-ink-4 uppercase tracking-[0.07em]">
+            {t("nav.settings")}
+          </div>
+          {settingsSections(me)
+            .filter((s) => s.menu)
+            .map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  navigate(`/settings/${s.id}`);
+                }}
+              >
+                <s.icon className="size-4" /> {s.label}
+              </button>
+            ))}
+          <div className="mx-2 my-1.5 h-px bg-border-soft" />
           {me.manageUrl ? (
             <a className={item} href={`${me.manageUrl}/account`} target="_blank" rel="noreferrer">
               <CreditCard className="size-4" /> {t("nav.account")}
@@ -123,7 +128,7 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
       <CreditsPill me={me} />
       <IconButton
         label={t("nav.settings")}
-        onClick={() => navigate("/settings")}
+        onClick={() => navigate("/settings/project")}
         className="ring-1 ring-border-soft"
       >
         <Settings className="size-4" />

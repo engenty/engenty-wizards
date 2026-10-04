@@ -1,8 +1,8 @@
-import { Check } from "lucide-react";
+import { Check, LayoutGrid, List, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { t } from "../../lib/i18n";
-import { Card, cn, Spinner } from "../../ui";
-import type { SaveState } from "./data";
+import { Card, cn, IconButton, Spinner } from "../../ui";
+import type { Layout, SaveState } from "./data";
 
 /**
  * One section of the project page, as engenty lays them out: the heading and what the section is
@@ -48,6 +48,69 @@ export function Section({
         ) : null}
       </Card>
     </section>
+  );
+}
+
+/**
+ * The row above a list: a search field, and one icon that switches between list and cards (it
+ * shows the other layout).
+ */
+export function ListControls({
+  children,
+  layout,
+  onToggle,
+}: {
+  children: ReactNode;
+  layout: Layout;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mb-3 flex items-start gap-2">
+      {/* The search is small until it is used: it grows with the focus and stays so while it holds a question. */}
+      <div className="min-w-0 flex-1">
+        <div className="w-56 max-w-full transition-[width] duration-200 focus-within:w-full has-[input:not(:placeholder-shown)]:w-full">
+          {children}
+        </div>
+      </div>
+      <IconButton
+        label={layout === "list" ? t("project.viewCards") : t("project.viewList")}
+        onClick={onToggle}
+      >
+        {layout === "list" ? <LayoutGrid className="size-4" /> : <List className="size-4" />}
+      </IconButton>
+    </div>
+  );
+}
+
+/** A small search field with the magnifier in it. */
+export function SearchField({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  busy,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onEnter?: () => void;
+  placeholder: string;
+  busy?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 size-4 text-ink-4" />
+      <input
+        type="search"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+        className="h-9 w-full rounded-lg border border-input bg-card pr-3 pl-9 text-[14px] text-ink outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow"
+      />
+      {busy ? (
+        <Spinner className="-translate-y-1/2 absolute top-1/2 right-3 size-4 text-ink-3" />
+      ) : null}
+    </div>
   );
 }
 

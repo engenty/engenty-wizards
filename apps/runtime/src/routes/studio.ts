@@ -63,23 +63,26 @@ import {
   PACKAGE_MAX_BYTES,
   PACKAGE_MIME,
 } from "../services/package.js";
+import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
 import {
   addProjectFile,
   fileView,
   orderProjectFiles,
+  projectFile,
   projectFileContent,
   projectFiles,
   reindexProjectFile,
   removeProjectFile,
   updateProjectFile,
 } from "../services/project-files.js";
-import { searchProject } from "../services/project-index.js";
+import { documentText, searchProject } from "../services/project-index.js";
 import {
   createProject,
   deleteProject,
   listProjects,
   maskedServers,
   ownedProject,
+  projectLimit,
   projectPatchSchema,
   updateProject,
 } from "../services/projects.js";
@@ -129,8 +132,11 @@ export const studio = new Hono<Vars>()
     // A runtime that runs alone may be linked to an account: its credits and the cloud to publish to.
     const linked = managed ? null : await linkedAccount();
     const overview = linked ? await accountOverview() : null;
+    const profile = await userProfile(user);
     return c.json({
-      user: { id: user.id, name: user.name, email: user.email, image: user.image ?? null },
+      user: { id: user.id, name: profile.name, email: profile.email, image: user.image ?? null },
+      /** What the person says about themselves; name and e-mail are the account's when managed. */
+      profile,
       tenant: { id: user.tenantId, role: user.role },
       mode: managed ? "managed" : "local",
       /** The tenant's balance; null where the runtime resolves models itself. */
@@ -160,8 +166,14 @@ export const studio = new Hono<Vars>()
       mcpUrl: `${env.appUrl}/api/mcp`,
       /** May add and change marketplace entries. */
       marketplaceAdmin: isMarketplaceAdmin(user),
+      /** One project: the studio shows no project switcher. */
+      limits: { projects: await projectLimit() },
     });
   })
+
+  .put("/profile", async (c) =>
+    c.json(await saveProfile(c.get("user"), profileSchema.parse(await c.req.json()))),
+  )
 
   // --- projects --------------------------------------------------------------
   .get("/projects", async (c) => {
@@ -240,9 +252,10 @@ export const studio = new Hono<Vars>()
     const headers: Record<string, string> = {
       "content-type": row.mime,
       "cache-control": "private, max-age=3600",
-      // An uploaded SVG or HTML file is shown, never run.
-      "content-security-policy": "sandbox",
       "x-content-type-options": "nosniff",
+      // An uploaded SVG or HTML file is shown, never run. A PDF is left to the browser's own
+      // viewer, which a sandbox would keep from starting.
+      ...(row.mime === "application/pdf" ? {} : { "content-security-policy": "sandbox" }),
     };
     if (/^(audio|video)\//.test(row.mime)) {
       headers["accept-ranges"] = "bytes";
@@ -256,6 +269,20 @@ export const studio = new Hono<Vars>()
       }
     }
     return c.body(new Uint8Array(data), 200, headers);
+  })
+  // A document as the models read it: its text as Markdown, or the start of it.
+  .get("/projects/:id/files/:fileId/text", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const row = await projectFile(project.id, c.req.param("fileId"));
+    const limit = z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(400_000)
+      .catch(200_000)
+      .parse(c.req.query("limit"));
+    const text = await documentText(row);
+    return c.json({ text: text.slice(0, limit), chars: text.length });
   })
   // What the document index finds for a question: the passages an agent step would get.
   .post("/projects/:id/search", async (c) => {

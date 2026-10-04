@@ -180,10 +180,12 @@ export function Facts({
   );
   const set = (id: string, patch: Partial<Row>) =>
     setRows((all) => all.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const add = (fact: Partial<ProjectFact>, focusOn: "label" | "value") => {
+  /** A new row at the end of the list, or at its start: right under the heading's button. */
+  const add = (fact: Partial<ProjectFact>, focusOn: "label" | "value", first = false) => {
     const id = `f${next.current++}`;
     focus.current = `${id}:${focusOn}`;
-    setRows((all) => [...all, { id, key: "", label: "", value: "", ...fact }]);
+    const row = { id, key: "", label: "", value: "", ...fact };
+    setRows((all) => (first ? [row, ...all] : [...all, row]));
   };
   const takeFocus = (name: string) => (el: HTMLElement | null) => {
     if (el && focus.current === name) {
@@ -193,7 +195,18 @@ export function Facts({
   };
   const basics = BASIC_FACTS.filter((b) => !rows.some((r) => r.key === b.key));
   return (
-    <Section title={t("project.facts")} hint={t("project.factsHint")} save={status}>
+    <Section
+      title={t("project.facts")}
+      hint={t("project.factsHint")}
+      save={status}
+      action={
+        rows.length < PROJECT_LIMITS.facts ? (
+          <Button variant="secondary" size="sm" onClick={() => add({}, "label", true)}>
+            <Plus className="size-4" /> {t("project.factAdd")}
+          </Button>
+        ) : null
+      }
+    >
       <div className="flex flex-col gap-2">
         {rows.map((row) => {
           const detected = detectFactType(row.value);

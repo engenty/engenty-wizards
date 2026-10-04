@@ -1,6 +1,3 @@
-/** How many projects a tenant can hold. */
-export const MAX_PROJECTS = 5;
-
 // --- facts ---------------------------------------------------------------------
 // What a project knows about itself as label and value: an address, a VAT id, anything. Every
 // step of the project's wizards can read them.
@@ -103,7 +100,7 @@ export const BASIC_FACTS: { key: string; de: string; en: string }[] = [
 // --- brand -----------------------------------------------------------------------
 
 export interface BrandColor {
-  /** What the colour is for, in the admin's words: "Primär", "Hintergrund", "Akzent Herbst". */
+  /** What the colour is for and how to use it, in the admin's words: "Primär – Buttons und Überschriften". */
   name: string;
   /** #rrggbb */
   value: string;

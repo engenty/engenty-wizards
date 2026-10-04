@@ -1,0 +1,40 @@
+import { z } from "zod";
+import type { SessionUser } from "../auth/index.js";
+import { managed } from "../manage.js";
+import { readSetting, writeSetting } from "../settings.js";
+
+/**
+ * What a person says about themselves in the studio: how the app calls them and how to reach
+ * them. A runtime that runs alone knows nobody — its one person starts as the machine's user
+ * name and sets everything here. Managed, name and e-mail are the account's and stay with it.
+ */
+export interface UserProfile {
+  name: string;
+  about: string;
+  email: string;
+  phone: string;
+}
+
+export const profileSchema = z.object({
+  name: z.string().trim().max(80),
+  about: z.string().trim().max(2000),
+  email: z.string().trim().max(200),
+  phone: z.string().trim().max(40),
+});
+
+const key = (user: SessionUser) => `profile:${user.tenantId}:${user.id}`;
+
+export async function userProfile(user: SessionUser): Promise<UserProfile> {
+  const stored = (await readSetting<Partial<UserProfile>>(key(user))) ?? {};
+  return {
+    name: (managed ? "" : stored.name) || user.name,
+    about: stored.about ?? "",
+    email: (managed ? "" : stored.email) || user.email,
+    phone: stored.phone ?? "",
+  };
+}
+
+export async function saveProfile(user: SessionUser, profile: UserProfile): Promise<UserProfile> {
+  await writeSetting(key(user), profile);
+  return userProfile(user);
+}

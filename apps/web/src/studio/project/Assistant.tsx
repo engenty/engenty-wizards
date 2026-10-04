@@ -1,6 +1,8 @@
 import type { ProjectFileKind } from "@engenty-wizards/shared/projects";
 import { useQueryClient } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Mascot } from "../../brand";
 import { api, postStream } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { cn } from "../../ui";
@@ -121,6 +123,20 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
   return { messages, phase, activity, error, send };
 }
 
+/** What the assistant's card says before the first message; the engenty stands at its right. */
+function Intro() {
+  return (
+    <div className="sm:pr-36">
+      <h2 className="font-display font-semibold text-[20px] leading-tight tracking-tight">
+        {t("project.assistantTitle")}
+      </h2>
+      <p className="mt-1.5 max-w-2xl text-[15px] text-ink-2 leading-relaxed">
+        {t("project.assistantHello")}
+      </p>
+    </div>
+  );
+}
+
 /** Below the top bar: a card whose lower edge is above this line is scrolled away. */
 const PAST = 72;
 const DOCK_WIDTH = 720;
@@ -161,23 +177,34 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
   }, []);
   return (
     <div ref={slot} style={dock ? { minHeight: dock.height } : undefined}>
-      <div
-        className={cn(
-          "flex flex-col overflow-hidden bg-card",
-          dock
-            ? "fixed bottom-4 z-30 max-h-[70dvh] animate-dock rounded-2xl shadow-overlay ring-1 ring-border"
-            : "max-h-[520px] rounded-xl shadow-soft ring-1 ring-border-soft",
-        )}
-        style={dock ? { left: dock.left, width: dock.width } : undefined}
-      >
-        <ChatPanel
-          chat={chat}
-          avatar="round"
-          compact={Boolean(dock)}
-          hello={t("project.assistantHello")}
-          placeholder={t("project.assistantComposer")}
-          changedLabel={t("project.assistantChanged")}
-        />
+      <div className="mb-2 flex items-center gap-1.5 px-1 font-medium text-[12px] text-ember-strong uppercase tracking-[0.07em]">
+        <Sparkles className="size-3.5" /> {t("project.assistant")}
+      </div>
+      <div className="relative">
+        {/* Before the first message the engenty stands on the card's upper edge. */}
+        {!dock && chat.messages.length === 0 ? (
+          <div className="absolute -top-14 right-10 z-10 max-sm:hidden">
+            <Mascot kind="round" size={104} />
+          </div>
+        ) : null}
+        <div
+          className={cn(
+            "flex flex-col overflow-hidden bg-card",
+            dock
+              ? "fixed bottom-4 z-30 max-h-[70dvh] animate-dock rounded-2xl shadow-overlay ring-1 ring-border"
+              : "max-h-[520px] rounded-xl bg-linear-to-br from-ember-tint via-card to-card shadow-soft ring-1 ring-ember-veil",
+          )}
+          style={dock ? { left: dock.left, width: dock.width } : undefined}
+        >
+          <ChatPanel
+            chat={chat}
+            avatar="round"
+            compact={Boolean(dock)}
+            intro={<Intro />}
+            placeholder={t("project.assistantComposer")}
+            changedLabel={t("project.assistantChanged")}
+          />
+        </div>
       </div>
     </div>
   );

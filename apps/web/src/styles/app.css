@@ -307,6 +307,22 @@ a,
   opacity: 0;
 }
 
+/* In a browser, what can be clicked shows the hand. The desktop app keeps the arrow. */
+@layer base {
+  html:not([data-desktop])
+    :is(
+      button,
+      select,
+      summary,
+      [role="button"],
+      [role="switch"],
+      label:has(input[type="file"]),
+      input[type="color"]
+    ):not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;

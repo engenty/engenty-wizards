@@ -353,7 +353,8 @@ export function Dialog({
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
-  wide?: boolean;
+  /** `"page"`: room for a document. */
+  wide?: boolean | "page";
   /**
    * The children are the panel: the dialog itself draws no card, clips nothing (a close button
    * may sit on the panel's edge) and fills the screen of a phone.
@@ -386,8 +387,8 @@ export function Dialog({
         bare
           ? "w-[calc(100%-48px)] overflow-visible bg-transparent max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none"
           : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay",
-        wide ? "sm:max-w-2xl" : "sm:max-w-md",
-        !bare && (wide ? "max-w-2xl" : "max-w-md"),
+        wide === "page" ? "sm:max-w-4xl" : wide ? "sm:max-w-2xl" : "sm:max-w-md",
+        !bare && (wide === "page" ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-md"),
       )}
     >
       {open && bare ? (

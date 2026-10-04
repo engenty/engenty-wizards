@@ -4,14 +4,15 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import type { Project } from "../../lib/session";
+import { type Project, useManyProjects } from "../../lib/session";
 import { Button, Dialog, IconButton, Input, Label, Textarea } from "../../ui";
 import { ProjectSwitcher } from "../HomePage";
 import { Assistant } from "./Assistant";
 import { Colors } from "./Colors";
+import { Documents } from "./Documents";
 import { useAutosave, useProjectFiles } from "./data";
 import { Facts } from "./Facts";
-import { Assets, Documents, Logos } from "./Files";
+import { Assets, Logos } from "./Files";
 import { Section } from "./Section";
 
 type Patch = {
@@ -30,12 +31,14 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
     <Section title={t("project.base")} hint={t("project.baseHint")} save={status}>
       <div className="flex flex-col gap-5">
         <div>
-          <Label hint={t("project.titleHint")}>{t("project.title")}</Label>
+          <Label>{t("project.title")}</Label>
           <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.titleHint")}</p>
         </div>
         <div>
-          <Label hint={t("project.aboutHint")}>{t("project.about")}</Label>
+          <Label>{t("project.about")}</Label>
           <Textarea minRows={4} value={about} onChange={(e) => setAbout(e.target.value)} />
+          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.aboutHint")}</p>
         </div>
       </div>
     </Section>
@@ -106,15 +109,19 @@ export function ProjectSettings({ project }: { project: Project }) {
     mutationFn: () => api.del(`/api/studio/projects/${project.id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
+  // With one project there is nothing to switch, to name apart or to delete.
+  const many = useManyProjects();
   const data = files.data ?? { files: [], embeddings: true };
   const key = `${project.id}:${rev}`;
   return (
     // The lower padding leaves room for the assistant's dock under the last section.
     <div className="flex flex-col gap-9 pb-20">
-      <div className="-mb-3 flex items-center gap-1">
-        <ProjectSwitcher />
-        <Rename project={project} save={save} />
-      </div>
+      {many ? (
+        <div className="-mb-3 flex items-center gap-1">
+          <ProjectSwitcher />
+          <Rename project={project} save={save} />
+        </div>
+      ) : null}
       <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
       <Base key={`base:${key}`} project={project} save={save} />
       <Logos projectId={project.id} data={data} />
@@ -126,18 +133,20 @@ export function ProjectSettings({ project }: { project: Project }) {
       <Assets projectId={project.id} data={data} />
       <Documents projectId={project.id} data={data} />
       <Facts key={`facts:${key}`} facts={project.facts} save={(facts) => save({ facts })} />
-      <div>
-        <Button
-          variant="danger"
-          busy={remove.isPending}
-          onClick={() => confirm(`${t("settings.delete")}?`) && remove.mutate()}
-        >
-          {t("settings.delete")}
-        </Button>
-        {remove.error ? (
-          <p className="mt-2 text-[14px] text-rose">{(remove.error as Error).message}</p>
-        ) : null}
-      </div>
+      {many ? (
+        <div>
+          <Button
+            variant="danger"
+            busy={remove.isPending}
+            onClick={() => confirm(`${t("settings.delete")}?`) && remove.mutate()}
+          >
+            {t("settings.delete")}
+          </Button>
+          {remove.error ? (
+            <p className="mt-2 text-[14px] text-rose">{(remove.error as Error).message}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

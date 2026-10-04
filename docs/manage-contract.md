@@ -44,7 +44,7 @@ Errors: `{ "error": string, "code": string }`.
 
 | Call | Body → answer |
 |---|---|
-| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns }, db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file |
+| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects? }, db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one); left out, the runtime's `LIMIT_PROJECTS` counts |
 | `POST /v1/keys/verify` | `{ key }` → `{ valid: false }` or `{ valid: true, keyId, name, userId, userName, tenantId, role }` |
 | `POST /v1/reservations` | `{ tenantId, runId, credits }` → `{ id }` · `402` with code `no_credits` when the free balance is below `credits` · the same `runId` again replaces the earlier reservation |
 | `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |

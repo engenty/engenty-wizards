@@ -1,13 +1,10 @@
-import {
-  FACT_TYPES,
-  MAX_PROJECTS,
-  PROJECT_LIMITS,
-  type ProjectFact,
-} from "@engenty-wizards/shared/projects";
+import { FACT_TYPES, PROJECT_LIMITS, type ProjectFact } from "@engenty-wizards/shared/projects";
 import { and, count, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
+import { env } from "../env.js";
+import { managed, tenantInfo } from "../manage.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { notFound, ServiceError } from "./errors.js";
 import { forgetWizardLinks } from "./links.js";
@@ -25,7 +22,7 @@ export const mcpServerSchema = z.object({
 });
 
 export const brandColorSchema = z.object({
-  name: z.string().max(60),
+  name: z.string().max(120),
   value: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
@@ -48,6 +45,21 @@ export const projectPatchSchema = z.object({
   facts: z.array(projectFactSchema).max(PROJECT_LIMITS.facts).optional(),
   mcpServers: z.array(mcpServerSchema).max(10).optional(),
 });
+
+/**
+ * How many projects the tenant works with: the number the Manage-App gives for it, else this
+ * runtime's (`LIMIT_PROJECTS`, one unless set). The studio shows a project switcher only above
+ * one. Projects beyond the number stay in the database and are not listed.
+ */
+export async function projectLimit(): Promise<number> {
+  if (managed) {
+    const info = await tenantInfo(currentTenant()).catch(() => null);
+    if (info?.limits.projects) {
+      return info.limits.projects;
+    }
+  }
+  return Math.max(1, env.limits.projects);
+}
 
 export async function ownedProject(_userId: string, projectId: string): Promise<ProjectRow> {
   const p = await db.query.project.findFirst({
@@ -86,9 +98,11 @@ export async function defaultProject(_userId: string): Promise<ProjectRow> {
 
 export async function listProjects(_userId: string) {
   await ensureProject();
+  // The oldest come first: with a limit of one, that is the project everything lands in.
   const projects = await db.query.project.findMany({
     where: eq(schema.project.tenantId, currentTenant()),
     orderBy: [schema.project.createdAt],
+    limit: await projectLimit(),
   });
   const counts = await db
     .select({ projectId: schema.wizard.projectId, n: count() })
@@ -116,8 +130,12 @@ export async function createProject(_userId: string, name: string): Promise<{ id
     .select({ n: count() })
     .from(schema.project)
     .where(eq(schema.project.tenantId, currentTenant()));
-  if (n >= MAX_PROJECTS) {
-    throw new ServiceError("refused", `Höchstens ${MAX_PROJECTS} Projekte.`);
+  const limit = await projectLimit();
+  if (n >= limit) {
+    throw new ServiceError(
+      "refused",
+      limit === 1 ? "Hier gibt es ein Projekt." : `Höchstens ${limit} Projekte.`,
+    );
   }
   const id = nanoid(12);
   await db
