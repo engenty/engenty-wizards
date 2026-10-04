@@ -184,6 +184,8 @@ describe("the words an entry is found by", () => {
     expect(sentence.ids[0]).toBe("facebook-video-ad");
     const english = await search.searchMarketplace("I need a quote for a customer", "en");
     expect(english.ids[0]).toBe("offer");
+    const hiring = await search.searchMarketplace("Wir suchen neue Mitarbeiter für das Team", "de");
+    expect(hiring.ids[0]).toBe("web-application");
   });
 
   it("follow the repo without a new revision", async () => {

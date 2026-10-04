@@ -26,15 +26,20 @@ const WEIGHTS: CatalogFieldWeights = [
 /** One search term of an entry, scored on its own. */
 const TERM_WEIGHT: CatalogFieldWeights = [["term", 7]];
 
-/** Words a sentence is full of and no entry is found by. */
+/**
+ * Words a sentence is full of and no entry is found by — in the form the search reads words in,
+ * so "für" is left out as "fur".
+ */
 const STOP = new Set(
-  `aber als also am an auch auf aus bei bin bitte brauche brauchen braucht das dass dem den der des
-  die dies diese dieser doch du ein eine einem einen einer eines er es etwas fuer für gerne habe
-  haben hat ich ihr im in ist kann können koennen mache machen mag mein meine meinem meinen meiner
-  mich mir mit möchte moechte nach nicht noch nur oder sich sie sind soll suche um und uns unser
-  unsere vom von vor was wie will wir wird wo wollen zu zum zur
-  a about an and are as at be can do for from have how i in is it like looking me my need of on or
-  our that the this to want we what which who with would you your`.split(/\s+/),
+  tokenizeCatalogText(
+    `aber als also am an auch auf aus bei bin bitte brauche brauchen braucht das dass dem den der
+    des die dies diese dieser doch du ein eine einem einen einer eines er es etwas fuer für gerne
+    habe haben hat ich ihr im in ist kann können koennen mache machen mag mein meine meinem meinen
+    meiner mich mir mit möchte moechte nach nicht noch nur oder sich sie sind soll suche suchen
+    sucht um und uns unser unsere vom von vor was wie will wir wird wo wollen zu zum zur
+    a about an and are as at be can do for from have how i in is it like looking me my need of on
+    or our that the this to want we what which who with would you your`,
+  ),
 );
 
 const fold = (text: string) => text.replace(/ß/g, "ss");
