@@ -1,0 +1,154 @@
+name: Release
+
+# A tag `v<version>` (the version of the root package.json) publishes what a local install is made
+# of on the GitHub release: the package `engenty-wizards` as a tarball and the Mac app's archive.
+# The installer (apps/web/public/wizards.sh) and `engenty-wizards app` fetch both from there.
+# The installer itself reaches engenty.ai with the next deploy (ci.yml).
+#
+# The package also goes to npm once the repository variable PUBLISH_NPM is `true` and the secret
+# NPM_TOKEN holds a token that may publish `engenty-wizards`; until then `npx engenty-wizards`
+# does not exist.
+# On a pull request that touches what a local install is made of, and run by hand
+# (workflow_dispatch), it builds and tests everything and publishes nothing.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+    paths:
+      - apps/runtime/**
+      - apps/web/public/wizards.sh
+      - apps/desktop/**
+      - packages/**
+      - bin/**
+      - scripts/npm-package.mjs
+      - scripts/desktop-archive.mjs
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: The tag is the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+
+      - name: Pack
+        run: node scripts/npm-package.mjs
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: dist/npm/*.tgz
+          if-no-files-found: error
+
+  # The installer, as a person runs it, with the package of this commit instead of the registry's:
+  # its own Node, the runtime, the command, then a start that answers.
+  installer:
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-package
+          path: dist/npm
+
+      - name: Lint the installer
+        if: runner.os == 'Linux'
+        run: shellcheck apps/web/public/wizards.sh
+
+      - name: Install
+        run: |
+          set -euo pipefail
+          export ENGENTY_HOME="$RUNNER_TEMP/engenty"
+          ENGENTY_WIZARDS_PACKAGE="$(ls "$PWD"/dist/npm/*.tgz)" bash apps/web/public/wizards.sh --yes --no-link
+          echo "ENGENTY_HOME=$ENGENTY_HOME" >> "$GITHUB_ENV"
+
+      - name: Start, enter, stop
+        run: |
+          set -euo pipefail
+          wizards="$ENGENTY_HOME/wizards/bin/engenty-wizards"
+          "$wizards" doctor
+          "$wizards" start --no-open > start.log 2>&1 &
+          for _ in $(seq 1 120); do grep -q "is running" start.log && break; sleep 0.5; done
+          cat start.log
+          # A ticket lets a browser into the runtime that runs: 302 to the studio.
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$("$wizards" open --print)")" = 302
+          "$wizards" stop
+
+  # Apple silicon only: an Intel build (runner `macos-26-intel`) was never made or tried.
+  mac-app:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+
+      # Ad-hoc signed until there is a Developer ID (apps/desktop/README.md): with
+      # APPLE_SIGNING_IDENTITY and the notarization variables set, Tauri signs and notarizes.
+      - name: Build and pack
+        run: node scripts/desktop-archive.mjs
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac-app
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  publish:
+    needs: [package, installer, mac-app]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: GitHub release with the package and the Mac app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
+            artifacts/npm-package/*.tgz \
+            artifacts/mac-app/*.tar.gz artifacts/mac-app/*.tar.gz.sha256
+
+      - name: npm
+        if: vars.PUBLISH_NPM == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish artifacts/npm-package/*.tgz --access public
