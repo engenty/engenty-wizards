@@ -4,6 +4,11 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.5] - 2026-10-04
+- ADDED A wizard says which models it lacks before it runs, and only refuses to start when every path needs one; templates can be filtered by capability, and those this install cannot run are greyed out
+- ADDED Codex makes images on the ChatGPT plan, and runs each model class on its own model (Luna, Sol, Astra); image, video and voice stay empty without a gateway key instead of naming models nothing can reach
+- DOCS Plan for a setup by capability
+
 ## [0.1.4] - 2026-10-04
 - FIXED The changelog's groups read NEW, FIXED, DOCS in every language, like the entries they stand before
 

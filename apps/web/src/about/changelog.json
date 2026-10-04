@@ -1,7 +1,34 @@
 [
   {
+    "version": "v0.1.5",
+    "timestamp": 1791151309,
+    "commits": [
+      {
+        "id": "f4b7e43",
+        "message": "plan for a setup by capability",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8ddaab7",
+        "message": "a wizard says which models it lacks before it runs, and only refuses to start when every path needs one; templates can be filtered by capability, and those this install cannot run are greyed out",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "2689c74",
+        "message": "Codex makes images on the ChatGPT plan, and runs each model class on its own model (Luna, Sol, Astra); image, video and voice stay empty without a gateway key instead of naming models nothing can reach",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.4",
-    "timestamp": 1791144281,
+    "timestamp": 1791144283,
     "commits": [
       {
         "id": "071e6ca",
