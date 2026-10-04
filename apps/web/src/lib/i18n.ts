@@ -1,9 +1,8 @@
 import { useSyncExternalStore } from "react";
 
 const de = {
-  "brand.tagline": "Baue KI-Wizards, ohne Code.",
-  "brand.sub":
-    "Beschreibe einen Ablauf in deinen Worten. engenty baut daraus einen Wizard, den du mit einem Link teilst.",
+  "brand.tagline": "Wünsch dir was. Wir bauen deinen Wizard.",
+  "brand.sub": "Er führt dich Schritt für Schritt zum Ergebnis. Die KI erledigt die Arbeit.",
   "auth.dev": "Dev-Login (lokal)",
   "auth.legal":
     "Kein Passwort, keine Registrierung – du meldest dich mit einem bestehenden Konto an.",
