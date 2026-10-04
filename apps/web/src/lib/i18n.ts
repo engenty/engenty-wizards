@@ -287,9 +287,9 @@ const de = {
   "market.makes": "Liefert",
   "market.effort": "Aufwand",
   "market.cost": "Kosten",
-  "market.galleryTitle": "Starter für deine Wizards",
+  "market.galleryTitle": "Starte deinen Wizard",
   "market.gallerySub":
-    "Der Marktplatz für fertige Wizards: Angebote, Videos, Belege und mehr. Such dir einen aus und mach ihn zu deinem.",
+    "Lass dich von den Vorlagen in unserem Marktplatz inspirieren: Angebote, Videos, Belege und mehr. Such dir eine aus und mach sie zu deiner.",
   "market.describe": "Beschreib, was fertig werden soll – etwa ein Angebot als PDF.",
   "market.gallery": "Alle Vorlagen ansehen",
   "market.signIn": "Anmelden",
@@ -863,9 +863,9 @@ const en: Record<Key, string> = {
   "market.makes": "Delivers",
   "market.effort": "Effort",
   "market.cost": "Cost",
-  "market.galleryTitle": "Starters for your wizards",
+  "market.galleryTitle": "Start your wizard",
   "market.gallerySub":
-    "The marketplace for ready-made wizards: quotes, videos, receipts and more. Pick one and make it yours.",
+    "Get inspired by the templates in our marketplace: quotes, videos, receipts and more. Pick one and make it yours.",
   "market.describe": "Describe what you want done — say, a quote as a PDF.",
   "market.gallery": "See all templates",
   "market.signIn": "Sign in",
