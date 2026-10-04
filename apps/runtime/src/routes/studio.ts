@@ -31,6 +31,7 @@ import {
   HARNESS_IDS,
   type HarnessId,
   harness,
+  installSpec,
 } from "../harness/index.js";
 import {
   closeTerminal,
@@ -125,6 +126,12 @@ async function setupDone(): Promise<boolean> {
   }
   return hasTextModel();
 }
+
+/** The size of an inline terminal, as the page lays it out. */
+const terminalSize = z.object({
+  cols: z.number().int().min(10).max(500).optional(),
+  rows: z.number().int().min(4).max(200).optional(),
+});
 
 export const studio = new Hono<Vars>()
   .get("/me", async (c) => {
@@ -692,18 +699,25 @@ export const studio = new Hono<Vars>()
     }
     return c.json({ harness: await detectHarness(id, true) });
   })
+  .post("/local/harness/:id/install", async (c) => {
+    const spec = managed ? null : await installSpec(c.req.param("id"));
+    if (!spec) {
+      return c.notFound();
+    }
+    const { cols, rows } = terminalSize.parse(await c.req.json().catch(() => ({})));
+    const cwd = join(env.dataDir, "harness");
+    mkdirSync(cwd, { recursive: true });
+    // The page asks again once the command is over: then the client is there, or its output says why not.
+    const terminal = await openTerminal({ ...spec, cwd, cols, rows });
+    return c.json({ terminal });
+  })
   .post("/local/harness/:id/login", async (c) => {
     const id = c.req.param("id") as HarnessId;
     const client = harness(id);
     if (managed || !client) {
       return c.notFound();
     }
-    const { cols, rows } = z
-      .object({
-        cols: z.number().int().min(10).max(500).optional(),
-        rows: z.number().int().min(4).max(200).optional(),
-      })
-      .parse(await c.req.json().catch(() => ({})));
+    const { cols, rows } = terminalSize.parse(await c.req.json().catch(() => ({})));
     const cwd = join(env.dataDir, "harness");
     mkdirSync(cwd, { recursive: true });
     const terminal = await openTerminal({

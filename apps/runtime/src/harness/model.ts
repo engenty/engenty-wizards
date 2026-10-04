@@ -56,14 +56,14 @@ export interface HarnessAnswer {
   stopReason?: string;
 }
 
-export type HarnessMeta = Pick<Harness, "id" | "name" | "install" | "exhausted">;
+export type HarnessMeta = Pick<Harness, "id" | "name" | "exhausted">;
 
 const workDir = join(env.dataDir, "harness");
 
 export const signedOut = (h: HarnessMeta) =>
   `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle & Konto“ an.`;
 export const notInstalled = (h: HarnessMeta) =>
-  `${h.name} ist auf diesem Gerät nicht installiert. Installieren: ${h.install}`;
+  `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle & Konto“.`;
 export const exhausted = (h: HarnessMeta) =>
   h.exhausted ??
   `Das Konto, mit dem ${h.name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.`;

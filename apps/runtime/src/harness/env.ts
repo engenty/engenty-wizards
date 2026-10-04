@@ -1,5 +1,7 @@
 import { execFile, spawn } from "node:child_process";
+import { join } from "node:path";
 import { promisify } from "node:util";
+import { layout } from "../cli/home.js";
 import type { EnvSpec, HarnessAuth } from "./types.js";
 
 export const run = promisify(execFile);
@@ -53,6 +55,8 @@ export function pickEnv(
   shell: Record<string, string | undefined>,
   own: Record<string, string | undefined>,
   passThrough: RegExp,
+  /** Folders before the shell's PATH: the clients the setup installed. */
+  first: string[] = [],
 ): NodeJS.ProcessEnv {
   const picked: NodeJS.ProcessEnv = {};
   const source = Object.keys(shell).length ? shell : own;
@@ -61,7 +65,9 @@ export function pickEnv(
       picked[key] = value;
     }
   }
-  const path = [...(shell.PATH ?? "").split(":"), ...(own.PATH ?? "").split(":")].filter(Boolean);
+  const path = [...first, ...(shell.PATH ?? "").split(":"), ...(own.PATH ?? "").split(":")].filter(
+    Boolean,
+  );
   return {
     ...picked,
     PATH: [...new Set(path)].join(":"),
@@ -80,6 +86,9 @@ export function stripKeys(env: NodeJS.ProcessEnv, keyVars: string[]): NodeJS.Pro
   return bare;
 }
 
+/** Where the setup installs clients from npm, whoever started this runtime. */
+const installed = () => [join(layout().clients, "bin")];
+
 export interface ResolvedEnv {
   env: NodeJS.ProcessEnv;
   auth: HarnessAuth;
@@ -96,7 +105,7 @@ export function resolveEnv(spec: EnvSpec): Promise<ResolvedEnv> {
   let pending = resolved.get(spec.id);
   if (!pending) {
     pending = (async () => {
-      const withKey = pickEnv(await loginShellEnv(), process.env, spec.passThrough);
+      const withKey = pickEnv(await loginShellEnv(), process.env, spec.passThrough, installed());
       const bare = stripKeys(withKey, spec.keyVars);
       const own = await spec.auth(bare);
       if (own !== "none") {
@@ -118,7 +127,7 @@ export function resolveEnv(spec: EnvSpec): Promise<ResolvedEnv> {
 /** The environment of a sign-in: the client on its own, without a key of the shell, in a real terminal. */
 export async function loginEnv(spec: EnvSpec): Promise<NodeJS.ProcessEnv> {
   const bare = stripKeys(
-    pickEnv(await loginShellEnv(), process.env, spec.passThrough),
+    pickEnv(await loginShellEnv(), process.env, spec.passThrough, installed()),
     spec.keyVars,
   );
   return { ...bare, TERM: "xterm-256color", COLORTERM: "truecolor" };

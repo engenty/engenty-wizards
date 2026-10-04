@@ -12,7 +12,10 @@ export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
 export interface HarnessStatus {
   id: HarnessId;
   name: string;
+  /** How to install it in a terminal; the setup's Install button runs the same command. */
   install: string;
+  /** The vendor's desktop app on this machine ("Claude"): the subscription is most likely there. */
+  app: string | null;
   /** Null: not installed. */
   version: string | null;
   auth: "subscription" | "api_key" | "none";

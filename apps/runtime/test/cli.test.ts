@@ -3,10 +3,11 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localTicketExpiry, mintLocalTicket } from "../src/auth/local-ticket.js";
+import { installCommand } from "../src/cli/clients.js";
 import { appArchiveUrl } from "../src/cli/desktop.js";
 import { inherited, runtimeEnv, runtimePath } from "../src/cli/environment.js";
 import { layout, readEnvFile, wizardsHome } from "../src/cli/home.js";
-import { nodeIsCurrent } from "../src/cli/machine.js";
+import { CLIENTS, nodeIsCurrent, suggestedClient } from "../src/cli/machine.js";
 import { clearRunning, readRunning, writeRunning } from "../src/running.js";
 
 let dir: string;
@@ -144,5 +145,28 @@ describe("the machine", () => {
     expect(appArchiveUrl("0.1.0", "arm64")).toBe(
       "https://github.com/engenty/engenty-wizards/releases/download/v0.1.0/engenty-wizards-0.1.0-mac-arm64.tar.gz",
     );
+  });
+});
+
+describe("the AI clients", () => {
+  const codex = CLIENTS.find((c) => c.id === "codex");
+  const claude = CLIENTS.find((c) => c.id === "claude");
+
+  it("installs one from npm into the install's own prefix, quoted when it has to be", () => {
+    expect(codex && installCommand(codex, layout("/h"))).toBe(
+      "npm install --global --prefix /h/clients @openai/codex",
+    );
+    expect(codex && installCommand(codex, layout("/Users/a b/w"))).toBe(
+      "npm install --global --prefix '/Users/a b/w/clients' @openai/codex",
+    );
+    expect(claude && installCommand(claude, layout("/h"))).toBe(
+      "curl -fsSL https://claude.ai/install.sh | bash",
+    );
+  });
+
+  it("suggests the first when no vendor app says otherwise", () => {
+    const missing = CLIENTS.filter((c) => c.id !== "codex" && !c.app).map((client) => ({ client }));
+    expect(suggestedClient(missing)?.client.id).toBe("gemini");
+    expect(suggestedClient([])).toBeNull();
   });
 });

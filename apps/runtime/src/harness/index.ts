@@ -1,7 +1,12 @@
+import { mkdirSync } from "node:fs";
+import { installCommand } from "../cli/clients.js";
+import { inherited, runtimePath } from "../cli/environment.js";
+import { layout } from "../cli/home.js";
+import { CLIENTS, vendorApp } from "../cli/machine.js";
 import { claude } from "./claude.js";
 import { codex } from "./codex.js";
 import { cursor } from "./cursor.js";
-import { forgetEnv, resolveEnv } from "./env.js";
+import { forgetEnv, loginShellEnv, resolveEnv } from "./env.js";
 import { gemini } from "./gemini.js";
 import type { Harness, HarnessAuth, HarnessId } from "./types.js";
 
@@ -27,7 +32,10 @@ export function isHarnessVendor(vendor: string): vendor is HarnessId {
 export interface HarnessStatus {
   id: HarnessId;
   name: string;
+  /** How to install it in a terminal; the setup runs the same command. */
   install: string;
+  /** The vendor's desktop app on this machine ("Claude"): the subscription is most likely there. */
+  app: string | null;
   /** Null: not installed. */
   version: string | null;
   auth: HarnessAuth;
@@ -51,10 +59,12 @@ export async function detectHarness(id: HarnessId, force = false): Promise<Harne
     // The person may just have signed in or set a key in their shell.
     forgetEnv(id);
   }
+  const client = CLIENTS.find((c) => c.id === id);
   let value: HarnessStatus = {
     id,
     name: h.name,
-    install: h.install,
+    install: client ? installCommand(client, layout()) : "",
+    app: client ? vendorApp(client) : null,
     version: null,
     auth: "none",
     interactiveLogin: h.login.interactive,
@@ -80,4 +90,35 @@ export function detectHarnesses(force = false): Promise<HarnessStatus[]> {
 /** The clients installed on this machine. */
 export async function installedHarnesses(): Promise<HarnessStatus[]> {
   return (await detectHarnesses()).filter((h) => h.version !== null);
+}
+
+/**
+ * What the inline terminal runs to install a client: the command the terminal setup runs, shown
+ * first. A client from npm goes into the install's own prefix with the npm of its own Node.
+ */
+export async function installSpec(
+  id: string,
+): Promise<{ bin: string; args: string[]; env: NodeJS.ProcessEnv } | null> {
+  const client = CLIENTS.find((c) => c.id === id);
+  if (!client) {
+    return null;
+  }
+  const paths = layout();
+  mkdirSync(paths.clients, { recursive: true });
+  const shell = await loginShellEnv();
+  return {
+    bin: "bash",
+    args: [
+      "-c",
+      'printf "\\033[2m$ %s\\033[0m\\n\\n" "$1"; set -o pipefail; eval "$1"',
+      "install",
+      installCommand(client, paths),
+    ],
+    env: {
+      ...inherited(process.env),
+      PATH: runtimePath(paths, { ...process.env, PATH: shell.PATH || process.env.PATH }),
+      TERM: "xterm-256color",
+      COLORTERM: "truecolor",
+    },
+  };
 }

@@ -107,7 +107,6 @@ export const cursor: Harness = {
   ...spec,
   name: "Cursor Agent",
   bin: CURSOR_BIN,
-  install: "curl https://cursor.com/install -fsS | bash",
   classes: CLASSES,
   async version(env) {
     try {

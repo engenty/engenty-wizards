@@ -5,10 +5,14 @@ import { type Logged, runLogged } from "./exec.js";
 import type { Layout } from "./home.js";
 import { type Client, findOnPath } from "./machine.js";
 
+/** A word for the shell: quoted when it holds anything but plain characters. */
+const shellWord = (word: string) =>
+  /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`;
+
 /** The command the setup runs for a client, as the person would type it. */
 export function installCommand(client: Client, paths: Layout): string {
   return client.install.kind === "npm"
-    ? `npm install --global --prefix ${paths.clients} ${client.install.pkg}`
+    ? `npm install --global --prefix ${shellWord(paths.clients)} ${client.install.pkg}`
     : `curl -fsSL ${client.install.url} | bash`;
 }
 

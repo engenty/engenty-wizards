@@ -18,6 +18,8 @@ export interface Client {
   /** The subscription it answers on. */
   account: string;
   install: ClientInstall;
+  /** The vendor's desktop app: on this machine, the person most likely has the subscription. */
+  app?: string;
 }
 
 /** The AI clients the runtime can think with, in the order its own setup offers them. */
@@ -28,6 +30,7 @@ export const CLIENTS: readonly Client[] = [
     bin: "codex",
     account: "ChatGPT",
     install: { kind: "npm", pkg: "@openai/codex" },
+    app: "ChatGPT",
   },
   {
     id: "claude",
@@ -35,6 +38,7 @@ export const CLIENTS: readonly Client[] = [
     bin: "claude",
     account: "Claude",
     install: { kind: "script", url: "https://claude.ai/install.sh" },
+    app: "Claude",
   },
   {
     id: "gemini",
@@ -49,8 +53,29 @@ export const CLIENTS: readonly Client[] = [
     bin: "cursor-agent",
     account: "Cursor",
     install: { kind: "script", url: "https://cursor.com/install" },
+    app: "Cursor",
   },
 ];
+
+/** The client's desktop app, when it is on this Mac: its name, e.g. "Claude". */
+export function vendorApp(
+  client: Client,
+  roots = ["/Applications", join(homedir(), "Applications")],
+) {
+  if (process.platform !== "darwin" || !client.app) {
+    return null;
+  }
+  const app = client.app;
+  return roots.some((root) => existsSync(join(root, `${app}.app`))) ? app : null;
+}
+
+/**
+ * The client the setup suggests among those not installed: the one whose app is on this Mac —
+ * its subscription is most likely already paid for — else the first.
+ */
+export function suggestedClient<T extends { client: Client }>(missing: T[]): T | null {
+  return missing.find((state) => vendorApp(state.client)) ?? missing[0] ?? null;
+}
 
 /** The first file of that name on a PATH that may be run. */
 export function findOnPath(name: string, path: string): string | null {

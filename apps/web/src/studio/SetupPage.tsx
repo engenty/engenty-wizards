@@ -7,7 +7,7 @@ import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { features } from "../lib/features";
 import { t } from "../lib/i18n";
-import { type LocalModels, useMe } from "../lib/session";
+import { type HarnessStatus, type LocalModels, useMe } from "../lib/session";
 import { useGround } from "../lib/theme";
 import { Button, cn } from "../ui";
 import { HarnessPanel, ModelTest } from "./Harness";
@@ -286,8 +286,11 @@ export function SetupPage() {
     return null;
   }
   const models = me.data.models;
-  const installed = me.data.harnesses.filter((h) => h.version !== null);
-  const missing = me.data.harnesses.filter((h) => h.version === null);
+  // Installed clients first, and among each, the one whose app is on this computer: its
+  // subscription is most likely already paid for. A missing one installs right here.
+  const rank = (h: HarnessStatus) => (h.version === null ? 2 : 0) + (h.app ? 0 : 1);
+  const clients = [...me.data.harnesses].sort((a, b) => rank(a) - rank(b));
+  const installed = clients.filter((h) => h.version !== null);
   // A first start has nothing chosen yet; a source picked earlier (here or in the settings) stays picked.
   const selected: Source | null =
     picked || me.data.setupDone || models.source !== "own" ? models.source : null;
@@ -388,14 +391,20 @@ export function SetupPage() {
               </p>
             </div>
             <div className="mt-5 flex flex-col gap-2.5">
-              {installed.map((h, i) => (
+              {clients.map((h, i) => (
                 <Choice
                   key={h.id}
                   selected={marked === h.id}
                   title={h.name}
                   description={t(`harness.desc.${h.id}`)}
                   badge={i === 0 ? t("setup.recommended") : undefined}
-                  note={h.auth === "subscription" ? t("harness.ready") : undefined}
+                  note={
+                    h.version === null
+                      ? t("harness.notInstalled")
+                      : h.auth === "subscription"
+                        ? t("harness.ready")
+                        : undefined
+                  }
                   onPick={() => choose.mutate(h.id)}
                 />
               ))}
@@ -407,13 +416,7 @@ export function SetupPage() {
               />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-white/60">
-              <span>
-                {installed.length
-                  ? missing.length
-                    ? t("setup.others", { names: missing.map((h) => h.name).join(", ") })
-                    : null
-                  : t("setup.noHarness")}
-              </span>
+              <span>{installed.length ? null : t("setup.noHarness")}</span>
               <Button
                 variant="ghost"
                 size="sm"

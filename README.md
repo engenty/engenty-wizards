@@ -43,7 +43,9 @@ already have is left alone), installs engenty wizards into `~/.engenty/wizards` 
 you through the rest:
 
 - **Something to think with.** It looks for Codex, Claude Code, Gemini CLI and Cursor Agent and
-  offers to install one if there is none. Or use an API key or [Ollama](https://ollama.com).
+  offers to install one if there is none — first the one whose app (Claude, ChatGPT, Cursor) is
+  on your Mac, as its subscription is most likely yours already. The first page of the studio
+  installs them too. Or use an API key or [Ollama](https://ollama.com).
 - **Google Chrome and ffmpeg** (optional): Chrome for PDF and PNG exports and for steps that use
   a browser, ffmpeg for MP4 videos of animated widgets.
 - **The Mac app** (optional): the studio in its own window and in the menu bar.

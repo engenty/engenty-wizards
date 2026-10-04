@@ -83,35 +83,38 @@ export function HarnessPanel({
 }) {
   const qc = useQueryClient();
   const client = me.harnesses.find((h) => h.id === id);
-  const [terminal, setTerminal] = useState<string | null>(null);
+  // The inline terminal runs the install or the sign-in; one of them at a time.
+  const [terminal, setTerminal] = useState<{ id: string; job: "install" | "login" } | null>(null);
   const [ended, setEnded] = useState<number | null>(null);
   const recheck = useMutation({
     mutationFn: () => api.post(`/api/studio/local/harness/${id}/detect`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
   });
-  const login = useMutation({
+  const open = (job: "install" | "login") => ({
     mutationFn: () =>
-      api.post<{ terminal: string }>(`/api/studio/local/harness/${id}/login`, {
+      api.post<{ terminal: string }>(`/api/studio/local/harness/${id}/${job}`, {
         cols: 100,
         rows: 24,
       }),
-    onSuccess: ({ terminal: started }) => {
-      setTerminal(started);
+    onSuccess: ({ terminal: started }: { terminal: string }) => {
+      setTerminal({ id: started, job });
       setEnded(null);
     },
   });
+  const install = useMutation(open("install"));
+  const login = useMutation(open("login"));
   const signedIn = client?.auth === "subscription";
-  // The sign-in is there and the command is over: the terminal has done its job.
+  const installed = client ? client.version !== null : false;
+  // What the terminal was for is there and its command is over: it has done its job.
   useEffect(() => {
-    if (signedIn && ended !== null) {
+    if (ended !== null && (terminal?.job === "install" ? installed : signedIn)) {
       setTerminal(null);
     }
-  }, [signedIn, ended]);
+  }, [signedIn, installed, ended, terminal?.job]);
   if (!client) {
     return null;
   }
   const sub = t(`harness.sub.${id}`);
-  const installed = client.version !== null;
   const again = (
     <Button variant="ghost" size="sm" busy={recheck.isPending} onClick={() => recheck.mutate()}>
       <RefreshCw className="size-3.5" /> {t("local.recheck")}
@@ -148,24 +151,42 @@ export function HarnessPanel({
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-[14px] text-rose">{t("harness.missing", { name: client.name })}</p>
+          {client.app ? (
+            <p className="text-[13px] text-ink-3">
+              {t("harness.appHere", { app: client.app, name: client.name, sub })}
+            </p>
+          ) : null}
+          {terminal ? null : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button busy={install.isPending} onClick={() => install.mutate()}>
+                {t("harness.installButton", { name: client.name })}
+              </Button>
+              {again}
+            </div>
+          )}
+          {install.isError ? (
+            <p className="text-[13px] text-rose">{(install.error as Error).message}</p>
+          ) : null}
           <p className="text-[13px] text-ink-3">
             {t("harness.install")}{" "}
             <code className="rounded bg-paper px-1.5 py-0.5 font-mono text-[12px] text-ink-2">
               {client.install}
             </code>
           </p>
-          <div>{again}</div>
         </div>
       )}
       {terminal ? (
         <div className="flex flex-col gap-2">
           <p className="text-[13px] text-ink-3">
-            {client.interactiveLogin
-              ? t("harness.signInInteractive", { name: client.name, sub })
-              : t("harness.signingIn")}
+            {terminal.job === "install"
+              ? t("harness.installing", { name: client.name })
+              : client.interactiveLogin
+                ? t("harness.signInInteractive", { name: client.name, sub })
+                : t("harness.signingIn")}
           </p>
           <Terminal
-            id={terminal}
+            key={terminal.id}
+            id={terminal.id}
             onDone={() => recheck.mutate()}
             onExit={(code) => {
               setEnded(code);
@@ -178,7 +199,7 @@ export function HarnessPanel({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  void api.del(`/api/studio/local/terminal/${terminal}`).catch(() => undefined);
+                  void api.del(`/api/studio/local/terminal/${terminal.id}`).catch(() => undefined);
                   setTerminal(null);
                 }}
               >
@@ -189,7 +210,13 @@ export function HarnessPanel({
                 <Button variant="ghost" size="sm" onClick={() => setTerminal(null)}>
                   {t("common.close")}
                 </Button>
-                {signedIn ? null : (
+                {terminal.job === "install" ? (
+                  installed ? null : (
+                    <span className="text-[13px] text-rose">
+                      {t("harness.installEnded", { name: client.name })}
+                    </span>
+                  )
+                ) : signedIn ? null : (
                   <span className="text-[13px] text-rose">
                     {t("harness.loginEnded", { name: client.name })}
                   </span>

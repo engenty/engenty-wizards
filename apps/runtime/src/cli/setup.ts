@@ -21,6 +21,8 @@ import {
   findChrome,
   findFfmpeg,
   findOnPath,
+  suggestedClient,
+  vendorApp,
 } from "./machine.js";
 import { badge, cyan, dim, tilde } from "./ui.js";
 
@@ -97,16 +99,30 @@ async function clientsStep(
 
   let wanted: ClientState[] = missing.filter((s) => options.clients.includes(s.client.id));
   if (interactive && missing.length && !wanted.length) {
+    const suggested = suggestedClient(missing);
+    // A client whose app is on this Mac comes first: its subscription is most likely paid for.
+    const offered = [...missing].sort(
+      (a, b) => Number(!vendorApp(a.client)) - Number(!vendorApp(b.client)),
+    );
     const answer = await p.multiselect({
       message: installed.length
         ? "Install another AI client? (space to pick, enter to go on)"
         : "Which one shall I install?",
-      options: missing.map(({ client }) => ({
-        value: client.id,
-        label: client.name,
-        hint: `${client.account} subscription${client.id === "codex" ? ", recommended" : ""}`,
-      })),
-      initialValues: installed.length ? [] : missing.slice(0, 1).map((s) => s.client.id),
+      options: offered.map(({ client }) => {
+        const app = vendorApp(client);
+        return {
+          value: client.id,
+          label: client.name,
+          hint: [
+            `${client.account} subscription`,
+            app ? `the ${app} app is on this Mac` : "",
+            !installed.length && client.id === suggested?.client.id ? "recommended" : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+        };
+      }),
+      initialValues: installed.length || !suggested ? [] : [suggested.client.id],
       required: false,
     });
     if (cancelled(answer)) {
@@ -122,8 +138,8 @@ async function clientsStep(
     p.log.info("You sign the client in on the first page of the studio.");
   } else {
     p.log.warn(
-      `Without an AI client the studio asks for an API key (Vercel AI Gateway, OpenAI, Anthropic) or a local model (Ollama).\n${dim(
-        `Later: ${CLIENTS.map((c) => c.name).join(", ")} with \`${command()} setup\`.`,
+      `No AI client yet: the first page of the studio installs one, or takes an API key (Vercel AI Gateway, OpenAI, Anthropic) or a local model (Ollama).\n${dim(
+        `Or here, later: ${CLIENTS.map((c) => c.name).join(", ")} with \`${command()} setup\`.`,
       )}`,
     );
   }

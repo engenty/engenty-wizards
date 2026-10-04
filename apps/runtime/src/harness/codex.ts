@@ -174,7 +174,6 @@ export const codex: Harness = {
   ...spec,
   name: "Codex",
   bin: CODEX_BIN,
-  install: "npm install -g @openai/codex",
   classes: CLASSES,
   async version(env) {
     try {

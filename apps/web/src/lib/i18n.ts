@@ -73,7 +73,15 @@ const de = {
     "Texte denkt das auf diesem Gerät installierte {name} – mit deinem {sub} und deiner Anmeldung dort. Kein Schlüssel nötig. Bilder, Videos und Audio brauchen weiter einen Schlüssel.",
   "harness.found": "{name} {version} gefunden",
   "harness.missing": "{name} ist auf diesem Gerät nicht installiert.",
-  "harness.install": "Installieren:",
+  "harness.install": "Oder in deinem eigenen Terminal:",
+  "harness.installButton": "{name} installieren",
+  "harness.installing":
+    "{name} wird im Terminal unten installiert – das dauert etwa eine Minute. Danach meldest du es an.",
+  "harness.installEnded":
+    "Die Installation ist zu Ende, aber {name} ist nicht da. Was oben steht, sagt warum.",
+  "harness.appHere":
+    "Die {app}-App ist auf diesem Computer: {name} meldet sich mit demselben {sub} an.",
+  "harness.notInstalled": "nicht installiert",
   "harness.authSubscription": "Angemeldet mit deinem {sub}.",
   "harness.authKey":
     "Angemeldet mit einem API-Schlüssel aus deiner Shell – nicht mit dem Abo. Melde dich hier an, damit es über dein {sub} läuft.",
@@ -111,9 +119,8 @@ const de = {
   "setup.h.test": "Ein kurzer Test",
   "setup.h.done": "Verbunden.",
   "setup.ready": "Alles bereit.",
-  "setup.others": "Auch möglich, sobald installiert: {names}.",
   "setup.noHarness":
-    "Kein KI-Client gefunden. Installiere Codex, Claude Code, Gemini CLI oder Cursor Agent – oder trage eigene Schlüssel ein.",
+    "Noch kein KI-Client installiert. Wähle einen – er wird hier installiert – oder trage eigene Schlüssel ein.",
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic oder Ollama.",
   "setup.recommended": "Empfohlen",
   "setup.done": "Zum Studio",
@@ -739,7 +746,14 @@ const en: Record<Key, string> = {
     "Text thinks on the {name} installed on this device — on your {sub} and your sign-in there. No key needed. Images, video and audio still need a key.",
   "harness.found": "{name} {version} found",
   "harness.missing": "{name} is not installed on this device.",
-  "harness.install": "Install:",
+  "harness.install": "Or in your own terminal:",
+  "harness.installButton": "Install {name}",
+  "harness.installing":
+    "{name} installs in the terminal below — it takes about a minute. Then you sign it in.",
+  "harness.installEnded":
+    "The install ended, but {name} is not there. What it printed above says why.",
+  "harness.appHere": "The {app} app is on this computer: {name} signs in with the same {sub}.",
+  "harness.notInstalled": "not installed",
   "harness.authSubscription": "Signed in with your {sub}.",
   "harness.authKey":
     "Signed in with an API key from your shell — not the subscription. Sign in here so it runs on your {sub}.",
@@ -777,9 +791,8 @@ const en: Record<Key, string> = {
   "setup.h.test": "One short test",
   "setup.h.done": "Connected.",
   "setup.ready": "All set.",
-  "setup.others": "Also possible once installed: {names}.",
   "setup.noHarness":
-    "No AI client found. Install Codex, Claude Code, Gemini CLI or Cursor Agent — or enter your own keys.",
+    "No AI client installed yet. Pick one — it installs right here — or enter your own keys.",
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic or Ollama.",
   "setup.recommended": "Recommended",
   "setup.done": "Open the studio",

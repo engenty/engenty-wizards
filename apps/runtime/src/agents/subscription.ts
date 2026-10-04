@@ -158,10 +158,7 @@ export async function subscriptionTurn(
     await deleteSetting(sessionKey(input.wizardId));
     const detail = failure || stderr || `exit ${code}`;
     if (/authenticat|log ?in|oauth|credential/i.test(detail)) {
-      throw new ServiceError(
-        "refused",
-        signedOut({ id: "claude", name: "Claude Code", install: "" }),
-      );
+      throw new ServiceError("refused", signedOut({ id: "claude", name: "Claude Code" }));
     }
     throw new Error(`Claude Code: ${detail}`.slice(0, 500));
   }
