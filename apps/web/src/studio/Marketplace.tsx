@@ -714,12 +714,15 @@ export function MarketplaceBrowser({
   onUse,
   busy,
   open: opened,
+  front,
 }: {
   source: "studio" | "public";
   onUse: (entry: MarketplaceEntry) => void;
   busy?: boolean;
   /** An entry to open at once (a link from the gallery). */
   open?: string | null;
+  /** The gallery: the search is a field to write a sentence into, and everything starts left. */
+  front?: boolean;
 }) {
   const entries = useMarketplace(source);
   const [query, setQuery] = useState("");
@@ -799,39 +802,64 @@ export function MarketplaceBrowser({
   if (!all.length) {
     return null;
   }
+  /** What the search is doing: looking by words, waiting for the model, or sorted by it. */
+  const status = thinking ? (
+    <Spinner className="size-4 shrink-0 text-ink-3" />
+  ) : byModel ? (
+    <span title={t("market.judged")} className="flex shrink-0">
+      <Sparkles className="size-4 text-ember-strong" />
+    </span>
+  ) : (
+    <Search className="size-4 shrink-0 text-ink-3" />
+  );
+  const clear = query ? (
+    <button
+      type="button"
+      aria-label={t("market.reset")}
+      onClick={() => setQuery("")}
+      className="-mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink"
+    >
+      <X className="size-4" />
+    </button>
+  ) : null;
+
   return (
     <div>
-      <label className="relative mx-auto flex h-10 max-w-md items-center sm:h-11 gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
-        {thinking ? (
-          <Spinner className="size-4 shrink-0 text-ink-3" />
-        ) : byModel ? (
-          <span title={t("market.judged")} className="flex shrink-0">
-            <Sparkles className="size-4 text-ember-strong" />
-          </span>
-        ) : (
-          <Search className="size-4 shrink-0 text-ink-3" />
-        )}
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("market.search")}
-          aria-label={t("market.search")}
-          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
-        />
-        {query ? (
-          <button
-            type="button"
-            aria-label={t("market.reset")}
-            onClick={() => setQuery("")}
-            className="-mr-1.5 flex size-7 items-center justify-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink"
-          >
-            <X className="size-4" />
-          </button>
-        ) : null}
-      </label>
+      {front ? (
+        // The gallery's field: written into like a chat, two lines for a whole sentence.
+        <label className="relative flex items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
+          <span className="mt-[5px] flex shrink-0">{status}</span>
+          <textarea
+            rows={2}
+            value={query}
+            onChange={(e) => setQuery(e.target.value.replace(/\n/g, " "))}
+            placeholder={t("market.describe")}
+            aria-label={t("market.search")}
+            className="min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-ink-4"
+          />
+          {clear}
+        </label>
+      ) : (
+        <label className="relative mx-auto flex h-10 max-w-md items-center gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus sm:h-11">
+          {status}
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("market.search")}
+            aria-label={t("market.search")}
+            className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {clear}
+        </label>
+      )}
       {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
-      <div className="max-sm:-mx-4 mt-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
+      <div
+        className={cn(
+          "max-sm:-mx-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap max-sm:[&::-webkit-scrollbar]:hidden",
+          front ? "sm:-ml-2.5 mt-3" : "mt-4 sm:justify-center",
+        )}
+      >
         {[{ value: "", label: t("market.all") }, ...useCases].map((u) => (
           <button
             key={u.value}

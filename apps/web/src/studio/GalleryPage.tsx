@@ -58,19 +58,17 @@ export function GalleryPage() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl animate-rise px-4 pb-24 sm:px-6">
-        {/* One question, and the field that answers it; the engentys wait on its edge. */}
-        <div className="relative mx-auto max-w-2xl pt-6 text-center sm:pt-14">
-          <div
-            aria-hidden
-            className="-z-10 -translate-x-1/2 pointer-events-none absolute top-0 left-1/2 size-[340px] rounded-full bg-card opacity-70 blur-3xl sm:size-[520px]"
-          />
-          <h1 className="text-balance font-display font-semibold text-[30px] leading-[1.1] tracking-tight sm:text-[52px]">
-            {t("market.galleryTitle")}
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-balance text-[14px] text-ink-2 leading-relaxed sm:mt-4 sm:text-[16px]">
-            {t("market.gallerySub")}
-          </p>
-          <div className="mt-6 flex items-end justify-center gap-0.5 sm:mt-8">
+        {/* What this place is, in two lines; the engentys wait on the edge of the field below. */}
+        <div className="flex items-end justify-between gap-6 pt-4 sm:pt-8">
+          <div className="min-w-0 pb-4 sm:pb-5">
+            <h1 className="font-display font-semibold text-[24px] leading-tight tracking-tight sm:text-[32px]">
+              {t("market.galleryTitle")}
+            </h1>
+            <p className="mt-1.5 max-w-xl text-[14px] text-ink-2 leading-snug sm:text-[15px]">
+              {t("market.gallerySub")}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-end gap-0.5 pr-3 max-sm:hidden">
             {CREW.map((kind, i) => (
               <span key={kind} className={i % 2 ? "translate-y-[9px]" : "translate-y-[12px]"}>
                 <Mascot kind={kind} size={i === 2 ? 60 : 46} />
@@ -78,7 +76,7 @@ export function GalleryPage() {
             ))}
           </div>
         </div>
-        <MarketplaceBrowser source="public" onUse={(entry) => start(entry.id)} />
+        <MarketplaceBrowser front source="public" onUse={(entry) => start(entry.id)} />
       </main>
     </div>
   );
