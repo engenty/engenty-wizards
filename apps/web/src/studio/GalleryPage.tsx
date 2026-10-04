@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { signIn, useMe } from "../lib/session";
 import { Button } from "../ui";
+import { Footer } from "./AppFrame";
 import { LangSwitch } from "./LangSwitch";
 import { MarketplaceBrowser } from "./Marketplace";
 
@@ -44,8 +45,8 @@ export function GalleryPage() {
     }
   };
   return (
-    <div className="min-h-dvh">
-      <header className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6">
+    <div className="flex min-h-dvh flex-col">
+      <header className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6">
         <Logo onClick={() => navigate("/")} place={t("market.admin")} />
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <ThemeToggle />
@@ -57,7 +58,7 @@ export function GalleryPage() {
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl animate-rise px-4 pb-24 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 animate-rise px-4 pb-12 sm:px-6">
         {/* What this place is, in two lines; the engentys wait on the edge of the field below. */}
         <div className="pt-4 pb-9 sm:pt-8 sm:pb-12">
           <h1 className="font-display font-semibold text-[24px] leading-tight tracking-tight sm:text-[32px]">
@@ -78,6 +79,7 @@ export function GalleryPage() {
           ))}
         />
       </main>
+      <Footer me={me.data} />
     </div>
   );
 }

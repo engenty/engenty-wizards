@@ -133,9 +133,9 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   );
 }
 
-/** One quiet line at the foot of a page: the places around the account. */
-function Footer({ me }: { me: Me }) {
-  const base = accountBase(me);
+/** One quiet line at the foot of a page: the places around the account, for someone signed in. */
+export function Footer({ me }: { me?: Me | null }) {
+  const base = me ? accountBase(me) : null;
   const links = base
     ? [
         { href: `${base}/billing`, label: t("footer.billing") },
