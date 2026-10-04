@@ -31,9 +31,8 @@ A pnpm workspace:
 | `apps/web/` | the SPA: studio, public runner, share page |
 | `apps/runtime/src/cli/` | the `engenty-wizards` command of a local install: start, guided setup, status, update |
 | `apps/web/public/wizards.sh` | the installer, served by every runtime at `/wizards.sh` |
-| `apps/desktop/` | the desktop app (Tauri 2), not built or offered for now: see [Desktop app](#desktop-app) |
 | `bin/` | the entry of the `engenty-wizards` command |
-| `scripts/` | `npm-package.mjs` (the npm package), `desktop-archive.mjs` (the Mac app's archive, unused for now) |
+| `scripts/` | `npm-package.mjs` (the npm package) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
 | `plugin/` | the Claude Code plugin template |
 | `deploy/` | the Chromium container of the cloud runtime |
@@ -150,7 +149,7 @@ groups are in `cliff.toml` ([git-cliff](https://git-cliff.org)), the steps in `s
 
 None of them is edited by hand except `product-credits.ts`. In the app, the studio's footer shows
 the version and opens the changelog and the open-source credits (`apps/web/src/about/`). The
-credits list what `package.json` files name; the Rust crates of the desktop app are not in it.
+credits list what `package.json` files name.
 
 The tag is what ships: it deploys the cloud runtime (see [Deploy](#deploy)) and publishes the
 local install (see [Local install](#local-install)). A push to `main` without a tag runs the
@@ -240,23 +239,12 @@ nothing.
 
 ## Desktop app
 
-Not built, released or offered for now (decided 2026-10-04): it is unsigned, so it could only
-come through the installer, and a Chrome app does what it did. The studio is a web app with a
-manifest (`apps/web/public/manifest.webmanifest`); Chrome and Edge install it as an app, and the
-studio offers that in a banner (`apps/web/src/studio/InstallBanner.tsx`). The code stays.
-
-`apps/desktop/` is a Tauri 2 app (macOS first): a window on the local install or on a server. It
-brings no runtime along. On its first start with "this Mac" it runs the installer it carries,
-then starts the runtime in `~/.engenty/wizards` on the loopback interface and shows the studio.
-Keys live in the Keychain. An account is optional; sign-in runs in the system browser.
-
-```bash
-cd apps/desktop && pnpm tauri build --bundles app     # the app
-node scripts/desktop-archive.mjs                      # the app, packed for the release: dist/desktop/
-```
-
-Signing, notarization and the app's rules for what a page in its window may do:
-[apps/desktop/README.md](../apps/desktop/README.md).
+There is none in this repo. The studio is a web app with a manifest
+(`apps/web/public/manifest.webmanifest`); Chrome and Edge install it as an app, and the studio
+offers that in a banner (`apps/web/src/studio/InstallBanner.tsx`). The runtime still serves a
+native window as a client: a page in such a window finds `window.engentyDesktop` and opens
+links and the sign-in in the system browser (`apps/web/src/studio/LocalRuntime.tsx`,
+`SignInPage.tsx`).
 
 ## Accounts people connect
 

@@ -6,5 +6,4 @@ data
 .git
 .claude
 docs
-apps/desktop
 apps/runtime/test

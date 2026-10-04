@@ -152,12 +152,6 @@ export const HIGHLIGHT_CREDITS: ProductCredit[] = [
     license: "ISC",
   },
   {
-    name: "Tauri",
-    description: { de: "Die Desktop-App.", en: "The desktop app." },
-    homepage: "https://github.com/tauri-apps/tauri",
-    license: "Apache-2.0 OR MIT",
-  },
-  {
     name: "Geist & Geist Mono",
     description: { de: "Schrift der Oberfläche.", en: "Typeface of the interface." },
     homepage: "https://github.com/vercel/geist-font",
