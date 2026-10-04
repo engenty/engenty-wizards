@@ -59,24 +59,24 @@ export function GalleryPage() {
       </header>
       <main className="mx-auto max-w-5xl animate-rise px-4 pb-24 sm:px-6">
         {/* What this place is, in two lines; the engentys wait on the edge of the field below. */}
-        <div className="flex items-end justify-between gap-6 pt-4 sm:pt-8">
-          <div className="min-w-0 pb-4 sm:pb-5">
-            <h1 className="font-display font-semibold text-[24px] leading-tight tracking-tight sm:text-[32px]">
-              {t("market.galleryTitle")}
-            </h1>
-            <p className="mt-1.5 max-w-xl text-[14px] text-ink-2 leading-snug sm:text-[15px]">
-              {t("market.gallerySub")}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-end gap-0.5 pr-3 max-sm:hidden">
-            {CREW.map((kind, i) => (
-              <span key={kind} className={i % 2 ? "translate-y-[9px]" : "translate-y-[12px]"}>
-                <Mascot kind={kind} size={i === 2 ? 60 : 46} />
-              </span>
-            ))}
-          </div>
+        <div className="pt-4 pb-9 sm:pt-8 sm:pb-12">
+          <h1 className="font-display font-semibold text-[24px] leading-tight tracking-tight sm:text-[32px]">
+            {t("market.galleryTitle")}
+          </h1>
+          <p className="mt-1.5 max-w-xl text-[14px] text-ink-2 leading-snug sm:text-[15px]">
+            {t("market.gallerySub")}
+          </p>
         </div>
-        <MarketplaceBrowser front source="public" onUse={(entry) => start(entry.id)} />
+        <MarketplaceBrowser
+          front
+          source="public"
+          onUse={(entry) => start(entry.id)}
+          crew={CREW.map((kind, i) => (
+            <span key={kind} className={i % 2 ? "translate-y-[9px]" : "translate-y-[12px]"}>
+              <Mascot kind={kind} size={i === 2 ? 52 : 40} />
+            </span>
+          ))}
+        />
       </main>
     </div>
   );

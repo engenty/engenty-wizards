@@ -39,7 +39,6 @@ import {
   ScanText,
   Search,
   Sparkles,
-  Split,
   Table2,
   Terminal,
   Type,
@@ -48,7 +47,16 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Mascot } from "../brand";
 import type { EngentyKind } from "../engenty/colors";
 import { api } from "../lib/api";
@@ -56,6 +64,10 @@ import { lang, t } from "../lib/i18n";
 import { stageFill } from "../lib/theme";
 import { Button, Card, Chip, cn, Dialog, Spinner } from "../ui";
 import { TYPE_TONE } from "./editor/meta";
+import type { PreviewStep } from "./FlowPreview";
+
+// The diagram brings its own library: loaded when a template is opened, not with the list.
+const FlowPreview = lazy(() => import("./FlowPreview"));
 
 /** A step as the flow shows it: what happens there, not how. */
 interface OutlineStep {
@@ -271,60 +283,17 @@ function skippable(steps: OutlineStep[]): Set<string> {
   return skipped;
 }
 
-function Flow({ steps }: { steps: OutlineStep[] }) {
+/** The outline as the preview draws it. */
+function previewSteps(steps: OutlineStep[]): PreviewStep[] {
   const optional = skippable(steps);
-  return (
-    <ol className="flex flex-col">
-      {steps.map((s, i) => {
-        const Icon = stepIcon(s);
-        const last = i === steps.length - 1;
-        return (
-          <li key={s.id} className="relative flex gap-3 pb-3 last:pb-0">
-            {/* The line to the next step; dashed where the step may be jumped over. */}
-            {last ? null : (
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "absolute top-7 bottom-0 left-3.5 border-border border-l",
-                  optional.has(steps[i + 1].id) && "border-dashed",
-                )}
-              />
-            )}
-            <span
-              className={cn(
-                "relative flex size-7 shrink-0 items-center justify-center rounded-full",
-                TYPE_TONE[s.type as StepType] ?? "bg-paper-2 text-ink-2",
-                optional.has(s.id) && "outline-dashed outline-1 outline-ink-4 outline-offset-2",
-              )}
-            >
-              <Icon className="size-3.5" />
-            </span>
-            <div className="min-w-0 pt-1">
-              <div className="flex flex-wrap items-center gap-x-2 text-[14px] text-ink leading-snug">
-                {s.title}
-                {optional.has(s.id) ? (
-                  <span className="text-[12px] text-ink-3">{t("market.optional")}</span>
-                ) : null}
-              </div>
-              {(s.branches ?? []).map((b) => (
-                <div
-                  key={`${b.to}:${b.when}`}
-                  className="mt-1 flex items-start gap-1.5 text-[12px] text-ink-3 leading-snug"
-                >
-                  <Split className="mt-0.5 size-3.5 shrink-0 rotate-90 text-ember" />
-                  <span>
-                    <span className="font-medium text-ink-2">{b.when}</span>
-                    {" → "}
-                    {steps.find((x) => x.id === b.to)?.title ?? t("market.end")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
+  return steps.map((s) => ({
+    id: s.id,
+    title: s.title,
+    icon: stepIcon(s),
+    tone: TYPE_TONE[s.type as StepType] ?? "bg-paper-2 text-ink-2",
+    optional: optional.has(s.id),
+    branches: s.branches,
+  }));
 }
 
 /** One of the header's three values; a thin line parts it from the one before. */
@@ -533,7 +502,9 @@ function EntryDialog({
                   {detail.isLoading ? (
                     <Spinner className="size-5 text-ink-3" />
                   ) : (
-                    <Flow steps={detail.data?.outline ?? []} />
+                    <Suspense fallback={<Spinner className="size-5 text-ink-3" />}>
+                      <FlowPreview steps={previewSteps(detail.data?.outline ?? [])} />
+                    </Suspense>
                   )}
                 </FadeScroll>
               </div>
@@ -715,6 +686,7 @@ export function MarketplaceBrowser({
   busy,
   open: opened,
   front,
+  crew,
 }: {
   source: "studio" | "public";
   onUse: (entry: MarketplaceEntry) => void;
@@ -723,6 +695,8 @@ export function MarketplaceBrowser({
   open?: string | null;
   /** The gallery: the search is a field to write a sentence into, and everything starts left. */
   front?: boolean;
+  /** What stands on that field's upper edge. */
+  crew?: ReactNode;
 }) {
   const entries = useMarketplace(source);
   const [query, setQuery] = useState("");
@@ -827,7 +801,12 @@ export function MarketplaceBrowser({
     <div>
       {front ? (
         // The gallery's field: written into like a chat, two lines for a whole sentence.
-        <label className="relative flex items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
+        <label className="relative mx-auto flex max-w-2xl items-start gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus">
+          {crew ? (
+            <span className="-z-10 pointer-events-none absolute right-5 bottom-full flex items-end">
+              {crew}
+            </span>
+          ) : null}
           <span className="mt-[5px] flex shrink-0">{status}</span>
           <textarea
             rows={2}
@@ -856,8 +835,8 @@ export function MarketplaceBrowser({
       {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
       <div
         className={cn(
-          "max-sm:-mx-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap max-sm:[&::-webkit-scrollbar]:hidden",
-          front ? "sm:-ml-2.5 mt-3" : "mt-4 sm:justify-center",
+          "max-sm:-mx-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden",
+          front ? "mt-3" : "mt-4",
         )}
       >
         {[{ value: "", label: t("market.all") }, ...useCases].map((u) => (
