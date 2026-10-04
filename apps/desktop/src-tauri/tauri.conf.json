@@ -25,9 +25,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/node"],
     "resources": {
-      "resources/server/": "server/",
+      "../../web/public/wizards.sh": "wizards.sh",
       "sidecar/watchdog.mjs": "watchdog.mjs"
     },
     "macOS": {

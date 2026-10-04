@@ -17,10 +17,11 @@
       </svg>
       <h1>engenty wizards</h1>
 
-      <!-- The built-in runtime is starting, or a remote server is being reached. -->
+      <!-- The runtime on this machine is being installed or is starting, or a remote server is being reached. -->
       <section id="wait" hidden>
         <p id="wait-text" class="muted"></p>
         <div class="spinner" role="progressbar"></div>
+        <pre id="wait-progress" hidden></pre>
       </section>
 
       <!-- First start and "Server wechseln…". -->
@@ -52,7 +53,7 @@
         <button id="choose-go" type="submit" class="primary"></button>
       </form>
 
-      <!-- The built-in runtime did not start, or a remote server cannot be reached. -->
+      <!-- The runtime on this machine was not installed or did not start, or a remote server cannot be reached. -->
       <section id="failed" hidden>
         <p id="failed-text" class="error"></p>
         <pre id="failed-log" hidden></pre>

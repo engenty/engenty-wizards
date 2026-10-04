@@ -16,7 +16,7 @@ pub const CLOUD_URL: &str = "https://engenty.ai";
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum Choice {
-    /// The runtime this app brings along, on this machine.
+    /// The runtime installed on this machine (`~/.engenty/wizards`).
     Local,
     /// A runtime somebody else runs, by address.
     Custom {
@@ -40,19 +40,22 @@ impl Choice {
 pub enum Phase {
     /// The server choice page is shown.
     Choose,
-    /// The built-in runtime is starting.
+    /// The runtime is being installed or updated on this machine.
+    Installing,
+    /// The runtime on this machine is starting.
     Starting,
     /// A remote server is being reached.
     Connecting,
-    /// The built-in runtime did not start or stopped twice.
+    /// The runtime on this machine was not installed, did not start or stopped twice.
     Failed,
     /// The window shows the server.
     Running,
 }
 
-/// The built-in runtime while it runs.
+/// The runtime on this machine while it runs.
 pub struct Sidecar {
-    pub child: Arc<Mutex<Child>>,
+    /// The process the app started; none when the command line started it and the app only shows it.
+    pub child: Option<Arc<Mutex<Child>>>,
     pub origin: String,
     /// It answers on `/api/health`.
     pub ready: bool,
@@ -67,9 +70,13 @@ pub struct Inner {
     /// Origin of the server the window shows while `Running`.
     pub origin: Option<String>,
     pub sidecar: Option<Sidecar>,
-    /// Counts starts and stops of the built-in runtime; a watcher of an older one stands down.
+    /// The installer while it runs.
+    pub installer: Option<Arc<Mutex<Child>>>,
+    /// The last lines the installer printed.
+    pub progress: Vec<String>,
+    /// Counts starts and stops of the runtime on this machine; a watcher of an older one stands down.
     pub generation: u64,
-    /// The built-in runtime was already restarted once after stopping by itself.
+    /// The runtime was already restarted once after stopping by itself.
     pub restarted: bool,
     /// A deep link that arrived before the server was shown.
     pub pending_path: Option<String>,
@@ -94,6 +101,8 @@ impl Shell {
                 error: None,
                 origin: None,
                 sidecar: None,
+                installer: None,
+                progress: Vec::new(),
                 generation: 0,
                 restarted: false,
                 pending_path: None,

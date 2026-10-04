@@ -23,6 +23,8 @@ pub struct ShellState {
     error: Option<String>,
     /// The end of the runtime's log while `failed`.
     log: String,
+    /// The last lines of the installer while `installing`, and after it failed.
+    progress: Vec<String>,
     cloud_url: &'static str,
     german: bool,
     version: String,
@@ -50,7 +52,7 @@ pub fn apply(app: &AppHandle, choice: Choice) {
         }
         return;
     }
-    // A remote server: the built-in runtime does not run next to it.
+    // A remote server: the runtime on this machine does not run next to it.
     inner.phase = Phase::Connecting;
     inner.origin = None;
     drop(inner);
@@ -73,6 +75,7 @@ pub fn shell_state(app: AppHandle) -> ShellState {
         } else {
             String::new()
         },
+        progress: inner.progress.clone(),
         cloud_url: CLOUD_URL,
         german: i18n::german(),
         version: app.package_info().version.to_string(),

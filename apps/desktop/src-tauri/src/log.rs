@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 
 /// The app's own log.
 const SHELL_LOG: &str = "shell.log";
-/// What the built-in runtime writes to stdout and stderr.
+/// What the runtime the app started writes to stdout and stderr.
 pub const RUNTIME_LOG: &str = "runtime.log";
 const MAX_BYTES: u64 = 5 * 1024 * 1024;
 

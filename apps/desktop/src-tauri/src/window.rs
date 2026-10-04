@@ -130,7 +130,7 @@ pub fn enter(app: &AppHandle, origin: &str, url: &str) {
     navigate(app, url);
 }
 
-/// Shows the built-in runtime if it is up. The first time this opens the one-time link that
+/// Shows the runtime on this machine if it is up. The first time this opens the one-time link that
 /// sets the studio's cookie; afterwards the cookie is there.
 pub fn show_local(app: &AppHandle) -> bool {
     let target = {
@@ -197,7 +197,7 @@ fn probe(window: &WebviewWindow) {
     ));
 }
 
-/// A page other than the built-in runtime's ended up in the window: it belongs in the browser.
+/// A page other than the local runtime's ended up in the window: it belongs in the browser.
 fn bounce(app: &AppHandle, url: &Url) {
     if !matches!(url.scheme(), "http" | "https") {
         return;

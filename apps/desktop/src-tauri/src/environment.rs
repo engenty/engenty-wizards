@@ -1,4 +1,4 @@
-//! What the built-in runtime gets from this machine: a small set of variables, the PATH of the
+//! What the runtime on this machine gets from it: a small set of variables, the PATH of the
 //! person's login shell, and the installed browser for PDF and PNG.
 
 use std::{

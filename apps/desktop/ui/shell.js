@@ -1,5 +1,5 @@
-// The app's own page: splash while the built-in runtime starts, the server choice, and what
-// went wrong. It asks the app for its state and shows it; the app loads the server into the
+// The app's own page: splash while the runtime on this machine is installed and starts, the
+// server choice, and what went wrong. It asks the app for its state and shows it; the app loads the server into the
 // window once there is one.
 const invoke = (command, args) => window.__TAURI_INTERNALS__.invoke(command, args);
 const $ = (id) => document.getElementById(id);
@@ -9,11 +9,13 @@ const TEXT = {
   de: {
     lead: "Wo sollen deine Wizards laufen?",
     localTitle: mac ? "Dieser Mac" : "Dieser Computer",
-    localHint: "Die App bringt alles mit. Deine Wizards und Daten bleiben auf diesem Gerät.",
+    localHint:
+      "Deine Wizards und Daten bleiben auf diesem Gerät. Beim ersten Start wird der Server hier einmal eingerichtet (etwa 800 MB).",
     customTitle: "Eigener Server",
     customHint: "Die Adresse eines Servers, auf dem engenty wizards läuft.",
     cloudTitle: "engenty Cloud",
     go: "Weiter",
+    installing: "Der Server wird auf diesem Gerät eingerichtet. Das dauert ein bis zwei Minuten …",
     starting: "Der Server auf diesem Gerät startet …",
     connecting: (host) => `Verbinde mit ${host} …`,
     opening: "Das Studio wird geöffnet …",
@@ -28,11 +30,13 @@ const TEXT = {
   en: {
     lead: "Where should your wizards run?",
     localTitle: mac ? "This Mac" : "This computer",
-    localHint: "The app brings everything along. Your wizards and data stay on this device.",
+    localHint:
+      "Your wizards and data stay on this device. The first start sets the server up here once (about 800 MB).",
     customTitle: "Own server",
     customHint: "The address of a server that runs engenty wizards.",
     cloudTitle: "engenty Cloud",
     go: "Continue",
+    installing: "Setting the server up on this device. This takes a minute or two …",
     starting: "The server on this device is starting …",
     connecting: (host) => `Connecting to ${host} …`,
     opening: "Opening the studio …",
@@ -119,8 +123,10 @@ function render() {
   }
   if (state.phase === "failed") {
     $("failed-text").textContent = [t.failedLocal, state.error].filter(Boolean).join(" ");
-    $("failed-log").textContent = state.log.trim();
-    $("failed-log").hidden = !state.log.trim();
+    // An installer that failed says why in its last lines; a runtime that did, in its log.
+    const detail = state.log.trim() || state.progress.join("\n");
+    $("failed-log").textContent = detail;
+    $("failed-log").hidden = !detail;
     $("failed-log").scrollTop = $("failed-log").scrollHeight;
     $("failed-logs").hidden = false;
     return view("failed");
@@ -132,11 +138,16 @@ function render() {
     return view("failed");
   }
   $("wait-text").textContent =
-    state.phase === "starting"
-      ? t.starting
-      : state.phase === "connecting"
-        ? t.connecting(hostOf(state.url))
-        : t.opening;
+    state.phase === "installing"
+      ? t.installing
+      : state.phase === "starting"
+        ? t.starting
+        : state.phase === "connecting"
+          ? t.connecting(hostOf(state.url))
+          : t.opening;
+  const installing = state.phase === "installing" && state.progress.length > 0;
+  $("wait-progress").textContent = installing ? state.progress.join("\n") : "";
+  $("wait-progress").hidden = !installing;
   view("wait");
   if (state.phase === "connecting") {
     void reach(state.url);

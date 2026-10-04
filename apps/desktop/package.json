@@ -7,10 +7,10 @@
   "packageManager": "pnpm@10.23.0",
   "scripts": {
     "tauri": "tauri",
-    "runtime": "node ../../scripts/desktop-bundle.mjs",
     "dev": "tauri dev",
     "bundle": "tauri build",
     "bundle:debug": "tauri build --debug",
+    "archive": "node ../../scripts/desktop-archive.mjs",
     "icons": "tauri icon ../web/public/favicon.svg"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-//! engenty wizards desktop: one window on a server — the runtime this app brings along and
-//! starts itself, or a remote one.
+//! engenty wizards desktop: one window on a server — the runtime installed on this machine
+//! (`~/.engenty/wizards`), which the app starts itself, or a remote one.
 
 mod commands;
 mod environment;
@@ -16,7 +16,7 @@ use tauri_plugin_window_state::StateFlags;
 
 use state::Shell;
 
-/// Ends the app; the built-in runtime goes first.
+/// Ends the app; the runtime it started goes first.
 pub(crate) fn quit(app: &AppHandle) {
     if let Some(main) = window::main(app) {
         let _ = main.hide();
@@ -125,7 +125,7 @@ pub fn run() {
         })
         .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()))
         .on_window_event(|window, event| {
-            // Closing the window keeps the app, and runs in the built-in runtime, alive in the
+            // Closing the window keeps the app, and runs in the runtime it started, alive in the
             // Dock and the menu bar. Quit ends both.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();

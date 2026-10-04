@@ -1,25 +1,27 @@
 # engenty wizards — desktop app
 
-A [Tauri 2](https://v2.tauri.app) app (macOS first) that brings the runtime along: the same
-server as in the cloud, started as a Node sidecar on a loopback port, with the studio loaded
-into one window. Nothing in `apps/runtime/`,
-`apps/web/` or `packages/shared/` is specific to the desktop app.
+A [Tauri 2](https://v2.tauri.app) app (macOS first): one window on a server. The server is the
+local install in `~/.engenty/wizards` — the same one the `engenty-wizards` command uses — or a
+remote one. The app brings no runtime along: it holds a window, a menu-bar icon and the
+installer, and is a few megabytes. Nothing in `apps/runtime/`, `apps/web/` or `packages/shared/`
+is specific to the desktop app.
 
 ```
 apps/desktop/
-├── ui/                      the app's own page: splash, server choice, error
+├── ui/                      the app's own page: splash, install progress, server choice, error
 ├── src-tauri/
-│   ├── src/                 lib.rs (start, quit, deep links) · sidecar.rs (the runtime process)
+│   ├── src/                 lib.rs (start, quit, deep links) · sidecar.rs (the local runtime:
+│   │                        install, start, show one that already runs)
 │   │                        window.rs (what the window may load; links, popups, downloads)
 │   │                        commands.rs · menu.rs · environment.rs · state.rs · bridge.js
 │   ├── capabilities/        shell.json — commands of the app's own page
 │   ├── sidecar/watchdog.mjs ends the runtime if the app is killed
-│   ├── entitlements.plist   hardened-runtime entitlements (Node JIT, addons, camera, mic)
-│   ├── Info.plist           usage texts (camera, microphone, location), merged into the bundle
-│   ├── resources/server/    the runtime            ┐ assembled by
-│   └── binaries/node-<triple>  the Node binary     ┘ scripts/desktop-bundle.mjs (not in git)
+│   ├── entitlements.plist   hardened-runtime entitlements (camera, mic, location)
+│   └── Info.plist           usage texts (camera, microphone, location), merged into the bundle
 └── package.json             workspace package: `@tauri-apps/cli` only
 ```
+
+Two resources go into the bundle: `watchdog.mjs` and the installer, `apps/web/public/wizards.sh`.
 
 ## Build and run
 
@@ -27,91 +29,120 @@ Node ≥ 24.11, pnpm, Rust (stable), Xcode command line tools.
 
 ```bash
 pnpm install                         # repo root, once (the Tauri CLI comes with it)
-node scripts/desktop-bundle.mjs      # the runtime + Node into apps/desktop/src-tauri/
 cd apps/desktop
 pnpm tauri build --debug --bundles app   # → src-tauri/target/debug/bundle/macos/engenty wizards.app
 CI=true pnpm tauri build                 # release: …/release/bundle/macos/*.app and …/dmg/*.dmg
-pnpm tauri dev                           # run from source; needs the bundle step too
+pnpm tauri dev                           # run from source
+node ../../scripts/desktop-archive.mjs   # release app as dist/desktop/engenty-wizards-<version>-mac-<arch>.tar.gz + .sha256
 ```
 
 `CI=true` keeps the dmg step from scripting Finder to lay out the disk image window. Start a
 built app with `open "src-tauri/target/release/bundle/macos/engenty wizards.app"`.
 
-`scripts/desktop-bundle.mjs` runs the root build (`pnpm -r build`), copies `apps/runtime/dist`,
-`apps/web/dist` and `plugin/` into `src-tauri/resources/server/` in the same layout, installs the
-production `node_modules` there — the runtime's dependencies, flat (`node-linker=hoisted`, no
-symlinks), versions from the root lockfile, the shared package as its built files — prunes docs,
-typings, source maps and foreign prebuilds, and copies a Node binary to
-`src-tauri/binaries/node-<target-triple>`. Options: `--target <triple>`, `--node <path>`,
-`--skip-build`. Chrome is not bundled: PDF and PNG use the installed Chrome or Edge.
-
-A local build copies the Node that runs the script. CI fetches the official build for the
-target instead and passes it with `--node`:
+To run the app against the checkout instead of an install — no installer, no update:
 
 ```bash
-V=24.14.0; A=arm64   # or x64
-curl -fsSLO https://nodejs.org/dist/v$V/node-v$V-darwin-$A.tar.gz
-curl -fsSL https://nodejs.org/dist/v$V/SHASUMS256.txt | grep "darwin-$A.tar.gz" | shasum -a 256 -c -
-tar -xzf node-v$V-darwin-$A.tar.gz
-node scripts/desktop-bundle.mjs --target aarch64-apple-darwin --node node-v$V-darwin-$A/bin/node
+pnpm build                                            # repo root: the runtime the app will start
+ENGENTY_WIZARDS_RUNTIME=$PWD pnpm --dir apps/desktop tauri dev
 ```
 
 The app version is the root `package.json` version.
 
+## How it gets onto a Mac
+
+Not as a download from a web page: the build is not signed with a Developer ID (below), and
+macOS blocks such an app when a browser fetched it. The setup and `engenty-wizards app` fetch
+the archive from the GitHub release `v<version>` themselves, check it against its `.sha256`,
+verify the bundle's signature and copy it to `/Applications` (`~/Applications` when that is not
+writable). A file fetched that way carries no `com.apple.quarantine` attribute, so Gatekeeper
+does not assess it; the ad-hoc signature is what Apple silicon asks for.
+`apps/runtime/src/cli/desktop.ts` does this; `ENGENTY_WIZARDS_APP` names another archive (a path
+or an address), `ENGENTY_WIZARDS_APP_DIR` another folder.
+
 ## What the app does
 
-**Start.** It picks a free loopback port (the one of the last start when it is still free —
-kept in `data/desktop.port` — so links into the local runtime outlive a restart) and a random
-access key, resolves the PATH of the person's login shell once (a GUI app gets a minimal one;
-the Studio chat runs the installed `claude`, widgets use `ffmpeg`), and starts
-`node --import watchdog.mjs apps/runtime/dist/index.js` in `Contents/Resources/server` with
+**Start, with "this Mac".** The app looks for the install: the package in
+`~/.engenty/wizards/runtime/node_modules/engenty-wizards` and the Node in
+`~/.engenty/wizards/tools/node`. If there is none, or its version is older than the app's, it
+runs the installer it carries — `bash wizards.sh --no-setup --version <app version>` — and shows
+its lines in the window. That needs the network once and takes a minute or two (about 800 MB on disk).
+
+Then it picks a free loopback port (the one of the last start when it is still free — kept in
+`data/desktop.port` — so links into the local runtime outlive a restart) and a random access
+key, resolves the PATH of the person's login shell once (a GUI app gets a minimal one; the
+Studio chat runs the installed `claude`, widgets use `ffmpeg`), and starts
+`node --import watchdog.mjs apps/runtime/dist/index.js` in `~/.engenty/wizards` with
 
 | Variable | Value |
 |---|---|
 | `NODE_ENV` | `production` |
 | `API_HOST` / `API_PORT` | `127.0.0.1` / the port |
 | `APP_URL` | `http://127.0.0.1:<port>` |
-| `DATA_DIR` | `~/Library/Application Support/com.engenty.wizards/data` |
+| `DATA_DIR` | `~/.engenty/wizards/data` |
 | `LOCAL_ACCESS_KEY` | 24 random bytes, new at every start |
 | `SECRETS` | `keychain` |
 | `CHROME_PATH` | the installed Chrome, Edge, Chromium or Brave, if any |
-| `PATH` | the login shell's |
+| `PATH` | `~/.engenty/wizards/clients/bin`, the install's Node, then the login shell's |
 
 The runtime inherits only a short list of other variables (`src/environment.rs`): home and
 locale, proxy and certificate settings, `ACCOUNT_URL`, `ACCOUNT_GATEWAY_URL`, `CLOUD_URL`,
-`OLLAMA_URL`, `FFMPEG_PATH`, `MODEL_*`. It never gets `MANAGE_URL`.
+`OLLAMA_URL`, `FFMPEG_PATH`, `MODEL_*`. It never gets `MANAGE_URL`. More settings come from
+`~/.engenty/wizards/.env`, which the runtime reads itself.
 
 The window shows a splash until `GET /api/health` answers, then loads
 `/api/local/enter?k=<key>`, which sets the studio's cookie and redirects to `/`.
 
-**Quit** (⌘Q, menu, tray) sends the runtime's process group SIGTERM, waits up to 4 s, then
-SIGKILL. If the app is killed instead, the watchdog inside the runtime notices within 2 s and
-ends it. A runtime that stops by itself is started again once; the second time the window
-shows the error with the end of its log. Closing the window keeps the app, and running
-wizards, alive in the Dock and the menu bar.
+**A runtime that already runs.** The command line and the app share one data folder, and two
+runtimes must not write it. A running runtime leaves `running.json` there. If the app finds one
+that answers, it starts none: it asks `engenty-wizards open --print` for a ticket and shows that
+runtime. When it stops, the app starts its own. The other way round, `engenty-wizards` opens the
+app's runtime in the browser instead of starting a second one.
+
+**Data from the app's own folder.** Earlier builds kept the data in
+`~/Library/Application Support/com.engenty.wizards/data`. If `~/.engenty/wizards/data` does not
+exist yet, that folder is moved there at the first start.
+
+**Quit** (⌘Q, menu, tray) sends the process group of the runtime the app started SIGTERM, waits
+up to 4 s, then SIGKILL; a running installer is stopped the same way. A runtime the command line
+started is left running. If the app is killed instead, the watchdog inside the runtime notices
+within 2 s and ends it. A runtime that stops by itself is started again once; the second time
+the window shows the error with the end of its log. Closing the window keeps the app, and
+running wizards, alive in the Dock and the menu bar.
 
 **Logs:** `~/Library/Logs/com.engenty.wizards/` — `runtime.log` (stdout and stderr of the
-runtime), `shell.log` (the app). Help → "Protokolle anzeigen".
+runtime the app started), `shell.log` (the app, and the installer's lines). Help → "Protokolle
+anzeigen". The installer's own log is `~/.engenty/wizards/logs/install.log`.
 
-**Server choice.** First start shows "Dieser Mac" (built in), "Eigener Server" (an https
-address) and "engenty Cloud" (`CLOUD_URL` in `src/state.rs`). The choice is stored in
+**Server choice.** First start shows "Dieser Mac" (the local install), "Eigener Server" (an
+https address) and "engenty Cloud" (`CLOUD_URL` in `src/state.rs`). The choice is stored in
 `~/Library/Application Support/com.engenty.wizards/server.json`; "Server wechseln…" in the
-app menu and the tray opens the page again. With a remote server the built-in runtime is not
-started (and is stopped if it ran).
+app menu and the tray opens the page again. With a remote server nothing is installed and no
+local runtime is started (one the app started is stopped).
 
 **Deep links:** `engenty-wizards://w/<id>` opens that wizard; `engenty-wizards://new` and
 `engenty-wizards://settings` work too. Nothing else is taken from a link.
 
-**Development and tests:** `ENGENTY_WIZARDS_SERVER=local|cloud|<url>` picks the server without
-storing it; `ENGENTY_WIZARDS_DATA_DIR=<dir>` uses another data folder. Debug builds only:
-`ENGENTY_WIZARDS_PROBE=1` makes every server page report its address, title and a few facts
-into `shell.log`, `ENGENTY_WIZARDS_PROBE_EVAL=<expression>` adds a value of your choice,
-`ENGENTY_WIZARDS_DOWNLOAD_DIR=<dir>` saves downloads there.
+**Development and tests:**
+
+| Variable | |
+|---|---|
+| `ENGENTY_WIZARDS_SERVER=local\|cloud\|<url>` | picks the server without storing it |
+| `ENGENTY_HOME=<dir>` | the install is `<dir>/wizards`, as for the command line |
+| `ENGENTY_WIZARDS_DATA_DIR=<dir>` | another data folder |
+| `ENGENTY_WIZARDS_RUNTIME=<dir>` | run this folder (a checkout) instead of the install; nothing is installed |
+| `ENGENTY_WIZARDS_NODE=<path>` | the Node for that; default: `node` of the login shell |
+| `ENGENTY_WIZARDS_PACKAGE=<tarball or npm spec>` | what the installer installs instead of the registry's package |
+| `ENGENTY_WIZARDS_NO_LINK=1` | the installer does not link the command into `~/.local/bin` |
+
+Debug builds only: `ENGENTY_WIZARDS_PROBE=1` makes every server page report its address, title
+and a few facts into `shell.log`, `ENGENTY_WIZARDS_PROBE_EVAL=<expression>` adds a value of your
+choice, `ENGENTY_WIZARDS_DOWNLOAD_DIR=<dir>` saves downloads there.
 
 ## What web content may do
 
-The window shows the app's own page (`tauri://localhost`), the built-in runtime
-(`http://127.0.0.1:<port>`) or a remote server (https). `build.rs` names every command of the
+The window shows the app's own page (`tauri://localhost`), the runtime on this machine
+(`http://127.0.0.1:<port>`, or `http://localhost:<port>` when the command line started it) or a
+remote server (https). `build.rs` names every command of the
 app, so each one needs a capability:
 
 | Page | Commands |
@@ -121,13 +152,13 @@ app, so each one needs a capability:
 | any other page | none |
 
 No plugin command is granted to any page: no file access, no shell, no process control. A
-remote server gets the same three commands as the built-in runtime and nothing local.
+remote server gets the same three commands as the local runtime and nothing local.
 
 - `window.engentyDesktop.open(url)` is defined by an initialization script (`src/bridge.js`).
   The same script sends `window.open` and links with `target=_blank` to the person's browser;
   `on_new_window` denies every new webview (also from frames) and opens the address in the
   browser instead.
-- With the built-in runtime, a foreign page that ends up in the window is sent to the browser
+- With the local runtime, a foreign page that ends up in the window is sent to the browser
   and the window goes back. With a remote server, foreign pages may load in the window (its
   sign-in redirects through the Manage-App) but get no command.
 - Downloads go to the Downloads folder (numbered when the name exists) and are shown in
@@ -142,41 +173,27 @@ remote server gets the same three commands as the built-in runtime and nothing l
 
 This machine has no Developer ID (`security find-identity -v -p codesigning` → 0 identities).
 The build is ad-hoc signed (`bundle.macOS.signingIdentity: "-"`): it runs on the Mac that built
-it; on another Mac, Gatekeeper blocks a downloaded copy until
-`xattr -dr com.apple.quarantine "/Applications/engenty wizards.app"`.
+it and on a Mac that got it without a quarantine attribute (above); a copy a browser downloaded
+is blocked by Gatekeeper until `xattr -dr com.apple.quarantine "/Applications/engenty wizards.app"`.
 
-Verified here: the ad-hoc build carries the hardened-runtime flag and the entitlements below on
-the app binary and on Node (`codesign -dv --entitlements -` → `flags=0x10002(adhoc,runtime)`),
-`codesign --verify --deep --strict` passes, the runtime starts and opens its databases under
-them, and `APPLE_SIGNING_IDENTITY` wins over the "-" in the config (a made-up identity fails
-with "no identity found"). Everything else in this section is written from the Tauri and Apple
-documentation and has not been run.
+Verified here: the ad-hoc build carries the hardened-runtime flag and the entitlements below
+(`codesign -dv --entitlements -` → `flags=0x10002(adhoc,runtime)`), `codesign --verify --deep
+--strict` passes on the build and on a copy installed from the archive, the installed copy
+carries only `com.apple.provenance`, and under these entitlements the window loads the studio as
+a secure context with `navigator.mediaDevices`. Everything else in this section is written from
+the Tauri and Apple documentation and has not been run.
 
 What a signed, notarized build needs:
 
 1. **Identity.** A "Developer ID Application" certificate in the keychain (in CI: imported from
    `APPLE_CERTIFICATE` — base64 .p12 — with `APPLE_CERTIFICATE_PASSWORD`).
-2. **Sign what Tauri does not sign.** Tauri signs the app binary, the Node sidecar
-   (`Contents/MacOS/node`) and the bundle. It does not sign files in `Contents/Resources`.
-   Notarization rejects any Mach-O file without a Developer ID signature, so the native addons
-   there are signed by the bundle script, before `tauri build` seals the bundle:
-
-   ```bash
-   export APPLE_SIGNING_IDENTITY="Developer ID Application: <name> (<TEAMID>)"
-   node scripts/desktop-bundle.mjs --node <official node>   # signs every Mach-O file it finds
-   ```
-
-   The script prints them under "native code" (today: `@libsql/darwin-arm64/index.node`,
-   `@napi-rs/canvas-darwin-arm64/skia.darwin-arm64.node`,
-   `@msgpackr-extract/…/node.napi.glibc.node`, three `bare-*.bare` prebuilds).
-3. **Hardened runtime and entitlements.** `tauri.conf.json` sets `hardenedRuntime: true` and
-   `entitlements: entitlements.plist`. Tauri applies the one file to the app binary and to the
-   sidecar. Node needs `allow-jit` and `allow-unsigned-executable-memory` (V8);
-   `disable-library-validation` covers addons not signed by the same team; the app binary needs
-   `device.camera`, `device.audio-input` and `personal-information.location` for the webview.
-   The official Node binary comes signed with the same three `cs.*` entitlements; Tauri
-   re-signs it with ours.
-4. **Build, notarize, staple.** With the identity and one set of notarization credentials in
+2. **Hardened runtime and entitlements.** `tauri.conf.json` sets `hardenedRuntime: true` and
+   `entitlements: entitlements.plist`: `device.camera`, `device.audio-input` and
+   `personal-information.location` for the webview. The bundle holds one Mach-O file, the app's
+   own binary — no Node and no native addons, so nothing else needs a signature. The Node the
+   runtime runs on is the build from nodejs.org in `~/.engenty/wizards/tools`, signed and
+   notarized by its publisher with its own entitlements.
+3. **Build, notarize, staple.** With the identity and one set of notarization credentials in
    the environment, `tauri build` signs, submits to the notary service, waits and staples:
 
    ```bash
@@ -185,48 +202,46 @@ What a signed, notarized build needs:
    export APPLE_ID=… APPLE_PASSWORD=… APPLE_TEAM_ID=…
    # … or an App Store Connect API key
    export APPLE_API_KEY=… APPLE_API_ISSUER=… APPLE_API_KEY_PATH=/path/AuthKey_<id>.p8
-   cd desktop && pnpm tauri build
+   cd apps/desktop && pnpm tauri build
    ```
-
-   By hand, for the dmg:
-
-   ```bash
-   xcrun notarytool submit "engenty wizards_<version>_aarch64.dmg" \
-     --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
-   xcrun stapler staple "engenty wizards_<version>_aarch64.dmg"
-   ```
-5. **Check.** `codesign --verify --deep --strict --verbose=2 "engenty wizards.app"`,
+4. **Check.** `codesign --verify --deep --strict --verbose=2 "engenty wizards.app"`,
    `spctl -a -vv "engenty wizards.app"`, `xcrun stapler validate …`, then start it on a Mac
-   that never saw it: the runtime must come up (JIT), the database must open (addon loading),
-   the Keychain must take a key (the sidecar calls `security`), and a photo field must get the
-   camera.
+   that never saw it: the installer must run, the runtime must come up, the Keychain must take
+   a key (the runtime calls `security`), and a photo field must get the camera.
 
-Open points of that path: whether the notary accepts the bundle as laid out (about 22 000
-files, Mach-O files under `Resources`), whether the `.bare` prebuilds can be deleted instead of
-signed, and whether one entitlements file for both binaries is acceptable or the app binary
-should get one without the `cs.*` keys.
+Once the app is notarized it can also be offered as a dmg download.
 
-## Measured (2026-10-02, Apple M4, macOS 26.5)
+## Measured (2026-10-04, Apple M4, macOS 26.5)
 
 | | |
 |---|---|
-| App bundle, release | 390 MiB in 22 419 files (Node 113 MB, `node_modules` 260 MB, app binary 7 MB) |
-| DMG, release | 106 MiB |
-| Start to a loaded studio | 4.5 s the first time after a build, 1.9–2.3 s after that |
-| of which | login shell PATH ~1.2 s (in parallel), runtime until `/api/health` 1.6–2.1 s, page ~0.4 s |
-| Idle runtime | 350 MB resident, 369 MB physical footprint |
-| App itself | 24 MB physical footprint, plus the WebKit processes |
+| App bundle, release | 7.2 MiB in 8 files (the app binary is 7.0 MiB) |
+| Archive of it (`.tar.gz`) | 3.1 MiB |
+| The install in `~/.engenty/wizards` | 774 MB: runtime and its `node_modules` 645 MB, Node 130 MB |
+| The installer, nothing cached | 49 s (Node download, `npm install` of about 530 packages) |
+| First start of the app on an empty folder | 28 s to a loaded studio, packages already in npm's cache |
+| Start to a loaded studio, installed | 1.9–2.0 s |
+| of which | runtime until `/api/health` 1.6–1.7 s |
+| Runtime shortly after start | 424 MB resident |
+| App itself | 100 MB resident, plus the WebKit processes |
+
+Before, with the runtime inside the app: 390 MiB in 22 419 files, a 106 MiB dmg.
 
 ## Not built or not verified
 
 - Signing with a Developer ID and notarization (above).
+- A second Mac: the app was installed from its archive on the Mac that built it only. That a
+  Mac which never saw it opens the ad-hoc signed copy without a warning is expected from how
+  quarantine works, and not tried.
 - Windows and Linux: there are platform branches in the Rust code, but nothing was compiled or
-  run there; `SECRETS=keychain` is macOS only in the server.
-- Auto-update: none. A new version is a new dmg.
-- An x64 or universal macOS build: the bundle script takes `--target x86_64-apple-darwin` and
-  writes `supportedArchitectures` for pnpm, but only arm64 was built.
+  run there; the installer the app runs is a bash script, and `SECRETS=keychain` is macOS only
+  in the server.
+- An x64 or universal macOS build: only arm64 was built, and the release workflow builds only that.
+- Auto-update of the app: none. `engenty-wizards update` fetches a newer archive; the app itself
+  only updates the runtime, when it is older than the app.
 - Camera and microphone end to end: the page sees a secure context and
-  `navigator.mediaDevices`; the macOS prompt and a real capture need a person.
+  `navigator.mediaDevices`; the macOS prompt and a real capture need a person. The ad-hoc
+  signature has no stable identity, so macOS asks again after every new build.
 - Location fields: the usage texts and the entitlement are there; WKWebView has no delegate for
   geolocation on macOS, so whether a prompt appears was not tried.
 - Opening the browser (`engentyDesktop.open`, `target=_blank`, `window.open`), the menu, the
