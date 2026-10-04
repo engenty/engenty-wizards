@@ -121,6 +121,11 @@ function results(definition: WizardDefinition) {
 
 const cached = { "cache-control": "public, max-age=300" };
 
+const searchSchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  lang: z.string().optional(),
+});
+
 /**
  * The marketplace without a session: the gallery's list, and what a runtime that runs alone
  * takes over (`index`, then `:id/export` for what changed).
@@ -129,9 +134,7 @@ export const marketplacePublic = new Hono()
   .get("/", async (c) => c.json(await listMarketplace(asLang(c.req.query("lang"))), 200, cached))
   .get("/index", async (c) => c.json(await marketplaceIndex(), 200, cached))
   .post("/search", async (c) => {
-    const { q, lang } = z
-      .object({ q: z.string().trim().min(1).max(200), lang: z.string().optional() })
-      .parse(await c.req.json());
+    const { q, lang } = searchSchema.parse(await c.req.json());
     return c.json(await searchMarketplace(q, asLang(lang)));
   })
   .get("/:id", async (c) => {
@@ -163,6 +166,11 @@ export const marketplaceStudio = new Hono<{ Variables: { user: SessionUser } }>(
   .get("/", async (c) => {
     await syncMarketplace();
     return c.json(await listMarketplace(asLang(c.req.query("lang")), { live: true }));
+  })
+  // The same search as the gallery's, asked by someone signed in: the model call is their tenant's.
+  .post("/search", async (c) => {
+    const { q, lang } = searchSchema.parse(await c.req.json());
+    return c.json(await searchMarketplace(q, asLang(lang)));
   })
   .get("/admin", async (c) => {
     requireAdmin(c.get("user"));

@@ -46,6 +46,8 @@ export function searchTerms(query: string): string[] {
 
 /** From this many words on a query is a sentence, and a model reads the entries for it. */
 export const SENTENCE_WORDS = 3;
+/** Of a sentence's finds by words, those with at least this share of the best score are kept. */
+const SENTENCE_SHARE = 0.4;
 export const isSentence = (query: string) =>
   query.trim().split(/\s+/).filter(Boolean).length >= SENTENCE_WORDS;
 
@@ -80,9 +82,11 @@ export function rankEntries<T extends MarketplaceEntry>(entries: readonly T[], q
   if (!query.trim()) {
     return [...entries];
   }
-  return entries
+  const rows = entries
     .map((entry) => ({ entry, score: scoreEntry(entry, query) }))
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map((row) => row.entry);
+    .sort((a, b) => b.score - a.score);
+  // A sentence shares some word with nearly every entry: only what comes close to the best counts.
+  const least = isSentence(query) ? (rows[0]?.score ?? 0) * SENTENCE_SHARE : 0;
+  return rows.filter((row) => row.score >= least).map((row) => row.entry);
 }

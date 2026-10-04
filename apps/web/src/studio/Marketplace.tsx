@@ -732,12 +732,12 @@ export function MarketplaceBrowser({
   // Every keystroke is answered by words at once; a sentence is also read by a model, which
   // sorts the entries and drops what does not fit.
   const judged = useQuery({
-    queryKey: ["marketplace-search", lang, asked],
+    queryKey: ["marketplace-search", source, lang, asked],
     queryFn: () =>
-      api.post<{ ids: string[]; judged: boolean }>("/api/public/marketplace/search", {
-        q: asked,
-        lang,
-      }),
+      api.post<{ ids: string[]; judged: boolean }>(
+        `${source === "studio" ? "/api/studio/marketplace" : "/api/public/marketplace"}/search`,
+        { q: asked, lang },
+      ),
     enabled: isSentence(asked),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,

@@ -173,10 +173,11 @@ marketplace, and the cloud runtime is the one every other runtime takes its entr
   `apps/runtime/src/services/marketplace-search.ts`): every keystroke is scored by words in the
   browser — BM25 with prefixes and inflections, the scoring of engenty's `search-index` package
   (copied by `scripts/sync-engenty.mjs`). From three words on, the query also goes to
-  `POST /api/public/marketplace/search`: the model of class `classifier` reads the entries,
+  `POST /api/studio/marketplace/search` (the gallery: `/api/public/marketplace/search`): the model of class `classifier` reads the entries,
   sorts them and drops what does not fit. Answers are kept per question; without a model, after
   8 s, or beyond 30 calls a minute the order by words stands. There are no embeddings: the model
-  reads the whole list.
+  reads the whole list. A managed runtime's gateway answers only for a tenant, so the gallery
+  there searches by words alone; of a sentence's finds, those close to the best are kept.
 - **Languages**: an entry is written in one language. Adding it translates it into the others
   with a model of class `high`, beside the request; an admin can start a translation again. A
   translation that changes steps or fields, or brings new issues, is thrown away. Where no
