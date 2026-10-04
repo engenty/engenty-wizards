@@ -4,7 +4,26 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
-## [Unreleased]
+## [0.1.1] - 2026-10-04
+- ADDED The studio says when a newer release is out and, on an install made by wizards.sh, updates it from the footer
+- ADDED The local runtime listens on 24368, AGENT on a phone keypad; the Docker image stays on 8891
+- ADDED Wizards.sh opens with the tall engenty — one eye; it wakes up, looks around, hops and blinks
+- ADDED The studio moves to /studio; the root of a host is free for a landing page
+- ADDED The marketplace is an app of its own; the runtime searches it live and keeps its starters and the starred entries for offline use
+- ADDED Engenty-wizards://new?starter=<id> opens a marketplace template in the desktop app
+- DOCS The German tagline on the sign-in page follows the new one
+- DOCS The tagline is "Make a wish. Get your wizard." In the README, the npm package description and the banner of wizards.sh.
+- FIXED Ctrl-C stops engenty-wizards again — the login shell that reads the person's variables runs in a session of its own and no longer keeps the terminal
+
+## [0.1.0] - 2026-10-04
+- ADDED The desktop app is a window on the local install and brings no runtime along
+- ADDED An installer, wizards.sh, that every runtime serves
+- ADDED An engenty-wizards command for a local install in ~/.engenty/wizards
+- ADDED A changelog and open-source credits in the studio's footer; pnpm release cuts a release from the commits
+- ADDED Marketplace entries carry the words people ask for, so a search by words finds them
+- ADDED One project unless the limit says more; an account page; previews and layouts in the project settings
+- ADDED A project holds base infos, logos, colours, assets, documents and facts for all its wizards
+- ADDED A template opens with its flow as a diagram; the gallery's field is narrower, its chips centred
 - ADDED The gallery says what it is, compact and from the left; its search is a two-line field to write into
 - ADDED The gallery opens with one question and the search field; quieter filter chips
 - ADDED A marketplace of wizards to start from, with a gallery, admin, translation and search
@@ -44,8 +63,15 @@ bump is a notable or breaking change, **patch** is fixes and small features.
 - ADDED MCP endpoint for authoring wizards with personal API keys
 - ADDED Engenty wizards — prompt-built AI wizards with shareable links
 - CHANGED Pnpm workspace with apps/ and packages/
+- DOCS Install with wizards.sh; the local install and how its pieces share it
 - DOCS Plan for definition versions and importing older packages
 - DOCS A README for people who install it, developer notes in docs/development.md
+- FIXED The search skips filler words with umlauts too
+- FIXED The gallery's footer stays without version, changelog and open-source links
+- FIXED An entry's search terms are scored one by one, not as one long text
+- FIXED The gallery has the studio's footer line
+- FIXED The gallery's field is narrower
+- FIXED A template's header is the dialog's own colour under a spotlight; in the light a tinted grey
 - FIXED The marketplace search asks the model for the signed-in tenant; a sentence without a model keeps only close finds
 - FIXED Two writers of the same blob no longer share a temporary file
 - FIXED The project switcher switches the wizard list
@@ -55,3 +81,4 @@ bump is a notable or breaking change, **patch** is fixes and small features.
 - FIXED A built runtime links to its own port, the sandbox falls back to agentOS
 - FIXED **[setup]** No links to the clients' pages, a placeholder dot in the footer
 - FIXED **[engenty]** Align vertical head turn with pointer gaze
+- OTHER The gallery invites to start a wizard from a template

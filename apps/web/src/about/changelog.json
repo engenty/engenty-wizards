@@ -1,8 +1,189 @@
 [
   {
-    "version": null,
-    "timestamp": null,
+    "version": "v0.1.1",
+    "timestamp": 1791138126,
     "commits": [
+      {
+        "id": "21f70df",
+        "message": "the German tagline on the sign-in page follows the new one",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "765ae7c",
+        "message": "the studio says when a newer release is out and, on an install made by wizards.sh, updates it from the footer",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "825da6c",
+        "message": "the tagline is \"Make a wish. Get your wizard.\" In the README, the npm package description and the banner of wizards.sh.",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "05e2e5c",
+        "message": "the local runtime listens on 24368, AGENT on a phone keypad; the Docker image stays on 8891",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "71bb778",
+        "message": "Ctrl-C stops engenty-wizards again — the login shell that reads the person's variables runs in a session of its own and no longer keeps the terminal",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "ee20646",
+        "message": "wizards.sh opens with the tall engenty — one eye; it wakes up, looks around, hops and blinks",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "81d4f21",
+        "message": "the studio moves to /studio; the root of a host is free for a landing page",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "f6058fd",
+        "message": "the marketplace is an app of its own; the runtime searches it live and keeps its starters and the starred entries for offline use",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e6fdeab",
+        "message": "engenty-wizards://new?starter=<id> opens a marketplace template in the desktop app",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.1.0",
+    "timestamp": 1791100948,
+    "commits": [
+      {
+        "id": "71cc075",
+        "message": "install with wizards.sh; the local install and how its pieces share it",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "6ae641d",
+        "message": "the desktop app is a window on the local install and brings no runtime along",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "9c9dbb8",
+        "message": "an installer, wizards.sh, that every runtime serves",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "34d0a1a",
+        "message": "an engenty-wizards command for a local install in ~/.engenty/wizards",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4ac6329",
+        "message": "the search skips filler words with umlauts too",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "3bda9a6",
+        "message": "the gallery's footer stays without version, changelog and open-source links",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "9e65725",
+        "message": "a changelog and open-source credits in the studio's footer; pnpm release cuts a release from the commits",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "45d2906",
+        "message": "an entry's search terms are scored one by one, not as one long text",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "648819c",
+        "message": "marketplace entries carry the words people ask for, so a search by words finds them",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "0838373",
+        "message": "one project unless the limit says more; an account page; previews and layouts in the project settings",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8da2aaf",
+        "message": "a project holds base infos, logos, colours, assets, documents and facts for all its wizards",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8679ae2",
+        "message": "the gallery has the studio's footer line",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d5086f3",
+        "message": "the gallery's field is narrower",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4a82b26",
+        "message": "the gallery invites to start a wizard from a template",
+        "group": "Other",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "07d2def",
+        "message": "a template's header is the dialog's own colour under a spotlight; in the light a tinted grey",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d10be9f",
+        "message": "a template opens with its flow as a diagram; the gallery's field is narrower, its chips centred",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
       {
         "id": "fbee998",
         "message": "the gallery says what it is, compact and from the left; its search is a two-line field to write into",
