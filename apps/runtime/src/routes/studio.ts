@@ -726,9 +726,14 @@ export const studio = new Hono<Vars>()
     const id = c.req.param("id");
     return streamSSE(c, async (stream) => {
       let ended = false;
+      // One write after the other, and all of them out before the stream ends: the last one is
+      // the exit, and a page that comes after the end gets everything at once.
+      let written = Promise.resolve();
       const done = new Promise<void>((resolve) => {
         const unsubscribe = subscribeTerminal(id, (event) => {
-          void stream.writeSSE({ event: event.type, data: JSON.stringify(event) });
+          written = written.then(() =>
+            stream.writeSSE({ event: event.type, data: JSON.stringify(event) }),
+          );
           if (event.type === "exit") {
             ended = true;
             resolve();
@@ -747,6 +752,7 @@ export const studio = new Hono<Vars>()
       }, 15_000);
       await done;
       clearInterval(beat);
+      await written;
     });
   })
   .post("/local/terminal/:id/input", async (c) => {
