@@ -1,0 +1,105 @@
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/**
+ * Where a local install lives: `~/.engenty/wizards`, inside the folder the engenty framework
+ * keeps its own install in. `ENGENTY_HOME` moves both.
+ */
+export function wizardsHome(env: NodeJS.ProcessEnv = process.env): string {
+  const base = env.ENGENTY_HOME?.trim() || join(homedir(), ".engenty");
+  return join(resolve(base), "wizards");
+}
+
+export interface Layout {
+  home: string;
+  /** Databases, files, the secret: the runtime's DATA_DIR. */
+  data: string;
+  logs: string;
+  /** Settings of this install, read by the runtime at start. */
+  envFile: string;
+  /** What the setup remembers: when it ran. */
+  installFile: string;
+  /** npm prefix of an install made by wizards.sh: `node_modules/engenty-wizards`. */
+  runtime: string;
+  /** The Node that wizards.sh brought: `tools/node/bin/node`. */
+  tools: string;
+  /** npm prefix of AI clients the setup installed; their commands are in `clients/bin`. */
+  clients: string;
+  /** The `engenty-wizards` command of an install made by wizards.sh. */
+  bin: string;
+}
+
+export function layout(home = wizardsHome()): Layout {
+  return {
+    home,
+    data: join(home, "data"),
+    logs: join(home, "logs"),
+    envFile: join(home, ".env"),
+    installFile: join(home, "install.json"),
+    runtime: join(home, "runtime"),
+    tools: join(home, "tools"),
+    clients: join(home, "clients"),
+    bin: join(home, "bin"),
+  };
+}
+
+/** The folder this code was installed to: it holds `apps/`, `plugin/` and package.json. */
+export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+
+export function packageVersion(): string {
+  try {
+    return JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+/** How this copy got here: by wizards.sh into the home folder, or by npm/npx or a checkout. */
+export function installedByScript(paths: Layout = layout()): boolean {
+  try {
+    // Node names this file by its real path; the home folder may be reached through a link.
+    return packageRoot.startsWith(realpathSync(paths.runtime) + sep);
+  } catch {
+    return false;
+  }
+}
+
+/** This copy is a checkout of the repository, run with `pnpm wizards`. */
+export function isCheckout(): boolean {
+  return existsSync(join(packageRoot, "pnpm-workspace.yaml"));
+}
+
+export interface InstallNote {
+  /** When the guided setup last ran to its end. */
+  setupAt?: string;
+  version?: string;
+}
+
+export function readInstallNote(paths: Layout = layout()): InstallNote {
+  try {
+    return JSON.parse(readFileSync(paths.installFile, "utf8")) as InstallNote;
+  } catch {
+    return {};
+  }
+}
+
+export function writeInstallNote(note: InstallNote, paths: Layout = layout()) {
+  writeFileSync(paths.installFile, `${JSON.stringify(note, null, 2)}\n`);
+}
+
+/** `KEY=value` lines of the install's `.env`, the way the runtime reads them. */
+export function readEnvFile(file: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!existsSync(file)) {
+    return out;
+  }
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (match) {
+      out[match[1]] = match[2].replace(/^(['"])(.*)\1$/, "$2");
+    }
+  }
+  return out;
+}

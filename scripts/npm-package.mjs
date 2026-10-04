@@ -1,0 +1,165 @@
+// Stages and packs the npm package `engenty-wizards`: the runtime (built server, built SPA,
+// plugin template), the `engenty-wizards` command and the shared package inside it. This is
+// what `npx engenty-wizards` runs and what the installer (apps/web/public/wizards.sh) and the
+// desktop app install into ~/.engenty/wizards.
+//
+//   node scripts/npm-package.mjs [--skip-build] [--version 1.2.3]
+//
+// --skip-build  reuse the dist/ folders of the checkout instead of building
+// --version     the version to publish (default: the root package.json's)
+//
+// Out: dist/npm/engenty-wizards/ (the staged folder) and dist/npm/engenty-wizards-<version>.tgz.
+// Publish with `npm publish dist/npm/engenty-wizards-<version>.tgz`.
+//
+// The folder keeps the checkout's layout (apps/runtime/dist, apps/web/dist, plugin/), so the
+// runtime finds the SPA and the plugin template the same way everywhere.
+import { execFileSync } from "node:child_process";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
+
+const root = resolve(import.meta.dirname, "..");
+const outDir = join(root, "dist", "npm");
+const stage = join(outDir, "engenty-wizards");
+
+const args = process.argv.slice(2);
+const flag = (name) => args.includes(`--${name}`);
+const option = (name) => {
+  const at = args.indexOf(`--${name}`);
+  return at >= 0 ? args[at + 1] : undefined;
+};
+
+const run = (cmd, cmdArgs, cwd = root) => {
+  console.log(`$ ${cmd} ${cmdArgs.join(" ")}`);
+  return execFileSync(cmd, cmdArgs, { cwd, stdio: ["ignore", "pipe", "inherit"], encoding: "utf8" });
+};
+const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
+
+// --- 1. build ---------------------------------------------------------------------------
+const BUILT = ["apps/runtime/dist", "apps/web/dist", "packages/shared/dist"];
+if (flag("skip-build")) {
+  for (const dir of BUILT) {
+    if (!existsSync(join(root, dir))) {
+      throw new Error(`${dir}/ is missing — run without --skip-build.`);
+    }
+  }
+} else {
+  // tsc leaves files of deleted sources behind: build into empty folders.
+  for (const dir of BUILT) {
+    rmSync(join(root, dir), { recursive: true, force: true });
+  }
+  execFileSync("pnpm", ["-r", "build"], { cwd: root, stdio: "inherit" });
+}
+
+// --- 2. the files -----------------------------------------------------------------------
+rmSync(outDir, { recursive: true, force: true });
+mkdirSync(stage, { recursive: true });
+for (const path of ["apps/runtime/dist", "apps/web/dist", "plugin", "bin", "LICENSE", "README.md"]) {
+  cpSync(join(root, path), join(stage, path), { recursive: true });
+}
+chmodSync(join(stage, "bin", "engenty-wizards.mjs"), 0o755);
+
+// --- 3. package.json --------------------------------------------------------------------
+// The runtime's dependencies at the versions the checkout's lockfile resolved: what was tested
+// is what gets installed. A workspace package comes along inside the tarball (bundled) as its
+// built files; its own dependencies join the list.
+const pkg = readJson("package.json");
+const version = option("version") ?? pkg.version;
+const resolved = (dir) => {
+  const [listed] = JSON.parse(run("pnpm", ["list", "--prod", "--depth", "0", "--json"], join(root, dir)));
+  return listed.dependencies ?? {};
+};
+const dependencies = {};
+const bundled = [];
+const collect = (dir) => {
+  const installed = resolved(dir);
+  for (const [name, range] of Object.entries(readJson(`${dir}/package.json`).dependencies ?? {})) {
+    if (range.startsWith("workspace:")) {
+      const from = `packages/${name.split("/").pop()}`;
+      const manifest = readJson(`${from}/package.json`);
+      bundled.push(name);
+      dependencies[name] = manifest.version;
+      const to = join(stage, "node_modules", name);
+      mkdirSync(to, { recursive: true });
+      cpSync(join(root, from, "dist"), join(to, "dist"), { recursive: true });
+      // Without the condition that points at the TypeScript sources, which are not shipped.
+      const exports = Object.fromEntries(
+        Object.entries(manifest.exports ?? {}).map(([key, value]) => [
+          key,
+          typeof value === "string" ? value : value.default,
+        ]),
+      );
+      writeFileSync(
+        join(to, "package.json"),
+        `${JSON.stringify(
+          { name, version: manifest.version, license: manifest.license, type: manifest.type, exports },
+          null,
+          2,
+        )}\n`,
+      );
+      collect(from);
+    } else {
+      const exact = installed[name]?.version;
+      if (!exact) {
+        throw new Error(`${name} (${dir}) is not installed — run pnpm install.`);
+      }
+      dependencies[name] = exact;
+    }
+  }
+};
+collect("apps/runtime");
+
+writeFileSync(
+  join(stage, "package.json"),
+  `${JSON.stringify(
+    {
+      name: "engenty-wizards",
+      version,
+      description:
+        "For the tasks that keep coming back: describe them once, engenty builds the wizard. Runs on your machine, on the AI subscription you already have.",
+      license: pkg.license,
+      homepage: "https://engenty.ai",
+      repository: { type: "git", url: "git+https://github.com/engenty/engenty-wizards.git" },
+      type: "module",
+      bin: { "engenty-wizards": "bin/engenty-wizards.mjs" },
+      engines: pkg.engines,
+      files: ["apps", "bin", "plugin"],
+      dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
+      bundleDependencies: bundled,
+    },
+    null,
+    2,
+  )}\n`,
+);
+
+// --- 4. pack ----------------------------------------------------------------------------
+run("npm", ["pack", "--pack-destination", outDir, "--loglevel=error"], stage);
+const tarball = join(outDir, `engenty-wizards-${version}.tgz`);
+
+function* walk(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      yield* walk(path);
+    } else {
+      yield path;
+    }
+  }
+}
+const files = [...walk(stage)];
+const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+console.log(`
+engenty-wizards ${version}
+  staged    ${files.length} files, ${mb(files.reduce((sum, file) => sum + statSync(file).size, 0))}  (${stage})
+  tarball   ${mb(statSync(tarball).size)}  (${tarball})
+  depends   ${Object.keys(dependencies).length} packages, ${bundled.length} bundled (${bundled.join(", ")})
+`);

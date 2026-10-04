@@ -17,6 +17,7 @@ import {
 import { seal, unseal } from "../secrets/crypto.js";
 import { LOCAL_TENANT } from "../tenants/tenant.js";
 import { finishLink } from "./account.js";
+import { localTicketExpiry } from "./local-ticket.js";
 
 /** Who a studio request acts as: a person, in exactly one tenant. */
 export interface Principal {
@@ -99,6 +100,8 @@ interface Handoff {
   exp: number;
 }
 const usedHandoffs = new Set<string>();
+/** Tickets of the local one-time link that were opened, until they run out. */
+const usedTickets = new Map<string, number>();
 
 type SessionRow = typeof control.session.$inferSelect;
 const sessions = new Map<string, { at: number; row: SessionRow }>();
@@ -212,13 +215,28 @@ const closePage = (message: string) =>
 <p>${message}</p>`;
 
 export const authRoutes = new Hono()
-  // Local: the one-time link. The key works once per start.
+  // Local: the one-time link. The key works once per start; a ticket (`engenty-wizards open`,
+  // the desktop app entering a runtime that already runs) once within its minute.
   .get("/local/enter", (c) => {
     const given = c.req.query("k") ?? "";
-    if (managed || !accessKey || !sameValue(given, accessKey)) {
-      return c.text("This link is no longer valid. Start the app again.", 403);
+    const ticket = c.req.query("t") ?? "";
+    const now = Date.now();
+    for (const [used, expires] of usedTickets) {
+      if (expires <= now) {
+        usedTickets.delete(used);
+      }
     }
-    accessKey = null;
+    const expires =
+      !managed && ticket && !usedTickets.has(ticket)
+        ? localTicketExpiry(env.authSecret, ticket, now)
+        : null;
+    if (expires) {
+      usedTickets.set(ticket, expires);
+    } else if (managed || !accessKey || !sameValue(given, accessKey)) {
+      return c.text("This link is no longer valid. Start the app again.", 403);
+    } else {
+      accessKey = null;
+    }
     setLocalCookie(c);
     return c.redirect(home);
   })

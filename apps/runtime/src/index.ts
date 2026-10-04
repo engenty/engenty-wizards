@@ -13,6 +13,7 @@ import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
 import { loadCatalog, loadLocalModels } from "./models.js";
 import { closeBrowser } from "./render/chromium.js";
+import { clearRunning, writeRunning } from "./running.js";
 import { seedMarketplace, syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
@@ -61,6 +62,14 @@ const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.hos
   if (entry && !env.local.accessKey) {
     console.log(`Open the studio: ${entry}`);
   }
+  if (!managed) {
+    writeRunning(env.dataDir, {
+      pid: process.pid,
+      port: info.port,
+      url: env.appUrl,
+      startedAt: new Date().toISOString(),
+    });
+  }
 });
 
 await resumeInterruptedRuns();
@@ -79,6 +88,7 @@ void purge().catch((err) => console.error("[retention]", err));
 setInterval(() => void purge().catch((err) => console.error("[retention]", err)), 3600_000).unref();
 
 async function shutdown() {
+  clearRunning(env.dataDir);
   server.close();
   await closeBrowser();
   process.exit(0);

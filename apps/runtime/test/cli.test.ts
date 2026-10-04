@@ -1,0 +1,148 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { localTicketExpiry, mintLocalTicket } from "../src/auth/local-ticket.js";
+import { appArchiveUrl } from "../src/cli/desktop.js";
+import { inherited, runtimeEnv, runtimePath } from "../src/cli/environment.js";
+import { layout, readEnvFile, wizardsHome } from "../src/cli/home.js";
+import { nodeIsCurrent } from "../src/cli/machine.js";
+import { clearRunning, readRunning, writeRunning } from "../src/running.js";
+
+let dir: string;
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "wizards-cli-"));
+});
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
+describe("the home folder", () => {
+  it("is ~/.engenty/wizards, and ENGENTY_HOME moves it", () => {
+    expect(wizardsHome({})).toBe(join(homedir(), ".engenty", "wizards"));
+    expect(wizardsHome({ ENGENTY_HOME: "/srv/engenty" })).toBe("/srv/engenty/wizards");
+  });
+
+  it("keeps data, runtime, tools and clients apart", () => {
+    const paths = layout("/h");
+    expect(paths.data).toBe("/h/data");
+    expect(paths.runtime).toBe("/h/runtime");
+    expect(paths.clients).toBe("/h/clients");
+    expect(paths.envFile).toBe("/h/.env");
+  });
+
+  it("reads its .env the way the runtime does", () => {
+    const file = join(dir, ".env");
+    writeFileSync(file, "API_PORT=8900\n# a comment\nAPP_URL='http://localhost:8900'\nlower=no\n");
+    expect(readEnvFile(file)).toEqual({ API_PORT: "8900", APP_URL: "http://localhost:8900" });
+    expect(readEnvFile(join(dir, "missing"))).toEqual({});
+  });
+});
+
+describe("what the runtime inherits from the terminal", () => {
+  const shell = {
+    HOME: "/Users/x",
+    PATH: "/usr/bin:/bin",
+    API_HOST: "127.0.0.1",
+    MODEL_STANDARD: "ollama:qwen3",
+    // Exported for other projects: none of it is ours to use.
+    OPENAI_API_KEY: "sk-other-project",
+    DATABASE_URL: "libsql://other",
+    MANAGE_URL: "https://manage.example",
+    APP_SECRET: "other",
+  };
+  const start = { port: 8891, url: "http://localhost:8891", dataDir: "/h/data", accessKey: "k" };
+
+  it("passes settings of this install and nothing else", () => {
+    expect(inherited(shell)).toEqual({
+      HOME: "/Users/x",
+      API_HOST: "127.0.0.1",
+      MODEL_STANDARD: "ollama:qwen3",
+    });
+    const env = runtimeEnv(layout("/h"), start, shell, {}, "linux");
+    expect(env.OPENAI_API_KEY).toBeUndefined();
+    expect(env.DATABASE_URL).toBeUndefined();
+    expect(env.MANAGE_URL).toBeUndefined();
+    expect(env).toMatchObject({
+      NODE_ENV: "production",
+      API_PORT: "8891",
+      APP_URL: "http://localhost:8891",
+      DATA_DIR: "/h/data",
+      LOCAL_ACCESS_KEY: "k",
+    });
+    expect(env.SECRETS).toBeUndefined();
+  });
+
+  it("keeps keys in the Keychain on a Mac unless the install says otherwise", () => {
+    expect(runtimeEnv(layout("/h"), start, shell, {}, "darwin").SECRETS).toBe("keychain");
+    expect(runtimeEnv(layout("/h"), start, shell, { SECRETS: "" }, "darwin").SECRETS).toBeUndefined();
+    expect(runtimeEnv(layout("/h"), start, { ...shell, SECRETS: "file" }, {}, "darwin").SECRETS).toBe(
+      "file",
+    );
+  });
+
+  it("puts the installed clients and this Node first on the PATH", () => {
+    expect(runtimePath(layout("/h"), shell, "/h/tools/node/bin/node")).toBe(
+      "/h/clients/bin:/h/tools/node/bin:/usr/bin:/bin:/Users/x/.local/bin",
+    );
+  });
+});
+
+describe("the ticket of the local one-time link", () => {
+  const now = 1_800_000_000_000;
+
+  it("is good for a minute, for the secret that signed it", () => {
+    const ticket = mintLocalTicket("secret", now);
+    expect(localTicketExpiry("secret", ticket, now)).toBe(now + 60_000);
+    expect(localTicketExpiry("secret", ticket, now + 59_000)).toBe(now + 60_000);
+    expect(localTicketExpiry("secret", ticket, now + 60_000)).toBeNull();
+    expect(localTicketExpiry("another", ticket, now)).toBeNull();
+  });
+
+  it("is refused when changed or made up", () => {
+    const [expires, signature] = mintLocalTicket("secret", now).split(".");
+    expect(localTicketExpiry("secret", `${Number(expires) + 1}.${signature}`, now)).toBeNull();
+    // A later expiry than a ticket can have, even if somebody could sign it.
+    expect(localTicketExpiry("secret", `${now + 3_600_000}.${signature}`, now)).toBeNull();
+    expect(localTicketExpiry("secret", "", now)).toBeNull();
+    expect(localTicketExpiry("secret", "nonsense", now)).toBeNull();
+  });
+});
+
+describe("the note of a running runtime", () => {
+  const note = { port: 8891, url: "http://localhost:8891", startedAt: "2026-10-04T00:00:00.000Z" };
+
+  it("names the runtime while its process exists", () => {
+    writeRunning(dir, { ...note, pid: process.pid });
+    expect(readRunning(dir)).toMatchObject({ pid: process.pid, port: 8891 });
+    clearRunning(dir);
+    expect(readRunning(dir)).toBeNull();
+  });
+
+  it("counts for nothing once the process is gone", () => {
+    // No process has this id: above the largest a system hands out.
+    writeRunning(dir, { ...note, pid: 2 ** 30 });
+    expect(readRunning(dir)).toBeNull();
+  });
+
+  it("is left alone by a runtime that did not write it", () => {
+    writeRunning(dir, { ...note, pid: process.pid });
+    clearRunning(dir, process.pid + 1);
+    expect(JSON.parse(readFileSync(join(dir, "running.json"), "utf8")).pid).toBe(process.pid);
+  });
+});
+
+describe("the machine", () => {
+  it("needs Node 24.11", () => {
+    expect(nodeIsCurrent("24.11.0")).toBe(true);
+    expect(nodeIsCurrent("26.1.0")).toBe(true);
+    expect(nodeIsCurrent("24.10.9")).toBe(false);
+    expect(nodeIsCurrent("22.20.0")).toBe(false);
+  });
+
+  it("fetches the Mac app of its own version from the release", () => {
+    expect(appArchiveUrl("0.1.0", "arm64")).toBe(
+      "https://github.com/engenty/engenty-wizards/releases/download/v0.1.0/engenty-wizards-0.1.0-mac-arm64.tar.gz",
+    );
+  });
+});
