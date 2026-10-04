@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.4] - 2026-10-04
+- FIXED The changelog's groups read NEW, FIXED, DOCS in every language, like the entries they stand before
+
 ## [0.1.3] - 2026-10-04
 - FIXED **[release]** The publish job fetches the package artifact by name; with one artifact left it no longer lands in its own folder
 
