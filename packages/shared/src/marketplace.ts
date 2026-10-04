@@ -226,9 +226,12 @@ export function costTierOf(capabilities: Capability[]): CostTier {
     : "low";
 }
 
-/** The link that opens an entry in the installed desktop app (`/new?starter=<id>` there). */
-export const entryAppLink = (id: string) =>
-  `engenty-wizards://new?starter=${encodeURIComponent(id)}`;
+/**
+ * The link that opens an entry in a local install at its default address — in the browser, or
+ * in the studio installed as a Chrome app.
+ */
+export const entryLocalLink = (id: string) =>
+  `http://localhost:24368/studio/new?starter=${encodeURIComponent(id)}`;
 
 // --- what the marketplace answers (docs/marketplace-contract.md) -----------------------------
 
