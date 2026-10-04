@@ -1,5 +1,14 @@
+import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import type {
+  Capability,
+  Industry,
+  ItemFormat,
+  ItemStatus,
+  MarketplaceLang,
+  UseCase,
+} from "@engenty-wizards/shared/marketplace";
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const now = sql`(unixepoch() * 1000)`;
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
@@ -77,3 +86,72 @@ export const setting = sqliteTable("setting", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).$type<unknown>().notNull(),
 });
+
+// --- marketplace -----------------------------------------------------------------
+// Wizards anyone can start from. They belong to no tenant: the base set comes from the repo
+// (apps/runtime/src/starters), admins add and change entries, and a runtime that runs alone
+// takes over what the cloud runtime lists.
+
+export const marketplaceItem = sqliteTable(
+  "marketplace_item",
+  {
+    id: text("id").primaryKey(),
+    status: text("status").$type<ItemStatus>().notNull().default("draft"),
+    /** Goes up with every change of the wizard; a translation names the revision it was made from. */
+    revision: integer("revision").notNull().default(1),
+    /** `base` = as the repo ships it, `admin` = made or changed by an admin here, `cloud` = taken over from the cloud runtime. */
+    origin: text("origin", { enum: ["base", "admin", "cloud"] })
+      .notNull()
+      .default("admin"),
+    /** The revision of the repo's base set this row was last written from. */
+    baseRevision: integer("base_revision"),
+    /** The language the wizard was written in. */
+    language: text("language").$type<MarketplaceLang>().notNull().default("de"),
+    avatar: text("avatar").notNull().default("round"),
+    formats: text("formats", { mode: "json" }).$type<ItemFormat[]>().notNull(),
+    industries: text("industries", { mode: "json" }).$type<Industry[]>().notNull(),
+    useCases: text("use_cases", { mode: "json" }).$type<UseCase[]>().notNull(),
+    capabilities: text("capabilities", { mode: "json" }).$type<Capability[]>().notNull(),
+    /** A run's price in credits as last estimated, and what it rarely exceeds. */
+    credits: integer("credits"),
+    creditsHigh: integer("credits_high"),
+    position: integer("position").notNull().default(1000),
+    installs: integer("installs").notNull().default(0),
+    updatedBy: text("updated_by"),
+    createdAt: createdAt(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(now),
+  },
+  (t) => [index("marketplace_item_updated").on(t.updatedAt)],
+);
+
+/** An entry's words and wizard in one language: the entry's own, and every translation of it. */
+export const marketplaceText = sqliteTable(
+  "marketplace_text",
+  {
+    itemId: text("item_id")
+      .notNull()
+      .references(() => marketplaceItem.id, { onDelete: "cascade" }),
+    language: text("language").$type<MarketplaceLang>().notNull(),
+    /** The entry's revision these words belong to; an older one is out of date. */
+    revision: integer("revision").notNull(),
+    title: text("title").notNull(),
+    pitch: text("pitch").notNull(),
+    definition: text("definition", { mode: "json" }).$type<WizardDefinition>().notNull(),
+    /** Written by a model, not by a person. */
+    machine: integer("machine", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.language] })],
+);
+
+/** The workspace an entry's wizard starts with (widgets, price lists, reference texts). */
+export const marketplaceFile = sqliteTable(
+  "marketplace_file",
+  {
+    itemId: text("item_id")
+      .notNull()
+      .references(() => marketplaceItem.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    data: blob("data", { mode: "buffer" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.path] })],
+);

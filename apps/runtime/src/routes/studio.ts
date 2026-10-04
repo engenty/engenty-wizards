@@ -52,6 +52,7 @@ import { architectTurn } from "../services/architect.js";
 import { cloudCopy, publishToCloud } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
+import { isMarketplaceAdmin } from "../services/marketplace.js";
 import {
   exportWizard,
   importWizard,
@@ -85,7 +86,6 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
-import { STARTERS } from "../starters/index.js";
 
 type Vars = { Variables: { user: SessionUser } };
 
@@ -144,6 +144,8 @@ export const studio = new Hono<Vars>()
       chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
       mcpUrl: `${env.appUrl}/api/mcp`,
+      /** May add and change marketplace entries. */
+      marketplaceAdmin: isMarketplaceAdmin(user),
     });
   })
 
@@ -221,17 +223,6 @@ export const studio = new Hono<Vars>()
   })
 
   // --- wizards ---------------------------------------------------------------
-  .get("/starters", (c) =>
-    c.json(
-      STARTERS.map((s) => ({
-        id: s.id,
-        title: s.title,
-        pitch: s.pitch,
-        avatar: s.definition.avatar,
-        group: s.group ?? null,
-      })),
-    ),
-  )
   .get("/projects/:id/wizards", async (c) => {
     const user = c.get("user");
     await ownedProject(user.id, c.req.param("id"));
@@ -239,7 +230,11 @@ export const studio = new Hono<Vars>()
   })
   .post("/wizards", async (c) => {
     const body = z
-      .object({ projectId: z.string(), starterId: z.string().optional() })
+      .object({
+        projectId: z.string(),
+        starterId: z.string().optional(),
+        lang: z.string().optional(),
+      })
       .parse(await c.req.json());
     const { id } = await createWizard(c.get("user").id, body);
     return c.json({ id });

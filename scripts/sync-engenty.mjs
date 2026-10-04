@@ -17,6 +17,11 @@ const SETS = [
     ["columns.ts", "columns-value.ts", "columns-format.ts", "index.ts"],
   ],
   [
+    "packages/search-index/src",
+    "packages/shared/src/engenty/search-index",
+    ["catalog-lexical.ts", "catalog-rank.ts"],
+  ],
+  [
     "packages/connections-sdk/src",
     "apps/runtime/src/engenty/connections-sdk",
     ["types.ts", "oauth2.ts", "registry.ts", "files-capability.ts", "storage-capability.ts"],

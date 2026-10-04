@@ -10,6 +10,7 @@ import { Button, Card, cn, IconButton, Input, Label, Select, Swatch, Textarea } 
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { LocalRuntimeCard } from "./LocalRuntime";
+import { MarketplaceAdmin } from "./MarketplaceAdmin";
 import { McpAccess } from "./McpAccess";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
@@ -249,7 +250,7 @@ function McpServers({ project }: { project: Project }) {
   );
 }
 
-type Section = "project" | "connectors" | "models" | "build";
+type Section = "project" | "connectors" | "models" | "build" | "marketplace";
 
 /** Section of the settings at /settings/<section>; the left list on wide screens, a dropdown on narrow ones. */
 export function SettingsPage() {
@@ -265,6 +266,9 @@ export function SettingsPage() {
     // Models and the account are chosen on the machine only when the runtime runs alone.
     ...(me.data?.mode === "local" ? [{ id: "models" as const, label: t("local.title") }] : []),
     { id: "build", label: t("mcp.nav") },
+    ...(me.data?.marketplaceAdmin
+      ? [{ id: "marketplace" as const, label: t("market.admin") }]
+      : []),
   ];
   const current = sections.find((s) => s.id === section);
   if (!current) {
@@ -303,7 +307,13 @@ export function SettingsPage() {
           onChange={(id) => navigate(`/settings/${id}`)}
           options={sections.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <div className="min-w-0 max-w-2xl">
+        <div className={cn("min-w-0", current.id === "marketplace" ? "max-w-4xl" : "max-w-2xl")}>
+          {current.id === "marketplace" ? (
+            <div className="flex flex-col gap-6">
+              <ProjectSwitcher />
+              <MarketplaceAdmin />
+            </div>
+          ) : null}
           {scoped ? (
             <div className="mb-6">
               <ProjectSwitcher />

@@ -347,12 +347,18 @@ export function Dialog({
   title,
   children,
   wide,
+  bare,
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  /**
+   * The children are the panel: the dialog itself draws no card, clips nothing (a close button
+   * may sit on the panel's edge) and fills the screen of a phone.
+   */
+  bare?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -376,11 +382,17 @@ export function Dialog({
         }
       }}
       className={cn(
-        "m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card p-0 text-ink shadow-overlay backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
-        wide ? "max-w-2xl" : "max-w-md",
+        "m-auto p-0 text-ink backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
+        bare
+          ? "w-[calc(100%-48px)] overflow-visible bg-transparent max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none"
+          : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay",
+        wide ? "sm:max-w-2xl" : "sm:max-w-md",
+        !bare && (wide ? "max-w-2xl" : "max-w-md"),
       )}
     >
-      {open ? (
+      {open && bare ? (
+        children
+      ) : open ? (
         <div className="p-5 sm:p-7">
           {title ? (
             <div className="mb-5 flex items-start justify-between gap-3">

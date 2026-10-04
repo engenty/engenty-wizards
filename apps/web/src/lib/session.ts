@@ -57,6 +57,8 @@ export interface Me {
   aiReady: boolean;
   /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
   mcpUrl: string;
+  /** May add and change marketplace entries. */
+  marketplaceAdmin: boolean;
 }
 
 /** The credits a person can spend right now, wherever they come from. */

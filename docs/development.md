@@ -151,6 +151,45 @@ A wizard declares a connection to it; the person running the wizard connects the
 get the connector's actions as tools: reading is allowed, anything that changes the account asks
 the person first, deleting always. `ENGENTY_INTEGRATIONS_REGISTRY_URL` points at another registry.
 
+## Marketplace
+
+The wizards a person can start from on "new" are entries of the marketplace. They live in the
+control database (`marketplace_item`, `marketplace_text`, `marketplace_file`) and belong to no
+tenant. There is no app of its own for it: the runtime that serves the studio serves the
+marketplace, and the cloud runtime is the one every other runtime takes its entries from.
+
+| Where an entry comes from | How it gets into the database |
+|---|---|
+| The base set in the repo (`apps/runtime/src/starters/`) | At every start, after the migrations. A starter the database does not know is added. A changed starter gets its `revision` raised in `starters/catalog.ts`; every runtime then replaces its row — unless an admin changed that row's wizard, which then belongs to the database. |
+| An admin (Settings → Marketplace) | A wizard of the admin's project becomes an entry, or the next revision of one. Admins are the e-mail addresses in `MARKETPLACE_ADMINS`; `local` names the one person of a runtime that runs alone. |
+| The source runtime (`MARKETPLACE_URL`, default `CLOUD_URL`) | A runtime that runs alone asks its source once an hour (`/api/public/marketplace/index`, then `/:id/export` for what changed) and keeps the answer, so the list works offline. A new entry reaches every desktop app without a new app. |
+
+- **Sorted by** formats, industries and use cases (set by the admin; the lists are in
+  `packages/shared/src/marketplace.ts`). The AI capabilities an entry needs, how much a person
+  fills in and how long a run takes are read from its definition. A run's price in credits is
+  the formula of `credits/estimate.ts` at the gateway's prices; without prices an entry says
+  low, medium or high.
+- **Search** (`packages/shared/src/marketplace-search.ts`,
+  `apps/runtime/src/services/marketplace-search.ts`): every keystroke is scored by words in the
+  browser — BM25 with prefixes and inflections, the scoring of engenty's `search-index` package
+  (copied by `scripts/sync-engenty.mjs`). From three words on, the query also goes to
+  `POST /api/public/marketplace/search`: the model of class `classifier` reads the entries,
+  sorts them and drops what does not fit. Answers are kept per question; without a model, after
+  8 s, or beyond 30 calls a minute the order by words stands. There are no embeddings: the model
+  reads the whole list.
+- **Languages**: an entry is written in one language. Adding it translates it into the others
+  with a model of class `high`, beside the request; an admin can start a translation again. A
+  translation that changes steps or fields, or brings new issues, is thrown away. Where no
+  current translation exists the entry shows in its own language. Workspace files are not
+  translated.
+- **Older apps**: the schema drops what it does not know. An entry counts as usable only when
+  this app reads its definition without losing anything; else it is listed as "needs a newer
+  app" and cannot be started from.
+- **Gallery**: `/gallery` shows the published entries without a sign-in when
+  `MARKETPLACE_GALLERY=1`; the list itself (`/api/public/marketplace`) is always public.
+- A wizard made from an entry is a copy: `wizard.starter` and `wizard.starter_revision` say
+  where it came from, later revisions of the entry do not touch it.
+
 ## Build wizards from your own AI client
 
 Admins can author wizards in Claude Code, Codex, Cursor, claude.ai or Claude Desktop, on their own
@@ -194,7 +233,8 @@ open editor.
 | Widgets: bundle (code + data → one HTML), `window.wizard` runtime, PNG/PDF/MP4 export | `apps/runtime/src/widgets/` |
 | Workspace files (content-addressed blobs, snapshots per version and run) | `apps/runtime/src/services/files.ts`, `apps/runtime/src/files/blobs.ts` |
 | Shared results, link previews, 7-day retention | `apps/runtime/src/services/shares.ts`, `apps/runtime/src/link-preview.ts` |
-| Starter wizards | `apps/runtime/src/starters/index.ts` |
+| Starter wizards: the marketplace's base set | `apps/runtime/src/starters/`, `apps/runtime/src/starters/catalog.ts` |
+| Marketplace: entries in the control database, base set, taking over from the source, admin, translation | `packages/shared/src/marketplace.ts`, `apps/runtime/src/services/marketplace.ts`, `apps/runtime/src/services/marketplace-admin.ts`, `apps/runtime/src/routes/marketplace.ts`, `apps/web/src/studio/{Marketplace,MarketplaceAdmin,GalleryPage}.tsx` |
 | Tenants: context, one database each, the control database | `apps/runtime/src/tenants/tenant.ts`, `apps/runtime/src/db/client.ts`, `apps/runtime/src/tenants/control.ts` |
 | Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `apps/runtime/src/auth/`, `apps/runtime/src/manage.ts` |
 | Model classes: gateway, own keys, local model | `apps/runtime/src/models.ts` |

@@ -13,6 +13,7 @@ import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
 import { loadCatalog, loadLocalModels } from "./models.js";
 import { closeBrowser } from "./render/chromium.js";
+import { seedMarketplace, syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
@@ -31,6 +32,16 @@ if (managed) {
   await loadLocalModels();
   void loadCatalog();
 }
+
+// The marketplace: what the repo ships goes into the database, then the source's entries.
+await seedMarketplace()
+  .then(({ added, updated }) => {
+    if (added || updated) {
+      console.log(`marketplace: ${added} added, ${updated} updated from the base set`);
+    }
+  })
+  .catch((err) => console.error("[marketplace]", err));
+void syncMarketplace();
 
 const { default: app } = await import("./app.js");
 

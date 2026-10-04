@@ -21,6 +21,9 @@ const NewWizardPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./studio/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
+const GalleryPage = lazy(() =>
+  import("./studio/GalleryPage").then((m) => ({ default: m.GalleryPage })),
+);
 const SetupPage = lazy(() => import("./studio/SetupPage").then((m) => ({ default: m.SetupPage })));
 
 const EngentyBuilder = import.meta.env.DEV
@@ -61,6 +64,7 @@ export function App() {
         <Route path="/w/:token" element={<PublicRunner />} />
         <Route path="/w/:token/:runId" element={<PublicRunner />} />
         <Route path="/s/:token" element={<SharePage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
         <Route
           path="/"
           element={

@@ -15,6 +15,13 @@
       "when": 1791067068249,
       "tag": "0001_salty_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791071240061,
+      "tag": "0002_cloudy_firebird",
+      "breakpoints": true
     }
   ]
 }

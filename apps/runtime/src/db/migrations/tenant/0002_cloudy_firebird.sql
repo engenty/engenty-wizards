@@ -1,0 +1,1 @@
+ALTER TABLE `wizard` ADD `starter_revision` integer;

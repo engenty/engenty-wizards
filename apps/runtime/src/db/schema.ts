@@ -66,6 +66,8 @@ export const wizard = sqliteTable(
     shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(true),
     dailyRunLimit: integer("daily_run_limit").notNull().default(50),
     starter: text("starter"),
+    /** The revision of the marketplace entry the wizard was made from. */
+    starterRevision: integer("starter_revision"),
     /** Bumped on every draft write; a write carrying an older one is refused. */
     revision: integer("revision").notNull().default(0),
     createdAt: createdAt(),

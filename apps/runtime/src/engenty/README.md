@@ -9,6 +9,8 @@ the engenty packages the copies import.
 - packages/ai-core/src/data-tables/columns-value.ts → packages/shared/src/engenty/data-tables/columns-value.ts
 - packages/ai-core/src/data-tables/columns-format.ts → packages/shared/src/engenty/data-tables/columns-format.ts
 - packages/ai-core/src/data-tables/index.ts → packages/shared/src/engenty/data-tables/index.ts
+- packages/search-index/src/catalog-lexical.ts → packages/shared/src/engenty/search-index/catalog-lexical.ts
+- packages/search-index/src/catalog-rank.ts → packages/shared/src/engenty/search-index/catalog-rank.ts
 - packages/connections-sdk/src/types.ts → apps/runtime/src/engenty/connections-sdk/types.ts
 - packages/connections-sdk/src/oauth2.ts → apps/runtime/src/engenty/connections-sdk/oauth2.ts
 - packages/connections-sdk/src/registry.ts → apps/runtime/src/engenty/connections-sdk/registry.ts

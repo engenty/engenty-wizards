@@ -17,6 +17,7 @@ import { MCP_RESOURCE, SCOPES } from "./mcp/scopes.js";
 import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
 import { internalRoutes } from "./routes/internal.js";
+import { marketplacePublic, marketplaceStudio } from "./routes/marketplace.js";
 import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
@@ -75,6 +76,8 @@ app.get("/api/config", (c) =>
     /** The product's own site, for a runtime that runs alone. */
     site: managed ? null : env.local.cloudUrl,
     signedOutUrl: managed && env.signedOutUrl ? env.signedOutUrl : null,
+    /** The marketplace's gallery is open to people who are not signed in. */
+    gallery: env.marketplace.gallery,
   }),
 );
 
@@ -113,9 +116,11 @@ app.on(["GET", "POST", "DELETE"], "/api/mcp/bridge/:token", (c) =>
 );
 
 app.route("/api/studio/wizards", wizardStream);
+app.route("/api/studio/marketplace", marketplaceStudio);
 app.route("/api/studio", studio);
 app.route("/api/v1", apiRoutes);
 app.route("/api/internal", internalRoutes);
+app.route("/api/public/marketplace", marketplacePublic);
 app.route("/api/public", publicRoutes);
 app.route("/api/runs", runRoutes);
 app.route("/api/shares", shareRoutes);

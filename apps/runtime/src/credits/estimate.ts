@@ -81,6 +81,15 @@ function formula(step: Step, catalog: GatewayCatalog): number {
   return 0;
 }
 
+/** What a run of a definition costs by the formula alone — before anyone has run it. */
+export function formulaEstimate(
+  definition: WizardDefinition,
+  catalog: GatewayCatalog,
+): { credits: number; high: number } {
+  const credits = definition.steps.reduce((sum, step) => sum + formula(step, catalog), 0);
+  return { credits: round(credits), high: Math.ceil(credits * 2) };
+}
+
 function percentile(sorted: number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
 }

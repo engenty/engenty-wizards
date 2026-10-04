@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type Lang, setLang, t, useLang } from "../lib/i18n";
 import { cn } from "../ui";
 
@@ -7,6 +7,20 @@ const LANGS = ["en", "de"] as const;
 /** Inner padding of each option, either side. */
 const PAD_X = 12;
 const EASE = "cubic-bezier(0.3, 0.7, 0.2, 1)";
+
+const NARROW = "(max-width: 639px)";
+/** A phone's width: there the switch names both languages by their code, EN · DE. */
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      const query = window.matchMedia(NARROW);
+      query.addEventListener("change", listener);
+      return () => query.removeEventListener("change", listener);
+    },
+    () => window.matchMedia(NARROW).matches,
+    () => false,
+  );
+}
 
 /**
  * EN · DE as on the landing page: the language in effect is lit and named in full. A thumb
@@ -22,6 +36,7 @@ export function LangSwitch({
   ink?: string;
 }) {
   const lang = useLang();
+  const narrow = useNarrow();
   const probes = useRef<Record<string, HTMLSpanElement | null>>({});
   const [sizes, setSizes] = useState<Record<string, number> | null>(null);
 
@@ -39,7 +54,9 @@ export function LangSwitch({
   }, []);
 
   const width = (code: Lang) =>
-    sizes ? sizes[code === lang ? `${code}-full` : `${code}-short`] + PAD_X * 2 : undefined;
+    sizes
+      ? sizes[code === lang && !narrow ? `${code}-full` : `${code}-short`] + PAD_X * 2
+      : undefined;
   const offset = sizes
     ? LANGS.slice(0, LANGS.indexOf(lang)).reduce((sum, code) => sum + (width(code) ?? 0), 0)
     : 0;
@@ -97,7 +114,7 @@ export function LangSwitch({
             type="button"
           >
             {[NAMES[code], code.toUpperCase()].map((text, i) => {
-              const shown = selected ? i === 0 : i === 1;
+              const shown = selected && !narrow ? i === 0 : i === 1;
               return (
                 <span
                   key={text}

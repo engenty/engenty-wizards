@@ -11,13 +11,13 @@ import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
-import { starterById } from "../starters/index.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { copyFiles, draftFiles, sameFiles, seedFiles } from "./files.js";
 import { forgetWizardLinks } from "./links.js";
+import { asLang, countInstall, marketplaceWizard } from "./marketplace.js";
 import { defaultProject, ownedProject } from "./projects.js";
 
 export type WizardRow = typeof schema.wizard.$inferSelect;
@@ -220,20 +220,30 @@ export function shapeIssues(error: z.ZodError, raw: unknown): ValidationIssue[] 
 
 export async function createWizard(
   userId: string,
-  input: { projectId?: string; starterId?: string; definition?: unknown; note?: string },
+  input: {
+    projectId?: string;
+    /** A marketplace entry to start from, in `lang` where it is translated. */
+    starterId?: string;
+    lang?: string;
+    definition?: unknown;
+    note?: string;
+  },
   writer: Writer = { source: "studio" },
 ) {
   const project = input.projectId
     ? await ownedProject(userId, input.projectId)
     : await defaultProject(userId);
-  const starter = input.starterId ? starterById(input.starterId) : undefined;
+  const starter = input.starterId
+    ? await marketplaceWizard(input.starterId, asLang(input.lang))
+    : undefined;
   if (input.starterId && !starter) {
     throw new ServiceError("invalid", `There is no starter "${input.starterId}".`);
   }
   const { draft, issues } =
     input.definition !== undefined
       ? parseDraft(input.definition)
-      : { draft: structuredClone(starter?.definition ?? BLANK), issues: [] };
+      : { draft: starter?.definition ?? structuredClone(BLANK), issues: [] };
+  const fromStarter = input.definition === undefined ? starter : undefined;
   const id = nanoid(12);
   const shareToken = newShareToken();
   await db.insert(schema.wizard).values({
@@ -244,18 +254,23 @@ export async function createWizard(
     draft,
     shareToken,
     dailyRunLimit: env.limits.defaultDailyRuns,
-    starter: input.definition === undefined ? (starter?.id ?? null) : null,
+    starter: fromStarter?.id ?? null,
+    starterRevision: fromStarter?.revision ?? null,
   });
   await putLink(shareToken, "wizard", id);
-  if (starter?.files && input.definition === undefined) {
-    await seedFiles(id, starter.files);
+  if (fromStarter) {
+    await seedFiles(id, fromStarter.files);
+    await countInstall(fromStarter.id);
   }
   if (input.note) {
     await addMessage(id, { role: "assistant", content: input.note, changed: true }, writer);
-  } else if (starter && input.definition === undefined) {
+  } else if (fromStarter) {
     await addMessage(id, {
       role: "assistant",
-      content: `Ich habe den Starter „${starter.title}“ für dich angelegt. Teste ihn rechts oben – oder sag mir, was anders sein soll.`,
+      content:
+        fromStarter.language === "en"
+          ? `I have set up the template "${fromStarter.title}" for you. Test it at the top right – or tell me what should be different.`
+          : `Ich habe die Vorlage „${fromStarter.title}“ für dich angelegt. Teste sie rechts oben – oder sag mir, was anders sein soll.`,
     });
   }
   return { id, revision: 0, issues, studioUrl: studioUrl(id) };

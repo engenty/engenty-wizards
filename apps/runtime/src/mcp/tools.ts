@@ -6,6 +6,7 @@ import { importFromRegistry, listConnectors, searchRegistry } from "../connector
 import { RunConflict } from "../engine/runner.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
+import { listMarketplace, marketplaceWizard } from "../services/marketplace.js";
 import { defaultProject, listProjects, ownedProject } from "../services/projects.js";
 import { startTestRun, testRunReport } from "../services/runs.js";
 import { checkDraftWidget } from "../services/widgets.js";
@@ -23,7 +24,6 @@ import {
   wizardState,
   writeDraft,
 } from "../services/wizards.js";
-import { STARTERS, starterById } from "../starters/index.js";
 import type { Principal } from "./auth.js";
 import type { Scope } from "./scopes.js";
 
@@ -176,11 +176,21 @@ export function registerTools(server: McpServer, who: Principal) {
     {
       title: "List starters",
       description:
-        "The ready-made example wizards (tweet with image, video ad, research briefing, dashboard, invoice, offer).",
+        "The marketplace's ready-made wizards (tweet with image, video ad, research briefing, dashboard, invoice, offer …), with what each makes and needs.",
       input: z.object({}),
       readOnly: true,
     },
-    async () => STARTERS.map((s) => ({ id: s.id, title: s.title, pitch: s.pitch })),
+    async () =>
+      (await listMarketplace("de"))
+        .filter((s) => s.usable)
+        .map((s) => ({
+          id: s.id,
+          title: s.title,
+          pitch: s.pitch,
+          formats: s.formats,
+          useCases: s.useCases,
+          capabilities: s.capabilities,
+        })),
   );
 
   tool(
@@ -193,7 +203,7 @@ export function registerTools(server: McpServer, who: Principal) {
       readOnly: true,
     },
     async ({ starterId }) => {
-      const starter = starterById(starterId);
+      const starter = await marketplaceWizard(starterId, "de");
       if (!starter) {
         throw new ServiceError("not_found", `There is no starter "${starterId}".`);
       }
