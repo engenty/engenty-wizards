@@ -40,6 +40,11 @@ filter_commits = false
 tag_pattern = "v[0-9]*"
 topo_order = false
 sort_commits = "newest"
+# A subject that runs on into a second line, with no blank line between, is read as one line:
+# otherwise it does not parse as a conventional commit and shows with its type and a line break.
+commit_preprocessors = [
+  { pattern = '^([^\n]+)\n([^\n]+)', replace = "$1 $2" },
+]
 # Commit types → changelog groups. First match wins; the trailing `.*` catches the rest.
 commit_parsers = [
   # Dropped on purpose.
