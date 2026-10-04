@@ -101,6 +101,7 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
+import { applyUpdate, updateStatus } from "../update.js";
 import { byteRange } from "./delivery.js";
 
 type Vars = { Variables: { user: SessionUser } };
@@ -166,6 +167,18 @@ export const studio = new Hono<Vars>()
       /** One project: the studio shows no project switcher. */
       limits: { projects: await projectLimit() },
     });
+  })
+
+  // A runtime that runs alone says when a newer release is out and can run the update itself.
+  .get("/update", async (c) =>
+    managed ? c.json({ error: "not_local" }, 404) : c.json(await updateStatus()),
+  )
+  .post("/update", async (c) => {
+    if (managed) {
+      return c.json({ error: "not_local" }, 404);
+    }
+    applyUpdate();
+    return c.json(await updateStatus());
   })
 
   .put("/profile", async (c) =>
