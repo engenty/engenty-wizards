@@ -140,10 +140,10 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
 }
 
 /**
- * One quiet line at the foot of a page: the places around the account, for someone signed in,
- * and what this app is.
+ * One quiet line at the foot of a page: the places around the account, for someone signed in.
+ * `about`: in the studio it also says what this app is — version, changelog, open source.
  */
-export function Footer({ me }: { me?: Me | null }) {
+export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
   const base = me ? accountBase(me) : null;
   const links = base
     ? [
@@ -167,7 +167,7 @@ export function Footer({ me }: { me?: Me | null }) {
           {link.label}
         </a>
       ))}
-      <AboutLinks />
+      {about ? <AboutLinks /> : null}
     </footer>
   );
 }
@@ -185,7 +185,7 @@ export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; child
       >
         {children}
       </main>
-      <Footer me={me} />
+      <Footer me={me} about />
     </div>
   );
 }
