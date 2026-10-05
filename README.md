@@ -30,6 +30,20 @@
   (Vercel AI Gateway, OpenAI, Anthropic), or a local model through Ollama. Your wizards and
   results stay in a folder on your machine.
 
+## How it looks
+
+The studio: a wizard's steps as a flow with its branches, next to the conversation that changes them.
+
+<p align="center">
+  <img src="docs/assets/studio.png" alt="The studio of engenty wizards: the flow of a wizard that collects a month's receipts for bookkeeping — two pages of questions, AI steps that branch to the inbox and to customer portals, a review and the result — with the conversation beside it">
+</p>
+
+A wizard in use: it asks on one page, then on the next, and ends with the result to download or share.
+
+<p align="center">
+  <img src="docs/assets/wizard.png" alt="A wizard in use on a phone, three pictures: which week and how many children, what is on the table, and the finished weekly plan with PDF, PNG and sharing">
+</p>
+
 ## Install
 
 On macOS or Linux, in a terminal:
