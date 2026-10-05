@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.1.8",
+    "timestamp": 1791196157,
+    "commits": [
+      {
+        "id": "a965d36",
+        "message": "the marketplace's pages are written by the site at engenty.ai, at /wizards/<slug> and /de/wizards/<slug>",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.7",
-    "timestamp": 1791194767,
+    "timestamp": 1791194770,
     "commits": [
       {
         "id": "66e9109",

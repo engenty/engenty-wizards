@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.8] - 2026-10-05
+- DOCS The marketplace's pages are written by the site at engenty.ai, at /wizards/<slug> and /de/wizards/<slug>
+
 ## [0.1.7] - 2026-10-05
 - ADDED A banner in the studio says when a newer release is out; the update installs from there, the runtime restarts into the new version and the page reloads
 - ADDED The studio chat counts the seconds of a turn and says what the architect is doing and thinking; pasted pictures show in the thread and the architect sees them
