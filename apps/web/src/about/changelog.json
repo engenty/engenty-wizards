@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.1.10",
+    "timestamp": 1791206921,
+    "commits": [
+      {
+        "id": "8f35bf0",
+        "message": "the README shows the studio with a branched flow and a wizard in use, from its first page to the result",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "7abf9df",
+        "message": "the editor's review notes, tool names and branch labels follow the language; they were German in the English studio",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.9",
-    "timestamp": 1791203122,
+    "timestamp": 1791203125,
     "commits": [
       {
         "id": "5182fec",
