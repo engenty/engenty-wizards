@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.4] - 2026-10-05
+- FIXED A wizard a local install sends arrives whole or not at all, and the install sends again by itself: the cloud runtime keeps the files' bytes first and writes the project, the wizard, its workspace, the version and the logo in one transaction, so an object store that fails in the middle leaves nothing half done; the install plans another try after a minute, then twice as long each time up to an hour, when the cloud was out of reach or answered with an error of its own, and the share dialog says when; refusals stay with the person; a first sync that stops at an unreachable cloud marks the remaining wizards for the retry too; the public link is set on every sync; the runtime asks GitHub for a newer release once an hour instead of every six
+
 ## [0.2.3] - 2026-10-05
 - ADDED With an account signed in, what a local install publishes also runs in the cloud: the published version and its files go to the account's cloud runtime under the ids they have here, which shows the project without editing and makes the link; Settings → Konto signs in or creates an account with an invitation code and shows the credits and when they end; the share dialog says what a wizard lacks in the cloud; a team without building rights changes nothing on the server, and what visitors send is capped in size
 - ADDED Inside the mobile app the runner reads in the system's font, like the app's own screens; headings keep the brand's
