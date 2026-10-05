@@ -18,6 +18,7 @@ import { syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
+import { onRestart } from "./update.js";
 
 await migrateControlDb();
 if (managed) {
@@ -81,11 +82,12 @@ async function purge() {
 void purge().catch((err) => console.error("[retention]", err));
 setInterval(() => void purge().catch((err) => console.error("[retention]", err)), 3600_000).unref();
 
-async function shutdown() {
+async function shutdown(code = 0) {
   clearRunning(env.dataDir);
   server.close();
   await closeBrowser();
-  process.exit(0);
+  process.exit(code);
 }
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => shutdown());
+process.on("SIGTERM", () => shutdown());
+onRestart((code) => void shutdown(code));

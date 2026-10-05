@@ -10,6 +10,7 @@ import { InstallBanner } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { UpdateBanner } from "./UpdateBanner";
 
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
 const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
@@ -177,6 +178,7 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
 export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <UpdateBanner />
       <InstallBanner />
       <TopBar me={me} />
       <main

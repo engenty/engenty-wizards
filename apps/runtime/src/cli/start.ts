@@ -1,11 +1,12 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { styleText } from "node:util";
 import { mintLocalTicket } from "../auth/local-ticket.js";
 import { type Running, readRunning } from "../running.js";
+import { RESTART_EXIT } from "../update.js";
 import { runtimeEnv } from "./environment.js";
 import { type Layout, packageRoot, readEnvFile } from "./home.js";
 import { findOnPath } from "./machine.js";
@@ -128,9 +129,14 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   const url = appUrl || `http://localhost:${port}`;
   const child = spawn(process.execPath, [join(packageRoot, "apps/runtime/dist/index.js")], {
     cwd: paths.home,
-    env: runtimeEnv(paths, { port, url, dataDir, accessKey }, process.env, fileEnv),
+    env: {
+      ...runtimeEnv(paths, { port, url, dataDir, accessKey }, process.env, fileEnv),
+      // This command starts it again when it exits with RESTART_EXIT.
+      ENGENTY_WIZARDS_RESTARTS: "1",
+    },
     stdio: ["ignore", "inherit", "inherit"],
   });
+  let current: ChildProcess = child;
 
   let exited: number | null = null;
   const ended = new Promise<number>((done) => {
@@ -146,7 +152,7 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   });
   // Ctrl-C reaches the runtime as well (same terminal); it closes its browser and its databases.
   process.on("SIGINT", () => undefined);
-  process.on("SIGTERM", () => child.kill("SIGTERM"));
+  process.on("SIGTERM", () => current.kill("SIGTERM"));
 
   const began = Date.now();
   while (exited === null && !(await healthy(port))) {
@@ -163,7 +169,27 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   show(url, `${url}/api/local/enter?k=${accessKey}`, options.open);
   console.log(styleText("dim", "    Stop it with Ctrl-C."));
   console.log("");
-  return ended;
+  const code = await ended;
+  if (code !== RESTART_EXIT) {
+    return code;
+  }
+  // Updated: the command as it is on disk now starts the new version, in this terminal or
+  // under the login item, which keeps waiting on this process.
+  console.log(styleText("dim", "  Updated; starting the new version."));
+  const wrapper = join(paths.bin, "engenty-wizards");
+  current = existsSync(wrapper)
+    ? spawn(wrapper, ["start", "--no-open"], { stdio: "inherit" })
+    : spawn(
+        process.execPath,
+        [join(packageRoot, "bin/engenty-wizards.mjs"), "start", "--no-open"],
+        {
+          stdio: "inherit",
+        },
+      );
+  return new Promise<number>((done) => {
+    current.on("error", () => done(1));
+    current.on("exit", (exit) => done(exit ?? 0));
+  });
 }
 
 /** `engenty-wizards open`: lets the browser into the runtime that runs. */

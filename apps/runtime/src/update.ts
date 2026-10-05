@@ -9,6 +9,15 @@ const RELEASES_URL =
 const FOUND_FOR_MS = 6 * 60 * 60_000;
 const MISSED_FOR_MS = 60 * 60_000;
 
+/**
+ * The exit code with which the runtime asks the command that started it for a restart: after an
+ * update, that command starts the new version (cli/start.ts).
+ */
+export const RESTART_EXIT = 75;
+
+/** Set by the command that starts the runtime when it starts it again on RESTART_EXIT. */
+const RESTARTS = "ENGENTY_WIZARDS_RESTARTS";
+
 /** How this copy got here: only an install made by wizards.sh can update itself. */
 export type InstallKind = "script" | "checkout" | "npm";
 
@@ -22,11 +31,23 @@ export interface UpdateStatus {
   url: string | null;
   /** The studio can run the update itself. */
   canApply: boolean;
+  /** After an update the runtime starts the new version by itself; else the person restarts it. */
+  restarts: boolean;
   applying: "idle" | "running" | "done" | "failed";
 }
 
 let cached: { at: number; latest: string | null; url: string | null } | null = null;
 let applying: UpdateStatus["applying"] = "idle";
+let restart: ((code: number) => void) | null = null;
+
+/** How the runtime stops cleanly; the update calls it with RESTART_EXIT once it is installed. */
+export function onRestart(shutdown: (code: number) => void) {
+  restart = shutdown;
+}
+
+function restarts(): boolean {
+  return process.env[RESTARTS] === "1" && restart !== null;
+}
 
 /** `0.2.0` or `v0.2.0` as numbers; anything after a `-` (a pre-release) is ignored. */
 function numbers(version: string): number[] {
@@ -91,14 +112,15 @@ export async function updateStatus(): Promise<UpdateStatus> {
     kind,
     url,
     canApply: kind === "script",
+    restarts: restarts(),
     applying,
   };
 }
 
 /**
- * Runs `engenty-wizards update` in the background, the same steps as in a terminal: the installer
- * again, then the Mac app. The runtime that answers keeps running the old version until it is
- * restarted. The output goes to logs/update.log.
+ * Runs `engenty-wizards update` in the background, the same steps as in a terminal. Afterwards a
+ * runtime started by the command restarts into the new version; any other keeps running the old
+ * one until somebody restarts it. The output goes to logs/update.log.
  */
 export function applyUpdate(): UpdateStatus["applying"] {
   if (applying === "running" || installKind() !== "script") {
@@ -117,6 +139,10 @@ export function applyUpdate(): UpdateStatus["applying"] {
   });
   child.on("exit", (code) => {
     applying = code === 0 ? "done" : "failed";
+    if (applying === "done" && restarts()) {
+      // A moment for the page to hear that it is done.
+      setTimeout(() => restart?.(RESTART_EXIT), 1500);
+    }
   });
   return applying;
 }
