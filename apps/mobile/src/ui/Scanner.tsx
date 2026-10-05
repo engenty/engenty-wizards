@@ -4,7 +4,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../i18n";
-import { APP_THEME, FONT } from "../theme/theme";
+import { APP_THEME } from "../theme/theme";
 import { Button, ICON, Icon, IconButton } from "./ui";
 
 /** Every common barcode: a wizard's scan field takes article numbers and parcel codes too. */
@@ -79,18 +79,14 @@ export function Scanner({
         />
       ) : null}
       <View style={[styles.top, { paddingTop: insets.top + 6 }]}>
-        <IconButton label={t("scan.close")} onPress={onClose} background="rgba(0,0,0,0.35)">
+        <IconButton label={t("scan.close")} onPress={onClose}>
           <Icon d={ICON.close} color={ink} />
         </IconButton>
         <View style={{ flex: 1, alignItems: "center" }}>
           {top ?? <Text style={styles.title}>{title}</Text>}
         </View>
-        <IconButton
-          label={t("scan.light")}
-          onPress={() => setTorch((v) => !v)}
-          background={torch ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.35)"}
-        >
-          <Icon d={ICON.flash} color={torch ? "#000" : ink} size={20} />
+        <IconButton label={t("scan.light")} onPress={() => setTorch((v) => !v)}>
+          <Icon d={ICON.flash} color={torch ? APP_THEME.ember : ink} size={20} />
         </IconButton>
       </View>
       {permission?.granted ? (
@@ -129,7 +125,7 @@ const styles = StyleSheet.create({
     gap: 8,
     zIndex: 2,
   },
-  title: { color: "#fff", fontFamily: FONT.display, fontSize: 18 },
+  title: { color: "#fff", fontSize: 17, fontWeight: "600" },
   frameWrap: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
   frame: { width: "68%", aspectRatio: 1, borderWidth: 3, borderRadius: 28 },
   ask: {
@@ -142,7 +138,6 @@ const styles = StyleSheet.create({
   bottom: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 32 },
   hint: {
     color: "rgba(255,255,255,0.85)",
-    fontFamily: FONT.ui,
     fontSize: 15,
     lineHeight: 21,
     textAlign: "center",

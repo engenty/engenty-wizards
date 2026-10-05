@@ -1,6 +1,8 @@
-import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold } from "@expo-google-fonts/geist";
-import { GeistMono_400Regular } from "@expo-google-fonts/geist-mono";
-import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from "@expo-google-fonts/space-grotesk";
+import {
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
@@ -8,6 +10,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { AppState } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getRunById, readSetting } from "../data/db";
 import { syncOpenRuns, syncRun } from "../data/sync";
@@ -18,10 +21,7 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fonts] = useFonts({
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    GeistMono_400Regular,
+    SpaceGrotesk_500Medium,
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });
@@ -70,26 +70,37 @@ export default function RootLayout() {
     return null;
   }
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: APP_THEME.stage },
-          animation: "slide_from_right",
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="scan"
-          options={{ presentation: "fullScreenModal", animation: "fade" }}
-        />
-        <Stack.Screen name="add" options={{ presentation: "modal" }} />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="wizard/[id]" />
-        <Stack.Screen name="run" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="result/[id]" />
-      </Stack>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: APP_THEME.stage },
+            animation: "slide_from_right",
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="scan"
+            options={{ presentation: "fullScreenModal", animation: "fade" }}
+          />
+          <Stack.Screen
+            name="add"
+            options={{
+              presentation: "formSheet",
+              sheetGrabberVisible: true,
+              sheetAllowedDetents: [0.94],
+              sheetCornerRadius: 38,
+              contentStyle: { backgroundColor: APP_THEME.deep },
+            }}
+          />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="wizard/[id]" />
+          <Stack.Screen name="run" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="result/[id]" />
+        </Stack>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

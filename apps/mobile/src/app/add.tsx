@@ -1,22 +1,22 @@
 import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "../data/db";
+import { normalizeCode, parseInput } from "../data/links";
 import { FindFailed, type Found, findWizard, idRuntime } from "../data/wizards";
 import { t, useLang } from "../i18n";
 import { APP_THEME, FONT } from "../theme/theme";
 import { AddSwitch, FoundCard } from "../ui/AddParts";
-import { Button, ICON, Icon, IconButton, Label, Screen } from "../ui/ui";
+import { Glass, ICON, Icon, IconButton, text } from "../ui/ui";
 
 const ERROR_TEXT = {
   invalid: "add.invalid",
@@ -25,27 +25,109 @@ const ERROR_TEXT = {
   offline: "common.offline",
 } as const;
 
+const LENGTH = 8;
+const ALLOWED = /[^2-9A-HJ-NP-Z]/g;
+
+/** Eight boxes over one hidden field, like a one-time code: four, a dash, four. */
+function CodeBoxes({
+  value,
+  onChange,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  autoFocus: boolean;
+}) {
+  const theme = APP_THEME;
+  const input = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(autoFocus);
+  const boxes = Array.from({ length: LENGTH }, (_, i) => {
+    const current = focused && i === Math.min(value.length, LENGTH - 1);
+    return (
+      <View
+        key={i}
+        style={[
+          styles.box,
+          { borderColor: current ? theme.ember : "rgba(255,255,255,0.18)" },
+          current ? { borderWidth: 2 } : null,
+        ]}
+      >
+        <Text style={[styles.boxChar, { color: theme.ink }]}>{value[i] ?? ""}</Text>
+      </View>
+    );
+  });
+  return (
+    <Pressable onPress={() => input.current?.focus()} accessibilityLabel={t("add.idLabel")}>
+      <View style={styles.boxes}>
+        {boxes.slice(0, 4)}
+        <View style={[styles.dash, { backgroundColor: theme.ink4 }]} />
+        {boxes.slice(4)}
+      </View>
+      <TextInput
+        ref={input}
+        value={value}
+        onChangeText={(v) => {
+          // A link pasted into the boxes is taken as a link.
+          if (/[/.:]/.test(v)) {
+            onChange(v);
+            return;
+          }
+          onChange(normalizeCode(v).replace(ALLOWED, "").slice(0, LENGTH));
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoFocus={autoFocus}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        autoComplete="off"
+        textContentType="oneTimeCode"
+        keyboardAppearance="dark"
+        returnKeyType="search"
+        caretHidden
+        style={styles.hidden}
+      />
+    </Pressable>
+  );
+}
+
+/** Add a wizard: a sheet with the ID field first; the scanner is the switch beside it. */
 export default function AddScreen() {
   useLang();
   const theme = APP_THEME;
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ input?: string }>();
-  const [input, setInput] = useState(params.input ?? "");
+  const [code, setCode] = useState("");
+  const [link, setLink] = useState<string | null>(params.input ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [found, setFound] = useState<Found | null>(null);
   const runtime = useQuery(idRuntime);
 
-  const find = async (text = input) => {
+  const find = async (input: string) => {
     setBusy(true);
     setError(null);
     setFound(null);
     try {
-      setFound(await findWizard(text));
+      setFound(await findWizard(input));
     } catch (err) {
       setError(t(ERROR_TEXT[err instanceof FindFailed ? err.reason : "offline"]));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const take = (v: string) => {
+    if (parseInput(v)?.kind === "wizard" || /[/.:]/.test(v)) {
+      setLink(v);
+      setCode("");
+      void find(v);
+      return;
+    }
+    setLink(null);
+    setCode(v);
+    setError(null);
+    setFound(null);
+    if (v.length === LENGTH) {
+      void find(v);
     }
   };
 
@@ -57,91 +139,93 @@ export default function AddScreen() {
   }, []);
 
   return (
-    <Screen theme={theme}>
-      <View style={[styles.top, { paddingTop: Platform.OS === "ios" ? 12 : insets.top + 6 }]}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.deep }}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, gap: 20 }}
+    >
+      {/* In a form sheet the header scrolls with the content: a separate bar lays under it. */}
+      <View style={styles.top}>
         <IconButton label={t("scan.close")} onPress={() => router.back()}>
-          <Icon d={ICON.close} color={theme.ink} />
+          <Icon d={ICON.close} color={theme.ink} strokeWidth={2.4} />
         </IconButton>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <AddSwitch active="id" />
-        </View>
+        <Text style={[styles.title, { color: theme.ink }]}>{t("add.title")}</Text>
         <View style={{ width: 44 }} />
       </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 16, gap: 14 }}
+      <View style={{ alignItems: "center" }}>
+        <AddSwitch active="id" />
+      </View>
+      <View style={{ alignItems: "center", gap: 4, marginTop: 4 }}>
+        <Text style={[styles.heading, { color: theme.ink }]}>{t("add.heading")}</Text>
+        <Text style={[text.sub, { color: theme.ink3, textAlign: "center" }]}>
+          {t("add.idHint")}
+        </Text>
+      </View>
+      {link ? (
+        <Glass style={styles.link}>
+          <Icon d={ICON.link} size={18} color={theme.ink3} />
+          <Text numberOfLines={1} style={[text.sub, { flex: 1, color: theme.ink }]}>
+            {link}
+          </Text>
+          <Pressable onPress={() => take("")} hitSlop={8} accessibilityLabel={t("common.cancel")}>
+            <Icon d={ICON.close} size={16} color={theme.ink3} />
+          </Pressable>
+        </Glass>
+      ) : (
+        <CodeBoxes value={code} onChange={take} autoFocus={!params.input} />
+      )}
+      {busy ? <ActivityIndicator color={theme.ink3} /> : null}
+      {error ? (
+        <Text style={[text.sub, { color: theme.rose, textAlign: "center" }]}>{error}</Text>
+      ) : null}
+      {found ? <FoundCard found={found} /> : null}
+      <View style={styles.foot}>
+        <Text style={[text.sub, { color: theme.ink3 }]}>
+          {runtime ? t("add.askedAt", { host: new URL(runtime).host }) : ""}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={async () => {
+            const pasted = await Clipboard.getStringAsync();
+            if (pasted) {
+              take(pasted.trim());
+            }
+          }}
         >
-          <Text style={[styles.label, { color: theme.ink2 }]}>{t("add.idLabel")}</Text>
-          <TextInput
-            value={input}
-            onChangeText={(v) => {
-              setInput(v);
-              setError(null);
-            }}
-            onSubmitEditing={() => void find()}
-            autoFocus={!params.input}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            returnKeyType="search"
-            placeholder="K7WM 4TQ9"
-            placeholderTextColor={theme.ink4}
-            style={[
-              styles.input,
-              { backgroundColor: theme.card, color: theme.ink, borderColor: theme.line },
-            ]}
-          />
-          <Label theme={theme}>{t("add.idHint")}</Label>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Button
-              theme={theme}
-              kind="secondary"
-              label={t("add.paste")}
-              icon={ICON.clipboard}
-              onPress={async () => {
-                const text = await Clipboard.getStringAsync();
-                if (text) {
-                  setInput(text);
-                  void find(text);
-                }
-              }}
-              style={{ flex: 1 }}
-            />
-            <Button
-              theme={theme}
-              label={t("add.find")}
-              busy={busy}
-              disabled={!input.trim()}
-              onPress={() => void find()}
-              style={{ flex: 1 }}
-            />
-          </View>
-          {runtime ? (
-            <Label theme={theme}>{t("add.askedAt", { host: new URL(runtime).host })}</Label>
-          ) : null}
-          {error ? (
-            <Text style={{ color: theme.rose, fontFamily: FONT.ui, fontSize: 15 }}>{error}</Text>
-          ) : null}
-          {found ? <FoundCard found={found} /> : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Screen>
+          <Text style={[text.sub, { color: theme.ember, fontWeight: "600" }]}>
+            {t("add.paste")}
+          </Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  top: { paddingHorizontal: 8, flexDirection: "row", alignItems: "center" },
-  label: { fontFamily: FONT.uiMedium, fontSize: 15 },
-  input: {
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    fontFamily: FONT.mono,
-    fontSize: 26,
-    letterSpacing: 3,
+  top: { paddingTop: 14, flexDirection: "row", alignItems: "center" },
+  title: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "600" },
+  heading: { fontSize: 22, lineHeight: 28, fontWeight: "700" },
+  boxes: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
+  box: {
+    width: 38,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255,255,255,0.09)",
+    alignItems: "center",
+    justifyContent: "center",
   },
+  boxChar: { fontFamily: FONT.mono, fontSize: 24, fontWeight: "600" },
+  dash: { width: 10, height: 3, borderRadius: 2 },
+  hidden: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  link: {
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  foot: { flexDirection: "row", justifyContent: "space-between", marginHorizontal: 4 },
 });

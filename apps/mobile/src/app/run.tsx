@@ -10,7 +10,7 @@ import { syncRun } from "../data/sync";
 import { visitorId } from "../data/visitor";
 import { lang, t, useLang } from "../i18n";
 import { registerPush } from "../notify";
-import { FONT, wizardTheme } from "../theme/theme";
+import { wizardTheme } from "../theme/theme";
 import { Scanner } from "../ui/Scanner";
 import { Button, ICON, Icon, IconButton, Screen, TopBar } from "../ui/ui";
 
@@ -168,14 +168,12 @@ export default function RunScreen() {
       />
       {failed ? (
         <View style={styles.failed}>
-          <Text
-            style={{ color: theme.ink2, fontFamily: FONT.ui, fontSize: 15, textAlign: "center" }}
-          >
+          <Text style={{ color: theme.ink2, fontSize: 15, textAlign: "center" }}>
             {t("run.offline")}
           </Text>
           <Button
             theme={theme}
-            kind="secondary"
+            kind="glass"
             label={t("run.retry")}
             onPress={() => {
               setFailed(false);

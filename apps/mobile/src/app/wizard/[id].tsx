@@ -1,18 +1,33 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getWizardById, listResults, openRunOf, saveWizard, useQuery } from "../../data/db";
-import { hostLabel } from "../../data/links";
+import { hostLabel, wizardUrl } from "../../data/links";
 import { getWizard } from "../../data/runtime";
 import { infoOf } from "../../data/wizards";
 import { Engenty } from "../../engenty/Engenty";
 import { formatTime, t, useLang } from "../../i18n";
 import { FONT, wizardTheme } from "../../theme/theme";
+import { shareLink } from "../../ui/open-file";
 import { ResultRow } from "../../ui/ResultRow";
-import { Button, goBack, ICON, Label, Screen, SectionTitle, TopBar } from "../../ui/ui";
+import {
+  Button,
+  Group,
+  ICON,
+  Icon,
+  IconButton,
+  Row,
+  Screen,
+  SectionTitle,
+  TopBar,
+  text,
+} from "../../ui/ui";
 
+/** One wizard: what it is, its results on the phone, and Start at the bottom, in reach. */
 export default function WizardScreen() {
   useLang();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const wizardId = Number(id);
   const wizard = useQuery(() => getWizardById(wizardId), [wizardId]);
@@ -35,76 +50,100 @@ export default function WizardScreen() {
   if (!wizard) {
     return <Screen theme={theme}>{null}</Screen>;
   }
-  const host = hostLabel(wizard.runtime);
+  const info = (label: string, value: string) => (
+    <Row key={label}>
+      <Text style={[text.body, { flex: 1, color: theme.ink }]}>{label}</Text>
+      <Text style={[text.body, { color: theme.ink3 }]}>{value}</Text>
+    </Row>
+  );
   return (
     <Screen theme={theme}>
-      <TopBar theme={theme} onBack={goBack} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, gap: 28 }}>
-        <View style={{ alignItems: "center", gap: 10 }}>
-          <Engenty kind={wizard.avatar} size={180} />
+      <TopBar
+        theme={theme}
+        onBack={() => router.back()}
+        right={
+          <IconButton
+            label={t("result.shareLink")}
+            onPress={() => void shareLink(wizardUrl(wizard.runtime, wizard.token), wizard.title)}
+          >
+            <Icon d={ICON.share} color={theme.ink} size={22} strokeWidth={2.1} />
+          </IconButton>
+        }
+      />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 170, gap: 24 }}>
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <Engenty kind={wizard.avatar} size={150} />
           <Text style={[styles.title, { color: theme.ink }]}>{wizard.title}</Text>
-          {wizard.brand.name || host ? (
-            <Label theme={theme}>
-              {[wizard.brand.name ? t("start.by", { name: wizard.brand.name }) : null, host]
-                .filter(Boolean)
-                .join(" · ")}
-            </Label>
+          {wizard.brand.name ? (
+            <Text style={[text.sub, { color: theme.ink3 }]}>
+              {t("start.by", { name: wizard.brand.name })}
+            </Text>
           ) : null}
           {wizard.description ? (
-            <Text style={[styles.description, { color: theme.ink2 }]}>{wizard.description}</Text>
+            <Text style={[text.body, styles.description, { color: theme.ink2 }]}>
+              {wizard.description}
+            </Text>
           ) : null}
-          {wizard.available ? (
-            <View style={{ alignSelf: "stretch", gap: 10, marginTop: 18 }}>
-              <Button
-                theme={theme}
-                label={t("start.start")}
-                icon={ICON.arrow}
-                onPress={() =>
-                  router.push({
-                    pathname: "/run",
-                    params: { wizard: String(wizard.id), start: "1" },
-                  })
-                }
-              />
-              {open ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/run",
-                      params: { wizard: String(wizard.id), runId: open.id },
-                    })
-                  }
-                  style={{ alignItems: "center", paddingVertical: 12 }}
-                >
-                  <Text style={{ color: theme.ink2, fontFamily: FONT.uiMedium, fontSize: 15 }}>
-                    {t("start.resume", { time: formatTime(open.startedAt) })}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          ) : (
-            <Text style={[styles.description, { color: theme.ink2, marginTop: 18 }]}>
+          {wizard.available ? null : (
+            <Text style={[text.body, styles.description, { color: theme.ink2 }]}>
               {t("add.unavailable")}
             </Text>
           )}
         </View>
-        <View style={{ gap: 8 }}>
-          <SectionTitle theme={theme}>{t("start.results")}</SectionTitle>
-          {results?.length ? (
-            results.map((run) => <ResultRow key={run.id} run={run} theme={theme} />)
-          ) : (
-            <Label theme={theme} style={{ marginHorizontal: 4 }}>
-              {t("start.noResults")}
-            </Label>
-          )}
-        </View>
+        <Group theme={theme}>
+          {[
+            info(t("start.runsOn"), hostLabel(wizard.runtime) ?? "engenty.ai"),
+            info(t("start.results2"), t("start.onPhone", { n: results?.length ?? 0 })),
+          ]}
+        </Group>
+        {results?.length ? (
+          <View style={{ gap: 8 }}>
+            <SectionTitle theme={theme}>{t("start.results")}</SectionTitle>
+            <Group theme={theme} inset={70}>
+              {results.map((run) => (
+                <ResultRow key={run.id} run={run} theme={theme} />
+              ))}
+            </Group>
+          </View>
+        ) : null}
       </ScrollView>
+      {wizard.available ? (
+        <View style={[styles.bar, { bottom: Math.max(insets.bottom, 16) }]}>
+          {open ? (
+            <Button
+              theme={theme}
+              kind="glass"
+              label={t("start.resume", { time: formatTime(open.startedAt) })}
+              onPress={() =>
+                router.push({
+                  pathname: "/run",
+                  params: { wizard: String(wizard.id), runId: open.id },
+                })
+              }
+            />
+          ) : null}
+          <Button
+            theme={theme}
+            label={open ? t("start.new") : t("start.start")}
+            onPress={() =>
+              router.push({ pathname: "/run", params: { wizard: String(wizard.id), start: "1" } })
+            }
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontFamily: FONT.display, fontSize: 30, lineHeight: 34, textAlign: "center" },
-  description: { fontFamily: FONT.ui, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  title: {
+    fontFamily: FONT.display,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.6,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  description: { textAlign: "center", marginTop: 10, marginHorizontal: 8, lineHeight: 23 },
+  bar: { position: "absolute", left: 16, right: 16, gap: 10 },
 });

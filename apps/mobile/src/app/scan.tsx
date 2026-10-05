@@ -19,7 +19,7 @@ export default function ScanScreen() {
         qrOnly
         title={t("scan.title")}
         hint={t("scan.hint")}
-        top={<AddSwitch active="scan" />}
+        top={<AddSwitch active="scan" onCamera />}
         onClose={() => router.back()}
         onCode={async (text) => {
           const parsed = parseInput(text);

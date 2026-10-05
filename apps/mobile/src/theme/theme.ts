@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { ENGENTY_FILL_OKLCH, type EngentyKind } from "../engenty/shapes";
 import { oklchToHex, parseOklch } from "./oklch";
 
@@ -64,11 +65,13 @@ export function wizardTheme(kind: string | null | undefined): Theme {
   return theme;
 }
 
+/**
+ * The brand font (Space Grotesk) only for the wordmark and wizard titles; everything else is the
+ * system's (SF on iOS, Roboto on Android), as native apps read.
+ */
 export const FONT = {
   display: "SpaceGrotesk_600SemiBold",
+  displayMedium: "SpaceGrotesk_500Medium",
   displayBold: "SpaceGrotesk_700Bold",
-  ui: "Geist_400Regular",
-  uiMedium: "Geist_500Medium",
-  uiSemi: "Geist_600SemiBold",
-  mono: "GeistMono_400Regular",
+  mono: Platform.select({ ios: "Menlo", default: "monospace" }),
 } as const;

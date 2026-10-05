@@ -1,8 +1,9 @@
 import Constants from "expo-constants";
 import { useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
-  Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,43 +17,31 @@ import { deleteAllFiles } from "../data/results";
 import { idRuntime } from "../data/wizards";
 import { formatBytes, type Lang, lang, setLang, t, useLang } from "../i18n";
 import { notificationsWanted, requestNotifyPermission } from "../notify";
-import { APP_THEME, FONT } from "../theme/theme";
-import { goBack, Label, Screen, SectionTitle, TopBar } from "../ui/ui";
+import { APP_THEME } from "../theme/theme";
+import {
+  Chevron,
+  Footer,
+  GLYPH,
+  Glyph,
+  Group,
+  GroupTitle,
+  goBack,
+  Row,
+  Screen,
+  TopBar,
+  text,
+} from "../ui/ui";
 
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (v: T) => void;
-}) {
-  const theme = APP_THEME;
+const LANGS: { value: Lang; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "de", label: "Deutsch" },
+];
+
+/** A setting's icon on its coloured tile, as in the system's Settings. */
+function Tile({ color, glyph }: { color: string; glyph: string }) {
   return (
-    <View style={[styles.segmented, { backgroundColor: theme.card }]}>
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <Pressable
-            key={o.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            onPress={() => onChange(o.value)}
-            style={[styles.segment, on ? { backgroundColor: theme.input } : null]}
-          >
-            <Text
-              style={{
-                color: on ? theme.ink : theme.ink2,
-                fontFamily: on ? FONT.uiSemi : FONT.uiMedium,
-                fontSize: 15,
-              }}
-            >
-              {o.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={[styles.tile, { backgroundColor: color }]}>
+      <Glyph d={glyph} size={18} color="#fff" />
     </View>
   );
 }
@@ -64,6 +53,27 @@ export default function SettingsScreen() {
   const notify = useQuery(notificationsWanted);
   const runtime = useQuery(idRuntime);
   const [editing, setEditing] = useState<string | null>(null);
+
+  const pickLanguage = () => {
+    const choose = (v: Lang) => {
+      setLang(v);
+      void writeSetting("lang", v);
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...LANGS.map((l) => l.label), t("common.cancel")],
+          cancelButtonIndex: LANGS.length,
+        },
+        (i) => i < LANGS.length && choose(LANGS[i].value),
+      );
+    } else {
+      Alert.alert(t("settings.language"), undefined, [
+        ...LANGS.map((l) => ({ text: l.label, onPress: () => choose(l.value) })),
+        { text: t("common.cancel"), style: "cancel" as const },
+      ]);
+    }
+  };
 
   const saveRuntime = async () => {
     if (editing === null) {
@@ -85,51 +95,58 @@ export default function SettingsScreen() {
   return (
     <Screen theme={theme}>
       <TopBar theme={theme} title={t("settings.title")} onBack={goBack} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 18, gap: 20 }}>
-        <View style={styles.section}>
-          <SectionTitle theme={theme}>{t("settings.language")}</SectionTitle>
-          <Segmented<Lang>
-            value={lang}
-            options={[
-              { value: "en", label: "English" },
-              { value: "de", label: "Deutsch" },
-            ]}
-            onChange={(v) => {
-              setLang(v);
-              void writeSetting("lang", v);
-            }}
-          />
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 48,
+          gap: 28,
+        }}
+      >
+        <View>
+          <Group theme={theme} inset={60}>
+            <Row onPress={pickLanguage}>
+              <Tile color="#3a7bf6" glyph={GLYPH.globe} />
+              <Text style={[text.body, { flex: 1, color: theme.ink }]}>
+                {t("settings.language")}
+              </Text>
+              <Text style={[text.body, { color: theme.ink3 }]}>
+                {LANGS.find((l) => l.value === lang)?.label}
+              </Text>
+              <Chevron theme={theme} />
+            </Row>
+            <Row>
+              <Tile color="#e5484d" glyph={GLYPH.bell} />
+              <Text style={[text.body, { flex: 1, color: theme.ink }]}>
+                {t("settings.notifications")}
+              </Text>
+              {/* iOS 26 draws its switch wider than the frame React Native gives it. */}
+              <View style={styles.switch}>
+                <Switch
+                  value={notify ?? true}
+                  trackColor={{ true: theme.ember, false: theme.paper3 }}
+                  onValueChange={async (on) => {
+                    if (on && !(await requestNotifyPermission())) {
+                      return;
+                    }
+                    await writeSetting("notify", on);
+                  }}
+                />
+              </View>
+            </Row>
+          </Group>
+          <Footer theme={theme}>{t("settings.notifyFoot")}</Footer>
         </View>
-        <View style={styles.section}>
-          <SectionTitle theme={theme}>{t("settings.notifications")}</SectionTitle>
-          <View style={[styles.row, { backgroundColor: theme.card }]}>
-            <Text style={[styles.text, { flex: 1, color: theme.ink }]}>
-              {t("settings.notifyLabel")}
-            </Text>
-            <Switch
-              value={notify ?? true}
-              trackColor={{ true: theme.ember, false: theme.paper3 }}
-              thumbColor="#fff"
-              onValueChange={async (on) => {
-                if (on && !(await requestNotifyPermission())) {
-                  return;
-                }
-                await writeSetting("notify", on);
-              }}
-            />
-          </View>
-        </View>
-        <View style={styles.section}>
-          <SectionTitle theme={theme}>{t("settings.storage")}</SectionTitle>
-          <View style={[styles.group, { backgroundColor: theme.card }]}>
-            <View style={styles.line}>
-              <Text style={[styles.text, { color: theme.ink }]}>{t("settings.used")}</Text>
-              <Text style={[styles.text, { color: theme.ink3 }]}>{formatBytes(used ?? 0)}</Text>
-            </View>
-            <View style={{ height: 1, marginHorizontal: 16, backgroundColor: theme.line }} />
-            <Pressable
-              accessibilityRole="button"
-              style={styles.line}
+        <View style={{ gap: 7 }}>
+          <GroupTitle theme={theme}>{t("settings.storage")}</GroupTitle>
+          <Group theme={theme} inset={60}>
+            <Row>
+              <Tile color="#6b7280" glyph={GLYPH.disk} />
+              <Text style={[text.body, { flex: 1, color: theme.ink }]}>{t("settings.used")}</Text>
+              <Text style={[text.body, { color: theme.ink3 }]}>{formatBytes(used ?? 0)}</Text>
+            </Row>
+            <Row
               onPress={() =>
                 Alert.alert(t("settings.deleteAll"), t("settings.deleteAllAsk"), [
                   { text: t("common.cancel"), style: "cancel" },
@@ -144,68 +161,48 @@ export default function SettingsScreen() {
                 ])
               }
             >
-              <Text style={[styles.text, { color: theme.rose, fontFamily: FONT.uiMedium }]}>
-                {t("settings.deleteAll")}
-              </Text>
-            </Pressable>
-          </View>
+              <Text style={[text.body, { color: "#ff6961" }]}>{t("settings.deleteAll")}</Text>
+            </Row>
+          </Group>
         </View>
-        <View style={styles.section}>
-          <SectionTitle theme={theme}>{t("settings.ids")}</SectionTitle>
-          <View style={[styles.row, { backgroundColor: theme.card }]}>
-            <Text style={[styles.text, { color: theme.ink }]}>{t("settings.askedAt")}</Text>
-            <TextInput
-              value={editing ?? (runtime ? new URL(runtime).host : "")}
-              onFocus={() => setEditing(runtime ?? DEFAULT_RUNTIME)}
-              onChangeText={setEditing}
-              onSubmitEditing={() => void saveRuntime()}
-              onBlur={() => void saveRuntime()}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              style={[styles.text, styles.runtimeInput, { color: theme.ink3 }]}
-            />
-          </View>
-          <Label theme={theme} style={{ marginHorizontal: 4 }}>
-            {t("settings.runtimeHint")}
-          </Label>
+        <View style={{ gap: 7 }}>
+          <GroupTitle theme={theme}>{t("settings.ids")}</GroupTitle>
+          <Group theme={theme} inset={60}>
+            <Row>
+              <Tile color="#0e9aa7" glyph={GLYPH.server} />
+              <Text style={[text.body, { color: theme.ink }]}>{t("settings.askedAt")}</Text>
+              <TextInput
+                value={editing ?? (runtime ? new URL(runtime).host : "")}
+                onFocus={() => setEditing(runtime ?? DEFAULT_RUNTIME)}
+                onChangeText={setEditing}
+                onSubmitEditing={() => void saveRuntime()}
+                onBlur={() => void saveRuntime()}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                keyboardAppearance="dark"
+                style={[text.body, styles.runtime, { color: theme.ink3 }]}
+              />
+            </Row>
+          </Group>
+          <Footer theme={theme}>{t("settings.runtimeHint")}</Footer>
         </View>
-        <Label theme={theme} style={{ textAlign: "center", marginTop: 6 }}>
-          {t("settings.version", { version: Constants.expoConfig?.version ?? "" })}
-        </Label>
+        <Group theme={theme} inset={60}>
+          <Row>
+            <Tile color="#6b7280" glyph={GLYPH.info} />
+            <Text style={[text.body, { flex: 1, color: theme.ink }]}>{t("settings.about")}</Text>
+            <Text style={[text.body, { color: theme.ink3 }]}>
+              engenty wizards {Constants.expoConfig?.version ?? ""}
+            </Text>
+          </Row>
+        </Group>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  segmented: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 14 },
-  segment: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  row: {
-    minHeight: 56,
-    borderRadius: 14,
-    paddingVertical: 8,
-    paddingLeft: 16,
-    paddingRight: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  group: { borderRadius: 14 },
-  line: {
-    height: 48,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  text: { fontFamily: FONT.ui, fontSize: 15, lineHeight: 21 },
-  runtimeInput: { flex: 1, textAlign: "right", paddingVertical: 8 },
+  tile: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  runtime: { flex: 1, textAlign: "right", paddingVertical: 8 },
+  switch: { height: 52, justifyContent: "center", alignItems: "flex-end", minWidth: 64 },
 });

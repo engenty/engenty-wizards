@@ -2,15 +2,18 @@ import { Tabs } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t, useLang } from "../../i18n";
-import { APP_THEME, FONT } from "../../theme/theme";
-import { ICON, Icon } from "../../ui/ui";
+import { APP_THEME } from "../../theme/theme";
+import { GLYPH, Glass, Glyph } from "../../ui/ui";
 
 const TABS = [
-  { name: "index", label: () => t("tabs.wizards"), icon: ICON.grid },
-  { name: "results", label: () => t("tabs.results"), icon: ICON.clock },
+  { name: "index", label: () => t("tabs.wizards"), glyph: GLYPH.grid },
+  { name: "results", label: () => t("tabs.results"), glyph: GLYPH.clock },
 ] as const;
 
-/** Two tabs, Wizards and Results; scanning hides behind the Wizards screen's "+". */
+/**
+ * Two tabs, Wizards and Results, in a glass capsule that floats over the content; scanning hides
+ * behind the Wizards screen's "+".
+ */
 export default function TabsLayout() {
   useLang();
   const insets = useSafeAreaInsets();
@@ -20,40 +23,29 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: theme.stage } }}
       tabBar={({ state, navigation }) => (
         <View
-          style={[
-            styles.bar,
-            {
-              paddingBottom: Math.max(insets.bottom, 10),
-              backgroundColor: theme.deep,
-              borderTopColor: theme.card,
-            },
-          ]}
+          pointerEvents="box-none"
+          style={[styles.wrap, { bottom: Math.max(insets.bottom - 6, 12) }]}
         >
-          {TABS.map((tab, i) => {
-            const active = state.index === i;
-            const color = active ? theme.ink : theme.ink3;
-            return (
-              <Pressable
-                key={tab.name}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                onPress={() => navigation.navigate(tab.name)}
-                style={styles.tab}
-              >
-                <Icon d={tab.icon} size={22} color={color} />
-                <Text
-                  style={{
-                    color,
-                    fontSize: 12,
-                    lineHeight: 16,
-                    fontFamily: active ? FONT.uiSemi : FONT.uiMedium,
-                  }}
+          <Glass style={styles.bar}>
+            {TABS.map((tab, i) => {
+              const active = state.index === i;
+              const color = active ? theme.ink : theme.ink2;
+              return (
+                <Pressable
+                  key={tab.name}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => navigation.navigate(tab.name)}
+                  style={[styles.tab, active ? styles.active : null]}
                 >
-                  {tab.label()}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Glyph d={tab.glyph} size={24} color={color} />
+                  <Text style={{ color, fontSize: 10, fontWeight: active ? "600" : "500" }}>
+                    {tab.label()}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </Glass>
         </View>
       )}
     >
@@ -64,11 +56,15 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 8,
-    borderTopWidth: 1,
+  wrap: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  bar: { flexDirection: "row", gap: 2, padding: 4, borderRadius: 31, width: 266 },
+  tab: {
+    flex: 1,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
   },
-  tab: { width: 88, height: 48, alignItems: "center", justifyContent: "center", gap: 3 },
+  active: { backgroundColor: "rgba(255,255,255,0.16)" },
 });
