@@ -100,6 +100,13 @@ a,
   }
 }
 
+/* Inside the mobile app (`?app=1`, lib/app.ts): the system's font, as the app's own screens.
+   Headings keep the brand's display font, as wizard titles do in the app. */
+:root.in-app {
+  --f-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, system-ui, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
 ::selection {
   color: var(--ink);
   background: var(--ember-veil);

@@ -59,6 +59,11 @@ export const IN_APP =
   bridge !== null ||
   (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("app") === "1");
 
+// In the app the runner reads like the app around it: the system's font (styles/app.css).
+if (IN_APP && typeof document !== "undefined") {
+  document.documentElement.classList.add("in-app");
+}
+
 /** Whether the app around this page offers `ability`. */
 export const appCan = (ability: AppAbility): boolean => bridge?.can.includes(ability) === true;
 
