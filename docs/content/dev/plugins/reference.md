@@ -28,6 +28,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `registerMigrations(folder: string)` | [Tables](./tables.md). The folder is relative to the plugin's |
 | `on(event, listener)` | [Run events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
+| `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`. See [The server half](./server.md#asking-a-model) |
 | `onUnload(fn)` | Runs when the plugin unloads or loads again |
 
 ### `PluginTool`

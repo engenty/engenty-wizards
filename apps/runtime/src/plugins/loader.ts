@@ -8,10 +8,12 @@ import type {
   WizardsPluginFactory,
 } from "@engenty-wizards/plugin-sdk";
 import { PLUGIN_TOOL_NAME } from "@engenty-wizards/shared/definition";
+import { generateText, Output } from "ai";
 import { createJiti } from "jiti";
 import { packageRoot } from "../cli/home.js";
 import { db, onTenantOpen } from "../db/client.js";
 import { env } from "../env.js";
+import { ModelUnavailableError, textModel } from "../models.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
 import {
@@ -93,6 +95,26 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         record.listeners[event] = listeners as LoadedPlugin["listeners"][typeof event];
       },
       getTenantDb: () => db as unknown as PluginDb,
+      async generate(request) {
+        const resolved = await textModel(request.model ?? "standard").catch((err: unknown) => {
+          // Said so a route can pass it on as it is: 503 with the code `no_model`.
+          throw err instanceof ModelUnavailableError
+            ? Object.assign(err, { name: "ModelUnavailableError", status: 503, code: "no_model" })
+            : err;
+        });
+        const result = await generateText({
+          model: resolved.model,
+          system: request.system,
+          prompt: request.prompt,
+          maxOutputTokens: request.maxOutputTokens,
+          abortSignal: request.signal ?? AbortSignal.timeout(120_000),
+          ...(request.schema ? { output: Output.object({ schema: request.schema }) } : {}),
+        });
+        return {
+          text: result.text,
+          object: (request.schema ? result.output : undefined) as never,
+        };
+      },
       onUnload(dispose) {
         record.disposers.push(dispose);
       },
