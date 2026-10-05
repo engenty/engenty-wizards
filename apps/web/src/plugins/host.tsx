@@ -27,7 +27,7 @@ import type { Me } from "../lib/session";
 import * as ui from "../ui";
 
 /**
- * The studio's side of plugins (docs/plugins.md). After sign-in the studio asks the runtime
+ * The studio's side of plugins (docs/content/dev/plugins). After sign-in the studio asks the runtime
  * which plugins the tenant has, loads each one's built studio half and lets it register pages,
  * entries of the top bar and sections of the settings.
  *

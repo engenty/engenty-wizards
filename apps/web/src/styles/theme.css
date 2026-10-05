@@ -4,7 +4,7 @@
  * shadcn-ember.css and app.css.
  *
  * A plugin's studio half is built against this file by reference (scripts/build-plugin.mjs,
- * docs/plugins.md): renaming or removing a name here breaks plugins built before, without an
+ * docs/content/dev/plugins): renaming or removing a name here breaks plugins built before, without an
  * error.
  */
 @custom-variant dark (&:is(.dark *));

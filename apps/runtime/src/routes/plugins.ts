@@ -15,7 +15,7 @@ import {
 } from "../plugins/registry.js";
 
 /**
- * Plugins, as the studio sees them (docs/plugins.md). Below `/api/studio/plugins`, so every
+ * Plugins, as the studio sees them (docs/content/dev/plugins). Below `/api/studio/plugins`, so every
  * request is a signed-in person's, inside that person's tenant:
  *
  *   /                   the tenant's plugins and where their studio halves are

@@ -1,0 +1,28 @@
+{
+  "title": "User Guide",
+  "description": "Install engenty wizards, build a wizard, run and share it.",
+  "root": true,
+  "icon": "LifeBuoy",
+  "pages": [
+    "index",
+    "---Start---",
+    "install",
+    "first-start",
+    "---Wizards---",
+    "build-a-wizard",
+    "steps",
+    "test-and-share",
+    "run",
+    "---Settings---",
+    "project",
+    "connectors",
+    "models",
+    "ai-apps",
+    "plugins",
+    "---Your install---",
+    "command-line",
+    "data",
+    "server",
+    "troubleshooting"
+  ]
+}

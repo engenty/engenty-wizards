@@ -29,7 +29,7 @@ export interface Layout {
   clients: string;
   /** The `wizards` command of an install made by install.sh. */
   bin: string;
-  /** Plugins the person put there: the runtime's PLUGINS_DIR (docs/plugins.md). */
+  /** Plugins the person put there: the runtime's PLUGINS_DIR (docs/content/dev/plugins). */
   plugins: string;
 }
 

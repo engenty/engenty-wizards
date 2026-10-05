@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
  * What the studio hands a plugin's studio half: the built `client.js` the studio loads after
  * sign-in. Its default export registers pages, entries of the top bar and sections of the
  * settings. React, the router and the studio's own components come from the studio
- * (docs/plugins.md), so the page a plugin draws is part of the same app.
+ * (docs/content/dev/plugins), so the page a plugin draws is part of the same app.
  */
 
 export type StudioLang = "de" | "en";

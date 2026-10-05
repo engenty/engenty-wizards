@@ -1,0 +1,24 @@
+{
+  "title": "Plugins",
+  "defaultOpen": true,
+  "pages": [
+    "index",
+    "quick-start",
+    "layout",
+    "---Server half---",
+    "server",
+    "tools",
+    "routes",
+    "tables",
+    "events",
+    "---Studio half---",
+    "studio",
+    "styling",
+    "---Running---",
+    "reloading",
+    "shipping",
+    "---Reference---",
+    "reference",
+    "examples"
+  ]
+}

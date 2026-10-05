@@ -26,7 +26,7 @@ import {
 } from "./registry.js";
 
 /**
- * Loading plugins (docs/plugins.md). A plugin's server half is TypeScript or JavaScript read
+ * Loading plugins (docs/content/dev/plugins). A plugin's server half is TypeScript or JavaScript read
  * from its file as it is: no build step, and a reload reads the files again. What a plugin
  * imports of the runtime's own packages comes from the runtime's copies, wherever the plugin's
  * file lies.

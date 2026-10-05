@@ -3,7 +3,7 @@ import type { z } from "zod";
 
 /**
  * What the runtime hands a plugin's server half. A plugin is a file or a folder the runtime finds
- * at start (docs/plugins.md); its default export is a factory that registers what it adds. The
+ * at start (docs/content/dev/plugins); its default export is a factory that registers what it adds. The
  * runtime remembers every registration under the plugin's id and takes it back when the plugin
  * unloads or reloads.
  */

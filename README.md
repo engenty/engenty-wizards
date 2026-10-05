@@ -178,7 +178,10 @@ Development server, checks, how it is built, the managed mode:
 [docs/development.md](docs/development.md).
 
 Plugins add tools for steps, routes with their own tables and pages in the studio, without
-changing the runtime: [docs/plugins.md](docs/plugins.md).
+changing the runtime: [docs/content/dev/plugins](docs/content/dev/plugins/index.md).
+
+The documentation — a user guide and the developer docs — is in [docs/content](docs/content)
+and is a site of its own: `pnpm dev:docs`.
 
 ## License
 

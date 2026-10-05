@@ -23,6 +23,8 @@ const OUT_CHANGELOG = join(OUT_DIR, "changelog.json");
 const OUT_CREDITS = join(OUT_DIR, "oss-credits.json");
 /** The workspace's own packages: no credit to give. */
 const OWN_SCOPE = "@engenty-wizards/";
+/** Workspaces that are not part of the app people run: the docs site. */
+const NOT_THE_APP = new Set(["apps/docs"]);
 
 const args = new Set(process.argv.slice(2));
 const writeChangelog = !args.has("--credits");
@@ -63,7 +65,7 @@ function writeSlimChangelog() {
   console.log(`✔ ${relative(root, OUT_CHANGELOG)} (${slim.length} release(s))`);
 }
 
-/** The package.json of the root and of every workspace under apps/ and packages/. */
+/** The package.json of the root and of every workspace under apps/ and packages/ the app is made of. */
 function workspacePackageJsonPaths() {
   const paths = [join(root, "package.json")];
   for (const segment of ["apps", "packages"]) {
@@ -73,7 +75,11 @@ function workspacePackageJsonPaths() {
     }
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const pkgPath = join(dir, entry.name, "package.json");
-      if (entry.isDirectory() && existsSync(pkgPath)) {
+      if (
+        entry.isDirectory() &&
+        existsSync(pkgPath) &&
+        !NOT_THE_APP.has(`${segment}/${entry.name}`)
+      ) {
         paths.push(pkgPath);
       }
     }

@@ -1,0 +1,7 @@
+{
+  "title": "Developer",
+  "description": "Extend engenty wizards with plugins: tools for AI steps, routes with their own tables, pages in the studio.",
+  "root": true,
+  "icon": "SquareTerminal",
+  "pages": ["index", "plugins"]
+}

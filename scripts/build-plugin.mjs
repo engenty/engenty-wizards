@@ -1,4 +1,4 @@
-// Builds the studio half of a plugin (docs/plugins.md): `ui/plugin.tsx` becomes `dist/client.js`
+// Builds the studio half of a plugin (docs/content/dev/plugins): `ui/plugin.tsx` becomes `dist/client.js`
 // and `dist/client.css`, the two files the runtime serves and the studio loads.
 //
 //   node scripts/build-plugin.mjs <plugin folder> [--watch]

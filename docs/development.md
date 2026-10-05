@@ -1,6 +1,7 @@
 # Developing engenty wizards
 
-For working on the code. To install and use engenty wizards, see the [README](../README.md).
+For working on the code. To install and use engenty wizards, see the [README](../README.md) and
+the user guide in [content/user](content/user/index.md).
 
 ## Two ways to run it
 
@@ -18,7 +19,7 @@ the two speak is in [manage-contract.md](manage-contract.md).
 
 A runtime takes **plugins**: tools for agent steps, routes with tables of their own, pages in the
 studio, loaded from their files at start and again while it runs. How they are found, written
-and built is in [plugins.md](plugins.md).
+and built is in the developer docs: [content/dev/plugins](content/dev/plugins/index.md).
 
 A step names a **model class** — `classifier`, `standard`, `high`, `highest`, plus `image`,
 `video`, `audio` (listens to voice notes), `speech` (reads a voice-over aloud) — and an optional
@@ -44,6 +45,8 @@ A pnpm workspace:
 | `scripts/build-plugin.mjs` | builds a plugin's studio half |
 | `plugin/` | the Claude Code plugin template |
 | `deploy/` | the Chromium container of the cloud runtime |
+| `apps/docs/` | the documentation site (Next.js + Fumadocs); not part of the product's build |
+| `docs/content/` | its pages: `user/` (the user guide), `dev/` (the developer docs: plugins) |
 
 `.env.local` and the data folder (`data/`) stay in the repo root; `pnpm dev` and `pnpm start`
 run from there.
@@ -86,6 +89,34 @@ command (`pnpm wizards`, `wizards`) uses `~/.engenty/wizards` instead: see
 A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
 the first start; the old file stays.
 
+## Documentation
+
+The site is `apps/docs`, the same system as in the engenty repo: Next.js with
+[Fumadocs](https://fumadocs.dev). Its pages are Markdown in `docs/content`.
+
+```bash
+pnpm dev:docs     # http://localhost:5184/docs
+pnpm build:docs   # what CI runs; `pnpm build` leaves the site out
+```
+
+- **Sections.** A folder whose `meta.json` says `"root": true` is a section of the sidebar's
+  chooser and a card on the first page: `user`, `dev`. `pages` in a `meta.json` is the order of
+  its sidebar; `---Title---` is a heading there.
+- **A page** is a `.md` file with `title` and `description` in its frontmatter and no `#`
+  heading of its own. Links to other pages are relative file paths (`./install.md`,
+  `../dev/plugins/index.md`); pictures come from `docs/assets` the same way.
+- **Diagrams** are fenced `mermaid` blocks.
+- **Below `/docs`.** The site's pages, files and search all live below that path (`basePath` in
+  `apps/docs/next.config.mjs`), so a proxy can send `/docs` to it and the rest of a host
+  elsewhere. `NEXT_PUBLIC_DOCS_SITE_URL` is the address it is published at, for link previews.
+- **For AI clients.** Every page's address with `.mdx` gives its Markdown, and
+  `/docs/llms-full.txt` all pages in one file.
+- `pnpm-workspace.yaml` pins `mdast-util-to-markdown` for `fumadocs-core`: with the newer one a
+  page with bold text does not build.
+
+The image of the runtime leaves the site out (`.dockerignore`), and so do the npm package and
+the app's open-source credits.
+
 ## AI media and the AI Act
 
 Media a model made or changed says so in two ways (Art. 50): in the file and on the page.
@@ -103,7 +134,7 @@ Not done here: signing our own Content Credentials (needs a certificate), and th
 ## Checks
 
 ```bash
-pnpm fix && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm fix && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:docs
 node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to end via the API
 # { "$file": "path" } as a value uploads that file; API=http://127.0.0.1:<port> names another server
 ```
@@ -112,8 +143,8 @@ node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to
 visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
 Manage-App.
 
-GitHub runs lint, typecheck, test and build on every push to `main`, every pull request and
-every release tag (`.github/workflows/ci.yml`).
+GitHub runs lint, typecheck, test, build and the docs' build on every push to `main`, every
+pull request and every release tag (`.github/workflows/ci.yml`).
 
 ## Releases and changelog
 

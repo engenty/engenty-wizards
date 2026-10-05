@@ -214,7 +214,7 @@ export const env = {
 
   turnstile: { siteKey: str("TURNSTILE_SITE_KEY"), secret: str("TURNSTILE_SECRET_KEY") },
 
-  /** Plugins (docs/plugins.md). Code in these folders runs with the runtime's own rights. */
+  /** Plugins (docs/content/dev/plugins). Code in these folders runs with the runtime's own rights. */
   plugins: {
     /** Folders to look in, besides the `modules/` this runtime ships with. */
     dirs: list("PLUGINS_DIR").map((dir) => resolve(dir)),

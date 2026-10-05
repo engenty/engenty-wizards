@@ -3,3 +3,9 @@ packages:
   - packages/*
   - modules/*
   - examples/plugins/*
+
+overrides:
+  # apps/docs: fumadocs-core 16.15.11 wraps the markdown handlers and drops the `attention`
+  # hook 2.1.3 relies on, so a page with bold text recurses without end at build time. Only
+  # fumadocs-core gets the older one; the runtime's own stay as they are.
+  fumadocs-core>mdast-util-to-markdown: 2.1.2

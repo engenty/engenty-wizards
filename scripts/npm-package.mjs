@@ -62,7 +62,7 @@ if (flag("skip-build")) {
   for (const dir of BUILT) {
     rmSync(join(root, dir), { recursive: true, force: true });
   }
-  execFileSync("pnpm", ["-r", "build"], { cwd: root, stdio: "inherit" });
+  execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
 }
 
 // --- 2. the files -----------------------------------------------------------------------

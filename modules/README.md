@@ -2,7 +2,7 @@
 
 Plugins that ship with engenty wizards: every runtime loads what is in this folder, in a
 checkout, in the npm package and in the Docker image. Each is a folder with an
-`engenty.plugin.json`, as [docs/plugins.md](../docs/plugins.md) describes.
+`engenty.plugin.json`, as [the plugin docs](../docs/content/dev/plugins/index.md) describe.
 
 A module here is part of the open product. A plugin that is not goes into a folder of
 `PLUGINS_DIR` instead.

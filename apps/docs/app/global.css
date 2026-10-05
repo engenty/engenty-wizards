@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/*
+ * The app's colours, derived the way the app derives them and from the same seeds
+ * (apps/web/src/styles: ember-primitives.css, shadcn-ember.css, app.css): warm paper with white
+ * cards in light, the deep blue of an engenty's stage in dark, ember as the one accent. The names
+ * are the app's. Its three typefaces are loaded in app/layout.tsx.
+ */
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  --raw-background: #faf8f5;
+  --raw-primary: #e0531b;
+
+  --paper: oklch(from var(--raw-background) 0.97 c h);
+  --paper-2: oklch(from var(--raw-background) 0.93 calc(c * 1.2) h);
+  --paper-3: oklch(from var(--raw-background) 0.9 calc(c * 1.5) h);
+  --ink: oklch(from var(--raw-background) 0.27 calc(c * 1.2) h);
+  --ink-2: oklch(from var(--raw-background) 0.45 c h);
+  --ink-3: oklch(from var(--raw-background) 0.6 calc(c * 0.8) h);
+  --card: oklch(100% 0 0);
+  /* The rail beside the page: the page itself in light, one step below it in dark. */
+  --sidebar: var(--paper);
+  --ember: var(--raw-primary);
+  --primary: oklch(from var(--raw-primary) calc(l - 0.08) c h);
+  --primary-foreground: oklch(99% 0 0);
+  --secondary-foreground: var(--ink);
+  --muted: color-mix(in oklch, var(--paper-3) 32%, var(--card));
+  --accent: color-mix(in oklch, var(--ink) 7.5%, var(--paper));
+  --border: color-mix(in oklch, var(--ink) 12%, var(--paper));
+  --ring: color-mix(in oklch, var(--ember) 45%, transparent);
+}
+
+.dark {
+  /* Dark is not near-black: the page takes the deep colour of an engenty, and every surface
+     and ink step derives from it. */
+  --stage: oklch(34% 0.14 264);
+
+  --paper: var(--stage);
+  --card: oklch(from var(--stage) calc(l + 0.06) calc(c * 0.95) h);
+  --paper-2: oklch(from var(--stage) calc(l + 0.1) calc(c * 0.92) h);
+  --paper-3: oklch(from var(--stage) calc(l + 0.14) calc(c * 0.88) h);
+  --ink: oklch(from var(--stage) 0.97 0.015 h);
+  --ink-2: oklch(from var(--stage) 0.9 0.03 h);
+  --ink-3: oklch(from var(--stage) 0.8 0.05 h);
+  --sidebar: oklch(from var(--stage) calc(l - 0.04) c h);
+  --primary: oklch(from var(--raw-primary) calc(l + 0.08) c h);
+  --primary-foreground: oklch(from var(--stage) 0.16 0.02 h);
+  --secondary-foreground: var(--ink-2);
+  --muted: color-mix(in oklch, var(--paper-3) 45%, var(--card));
+  --accent: color-mix(in oklch, var(--ink) 10%, var(--card));
+  --border: color-mix(in oklch, var(--ink) 18%, var(--card));
+  --ring: color-mix(in oklch, var(--ember) 55%, transparent);
+  color-scheme: dark;
+}
+
+/* What Fumadocs draws with, in both themes. */
+:root,
+.dark {
+  --color-fd-background: var(--paper);
+  --color-fd-foreground: var(--ink);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--ink-3);
+  --color-fd-popover: var(--card);
+  --color-fd-popover-foreground: var(--ink);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--ink);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--paper-2);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--ink);
+  --color-fd-ring: var(--ring);
+}
+
+/* The sidebar is the app's rail, not a card. */
+#nd-sidebar,
+.dark #nd-sidebar {
+  --color-fd-card: var(--sidebar);
+  --color-fd-muted: var(--muted);
+  --color-fd-secondary: var(--paper-2);
+  --color-fd-muted-foreground: var(--ink-3);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}

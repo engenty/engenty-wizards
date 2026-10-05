@@ -57,6 +57,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The docs site (apps/docs, docs/content) is not part of the product's build.
+      - name: Docs
+        run: pnpm build:docs
+
   deploy:
     needs: verify
     if: startsWith(github.ref, 'refs/tags/v')

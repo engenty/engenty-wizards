@@ -1,0 +1,7 @@
+# generated content
+.source
+
+# build
+/.next/
+*.tsbuildinfo
+next-env.d.ts
