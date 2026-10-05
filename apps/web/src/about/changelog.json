@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.2.1",
+    "timestamp": 1791223497,
+    "commits": [
+      {
+        "id": "9c16b47",
+        "message": "the AI apps start the MCP server as the wizards command, after the rename from engenty-wizards",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "f118703",
+        "message": "the wizards run in the person's own AI apps — connect writes the MCP server into Claude Desktop, Cursor, Codex and others, a run shows the wizard itself as an MCP App widget, and Settings → Einbinden adds an app with one click and tests it until it works",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.0",
-    "timestamp": 1791223084,
+    "timestamp": 1791223087,
     "commits": [
       {
         "id": "4404371",

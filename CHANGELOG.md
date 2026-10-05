@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.1] - 2026-10-05
+- ADDED The wizards run in the person's own AI apps — connect writes the MCP server into Claude Desktop, Cursor, Codex and others, a run shows the wizard itself as an MCP App widget, and Settings → Einbinden adds an app with one click and tests it until it works
+- FIXED The AI apps start the MCP server as the wizards command, after the rename from engenty-wizards
+
 ## [0.2.0] - 2026-10-05
 - ADDED A runtime takes plugins: tools for agent steps, routes with tables of their own, listeners on runs that end, and pages, top bar icons and settings sections in the studio; they load from modules/ and PLUGINS_DIR at start and again while it runs
 
