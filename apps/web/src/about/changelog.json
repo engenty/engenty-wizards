@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.1.9",
+    "timestamp": 1791203122,
+    "commits": [
+      {
+        "id": "5182fec",
+        "message": "the installer is engenty.ai/install.sh (was wizards.sh), and the command and the npm package are wizards (were engenty-wizards); the installer renames an install made under the old names",
+        "group": "Changed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c6500f9",
+        "message": "the proxy sends the runtime /w/ and /s/ with the slash",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.8",
-    "timestamp": 1791196157,
+    "timestamp": 1791196160,
     "commits": [
       {
         "id": "a965d36",

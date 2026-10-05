@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.9] - 2026-10-05
+- CHANGED The installer is engenty.ai/install.sh (was wizards.sh), and the command and the npm package are wizards (were engenty-wizards); the installer renames an install made under the old names
+- DOCS The proxy sends the runtime /w/ and /s/ with the slash
+
 ## [0.1.8] - 2026-10-05
 - DOCS The marketplace's pages are written by the site at engenty.ai, at /wizards/<slug> and /de/wizards/<slug>
 
