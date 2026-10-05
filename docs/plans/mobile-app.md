@@ -1,6 +1,20 @@
 # Plan: the mobile app (iOS and Android)
 
-Status: concept, nothing of it is built. Written on 2026-10-05.
+Status: steps 1–3 built on 2026-10-05 (branch `claude/mobile-wizard-app-840968`); the push relay
+in the Manage-App, the store accounts and step 4 are not. Written on 2026-10-05.
+
+| Built | Where |
+|---|---|
+| `?app=1`, `window.engentyApp` in the runner | `apps/web/src/lib/app.ts`, `runner/{scan.tsx,device.ts,outputs.tsx,store.tsx,PublicRunner.tsx}`, `share/ShareSheet.tsx` |
+| The ID: a link of kind `code`, `GET /api/public/codes/:code` (30 misses per address and hour) | `apps/runtime/src/tenants/control.ts`, `routes/runs.ts` |
+| QR code (PNG, SVG) and ID in the share dialog; the cloud copy's for a local install | `apps/web/src/studio/editor/WizardQr.tsx`, `ShareDialog.tsx`, `routes/api.ts` |
+| `/.well-known/apple-app-site-association`, `assetlinks.json` (`MOBILE_*` in `.env.example`) | `apps/runtime/src/app.ts` |
+| Push: `POST /api/runs/:id/notify`, the runtime asks the Manage-App (`POST /v1/push`) | `apps/runtime/src/engine/push.ts`, `docs/manage-contract.md` |
+| The app | `apps/mobile` |
+
+Where the app differs from the text below: it is always dark (the stage in the wizard's
+colour, as the mockups), so Settings has no theme; a long press removes a wizard (no swipe);
+"Share files" shares one file at a time.
 
 Scope: an app from the App Store and Google Play that adds published wizards, runs them, shows
 and shares their results and keeps past results. Building wizards (the studio) is not part of
@@ -202,8 +216,11 @@ answers, uploads or steps in between.
 ## Open
 
 - The runner in a WebView, as planned here, or drawn in native views. Native views would mean a
-  second runner that follows every definition change.
-- `apps/mobile` in this open repo (planned), or closed.
-- The ID: 8 characters, or shorter with a rate limit on the lookup.
-- Runtimes on other hosts in the first version, or engenty.ai only.
-- Who runs the push relay for runtimes that run alone.
+  second runner that follows every definition change. Built: WebView.
+- `apps/mobile` in this open repo (planned), or closed. Built: open.
+- The ID: 8 characters, or shorter with a rate limit on the lookup. Built: 8, and a limit.
+- Runtimes on other hosts in the first version, or engenty.ai only. Built: links of any host;
+  IDs at the runtime named in the settings.
+- Who runs the push relay for runtimes that run alone. Built: nobody; such a runtime answers
+  `{ push: false }`.
+- The Manage-App's `POST /v1/push` with the APNs key and the FCM project (closed repo).
