@@ -1,7 +1,76 @@
 [
   {
+    "version": "v0.2.3",
+    "timestamp": 1791238481,
+    "commits": [
+      {
+        "id": "38d161b",
+        "message": "the mobile app's data folder (apps/mobile/src/data) is in the repository: the ignore rule for the runtime's data folder hid every folder of that name, so main neither typechecked nor passed the mobile app's tests; the rule now names the runtime's two data folders",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "251d6f4",
+        "message": "with an account signed in, what a local install publishes also runs in the cloud: the published version and its files go to the account's cloud runtime under the ids they have here, which shows the project without editing and makes the link; Settings → Konto signs in or creates an account with an invitation code and shows the credits and when they end; the share dialog says what a wizard lacks in the cloud; a team without building rights changes nothing on the server, and what visitors send is capped in size",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d80eb4e",
+        "message": "inside the mobile app the runner reads in the system's font, like the app's own screens; headings keep the brand's",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "4604875",
+        "message": "the mobile app looks native: the system font, Liquid Glass (a blur before iOS 26) on the floating tab bar and the nav buttons, inset grouped lists with hairlines, Add as a form sheet with eight ID boxes, swipe to share or delete a result, files listed as the Files app does, settings rows with icon tiles",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d9edbe4",
+        "message": "the mobile app runs on Android: no iOS-only WebView prop that crashed the Run screen, plain http only for a runtime on this computer, result rows in the wizard's colour",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "34a4588",
+        "message": "the mobile app (apps/mobile, Expo): wizards added by QR code, ID or link, runs in the runtime's runner with the app's scanner, share sheet, downloads, notifications and sign-in sheet, results kept on the phone and shared from there; engenty.ai's /w/ and /s/ links and engenty-wizards:// open in it",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "2c19636",
+        "message": "a run tells the mobile app's device when it is done, failed or waits for the person: the app gives the run its device (POST /api/runs/:id/notify), the runtime asks the Manage-App to push (POST /v1/push in the contract); the app's own requests name the visitor in an x-wizards-visitor header, since iOS merges a Cookie header with its cookie store",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "767e170",
+        "message": "the runner works inside the mobile app: ?app=1 drops the web's header, footer and install hint, and window.engentyApp takes over the scanner, share sheet, downloads, wake lock, notifications and account sign-in; a wizard gets an 8-character ID (GET /api/public/codes/:code) and the studio's share dialog shows it with a QR code to download as PNG or SVG; the runtime serves apple-app-site-association and assetlinks.json for the app",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d8f3712",
+        "message": "plan for the mobile app that runs wizards on iOS and Android",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.2",
-    "timestamp": 1791237382,
+    "timestamp": 1791237386,
     "commits": [
       {
         "id": "a6c55de",

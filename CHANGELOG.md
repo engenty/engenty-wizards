@@ -4,6 +4,17 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.3] - 2026-10-05
+- ADDED With an account signed in, what a local install publishes also runs in the cloud: the published version and its files go to the account's cloud runtime under the ids they have here, which shows the project without editing and makes the link; Settings → Konto signs in or creates an account with an invitation code and shows the credits and when they end; the share dialog says what a wizard lacks in the cloud; a team without building rights changes nothing on the server, and what visitors send is capped in size
+- ADDED Inside the mobile app the runner reads in the system's font, like the app's own screens; headings keep the brand's
+- ADDED The mobile app looks native: the system font, Liquid Glass (a blur before iOS 26) on the floating tab bar and the nav buttons, inset grouped lists with hairlines, Add as a form sheet with eight ID boxes, swipe to share or delete a result, files listed as the Files app does, settings rows with icon tiles
+- ADDED The mobile app (apps/mobile, Expo): wizards added by QR code, ID or link, runs in the runtime's runner with the app's scanner, share sheet, downloads, notifications and sign-in sheet, results kept on the phone and shared from there; engenty.ai's /w/ and /s/ links and engenty-wizards:// open in it
+- ADDED A run tells the mobile app's device when it is done, failed or waits for the person: the app gives the run its device (POST /api/runs/:id/notify), the runtime asks the Manage-App to push (POST /v1/push in the contract); the app's own requests name the visitor in an x-wizards-visitor header, since iOS merges a Cookie header with its cookie store
+- ADDED The runner works inside the mobile app: ?app=1 drops the web's header, footer and install hint, and window.engentyApp takes over the scanner, share sheet, downloads, wake lock, notifications and account sign-in; a wizard gets an 8-character ID (GET /api/public/codes/:code) and the studio's share dialog shows it with a QR code to download as PNG or SVG; the runtime serves apple-app-site-association and assetlinks.json for the app
+- DOCS Plan for the mobile app that runs wizards on iOS and Android
+- FIXED The mobile app's data folder (apps/mobile/src/data) is in the repository: the ignore rule for the runtime's data folder hid every folder of that name, so main neither typechecked nor passed the mobile app's tests; the rule now names the runtime's two data folders
+- FIXED The mobile app runs on Android: no iOS-only WebView prop that crashed the Run screen, plain http only for a runtime on this computer, result rows in the wizard's colour
+
 ## [0.2.2] - 2026-10-05
 - ADDED **[plugins]** Server.generate asks a model of the current tenant (a class, a prompt, optionally a zod schema for an object), on the models its studio is set up with and paid like any other call; without a model it throws with status 503 and the code no_model, which a route passes on
 - DEPLOY The documentation deploys to engenty.ai/docs: an image of its own (apps/docs/Dockerfile, a standalone Next.js server on port 8896), and a release tag moves the branch deploy/docs when the site or its pages changed
