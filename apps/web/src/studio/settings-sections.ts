@@ -1,24 +1,54 @@
-import { Cpu, FolderCog, type LucideIcon, Plug, TerminalSquare, UserRound } from "lucide-react";
+import {
+  Blocks,
+  Cpu,
+  FolderCog,
+  type LucideIcon,
+  Plug,
+  TerminalSquare,
+  UserRound,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
+import type { StudioPlugins } from "../plugins/host";
 
-export type SettingsSection = "project" | "connectors" | "models" | "build" | "account";
+export interface SettingsSection {
+  id: string;
+  label: string;
+  icon: LucideIcon | ComponentType<{ className?: string }>;
+  /** The user menu links to it directly. */
+  menu: boolean;
+  /** A section a plugin added: what it draws, and whose it is. */
+  plugin?: StudioPlugins["sections"][number];
+}
 
 /**
- * The sections of the settings, in the order of their list. `menu`: the user menu links to it
- * directly.
+ * The sections of the settings, in the order of their list: the studio's own, then what the
+ * plugins added, then the plugins themselves.
  */
 export function settingsSections(
   me: Me | null | undefined,
-): { id: SettingsSection; label: string; icon: LucideIcon; menu: boolean }[] {
+  plugins: StudioPlugins,
+): SettingsSection[] {
   return [
     { id: "account", label: t("account.title"), icon: UserRound, menu: true },
     { id: "project", label: t("settings.project"), icon: FolderCog, menu: true },
     { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },
     // Models are chosen on the machine only when the runtime runs alone.
     ...(me?.mode === "local"
-      ? [{ id: "models" as const, label: t("local.title"), icon: Cpu, menu: true }]
+      ? [{ id: "models", label: t("local.title"), icon: Cpu, menu: true }]
       : []),
     { id: "build", label: t("mcp.nav"), icon: TerminalSquare, menu: false },
+    ...plugins.sections.map((section) => ({
+      id: section.id,
+      label: section.label(),
+      icon: section.icon,
+      menu: section.menu ?? false,
+      plugin: section,
+    })),
+    // Nothing to show where the runtime has no plugins.
+    ...(plugins.plugins.length || plugins.problems.length
+      ? [{ id: "plugins", label: t("plugins.title"), icon: Blocks, menu: false }]
+      : []),
   ];
 }

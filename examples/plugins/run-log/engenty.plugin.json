@@ -1,0 +1,8 @@
+{
+  "id": "run-log",
+  "name": "Run log",
+  "version": "0.1.0",
+  "description": "Keeps a line for every run that ended and shows them on a page of the studio.",
+  "kind": "module",
+  "provides": ["module.run-log", "module.run-log.read", "module.run-log.write"]
+}

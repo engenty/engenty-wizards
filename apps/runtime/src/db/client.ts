@@ -79,7 +79,24 @@ async function openTenant(id: string): Promise<Db> {
   const db = makeTenantDb(client);
   // Every database is brought to the current schema when it is first opened.
   await migrate(db, { migrationsFolder: migrationsFolder("tenant") });
+  for (const hook of openHooks) {
+    await hook(id, client);
+  }
   return db;
+}
+
+type OpenHook = (tenantId: string, client: Client) => Promise<void>;
+const openHooks: OpenHook[] = [];
+
+/** Runs for every tenant database right after it was opened and migrated (plugins' own tables). */
+export function onTenantOpen(hook: OpenHook) {
+  openHooks.push(hook);
+}
+
+/** The tenant databases this process has open, once each of them finished opening. */
+export async function openTenantClients(): Promise<[string, Client][]> {
+  await Promise.allSettled(opened.values());
+  return [...clients.entries()];
 }
 
 /** The only way to a tenant's tables. Opens the database once per process and migrates it then. */

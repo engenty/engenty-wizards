@@ -4,6 +4,7 @@ import { authoringGuide } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
 import { RunConflict } from "../engine/runner.js";
+import { pluginToolsOf } from "../plugins/registry.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { marketplaceWizard, searchMarketplace } from "../services/marketplace.js";
@@ -114,6 +115,7 @@ export function registerTools(server: McpServer, who: Principal) {
       return authoringGuide(
         project.mcpServers.map((s) => ({ id: s.id, name: s.name })),
         await listConnectors(project.id),
+        await pluginToolsOf(who.tenantId),
       );
     },
   );

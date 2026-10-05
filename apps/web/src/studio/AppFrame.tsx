@@ -5,6 +5,7 @@ import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { t } from "../lib/i18n";
 import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
+import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, IconButton } from "../ui";
 import { InstallBanner } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
@@ -47,6 +48,7 @@ export function UserMenu({ me }: { me: Me }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const plugins = useStudioPlugins();
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) {
@@ -82,7 +84,7 @@ export function UserMenu({ me }: { me: Me }) {
           <div className="px-3 pt-1.5 pb-1 font-medium text-[11px] text-ink-4 uppercase tracking-[0.07em]">
             {t("nav.settings")}
           </div>
-          {settingsSections(me)
+          {settingsSections(me, plugins)
             .filter((s) => s.menu)
             .map((s) => (
               <button
@@ -124,11 +126,24 @@ export function UserMenu({ me }: { me: Me }) {
 
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
+  const plugins = useStudioPlugins();
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-4 backdrop-blur-md sm:gap-3 sm:px-6">
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
       <CreditsPill me={me} />
+      {/* The pages plugins added, each behind its icon. */}
+      {plugins.nav.map((entry) => (
+        <PluginFrame key={entry.serial} of={entry}>
+          <IconButton
+            label={entry.label()}
+            onClick={() => navigate(entry.to)}
+            className="ring-1 ring-border-soft"
+          >
+            <entry.icon className="size-4" />
+          </IconButton>
+        </PluginFrame>
+      ))}
       <IconButton
         label={t("nav.settings")}
         onClick={() => navigate("/settings/project")}

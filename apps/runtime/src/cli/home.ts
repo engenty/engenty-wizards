@@ -29,6 +29,8 @@ export interface Layout {
   clients: string;
   /** The `wizards` command of an install made by install.sh. */
   bin: string;
+  /** Plugins the person put there: the runtime's PLUGINS_DIR (docs/plugins.md). */
+  plugins: string;
 }
 
 export function layout(home = wizardsHome()): Layout {
@@ -42,6 +44,7 @@ export function layout(home = wizardsHome()): Layout {
     tools: join(home, "tools"),
     clients: join(home, "clients"),
     bin: join(home, "bin"),
+    plugins: join(home, "plugins"),
   };
 }
 

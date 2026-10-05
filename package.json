@@ -17,6 +17,7 @@
     "start": "node apps/runtime/dist/index.js",
     "wizards": "node bin/wizards.mjs",
     "package": "node scripts/npm-package.mjs",
+    "plugin:build": "node scripts/build-plugin.mjs",
     "db:generate": "pnpm --filter @engenty-wizards/runtime db:generate",
     "about:data": "node scripts/write-about-data.mjs",
     "release": "node scripts/release.mjs",

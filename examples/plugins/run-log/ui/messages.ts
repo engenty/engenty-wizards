@@ -1,0 +1,26 @@
+export const messages = {
+  de: {
+    title: "Durchläufe",
+    hint: "Jeder Durchlauf, der zu Ende ging, mit seinem Ausgang.",
+    empty: "Noch kein Durchlauf ist zu Ende gegangen.",
+    done: "Fertig",
+    failed: "Fehlgeschlagen",
+    cancelled: "Abgebrochen",
+    test: "Test",
+    settings: "Durchläufe",
+    kept: "{n} Einträge sind gespeichert.",
+    clear: "Alle löschen",
+  },
+  en: {
+    title: "Runs",
+    hint: "Every run that ended, and how it ended.",
+    empty: "No run has ended yet.",
+    done: "Done",
+    failed: "Failed",
+    cancelled: "Cancelled",
+    test: "Test",
+    settings: "Runs",
+    kept: "{n} entries are kept.",
+    clear: "Delete all",
+  },
+};

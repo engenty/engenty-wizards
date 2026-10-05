@@ -95,6 +95,25 @@ export const MAX_FILES = 30;
 export const TOOL_IDS = ["web_search", "web_fetch", "browser", "sandbox", "image", "http"] as const;
 
 /**
+ * A tool a plugin of the runtime adds: `<plugin id>.<tool name>`. A wizard that names one runs
+ * only where that plugin is installed.
+ */
+export const PLUGIN_ID = /^[a-z][a-z0-9-]{0,39}$/;
+export const PLUGIN_TOOL_NAME = /^[a-z][a-z0-9_]{0,39}$/;
+export type PluginToolId = `${string}.${string}`;
+
+/** The plugin and the tool a step's tool id names, or null for one of the built-in tools. */
+export function pluginToolOf(id: string): { plugin: string; tool: string } | null {
+  const [plugin, tool, ...rest] = id.split(".");
+  return tool !== undefined &&
+    rest.length === 0 &&
+    PLUGIN_ID.test(plugin) &&
+    PLUGIN_TOOL_NAME.test(tool)
+    ? { plugin, tool }
+    : null;
+}
+
+/**
  * The kinds of model a step can ask for. A step names a class; which model serves it is bound
  * outside the wizard (the model-gateway, or the settings of a runtime that runs alone).
  */
@@ -226,7 +245,14 @@ export const agentStepSchema = z.object({
   type: z.literal("agent"),
   /** What the agent does. A template: {{field}}, {{steps.id}}, {{brand.name}}. */
   instructions: z.string().min(1),
-  tools: z.array(z.enum(TOOL_IDS)).default([]),
+  tools: z
+    .array(
+      z.union([
+        z.enum(TOOL_IDS),
+        z.templateLiteral([z.string().regex(PLUGIN_ID), ".", z.string().regex(PLUGIN_TOOL_NAME)]),
+      ]),
+    )
+    .default([]),
   /** Ids of project MCP servers this step may use. */
   mcp: z.array(z.string()).optional(),
   /** Ids of wizard connections (the person's accounts) this step may use. */

@@ -1,5 +1,5 @@
-// Stages and packs the npm package `wizards`: the runtime (built server, built SPA,
-// plugin template), the `wizards` command and the shared package inside it. This is
+// Stages and packs the npm package `wizards`: the runtime (built server, built SPA, plugin
+// template, the modules), the `wizards` command and the workspace packages inside it. This is
 // what `npx wizards` runs and what the installer (apps/web/public/install.sh) and the
 // desktop app install into ~/.engenty/wizards.
 //
@@ -45,7 +45,12 @@ const run = (cmd, cmdArgs, cwd = root) => {
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 
 // --- 1. build ---------------------------------------------------------------------------
-const BUILT = ["apps/runtime/dist", "apps/web/dist", "packages/shared/dist"];
+const BUILT = [
+  "apps/runtime/dist",
+  "apps/web/dist",
+  "packages/shared/dist",
+  "packages/plugin-sdk/dist",
+];
 if (flag("skip-build")) {
   for (const dir of BUILT) {
     if (!existsSync(join(root, dir))) {
@@ -66,6 +71,12 @@ mkdirSync(stage, { recursive: true });
 for (const path of ["apps/runtime/dist", "apps/web/dist", "plugin", "bin", "LICENSE", "README.md"]) {
   cpSync(join(root, path), join(stage, path), { recursive: true });
 }
+// The plugins that ship with the runtime (modules/README.md): their files as they are, with the
+// built studio half and without what only their build needs.
+cpSync(join(root, "modules"), join(stage, "modules"), {
+  recursive: true,
+  filter: (source) => !/[\\/](node_modules|\.turbo)$/.test(source),
+});
 chmodSync(join(stage, "bin", "wizards.mjs"), 0o755);
 
 // --- 3. package.json --------------------------------------------------------------------
@@ -132,7 +143,7 @@ writeFileSync(
       type: "module",
       bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,
-      files: ["apps", "bin", "plugin"],
+      files: ["apps", "bin", "modules", "plugin"],
       dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
       bundleDependencies: bundled,
     },

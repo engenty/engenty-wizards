@@ -145,6 +145,8 @@ export interface TenantInfo {
   status: "active" | "suspended" | "deleted";
   balanceCredits: number;
   limits: { concurrentRuns: number; projects?: number };
+  /** Ids of the plugins switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`. */
+  modules?: string[];
   db: { url: string } | null;
 }
 

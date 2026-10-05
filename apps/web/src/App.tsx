@@ -4,6 +4,7 @@ import { Mascot } from "./brand";
 import { STUDIO } from "./lib/base";
 import { useLang } from "./lib/i18n";
 import { useMe } from "./lib/session";
+import { PluginFrame, startStudioPlugins, useStudioPlugins } from "./plugins/host";
 import { AppFrame } from "./studio/AppFrame";
 import { SignInPage } from "./studio/SignInPage";
 
@@ -39,6 +40,12 @@ function Splash() {
 function Studio({ children, bare, wide }: { children: ReactNode; bare?: boolean; wide?: boolean }) {
   const me = useMe();
   const location = useLocation();
+  // Signed in, the studio takes on the tenant's plugins.
+  useEffect(() => {
+    if (me.data) {
+      startStudioPlugins(me.data);
+    }
+  }, [me.data]);
   if (me.isLoading) {
     return <Splash />;
   }
@@ -82,10 +89,17 @@ function ToStudio() {
   return <Splash />;
 }
 
+/** An address the studio does not know: a plugin's page that is still loading, or nothing. */
+function Unknown() {
+  const plugins = useStudioPlugins();
+  return plugins.status === "ready" ? <Navigate to="/" replace /> : <Splash />;
+}
+
 /** The studio, below `/studio`: its addresses are written as if it stood at the root. */
 export function StudioApp() {
   // A switch of language renders the whole app again, in place.
   useLang();
+  const plugins = useStudioPlugins();
   return (
     <Suspense fallback={<Splash />}>
       <Routes>
@@ -137,7 +151,27 @@ export function StudioApp() {
             </Studio>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {plugins.pages.map((page) => (
+          <Route
+            key={page.serial}
+            path={page.path}
+            element={
+              <Studio wide={page.wide}>
+                <PluginFrame of={page}>
+                  <page.component />
+                </PluginFrame>
+              </Studio>
+            }
+          />
+        ))}
+        <Route
+          path="*"
+          element={
+            <Studio bare>
+              <Unknown />
+            </Studio>
+          }
+        />
       </Routes>
     </Suspense>
   );

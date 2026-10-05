@@ -4,6 +4,10 @@
   "license": "FSL-1.1-MIT",
   "private": true,
   "type": "module",
+  "exports": {
+    "./ui": "./src/ui/index.tsx",
+    "./theme.css": "./src/styles/theme.css"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,6 +15,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
+    "@engenty-wizards/plugin-sdk": "workspace:*",
     "@engenty-wizards/shared": "workspace:*",
     "@tanstack/react-query": "^5.104.0",
     "@xterm/addon-fit": "0.11.0",

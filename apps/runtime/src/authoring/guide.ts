@@ -237,6 +237,21 @@ export function connectorsLine(connectors: GuideConnector[]): string {
   return `Connectors a wizard of this project can use (built in, or imported from the integrations registry; find more with find_connectors + import_connector):\n${lines.join("\n")}`;
 }
 
+export interface GuideTool {
+  /** `<plugin>.<tool>`, as a step lists it. */
+  id: string;
+  description: string;
+}
+
+/** The tools this app's plugins add; nothing where there are none. */
+export function pluginToolsLine(tools: GuideTool[]): string {
+  if (!tools.length) {
+    return "";
+  }
+  const lines = tools.map((t) => `- ${t.id} — ${t.description}`);
+  return `\n\nTools of this app's plugins. An agent step lists one in "tools" by its full id, next to the built-in ones; a wizard that uses one runs only where that plugin is installed:\n${lines.join("\n")}`;
+}
+
 export function mcpServersLine(mcp: GuideServer[]): string {
   return `Project MCP servers available to agent steps: ${mcp.length ? mcp.map((m) => `${m.id} (${m.name})`).join(", ") : "none — if the admin wants to write into an external system that needs one, build the step with http or browser, and tell them they can connect a server in the project settings"}.`;
 }
@@ -246,7 +261,11 @@ export function exampleWizard(): string {
 }
 
 /** The guide an MCP client reads before it writes a wizard. */
-export function authoringGuide(mcp: GuideServer[], connectors: GuideConnector[] = []): string {
+export function authoringGuide(
+  mcp: GuideServer[],
+  connectors: GuideConnector[] = [],
+  pluginTools: GuideTool[] = [],
+): string {
   return `engenty wizards: a wizard is a page-by-page flow an end user walks through on a shared link. Pages ask questions; AI steps research, write, draw images, render video, build documents and dashboards, or write into other systems. You author the wizard as JSON; the person who asked you is the ADMIN, the people who later open the link are END USERS.
 
 ${SCHEMA_DOC}
@@ -255,7 +274,7 @@ ${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
 
-${connectorsLine(connectors)}
+${connectorsLine(connectors)}${pluginToolsLine(pluginTools)}
 
 Models: a step names the KIND of model it needs, never a model. Pick the cheapest class that does the job:
 - "classifier": routing, yes/no, picking from options, pulling a few values out of text.

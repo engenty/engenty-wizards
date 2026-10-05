@@ -16,6 +16,10 @@ For working on the code. To install and use engenty wizards, see the [README](..
 The Manage-App (accounts, tenants, credits, the model-gateway) is a separate, closed app. What
 the two speak is in [manage-contract.md](manage-contract.md).
 
+A runtime takes **plugins**: tools for agent steps, routes with tables of their own, pages in the
+studio, loaded from their files at start and again while it runs. How they are found, written
+and built is in [plugins.md](plugins.md).
+
 A step names a **model class** — `classifier`, `standard`, `high`, `highest`, plus `image`,
 `video`, `audio` (listens to voice notes), `speech` (reads a voice-over aloud) — and an optional
 effort hint, never a model. Which model serves a class is
@@ -34,6 +38,10 @@ A pnpm workspace:
 | `bin/` | the entry of the `wizards` command |
 | `scripts/` | `npm-package.mjs` (the npm package) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
+| `packages/plugin-sdk/` | the types a plugin of the runtime is written against: its server half and its studio half |
+| `modules/` | plugins that ship with the runtime |
+| `examples/plugins/` | example plugins; loaded with `PLUGINS_DIR=examples/plugins` |
+| `scripts/build-plugin.mjs` | builds a plugin's studio half |
 | `plugin/` | the Claude Code plugin template |
 | `deploy/` | the Chromium container of the cloud runtime |
 

@@ -30,6 +30,7 @@ import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
 import { ModelUnavailableError } from "../models.js";
+import { runEnded } from "../plugins/events.js";
 import { projectFiles } from "../services/project-files.js";
 import { projectProfile } from "../services/projects.js";
 import { listRows, scopeOf } from "../store/index.js";
@@ -141,6 +142,8 @@ async function updateRun(runId: string, patch: Partial<typeof schema.run.$inferI
   // A run that ended needs no credits held for it any more.
   if (patch.status === "done" || patch.status === "failed" || patch.status === "cancelled") {
     await releaseRun(runId);
+    // Plugins hear of it; the run does not wait for them.
+    void runEnded(runId, patch.status);
   }
   signalChanged(runId);
 }

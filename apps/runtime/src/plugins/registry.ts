@@ -1,0 +1,169 @@
+import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
+import type { PluginEvents, PluginRoute, PluginTool } from "@engenty-wizards/plugin-sdk";
+import { env } from "../env.js";
+import { managed, tenantInfo } from "../manage.js";
+import type { PluginSource } from "./discovery.js";
+
+/**
+ * What the loaded plugins added. Everything a plugin registers is kept on its own record, so
+ * unloading one is dropping that record and running what it asked to have undone.
+ */
+
+type Listener<E extends keyof PluginEvents> = (payload: PluginEvents[E]) => void | Promise<void>;
+
+export interface PluginRouteEntry {
+  route: PluginRoute;
+  /** Matches the address below the plugin's own; the groups are the `:name` parts in order. */
+  pattern: RegExp;
+  params: string[];
+}
+
+export interface LoadedPlugin {
+  source: PluginSource;
+  /** Counts every load of any plugin: a reload gives the plugin a higher one. */
+  generation: number;
+  /** Why the server half did not load. The plugin then adds nothing on the server. */
+  error: string | null;
+  routes: PluginRouteEntry[];
+  tools: Map<string, PluginTool>;
+  listeners: { [E in keyof PluginEvents]?: Listener<E>[] };
+  /** Folders of `.sql` files for the tenant databases. */
+  migrations: string[];
+  disposers: (() => void | Promise<void>)[];
+}
+
+const plugins = new Map<string, LoadedPlugin>();
+let generations = 0;
+
+export function nextGeneration(): number {
+  return ++generations;
+}
+
+export function emptyRecord(source: PluginSource): LoadedPlugin {
+  return {
+    source,
+    generation: nextGeneration(),
+    error: null,
+    routes: [],
+    tools: new Map(),
+    listeners: {},
+    migrations: [],
+    disposers: [],
+  };
+}
+
+export function setPlugin(record: LoadedPlugin) {
+  plugins.set(record.source.id, record);
+}
+
+export function dropPlugin(id: string): LoadedPlugin | undefined {
+  const record = plugins.get(id);
+  plugins.delete(id);
+  return record;
+}
+
+export function loadedPlugin(id: string): LoadedPlugin | undefined {
+  return plugins.get(id);
+}
+
+export function loadedPlugins(): LoadedPlugin[] {
+  return [...plugins.values()];
+}
+
+/** `/items/:id` as a pattern for the address below the plugin's own. */
+export function compileRoute(route: PluginRoute): PluginRouteEntry {
+  const params: string[] = [];
+  const path = route.path.startsWith("/") ? route.path : `/${route.path}`;
+  const source = path
+    .replace(/\/+$/, "")
+    .split("/")
+    .map((part) => {
+      if (part.startsWith(":")) {
+        params.push(part.slice(1));
+        return "([^/]+)";
+      }
+      return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("/");
+  return { route, pattern: new RegExp(`^${source}/?$`), params };
+}
+
+// --- which tenant has which plugin -----------------------------------------------------
+
+/**
+ * The ids of the plugins a tenant has. A runtime that runs alone has every plugin it loaded.
+ * Managed, a tenant has the ones in `PLUGINS_DEFAULT` and the ones the Manage-App lists for it
+ * (`modules` of `GET /v1/tenants/:id`).
+ */
+export async function pluginIdsOf(tenantId: string): Promise<Set<string>> {
+  if (!managed) {
+    return new Set(plugins.keys());
+  }
+  const listed = await tenantInfo(tenantId)
+    .then((info) => info.modules ?? [])
+    .catch(() => []);
+  return new Set([...env.plugins.defaults, ...listed].filter((id) => plugins.has(id)));
+}
+
+export async function pluginsOf(tenantId: string): Promise<LoadedPlugin[]> {
+  const ids = await pluginIdsOf(tenantId);
+  return loadedPlugins().filter((p) => ids.has(p.source.id));
+}
+
+/** The tools the tenant's plugins add, by the id a step lists them under. */
+export async function pluginToolsOf(
+  tenantId: string,
+): Promise<{ id: string; title: string; description: string }[]> {
+  return (await pluginsOf(tenantId)).flatMap((plugin) =>
+    [...plugin.tools.values()].map((tool) => ({
+      id: `${plugin.source.id}.${tool.name}`,
+      title: tool.title ?? tool.name,
+      description: tool.description,
+    })),
+  );
+}
+
+// --- the studio half -------------------------------------------------------------------
+
+export interface PluginAsset {
+  file: string;
+  /** Changes with the file's content: the address the studio asks carries it. */
+  rev: string;
+}
+
+/** The built studio half as it is on disk now; null when the plugin has none. */
+export function pluginAsset(record: LoadedPlugin, kind: "studio" | "styles"): PluginAsset | null {
+  const file = record.source[kind];
+  if (!file) {
+    return null;
+  }
+  try {
+    return {
+      file,
+      rev: createHash("sha256").update(readFileSync(file)).digest("hex").slice(0, 12),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// --- telling the studio ----------------------------------------------------------------
+
+export interface PluginChange {
+  /** The plugin that loaded again or went; null: the list of plugins changed. */
+  id: string | null;
+}
+
+const changes = new EventEmitter();
+changes.setMaxListeners(0);
+
+export function announceChange(change: PluginChange) {
+  changes.emit("change", change);
+}
+
+export function onPluginChange(listener: (change: PluginChange) => void): () => void {
+  changes.on("change", listener);
+  return () => changes.off("change", listener);
+}
