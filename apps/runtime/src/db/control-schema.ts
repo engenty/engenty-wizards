@@ -47,6 +47,16 @@ export const runIndex = sqliteTable(
     visitorId: text("visitor_id"),
     ipHash: text("ip_hash"),
     active: integer("active", { mode: "boolean" }).notNull().default(false),
+    /**
+     * The mobile app's device for push, set by the app for this run (`POST /api/runs/:id/notify`):
+     * `{ token, platform: "ios" | "android", lang }`. Told through the Manage-App when the run is
+     * done, failed or waits for the person.
+     */
+    push: text("push", { mode: "json" }).$type<{
+      token: string;
+      platform: "ios" | "android";
+      lang: "en" | "de";
+    }>(),
     createdAt: createdAt(),
   },
   (t) => [

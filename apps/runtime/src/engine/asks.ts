@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
 import { signalChanged } from "./events.js";
+import { pushRun } from "./push.js";
 
 /** How long a step waits for the person before it goes on without them. */
 const ASK_TIMEOUT_MS = 15 * 60_000;
@@ -44,6 +45,7 @@ export async function askPerson(
     waiting.set(runId, { ask: full, settle: finish });
   });
   await setAsk(runId, full);
+  void pushRun(runId, "asks");
   try {
     return await result;
   } finally {

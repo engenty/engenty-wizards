@@ -207,6 +207,17 @@ export function bookUsage(input: {
   return call<{ credits: number }>("POST", "/v1/usage", input);
 }
 
+/** A push to the mobile app on one device; the Manage-App holds the APNs and FCM keys. */
+export function pushToDevice(input: {
+  tenantId: string;
+  device: { token: string; platform: "ios" | "android" };
+  title: string;
+  body: string;
+  data: Record<string, string>;
+}) {
+  return call<{ ok: boolean }>("POST", "/v1/push", input);
+}
+
 // --- token endpoint ----------------------------------------------------------
 
 export interface TokenSet {

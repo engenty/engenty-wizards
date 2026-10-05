@@ -43,6 +43,13 @@
       "when": 1791229509996,
       "tag": "0005_chilly_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791230810434,
+      "tag": "0006_sleepy_mojo",
+      "breakpoints": true
     }
   ]
 }

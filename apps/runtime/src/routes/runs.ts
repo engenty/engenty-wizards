@@ -21,6 +21,7 @@ import {
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
 import { signalChanged, subscribe } from "../engine/events.js";
+import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
 import {
   cancel,
@@ -84,8 +85,16 @@ function clientIp(c: Context): string | null {
   }
 }
 
+/**
+ * The mobile app's own requests (a run's view, downloads) name the visitor in a header: iOS
+ * merges a Cookie header the app sets with its own cookie store (`wz_vid=a,wz_vid=a`). The header
+ * comes first; a browser never sends it across sites without the runtime's say (CORS), so it is
+ * as good as the cookie.
+ */
+const VISITOR_HEADER = "x-wizards-visitor";
+
 function visitorId(c: Context, create: boolean, embedded = false): string | null {
-  let vid = getCookie(c, VISITOR_COOKIE) ?? null;
+  let vid = c.req.header(VISITOR_HEADER) || getCookie(c, VISITOR_COOKIE) || null;
   if (!vid && create) {
     vid = nanoid(24);
     const secure = env.appUrl.startsWith("https");
@@ -750,6 +759,30 @@ export const runRoutes = new Hono()
     }
     await clearStore(scopeOf(run));
     signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  // The mobile app's device for this run: told when it is done, failed or waits for the person.
+  .post("/:id/notify", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const body = z
+      .object({
+        token: z.string().min(8).max(512),
+        platform: z.enum(["ios", "android"]),
+        lang: z.enum(["en", "de"]).default("en"),
+      })
+      .parse(await c.req.json());
+    await setPushDevice(run.id, body);
+    return c.json({ push: pushAvailable() });
+  })
+  .delete("/:id/notify", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await setPushDevice(run.id, null);
     return c.json({ ok: true });
   })
   .post("/:id/share", async (c) => {

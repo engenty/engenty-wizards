@@ -39,6 +39,7 @@ import { currentTenant } from "../tenants/tenant.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
+import { pushRun } from "./push.js";
 import { blockingMessage, missingModels } from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
@@ -144,6 +145,9 @@ async function updateRun(runId: string, patch: Partial<typeof schema.run.$inferI
     await releaseRun(runId);
     // Plugins hear of it; the run does not wait for them.
     void runEnded(runId, patch.status);
+    if (patch.status !== "cancelled") {
+      void pushRun(runId, patch.status);
+    }
   }
   signalChanged(runId);
 }
@@ -338,6 +342,8 @@ async function drive(runId: string, signal: AbortSignal) {
     }
     if (step.type === "page" || step.type === "review") {
       await updateRun(runId, { status: "waiting_input" });
+      // A step that ran is over and the next one is the person's: a phone in a pocket hears it.
+      void pushRun(runId, "waiting");
       return;
     }
     if (!(await canSpend())) {

@@ -94,4 +94,39 @@ describe("wizard IDs", () => {
       sha256_cert_fingerprints: ["AA:BB"],
     });
   });
+
+  it("keeps the app's push device for a run its visitor started, and only for that visitor", async () => {
+    const vid = "app-visitor-0123456789ab";
+    // The link rotated in a test before: the wizard's token now.
+    const token = (
+      await client.withTenant("tenant-a", () => wizards.ownedWizard("user-a", wizardId))
+    ).shareToken;
+    const started = await app.fetch(
+      new Request(`http://localhost:5181/api/public/wizards/${token}/runs`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: `wz_vid=${vid}` },
+        body: "{}",
+      }),
+    );
+    expect(started.status).toBe(200);
+    const { runId } = (await started.json()) as { runId: string };
+    const device = { token: "a1b2c3d4e5f6a7b8", platform: "ios", lang: "de" };
+    const post = (cookie: string) =>
+      app.fetch(
+        new Request(`http://localhost:5181/api/runs/${runId}/notify`, {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie },
+          body: JSON.stringify(device),
+        }),
+      );
+    expect((await post("wz_vid=someone-else-000000000")).status).toBe(404);
+    const res = await post(`wz_vid=${vid}`);
+    expect(res.status).toBe(200);
+    // A runtime without the Manage-App has no push to send.
+    expect(await res.json()).toEqual({ push: false });
+    const row = await client.controlDb.query.runIndex.findFirst({
+      where: (r, { eq }) => eq(r.runId, runId),
+    });
+    expect(row?.push).toEqual(device);
+  });
 });
