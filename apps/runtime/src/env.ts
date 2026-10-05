@@ -214,6 +214,18 @@ export const env = {
 
   turnstile: { siteKey: str("TURNSTILE_SITE_KEY"), secret: str("TURNSTILE_SECRET_KEY") },
 
+  /**
+   * The mobile app (apps/mobile): a phone opens this runtime's `/w/` and `/s/` links in it.
+   * Served as /.well-known/apple-app-site-association and /.well-known/assetlinks.json.
+   */
+  mobile: {
+    /** `<team id>.<bundle id>` of the iOS apps; empty = no file. */
+    iosAppIds: list("MOBILE_IOS_APP_IDS"),
+    androidPackage: str("MOBILE_ANDROID_PACKAGE", "ai.engenty.wizards"),
+    /** SHA-256 fingerprints of the Android app's signing certificates; empty = no file. */
+    androidCertSha256: list("MOBILE_ANDROID_CERT_SHA256"),
+  },
+
   /** Plugins (docs/content/dev/plugins). Code in these folders runs with the runtime's own rights. */
   plugins: {
     /** Folders to look in, besides the `modules/` this runtime ships with. */

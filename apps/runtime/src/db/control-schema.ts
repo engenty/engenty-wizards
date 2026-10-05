@@ -24,12 +24,15 @@ export const link = sqliteTable(
   {
     token: text("token").primaryKey(),
     tenantId: text("tenant_id").notNull(),
-    /** `wizard` = a share link `/w/<token>`, `result` = a shared result `/s/<token>`, `logo` = a brand logo. */
-    kind: text("kind", { enum: ["wizard", "result", "logo"] }).notNull(),
+    /**
+     * `wizard` = a share link `/w/<token>`, `result` = a shared result `/s/<token>`, `logo` = a
+     * brand logo, `code` = a wizard's ID to type in (its `ref` is the wizard's share token).
+     */
+    kind: text("kind", { enum: ["wizard", "result", "logo", "code"] }).notNull(),
     ref: text("ref").notNull(),
     createdAt: createdAt(),
   },
-  (t) => [index("link_tenant").on(t.tenantId)],
+  (t) => [index("link_tenant").on(t.tenantId), index("link_ref").on(t.kind, t.ref)],
 );
 
 /**

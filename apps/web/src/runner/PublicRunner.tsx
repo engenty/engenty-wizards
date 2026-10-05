@@ -1,11 +1,12 @@
 import type { BrandView, PublicWizard } from "@engenty-wizards/shared/run";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, SquarePlus } from "lucide-react";
+import { ArrowRight, Smartphone, SquarePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
+import { appLink, appTell, IN_APP } from "../lib/app";
 import { EMBED, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
@@ -162,7 +163,29 @@ function Turnstile({ siteKey, onToken }: { siteKey: string; onToken: (t: string)
   return <div ref={ref} className="mt-4 flex justify-center" />;
 }
 
+/**
+ * On a phone's browser: open the wizard in the mobile app instead. The phone's camera already
+ * opens engenty.ai links there; this is for a runtime on another host, whose links it does not know.
+ */
+function OpenInApp({ token }: { token: string }) {
+  const phone = /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
+  if (!phone || IN_APP || EMBED) {
+    return null;
+  }
+  return (
+    <a
+      href={appLink(`${window.location.origin}${BASE}/w/${token}`)}
+      className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+    >
+      <Smartphone className="size-4" /> {t("install.app")}
+    </a>
+  );
+}
+
 const lastRunKey = (token: string) => `wz.run.${token}`;
+
+/** The app opens `/w/<token>?app=1&start=1` from its own start button: the run starts at once. */
+const AUTOSTART = IN_APP && new URLSearchParams(window.location.search).get("start") === "1";
 
 /** Inline in another website the wizard is as tall as its content; everywhere else it fills the screen. */
 const PAGE = EMBED === "inline" ? "min-h-80" : "min-h-dvh";
@@ -195,12 +218,28 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
       } catch {
         // resuming is a convenience
       }
-      navigate(`/w/${wizard.token}/${runId}`);
+      navigate(`/w/${wizard.token}/${runId}`, { replace: AUTOSTART });
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
     }
   };
+  const auto = AUTOSTART && wizard.available && !wizard.turnstileSiteKey;
+  const started = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, on the app's start button
+  useEffect(() => {
+    if (auto && !started.current) {
+      started.current = true;
+      void start();
+    }
+  }, [auto]);
+  if (auto && !error) {
+    return (
+      <div className="flex min-h-[60dvh] items-center justify-center text-ink-4">
+        <Spinner />
+      </div>
+    );
+  }
   return (
     <div className="mx-auto flex max-w-lg animate-rise flex-col items-center px-6 pt-6 pb-12 text-center sm:pt-16 sm:pb-16">
       <Mascot kind={wizard.avatar} size={190} fluffy />
@@ -233,7 +272,8 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
               {t("run.resume")}
             </button>
           ) : null}
-          {EMBED ? null : <InstallHint />}
+          {EMBED || IN_APP ? null : <InstallHint />}
+          <OpenInApp token={wizard.token} />
         </>
       ) : (
         <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
@@ -263,6 +303,12 @@ export function PublicRunner() {
       document.title = wizard.data.title;
     }
   }, [wizard.data]);
+  // The app keeps every run it saw in its results, also one started or resumed in here.
+  useEffect(() => {
+    if (token && runId) {
+      appTell("run", { token, runId });
+    }
+  }, [token, runId]);
 
   if (wizard.isLoading) {
     return (
@@ -288,7 +334,10 @@ export function PublicRunner() {
   return (
     <div className={cn("flex flex-col", PAGE)}>
       {/* The website around an inline wizard carries the brand; in the window its close button takes the corner. */}
-      {EMBED === "inline" ? null : <BrandHeader brand={wizard.data.brand} toggle={!EMBED} />}
+      {/* In the app its own top bar names the wizard. */}
+      {EMBED === "inline" || IN_APP ? null : (
+        <BrandHeader brand={wizard.data.brand} toggle={!EMBED} />
+      )}
       <div className="flex-1">
         {runId ? (
           <RunnerBody runId={runId} onRestart={() => navigate(`/w/${token}`)} />
@@ -296,17 +345,21 @@ export function PublicRunner() {
           <StartScreen wizard={wizard.data} />
         )}
       </div>
-      <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
-        <a
-          href={`${BASE}/`}
-          // In a frame the link would load the studio into the website.
-          target={EMBED ? "_blank" : undefined}
-          rel="noreferrer"
-          className="inline-block py-3.5 hover:text-ink-2"
-        >
-          {t("run.madeWith").replace("engenty wizards", BRAND.name)}
-        </a>
-      </footer>
+      {IN_APP ? (
+        <div className="safe-bottom" />
+      ) : (
+        <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
+          <a
+            href={`${BASE}/`}
+            // In a frame the link would load the studio into the website.
+            target={EMBED ? "_blank" : undefined}
+            rel="noreferrer"
+            className="inline-block py-3.5 hover:text-ink-2"
+          >
+            {t("run.madeWith").replace("engenty wizards", BRAND.name)}
+          </a>
+        </footer>
+      )}
     </div>
   );
 }

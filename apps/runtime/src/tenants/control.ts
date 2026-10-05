@@ -5,7 +5,7 @@ import { currentTenant } from "./tenant.js";
 
 // What the runtime looks up before it knows the tenant: public tokens and run ids.
 
-type LinkKind = "wizard" | "result" | "logo";
+type LinkKind = "wizard" | "result" | "logo" | "code";
 
 /** Remembers which tenant a public token belongs to. */
 export async function putLink(token: string, kind: LinkKind, ref: string) {
@@ -18,10 +18,65 @@ export async function putLink(token: string, kind: LinkKind, ref: string) {
     });
 }
 
+/** A token's link goes, and with a wizard's share token its ID. */
 export async function dropLinks(tokens: string[]) {
   if (tokens.length) {
     await controlDb.delete(control.link).where(inArray(control.link.token, tokens));
+    await controlDb
+      .delete(control.link)
+      .where(and(eq(control.link.kind, "code"), inArray(control.link.ref, tokens)));
   }
+}
+
+// --- wizard IDs ----------------------------------------------------------------------
+// The share token is 14 characters of both cases, `_` and `-`: nobody types that on a phone.
+// The ID is 8 capitals and digits without look-alikes (no 0 O 1 I), made the first time someone
+// asks for it and gone when the share token rotates.
+
+const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const CODE_LENGTH = 8;
+
+function newCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+}
+
+/** What a person typed, as stored: capitals, no spaces or dashes. */
+export const normalizeCode = (input: string) => input.toUpperCase().replace(/[\s-]/g, "");
+
+/** The ID of a wizard's share token; made on the first ask. */
+export async function codeOf(shareToken: string): Promise<string> {
+  const row = await controlDb.query.link.findFirst({
+    where: and(eq(control.link.kind, "code"), eq(control.link.ref, shareToken)),
+  });
+  if (row) {
+    return row.token;
+  }
+  for (;;) {
+    const code = newCode();
+    const made = await controlDb
+      .insert(control.link)
+      .values({ token: code, tenantId: currentTenant(), kind: "code", ref: shareToken })
+      .onConflictDoNothing()
+      .returning({ token: control.link.token });
+    if (made.length) {
+      return code;
+    }
+  }
+}
+
+/** The share token behind an ID, and its tenant. */
+export async function tokenOfCode(
+  input: string,
+): Promise<{ token: string; tenantId: string } | null> {
+  const code = normalizeCode(input);
+  if (code.length !== CODE_LENGTH) {
+    return null;
+  }
+  const row = await controlDb.query.link.findFirst({
+    where: and(eq(control.link.kind, "code"), eq(control.link.token, code)),
+  });
+  return row ? { token: row.ref, tenantId: row.tenantId } : null;
 }
 
 export async function tenantOfLink(token: string, kind: LinkKind): Promise<string | null> {

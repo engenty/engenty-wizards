@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { asset, BASE } from "@/lib/base";
+import { appCall, appCan, appTell } from "../lib/app";
 
 /** A finger as the main pointer: a phone or a tablet. */
 export const isTouch =
@@ -46,6 +47,15 @@ export function useKeyboardInset() {
 export function useWakeLock(active: boolean): boolean {
   const [held, setHeld] = useState(false);
   useEffect(() => {
+    if (active && appCan("keepAwake")) {
+      // The app keeps the screen on; the page's lock ends whenever iOS hides the WebView.
+      appTell("keepAwake", true);
+      setHeld(true);
+      return () => {
+        appTell("keepAwake", false);
+        setHeld(false);
+      };
+    }
     if (!active || !("wakeLock" in navigator)) {
       return;
     }
@@ -124,9 +134,15 @@ const hasNotifications = typeof window !== "undefined" && "Notification" in wind
  */
 export type NotifyState = "off" | "on" | "quiet";
 
+/** In the mobile app: what the person answered the app's own question. */
+let appAllows: boolean | null = null;
+
 function notifyState(): NotifyState {
   if (!wanted()) {
     return "off";
+  }
+  if (appCan("notify")) {
+    return appAllows === false ? "quiet" : "on";
   }
   return hasNotifications && Notification.permission === "granted" ? "on" : "quiet";
 }
@@ -144,6 +160,9 @@ export function useNotifyState(): NotifyState {
 
 /** Whether the browser has blocked notifications for this page (the person can undo it there). */
 export function notificationsBlocked(): boolean {
+  if (appCan("notify")) {
+    return appAllows === false;
+  }
   return hasNotifications && Notification.permission === "denied";
 }
 
@@ -153,6 +172,15 @@ export function notificationsBlocked(): boolean {
  */
 export async function enableNotify(): Promise<NotifyState> {
   setWanted(true);
+  if (appCan("notify")) {
+    appAllows = appCan("notifyPermission")
+      ? await appCall<boolean>("notifyPermission").catch(() => false)
+      : true;
+    for (const listener of listeners) {
+      listener();
+    }
+    return notifyState();
+  }
   // A sound may only play on a page the person has tapped; this is that tap.
   try {
     audio ??= new AudioContext();
@@ -203,6 +231,11 @@ function chime() {
 /** Tells the person, in whatever way they agreed to and the device has. A no-op otherwise. */
 export async function signalPerson(message: { title: string; body: string; tag: string }) {
   if (!wanted()) {
+    return;
+  }
+  if (appCan("notify")) {
+    // The app knows whether it is in front: a buzz there, a notification otherwise.
+    appTell("notify", message);
     return;
   }
   if (document.visibilityState === "visible") {

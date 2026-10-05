@@ -1,5 +1,6 @@
 import { ImageUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { appCall, appCan } from "../lib/app";
 import { t } from "../lib/i18n";
 import {
   CameraStage,
@@ -69,16 +70,40 @@ function codeReader(): Promise<Reader> {
   return reader;
 }
 
-/** Reads a QR code or barcode with the camera — or from a photo, when there is no camera. */
-export function ScanDialog({
-  open,
-  onClose,
-  onResult,
-}: {
+interface ScanProps {
   open: boolean;
   onClose: () => void;
   onResult: (text: string) => void;
-}) {
+}
+
+/** In the mobile app its own scanner reads every common barcode; the page draws nothing. */
+function AppScan({ open, onClose, onResult }: ScanProps) {
+  const found = useRef(onResult);
+  found.current = onResult;
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void appCall<string | null>("scan")
+      .then((text) => {
+        if (text) {
+          found.current(text);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => close.current());
+  }, [open]);
+  return null;
+}
+
+/** Reads a QR code or barcode with the camera — or from a photo, when there is no camera. */
+export function ScanDialog(props: ScanProps) {
+  return appCan("scan") ? <AppScan {...props} /> : <WebScan {...props} />;
+}
+
+function WebScan({ open, onClose, onResult }: ScanProps) {
   const [facing, setFacing] = useState<Facing>("environment");
   const [qrOnly, setQrOnly] = useState(false);
   const [miss, setMiss] = useState(false);

@@ -127,6 +127,39 @@ app.get("/.well-known/oauth-protected-resource/*", async (c) => {
   });
 });
 
+// The mobile app opens this runtime's wizard and result links (Universal Links, App Links).
+app.get("/.well-known/apple-app-site-association", (c) => {
+  if (!env.mobile.iosAppIds.length) {
+    return c.notFound();
+  }
+  const paths = [`${basePath}/w/*`, `${basePath}/s/*`];
+  return c.json({
+    applinks: {
+      details: [
+        {
+          appIDs: env.mobile.iosAppIds,
+          components: paths.map((path) => ({ "/": path })),
+        },
+      ],
+    },
+  });
+});
+app.get("/.well-known/assetlinks.json", (c) => {
+  if (!env.mobile.androidCertSha256.length) {
+    return c.notFound();
+  }
+  return c.json([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: env.mobile.androidPackage,
+        sha256_cert_fingerprints: env.mobile.androidCertSha256,
+      },
+    },
+  ]);
+});
+
 /** Studio requests act as the signed-in person, inside that person's tenant. */
 app.use("/api/studio/*", async (c, next) => {
   const user = await principalOf(c);

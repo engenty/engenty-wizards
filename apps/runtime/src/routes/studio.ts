@@ -106,6 +106,7 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
+import { codeOf } from "../tenants/control.js";
 import { applyUpdate, updateStatus } from "../update.js";
 import { byteRange } from "./delivery.js";
 
@@ -488,6 +489,11 @@ export const studio = new Hono<Vars>()
       .parse(await c.req.json());
     await updateWizardSettings(c.get("user").id, c.req.param("id"), patch);
     return c.json({ ok: true });
+  })
+  // The wizard's ID for the mobile app, beside its link.
+  .get("/wizards/:id/code", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    return c.json({ code: await codeOf(w.shareToken) });
   })
   .post("/wizards/:id/rotate-link", async (c) =>
     c.json(await rotateShareLink(c.get("user").id, c.req.param("id"))),

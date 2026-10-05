@@ -8,9 +8,12 @@ import { useMe, type WizardDetail } from "../../lib/session";
 import { Button, Dialog, Input, Segmented, Switch } from "../../ui";
 import { openExternal } from "../LocalRuntime";
 import { useEstimate } from "./estimate";
+import { WizardQr } from "./WizardQr";
 
 interface CloudCopy {
   shareUrl: string;
+  /** The ID for the mobile app; a cloud before it knew IDs sent none. */
+  code?: string;
   version: number;
   publishedAt: string;
 }
@@ -98,6 +101,7 @@ function CloudSection({ wizard }: { wizard: WizardDetail }) {
           <ExternalLink className="size-3.5" /> {url}
         </button>
       ) : null}
+      {url ? <WizardQr url={url} code={copy.data?.copy?.code} title={wizard.draft.title} /> : null}
       {url ? <EmbedSection url={url} title={wizard.draft.title} /> : null}
       {publish.isError ? (
         <p className="text-[13px] text-rose">
@@ -132,6 +136,13 @@ export function ShareDialog({
   });
   const url = `${window.location.origin}${BASE}/w/${wizard.shareToken}`;
   const me = useMe();
+  // A local runtime answers only on this computer: its QR code and ID are the cloud copy's.
+  const reachable = me.data?.mode === "managed" && wizard.published;
+  const code = useQuery({
+    queryKey: ["wizard-code", wizard.id, wizard.shareToken],
+    queryFn: () => api.get<{ code: string }>(`/api/studio/wizards/${wizard.id}/code`),
+    enabled: open && reachable,
+  });
   const estimate = useEstimate(wizard.id, wizard.draft);
   const perDay =
     estimate.data?.available && estimate.data.reserve > 0
@@ -171,6 +182,7 @@ export function ShareDialog({
       >
         <ExternalLink className="size-3.5" /> {t("share.open")}
       </a>
+      {reachable ? <WizardQr url={url} code={code.data?.code} title={wizard.draft.title} /> : null}
       <EmbedSection url={url} title={wizard.draft.title} />
       <div className="mt-6 flex flex-col gap-5 border-border-soft border-t pt-5">
         <div className="flex items-center justify-between">

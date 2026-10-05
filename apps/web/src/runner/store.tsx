@@ -6,6 +6,7 @@ import { Check, Database, FileText, Link2, Plus, Trash2, Unplug } from "lucide-r
 import { useEffect, useState } from "react";
 import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
+import { appCall, appCan } from "../lib/app";
 import { lang, t } from "../lib/i18n";
 import { Button, cn, Dialog, IconButton, Input, Label, Spinner } from "../ui";
 
@@ -111,6 +112,19 @@ export function ConnectionField({
   const oauth = async (connector: ConnectorOption) => {
     setError(null);
     setLink(null);
+    if (appCan("signIn")) {
+      // The app opens the system's sign-in sheet: Google refuses a sign-in inside a WebView.
+      // The run's stream says when the account is connected, as with the popup.
+      try {
+        const { url } = await api.post<{ url: string }>(
+          `/api/runs/${runId}/connections/${connection.id}/oauth/${connector.id}`,
+        );
+        await appCall("signIn", { url });
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
     // Opened inside the click, before the address is known: a popup opened later is blocked.
     const popup = window.open("about:blank", "wizard-connect", "width=540,height=700");
     try {

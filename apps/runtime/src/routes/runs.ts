@@ -58,7 +58,13 @@ import {
   storeFiles,
   updateRow,
 } from "../store/index.js";
-import { tenantOfLink, tenantOfRun, tenantStatus, visitorOverLimit } from "../tenants/control.js";
+import {
+  tenantOfLink,
+  tenantOfRun,
+  tenantStatus,
+  tokenOfCode,
+  visitorOverLimit,
+} from "../tenants/control.js";
 import { byteRange, uploadLimit, wizardManifest } from "./delivery.js";
 
 const VISITOR_COOKIE = "wz_vid";
@@ -161,7 +167,44 @@ const resultLink = tenantFrom((c) => tenantOfLink(c.req.param("token") ?? "", "r
 const logoLink = tenantFrom((c) => tenantOfLink(c.req.param("id") ?? "", "logo"));
 const runTenant = tenantFrom((c) => tenantOfRun(c.req.param("id") ?? ""));
 
+/** Wrong guesses at a wizard's ID, per address and hour: 32^8 IDs stay out of reach. */
+const codeMisses = new Map<string, { n: number; since: number }>();
+const CODE_MISSES_PER_HOUR = 30;
+
+function codeLookupBlocked(ip: string | null): boolean {
+  const key = hashIp(ip) ?? "unknown";
+  const entry = codeMisses.get(key);
+  if (entry && Date.now() - entry.since > 3600_000) {
+    codeMisses.delete(key);
+    return false;
+  }
+  return (entry?.n ?? 0) >= CODE_MISSES_PER_HOUR;
+}
+
+function codeMissed(ip: string | null) {
+  const key = hashIp(ip) ?? "unknown";
+  const entry = codeMisses.get(key) ?? { n: 0, since: Date.now() };
+  entry.n += 1;
+  codeMisses.set(key, entry);
+  if (codeMisses.size > 10_000) {
+    codeMisses.delete(codeMisses.keys().next().value as string);
+  }
+}
+
 export const publicRoutes = new Hono()
+  // A wizard's ID, typed into the mobile app: answers its share token.
+  .get("/codes/:code", async (c) => {
+    const ip = clientIp(c);
+    if (codeLookupBlocked(ip)) {
+      return c.json({ error: "too many tries" }, 429);
+    }
+    const found = await tokenOfCode(c.req.param("code"));
+    if (!found || (await tenantStatus(found.tenantId)) === "suspended") {
+      codeMissed(ip);
+      return c.json({ error: "not found" }, 404);
+    }
+    return c.json({ token: found.token, url: `${env.appUrl}/w/${found.token}` });
+  })
   .use("/wizards/:token", wizardLink)
   .use("/wizards/:token/*", wizardLink)
   .use("/logos/:id", logoLink)

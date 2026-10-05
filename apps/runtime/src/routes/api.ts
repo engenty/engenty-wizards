@@ -5,7 +5,7 @@ import { authenticate, principalOf } from "../mcp/auth.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, draftFiles, writeFile } from "../services/files.js";
 import { createWizard, ownedWizard, publishWizard, writeDraft } from "../services/wizards.js";
-import { tenantStatus } from "../tenants/control.js";
+import { codeOf, tenantStatus } from "../tenants/control.js";
 
 const importSchema = z.object({
   /** An earlier import's wizard: it is updated instead of a new one being made. */
@@ -78,6 +78,8 @@ export const apiRoutes = new Hono().post("/wizards/import", async (c) => {
       });
     }
     const published = await publishWizard(who.userId, wizardId);
-    return c.json({ wizardId, revision: written.revision, issues: [], ...published });
+    // The ID the mobile app takes, for the local studio to show beside the cloud's link.
+    const code = await codeOf(current.shareToken);
+    return c.json({ wizardId, revision: written.revision, issues: [], ...published, code });
   });
 });

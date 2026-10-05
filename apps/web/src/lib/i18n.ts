@@ -287,6 +287,10 @@ const de = {
   "share.rotateHint": "Der alte Link funktioniert danach nicht mehr.",
   "share.publishFirst": "Veröffentliche den Wizard, damit der Link funktioniert.",
   "share.open": "Öffnen",
+  "share.qr": "QR-Code",
+  "share.qrHint":
+    "Mit der Kamera des Handys scannen: der Wizard öffnet sich, in der App engenty wizards, wenn sie installiert ist.",
+  "share.code": "ID für die App:",
   "embed.title": "In eine Website einbetten",
   "embed.inline": "In der Seite",
   "embed.modal": "Button + Fenster",
@@ -638,6 +642,7 @@ const de = {
   "notify.needsYou": "Der Wizard braucht dich kurz.",
   "install.add": "Zum Startbildschirm hinzufügen",
   "install.ios": "Tippe unten auf „Teilen“ und dann auf „Zum Home-Bildschirm“.",
+  "install.app": "In der App öffnen",
   "install.app.offer":
     "Installiere das Studio als App: eigenes Fenster, eigenes Symbol im Dock oder in der Taskleiste.",
   "install.app.browser":
@@ -1036,6 +1041,10 @@ const en: Record<Key, string> = {
   "share.rotateHint": "The old link stops working.",
   "share.publishFirst": "Publish the wizard so the link works.",
   "share.open": "Open",
+  "share.qr": "QR code",
+  "share.qrHint":
+    "Scan it with a phone's camera: the wizard opens, in the engenty wizards app when it is installed.",
+  "share.code": "ID for the app:",
   "embed.title": "Embed in a website",
   "embed.inline": "Inline",
   "embed.modal": "Button + modal",
@@ -1381,6 +1390,7 @@ const en: Record<Key, string> = {
   "notify.needsYou": "The wizard needs you for a moment.",
   "install.add": "Add to home screen",
   "install.ios": "Tap “Share” below, then “Add to Home Screen”.",
+  "install.app": "Open in the app",
   "install.app.offer":
     "Install the studio as an app: its own window, its own icon in the Dock or taskbar.",
   "install.app.browser":

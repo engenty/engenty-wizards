@@ -1,0 +1,1 @@
+CREATE INDEX `link_ref` ON `link` (`kind`,`ref`);

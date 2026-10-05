@@ -5,6 +5,7 @@ import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react"
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { asset, withBase } from "@/lib/base";
+import { appCall, appCan, appDownload } from "../lib/app";
 import { t } from "../lib/i18n";
 import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
@@ -492,6 +493,7 @@ export function OutputView({
                 <a
                   href={assetUrl(f.id)}
                   download={f.name}
+                  onClick={(e) => appDownload(e, assetUrl(f.id), f.name)}
                   className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
                 >
                   <FileText className="size-3.5 shrink-0 text-ink-3" />
@@ -542,6 +544,15 @@ function ShareFileButton({ url, format, title }: { url: string; format: Format; 
   const [state, setState] = useState<"idle" | "busy" | "ready">("idle");
   const file = useRef<File | null>(null);
   const share = async () => {
+    if (appCan("share")) {
+      // The app fetches the file itself and opens the native share sheet with it.
+      setState("busy");
+      await appCall("share", { url: new URL(url, location.href).href, title }).catch(
+        () => undefined,
+      );
+      setState("idle");
+      return;
+    }
     try {
       if (!file.current) {
         setState("busy");
@@ -588,7 +599,7 @@ function ShareFileButton({ url, format, title }: { url: string; format: Format; 
   );
 }
 
-const SHARES_FILES = canShareFiles();
+const SHARES_FILES = appCan("share") || canShareFiles();
 
 export function DownloadButtons({
   base,
@@ -609,6 +620,7 @@ export function DownloadButtons({
         <a
           key={f}
           href={href(f)}
+          onClick={(e) => appDownload(e, href(f))}
           className={cn(
             "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[13px] transition coarse:h-11 coarse:px-4",
             i === 0

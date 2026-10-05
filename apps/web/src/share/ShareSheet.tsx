@@ -1,6 +1,7 @@
 import { Check, Copy, Link2, Mail, Share2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
+import { appCall, appCan } from "../lib/app";
 import { lang, t } from "../lib/i18n";
 import { Button, Dialog, Spinner } from "../ui";
 
@@ -79,7 +80,8 @@ export function ShareResultButton({
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
-  const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
+  const canNativeShare =
+    appCan("share") || (typeof navigator !== "undefined" && "share" in navigator);
   const until = shared?.expiresAt
     ? new Intl.DateTimeFormat(lang, { dateStyle: "long" }).format(new Date(shared.expiresAt))
     : null;
@@ -131,7 +133,11 @@ export function ShareResultButton({
                 <button
                   type="button"
                   onClick={() =>
-                    void navigator.share({ title, url: shared.url }).catch(() => undefined)
+                    void (
+                      appCan("share")
+                        ? appCall("share", { link: shared.url, title })
+                        : navigator.share({ title, url: shared.url })
+                    ).catch(() => undefined)
                   }
                   className="flex flex-col items-center gap-1.5 text-[12px] text-ink-2 hover:text-ink"
                 >

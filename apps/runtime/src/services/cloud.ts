@@ -9,6 +9,8 @@ import { ownedWizard, requireClean } from "./wizards.js";
 interface CloudCopy {
   wizardId: string;
   shareUrl: string;
+  /** The wizard's ID for the mobile app; a cloud before it knew IDs sends none. */
+  code?: string;
   version: number;
   publishedAt: string;
 }
@@ -52,6 +54,7 @@ export async function publishToCloud(userId: string, wizardId: string): Promise<
   const body = (await res.json().catch(() => ({}))) as {
     wizardId?: string;
     shareUrl?: string;
+    code?: string;
     version?: number;
     error?: string;
     issues?: { stepId?: string; message: string }[];
@@ -66,6 +69,7 @@ export async function publishToCloud(userId: string, wizardId: string): Promise<
   const copy: CloudCopy = {
     wizardId: body.wizardId,
     shareUrl: body.shareUrl,
+    code: body.code,
     version: body.version ?? 1,
     publishedAt: new Date().toISOString(),
   };
