@@ -17,6 +17,7 @@
       "apps/mobile/src/**",
       "apps/mobile/test/**",
       "apps/mobile/scripts/**",
+      "apps/mobile/plugins/**",
       "!apps/mobile/src/engenty/shapes.ts",
       "modules/**",
       "examples/plugins/**",

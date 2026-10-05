@@ -92,7 +92,7 @@ export default function WizardScreen() {
         <View style={{ gap: 8 }}>
           <SectionTitle theme={theme}>{t("start.results")}</SectionTitle>
           {results?.length ? (
-            results.map((run) => <ResultRow key={run.id} run={run} />)
+            results.map((run) => <ResultRow key={run.id} run={run} theme={theme} />)
           ) : (
             <Label theme={theme} style={{ marginHorizontal: 4 }}>
               {t("start.noResults")}

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Run } from "../data/db";
 import { Engenty } from "../engenty/Engenty";
 import { formatDate, formatTime, t } from "../i18n";
-import { APP_THEME, FONT } from "../theme/theme";
+import { APP_THEME, FONT, type Theme } from "../theme/theme";
 import { Chip } from "./ui";
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -24,8 +24,7 @@ const FORMAT_LABEL: Record<string, string> = {
 const expired = (run: Run) => run.expiresAt !== null && new Date(run.expiresAt) < new Date();
 
 /** A kept result in a list: its wizard's engenty, title, when, the formats. */
-export function ResultRow({ run }: { run: Run }) {
-  const theme = APP_THEME;
+export function ResultRow({ run, theme = APP_THEME }: { run: Run; theme?: Theme }) {
   const when = run.finishedAt ?? run.updatedAt;
   const today = new Date(when).toDateString() === new Date().toDateString();
   const formats = [

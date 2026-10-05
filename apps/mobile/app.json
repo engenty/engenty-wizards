@@ -95,7 +95,8 @@
         {
           "color": "#ff7a3d"
         }
-      ]
+      ],
+      "./plugins/local-http.js"
     ]
   }
 }

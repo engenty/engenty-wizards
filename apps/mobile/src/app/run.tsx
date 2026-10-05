@@ -239,7 +239,6 @@ export default function RunScreen() {
         geolocationEnabled
         allowsBackForwardNavigationGestures={false}
         applicationNameForUserAgent="engenty-wizards-app/1"
-        decelerationRate="normal"
         pullToRefreshEnabled={false}
         overScrollMode="never"
         keyboardDisplayRequiresUserAction={false}
