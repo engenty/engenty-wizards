@@ -84,7 +84,7 @@ jobs:
           commit="$(git rev-parse "$GITHUB_SHA^{commit}")"
           # What the two images are built from (apps/runtime/Dockerfile, deploy/Dockerfile.browser).
           paths=(
-            apps/runtime apps/web packages plugin deploy
+            apps/runtime apps/web packages modules plugin deploy
             compose.cloud.yaml .dockerignore
             package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json
             ':(exclude)apps/runtime/test'
