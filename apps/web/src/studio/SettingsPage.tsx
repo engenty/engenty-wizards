@@ -5,6 +5,8 @@ import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
+import { PluginFrame, useStudioPlugins } from "../plugins/host";
+import { PluginsSection } from "../plugins/PluginsSection";
 import { Button, Card, cn, IconButton, Input, Select } from "../ui";
 import { Account } from "./Account";
 import { Connectors } from "./Connectors";
@@ -150,14 +152,16 @@ export function SettingsPage() {
   const many = useManyProjects();
   const [key, setKey] = useState(project?.id);
   useEffect(() => setKey(project?.id), [project?.id]);
-  const sections = settingsSections(me.data);
+  const plugins = useStudioPlugins();
+  const sections = settingsSections(me.data, plugins);
   const current = sections.find((s) => s.id === section);
   if (!current) {
     // The page for AI clients was /settings/build before it became "Integrate".
     if (section === "build") {
       return <Navigate to="/settings/integrate" replace />;
     }
-    return <Navigate to="/settings/project" replace />;
+    // A plugin's section is there once the plugin loaded.
+    return plugins.status === "ready" ? <Navigate to="/settings/project" replace /> : null;
   }
   // The project page brings its own switcher, next to the project's name.
   const scoped = current.id === "connectors" && many;
@@ -216,6 +220,12 @@ export function SettingsPage() {
           {current.id === "models" ? <LocalRuntimeCard /> : null}
           {current.id === "integrate" ? <Integrate /> : null}
           {current.id === "account" && me.data ? <Account me={me.data} /> : null}
+          {current.id === "plugins" ? <PluginsSection /> : null}
+          {current.plugin ? (
+            <PluginFrame of={current.plugin}>
+              <current.plugin.component />
+            </PluginFrame>
+          ) : null}
         </div>
       </div>
     </div>

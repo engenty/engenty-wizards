@@ -9,19 +9,23 @@ import {
   exampleWizard,
   type GuideConnector,
   type GuideServer,
+  type GuideTool,
   mcpServersLine,
   PRINCIPLES,
+  pluginToolsLine,
   SCHEMA_DOC,
   WIDGET_GUIDE,
 } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
 import { attachTools, costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
+import { pluginToolsOf } from "../plugins/registry.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { checkDraftWidget } from "../services/widgets.js";
 import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
+import { currentTenant } from "../tenants/tenant.js";
 import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
 import { runScript } from "../widgets/script.js";
 import { thoughtLine } from "./thought.js";
@@ -62,7 +66,11 @@ export interface ArchitectResult {
   costUsd: number;
 }
 
-function systemPrompt(mcp: GuideServer[], connectors: GuideConnector[]): string {
+function systemPrompt(
+  mcp: GuideServer[],
+  connectors: GuideConnector[],
+  pluginTools: GuideTool[],
+): string {
   return `You design wizards for "engenty wizards": a page-by-page flow an end user walks through, where AI steps research, write, draw images, render video, build documents, dashboards and interactive widgets, or write into other systems.
 
 You talk to the ADMIN who builds the wizard. Answer in the admin's language, briefly and warmly. Never mention JSON, ids, schemas, files or templates to them — talk about pages, questions, steps, the widget and results.
@@ -73,7 +81,7 @@ ${WIDGET_GUIDE}
 
 ${mcpServersLine(mcp)}
 
-${connectorsLine(connectors)}
+${connectorsLine(connectors)}${pluginToolsLine(pluginTools)}
 
 Example of a complete wizard:
 \`\`\`json
@@ -417,7 +425,11 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
     // The system prompt is long and identical on every turn: cache it.
     instructions: {
       role: "system",
-      content: systemPrompt(input.mcpServers, input.connectors),
+      content: systemPrompt(
+        input.mcpServers,
+        input.connectors,
+        await pluginToolsOf(currentTenant()),
+      ),
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
     model: resolved.model as unknown as MastraModelConfig,

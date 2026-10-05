@@ -18,6 +18,7 @@ import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
 import { internalRoutes } from "./routes/internal.js";
 import { marketplaceStudio } from "./routes/marketplace.js";
+import { pluginRoutes } from "./routes/plugins.js";
 import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
@@ -148,6 +149,7 @@ app.on(["GET", "POST", "DELETE"], "/api/mcp/bridge/:token", (c) =>
 
 app.route("/api/studio/wizards", wizardStream);
 app.route("/api/studio/marketplace", marketplaceStudio);
+app.route("/api/studio/plugins", pluginRoutes);
 app.route("/api/studio", studio);
 app.route("/api/v1", apiRoutes);
 app.route("/api/internal", internalRoutes);

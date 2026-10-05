@@ -1,4 +1,5 @@
 import {
+  pluginToolOf,
   type ValidationIssue,
   validateWizard,
   type WizardDefinition,
@@ -11,6 +12,7 @@ import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
+import { pluginToolsOf } from "../plugins/registry.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
@@ -125,9 +127,35 @@ async function connectorIssues(projectId: string, draft: WizardDefinition) {
   return issues;
 }
 
-/** Everything wrong with a draft: its structure, its workspace files, its project's connectors. */
+/** Tools of plugins the draft's steps list that this tenant does not have. */
+async function pluginIssues(draft: WizardDefinition) {
+  const issues: ValidationIssue[] = [];
+  let known: Set<string> | null = null;
+  for (const step of draft.steps) {
+    for (const id of step.type === "agent" ? step.tools : []) {
+      const named = pluginToolOf(id);
+      if (!named) {
+        continue;
+      }
+      known ??= new Set((await pluginToolsOf(currentTenant())).map((tool) => tool.id));
+      if (!known.has(id)) {
+        issues.push({
+          stepId: step.id,
+          message: `Step "${step.id}": tool "${id}" is not available here — the plugin "${named.plugin}" is not installed or has no such tool.`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/** Everything wrong with a draft: its structure, its workspace files, its project's connectors and plugins. */
 async function checkDraft(projectId: string, draft: WizardDefinition, files: string[]) {
-  return [...validateWizard(draft, files), ...(await connectorIssues(projectId, draft))];
+  return [
+    ...validateWizard(draft, files),
+    ...(await connectorIssues(projectId, draft)),
+    ...(await pluginIssues(draft)),
+  ];
 }
 
 /** Validator issues of the draft, checked against its workspace and the project's connectors. */

@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
+import { useStudioPlugins } from "../../plugins/host";
 import { HtmlFrame } from "../../runner/outputs";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
 import { ModelClassControl, StepCost, useEstimate } from "./estimate";
@@ -440,6 +441,8 @@ function StepBody({
   wizardId: string;
 }) {
   const index = def.steps.indexOf(step);
+  // Tools the runtime's plugins add, listed by their full id next to the built-in ones.
+  const pluginTools = useStudioPlugins().plugins.flatMap((plugin) => plugin.tools);
   const earlierProducers = def.steps
     .slice(0, index)
     .filter((s) => s.type === "agent" || s.type === "generate" || s.type === "widget");
@@ -511,13 +514,21 @@ function StepBody({
             <Segmented
               multi
               value={step.tools}
-              options={[...TOOL_IDS]}
+              // A tool the step lists stays to be seen, and taken out, where its plugin is gone.
+              options={[
+                ...new Set([...TOOL_IDS, ...pluginTools.map((tool) => tool.id), ...step.tools]),
+              ]}
               onChange={(v: string[]) => set({ ...step, tools: v as typeof step.tools })}
             />
             <div className="-mt-2 flex flex-wrap gap-x-3 text-[12px] text-ink-4">
               {TOOL_IDS.map((id) => (
                 <span key={id}>
                   {id} = {toolLabel(id)}
+                </span>
+              ))}
+              {pluginTools.map((tool) => (
+                <span key={tool.id}>
+                  {tool.id} = {tool.title}
                 </span>
               ))}
             </div>

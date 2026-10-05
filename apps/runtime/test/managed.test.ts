@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -69,6 +69,8 @@ const manage: Server = createServer(async (req, res) => {
       status: "active",
       balanceCredits: balances[tenant] ?? 0,
       limits: { concurrentRuns: 2 },
+      // The plugins this tenant has switched on, besides the runtime's PLUGINS_DEFAULT.
+      ...(tenant === "tenant-a" ? { modules: ["teams", "not-installed"] } : {}),
       db: null,
     });
   }
@@ -104,6 +106,22 @@ process.env.GATEWAY_URL = issuer;
 process.env.MANAGE_CLIENT_ID = "wizards-runtime-test";
 process.env.MANAGE_CLIENT_SECRET = "secret";
 process.env.MANAGE_SERVICE_KEY = SERVICE_KEY;
+
+// Three plugins: one every tenant has, one the Manage-App lists for tenant A, one nobody has.
+const plugins = join(dir, "plugins");
+mkdirSync(plugins);
+for (const id of ["basics", "teams", "spaces"]) {
+  writeFileSync(
+    join(plugins, `${id}.ts`),
+    `export default (wizards: any) => {
+  wizards.server.registerHttpRoute({ method: "GET", path: "/", handler: ({ user }: any) => ({ plugin: "${id}", tenant: user.tenantId }) });
+};
+`,
+  );
+}
+process.env.PLUGINS_DIR = plugins;
+process.env.PLUGINS_DEFAULT = "basics";
+process.env.PLUGINS_WATCH = "0";
 
 type App = { fetch: (req: Request) => Response | Promise<Response> };
 let app: App;
@@ -147,6 +165,7 @@ const post = (path: string, cookie: string, body: unknown) =>
 beforeAll(async () => {
   const client = await import("../src/db/client");
   await client.migrateControlDb();
+  await (await import("../src/plugins/loader")).loadPlugins();
   app = (await import("../src/app")).default;
 }, 60_000);
 
@@ -181,6 +200,26 @@ describe("a runtime of a Manage-App", () => {
     const [projectB] = (await (await get("/api/studio/projects", b)).json()) as { id: string; wizardCount: number }[];
     expect(projectB.id).not.toBe(project.id);
     expect(projectB.wizardCount).toBe(0);
+  });
+
+  it("gives a tenant the plugins switched on for it, and never reloads one", async () => {
+    const listed = async (cookie: string) =>
+      ((await (await get("/api/studio/plugins", cookie)).json()) as { plugins: { id: string }[]; canReload: boolean });
+    const ofA = await listed(a);
+    expect(ofA.plugins.map((p) => p.id).sort()).toEqual(["basics", "teams"]);
+    expect(ofA.canReload).toBe(false);
+    expect((await listed(b)).plugins.map((p) => p.id)).toEqual(["basics"]);
+    expect(await (await get("/api/studio/plugins/teams", a)).json()).toEqual({
+      plugin: "teams",
+      tenant: "tenant-a",
+    });
+    expect((await get("/api/studio/plugins/teams", b)).status).toBe(404);
+    expect((await get("/api/studio/plugins/spaces", a)).status).toBe(404);
+    expect((await get("/api/studio/plugins/basics", b)).status).toBe(200);
+    // A reload would hit every tenant of the runtime.
+    expect((await post("/api/studio/plugins/-/reload", a, {})).status).toBe(403);
+    expect((await post("/api/studio/plugins/-/reload/teams", a, {})).status).toBe(403);
+    expect((await get("/api/studio/plugins/-/events", a)).status).toBe(404);
   });
 
   it("refuses a test run without credits and reserves credits with them", async () => {

@@ -12,6 +12,7 @@ import { resumeInterruptedRuns } from "./engine/runner.js";
 import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
 import { loadCatalog, loadLocalModels } from "./models.js";
+import { loadPlugins } from "./plugins/loader.js";
 import { closeBrowser } from "./render/chromium.js";
 import { clearRunning, writeRunning } from "./running.js";
 import { syncMarketplace } from "./services/marketplace.js";
@@ -21,6 +22,8 @@ import { LOCAL_TENANT } from "./tenants/tenant.js";
 import { onRestart } from "./update.js";
 
 await migrateControlDb();
+// Before any tenant database opens: each gets the plugins' own tables as it does.
+await loadPlugins();
 if (managed) {
   // Every tenant database is brought to this release's schema; a new one migrates when first opened.
   void migrateAllTenants().then(({ migrated, failed }) => {

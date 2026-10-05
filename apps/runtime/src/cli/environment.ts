@@ -37,6 +37,8 @@ const INHERITED = new Set([
   "SANDBOX",
   "SANDBOX_ENABLED",
   "SANDBOX_IMAGE",
+  "PLUGINS_DIR",
+  "PLUGINS_WATCH",
   "ACCOUNT_URL",
   "ACCOUNT_GATEWAY_URL",
   "CLOUD_URL",
@@ -86,7 +88,10 @@ export function runtimeEnv(
   platform: NodeJS.Platform = process.platform,
 ): Record<string, string> {
   const secretsGiven = env.SECRETS !== undefined || fileEnv.SECRETS !== undefined;
+  const pluginsGiven = env.PLUGINS_DIR !== undefined || fileEnv.PLUGINS_DIR !== undefined;
   return {
+    // Plugins live beside the data, in the install's own folder.
+    ...(pluginsGiven ? {} : { PLUGINS_DIR: paths.plugins }),
     ...inherited(env),
     PATH: runtimePath(paths, env),
     NODE_ENV: "production",

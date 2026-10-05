@@ -44,7 +44,7 @@ Errors: `{ "error": string, "code": string }`.
 
 | Call | Body → answer |
 |---|---|
-| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects? }, db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one); left out, the runtime's `LIMIT_PROJECTS` counts |
+| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects? }, modules?: string[], db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one); left out, the runtime's `LIMIT_PROJECTS` counts · `modules` (optional, a list of plugin ids): the plugins of the runtime switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`; an id the runtime has no plugin for is ignored ([plugins.md](plugins.md)) |
 | `POST /v1/keys/verify` | `{ key }` → `{ valid: false }` or `{ valid: true, keyId, name, userId, userName, tenantId, role }` |
 | `POST /v1/reservations` | `{ tenantId, runId, credits }` → `{ id }` · `402` with code `no_credits` when the free balance is below `credits` · the same `runId` again replaces the earlier reservation |
 | `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |

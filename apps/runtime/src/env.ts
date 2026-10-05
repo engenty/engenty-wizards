@@ -63,6 +63,12 @@ function agentOsInstalled(): boolean {
     return false;
   }
 }
+/** A comma-separated list. */
+const list = (key: string): string[] =>
+  str(key)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 const num = (key: string, fallback: number): number => {
   const v = Number(process.env[key]);
   return Number.isFinite(v) && v > 0 ? v : fallback;
@@ -109,10 +115,7 @@ export const env = {
    */
   signedOutUrl: str("SIGNED_OUT_URL"),
   /** More host names this server answers under, besides APP_URL's and the loopback names. */
-  allowedHosts: str("ALLOWED_HOSTS")
-    .split(",")
-    .map((h) => h.trim())
-    .filter(Boolean),
+  allowedHosts: list("ALLOWED_HOSTS"),
   dataDir,
   /** The control database; empty = a libSQL file in the data folder. */
   databaseUrl: str("DATABASE_URL", ""),
@@ -210,6 +213,19 @@ export const env = {
   },
 
   turnstile: { siteKey: str("TURNSTILE_SITE_KEY"), secret: str("TURNSTILE_SECRET_KEY") },
+
+  /** Plugins (docs/plugins.md). Code in these folders runs with the runtime's own rights. */
+  plugins: {
+    /** Folders to look in, besides the `modules/` this runtime ships with. */
+    dirs: list("PLUGINS_DIR").map((dir) => resolve(dir)),
+    /** Managed: plugins every tenant has. The Manage-App switches further ones on per tenant. */
+    defaults: list("PLUGINS_DEFAULT"),
+    /**
+     * A plugin loads again when one of its files changes. Default: on where the runtime runs
+     * alone. A runtime of a Manage-App never reloads: it would hit every tenant.
+     */
+    watch: !manageUrl && str("PLUGINS_WATCH", "1") === "1",
+  },
 
   limits: {
     visitorRunsPerHour: num("LIMIT_VISITOR_RUNS_PER_HOUR", 6),

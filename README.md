@@ -177,6 +177,9 @@ More settings: [.env.example](.env.example).
 Development server, checks, how it is built, the managed mode:
 [docs/development.md](docs/development.md).
 
+Plugins add tools for steps, routes with their own tables and pages in the studio, without
+changing the runtime: [docs/plugins.md](docs/plugins.md).
+
 ## License
 
 [FSL-1.1-MIT](LICENSE): use it for yourself and your company, run it, change it — just don't

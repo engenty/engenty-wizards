@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.0",
+    "timestamp": 1791223084,
+    "commits": [
+      {
+        "id": "4404371",
+        "message": "a runtime takes plugins: tools for agent steps, routes with tables of their own, listeners on runs that end, and pages, top bar icons and settings sections in the studio; they load from modules/ and PLUGINS_DIR at start and again while it runs",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.11",
-    "timestamp": 1791208591,
+    "timestamp": 1791208594,
     "commits": [
       {
         "id": "85facbd",

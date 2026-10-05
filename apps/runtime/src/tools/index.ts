@@ -22,6 +22,7 @@ import { browserTools } from "./browser.js";
 import { connectorTools } from "./connector.js";
 import { mailTools } from "./mail.js";
 import { assertPublicUrl, safeFetch } from "./net-guard.js";
+import { pluginTools } from "./plugin.js";
 import { projectTools } from "./project.js";
 import { clip, FileKeeper } from "./shared.js";
 import { storeTools, type UploadRef } from "./store.js";
@@ -121,6 +122,7 @@ export async function buildStepTools(
   Object.assign(tools, projectTools(ctx));
   Object.assign(tools, mailTools(step, ctx, files));
   Object.assign(tools, await connectorTools(step, ctx, files));
+  Object.assign(tools, await pluginTools(step, ctx));
 
   const sandbox = sandboxCapabilities();
   if (allowed.has("sandbox") && sandbox) {

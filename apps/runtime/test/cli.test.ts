@@ -70,8 +70,17 @@ describe("what the runtime inherits from the terminal", () => {
       APP_URL: "http://localhost:8891",
       DATA_DIR: "/h/data",
       LOCAL_ACCESS_KEY: "k",
+      PLUGINS_DIR: "/h/plugins",
     });
     expect(env.SECRETS).toBeUndefined();
+  });
+
+  it("looks for plugins in the install's folder unless the install names another", () => {
+    const at = (shellEnv: NodeJS.ProcessEnv, fileEnv: Record<string, string>) =>
+      runtimeEnv(layout("/h"), start, shellEnv, fileEnv, "linux").PLUGINS_DIR;
+    expect(at({ ...shell, PLUGINS_DIR: "/else" }, {})).toBe("/else");
+    // The runtime reads the install's `.env` itself.
+    expect(at(shell, { PLUGINS_DIR: "/from-file" })).toBeUndefined();
   });
 
   it("keeps keys in the Keychain on a Mac unless the install says otherwise", () => {

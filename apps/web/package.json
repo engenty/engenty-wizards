@@ -4,6 +4,10 @@
   "license": "FSL-1.1-MIT",
   "private": true,
   "type": "module",
+  "exports": {
+    "./ui": "./src/ui/index.tsx",
+    "./theme.css": "./src/styles/theme.css"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build -c vite.mcp-app.config.ts",
@@ -11,6 +15,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
+    "@engenty-wizards/plugin-sdk": "workspace:*",
     "@engenty-wizards/shared": "workspace:*",
     "@modelcontextprotocol/client": "2.2.0",
     "@modelcontextprotocol/ext-apps": "2.0.3",

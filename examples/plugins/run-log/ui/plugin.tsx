@@ -1,0 +1,87 @@
+import { defineStudioPlugin } from "@engenty-wizards/plugin-sdk/studio";
+import { Button, Card, Chip, Empty, Spinner } from "@engenty-wizards/web/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ListChecks } from "lucide-react";
+import { messages } from "./messages";
+
+interface Entry {
+  id: number;
+  title: string;
+  mode: "test" | "live";
+  status: "done" | "failed" | "cancelled";
+  endedAt: string;
+}
+
+interface Log {
+  total: number;
+  entries: Entry[];
+}
+
+const TONE = { done: "live", failed: "warn", cancelled: "neutral" } as const;
+
+/**
+ * The studio half of the example: a page behind an icon of the top bar and a section of the
+ * settings. Both read the plugin's own routes.
+ */
+export default defineStudioPlugin((studio) => {
+  const t = studio.i18n.register(messages);
+  const useLog = () => useQuery({ queryKey: ["run-log"], queryFn: () => studio.api.get<Log>("/") });
+
+  function RunLogPage() {
+    const log = useLog();
+    return (
+      <div className="animate-rise">
+        <h1 className="font-display font-semibold text-[28px] tracking-tight">{t("title")}</h1>
+        <p className="mt-1 text-[15px] text-ink-3">{t("hint")}</p>
+        <div className="mt-8 flex flex-col gap-2">
+          {log.isLoading ? <Spinner className="mx-auto" /> : null}
+          {log.data && !log.data.entries.length ? <Empty>{t("empty")}</Empty> : null}
+          {log.data?.entries.map((entry) => (
+            <Card key={entry.id} className="flex items-center gap-3 px-5 py-3.5">
+              <span className="min-w-0 flex-1 truncate font-medium text-[15px]">{entry.title}</span>
+              {entry.mode === "test" ? <Chip>{t("test")}</Chip> : null}
+              <Chip tone={TONE[entry.status]}>{t(entry.status)}</Chip>
+              <time className="w-36 shrink-0 text-right text-[13px] text-ink-3 tabular-nums max-sm:hidden">
+                {new Date(entry.endedAt).toLocaleString(studio.i18n.lang())}
+              </time>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function RunLogSettings() {
+    const log = useLog();
+    const cache = useQueryClient();
+    const clear = useMutation({
+      mutationFn: () => studio.api.del("/"),
+      onSuccess: () => cache.invalidateQueries({ queryKey: ["run-log"] }),
+    });
+    return (
+      <section className="flex flex-col gap-2.5">
+        <h2 className="px-1 font-display font-semibold text-lg leading-tight">{t("settings")}</h2>
+        <Card className="flex items-center justify-between gap-4 p-5">
+          <p className="text-[14px] text-ink-2">{t("kept", { n: log.data?.total ?? 0 })}</p>
+          <Button
+            variant="danger"
+            busy={clear.isPending}
+            disabled={!log.data?.total}
+            onClick={() => clear.mutate()}
+          >
+            {t("clear")}
+          </Button>
+        </Card>
+      </section>
+    );
+  }
+
+  studio.registerPage({ path: "/run-log", component: RunLogPage });
+  studio.registerNav({ to: "/run-log", label: () => t("title"), icon: ListChecks });
+  studio.registerSettingsSection({
+    id: "run-log",
+    label: () => t("settings"),
+    icon: ListChecks,
+    component: RunLogSettings,
+  });
+});
