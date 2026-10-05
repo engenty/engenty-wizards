@@ -122,7 +122,9 @@ export function HarnessPanel({
   );
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[13px] text-ink-3">{t("harness.hint", { name: client.name, sub })}</p>
+      <p className="text-[13px] text-ink-3">
+        {t(client.images ? "harness.hintImages" : "harness.hint", { name: client.name, sub })}
+      </p>
       {installed ? (
         <div className="flex flex-col gap-2">
           <p className="flex items-center gap-2 text-[14px] text-ink-2">

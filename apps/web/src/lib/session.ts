@@ -21,6 +21,8 @@ export interface HarnessStatus {
   auth: "subscription" | "api_key" | "none";
   /** The sign-in opens the client's own app, which closes by itself once signed in. */
   interactiveLogin: boolean;
+  /** It makes images on the sign-in as well (Codex); video and audio no client makes. */
+  images: boolean;
 }
 
 export interface LocalModels {

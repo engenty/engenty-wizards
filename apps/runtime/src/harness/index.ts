@@ -41,6 +41,8 @@ export interface HarnessStatus {
   auth: HarnessAuth;
   /** The sign-in opens the client's own app, which the person ends. */
   interactiveLogin: boolean;
+  /** It makes images on the sign-in as well (Codex); video and audio no client makes. */
+  images: boolean;
 }
 
 const detected = new Map<HarnessId, { at: number; value: HarnessStatus }>();
@@ -68,6 +70,7 @@ export async function detectHarness(id: HarnessId, force = false): Promise<Harne
     version: null,
     auth: "none",
     interactiveLogin: h.login.interactive,
+    images: Boolean(h.image),
   };
   try {
     const { env, auth } = await resolveEnv(h);

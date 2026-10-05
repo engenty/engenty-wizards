@@ -71,6 +71,8 @@ const de = {
     "Mit dem Abo baut das auf diesem Gerät installierte Claude Code den Wizard – mit deiner Anmeldung dort. Läufe nutzen weiter Schlüssel oder Guthaben.",
   "harness.hint":
     "Texte denkt das auf diesem Gerät installierte {name} – mit deinem {sub} und deiner Anmeldung dort. Kein Schlüssel nötig. Bilder, Videos und Audio brauchen weiter einen Schlüssel.",
+  "harness.hintImages":
+    "Texte und Bilder macht das auf diesem Gerät installierte {name} – mit deinem {sub} und deiner Anmeldung dort. Kein Schlüssel nötig. Videos und Audio brauchen weiter einen Schlüssel.",
   "harness.found": "{name} {version} gefunden",
   "harness.missing": "{name} ist auf diesem Gerät nicht installiert.",
   "harness.install": "Oder in deinem eigenen Terminal:",
@@ -751,6 +753,8 @@ const en: Record<Key, string> = {
     "With the subscription, the Claude Code installed on this device builds the wizard — on your sign-in there. Runs keep using keys or credits.",
   "harness.hint":
     "Text thinks on the {name} installed on this device — on your {sub} and your sign-in there. No key needed. Images, video and audio still need a key.",
+  "harness.hintImages":
+    "Text and images come from the {name} installed on this device — on your {sub} and your sign-in there. No key needed. Video and audio still need a key.",
   "harness.found": "{name} {version} found",
   "harness.missing": "{name} is not installed on this device.",
   "harness.install": "Or in your own terminal:",
