@@ -440,9 +440,8 @@ latest_version() {
     sed -n 's#.*/tag/v##p'
 }
 
-# What gets installed, decided before anything is downloaded. The package is not on npm yet: it
-# is the tarball of the GitHub release, which npm installs like one from its registry; what it
-# depends on comes from the registry.
+# What gets installed, decided before anything is downloaded: the tarball of the GitHub release,
+# which npm installs like one from its registry; what it depends on comes from the registry.
 package() {
   STEP="Looking for the newest release"
   SPEC="${ENGENTY_WIZARDS_PACKAGE:-}"

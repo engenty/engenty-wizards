@@ -180,16 +180,16 @@ tag. To go back to an older commit: `git push --force origin <commit>:deploy/run
 
 What people install is the package `wizards`, built like an npm package: the built
 runtime, the built SPA, the plugin template and the `wizards` command, with the shared
-package inside it. It is not on npm yet: the tarball is attached to the GitHub release
-`v<version>`, and npm installs it from that address. It gets onto a machine through the
-installer, which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
+package inside it. It is on npm as `wizards`, and the same tarball is attached to the GitHub
+release `v<version>`: the installer has npm install it from that address. It gets onto a machine
+through the installer, which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves
+`~/.engenty`):
 
 | | Code | Node |
 |---|---|---|
 | `curl -fsSL https://engenty.ai/install.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
 
-Once the package is on npm (the repository variable `PUBLISH_NPM`, below), `npx wizards`
-is a second way: the code in npm's cache, on the person's own Node 24.11 or newer.
+`npx wizards` is a second way: the code in npm's cache, on the person's own Node 24.11 or newer.
 
 ```bash
 pnpm package                       # node scripts/npm-package.mjs → dist/npm/wizards-<version>.tgz
