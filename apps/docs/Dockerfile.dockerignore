@@ -1,0 +1,13 @@
+# Only what apps/docs/Dockerfile copies.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!apps/docs
+!docs/content
+!docs/assets
+**/node_modules
+**/.next
+**/.source
+**/*.tsbuildinfo

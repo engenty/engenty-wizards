@@ -115,7 +115,14 @@ pnpm build:docs   # what CI runs; `pnpm build` leaves the site out
   page with bold text does not build.
 
 The image of the runtime leaves the site out (`.dockerignore`), and so do the npm package and
-the app's open-source credits.
+the app's open-source credits. The site has an image of its own, `apps/docs/Dockerfile`: one
+Next.js server on port 8896, built from the repo's root with its own ignore file beside it
+(`Dockerfile.dockerignore`). How engenty's own is deployed: [Deploy](#deploy).
+
+```bash
+docker build -f apps/docs/Dockerfile --build-arg NEXT_PUBLIC_DOCS_SITE_URL=https://engenty.ai -t docs .
+docker run -p 8896:8896 docs   # http://localhost:8896/docs
+```
 
 ## AI media and the AI Act
 
@@ -190,7 +197,8 @@ None of them is edited by hand except `product-credits.ts`. In the app, the stud
 the version and opens the changelog and the open-source credits (`apps/web/src/about/`). The
 credits list what `package.json` files name.
 
-The tag is what ships: it deploys the cloud runtime (see [Deploy](#deploy)) and publishes the
+The tag is what ships: it deploys the cloud runtime and the documentation (see
+[Deploy](#deploy)) and publishes the
 local install (see [Local install](#local-install)). A push to `main` without a tag runs the
 checks and nothing else, so the cloud runtime and a fresh local install are the same release.
 Always tag through `pnpm release`: a tag set by hand leaves the changelog files as they were.
@@ -214,6 +222,12 @@ on `main` runs the checks; when they are green the same workflow (`.github/workf
 moves that branch to the tag's commit, and the server deploys what the branch points at. A push
 to `main` without a tag deploys nothing. To deploy a tag again, run the workflow by hand on that
 tag. To go back to an older commit: `git push --force origin <commit>:deploy/runtime`.
+
+The documentation at `engenty.ai/docs` deploys the same way from the branch `deploy/docs`
+(Coolify resource `docs`, `apps/docs/Dockerfile`): a green release tag moves it when the site's
+app or its pages changed, so the published docs describe the released version. The proxy sends
+`/docs` to it with the path kept (no prefix stripping: the site itself lives below `/docs`). To
+publish a change to the pages without a release: `git push origin <commit>:deploy/docs`.
 
 ## Local install
 
