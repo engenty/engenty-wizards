@@ -653,7 +653,7 @@ export const studio = new Hono<Vars>()
     return c.json({ ok: true });
   })
   // The person's AI apps on this machine (Claude Desktop, Cursor, Codex …) and whether they
-  // have this install's MCP server: the same as `engenty-wizards connect`.
+  // have this install's MCP server: the same as `wizards connect`.
   .get("/local/apps", async (c) => (managed ? c.notFound() : c.json(await appStates(layout()))))
   .post("/local/apps/:id", async (c) => {
     if (managed) {

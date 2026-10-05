@@ -10,8 +10,8 @@ import { bad, dim, ok, tilde } from "./ui.js";
 const run = promisify(execFile);
 
 /**
- * The wizards in the person's own AI apps: `engenty-wizards connect` writes this install's MCP
- * server into each app's config, as the command `engenty-wizards mcp` (stdio). Every app starts
+ * The wizards in the person's own AI apps: `wizards connect` writes this install's MCP
+ * server into each app's config, as the command `wizards mcp` (stdio). Every app starts
  * servers that way; the command finds the running runtime itself and signs in with the data
  * folder's secret, so a config holds neither a port nor a key.
  */
@@ -27,18 +27,18 @@ export interface ServerCommand {
 }
 
 /**
- * How an app starts this install's MCP server. An install made by wizards.sh has a command that
+ * How an app starts this install's MCP server. An install made by install.sh has a command that
  * stays where it is across updates; any other copy is started by its Node and its script. The
  * studio connects apps too: from the runtime, which is not the command.
  */
 export function serverCommand(
   paths: Layout,
-  script = join(packageRoot, "bin", "engenty-wizards.mjs"),
+  script = join(packageRoot, "bin", "wizards.mjs"),
 ): ServerCommand {
   const moved = dirname(paths.home) !== join(homedir(), ".engenty");
   const env = moved ? { env: { ENGENTY_HOME: dirname(paths.home) } } : {};
   if (installedByScript(paths)) {
-    return { command: join(paths.bin, "engenty-wizards"), args: ["mcp"], ...env };
+    return { command: join(paths.bin, "wizards"), args: ["mcp"], ...env };
   }
   return { command: process.execPath, args: [script, "mcp"], ...env };
 }
@@ -587,7 +587,7 @@ export async function appStates(paths: Layout): Promise<AppState[]> {
   );
 }
 
-/** `engenty-wizards connect [app …]` and `disconnect`: what was done, app by app. */
+/** `wizards connect [app …]` and `disconnect`: what was done, app by app. */
 export async function connectCommand(paths: Layout, ids: string[], remove: boolean) {
   const unknown = ids.filter((id) => !apps(paths).some((app) => app.id === id));
   if (unknown.length) {

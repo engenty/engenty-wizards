@@ -8,12 +8,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const TTL_MS = 60_000;
 
 /**
- * `local-enter` lets a browser in once; `local-mcp` is what `engenty-wizards mcp` signs each
+ * `local-enter` lets a browser in once; `local-mcp` is what `wizards mcp` signs each
  * request to the MCP endpoint with, so that no AI client's config has to hold a key.
  */
 type Purpose = "local-enter" | "local-mcp";
 
-/** The header `engenty-wizards mcp` signs its requests with, and the one naming its client. */
+/** The header `wizards mcp` signs its requests with, and the one naming its client. */
 export const LOCAL_MCP_HEADER = "x-engenty-local";
 export const LOCAL_CLIENT_HEADER = "x-engenty-client";
 

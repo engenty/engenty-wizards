@@ -353,16 +353,16 @@ the widget calls the server's tools through the host; the widget itself has no n
 without MCP Apps (Claude Code, Codex, Gemini CLI, Windsurf, OpenClaw) get the same tools as text.
 
 **On the person's computer.** AI apps start MCP servers as commands, so a local install offers
-itself as one: `engenty-wizards mcp` (`apps/runtime/src/cli/mcp.ts`) speaks MCP over stdio and
+itself as one: `wizards mcp` (`apps/runtime/src/cli/mcp.ts`) speaks MCP over stdio and
 passes every message on to the running runtime's `/api/mcp`, signed with the data folder's secret
 (`x-engenty-local`, a ticket good for a minute, `apps/runtime/src/auth/local-ticket.ts`). No key
 in any app's config, no port either; when nothing runs, it starts the runtime in the background
 (log: `~/.engenty/wizards/logs/runtime.log`).
 
 ```bash
-engenty-wizards connect              # every AI app found on this computer
-engenty-wizards connect cursor codex # or these
-engenty-wizards disconnect cursor
+wizards connect              # every AI app found on this computer
+wizards connect cursor codex # or these
+wizards disconnect cursor
 ```
 
 `connect` (`apps/runtime/src/cli/connect.ts`) writes the entry into each app's own config and

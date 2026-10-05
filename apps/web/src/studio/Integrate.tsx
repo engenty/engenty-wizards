@@ -31,7 +31,7 @@ interface ApiKeyRow {
   lastRequest: string | null;
 }
 
-/** An AI app on this computer, as `engenty-wizards connect` sees it. */
+/** An AI app on this computer, as `wizards connect` sees it. */
 interface LocalApp {
   id: string;
   name: string;

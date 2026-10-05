@@ -109,7 +109,7 @@ async function tokenAuth(token: string): Promise<AuthInfo | Response> {
 }
 
 /**
- * A request from `engenty-wizards mcp` on this machine: signed with the data folder's secret,
+ * A request from `wizards mcp` on this machine: signed with the data folder's secret,
  * which only a runtime alone has. It acts as the admin, like a key from the settings.
  */
 function localAuth(request: Request, ticket: string): AuthInfo | Response {
