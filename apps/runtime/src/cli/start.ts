@@ -115,9 +115,7 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   const running = await runningRuntime(dataDir);
   if (running) {
     show(running.url, entryUrl(running, dataDir), options.open);
-    console.log(
-      styleText("dim", "    It was already running; stop it with `engenty-wizards stop`."),
-    );
+    console.log(styleText("dim", "    It was already running; stop it with `wizards stop`."));
     return 0;
   }
 
@@ -176,28 +174,24 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   // Updated: the command as it is on disk now starts the new version, in this terminal or
   // under the login item, which keeps waiting on this process.
   console.log(styleText("dim", "  Updated; starting the new version."));
-  const wrapper = join(paths.bin, "engenty-wizards");
+  const wrapper = join(paths.bin, "wizards");
   current = existsSync(wrapper)
     ? spawn(wrapper, ["start", "--no-open"], { stdio: "inherit" })
-    : spawn(
-        process.execPath,
-        [join(packageRoot, "bin/engenty-wizards.mjs"), "start", "--no-open"],
-        {
-          stdio: "inherit",
-        },
-      );
+    : spawn(process.execPath, [join(packageRoot, "bin/wizards.mjs"), "start", "--no-open"], {
+        stdio: "inherit",
+      });
   return new Promise<number>((done) => {
     current.on("error", () => done(1));
     current.on("exit", (exit) => done(exit ?? 0));
   });
 }
 
-/** `engenty-wizards open`: lets the browser into the runtime that runs. */
+/** `wizards open`: lets the browser into the runtime that runs. */
 export async function open(paths: Layout, print: boolean): Promise<number> {
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
   if (!running) {
-    console.error("engenty wizards is not running. Start it with `engenty-wizards`.");
+    console.error("engenty wizards is not running. Start it with `wizards`.");
     return 1;
   }
   const entry = entryUrl(running, dataDir);

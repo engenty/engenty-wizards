@@ -10,8 +10,8 @@ const run = promisify(execFile);
 
 /**
  * engenty wizards starting by itself when the person logs in, so that links and AI clients
- * reach it without anybody starting it: `engenty-wizards start --no-open`, on a Mac from a
- * LaunchAgent, on Linux from a systemd user service. Only for an install made by wizards.sh,
+ * reach it without anybody starting it: `wizards start --no-open`, on a Mac from a
+ * LaunchAgent, on Linux from a systemd user service. Only for an install made by install.sh,
  * whose command stays where it is.
  */
 
@@ -100,7 +100,7 @@ export async function autostartState(paths: Layout): Promise<Autostart> {
     return { unavailable: `not on ${process.platform}` };
   }
   if (!installedByScript(paths)) {
-    return { unavailable: "only for an install made by wizards.sh" };
+    return { unavailable: "only for an install made by install.sh" };
   }
   if (process.platform === "darwin") {
     return { on: existsSync(LOGIN_ITEM), how: MAC_HOW };
@@ -129,7 +129,7 @@ export async function setAutostart(paths: Layout, on: boolean): Promise<Autostar
       writeFileSync(
         LOGIN_ITEM,
         loginItemText(
-          join(paths.home, "bin", "engenty-wizards"),
+          join(paths.home, "bin", "wizards"),
           join(paths.home, "logs", "autostart.log"),
         ),
       );
@@ -141,7 +141,7 @@ export async function setAutostart(paths: Layout, on: boolean): Promise<Autostar
   const file = unitFile();
   if (on) {
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, unitText(join(paths.home, "bin", "engenty-wizards")));
+    writeFileSync(file, unitText(join(paths.home, "bin", "wizards")));
     await run("systemctl", ["--user", "daemon-reload"]);
     await run("systemctl", ["--user", "enable", "--now", UNIT]);
   } else {

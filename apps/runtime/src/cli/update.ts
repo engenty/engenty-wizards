@@ -6,7 +6,7 @@ import { runningRuntime, settings } from "./start.js";
 import { cyan } from "./ui.js";
 
 /** The installer this install was made with; it also updates one. */
-const INSTALLER = "https://engenty.ai/wizards.sh";
+const INSTALLER = "https://engenty.ai/install.sh";
 
 async function installer(into: string): Promise<string> {
   const source = process.env.ENGENTY_WIZARDS_INSTALLER?.trim() || INSTALLER;
@@ -19,13 +19,13 @@ async function installer(into: string): Promise<string> {
   if (!text.startsWith("#!")) {
     throw new Error(`${source} did not answer with the installer.`);
   }
-  const file = join(into, "wizards.sh");
+  const file = join(into, "install.sh");
   writeFileSync(file, text, { mode: 0o700 });
   return file;
 }
 
 /**
- * Brings an install made by wizards.sh to the newest version by running the installer again
+ * Brings an install made by install.sh to the newest version by running the installer again
  * without its questions: Node, the runtime and the command.
  */
 export async function update(paths: Layout): Promise<number> {
@@ -33,7 +33,7 @@ export async function update(paths: Layout): Promise<number> {
     console.log(
       isCheckout()
         ? `This copy is a checkout. The newest version: ${cyan("git pull && pnpm install && pnpm build")}`
-        : `This copy runs from npm. The newest version: ${cyan("npx engenty-wizards@latest")}`,
+        : `This copy runs from npm. The newest version: ${cyan("npx wizards@latest")}`,
     );
     return 0;
   }
@@ -57,7 +57,7 @@ export async function update(paths: Layout): Promise<number> {
 
   if (await runningRuntime(settings(paths).dataDir)) {
     console.log(
-      `  The runtime that is running is still the old one. Restart it: ${cyan("engenty-wizards stop")}, then ${cyan("engenty-wizards")}.`,
+      `  The runtime that is running is still the old one. Restart it: ${cyan("wizards stop")}, then ${cyan("wizards")}.`,
     );
   }
   return 0;

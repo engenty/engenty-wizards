@@ -26,7 +26,7 @@ function dismissedFor(): string | null {
 }
 
 /**
- * A newer release is out. A runtime installed by wizards.sh installs it from here and starts
+ * A newer release is out. A runtime installed by install.sh installs it from here and starts
  * the new version; the page waits for it and loads again. One that cannot (npm, a checkout)
  * links to the release. Closing it hides this release; the next one shows again.
  */

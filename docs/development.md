@@ -6,7 +6,7 @@ For working on the code. To install and use engenty wizards, see the [README](..
 
 | | Alone | Managed |
 |---|---|---|
-| What | one person, one tenant, on this machine: the local install (`engenty-wizards`), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
+| What | one person, one tenant, on this machine: the local install (`wizards`), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
 | Sign-in | a one-time link at start (the command line opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
 | Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
 | Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Gemini CLI, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
@@ -29,9 +29,9 @@ A pnpm workspace:
 |---|---|
 | `apps/runtime/` | the server: API, step runner, databases, models (`src/`), its tests (`test/`) |
 | `apps/web/` | the SPA: studio, public runner, share page |
-| `apps/runtime/src/cli/` | the `engenty-wizards` command of a local install: start, guided setup, status, update |
-| `apps/web/public/wizards.sh` | the installer, served by every runtime at `/wizards.sh` |
-| `bin/` | the entry of the `engenty-wizards` command |
+| `apps/runtime/src/cli/` | the `wizards` command of a local install: start, guided setup, status, update |
+| `apps/web/public/install.sh` | the installer, served by every runtime at `/install.sh` |
+| `bin/` | the entry of the `wizards` command |
 | `scripts/` | `npm-package.mjs` (the npm package) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
 | `plugin/` | the Claude Code plugin template |
@@ -68,11 +68,11 @@ The agent is told what the chosen sandbox runs (`apps/runtime/src/sandbox`).
 Addresses: the studio is `/studio/…` (`/studio/new`, `/studio/edit/<id>`, `/studio/settings`),
 built with its files below it (`/studio/assets`, `/studio/icons`). A wizard's link is
 `/w/<token>`, a shared result `/s/<token>`, the API `/api/…`. Of the root the server serves only
-`/wizards.sh`, `/embed.js` and `/sw.js`, and sends `/` to `/studio/`; on engenty.ai the root is
+`/install.sh`, `/embed.js` and `/sw.js`, and sends `/` to `/studio/`; on engenty.ai the root is
 the landing page and `/wizards/` the marketplace.
 
 `.env.local` and `data/` in the repo root belong to `pnpm dev` and `pnpm start`. The installed
-command (`pnpm wizards`, `engenty-wizards`) uses `~/.engenty/wizards` instead: see
+command (`pnpm wizards`, `wizards`) uses `~/.engenty/wizards` instead: see
 [Local install](#local-install).
 
 A data folder from before tenants (`DATA_DIR/wizards.db`) is taken over into the local tenant at
@@ -163,7 +163,7 @@ README. One container: API + built SPA + Chromium, data on the `/data` volume.
 
 Managed (the cloud runtime): `compose.cloud.yaml` runs the app and a separate Chromium
 container that holds no secrets and reaches no database. On engenty.ai the proxy sends the
-runtime only its own paths — `/studio`, `/api`, `/w/`, `/s/`, `/.well-known`, `/wizards.sh`,
+runtime only its own paths — `/studio`, `/api`, `/w/`, `/s/`, `/.well-known`, `/install.sh`,
 `/embed.js`, `/sw.js` — and the rest of the host to the site (landing page, marketplace pages)
 and the marketplace's API. `/w/` and `/s/` keep their slash: a proxy prefix `/w` would also take
 `/wizards/…`. Set the `MANAGE_*` block, `GATEWAY_URL`,
@@ -178,22 +178,22 @@ tag. To go back to an older commit: `git push --force origin <commit>:deploy/run
 
 ## Local install
 
-What people install is the package `engenty-wizards`, built like an npm package: the built
-runtime, the built SPA, the plugin template and the `engenty-wizards` command, with the shared
+What people install is the package `wizards`, built like an npm package: the built
+runtime, the built SPA, the plugin template and the `wizards` command, with the shared
 package inside it. It is not on npm yet: the tarball is attached to the GitHub release
 `v<version>`, and npm installs it from that address. It gets onto a machine through the
 installer, which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
 
 | | Code | Node |
 |---|---|---|
-| `curl -fsSL https://engenty.ai/wizards.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
+| `curl -fsSL https://engenty.ai/install.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
 
-Once the package is on npm (the repository variable `PUBLISH_NPM`, below), `npx engenty-wizards`
+Once the package is on npm (the repository variable `PUBLISH_NPM`, below), `npx wizards`
 is a second way: the code in npm's cache, on the person's own Node 24.11 or newer.
 
 ```bash
-pnpm package                       # node scripts/npm-package.mjs → dist/npm/engenty-wizards-<version>.tgz
-pnpm wizards status                # the command from the checkout (node bin/engenty-wizards.mjs)
+pnpm package                       # node scripts/npm-package.mjs → dist/npm/wizards-<version>.tgz
+pnpm wizards status                # the command from the checkout (node bin/wizards.mjs)
 ```
 
 `scripts/npm-package.mjs` stages `apps/runtime/dist`, `apps/web/dist`, `plugin/` and `bin/` in the
@@ -201,20 +201,20 @@ checkout's layout and writes the package.json: the runtime's dependencies at the
 of the root lockfile, the shared package bundled. Dependencies of dependencies are resolved by
 npm at install time.
 
-`apps/web/public/wizards.sh` is the installer (bash 3.2, `shellcheck` clean). It downloads the
+`apps/web/public/install.sh` is the installer (bash 3.2, `shellcheck` clean). It downloads the
 pinned Node from nodejs.org and checks it against `SHASUMS256.txt`, asks GitHub for the newest
 release, installs that release's tarball with that Node's npm
 (`--ignore-scripts --legacy-peer-deps`), writes the command to
 `~/.engenty/wizards/bin` and links it into `~/.local/bin`, then hands over to
-`engenty-wizards setup`. The setup (`apps/runtime/src/cli/setup.ts`) asks; the script does not.
+`wizards setup`. The setup (`apps/runtime/src/cli/setup.ts`) asks; the script does not.
 It lives in the SPA's `public/` folder, so every runtime serves it — `engenty.ai` included.
 
 To try the installer against a checkout, without npm and without touching `~/.engenty`:
 
 ```bash
 pnpm package
-ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/engenty-wizards-<version>.tgz \
-  bash apps/web/public/wizards.sh --no-link
+ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/wizards-<version>.tgz \
+  bash apps/web/public/install.sh --no-link
 ```
 
 How the pieces share one install:
@@ -222,7 +222,7 @@ How the pieces share one install:
 - The runtime leaves `running.json` in its data folder while it runs (`apps/runtime/src/running.ts`).
   The command line looks there before starting one, and open the running one
   instead: two runtimes would write the same databases.
-- Entering a runtime that already runs needs no restart: `engenty-wizards open` signs a ticket
+- Entering a runtime that already runs needs no restart: `wizards open` signs a ticket
   for `/api/local/enter` with the data folder's secret (`apps/runtime/src/auth/local-ticket.ts`),
   good for a minute and for one use. Who can read that secret can already make the studio's cookie.
 - The command line starts the runtime with a short list of the terminal's variables
@@ -235,7 +235,7 @@ A release is a tag `v<version>` (the version of the root package.json):
 `.github/workflows/release.yml` packs the package, runs the installer with it on Linux and
 macOS, and attaches the tarball to the GitHub release.
 With the repository variable `PUBLISH_NPM=true` and the secret `NPM_TOKEN` it also publishes to
-npm. The same tag deploys the cloud runtime, which puts the current `wizards.sh` on
+npm. The same tag deploys the cloud runtime, which puts the current `install.sh` on
 `engenty.ai`. On a pull request the same workflow builds and tests everything and publishes
 nothing.
 

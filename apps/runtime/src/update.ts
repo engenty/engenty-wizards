@@ -18,7 +18,7 @@ export const RESTART_EXIT = 75;
 /** Set by the command that starts the runtime when it starts it again on RESTART_EXIT. */
 const RESTARTS = "ENGENTY_WIZARDS_RESTARTS";
 
-/** How this copy got here: only an install made by wizards.sh can update itself. */
+/** How this copy got here: only an install made by install.sh can update itself. */
 export type InstallKind = "script" | "checkout" | "npm";
 
 export interface UpdateStatus {
@@ -118,7 +118,7 @@ export async function updateStatus(): Promise<UpdateStatus> {
 }
 
 /**
- * Runs `engenty-wizards update` in the background, the same steps as in a terminal. Afterwards a
+ * Runs `wizards update` in the background, the same steps as in a terminal. Afterwards a
  * runtime started by the command restarts into the new version; any other keeps running the old
  * one until somebody restarts it. The output goes to logs/update.log.
  */
@@ -130,7 +130,7 @@ export function applyUpdate(): UpdateStatus["applying"] {
   mkdirSync(paths.logs, { recursive: true });
   const log = openSync(join(paths.logs, "update.log"), "a");
   applying = "running";
-  const child = spawn(process.execPath, [join(packageRoot, "bin/engenty-wizards.mjs"), "update"], {
+  const child = spawn(process.execPath, [join(packageRoot, "bin/wizards.mjs"), "update"], {
     cwd: paths.home,
     stdio: ["ignore", log, log],
   });

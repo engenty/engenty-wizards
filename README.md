@@ -35,7 +35,7 @@
 On macOS or Linux, in a terminal:
 
 ```bash
-curl -fsSL https://engenty.ai/wizards.sh | bash
+curl -fsSL https://engenty.ai/install.sh | bash
 ```
 
 It needs nothing but `curl` and asks for no password. It brings its own Node.js (a Node you
@@ -50,17 +50,17 @@ you through the rest:
   a browser, ffmpeg for MP4 videos of animated widgets.
 - **Start at login** (optional): engenty wizards starts in the background when you log in (a
   LaunchAgent on a Mac, a systemd user service on Linux). Links and AI clients then always
-  reach it. `engenty-wizards autostart on` or `off` switches it later.
+  reach it. `wizards autostart on` or `off` switches it later.
 
 Then it starts and the studio opens in your browser. Later, start it with:
 
 ```bash
-engenty-wizards
+wizards
 ```
 
-It runs while that terminal is open; Ctrl-C stops it. `engenty-wizards status` says what is
-installed and what runs, `engenty-wizards setup` runs the guided setup again, and
-`engenty-wizards --help` lists the rest.
+It runs while that terminal is open; Ctrl-C stops it. `wizards status` says what is
+installed and what runs, `wizards setup` runs the guided setup again, and
+`wizards --help` lists the rest.
 
 **Install it as an app.** In Chrome or Edge the studio installs as an app: its own window, its
 own icon in the Dock or taskbar. The studio offers it in a banner at the top; or click the install
@@ -118,7 +118,7 @@ Back up the folder; delete it to start over. Settings go into `~/.engenty/wizard
 ## Update
 
 ```bash
-engenty-wizards update
+wizards update
 ```
 
 This runs the installer again without its questions. The studio says when a newer release is
@@ -126,8 +126,8 @@ out and can run the same update from its footer.
 From source: `git pull`, `pnpm install`, `pnpm build`. Your data is brought up to date at the
 next start.
 
-To remove engenty wizards, run `engenty-wizards autostart off`, then delete `~/.engenty/wizards` (your data is in its `data` folder) and
-`~/.local/bin/engenty-wizards`.
+To remove engenty wizards, run `wizards autostart off`, then delete `~/.engenty/wizards` (your data is in its `data` folder) and
+`~/.local/bin/wizards`.
 
 ## Run it on a server
 
@@ -148,13 +148,13 @@ AI clients' subscriptions live on your own computer. The code sandbox is off in 
 
 | | |
 |---|---|
-| "This link is no longer valid" | The link works once. `engenty-wizards open` gives this browser a new one. |
-| `engenty-wizards`: command not found | Open a new terminal, or run `~/.local/bin/engenty-wizards`. |
+| "This link is no longer valid" | The link works once. `wizards open` gives this browser a new one. |
+| `wizards`: command not found | Open a new terminal, or run `~/.local/bin/wizards`. |
 | You open it under another address | Set `APP_URL` in `~/.engenty/wizards/.env` to the address you open. |
 | An AI client shows as not signed in | Sign it in on the setup page, or in your own terminal (e.g. `claude`, `codex login`), then "Check again". |
 | PDF or PNG export fails | Install Google Chrome, or set `CHROME_PATH` to Chrome or Chromium. |
 | Port 24368 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env`. |
-| Something else | `engenty-wizards doctor` checks the install. |
+| Something else | `wizards doctor` checks the install. |
 
 More settings: [.env.example](.env.example).
 
