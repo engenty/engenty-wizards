@@ -2,7 +2,10 @@ import dagre from "@dagrejs/dagre";
 import type { Step, WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { RunEstimate } from "@engenty-wizards/shared/run";
 import {
+  BaseEdge,
   type Edge,
+  type EdgeProps,
+  getBezierPath,
   Handle,
   MarkerType,
   type Node,
@@ -106,7 +109,55 @@ function StartNode({ data }: NodeProps<Node<StartData>>) {
   );
 }
 
+type Point = { x: number; y: number };
+type BranchData = { points: Point[]; labelX: number; labelY: number };
+
+/**
+ * A branch that skips steps, drawn where the layout routed it: beside the steps it passes, with
+ * its condition on the line. A straight line between the two steps would run behind them.
+ */
+function BranchEdge(props: EdgeProps<Edge<BranchData>>) {
+  const { data, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } = props;
+  const text = {
+    label: props.label,
+    labelStyle: props.labelStyle,
+    labelBgStyle: props.labelBgStyle,
+    labelBgPadding: props.labelBgPadding,
+    labelBgBorderRadius: props.labelBgBorderRadius,
+    style: props.style,
+    markerEnd: props.markerEnd,
+  };
+  if (!data?.points.length) {
+    const [path, labelX, labelY] = getBezierPath({
+      sourceX,
+      sourceY,
+      targetX,
+      targetY,
+      sourcePosition,
+      targetPosition,
+    });
+    return <BaseEdge path={path} labelX={labelX} labelY={labelY} {...text} />;
+  }
+  // From the step's handle through the layout's points to the next handle; each stretch leaves
+  // and arrives vertically, like the other lines.
+  const stops = [{ x: sourceX, y: sourceY }, ...data.points, { x: targetX, y: targetY }];
+  const path = stops
+    .map((to, i) => {
+      const from = stops[i - 1];
+      if (!from) {
+        return `M ${to.x} ${to.y}`;
+      }
+      const mid = (from.y + to.y) / 2;
+      return `C ${from.x} ${mid} ${to.x} ${mid} ${to.x} ${to.y}`;
+    })
+    .join(" ");
+  return <BaseEdge path={path} labelX={data.labelX} labelY={data.labelY} {...text} />;
+}
+
 const nodeTypes = { step: StepNode, start: StartNode };
+const edgeTypes = { branch: BranchEdge };
+/** A condition longer than this is cut on the line; the step's settings show it whole. */
+const BRANCH_LABEL = 34;
 const NO_COSTS: RunEstimate["steps"] = {};
 
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
@@ -152,16 +203,25 @@ function layout(
   }
   def.steps.forEach((s, i) => {
     const next = def.steps[i + 1];
-    for (const [j, rule] of (s.next ?? []).entries()) {
+    // One line per step a branch leads to, with all its conditions on it.
+    const branches = new Map<string, string[]>();
+    for (const rule of s.next ?? []) {
       if (rule.goto === "end" || !def.steps.some((x) => x.id === rule.goto)) {
         continue;
       }
-      g.setEdge(s.id, rule.goto);
+      branches.set(rule.goto, [...(branches.get(rule.goto) ?? []), conditionLabel(rule)]);
+    }
+    for (const [goto, conditions] of branches) {
+      const all = conditions.join(" · ");
+      const label = all.length > BRANCH_LABEL ? `${all.slice(0, BRANCH_LABEL - 1)}…` : all;
+      // The layout keeps room for the label, so the steps beside the line stand clear of it.
+      g.setEdge(s.id, goto, { width: label.length * 6.2 + 16, height: 22, labelpos: "c" });
       edges.push({
-        id: `b-${s.id}-${j}`,
+        id: `b-${s.id}-${goto}`,
+        type: "branch",
         source: s.id,
-        target: rule.goto,
-        label: conditionLabel(rule),
+        target: goto,
+        label,
         labelStyle: { fontSize: 11, fill: "var(--ink-2)" },
         labelBgStyle: { fill: "var(--paper-2)" },
         labelBgPadding: [6, 3],
@@ -171,7 +231,9 @@ function layout(
       });
     }
     if (next && s.type !== "result") {
-      g.setEdge(s.id, next.id);
+      if (!g.hasEdge(s.id, next.id)) {
+        g.setEdge(s.id, next.id);
+      }
       edges.push({
         id: `n-${s.id}`,
         source: s.id,
@@ -188,6 +250,18 @@ function layout(
     }
   });
   dagre.layout(g);
+  for (const edge of edges) {
+    if (edge.type !== "branch") {
+      continue;
+    }
+    const route = g.edge(edge.source, edge.target) as { points?: Point[]; x?: number; y?: number };
+    // Without the first and the last point: those are on the steps' borders, the line starts
+    // and ends at their handles.
+    const points = (route.points ?? []).slice(1, -1);
+    if (points.length && route.x !== undefined && route.y !== undefined) {
+      edge.data = { points, labelX: route.x, labelY: route.y } satisfies BranchData;
+    }
+  }
   const nodes: Node[] = [
     {
       id: "__start",
@@ -308,6 +382,7 @@ function Inner({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeClick={(_, n) => onSelect(n.id === "__start" ? "__wizard" : n.id)}
         onPaneClick={() => onSelect(null)}
         nodesConnectable={false}
