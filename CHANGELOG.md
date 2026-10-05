@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.11] - 2026-10-05
+- DOCS The package is on npm as wizards, and the README's studio picture shows the branches with their conditions
+- FIXED A branch that skips steps runs beside them in the editor, with its condition readable on the line; it ran behind the step with the condition hidden
+
 ## [0.1.10] - 2026-10-05
 - DOCS The README shows the studio with a branched flow and a wizard in use, from its first page to the result
 - FIXED The editor's review notes, tool names and branch labels follow the language; they were German in the English studio

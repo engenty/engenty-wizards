@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.1.11",
+    "timestamp": 1791208591,
+    "commits": [
+      {
+        "id": "85facbd",
+        "message": "the package is on npm as wizards, and the README's studio picture shows the branches with their conditions",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "6ca5cfc",
+        "message": "a branch that skips steps runs beside them in the editor, with its condition readable on the line; it ran behind the step with the condition hidden",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.10",
-    "timestamp": 1791206921,
+    "timestamp": 1791206923,
     "commits": [
       {
         "id": "8f35bf0",
