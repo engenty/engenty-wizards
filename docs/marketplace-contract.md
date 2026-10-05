@@ -1,10 +1,11 @@
 # Contract between the runtime and the marketplace
 
-The marketplace is an app of its own: the wizards anyone can start from, their search, and their
-public pages (`/wizards/`, `/wizards/<id>`). The runtime (this repo) is one of its clients. It
-searches the marketplace live, starts wizards from its entries, and keeps a few of them for
-offline use: the ones the marketplace marks as starters, and the ones a person starred. This file
-is what both sides implement; the types are `packages/shared/src/marketplace.ts`.
+The marketplace is an app of its own: the wizards anyone can start from and their search (its
+public pages are written by the site at engenty.ai, see [The pages](#the-pages)). The runtime
+(this repo) is one of its clients. It searches the marketplace live, starts wizards from its
+entries, and keeps a few of them for offline use: the ones the marketplace marks as starters,
+and the ones a person starred. This file is what both sides implement; the types are
+`packages/shared/src/marketplace.ts`.
 
 `MARKETPLACE_URL` names the marketplace (default `https://engenty.ai/wizards`; `off` = none). Its
 API is below that address, at `/api/v1`. Every call is public and needs no token; publishing,
@@ -51,8 +52,11 @@ verifying and voting will take a token of the Manage-App (scope `wizards:publish
 
 ## The pages
 
-The marketplace serves the gallery (`/wizards/`) and each entry's page (`/wizards/<id>`, an
-address that stays) with their words in the HTML for search engines, `/wizards/sitemap.xml` and
-`/robots.txt`. An entry's page offers the app as the landing page does, and opens the template in
-an installed app with `engenty-wizards://new?starter=<id>` (`entryAppLink`) or in a runtime the
-visitor names at `<runtime>/studio/new?starter=<id>`.
+The marketplace's pages are not its own: the site at the root of `engenty.ai` (closed repo,
+`apps/www`) writes them, with their words in the HTML for search engines, from the marketplace's
+`api/pages/…`. English has no prefix, other languages sit below their code: the gallery
+`/wizards/` and `/de/wizards/`, an entry's page `/wizards/<slug>` and `/de/wizards/<slug>` (a
+slug per language; the entry's id answers 301 to it), `/sitemap.xml` and `/robots.txt`. An
+entry's page offers the app as the landing page does, and opens the template in an installed app
+with `engenty-wizards://new?starter=<id>` (`entryAppLink`) or in a runtime the visitor names at
+`<runtime>/studio/new?starter=<id>`.
