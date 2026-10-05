@@ -5,7 +5,7 @@ import {
   WORKSPACE_LIMITS,
   type WorkspaceFile,
 } from "@engenty-wizards/shared/workspace";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { getBlob, putBlob } from "../files/blobs.js";
 import { emitDraftChanged, filesChanged } from "./draft-events.js";
@@ -96,6 +96,59 @@ export async function writeFile(
   await touch(w.id);
   emitDraftChanged(filesChanged(w, path));
   return file;
+}
+
+/**
+ * Keeps the bytes of files that are about to become a wizard's workspace, checked against the
+ * workspace limits, and says how their rows look — without touching the wizard yet. Bytes that
+ * nothing comes to refer to take no harm.
+ */
+export async function keepFiles(
+  files: { path: string; mime?: string; data: Uint8Array }[],
+): Promise<WorkspaceFile[]> {
+  if (files.length > WORKSPACE_LIMITS.files) {
+    throw new ServiceError("invalid", `A workspace holds up to ${WORKSPACE_LIMITS.files} files.`);
+  }
+  let total = 0;
+  const kept: WorkspaceFile[] = [];
+  for (const file of files) {
+    const path = requirePath(file.path);
+    if (file.data.byteLength > WORKSPACE_LIMITS.fileBytes) {
+      throw new ServiceError("invalid", `${path} is larger than 5 MB.`);
+    }
+    total += file.data.byteLength;
+    if (total > WORKSPACE_LIMITS.totalBytes) {
+      throw new ServiceError("invalid", "The workspace would be larger than 25 MB.");
+    }
+    kept.push({
+      path,
+      hash: await putBlob(file.data),
+      mime: file.mime && file.mime !== "application/octet-stream" ? file.mime : mimeForPath(path),
+      size: file.data.byteLength,
+    });
+  }
+  return kept;
+}
+
+/** Makes a wizard's workspace exactly `files` (kept with keepFiles): rows only, no bytes. */
+export async function replaceFiles(wizardId: string, files: WorkspaceFile[]): Promise<void> {
+  const paths = files.map((f) => f.path);
+  const before = await draftFiles(wizardId);
+  const gone = before.filter((f) => !paths.includes(f.path)).map((f) => f.path);
+  if (gone.length) {
+    await db
+      .delete(schema.wizardFile)
+      .where(and(eq(schema.wizardFile.wizardId, wizardId), inArray(schema.wizardFile.path, gone)));
+  }
+  for (const file of files) {
+    await db
+      .insert(schema.wizardFile)
+      .values({ wizardId, ...file })
+      .onConflictDoUpdate({
+        target: [schema.wizardFile.wizardId, schema.wizardFile.path],
+        set: { hash: file.hash, mime: file.mime, size: file.size, updatedAt: new Date() },
+      });
+  }
 }
 
 export async function deleteFile(userId: string, wizardId: string, rawPath: string) {

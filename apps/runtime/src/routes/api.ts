@@ -103,7 +103,7 @@ export const apiRoutes = new Hono()
     }
     const body = syncWizardSchema.parse(await c.req.json());
     return withTenant(who.tenantId, async () =>
-      c.json(await syncWizard(who.userId, c.req.param("spaceId"), c.req.param("wizardId"), body)),
+      c.json(await syncWizard(c.req.param("spaceId"), c.req.param("wizardId"), body)),
     );
   })
   .patch("/spaces/:spaceId/wizards/:wizardId", async (c) => {

@@ -264,8 +264,17 @@ export interface CloudCopy {
 /** Where a local wizard stands in the cloud: its copy, and why the last try did not arrive. */
 export interface CloudState {
   copy: CloudCopy | null;
-  /** `reason`: `space_limit`, `signed_out`, `unreachable` or `refused`. */
-  error: { message: string; reason?: string; at: string } | null;
+  /**
+   * `reason`: `space_limit`, `signed_out`, `unreachable` or `refused`. `again`: when the runtime
+   * tries by itself once more; null where only the person can help.
+   */
+  error: {
+    message: string;
+    reason?: string;
+    at: string;
+    tries: number;
+    again: string | null;
+  } | null;
 }
 
 /** What publishing answers; `cloud` is null where no account is linked or the runtime is managed. */

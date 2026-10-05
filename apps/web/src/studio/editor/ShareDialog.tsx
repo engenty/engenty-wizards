@@ -148,6 +148,15 @@ function CloudError({ error }: { error: NonNullable<CloudState["error"]> }) {
             {t("local.toAccount")}
           </Link>
         ) : null}
+        {error.again ? (
+          <span className="text-ink-3">
+            {t("cloud.again", {
+              when: new Intl.DateTimeFormat(lang, { timeStyle: "short" }).format(
+                new Date(error.again),
+              ),
+            })}
+          </span>
+        ) : null}
       </p>
     );
   }

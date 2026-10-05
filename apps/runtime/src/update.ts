@@ -6,8 +6,8 @@ import { installedByScript, isCheckout, layout, packageRoot, packageVersion } fr
 const RELEASES_URL =
   process.env.ENGENTY_WIZARDS_RELEASES_URL?.trim() ||
   "https://api.github.com/repos/engenty/engenty-wizards/releases/latest";
-const FOUND_FOR_MS = 6 * 60 * 60_000;
-const MISSED_FOR_MS = 60 * 60_000;
+/** How long an answer from GitHub holds, found or not, before the runtime asks again. */
+const CHECK_EVERY_MS = 60 * 60_000;
 
 /**
  * The exit code with which the runtime asks the command that started it for a restart: after an
@@ -75,7 +75,7 @@ async function newestRelease(): Promise<{ latest: string | null; url: string | n
     return { latest: null, url: null };
   }
   const age = cached ? Date.now() - cached.at : Number.POSITIVE_INFINITY;
-  if (cached && age < (cached.latest ? FOUND_FOR_MS : MISSED_FOR_MS)) {
+  if (cached && age < CHECK_EVERY_MS) {
     return cached;
   }
   let found: { latest: string | null; url: string | null } = { latest: null, url: null };

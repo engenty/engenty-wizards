@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // A stand-in Manage-App with two tenants: one that builds nothing here (the free tier: its
 // studio shows what a local install synced) and one that does.
@@ -288,6 +288,56 @@ describe("a tenant that builds nothing here (the free tier)", () => {
     expect(
       (await studio("GET", `/wizards/${WIZARD_ID}/files`, free)).body.map((f: any) => f.path),
     ).toEqual(["terms.md"]);
+  });
+
+  it("leaves nothing behind when a sending breaks off, and takes the next one whole", async () => {
+    const { objects } = await import("../src/files/objects");
+    const logo = { name: "logo.svg", mime: "image/svg+xml", description: "", data: text("<svg/>") };
+    const body = {
+      space: { ...SPACE, name: "Mein Projekt, umbenannt", logo },
+      version: 1,
+      definition: definition("Rechner", {
+        steps: [
+          { id: "film", type: "widget", title: "Film", entry: "film/tour.html" },
+          { id: "done", type: "result", title: "Fertig", deliverables: [] },
+        ],
+      }),
+      files: [
+        { path: "film/tour.html", data: text("<main>Rundgang</main>") },
+        { path: "film/film.css", data: text("main{}") },
+      ],
+    };
+    // The object store goes out of reach while the files are kept: nothing was written yet.
+    const put = vi.spyOn(objects, "put").mockRejectedValueOnce(new TypeError("fetch failed"));
+    const early = await sync("free", SPACE_ID, "localwizard02", body);
+    expect(early.status).toBe(500);
+    // It goes out of reach at the logo, after the project, the wizard and its files were written:
+    // the transaction takes all of it back.
+    put
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
+    const late = await sync("free", SPACE_ID, "localwizard02", body);
+    expect(late.status).toBe(500);
+    // Not a half-written wizard without its files: no wizard at all, and the project as before.
+    expect((await studio("GET", "/wizards/localwizard02", free)).status).toBe(404);
+    const spaces = (await api("GET", "/spaces", "free")).body.spaces;
+    expect(spaces).toMatchObject([{ id: SPACE_ID, name: "Mein Projekt" }]);
+    expect(spaces[0].wizards.map((w: any) => w.id)).toEqual([WIZARD_ID]);
+
+    const whole = await sync("free", SPACE_ID, "localwizard02", body);
+    expect(whole.status).toBe(200);
+    expect(whole.body).toMatchObject({ publishedVersion: 1, runnable: true, problems: [] });
+    expect(
+      (await studio("GET", "/wizards/localwizard02/files", free)).body.map((f: any) => f.path),
+    ).toEqual(["film/film.css", "film/tour.html"]);
+    expect((await api("GET", "/spaces", "free")).body.spaces[0].name).toBe("Mein Projekt, umbenannt");
+    put.mockRestore();
+    // Back to how the other cases know the project.
+    expect((await sync("free", SPACE_ID, "localwizard02", { ...body, space: SPACE })).status).toBe(200);
+    expect((await api("DELETE", `/spaces/${SPACE_ID}/wizards/localwizard02`, "free")).status).toBe(
+      200,
+    );
   });
 
   it("keeps a version that cannot run here, without publishing it", async () => {

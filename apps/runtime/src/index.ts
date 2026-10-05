@@ -85,6 +85,16 @@ async function purge() {
 void purge().catch((err) => console.error("[retention]", err));
 setInterval(() => void purge().catch((err) => console.error("[retention]", err)), 3600_000).unref();
 
+// A runtime that runs alone sends again what did not arrive in its account's cloud.
+if (!managed) {
+  const { retryFailedSends } = await import("./services/cloud.js");
+  const retry = () =>
+    withTenant(LOCAL_TENANT, () => retryFailedSends("local")).catch((err) =>
+      console.error("[cloud] retry failed:", err),
+    );
+  setInterval(() => void retry(), 60_000).unref();
+}
+
 async function shutdown(code = 0) {
   clearRunning(env.dataDir);
   server.close();

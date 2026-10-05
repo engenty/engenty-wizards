@@ -104,6 +104,10 @@ Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's acc
   runtime's `LIMIT_SYNCED_WIZARDS` (50) wizards per synced project (`400 { reason: "wizard_limit" }`).
 - **Refusals**: `403 { code: "insufficient_scope" }`; and `403 { code: "read_only" }` from every
   other write of a synced project, or by a tenant with `limits.build: false`.
+- **A sending that breaks off** (`5xx`, the connection) leaves nothing behind: the files' bytes
+  are kept first, then the project, the wizard, its workspace and the version are written in one
+  transaction. The install sends again by itself — after a minute, then twice as long each time,
+  up to an hour — until it arrives; not after a refusal (`4xx`), which only the person can mend.
 
 ## Model-gateway
 

@@ -5,7 +5,7 @@ import { WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { db, schema } from "../db/client.js";
+import { db, inTransaction, schema } from "../db/client.js";
 import { missingModels, unavoidableSteps } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { codeOf, putLink } from "../tenants/control.js";
@@ -13,7 +13,7 @@ import { currentTenant } from "../tenants/tenant.js";
 import { asSync, mayBuild } from "./access.js";
 import { emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
-import { draftFiles, writeFile } from "./files.js";
+import { keepFiles, replaceFiles } from "./files.js";
 import { addProjectFile, projectFiles, removeProjectFile } from "./project-files.js";
 import {
   brandColorSchema,
@@ -231,16 +231,16 @@ async function requireWizardRoom(spaceId: string): Promise<void> {
 
 const hashOf = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
 
-/** The project's logo follows the install's: kept when it is the same picture, else replaced. */
+/**
+ * The project's logo follows the install's: kept when it is the same picture, else replaced —
+ * the new one is stored before the old one goes, so a store that fails leaves the old one.
+ */
 async function syncLogo(projectId: string, logo: SpaceInput["logo"]): Promise<void> {
   const here = await projectFiles(projectId, "logo");
   const data = logo ? Buffer.from(logo.data, "base64") : null;
   const mark = data ? `sync:${hashOf(data)}` : null;
   if (mark && here.length === 1 && here[0].source === mark) {
     return;
-  }
-  for (const old of here) {
-    await removeProjectFile(projectId, old.id);
   }
   if (logo && data && mark) {
     await addProjectFile(projectId, {
@@ -253,9 +253,12 @@ async function syncLogo(projectId: string, logo: SpaceInput["logo"]): Promise<vo
       source: mark,
     });
   }
+  for (const old of here) {
+    await removeProjectFile(projectId, old.id);
+  }
 }
 
-/** Makes or updates the synced project: its name, what it says about itself, its logo. */
+/** Makes or updates the synced project: its name and what it says about itself (the logo: syncLogo). */
 async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow> {
   const existing = await syncedProject(spaceId);
   if (existing && existing.origin !== "local") {
@@ -282,7 +285,6 @@ async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow
       ...values,
     });
   }
-  await syncLogo(spaceId, space.logo);
   const project = await syncedProject(spaceId);
   if (!project) {
     throw notFound();
@@ -293,96 +295,100 @@ async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow
 /**
  * Takes a wizard a local install published: the project it is in, the wizard under its id, its
  * workspace, and the version — published here when a run of it can finish. Sending the same
- * wizard again updates the copy; its link stays.
+ * wizard again updates the copy; its link stays. The files' bytes are kept first; then the
+ * project, the wizard, its workspace and the version are written in one transaction, so an
+ * install whose sending broke off finds nothing half done and sends again.
  */
 export async function syncWizard(
-  userId: string,
   rawSpaceId: string,
   rawWizardId: string,
   input: SyncWizardInput,
 ): Promise<SyncResult> {
   const spaceId = syncedId.parse(rawSpaceId);
   const wizardId = syncedId.parse(rawWizardId);
-  const paths = input.files.map((f) => f.path);
   // The shape is checked before anything is written; a wrong one leaves nothing behind.
-  const { draft } = parseDraft(input.definition, paths);
+  const { draft } = parseDraft(
+    input.definition,
+    input.files.map((f) => f.path),
+  );
   return asSync(async () => {
-    const project = await syncSpace(spaceId, input.space);
-    const existing = await db.query.wizard.findFirst({
-      where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())),
-    });
-    if (existing && existing.projectId !== spaceId) {
-      throw new ServiceError("refused", "Ein Wizard mit dieser Kennung gehört hier woanders hin.", {
-        reason: "id_taken",
-      });
-    }
-    const settings = {
-      title: draft.title,
-      draft,
-      shareEnabled: input.shareEnabled,
-      ...(input.dailyRunLimit ? { dailyRunLimit: input.dailyRunLimit } : {}),
-    };
-    if (!existing) {
-      await requireWizardRoom(spaceId);
-    }
-    let shareToken = existing?.shareToken;
-    if (existing) {
-      await db
-        .update(schema.wizard)
-        .set({ ...settings, revision: sql`${schema.wizard.revision} + 1`, updatedAt: new Date() })
-        .where(eq(schema.wizard.id, wizardId));
-    } else {
-      // The link is made here: a token an install brought could be one another tenant holds.
-      shareToken = nanoid(14);
-      await db.insert(schema.wizard).values({
-        id: wizardId,
-        projectId: spaceId,
-        tenantId: currentTenant(),
-        shareToken,
-        dailyRunLimit: env.limits.defaultDailyRuns,
-        ...settings,
-      });
-      await putLink(shareToken, "wizard", wizardId);
-    }
-    // The workspace becomes what was sent: files that are gone there go here.
-    const before = await draftFiles(wizardId);
-    const gone = before.filter((f) => !paths.includes(f.path)).map((f) => f.path);
-    if (gone.length) {
-      await db
-        .delete(schema.wizardFile)
-        .where(
-          and(eq(schema.wizardFile.wizardId, wizardId), inArray(schema.wizardFile.path, gone)),
-        );
-    }
-    for (const file of input.files) {
-      await writeFile(userId, wizardId, file.path, Buffer.from(file.data, "base64"), file.mime);
-    }
-    const row = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, wizardId) });
-    if (!row) {
-      throw notFound();
-    }
-    const problems = await serverProblems(
-      draft,
-      await draftIssues(row),
-      project.mcpServers.map((s) => s.id),
+    const files = await keepFiles(
+      input.files.map((f) => ({ path: f.path, mime: f.mime, data: Buffer.from(f.data, "base64") })),
     );
-    const runnable = !problems.some((p) => p.blocking);
-    let publishedVersion = row.publishedVersion;
-    if (runnable) {
-      const files = await draftFiles(wizardId);
-      await db
-        .insert(schema.wizardVersion)
-        .values({ id: nanoid(12), wizardId, version: input.version, definition: draft, files })
-        .onConflictDoUpdate({
-          target: [schema.wizardVersion.wizardId, schema.wizardVersion.version],
-          set: { definition: draft, files },
+    const taken = await inTransaction(async () => {
+      const project = await syncSpace(spaceId, input.space);
+      const existing = await db.query.wizard.findFirst({
+        where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())),
+      });
+      if (existing && existing.projectId !== spaceId) {
+        throw new ServiceError(
+          "refused",
+          "Ein Wizard mit dieser Kennung gehört hier woanders hin.",
+          {
+            reason: "id_taken",
+          },
+        );
+      }
+      const settings = {
+        title: draft.title,
+        draft,
+        shareEnabled: input.shareEnabled,
+        ...(input.dailyRunLimit ? { dailyRunLimit: input.dailyRunLimit } : {}),
+      };
+      if (!existing) {
+        await requireWizardRoom(spaceId);
+      }
+      if (existing) {
+        await db
+          .update(schema.wizard)
+          .set({ ...settings, revision: sql`${schema.wizard.revision} + 1`, updatedAt: new Date() })
+          .where(eq(schema.wizard.id, wizardId));
+      } else {
+        await db.insert(schema.wizard).values({
+          id: wizardId,
+          projectId: spaceId,
+          tenantId: currentTenant(),
+          // The link is made here: a token an install brought could be one another tenant holds.
+          shareToken: nanoid(14),
+          dailyRunLimit: env.limits.defaultDailyRuns,
+          ...settings,
         });
-      await db
-        .update(schema.wizard)
-        .set({ publishedVersion: input.version })
-        .where(eq(schema.wizard.id, wizardId));
-      publishedVersion = input.version;
-    }
+      }
+      // The workspace becomes what was sent: files that are gone there go here.
+      await replaceFiles(wizardId, files);
+      const row = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, wizardId) });
+      if (!row) {
+        throw notFound();
+      }
+      const problems = await serverProblems(
+        draft,
+        await draftIssues(row),
+        project.mcpServers.map((s) => s.id),
+      );
+      const runnable = !problems.some((p) => p.blocking);
+      let publishedVersion = row.publishedVersion;
+      if (runnable) {
+        await db
+          .insert(schema.wizardVersion)
+          .values({ id: nanoid(12), wizardId, version: input.version, definition: draft, files })
+          .onConflictDoUpdate({
+            target: [schema.wizardVersion.wizardId, schema.wizardVersion.version],
+            set: { definition: draft, files },
+          });
+        await db
+          .update(schema.wizard)
+          .set({ publishedVersion: input.version })
+          .where(eq(schema.wizard.id, wizardId));
+        publishedVersion = input.version;
+      }
+      // Last, since it reaches the object store: a store that fails takes everything back.
+      await syncLogo(spaceId, input.space.logo);
+      return { row, problems, runnable, publishedVersion };
+    });
+    const { row, problems, runnable, publishedVersion } = taken;
+    // The public link lives in the control database, outside the transaction: set on every
+    // sync, so one that failed to get there once is there after the next.
+    await putLink(row.shareToken, "wizard", wizardId);
     emitDraftChanged({
       wizardId,
       kind: "draft",
@@ -394,8 +400,8 @@ export async function syncWizard(
     });
     return {
       wizardId,
-      shareUrl: shareUrl(shareToken ?? row.shareToken),
-      code: await codeOf(shareToken ?? row.shareToken),
+      shareUrl: shareUrl(row.shareToken),
+      code: await codeOf(row.shareToken),
       shareEnabled: row.shareEnabled,
       publishedVersion,
       runnable,

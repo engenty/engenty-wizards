@@ -54,7 +54,7 @@ version to engenty.ai. The share dialog shows the section "In the cloud":
 | A link | The wizard's address at engenty.ai. It stays the same when you publish again |
 | "This version does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
 | A note | A step works there with less, for example without a machine for code |
-| "Send again" | The last sending did not arrive, or the project changed |
+| "Send again" | The last sending did not arrive, or the project changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
 
 What goes and what stays:
 

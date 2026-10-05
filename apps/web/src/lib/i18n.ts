@@ -130,6 +130,7 @@ const de = {
   "cloud.notSent": "Diese Version ist noch nicht in der Cloud.",
   "cloud.send": "Jetzt senden",
   "cloud.resend": "Erneut senden",
+  "cloud.again": "Um {when} wird es noch einmal versucht.",
   "cloud.sent": "Version {v} · gesendet am {when}",
   "cloud.sentBehind":
     "In der Cloud liegt Version {v} (gesendet am {when}). Veröffentlicht ist hier Version {now}.",
@@ -948,6 +949,7 @@ const en: Record<Key, string> = {
   "cloud.notSent": "This version is not in the cloud yet.",
   "cloud.send": "Send now",
   "cloud.resend": "Send again",
+  "cloud.again": "It is tried again at {when}.",
   "cloud.sent": "Version {v} · sent {when}",
   "cloud.sentBehind": "The cloud has version {v} (sent {when}). Version {now} is published here.",
   "cloud.notRunnable": "Version {v} does not run in the cloud.",

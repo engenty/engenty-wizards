@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,14 +144,36 @@ export async function withTenant<T>(id: string, fn: () => T | Promise<T>): Promi
   return inTenant(id, fn);
 }
 
+/** The transaction the current context writes in, while `inTransaction()` runs. */
+const transactions = new AsyncLocalStorage<Db>();
+
 /**
- * The current tenant's database, resolved from the context `inTenant()` set. Code that reads or
- * writes wizards, runs or files never names a tenant itself.
+ * Runs `fn` as one transaction of the current tenant's database: inside it, `db` is the
+ * transaction, so every write of the services called there stands or falls with the others.
+ * Already inside one, `fn` just joins it. Only this database takes part: the object store and
+ * the control database are written as before, so do those first or after.
+ */
+export async function inTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  if (transactions.getStore()) {
+    return fn();
+  }
+  const id = currentTenant();
+  const target = ready.get(id);
+  if (!target) {
+    throw new Error(`Tenant database "${id}" is not open: enter it with withTenant().`);
+  }
+  return target.transaction((tx) => transactions.run(tx as unknown as Db, fn));
+}
+
+/**
+ * The current tenant's database, resolved from the context `inTenant()` set — or the
+ * transaction `inTransaction()` opened there. Code that reads or writes wizards, runs or files
+ * never names a tenant itself.
  */
 export const db: Db = new Proxy({} as Db, {
   get(_target, prop) {
     const id = currentTenant();
-    const target = ready.get(id);
+    const target = transactions.getStore() ?? ready.get(id);
     if (!target) {
       throw new Error(`Tenant database "${id}" is not open: enter it with withTenant().`);
     }

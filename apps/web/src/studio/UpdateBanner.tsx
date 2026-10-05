@@ -37,7 +37,7 @@ export function UpdateBanner() {
   const status = useQuery({
     queryKey: ["update"],
     queryFn: () => api.get<UpdateStatus>("/api/studio/update"),
-    // The runtime asks GitHub at most every few hours; the page asks it once an hour.
+    // The runtime asks GitHub at most once an hour, and so does the page ask the runtime.
     staleTime: 60 * 60_000,
     refetchInterval: 60 * 60_000,
     retry: false,

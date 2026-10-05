@@ -37,7 +37,18 @@ export interface CloudCopy {
 export interface CloudState {
   copy: CloudCopy | null;
   /** Why the last try did not arrive; the copy from before stays as it was. */
-  error: { message: string; reason?: string; at: string } | null;
+  error: {
+    message: string;
+    reason?: string;
+    at: string;
+    /** How often it was tried since it last arrived. */
+    tries: number;
+    /**
+     * When the runtime tries again by itself — after a cloud that was out of reach or answered
+     * with an error of its own. Null where only the person can help (signed out, no room).
+     */
+    again: string | null;
+  } | null;
 }
 
 /** What the cloud lacks for a wizard, and what stays here: said before it is sent. */
@@ -106,8 +117,24 @@ function refusal(answer: CloudAnswer<unknown>, fallback: string): ServiceError {
         : fallback;
   return new ServiceError("refused", message, {
     reason: answer.status === 401 ? "signed_out" : typeof reason === "string" ? reason : "refused",
+    status: answer.status,
     ...(Array.isArray(rest.spaces) ? { spaces: rest.spaces } : {}),
   });
+}
+
+/** A try is made again by itself when the cloud, not what was sent, was the trouble. */
+function worthAnotherTry(err: unknown): boolean {
+  if (!(err instanceof ServiceError)) {
+    return true;
+  }
+  const status = typeof err.data.status === "number" ? err.data.status : 0;
+  return err.data.reason === "unreachable" || status >= 500 || status === 429;
+}
+
+/** A minute, then twice as long each time, up to an hour. */
+function nextTry(tries: number, from: Date): string {
+  const minutes = Math.min(60, 2 ** (tries - 1));
+  return new Date(from.getTime() + minutes * 60_000).toISOString();
 }
 
 /** The project as the cloud keeps it: its name, what it says about itself, its logo. */
@@ -185,12 +212,16 @@ export async function syncToCloud(userId: string, wizardId: string): Promise<Clo
     await writeSetting(key(w.id), state);
     return state;
   } catch (err) {
+    const now = new Date();
+    const tries = (before.error?.tries ?? 0) + 1;
     const failed: CloudState = {
       copy: before.copy,
       error: {
         message: err instanceof ServiceError ? err.message : "Das Senden hat nicht geklappt.",
         reason: err instanceof ServiceError ? (err.data.reason as string | undefined) : undefined,
-        at: new Date().toISOString(),
+        at: now.toISOString(),
+        tries,
+        again: worthAnotherTry(err) ? nextTry(tries, now) : null,
       },
     };
     await writeSetting(key(w.id), failed);
@@ -243,6 +274,38 @@ export async function removeFromCloud(userId: string, wizardId: string): Promise
   );
 }
 
+/**
+ * Sends again what did not arrive and is due for another try. Called every minute by the
+ * runtime that runs alone; a wizard that is gone meanwhile is forgotten.
+ */
+export async function retryFailedSends(userId: string): Promise<void> {
+  if (!(await cloudLinked())) {
+    return;
+  }
+  const now = new Date().toISOString();
+  const rows = await controlDb
+    .select({ key: control.setting.key, value: control.setting.value })
+    .from(control.setting)
+    .where(like(control.setting.key, "cloud:%"));
+  for (const row of rows) {
+    const state = row.value as CloudState;
+    if (!state.error?.again || state.error.again > now) {
+      continue;
+    }
+    const wizardId = row.key.slice("cloud:".length);
+    const w = await ownedWizard(userId, wizardId).catch(() => null);
+    if (!w?.publishedVersion) {
+      await deleteSetting(row.key);
+      continue;
+    }
+    const sent = await syncToCloud(userId, wizardId);
+    // Something the person has to see to (signed out, no room) holds for every wizard.
+    if (sent.error && !sent.error.again) {
+      break;
+    }
+  }
+}
+
 /** The account was unlinked: what this runtime kept of its cloud belongs to no account now. */
 export async function forgetCloud(): Promise<void> {
   await controlDb.delete(control.setting).where(like(control.setting.key, "cloud:%"));
@@ -258,12 +321,20 @@ export async function syncAllToCloud(userId: string): Promise<{ sent: number; fa
     );
   let sent = 0;
   let failed = 0;
-  for (const { id } of wizards) {
+  for (const [i, { id }] of wizards.entries()) {
     const state = await syncToCloud(userId, id);
     if (state.error) {
       failed++;
-      // A refusal that holds for every wizard (no room, signed out) is not asked again.
+      // A refusal that holds for every wizard (no room, signed out) is not asked again; a cloud
+      // out of reach neither, but the rest is then tried again later, with this one.
       if (state.error.reason && state.error.reason !== "refused") {
+        for (const rest of wizards.slice(i + 1)) {
+          failed++;
+          await writeSetting(key(rest.id), {
+            copy: (await cloudState(rest.id)).copy,
+            error: state.error,
+          } satisfies CloudState);
+        }
         break;
       }
     } else {

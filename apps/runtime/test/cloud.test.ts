@@ -250,6 +250,35 @@ describe("a runtime that runs alone and the cloud of its account", () => {
     });
   });
 
+  it("tries again by itself after an error of the cloud's own, not after a refusal", async () => {
+    // No room: only the person can help, so no try is planned.
+    expect((await sync.cloudState(wizardId)).error).toMatchObject({ tries: 1, again: null });
+
+    refuseWith = { status: 500, body: { error: "Interner Fehler" } };
+    const failed = await local(() => sync.syncToCloud(USER, wizardId));
+    expect(failed.error).toMatchObject({ message: "Interner Fehler", reason: "refused", tries: 2 });
+    // A minute, then twice as long each time: the second try comes two minutes after.
+    const planned = new Date(failed.error?.again ?? 0).getTime() - Date.parse(failed.error?.at ?? 0);
+    expect(planned).toBe(2 * 60_000);
+
+    // Not due yet: nothing is sent.
+    const before = seen.length;
+    await local(() => sync.retryFailedSends(USER));
+    expect(seen.length).toBe(before);
+
+    // Due: sent, and the copy is current again.
+    const { writeSetting } = await import("../src/settings");
+    await writeSetting(`cloud:${wizardId}`, {
+      ...failed,
+      error: { ...failed.error, again: new Date(Date.now() - 1000).toISOString() },
+    });
+    await local(() => sync.retryFailedSends(USER));
+    expect(seen.slice(before).map((s) => `${s.method} ${s.path}`)).toEqual([
+      `PUT /api/v1/spaces/${projectId}/wizards/${wizardId}`,
+    ]);
+    expect(await sync.cloudState(wizardId)).toMatchObject({ copy: { version: 3 }, error: null });
+  });
+
   it("makes room by removing another install's project, then sends everything", async () => {
     cloudSpaces.push(
       { id: "old-space", name: "Alter Rechner", syncedAt: null, wizards: [] },
