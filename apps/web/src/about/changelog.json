@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.1.6",
+    "timestamp": 1791167378,
+    "commits": [
+      {
+        "id": "481807b",
+        "message": "video models render at 720p, or 480p when a step asks; a larger clip is scaled down, and the price follows the resolution",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "bb20f2b",
+        "message": "the settings say Codex makes images on the sign-in too; only video and audio still need a key",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.5",
-    "timestamp": 1791151309,
+    "timestamp": 1791151312,
     "commits": [
       {
         "id": "f4b7e43",
