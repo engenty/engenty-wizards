@@ -30,6 +30,100 @@ export interface ChatMessage {
   pending?: boolean;
   source?: "studio" | "mcp";
   client?: string | null;
+  /** Pictures sent with this message, by file name, shown before the server has them. */
+  previews?: Record<string, string>;
+}
+
+const IMAGE = /\.(png|jpe?g|gif|webp|avif|svg)$/i;
+
+/** Local URLs for the pictures among `files`, so the thread shows them right away. */
+export function previewsOf(files: File[]): Record<string, string> | undefined {
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  return images.length
+    ? Object.fromEntries(images.map((f) => [f.name, URL.createObjectURL(f)]))
+    : undefined;
+}
+
+/** A message's own text and the files its last line names ("Angehängt: a.png, b.pdf"). */
+function attachmentsOf(content: string): { text: string; names: string[] } {
+  const match = content.match(/(?:^|\n\n)(?:Angehängt|Attached): ([^\n]+)$/);
+  if (!match) {
+    return { text: content, names: [] };
+  }
+  return {
+    text: content.slice(0, match.index).trim(),
+    names: match[1].split(", ").filter(Boolean),
+  };
+}
+
+/** A clipboard picture is always "image.png"; give each its own name so two pastes both stay. */
+function pastedName(file: File, index: number): File {
+  if (file.name && file.name !== "image.png") {
+    return file;
+  }
+  const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+  return new File([file], `paste-${stamp}${index ? `-${index + 1}` : ""}.${ext}`, {
+    type: file.type,
+  });
+}
+
+function Thumb({ url, label, children }: { url: string; label: string; children?: ReactNode }) {
+  return (
+    <div className="group relative" title={label}>
+      <img
+        src={url}
+        alt={label}
+        width={64}
+        height={64}
+        className="size-16 rounded-lg bg-paper-2 object-cover ring-1 ring-border"
+      />
+      {children}
+    </div>
+  );
+}
+
+/** The pictures and files a user message carries, above its bubble. */
+function Attachments({
+  names,
+  previews,
+  fileUrl,
+}: {
+  names: string[];
+  previews?: Record<string, string>;
+  fileUrl?: (name: string) => string;
+}) {
+  const images = names.filter((n) => previews?.[n] || (fileUrl && IMAGE.test(n)));
+  const others = names.filter((n) => !images.includes(n));
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      {images.map((name) => {
+        const url = previews?.[name] ?? fileUrl?.(name) ?? "";
+        return (
+          <a key={name} href={url} target="_blank" rel="noreferrer" title={name}>
+            <img
+              src={url}
+              alt={name}
+              className="max-h-60 w-auto max-w-full rounded-xl bg-paper-2 object-contain ring-1 ring-border"
+            />
+          </a>
+        );
+      })}
+      {others.length ? (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {others.map((name) => (
+            <span
+              key={name}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 px-2.5 py-1 text-[12px] text-ink-2"
+            >
+              <Paperclip className="size-3 shrink-0 text-ink-4" />
+              <span className="truncate">{name}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function useArchitectChat(
@@ -41,6 +135,8 @@ export function useArchitectChat(
   const [phase, setPhase] = useState<"idle" | "thinking" | "building">("idle");
   const [error, setError] = useState<string | null>(null);
   const [activity, setActivity] = useState<string | null>(null);
+  const [thought, setThought] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -65,6 +161,8 @@ export function useArchitectChat(
       return false;
     }
     setError(null);
+    setStartedAt(Date.now());
+    setThought(null);
     if (files.length) {
       // Files go into the wizard's workspace; the message names them.
       setPhase("thinking");
@@ -87,6 +185,7 @@ export function useArchitectChat(
       } catch (err) {
         setError((err as Error).message);
         setPhase("idle");
+        setStartedAt(null);
         await qc.invalidateQueries({ queryKey: ["wizard", wizard.id] });
         return false;
       }
@@ -96,7 +195,7 @@ export function useArchitectChat(
     const pendingId = `p-${Date.now()}`;
     setMessages((m) => [
       ...m,
-      { id: `u-${Date.now()}`, role: "user", content: text },
+      { id: `u-${Date.now()}`, role: "user", content: text, previews: previewsOf(files) },
       { id: pendingId, role: "assistant", content: "", pending: true },
     ]);
     setPhase("thinking");
@@ -114,6 +213,8 @@ export function useArchitectChat(
             );
           } else if (event === "activity") {
             setActivity(JSON.parse(data) as string);
+          } else if (event === "thought") {
+            setThought(JSON.parse(data) as string);
           } else if (event === "building") {
             setPhase("building");
           } else if (event === "done") {
@@ -147,6 +248,8 @@ export function useArchitectChat(
       setError((err as Error).message);
     } finally {
       setActivity(null);
+      setThought(null);
+      setStartedAt(null);
       setMessages((m) =>
         m.filter((x) => !(x.id === pendingId && !x.content)).map((x) => ({ ...x, pending: false })),
       );
@@ -157,14 +260,95 @@ export function useArchitectChat(
     return true;
   };
 
-  return { messages, phase, activity, error, send };
+  const fileUrl = (name: string) =>
+    withBase(`/api/studio/wizards/${wizard?.id}/files/${encodeURIComponent(name)}`);
+
+  return { messages, phase, activity, thought, startedAt, error, send, fileUrl };
 }
 
 /** What the panel shows and sends; the architect's chat and the project assistant both are one. */
 export type Chat = Pick<
   ReturnType<typeof useArchitectChat>,
-  "messages" | "phase" | "activity" | "error" | "send"
->;
+  "messages" | "phase" | "activity" | "startedAt" | "error" | "send"
+> & {
+  thought?: string | null;
+  /** Where a file the thread names can be loaded from, once the message is the server's. */
+  fileUrl?: (name: string) => string;
+};
+
+/** Seconds since `since`, counting up once a second; null while nothing runs. */
+function useElapsed(since: number | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (since === null) {
+      return;
+    }
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [since]);
+  return since === null ? null : Math.max(0, Math.floor((now - since) / 1000));
+}
+
+function elapsed(seconds: number): string {
+  return seconds < 60
+    ? `${seconds} s`
+    : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} min`;
+}
+
+/** What a running turn does, for how long, and — with `thought` — the line it is thinking about. */
+export function Working({
+  chat,
+  thought,
+  className,
+  spinner = "size-3.5",
+}: {
+  chat: Chat;
+  thought?: boolean;
+  className?: string;
+  spinner?: string;
+}) {
+  const seconds = useElapsed(chat.startedAt);
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="flex min-w-0 items-center gap-2">
+        <Spinner className={cn("shrink-0", spinner)} />
+        <span className="min-w-0 truncate">
+          {chat.activity ??
+            (chat.phase === "building" ? t("editor.building") : t("editor.thinking"))}
+        </span>
+        {seconds === null ? null : (
+          <span className="shrink-0 text-ink-4 tabular-nums">{elapsed(seconds)}</span>
+        )}
+      </div>
+      {thought && chat.thought ? (
+        <p className="mt-0.5 truncate pl-5.5 text-[12px] text-ink-4">{chat.thought}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function UserMessage({
+  message,
+  fileUrl,
+}: {
+  message: ChatMessage;
+  fileUrl?: (name: string) => string;
+}) {
+  const { text, names } = attachmentsOf(message.content);
+  return (
+    <div className="ml-8 flex flex-col items-end gap-1.5 self-end">
+      {names.length ? (
+        <Attachments names={names} previews={message.previews} fileUrl={fileUrl} />
+      ) : null}
+      {text ? (
+        <div className="rounded-xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[14px] leading-relaxed">
+          <span className="whitespace-pre-wrap">{text}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function ChatPanel({
   chat,
@@ -205,6 +389,20 @@ export function ChatPanel({
     }
   }, [text]);
   const ready = (text.trim() || files.length > 0) && chat.phase === "idle";
+  const add = (picked: File[]) =>
+    setFiles((all) => [...all.filter((f) => !picked.some((p) => p.name === f.name)), ...picked]);
+  const [thumbs, setThumbs] = useState<Map<File, string>>(new Map());
+  useEffect(() => {
+    const next = new Map(
+      files.filter((f) => f.type.startsWith("image/")).map((f) => [f, URL.createObjectURL(f)]),
+    );
+    setThumbs(next);
+    return () => {
+      for (const url of next.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [files]);
   const submit = async () => {
     if (!ready) {
       return;
@@ -232,16 +430,13 @@ export function ChatPanel({
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[13px] text-ink-3 transition hover:text-ink"
         >
-          {last?.pending ? <Spinner className="size-3.5 shrink-0" /> : null}
-          <span className={cn("min-w-0 flex-1 truncate", chat.error && "text-rose")}>
-            {chat.error ??
-              (open
-                ? t("editor.thread")
-                : last?.pending
-                  ? (chat.activity ??
-                    (chat.phase === "building" ? t("editor.building") : t("editor.thinking")))
-                  : last?.content)}
-          </span>
+          {!(chat.error || open) && last?.pending ? (
+            <Working chat={chat} className="flex-1" />
+          ) : (
+            <span className={cn("min-w-0 flex-1 truncate", chat.error && "text-rose")}>
+              {chat.error ?? (open ? t("editor.thread") : last?.content)}
+            </span>
+          )}
           {open ? (
             <ChevronDown className="size-4 shrink-0" />
           ) : (
@@ -264,12 +459,7 @@ export function ChatPanel({
         <div className="flex flex-col gap-4">
           {chat.messages.map((m) =>
             m.role === "user" ? (
-              <div
-                key={m.id}
-                className="ml-8 self-end rounded-xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[14px] leading-relaxed"
-              >
-                <span className="whitespace-pre-wrap">{m.content}</span>
-              </div>
+              <UserMessage key={m.id} message={m} fileUrl={chat.fileUrl} />
             ) : (
               <div key={m.id} className="flex items-start gap-3">
                 <div className="shrink-0">
@@ -284,11 +474,7 @@ export function ChatPanel({
                   ) : null}
                   {m.content ? <Markdown text={m.content} className="text-[14px]" /> : null}
                   {m.pending ? (
-                    <div className="mt-1 inline-flex items-center gap-2 text-[13px] text-ink-3">
-                      <Spinner className="size-3.5" />
-                      {chat.activity ??
-                        (chat.phase === "building" ? t("editor.building") : t("editor.thinking"))}
-                    </div>
+                    <Working chat={chat} thought className="mt-1 text-[13px] text-ink-3" />
                   ) : null}
                   {m.changed ? (
                     <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[12px] text-ember-strong">
@@ -308,25 +494,46 @@ export function ChatPanel({
       </div>
       <div className={compact ? "p-2" : "p-3"}>
         <div className="rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
-          {files.length ? (
+          {thumbs.size ? (
+            <div className="flex flex-wrap gap-2 px-1 pt-1 pb-1.5">
+              {files.map((f, i) => {
+                const url = thumbs.get(f);
+                return url ? (
+                  <Thumb key={`${f.name}-${i}`} url={url} label={f.name}>
+                    <button
+                      type="button"
+                      aria-label={t("editor.detach")}
+                      onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
+                      className="-top-1.5 -right-1.5 absolute flex size-5 items-center justify-center rounded-full bg-ink text-paper opacity-0 shadow-soft transition focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Thumb>
+                ) : null;
+              })}
+            </div>
+          ) : null}
+          {files.some((f) => !thumbs.has(f)) ? (
             <ul className="flex flex-wrap gap-1.5 px-1 pt-1 pb-1.5">
-              {files.map((f, i) => (
-                <li
-                  key={`${f.name}-${i}`}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[12px] text-ink-2"
-                >
-                  <Paperclip className="size-3 shrink-0 text-ink-4" />
-                  <span className="truncate">{f.name}</span>
-                  <button
-                    type="button"
-                    aria-label={t("editor.detach")}
-                    onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
-                    className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-3 hover:text-ink"
+              {files.map((f, i) =>
+                thumbs.has(f) ? null : (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[12px] text-ink-2"
                   >
-                    <X className="size-3" />
-                  </button>
-                </li>
-              ))}
+                    <Paperclip className="size-3 shrink-0 text-ink-4" />
+                    <span className="truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      aria-label={t("editor.detach")}
+                      onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
+                      className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-3 hover:text-ink"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </li>
+                ),
+              )}
             </ul>
           ) : null}
           <div className="flex items-end gap-1">
@@ -341,10 +548,7 @@ export function ChatPanel({
               onChange={(e) => {
                 const picked = Array.from(e.target.files ?? []);
                 e.target.value = "";
-                setFiles((all) => [
-                  ...all.filter((f) => !picked.some((p) => p.name === f.name)),
-                  ...picked,
-                ]);
+                add(picked);
               }}
             />
             <textarea
@@ -352,6 +556,13 @@ export function ChatPanel({
               rows={1}
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onPaste={(e) => {
+                const pasted = Array.from(e.clipboardData.files);
+                if (pasted.length) {
+                  e.preventDefault();
+                  add(pasted.map(pastedName));
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

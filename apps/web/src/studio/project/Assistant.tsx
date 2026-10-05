@@ -6,7 +6,7 @@ import { Mascot } from "../../brand";
 import { api, postStream } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { cn } from "../../ui";
-import { type Chat, type ChatMessage, ChatPanel } from "../editor/ChatPanel";
+import { type Chat, type ChatMessage, ChatPanel, previewsOf } from "../editor/ChatPanel";
 
 /** Where a file given to the assistant goes: pictures and clips are assets, the rest documents. */
 function kindOf(file: File): ProjectFileKind {
@@ -26,6 +26,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
   const [phase, setPhase] = useState<Chat["phase"]>("idle");
   const [error, setError] = useState<string | null>(null);
   const [activity, setActivity] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const refreshing = useRef<Promise<void> | null>(null);
 
   /** Fetches the project again and shows it; changes that arrive meanwhile wait for the next one. */
@@ -47,6 +48,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
     }
     setError(null);
     setPhase("thinking");
+    setStartedAt(Date.now());
     if (files.length) {
       try {
         for (const file of files) {
@@ -55,6 +57,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
       } catch (err) {
         setError((err as Error).message);
         setPhase("idle");
+        setStartedAt(null);
         await refresh();
         return false;
       }
@@ -66,7 +69,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
     const pendingId = `p-${Date.now()}`;
     setMessages((m) => [
       ...m,
-      { id: `u-${Date.now()}`, role: "user", content: text },
+      { id: `u-${Date.now()}`, role: "user", content: text, previews: previewsOf(files) },
       { id: pendingId, role: "assistant", content: "", pending: true },
     ]);
     setActivity(null);
@@ -109,6 +112,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
       setError((err as Error).message);
     } finally {
       setActivity(null);
+      setStartedAt(null);
       setMessages((m) =>
         m.filter((x) => !(x.id === pendingId && !x.content)).map((x) => ({ ...x, pending: false })),
       );
@@ -120,7 +124,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
     return true;
   };
 
-  return { messages, phase, activity, error, send };
+  return { messages, phase, activity, startedAt, error, send };
 }
 
 /** What the assistant's card says before the first message; the engenty stands at its right. */

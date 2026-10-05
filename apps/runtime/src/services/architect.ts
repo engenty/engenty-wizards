@@ -1,13 +1,39 @@
 import { eq } from "drizzle-orm";
-import { runArchitect } from "../agents/architect.js";
+import { type ChatImage, runArchitect } from "../agents/architect.js";
 import { chatEngine, subscriptionTurn } from "../agents/subscription.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { managed } from "../manage.js";
 import { hasTextModel } from "../models.js";
-import { draftFiles } from "./files.js";
+import { draftFiles, readFile } from "./files.js";
 import { ownedProject } from "./projects.js";
 import { addMessage, draftIssues, ownedWizard, wizardMessages } from "./wizards.js";
+
+/** The formats a model can look at; an SVG it reads as text. */
+const VISIBLE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+/** A picture larger than this would pass the model's limit once base64-encoded. */
+const VISIBLE_BYTES = 3_700_000;
+
+/** The pictures a message attaches ("Angehängt: a.png, b.pdf"), read from the workspace. */
+async function attachedImages(
+  userId: string,
+  wizardId: string,
+  message: string,
+): Promise<ChatImage[]> {
+  const names = message.match(/(?:^|\n\n)(?:Angehängt|Attached): ([^\n]+)$/)?.[1]?.split(", ");
+  const images: ChatImage[] = [];
+  for (const name of names?.slice(0, 8) ?? []) {
+    try {
+      const { file, data } = await readFile(userId, wizardId, name);
+      if (VISIBLE.has(file.mime) && data.byteLength <= VISIBLE_BYTES) {
+        images.push({ path: file.path, mime: file.mime, data });
+      }
+    } catch {
+      // A name that is no workspace file stays text.
+    }
+  }
+  return images;
+}
 
 /** One studio chat turn: the architect reads the draft, its workspace and the thread, and changes them with tools. */
 export async function architectTurn(
@@ -18,12 +44,14 @@ export async function architectTurn(
     signal: AbortSignal;
     onText: (delta: string) => void;
     onActivity: (label: string) => void;
+    onThought: (line: string) => void;
     onBuilding: () => void;
   },
 ) {
   const w = await ownedWizard(userId, wizardId);
   const history = await wizardMessages(w.id);
   const project = await ownedProject(userId, w.projectId);
+  const images = await attachedImages(userId, w.id, message);
   const userMessageId = await addMessage(w.id, { role: "user", content: message });
   try {
     // A runtime that runs alone can answer the chat on the admin's own Claude subscription.
@@ -37,7 +65,9 @@ export async function architectTurn(
               signal: io.signal,
               onText: io.onText,
               onActivity: io.onActivity,
+              onThought: io.onThought,
               onBuilding: io.onBuilding,
+              images,
             })),
             unfinished: false,
           }
@@ -51,7 +81,9 @@ export async function architectTurn(
             signal: io.signal,
             onText: io.onText,
             onActivity: io.onActivity,
+            onThought: io.onThought,
             onBuilding: io.onBuilding,
+            images,
           });
     const reply = result.unfinished
       ? `${result.reply ? `${result.reply}\n\n` : ""}Ich bin noch nicht ganz fertig geworden. Schreib „weiter“, dann mache ich genau dort weiter.`

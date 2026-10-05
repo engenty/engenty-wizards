@@ -9,6 +9,8 @@ import { detectHarness, signedOut } from "../harness/index.js";
 import { localModelSettings } from "../models.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteSetting, readSetting, writeSetting } from "../settings.js";
+import type { ChatImage } from "./architect.js";
+import { thoughtLine } from "./thought.js";
 
 /**
  * The studio chat on the admin's own subscription: the installed Claude Code runs headless and
@@ -73,7 +75,16 @@ export interface SubscriptionTurn {
   signal: AbortSignal;
   onText: (delta: string) => void;
   onActivity: (label: string) => void;
+  onThought?: (line: string) => void;
   onBuilding: () => void;
+  images?: ChatImage[];
+}
+
+/** The activity for one tool call, naming the file or service it is about when it says. */
+function activity(name: string, args: Record<string, unknown>): string {
+  const label = ACTIVITY.find(([re]) => re.test(name))?.[1] ?? "Arbeitet";
+  const about = [args.path, args.query].find((v) => typeof v === "string" && v.trim());
+  return about ? `${label}: ${String(about)} …` : `${label} …`;
 }
 
 const sessionKey = (wizardId: string) => `chat-session:${wizardId}`;
@@ -84,11 +95,15 @@ export async function subscriptionTurn(
 ): Promise<{ reply: string; changed: boolean }> {
   const session = await readSetting<string>(sessionKey(input.wizardId));
   const args = [
+    // The message comes on stdin, so pictures can go with it.
     "-p",
-    input.message,
+    "--input-format",
+    "stream-json",
     "--output-format",
     "stream-json",
     "--verbose",
+    // Names a tool as it starts and streams the thinking; whole messages still follow.
+    "--include-partial-messages",
     // No built-in tools: `--allowedTools` alone would not take them away.
     "--tools",
     "",
@@ -106,14 +121,38 @@ export async function subscriptionTurn(
   ];
   const child = spawn(CLAUDE, args, {
     cwd: workDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
     signal: input.signal,
     // The client's own sign-in, as the person's terminal has it; no key of ours reaches it.
     env: await claudeEnv(),
   });
+  child.stdin.on("error", () => {
+    // A client that is gone already says so on stdout and in its exit code.
+  });
+  child.stdin.end(
+    `${JSON.stringify({
+      type: "user",
+      message: {
+        role: "user",
+        content: [
+          { type: "text", text: input.message },
+          ...(input.images ?? []).map((i) => ({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: i.mime,
+              data: Buffer.from(i.data).toString("base64"),
+            },
+          })),
+        ],
+      },
+    })}\n`,
+  );
   let reply = "";
   let changed = false;
   let failure = "";
+  let thinking = "";
+  let thought: string | null = null;
   let stderr = "";
   child.stderr.on("data", (chunk) => {
     stderr = (stderr + String(chunk)).slice(-2000);
@@ -125,7 +164,21 @@ export async function subscriptionTurn(
     } catch {
       continue;
     }
-    if (event.type === "assistant") {
+    if (event.type === "stream_event") {
+      const e = event.event ?? {};
+      if (e.type === "content_block_start" && e.content_block?.type === "tool_use") {
+        input.onActivity(activity(String(e.content_block.name ?? ""), {}));
+      } else if (e.type === "content_block_start" && e.content_block?.type === "thinking") {
+        thinking = "";
+      } else if (e.type === "content_block_delta" && e.delta?.type === "thinking_delta") {
+        thinking += e.delta.thinking ?? "";
+        const next = thoughtLine(thinking);
+        if (next && next !== thought) {
+          thought = next;
+          input.onThought?.(next);
+        }
+      }
+    } else if (event.type === "assistant") {
       for (const block of event.message?.content ?? []) {
         if (block.type === "text" && block.text) {
           const text = reply ? `\n\n${block.text}` : block.text;
@@ -137,7 +190,7 @@ export async function subscriptionTurn(
             changed = true;
             input.onBuilding();
           }
-          input.onActivity(ACTIVITY.find(([re]) => re.test(name))?.[1] ?? "Arbeitet");
+          input.onActivity(activity(name, block.input ?? {}));
         }
       }
     } else if (event.type === "result") {

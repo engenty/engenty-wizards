@@ -10,7 +10,7 @@ import { useMe, type WizardDetail } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
-import { ChatPanel, useArchitectChat } from "./editor/ChatPanel";
+import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
 import { FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
@@ -299,12 +299,8 @@ export function EditorPage() {
             </div>
           ) : null}
           {building ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-ink-3">
-              <Spinner className="size-6 text-ember" />
-              <span className="text-[14px]">
-                {chat.activity ??
-                  (chat.phase === "building" ? t("editor.building") : t("editor.thinking"))}
-              </span>
+            <div className="flex h-full items-center justify-center px-6 text-[14px] text-ink-3">
+              <Working chat={chat} spinner="size-4 text-ember" />
             </div>
           ) : (
             <FlowDiagram
