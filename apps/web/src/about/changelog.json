@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.1.7",
+    "timestamp": 1791194767,
+    "commits": [
+      {
+        "id": "66e9109",
+        "message": "a banner in the studio says when a newer release is out; the update installs from there, the runtime restarts into the new version and the page reloads",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "5e27bf6",
+        "message": "the studio chat counts the seconds of a turn and says what the architect is doing and thinking; pasted pictures show in the thread and the architect sees them",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.6",
-    "timestamp": 1791167378,
+    "timestamp": 1791167380,
     "commits": [
       {
         "id": "481807b",

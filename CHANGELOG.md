@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.1.7] - 2026-10-05
+- ADDED A banner in the studio says when a newer release is out; the update installs from there, the runtime restarts into the new version and the page reloads
+- ADDED The studio chat counts the seconds of a turn and says what the architect is doing and thinking; pasted pictures show in the thread and the architect sees them
+
 ## [0.1.6] - 2026-10-05
 - ADDED Video models render at 720p, or 480p when a step asks; a larger clip is scaled down, and the price follows the resolution
 - FIXED The settings say Codex makes images on the sign-in too; only video and audio still need a key
