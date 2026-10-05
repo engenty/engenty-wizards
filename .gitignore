@@ -1,6 +1,7 @@
 node_modules
 dist
-data/
+/data/
+/apps/runtime/data/
 .env
 .env.local
 *.log
