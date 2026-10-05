@@ -81,6 +81,9 @@ export function stepSummary(step: Step): string {
       if (step.options?.duration) {
         parts.push(`${step.options.duration}s`);
       }
+      if (step.options?.resolution) {
+        parts.push(step.options.resolution);
+      }
       if (step.options?.template) {
         parts.push(step.options.template);
       }

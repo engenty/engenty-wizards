@@ -7,6 +7,8 @@ import {
   formatsFor,
   type Step,
   TOOL_IDS,
+  VIDEO_RESOLUTIONS,
+  type VideoResolution,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -624,6 +626,14 @@ function StepBody({
                   options={["4", "6", "8", "10"]}
                   onChange={(v: string) =>
                     set({ ...step, options: { ...step.options, duration: Number(v) } })
+                  }
+                />
+                <Label>Auflösung</Label>
+                <Segmented
+                  value={step.options?.resolution ?? "720p"}
+                  options={[...VIDEO_RESOLUTIONS]}
+                  onChange={(v: VideoResolution) =>
+                    set({ ...step, options: { ...step.options, resolution: v } })
                   }
                 />
               </>

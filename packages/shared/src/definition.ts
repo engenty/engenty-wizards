@@ -128,6 +128,10 @@ export type Format = (typeof FORMATS)[number];
 
 export const ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:5", "3:2", "2:3"] as const;
 
+/** What a video model renders at: 720p unless the step asks for less. Never more. */
+export const VIDEO_RESOLUTIONS = ["720p", "480p"] as const;
+export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
+
 const id = z
   .string()
   .regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/, "ids are letters, digits and _ and start with a letter");
@@ -251,6 +255,8 @@ export const generateStepSchema = z.object({
       aspectRatio: z.enum(ASPECT_RATIOS).optional(),
       /** Video length in seconds. */
       duration: z.number().optional(),
+      /** Video: the height the model renders at; default 720p, the most there is. */
+      resolution: z.enum(VIDEO_RESOLUTIONS).optional(),
       style: z.string().optional(),
       /** Document flavour, steers the layout. */
       template: z.enum(["invoice", "offer", "briefing", "letter", "report", "free"]).optional(),

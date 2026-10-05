@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGateway } from "@ai-sdk/gateway";
 import { createOpenAI } from "@ai-sdk/openai";
+import type { VideoResolution } from "@engenty-wizards/shared/definition";
 import {
   type Effort,
   MODEL_CLASSES,
@@ -605,13 +606,19 @@ export function imageCostUsd(ref: string): number {
   return n(tier?.cost ?? p.image, 0.08);
 }
 
-export function videoCostUsd(ref: string, seconds: number): number {
+export function videoCostUsd(
+  ref: string,
+  seconds: number,
+  resolution: VideoResolution = "720p",
+): number {
   const p = priceOf(ref);
   const tiers = p.video_duration_pricing as
     | { cost_per_second: string; resolution?: string; audio?: boolean }[]
     | undefined;
-  // We render at the provider's default resolution with sound: price that tier, never 4K.
-  const usable = tiers?.filter((t) => t.resolution !== "4k") ?? [];
+  // We render at 720p or 480p with sound: price that tier where the catalog has one; else the
+  // dearest below 4K, so the estimate is never short.
+  const exact = tiers?.filter((t) => t.resolution === resolution) ?? [];
+  const usable = exact.length ? exact : (tiers?.filter((t) => t.resolution !== "4k") ?? []);
   const withAudio = usable.filter((t) => t.audio !== false);
   const pick = withAudio.length ? withAudio : usable;
   const perSecond = pick.length ? Math.max(...pick.map((t) => n(t.cost_per_second, 0))) : 0.4;

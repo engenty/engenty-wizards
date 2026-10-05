@@ -1,3 +1,4 @@
+import type { VideoResolution } from "@engenty-wizards/shared/definition";
 import { experimental_generateVideo, generateImage, generateSpeech, generateText } from "ai";
 import { extFor } from "../files/storage.js";
 import {
@@ -12,7 +13,7 @@ import {
   videoCostUsd,
   videoModel,
 } from "../models.js";
-import { toMp3 } from "./ffmpeg.js";
+import { capVideo, toMp3 } from "./ffmpeg.js";
 import { speechTags } from "./marking.js";
 
 export interface MediaReference {
@@ -94,22 +95,39 @@ export async function generateImageMedia(input: {
   };
 }
 
-/** One video clip. Text-to-video, or image-to-video when a reference is given. */
+/** The short side of a video in pixels, per resolution. */
+const VIDEO_SHORT_SIDE: Record<VideoResolution, number> = { "720p": 720, "480p": 480 };
+
+/** The pixel size a model is asked for: the short side as the resolution says, the long one as the aspect. */
+function videoSize(aspect: Aspect, resolution: VideoResolution): `${number}x${number}` {
+  const short = VIDEO_SHORT_SIDE[resolution];
+  const [w, h] = aspect.split(":").map(Number);
+  const long = Math.round((short * Math.max(w, h)) / Math.min(w, h) / 2) * 2;
+  return w >= h ? `${long}x${short}` : `${short}x${long}`;
+}
+
+/**
+ * One video clip. Text-to-video, or image-to-video when a reference is given. Rendered at 720p,
+ * or 480p when the step asks: a model that gives more anyway is scaled down to it.
+ */
 export async function generateVideoMedia(input: {
   call?: CallMeta;
   prompt: string;
   aspectRatio?: string;
   duration?: number;
+  resolution?: VideoResolution;
   reference?: MediaReference | null;
   abortSignal?: AbortSignal;
 }): Promise<GeneratedMedia> {
   const duration = Math.min(Math.max(Math.round(input.duration ?? 8), 4), 10);
   const aspect = (input.aspectRatio === "1:1" ? "16:9" : (input.aspectRatio ?? "16:9")) as Aspect;
+  const resolution = input.resolution ?? "720p";
   const videoClass = await videoModel(input.call);
   const result = await experimental_generateVideo({
     model: videoClass.model,
     prompt: input.reference ? { image: input.reference.bytes, text: input.prompt } : input.prompt,
     aspectRatio: aspect,
+    resolution: videoSize(aspect, resolution),
     duration,
     abortSignal: input.abortSignal,
   });
@@ -118,9 +136,9 @@ export async function generateVideoMedia(input: {
     throw new Error("The video model returned no video.");
   }
   return {
-    bytes: video.uint8Array,
+    bytes: await capVideo(video.uint8Array, VIDEO_SHORT_SIDE[resolution]),
     mime: video.mediaType ?? "video/mp4",
-    costUsd: videoClass.metered ? 0 : videoCostUsd(videoClass.ref, duration),
+    costUsd: videoClass.metered ? 0 : videoCostUsd(videoClass.ref, duration, resolution),
     system: videoClass.ref,
   };
 }

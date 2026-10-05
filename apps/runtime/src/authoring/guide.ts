@@ -107,6 +107,7 @@ type GenerateStep = {
   asset: "image"|"video"|"voice"|"document"|"dashboard"
   prompt: string                // the brief, with {{templates}}; for "voice" the exact text that is read aloud
   options?: { aspectRatio?: "1:1"|"16:9"|"9:16"|"4:5"|"3:2"|"2:3", duration?: 4–10 (video seconds; 4, 6 or 8 are safe),
+              resolution?: "720p"|"480p",   // video: 720p by default and at most; 480p for drafts and many clips
               style?: string,   // image/video: the look · voice: how to speak ("ruhig, warm")
               template?: "invoice"|"offer"|"briefing"|"letter"|"report"|"free" }   // template for documents
   referenceImage?: fieldId | stepId   // the image the image/video starts from: an image field, or an earlier step that made images

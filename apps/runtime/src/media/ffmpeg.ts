@@ -40,13 +40,64 @@ export async function withTempDir<T>(use: (dir: string) => Promise<T>): Promise<
   }
 }
 
-/** What ffmpeg says about a media file: how long it is and whether it carries sound. */
-export async function probeMedia(path: string): Promise<{ seconds: number; audio: boolean }> {
+/** What ffmpeg says about a media file: how long it is, whether it carries sound, its picture size. */
+export async function probeMedia(
+  path: string,
+): Promise<{ seconds: number; audio: boolean; width: number; height: number }> {
   // Without an output ffmpeg prints the streams and exits with an error; the print is the answer.
   const { stderr } = await ffmpeg(["-i", path]);
   const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
   const seconds = m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : 0;
-  return { seconds, audio: /Stream #\d+:\d+.*Audio:/.test(stderr) };
+  const size = stderr.match(/Stream #\d+:\d+.*Video:.*?, (\d{2,5})x(\d{2,5})/);
+  return {
+    seconds,
+    audio: /Stream #\d+:\d+.*Audio:/.test(stderr),
+    width: size ? Number(size[1]) : 0,
+    height: size ? Number(size[2]) : 0,
+  };
+}
+
+/**
+ * A video no larger than `short` pixels on its short side (720 for 720p), sound kept. One that
+ * fits already comes back as it is; without ffmpeg too.
+ */
+export async function capVideo(bytes: Uint8Array, short: number): Promise<Uint8Array> {
+  if (!(await hasFfmpeg())) {
+    return bytes;
+  }
+  return withTempDir(async (dir) => {
+    const input = join(dir, "in.mp4");
+    const out = join(dir, "out.mp4");
+    await writeFile(input, bytes);
+    const { width, height } = await probeMedia(input);
+    if (!(width && height) || Math.min(width, height) <= short) {
+      return bytes;
+    }
+    const scale = width >= height ? `scale=-2:${short}` : `scale=${short}:-2`;
+    const { code } = await ffmpeg([
+      "-y",
+      "-loglevel",
+      "error",
+      "-i",
+      input,
+      "-vf",
+      scale,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "21",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "copy",
+      "-movflags",
+      "+faststart",
+      out,
+    ]);
+    return code === 0 ? new Uint8Array(await readFile(out)) : bytes;
+  });
 }
 
 /**
