@@ -15,6 +15,7 @@ import {
 import { AlertCircle, Minus, Plus, Scan } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Mascot } from "../../brand";
+import { t } from "../../lib/i18n";
 import { cn } from "../../ui";
 import { useEstimate } from "./estimate";
 import { stepIcon, stepSummary, TYPE_TONE, typeLabel } from "./meta";
@@ -120,9 +121,9 @@ function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
     case "in":
       return `${rule.when.field} ∈ ${v}`;
     case "notEmpty":
-      return `${rule.when.field} ausgefüllt`;
+      return t("editor.whenFilled", { field: rule.when.field });
     case "empty":
-      return `${rule.when.field} leer`;
+      return t("editor.whenEmpty", { field: rule.when.field });
   }
 }
 
@@ -177,7 +178,7 @@ function layout(
         target: next.id,
         ...(s.next?.length
           ? {
-              label: "sonst",
+              label: t("editor.otherwise"),
               labelStyle: { fontSize: 11, fill: "var(--ink-3)" },
               labelBgStyle: { fill: "var(--background)" },
             }

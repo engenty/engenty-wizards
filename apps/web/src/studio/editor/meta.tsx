@@ -50,17 +50,10 @@ export function typeLabel(step: Step): string {
   return t(`type.${step.type}` as "type.page");
 }
 
-const TOOL_LABEL: Record<string, string> = {
-  web_search: "Websuche",
-  web_fetch: "Webseiten lesen",
-  browser: "Browser",
-  sandbox: "Code & Shell",
-  image: "Bilder",
-  http: "API",
-};
+const TOOLS = ["web_search", "web_fetch", "browser", "sandbox", "image", "http"];
 
 export function toolLabel(id: string) {
-  return TOOL_LABEL[id] ?? id;
+  return TOOLS.includes(id) ? t(`tool.${id}` as "tool.http") : id;
 }
 
 /** One line under a node's title: what the step asks or does. */
@@ -92,7 +85,10 @@ export function stepSummary(step: Step): string {
     case "widget":
       return [step.entry, Object.keys(step.data).join(", ")].filter(Boolean).join(" · ");
     case "review":
-      return [step.edit ? "bearbeitbar" : null, step.regenerate ? "neu erstellbar" : null]
+      return [
+        step.edit ? t("editor.reviewEditable") : null,
+        step.regenerate ? t("editor.reviewRedo") : null,
+      ]
         .filter(Boolean)
         .join(" · ");
     case "result":
