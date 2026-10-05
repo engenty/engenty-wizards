@@ -1,6 +1,6 @@
-// Stages and packs the npm package `engenty-wizards`: the runtime (built server, built SPA,
-// plugin template), the `engenty-wizards` command and the shared package inside it. This is
-// what `npx engenty-wizards` runs and what the installer (apps/web/public/wizards.sh) and the
+// Stages and packs the npm package `wizards`: the runtime (built server, built SPA,
+// plugin template), the `wizards` command and the shared package inside it. This is
+// what `npx wizards` runs and what the installer (apps/web/public/install.sh) and the
 // desktop app install into ~/.engenty/wizards.
 //
 //   node scripts/npm-package.mjs [--skip-build] [--version 1.2.3]
@@ -8,8 +8,8 @@
 // --skip-build  reuse the dist/ folders of the checkout instead of building
 // --version     the version to publish (default: the root package.json's)
 //
-// Out: dist/npm/engenty-wizards/ (the staged folder) and dist/npm/engenty-wizards-<version>.tgz.
-// Publish with `npm publish dist/npm/engenty-wizards-<version>.tgz`.
+// Out: dist/npm/wizards/ (the staged folder) and dist/npm/wizards-<version>.tgz.
+// Publish with `npm publish dist/npm/wizards-<version>.tgz`.
 //
 // The folder keeps the checkout's layout (apps/runtime/dist, apps/web/dist, plugin/), so the
 // runtime finds the SPA and the plugin template the same way everywhere.
@@ -29,7 +29,7 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const outDir = join(root, "dist", "npm");
-const stage = join(outDir, "engenty-wizards");
+const stage = join(outDir, "wizards");
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -66,7 +66,7 @@ mkdirSync(stage, { recursive: true });
 for (const path of ["apps/runtime/dist", "apps/web/dist", "plugin", "bin", "LICENSE", "README.md"]) {
   cpSync(join(root, path), join(stage, path), { recursive: true });
 }
-chmodSync(join(stage, "bin", "engenty-wizards.mjs"), 0o755);
+chmodSync(join(stage, "bin", "wizards.mjs"), 0o755);
 
 // --- 3. package.json --------------------------------------------------------------------
 // The runtime's dependencies at the versions the checkout's lockfile resolved: what was tested
@@ -122,7 +122,7 @@ writeFileSync(
   join(stage, "package.json"),
   `${JSON.stringify(
     {
-      name: "engenty-wizards",
+      name: "wizards",
       version,
       description:
         "Make a wish. Get your wizard. It guides you step by step. Let AI do the work. Runs on your machine, on the AI subscription you already have.",
@@ -130,7 +130,7 @@ writeFileSync(
       homepage: "https://engenty.ai",
       repository: { type: "git", url: "git+https://github.com/engenty/engenty-wizards.git" },
       type: "module",
-      bin: { "engenty-wizards": "bin/engenty-wizards.mjs" },
+      bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,
       files: ["apps", "bin", "plugin"],
       dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
@@ -143,7 +143,7 @@ writeFileSync(
 
 // --- 4. pack ----------------------------------------------------------------------------
 run("npm", ["pack", "--pack-destination", outDir, "--loglevel=error"], stage);
-const tarball = join(outDir, `engenty-wizards-${version}.tgz`);
+const tarball = join(outDir, `wizards-${version}.tgz`);
 
 function* walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -158,7 +158,7 @@ function* walk(dir) {
 const files = [...walk(stage)];
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 console.log(`
-engenty-wizards ${version}
+wizards ${version}
   staged    ${files.length} files, ${mb(files.reduce((sum, file) => sum + statSync(file).size, 0))}  (${stage})
   tarball   ${mb(statSync(tarball).size)}  (${tarball})
   depends   ${Object.keys(dependencies).length} packages, ${bundled.length} bundled (${bundled.join(", ")})

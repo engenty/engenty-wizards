@@ -179,7 +179,7 @@ async function previewFor(path: string): Promise<string | null> {
  * rest of the root belongs to others (the landing page); a runtime alone sends `/` to the studio.
  */
 const webDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
-const ROOT_FILES = ["/wizards.sh", "/embed.js", "/sw.js"];
+const ROOT_FILES = ["/install.sh", "/embed.js", "/sw.js"];
 const PAGES = /^\/(studio(\/|$)|w\/|s\/)/;
 if (existsSync(webDir)) {
   for (const file of ROOT_FILES) {

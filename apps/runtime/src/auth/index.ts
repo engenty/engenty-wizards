@@ -216,7 +216,7 @@ const closePage = (message: string) =>
 <p>${message}</p>`;
 
 export const authRoutes = new Hono()
-  // Local: the one-time link. The key works once per start; a ticket (`engenty-wizards open`,
+  // Local: the one-time link. The key works once per start; a ticket (`wizards open`,
   // the desktop app entering a runtime that already runs) once within its minute.
   .get("/local/enter", (c) => {
     const given = c.req.query("k") ?? "";

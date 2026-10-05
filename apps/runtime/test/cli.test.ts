@@ -168,8 +168,8 @@ describe("the AI clients", () => {
 
 describe("starting at login on Linux", () => {
   it("is a user service that runs the install's command without opening a browser", () => {
-    const unit = unitText("/home/a/.engenty/wizards/bin/engenty-wizards");
-    expect(unit).toContain('ExecStart="/home/a/.engenty/wizards/bin/engenty-wizards" start --no-open');
+    const unit = unitText("/home/a/.engenty/wizards/bin/wizards");
+    expect(unit).toContain('ExecStart="/home/a/.engenty/wizards/bin/wizards" start --no-open');
     expect(unit).toContain("Restart=on-failure");
     expect(unit).toContain("WantedBy=default.target");
   });
@@ -177,10 +177,10 @@ describe("starting at login on Linux", () => {
 
 describe("starting at login on a Mac", () => {
   it("is a LaunchAgent that runs the install's command without opening a browser", () => {
-    const plist = loginItemText("/Users/a&b/.engenty/wizards/bin/engenty-wizards", "/tmp/a.log");
+    const plist = loginItemText("/Users/a&b/.engenty/wizards/bin/wizards", "/tmp/a.log");
     expect(plist).toContain("<string>com.engenty.wizards.login</string>");
     expect(plist).toContain(
-      "<string>/Users/a&amp;b/.engenty/wizards/bin/engenty-wizards</string>\n    <string>start</string>\n    <string>--no-open</string>",
+      "<string>/Users/a&amp;b/.engenty/wizards/bin/wizards</string>\n    <string>start</string>\n    <string>--no-open</string>",
     );
     expect(plist).toContain("<key>SuccessfulExit</key>\n    <false/>");
     expect(plist).toContain("<string>/tmp/a.log</string>");

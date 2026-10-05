@@ -21,13 +21,13 @@ export interface Layout {
   envFile: string;
   /** What the setup remembers: when it ran. */
   installFile: string;
-  /** npm prefix of an install made by wizards.sh: `node_modules/engenty-wizards`. */
+  /** npm prefix of an install made by install.sh: `node_modules/wizards`. */
   runtime: string;
-  /** The Node that wizards.sh brought: `tools/node/bin/node`. */
+  /** The Node that install.sh brought: `tools/node/bin/node`. */
   tools: string;
   /** npm prefix of AI clients the setup installed; their commands are in `clients/bin`. */
   clients: string;
-  /** The `engenty-wizards` command of an install made by wizards.sh. */
+  /** The `wizards` command of an install made by install.sh. */
   bin: string;
 }
 
@@ -56,7 +56,7 @@ export function packageVersion(): string {
   }
 }
 
-/** How this copy got here: by wizards.sh into the home folder, or by npm/npx or a checkout. */
+/** How this copy got here: by install.sh into the home folder, or by npm/npx or a checkout. */
 export function installedByScript(paths: Layout = layout()): boolean {
   try {
     // Node names this file by its real path; the home folder may be reached through a link.

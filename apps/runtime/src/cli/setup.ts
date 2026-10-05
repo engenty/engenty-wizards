@@ -43,7 +43,7 @@ const CHROME_APP =
 
 /** How this install is started, as the person types it. */
 export const command = () =>
-  installedByScript() ? "engenty-wizards" : isCheckout() ? "pnpm wizards" : "npx engenty-wizards";
+  installedByScript() ? "wizards" : isCheckout() ? "pnpm wizards" : "npx wizards";
 
 /** A spinner on a terminal; where nobody watches, only what came of it. */
 function busy(message: string) {
@@ -300,7 +300,7 @@ function pathLine(): { file: string; line: string } {
   return { file: join(homedir(), file), line: 'export PATH="$HOME/.local/bin:$PATH"' };
 }
 
-/** An install made by wizards.sh has its command in `~/.local/bin`: is that on the PATH? */
+/** An install made by install.sh has its command in `~/.local/bin`: is that on the PATH? */
 async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> {
   const local = join(homedir(), ".local", "bin");
   if (!installedByScript() || (process.env.PATH ?? "").split(delimiter).includes(local)) {
@@ -308,16 +308,16 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
   }
   const { file, line } = pathLine();
   if (existsSync(file) && readFileSync(file, "utf8").includes(".local/bin")) {
-    p.log.info(`Open a new terminal to use the \`engenty-wizards\` command.`);
+    p.log.info(`Open a new terminal to use the \`wizards\` command.`);
     return;
   }
-  const hint = `Until then: ${tilde(join(local, "engenty-wizards"))}`;
+  const hint = `Until then: ${tilde(join(local, "wizards"))}`;
   if (!interactive) {
     p.log.warn(`~/.local/bin is not on your PATH. Add to ${tilde(file)}:\n${line}\n${dim(hint)}`);
     return;
   }
   const answer = await p.confirm({
-    message: `The \`engenty-wizards\` command is in ~/.local/bin, which is not on your PATH. Add it in ${tilde(file)}?`,
+    message: `The \`wizards\` command is in ~/.local/bin, which is not on your PATH. Add it in ${tilde(file)}?`,
     initialValue: true,
   });
   if (cancelled(answer)) {

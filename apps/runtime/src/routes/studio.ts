@@ -545,6 +545,9 @@ export const studio = new Hono<Vars>()
           onActivity: (label) => {
             void stream.writeSSE({ event: "activity", data: JSON.stringify(label) });
           },
+          onThought: (line) => {
+            void stream.writeSSE({ event: "thought", data: JSON.stringify(line) });
+          },
           onBuilding: () => {
             void stream.writeSSE({ event: "building", data: "1" });
           },

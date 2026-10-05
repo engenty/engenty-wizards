@@ -26,7 +26,7 @@ const INHERITED = new Set([
   "no_proxy",
   "SSL_CERT_FILE",
   "NODE_EXTRA_CA_CERTS",
-  // Settings of this install somebody may give for one start: `API_PORT=8900 engenty-wizards`.
+  // Settings of this install somebody may give for one start: `API_PORT=8900 wizards`.
   "API_HOST",
   "APP_URL",
   "ALLOWED_HOSTS",

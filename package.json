@@ -1,6 +1,6 @@
 {
   "name": "engenty-wizards",
-  "version": "0.1.6",
+  "version": "0.1.11",
   "license": "FSL-1.1-MIT",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "dev:portless": "portless wizards pnpm dev",
     "build": "pnpm -r build",
     "start": "node apps/runtime/dist/index.js",
-    "wizards": "node bin/engenty-wizards.mjs",
+    "wizards": "node bin/wizards.mjs",
     "package": "node scripts/npm-package.mjs",
     "db:generate": "pnpm --filter @engenty-wizards/runtime db:generate",
     "about:data": "node scripts/write-about-data.mjs",

@@ -43,7 +43,7 @@ capabilities, each with where it runs and what it would take:
    but text is required.
 3. **A second client for images.** Claude chosen for text and Codex installed: setup offers
    "Bilder über Codex". Needs the source per capability (below).
-4. **The command line says the same.** `engenty-wizards setup` and `doctor` print the
+4. **The command line says the same.** `wizards setup` and `doctor` print the
    capability list instead of only the clients.
 
 ## Settings

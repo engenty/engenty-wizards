@@ -19,6 +19,9 @@ if (args[0] === "--version") { console.log("0.0.0 (fake)"); process.exit(0); }
 fs.writeFileSync(${JSON.stringify(join(dir, "args.json"))}, JSON.stringify(args));
 const cfg = JSON.parse(fs.readFileSync(args[args.indexOf("--mcp-config") + 1], "utf8")).mcpServers.wizards;
 (async () => {
+  let input = "";
+  for await (const chunk of process.stdin) input += chunk;
+  fs.writeFileSync(${JSON.stringify(join(dir, "stdin.json"))}, input);
   const res = await fetch(cfg.url, {
     method: "POST",
     headers: { ...cfg.headers, "content-type": "application/json", accept: "application/json, text/event-stream" },
@@ -59,6 +62,7 @@ describe("studio chat on the Claude subscription", () => {
     expect(await subscriptionClients()).toEqual(["claude"]);
     const seen: string[] = [];
     let building = 0;
+    const png = new Uint8Array([137, 80, 78, 71]);
     const turn = () =>
       subscriptionTurn({
         wizardId: "w1",
@@ -67,17 +71,27 @@ describe("studio chat on the Claude subscription", () => {
         onText: (t) => seen.push(t),
         onActivity: (a) => seen.push(`[${a}]`),
         onBuilding: () => building++,
+        images: [{ path: "paste.png", mime: "image/png", data: png }],
       });
     const first = await turn();
     expect(first).toEqual({ reply: "mcp 200 tools true", changed: true });
     expect(building).toBe(1);
-    expect(seen).toContain("[Baut den Wizard um]");
+    expect(seen).toContain("[Baut den Wizard um …]");
 
     const args: string[] = JSON.parse(readFileSync(join(dir, "args.json"), "utf8"));
     expect(args[args.indexOf("--tools") + 1]).toBe("");
     expect(args).toContain("--strict-mcp-config");
     expect(args[args.indexOf("--allowedTools") + 1]).toBe("mcp__wizards");
     expect(args).not.toContain("--resume");
+    // The message and its pictures come on stdin, as one user message.
+    const sent = JSON.parse(readFileSync(join(dir, "stdin.json"), "utf8"));
+    expect(sent.message.content).toEqual([
+      { type: "text", text: "Bau etwas" },
+      {
+        type: "image",
+        source: { type: "base64", media_type: "image/png", data: Buffer.from(png).toString("base64") },
+      },
+    ]);
 
     // The second turn continues the conversation the client keeps.
     await turn();

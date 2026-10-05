@@ -1,7 +1,100 @@
 [
   {
+    "version": "v0.1.11",
+    "timestamp": 1791208591,
+    "commits": [
+      {
+        "id": "85facbd",
+        "message": "the package is on npm as wizards, and the README's studio picture shows the branches with their conditions",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "6ca5cfc",
+        "message": "a branch that skips steps runs beside them in the editor, with its condition readable on the line; it ran behind the step with the condition hidden",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.1.10",
+    "timestamp": 1791206923,
+    "commits": [
+      {
+        "id": "8f35bf0",
+        "message": "the README shows the studio with a branched flow and a wizard in use, from its first page to the result",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "7abf9df",
+        "message": "the editor's review notes, tool names and branch labels follow the language; they were German in the English studio",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.1.9",
+    "timestamp": 1791203125,
+    "commits": [
+      {
+        "id": "5182fec",
+        "message": "the installer is engenty.ai/install.sh (was wizards.sh), and the command and the npm package are wizards (were engenty-wizards); the installer renames an install made under the old names",
+        "group": "Changed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c6500f9",
+        "message": "the proxy sends the runtime /w/ and /s/ with the slash",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.1.8",
+    "timestamp": 1791196160,
+    "commits": [
+      {
+        "id": "a965d36",
+        "message": "the marketplace's pages are written by the site at engenty.ai, at /wizards/<slug> and /de/wizards/<slug>",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.1.7",
+    "timestamp": 1791194770,
+    "commits": [
+      {
+        "id": "66e9109",
+        "message": "a banner in the studio says when a newer release is out; the update installs from there, the runtime restarts into the new version and the page reloads",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "5e27bf6",
+        "message": "the studio chat counts the seconds of a turn and says what the architect is doing and thinking; pasted pictures show in the thread and the architect sees them",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.1.6",
-    "timestamp": 1791167378,
+    "timestamp": 1791167380,
     "commits": [
       {
         "id": "481807b",

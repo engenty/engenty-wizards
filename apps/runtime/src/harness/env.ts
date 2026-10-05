@@ -12,7 +12,7 @@ let shellEnv: Promise<Record<string, string>> | null = null;
 export function loginShellEnv(): Promise<Record<string, string>> {
   shellEnv ??= new Promise<Record<string, string>>((done) => {
     const shell = process.env.SHELL || "/bin/zsh";
-    // In a session of its own, away from the terminal `engenty-wizards` runs in: an interactive
+    // In a session of its own, away from the terminal `wizards` runs in: an interactive
     // shell takes over that terminal for its job control and keeps it when it ends, and Ctrl-C
     // then reaches nobody. (execFile cannot do this: it drops `detached`.)
     const child = spawn(shell, ["-l", "-i", "-c", "env"], {

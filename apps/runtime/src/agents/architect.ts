@@ -24,6 +24,7 @@ import { checkDraftWidget } from "../services/widgets.js";
 import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
 import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
 import { runScript } from "../widgets/script.js";
+import { thoughtLine } from "./thought.js";
 
 export interface ArchitectInput {
   userId: string;
@@ -36,7 +37,18 @@ export interface ArchitectInput {
   onText?: (delta: string) => void;
   /** A short line about what the architect is doing right now ("Lädt Seeformen …"). */
   onActivity?: (label: string) => void;
+  /** The latest line of its reasoning, for the line under the activity. */
+  onThought?: (line: string) => void;
   onBuilding?: () => void;
+  /** Pictures the admin attached to this message, for the model to look at. */
+  images?: ChatImage[];
+}
+
+/** A picture sent with a chat message; its bytes go to the model, not just its name. */
+export interface ChatImage {
+  path: string;
+  mime: string;
+  data: Uint8Array;
 }
 
 const MAX_STEPS = 45;
@@ -425,7 +437,20 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
             ? { role: "user" as const, content: m.content }
             : { role: "assistant" as const, content: m.content },
         ),
-      { role: "user" as const, content: context },
+      {
+        role: "user" as const,
+        content: input.images?.length
+          ? [
+              { type: "text" as const, text: context },
+              ...input.images.map((i) => ({
+                type: "file" as const,
+                data: i.data,
+                mediaType: i.mime,
+                filename: i.path,
+              })),
+            ]
+          : context,
+      },
     ],
     {
       maxSteps: MAX_STEPS,
@@ -437,9 +462,20 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
   let steps = 0;
   // A big write_file streams its arguments for minutes; name the file as soon as its path arrives.
   const streaming = new Map<string, { tool: string; args: string; named: boolean }>();
+  let reasoning = "";
+  let thought: string | null = null;
   for await (const chunk of stream.fullStream as AsyncIterable<any>) {
     const payload = chunk.payload ?? chunk;
-    if (chunk.type === "text-delta") {
+    if (chunk.type === "reasoning-start") {
+      reasoning = "";
+    } else if (chunk.type === "reasoning-delta") {
+      reasoning += payload.text ?? "";
+      const line = thoughtLine(reasoning);
+      if (line && line !== thought) {
+        thought = line;
+        input.onThought?.(line);
+      }
+    } else if (chunk.type === "text-delta") {
       const text: string = payload.text ?? payload.delta ?? "";
       reply += text;
       input.onText?.(text);

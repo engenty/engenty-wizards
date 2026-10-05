@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # engenty wizards — installer for macOS and Linux.
 #
-#   curl -fsSL https://engenty.ai/wizards.sh | bash
+#   curl -fsSL https://engenty.ai/install.sh | bash
 #
 # It needs curl and tar, nothing else, and asks for no password. Everything goes into
 # ~/.engenty/wizards (ENGENTY_HOME moves it):
 #
 #   tools/node-v<version>/   its own Node; a Node you already have is left alone
-#   runtime/                 the package `engenty-wizards`, from the GitHub release
-#   bin/engenty-wizards      the command, linked into ~/.local/bin
+#   runtime/                 the package `wizards`, from the GitHub release
+#   bin/wizards              the command, linked into ~/.local/bin
 #   data/                    your wizards and results (made at the first start)
 #
-# Then the guided setup runs (`engenty-wizards setup`): an AI client to think with, ffmpeg,
+# Then the guided setup runs (`wizards setup`): an AI client to think with, ffmpeg,
 # starting at login. Running the installer again updates an install; your data is
 # kept.
 #
@@ -28,7 +28,9 @@
 set -Eeuo pipefail
 
 NODE_VERSION="${ENGENTY_WIZARDS_NODE_VERSION:-24.14.0}"
-PACKAGE_NAME="engenty-wizards"
+PACKAGE_NAME="wizards"
+# What the package and the command were called up to 0.1.8.
+OLD_NAME="engenty-wizards"
 RELEASES="https://github.com/engenty/engenty-wizards/releases"
 
 main() {
@@ -60,7 +62,7 @@ main() {
   HOME_DIR="$BASE/wizards"
   LOG="$HOME_DIR/logs/install.log"
   NODE_DIR="$HOME_DIR/tools/node-v$NODE_VERSION"
-  WRAPPER="$HOME_DIR/bin/engenty-wizards"
+  WRAPPER="$HOME_DIR/bin/wizards"
   LOCAL_BIN="$HOME/.local/bin"
 
   style
@@ -70,7 +72,7 @@ main() {
   command -v curl >/dev/null 2>&1 || die "curl is needed and was not found."
   command -v tar >/dev/null 2>&1 || die "tar is needed and was not found."
   mkdir -p "$HOME_DIR/logs" "$HOME_DIR/tools" "$HOME_DIR/bin"
-  printf '\n--- %s wizards.sh\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$LOG"
+  printf '\n--- %s install.sh\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$LOG"
 
   banner
   printf '%s  Installing into %s\n%s\n' "${GRAY}┌$RESET" "$BOLD$(tilde "$HOME_DIR")$RESET" "$BAR"
@@ -79,6 +81,7 @@ main() {
   node
   runtime
   command_link
+  old_command
   if [ "$SETUP" = 1 ]; then
     printf '%s  %s\n\n' "${GRAY}└$RESET" "Installed. The setup follows."
     printf '%s' "$SHOW"
@@ -96,10 +99,10 @@ usage() {
   cat <<'USAGE'
 engenty wizards — installer for macOS and Linux
 
-  curl -fsSL https://engenty.ai/wizards.sh | bash
-  curl -fsSL https://engenty.ai/wizards.sh | bash -s -- --yes
+  curl -fsSL https://engenty.ai/install.sh | bash
+  curl -fsSL https://engenty.ai/install.sh | bash -s -- --yes
 
-Puts its own Node, the runtime and the `engenty-wizards` command into ~/.engenty/wizards
+Puts its own Node, the runtime and the `wizards` command into ~/.engenty/wizards
 (ENGENTY_HOME moves it), then runs the guided setup. Run it again to update.
 
   --yes            ask nothing and install nothing optional
@@ -108,7 +111,7 @@ Puts its own Node, the runtime and the `engenty-wizards` command into ~/.engenty
   --no-link        do not link the command into ~/.local/bin
 
 To remove it: delete ~/.engenty/wizards (your wizards and results are in its data/ folder)
-and ~/.local/bin/engenty-wizards.
+and ~/.local/bin/wizards.
 USAGE
 }
 
@@ -437,9 +440,8 @@ latest_version() {
     sed -n 's#.*/tag/v##p'
 }
 
-# What gets installed, decided before anything is downloaded. The package is not on npm yet: it
-# is the tarball of the GitHub release, which npm installs like one from its registry; what it
-# depends on comes from the registry.
+# What gets installed, decided before anything is downloaded: the tarball of the GitHub release,
+# which npm installs like one from its registry; what it depends on comes from the registry.
 package() {
   STEP="Looking for the newest release"
   SPEC="${ENGENTY_WIZARDS_PACKAGE:-}"
@@ -452,11 +454,20 @@ package() {
   if [ -z "$VERSION" ]; then
     die "No release of engenty wizards was found at $RELEASES."
   fi
+  case "$VERSION" in
+    0.0.* | 0.1.[0-8])
+      die "Version $VERSION holds the package under its old name, $OLD_NAME. This installer installs 0.1.9 and newer."
+      ;;
+  esac
   SPEC="$RELEASES/download/v$VERSION/$PACKAGE_NAME-$VERSION.tgz"
 }
 
 runtime() {
   STEP="Installing engenty wizards"
+  # An install of the package under its old name is replaced, not kept beside the new one.
+  if [ -d "$HOME_DIR/runtime/node_modules/$OLD_NAME" ]; then
+    rm -rf "$HOME_DIR/runtime"
+  fi
   mkdir -p "$HOME_DIR/runtime"
   # npm is a script that asks for `node`: ours comes first on the PATH. No install scripts run;
   # the runtime works without them. --legacy-peer-deps: the dependencies as the package names
@@ -472,21 +483,21 @@ runtime() {
 command_link() {
   STEP="Writing the command"
   {
-    printf '#!/bin/sh\n# engenty wizards — written by wizards.sh; running the installer again rewrites it.\n'
+    printf '#!/bin/sh\n# engenty wizards — written by install.sh; running the installer again rewrites it.\n'
     # An install outside ~/.engenty finds its folder again through the command.
     if [ "$BASE" != "$HOME/.engenty" ]; then
       # shellcheck disable=SC2016
       printf 'export ENGENTY_HOME="${ENGENTY_HOME:-%s}"\n' "$BASE"
     fi
     printf 'exec "%s" "%s" "$@"\n' "$HOME_DIR/tools/node/bin/node" \
-      "$HOME_DIR/runtime/node_modules/$PACKAGE_NAME/bin/engenty-wizards.mjs"
+      "$HOME_DIR/runtime/node_modules/$PACKAGE_NAME/bin/wizards.mjs"
   } >"$WRAPPER"
   chmod 755 "$WRAPPER"
   if [ "$LINK" != 1 ]; then
     done_step "Command" "$(tilde "$WRAPPER")"
     return
   fi
-  local link="$LOCAL_BIN/engenty-wizards"
+  local link="$LOCAL_BIN/wizards"
   mkdir -p "$LOCAL_BIN"
   # Something else of that name is not ours to replace.
   if [ -e "$link" ] && [ ! -L "$link" ]; then
@@ -495,6 +506,26 @@ command_link() {
   fi
   ln -sfn "$WRAPPER" "$link"
   done_step "Command" "$(tilde "$link")"
+}
+
+# The command under its old name: its file, its link, and a login item that would keep
+# starting it. The login item is written again by the command itself.
+old_command() {
+  local old="$HOME_DIR/bin/$OLD_NAME" link="$LOCAL_BIN/$OLD_NAME" item
+  [ -e "$old" ] || return 0
+  STEP="Renaming the command"
+  rm -f "$old"
+  if [ -L "$link" ] && [ "$(readlink "$link")" = "$old" ]; then
+    rm -f "$link"
+  fi
+  for item in "$HOME/Library/LaunchAgents/com.engenty.wizards.login.plist" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/engenty-wizards.service"; do
+    if grep -qF "$old" "$item" 2>/dev/null; then
+      "$WRAPPER" autostart on >>"$LOG" 2>&1 </dev/null || true
+      break
+    fi
+  done
+  done_step "Command" "$OLD_NAME is now wizards"
 }
 
 main "$@"
