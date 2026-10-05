@@ -641,11 +641,14 @@ export function RunnerBody({
   compact,
   onRestart,
   onView,
+  stickyProgress,
 }: {
   runId: string;
   compact?: boolean;
   onRestart?: () => void;
   onView?: (view: RunView | null) => void;
+  /** In a box of its own (an AI app's widget): the progress stays on top while the page scrolls. */
+  stickyProgress?: boolean;
 }) {
   const run = useRun(runId);
   const { view } = run;
@@ -691,7 +694,13 @@ export function RunnerBody({
     view.lists.some((l) => l.def.check);
   return (
     <div className="flex min-h-full flex-col">
-      <Progress view={view} />
+      {stickyProgress ? (
+        <div className="sticky top-0 z-10">
+          <Progress view={view} />
+        </div>
+      ) : (
+        <Progress view={view} />
+      )}
       <div
         className={cn(
           "safe-x mx-auto w-full flex-1",

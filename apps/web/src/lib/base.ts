@@ -10,8 +10,21 @@ export const BASE = String(import.meta.env.VITE_APP_BASE ?? "").replace(/\/+$/, 
  */
 export const STUDIO = `${BASE}/studio`;
 
+/**
+ * The widget an AI app shows runs on the host's origin: its requests go to the runtime at `base`,
+ * each with the run's ticket.
+ */
+let remote: { base: string; ticket: string } | null = null;
+
+export function setRemoteRuntime(runtime: { base: string; ticket: string } | null) {
+  remote = runtime ? { base: runtime.base.replace(/\/+$/, ""), ticket: runtime.ticket } : null;
+}
+
 /** A root-relative address (`/api/...`, `/w/...`) as the browser must request it. */
 export function withBase(path: string): string {
+  if (remote && path.startsWith("/api/")) {
+    return `${remote.base}${path}${path.includes("?") ? "&" : "?"}rt=${encodeURIComponent(remote.ticket)}`;
+  }
   if (!BASE || !path.startsWith("/") || path.startsWith("//")) {
     return path;
   }

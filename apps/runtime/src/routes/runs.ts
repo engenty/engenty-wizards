@@ -42,7 +42,7 @@ import { hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { listDownload, renderDownload, stepHtml } from "../render/downloads.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
-import { verifySignedUrl } from "../secrets/signing.js";
+import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
@@ -98,8 +98,9 @@ function visitorId(c: Context, create: boolean, embedded = false): string | null
 }
 
 /**
- * The run, if the caller may see it: its visitor, the admin who owns the wizard, or — on the
- * read-only file routes — a signed link handed out to the owner's MCP client.
+ * The run, if the caller may see it: its visitor, the admin who owns the wizard, the widget of
+ * the owner's AI app with its run ticket, or — on the read-only file routes — a signed link
+ * handed out to the owner's MCP client.
  */
 async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean } = {}) {
   const run = await db.query.run.findFirst({ where: eq(schema.run.id, runId) });
@@ -107,6 +108,9 @@ async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean
     return null;
   }
   if (opts.signed && verifySignedUrl(c.req.url)) {
+    return run;
+  }
+  if (runTicketValid(run.id, c.req.query("rt"))) {
     return run;
   }
   const vid = visitorId(c, false);

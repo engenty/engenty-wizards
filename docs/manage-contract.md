@@ -17,7 +17,7 @@ The Manage-App is an OAuth 2.1 / OIDC authorization server.
 | JWKS | the `jwks_uri` from discovery |
 | Access token | a JWT signed with a key from the JWKS, `iss` = the issuer from discovery — when the request names a `resource`; without one the token is opaque and only the Manage-App itself takes it |
 | Claims | `sub` user id · `tenant` tenant id · `role` `owner` \| `admin` \| `member` · `name` · `email` · `scope` · `azp` client id · `aud` the requested `resource` (a list that also holds the userinfo endpoint when `openid` is in scope) |
-| Scopes | `openid profile email offline_access wizards:read wizards:write wizards:publish runs:test` |
+| Scopes | `openid profile email offline_access wizards:read wizards:write wizards:publish runs:test` (`runs:test` also covers runs of published wizards a client starts: both spend credits) |
 
 - A token names exactly one tenant. A person in several tenants picks one while signing in.
 - The first sign-in creates the account, a tenant with the starting balance, and that tenant's

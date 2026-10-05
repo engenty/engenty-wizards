@@ -4,6 +4,7 @@ import { delimiter, join } from "node:path";
 import * as p from "@clack/prompts";
 import { autostartState, setAutostart } from "./autostart.js";
 import { installClient, installCommand } from "./clients.js";
+import { appStates, connectApps } from "./connect.js";
 import { runLogged } from "./exec.js";
 import {
   installedByScript,
@@ -233,6 +234,55 @@ async function autostartStep(
   }
 }
 
+/**
+ * The wizards in the person's AI apps (Claude Desktop, Cursor, Codex …): offered for each app on
+ * this machine that does not have them yet. Asked, never assumed; `disconnect` undoes it.
+ */
+async function appsStep(paths: Layout, interactive: boolean): Promise<"cancelled" | undefined> {
+  const states = await appStates(paths);
+  const connected = states.filter((s) => s.connected);
+  const offered = states.filter((s) => s.installed && !s.connected);
+  if (connected.length) {
+    p.log.success(`In your AI apps: ${connected.map((s) => s.name).join(", ")}`);
+  }
+  if (!offered.length) {
+    return;
+  }
+  if (!interactive) {
+    p.log.info(
+      dim(
+        `To use your wizards in ${offered.map((s) => s.name).join(", ")}: \`${command()} connect\``,
+      ),
+    );
+    return;
+  }
+  const answer = await p.multiselect({
+    message: "Use your wizards in these AI apps? (space to pick, enter to go on)",
+    options: offered.map((s) => ({
+      value: s.id,
+      label: s.name,
+      hint: s.widgets ? "shows runs as a widget" : "as text",
+    })),
+    initialValues: offered.map((s) => s.id),
+    required: false,
+  });
+  if (cancelled(answer)) {
+    return "cancelled";
+  }
+  if (!answer.length) {
+    p.log.info(dim(`Later: \`${command()} connect\``));
+    return;
+  }
+  for (const { app, outcome } of await connectApps(paths, answer)) {
+    if (outcome.ok) {
+      p.log.success(`${app.name}: ${dim(tilde(outcome.message))}`);
+    } else {
+      p.log.warn(`${app.name}: ${outcome.message}${outcome.snippet ? `\n${outcome.snippet}` : ""}`);
+    }
+  }
+  p.log.info(dim("Restart those apps to see the wizards in them."));
+}
+
 /** The line that puts `~/.local/bin` on the PATH, and the shell file it belongs in. */
 function pathLine(): { file: string; line: string } {
   const shell = process.env.SHELL ?? "";
@@ -303,6 +353,9 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
     return null;
   }
   if ((await autostartStep(paths, interactive)) === "cancelled") {
+    return null;
+  }
+  if ((await appsStep(paths, interactive)) === "cancelled") {
     return null;
   }
   if ((await pathStep(interactive)) === "cancelled") {

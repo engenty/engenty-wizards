@@ -1,8 +1,8 @@
-import { Cpu, FolderCog, type LucideIcon, Plug, TerminalSquare, UserRound } from "lucide-react";
+import { Blocks, Cpu, FolderCog, type LucideIcon, Plug, UserRound } from "lucide-react";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
 
-export type SettingsSection = "project" | "connectors" | "models" | "build" | "account";
+export type SettingsSection = "project" | "connectors" | "models" | "integrate" | "account";
 
 /**
  * The sections of the settings, in the order of their list. `menu`: the user menu links to it
@@ -19,6 +19,6 @@ export function settingsSections(
     ...(me?.mode === "local"
       ? [{ id: "models" as const, label: t("local.title"), icon: Cpu, menu: true }]
       : []),
-    { id: "build", label: t("mcp.nav"), icon: TerminalSquare, menu: false },
+    { id: "integrate", label: t("integrate.nav"), icon: Blocks, menu: true },
   ];
 }

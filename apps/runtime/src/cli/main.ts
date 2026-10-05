@@ -1,5 +1,7 @@
+import { apps, connectCommand } from "./connect.js";
 import { layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
+import { mcp } from "./mcp.js";
 import { command, setup } from "./setup.js";
 import { open, start } from "./start.js";
 import { autostart, status, stop } from "./status.js";
@@ -15,6 +17,12 @@ const HELP = `engenty wizards ${packageVersion()}
   ${command()} stop       stop it; the data is kept
   ${command()} update     the newest version
   ${command()} autostart  start it at login: on, off (macOS: a LaunchAgent; Linux: a systemd service)
+  ${command()} connect    your wizards in your AI apps: every app found, or name them —
+                        ${apps(layout())
+                          .map((app) => app.id)
+                          .join(", ")}
+  ${command()} disconnect take them out again (same names)
+  ${command()} mcp        the MCP server over stdio, as the AI apps start it
 
   --yes, -y          ask nothing and install nothing optional
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
@@ -28,6 +36,8 @@ interface Args {
   command: string;
   /** What follows the command: \`autostart on\`. */
   value: string;
+  /** The apps \`connect\` and \`disconnect\` name. */
+  apps: string[];
   yes: boolean;
   open: boolean;
   print: boolean;
@@ -38,6 +48,7 @@ function parse(argv: string[]): Args | string {
   const args: Args = {
     command: "",
     value: "",
+    apps: [],
     yes: false,
     open: true,
     print: false,
@@ -65,6 +76,8 @@ function parse(argv: string[]): Args | string {
       return `Unknown option ${arg}.`;
     } else if (args.command === "autostart" && !args.value) {
       args.value = arg;
+    } else if (args.command === "connect" || args.command === "disconnect") {
+      args.apps.push(arg);
     } else if (args.command) {
       return `Unexpected argument ${arg}.`;
     } else {
@@ -117,6 +130,11 @@ async function main(argv: string[]): Promise<number> {
       return update(paths);
     case "autostart":
       return autostart(paths, args.value);
+    case "connect":
+    case "disconnect":
+      return connectCommand(paths, args.apps, args.command === "disconnect");
+    case "mcp":
+      return mcp(paths);
     default:
       console.error(`Unknown command ${args.command}.\n\n${HELP}`);
       return 2;

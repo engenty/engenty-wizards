@@ -7,12 +7,14 @@ import { withTenant } from "../db/client.js";
 import { env } from "../env.js";
 import { tenantStatus } from "../tenants/control.js";
 import { authenticate, principalOf } from "./auth.js";
+import { registerFlowApp } from "./flow-app.js";
+import { noteRequest } from "./seen.js";
 import { registerPrompts, registerTools } from "./tools.js";
 
-const INSTRUCTIONS = `engenty wizards: build page-by-page AI wizards that people open on a shared link.
-Start with get_authoring_guide (schema + design rules), look at a close starter with get_starter, then create_wizard and refine with edit_wizard until "issues" is empty.
-Check it with start_test_run + get_test_run (waitSeconds) — test runs spend the admin's credits.
-Publish only when the admin asks. Hand the admin the studioUrl: the studio shows the wizard as a diagram.`;
+const INSTRUCTIONS = `engenty wizards: page-by-page AI wizards — the person answers pages, AI steps write, research and make images or videos, the person reviews, the result is files.
+Use one: list_wizards, then run_wizard straight away — its widget shows the wizard itself (show_wizard only when the person wants to see a wizard before running it), then follow waitingFor (answer_page, review_step, answer_ask, get_run with waitSeconds). Runs spend credits.
+Build one: get_authoring_guide (schema + design rules), a close starter with get_starter, create_wizard, edit_wizard until "issues" is empty, check with start_test_run + get_test_run. Publish only when the admin asks.
+When a run needs the browser, hand over its browserUrl, the wizard's own run page. The studioUrl is for building only: never send someone who uses a wizard to the studio.`;
 
 /** A wizard definition is a few KB; this leaves room and refuses anything far beyond it. */
 const MAX_BODY_BYTES = 300_000;
@@ -28,11 +30,12 @@ export function mcpHandler(): (request: Request) => Promise<Response> {
     (ctx) => {
       const server = new McpServer(
         { name: "engenty-wizards", version: "0.1.0" },
-        { instructions: INSTRUCTIONS, capabilities: { tools: {}, prompts: {} } },
+        { instructions: INSTRUCTIONS, capabilities: { tools: {}, prompts: {}, resources: {} } },
       );
       const who = principalOf(ctx.authInfo!);
       registerTools(server, who);
       registerPrompts(server);
+      registerFlowApp(server);
       return server;
     },
     { legacy: "stateless", maxRequestBodySize: MAX_BODY_BYTES },
@@ -50,6 +53,13 @@ export function mcpHandler(): (request: Request) => Promise<Response> {
     const who = principalOf(authInfo);
     if ((await tenantStatus(who.tenantId)) === "suspended") {
       return new Response(JSON.stringify({ error: "tenant_suspended" }), { status: 403 });
+    }
+    if (request.method === "POST") {
+      const body = await request
+        .clone()
+        .json()
+        .catch(() => null);
+      noteRequest(who.tenantId, authInfo.clientId, who.client, body);
     }
     return withTenant(who.tenantId, () => handler.fetch(request, { authInfo }));
   };

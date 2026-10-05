@@ -1,15 +1,26 @@
 import { formatsFor, type Step } from "@engenty-wizards/shared/definition";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
-import { unattended } from "../engine/asks.js";
+import { answerAsk, unattended } from "../engine/asks.js";
 import { emitEvent, recentEvents, subscribe } from "../engine/events.js";
-import { createRun, RunInputError, reviewStep, submitPage } from "../engine/runner.js";
+import {
+  cancel,
+  createRun,
+  goBack,
+  NoCreditsError,
+  type ReviewAction,
+  RunConflict,
+  RunInputError,
+  retry,
+  reviewStep,
+  submitPage,
+} from "../engine/runner.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { signedUrl } from "../secrets/signing.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { notFound, ServiceError } from "./errors.js";
-import { ownedWizard, requireClean, studioUrl } from "./wizards.js";
+import { ownedWizard, requireClean, shareUrl, studioUrl } from "./wizards.js";
 
 type RunRow = typeof schema.run.$inferSelect;
 
@@ -106,12 +117,18 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
   void step();
 }
 
-async function ownedTestRun(_userId: string, runId: string): Promise<RunRow> {
+/**
+ * A run the caller may see: any test run of their tenant, or a run they started themselves
+ * from an MCP client (run_wizard). `test` narrows it to test runs.
+ */
+async function ownedRun(userId: string, runId: string, only?: "test"): Promise<RunRow> {
   const run = await db.query.run.findFirst({
     where: and(
       eq(schema.run.id, runId),
       eq(schema.run.tenantId, currentTenant()),
-      eq(schema.run.mode, "test"),
+      only === "test"
+        ? eq(schema.run.mode, "test")
+        : or(eq(schema.run.mode, "test"), eq(schema.run.userId, userId)),
     ),
   });
   if (!run) {
@@ -125,9 +142,14 @@ function moving(run: RunRow) {
   return run.status === "running" || (run.status === "waiting_input" && autopilots.has(run.id));
 }
 
-async function waitWhileMoving(userId: string, runId: string, seconds: number): Promise<RunRow> {
+async function waitWhileMoving(
+  userId: string,
+  runId: string,
+  seconds: number,
+  only?: "test",
+): Promise<RunRow> {
   const deadline = Date.now() + seconds * 1000;
-  let run = await ownedTestRun(userId, runId);
+  let run = await ownedRun(userId, runId, only);
   while (moving(run) && Date.now() < deadline) {
     await new Promise<void>((resolve) => {
       const unsubscribe = subscribe(runId, () => {
@@ -140,7 +162,7 @@ async function waitWhileMoving(userId: string, runId: string, seconds: number): 
         resolve();
       }, deadline - Date.now());
     });
-    run = await ownedTestRun(userId, runId);
+    run = await ownedRun(userId, runId, only);
   }
   return run;
 }
@@ -159,9 +181,91 @@ function deliverableFormats(run: RunRow, step: Step) {
   return listed ? listed.formats.filter((f) => possible.includes(f)) : [];
 }
 
-/** What a test run did so far, for a client without the studio: outputs, links, cost, errors. */
-export async function testRunReport(userId: string, runId: string, waitSeconds = 0) {
-  const run = await waitWhileMoving(userId, runId, waitSeconds);
+/** Field kinds an MCP client can answer with plain values; the others need the run page. */
+const CHAT_KINDS = new Set([
+  "text",
+  "textarea",
+  "number",
+  "select",
+  "multiselect",
+  "date",
+  "email",
+  "url",
+  "toggle",
+  "color",
+  "items",
+  "location",
+]);
+
+/** Where the person can go on in a browser: the run page of a live run, the studio for a test. */
+/** The live run's page — the wizard itself, never the studio. A test run has none. */
+async function browserUrl(run: RunRow): Promise<string | null> {
+  if (run.mode === "test") {
+    return null;
+  }
+  const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
+  return w ? `${shareUrl(w.shareToken)}/${run.id}` : null;
+}
+
+function waitingFor(run: RunRow, current: Step | null) {
+  if (run.status === "running" && run.ask) {
+    const ask = run.ask;
+    return ask.kind === "confirm"
+      ? {
+          ask: ask.id,
+          kind: ask.kind,
+          reason: ask.reason,
+          service: ask.service,
+          action: ask.action.summary,
+          input: clip(ask.input, 1500),
+          hint: "Ask the person, then answer_ask with allow or skip.",
+        }
+      : {
+          ask: ask.id,
+          kind: ask.kind,
+          reason: ask.reason,
+          site: ask.site.host,
+          hint: "A sign-in: the person types it on the run page (browserUrl).",
+        };
+  }
+  if (run.status !== "waiting_input" || !current) {
+    return undefined;
+  }
+  if (current.type === "page") {
+    return {
+      page: current.id,
+      title: current.title,
+      fields: current.fields.map((f) => ({
+        id: f.id,
+        label: f.label,
+        kind: f.kind,
+        required: Boolean(f.required),
+        options: f.options,
+        placeholder: f.placeholder,
+        help: f.help,
+        default: f.default,
+        value: run.state.values[f.id],
+        columns: f.columns,
+        // A file, a recording or a signature comes from the person's device: the run page.
+        inChat: CHAT_KINDS.has(f.kind),
+      })),
+    };
+  }
+  if (current.type === "review") {
+    return {
+      review: current.id,
+      title: current.title,
+      show: current.show,
+      editable: Boolean(current.edit),
+      hint: "Show the person the outputs, then review_step: accept, or regenerate one with a note.",
+    };
+  }
+  return undefined;
+}
+
+/** What a run did so far, for a client without the run page: outputs, links, cost, errors. */
+export async function runReport(userId: string, runId: string, waitSeconds = 0, only?: "test") {
+  const run = await waitWhileMoving(userId, runId, waitSeconds, only);
   const current = run.definition.steps.find((s) => s.id === run.cursor) ?? null;
   const base = `/api/runs/${run.id}`;
   const outputs = run.definition.steps.flatMap((step) => {
@@ -189,26 +293,22 @@ export async function testRunReport(userId: string, runId: string, waitSeconds =
       },
     ];
   });
-  const waitingFor =
-    run.status === "waiting_input" && current?.type === "page"
-      ? {
-          page: current.id,
-          fields: current.fields.map((f) => ({
-            id: f.id,
-            label: f.label,
-            kind: f.kind,
-            required: Boolean(f.required),
-            options: f.options,
-          })),
-        }
-      : run.status === "waiting_input" && current?.type === "review"
-        ? { review: current.id, hint: "Accept or regenerate in the studio." }
-        : undefined;
   return {
     runId: run.id,
+    wizardId: run.wizardId,
+    mode: run.mode,
     status: moving(run) ? "running" : run.status,
     step: current ? { id: current.id, type: current.type, title: current.title } : null,
-    waitingFor,
+    /** Steps behind the run: answered pages and reviews, every step with a result, the end. */
+    passed: run.definition.steps
+      .filter(
+        (s) =>
+          run.state.history.includes(s.id) ||
+          run.state.outputs[s.id] ||
+          (run.status === "done" && s.id === run.cursor),
+      )
+      .map((s) => s.id),
+    waitingFor: waitingFor(run, current),
     error: run.error,
     credits: Math.ceil(run.costMicros / MICROS_PER_CREDIT),
     events: (await recentEvents(run.id, 0, 15)).map((e) => ({
@@ -217,8 +317,131 @@ export async function testRunReport(userId: string, runId: string, waitSeconds =
       message: e.message,
     })),
     outputs,
-    studioUrl: studioUrl(run.wizardId),
+    browserUrl: await browserUrl(run),
+    ...(run.mode === "test" ? { studioUrl: studioUrl(run.wizardId) } : {}),
   };
+}
+
+export type RunReport = Awaited<ReturnType<typeof runReport>>;
+
+export const testRunReport = (userId: string, runId: string, waitSeconds = 0) =>
+  runReport(userId, runId, waitSeconds, "test");
+
+/** A command the run refused, as a tool error the client can act on. */
+function refusedInput(err: unknown): never {
+  if (err instanceof RunInputError) {
+    throw new ServiceError("invalid", err.message, { fields: err.errors });
+  }
+  if (err instanceof RunConflict) {
+    throw new ServiceError("refused", err.message);
+  }
+  throw err;
+}
+
+/**
+ * Runs the published version of a wizard for the admin, from their own AI client: a live run
+ * that is theirs — no visitor, no share link needed. With answers the first page is filled.
+ */
+export async function startRun(
+  userId: string,
+  wizardId: string,
+  answers: Record<string, unknown> = {},
+) {
+  const w = await ownedWizard(userId, wizardId);
+  if (w.publishedVersion === null) {
+    throw new ServiceError(
+      "refused",
+      "This wizard is not published yet. Publish it, or try the draft with start_test_run.",
+    );
+  }
+  const version = await db.query.wizardVersion.findFirst({
+    where: and(
+      eq(schema.wizardVersion.wizardId, w.id),
+      eq(schema.wizardVersion.version, w.publishedVersion),
+    ),
+  });
+  if (!version) {
+    throw notFound();
+  }
+  if (!(await canSpend())) {
+    throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+  }
+  const runId = await createRun({
+    wizardId: w.id,
+    definition: version.definition,
+    files: version.files,
+    version: w.publishedVersion,
+    mode: "live",
+    userId,
+  }).catch((err) => {
+    if (err instanceof ModelUnavailableError) {
+      throw new ServiceError("refused", err.message);
+    }
+    if (err instanceof NoCreditsError) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    throw err;
+  });
+  const first = version.definition.steps[0];
+  if (first?.type !== "page" || !Object.keys(answers).length) {
+    return { runId, refused: null };
+  }
+  const values = Object.fromEntries(
+    first.fields.filter((f) => f.id in answers).map((f) => [f.id, answers[f.id]]),
+  );
+  // The run is there either way; what did not fit is answered again with answer_page.
+  try {
+    await submitPage(runId, first.id, values);
+    return { runId, refused: null };
+  } catch (err) {
+    if (err instanceof RunInputError) {
+      return { runId, refused: err.errors };
+    }
+    throw err;
+  }
+}
+
+export async function answerRunPage(
+  userId: string,
+  runId: string,
+  stepId: string,
+  values: Record<string, unknown>,
+) {
+  await ownedRun(userId, runId);
+  await submitPage(runId, stepId, values).catch(refusedInput);
+}
+
+export async function reviewRun(
+  userId: string,
+  runId: string,
+  stepId: string,
+  action: ReviewAction,
+) {
+  await ownedRun(userId, runId);
+  await reviewStep(runId, stepId, action).catch(refusedInput);
+}
+
+export async function controlRun(
+  userId: string,
+  runId: string,
+  action: "back" | "retry" | "cancel",
+) {
+  await ownedRun(userId, runId);
+  const command = { back: goBack, retry, cancel }[action];
+  await command(runId).catch(refusedInput);
+}
+
+/** Answers what a running step asks: allow a change in a connected account, or skip it. */
+export async function answerRunAsk(
+  userId: string,
+  runId: string,
+  askId: string,
+  answer: "allow" | "skip",
+) {
+  await ownedRun(userId, runId);
+  if (!answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" })) {
+    throw new ServiceError("refused", "This question is no longer open.");
+  }
 }
 
 export async function listRuns(userId: string, wizardId: string) {

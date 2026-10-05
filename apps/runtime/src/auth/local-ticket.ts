@@ -7,22 +7,41 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  */
 const TTL_MS = 60_000;
 
-const sign = (secret: string, expires: number) =>
-  createHmac("sha256", secret).update(`local-enter.${expires}`).digest("hex");
+/**
+ * `local-enter` lets a browser in once; `local-mcp` is what `engenty-wizards mcp` signs each
+ * request to the MCP endpoint with, so that no AI client's config has to hold a key.
+ */
+type Purpose = "local-enter" | "local-mcp";
 
-export function mintLocalTicket(secret: string, now = Date.now()): string {
+/** The header `engenty-wizards mcp` signs its requests with, and the one naming its client. */
+export const LOCAL_MCP_HEADER = "x-engenty-local";
+export const LOCAL_CLIENT_HEADER = "x-engenty-client";
+
+const sign = (secret: string, expires: number, purpose: Purpose) =>
+  createHmac("sha256", secret).update(`${purpose}.${expires}`).digest("hex");
+
+export function mintLocalTicket(
+  secret: string,
+  now = Date.now(),
+  purpose: Purpose = "local-enter",
+): string {
   const expires = now + TTL_MS;
-  return `${expires}.${sign(secret, expires)}`;
+  return `${expires}.${sign(secret, expires, purpose)}`;
 }
 
 /** When a ticket runs out, or null when it is not one of ours or already ran out. */
-export function localTicketExpiry(secret: string, ticket: string, now = Date.now()): number | null {
+export function localTicketExpiry(
+  secret: string,
+  ticket: string,
+  now = Date.now(),
+  purpose: Purpose = "local-enter",
+): number | null {
   const [head, signature] = ticket.split(".");
   const expires = Number(head);
   if (!signature || !Number.isSafeInteger(expires) || expires <= now || expires > now + TTL_MS) {
     return null;
   }
   const given = Buffer.from(signature);
-  const expected = Buffer.from(sign(secret, expires));
+  const expected = Buffer.from(sign(secret, expires, purpose));
   return given.length === expected.length && timingSafeEqual(given, expected) ? expires : null;
 }

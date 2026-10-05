@@ -84,7 +84,7 @@ export async function listWizards(_userId: string, projectId?: string) {
   return rows.map(wizardSummary);
 }
 
-async function publishedVersion(w: WizardRow) {
+export async function publishedVersion(w: WizardRow) {
   if (w.publishedVersion === null) {
     return null;
   }

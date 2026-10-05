@@ -12,7 +12,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from "@xyflow/react";
-import { AlertCircle, Minus, Plus, Scan } from "lucide-react";
+import { AlertCircle, Check, Minus, Plus, Scan } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Mascot } from "../../brand";
 import { cn } from "../../ui";
@@ -32,11 +32,13 @@ type StepData = {
   pulse: boolean;
   /** What the step is expected to cost, in credits. */
   cost: number | null;
+  /** A run went through it already. */
+  passed: boolean;
 };
 type StartData = { title: string; avatar: string; selected: boolean };
 
 function StepNode({ data }: NodeProps<Node<StepData>>) {
-  const { step, selected, issue, active, pulse, cost } = data;
+  const { step, selected, issue, active, pulse, cost, passed } = data;
   const Icon = stepIcon(step);
   return (
     <div
@@ -71,6 +73,8 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
         </span>
         {issue ? (
           <AlertCircle className="ml-auto size-4 text-rose" />
+        ) : passed && !active ? (
+          <Check className="ml-auto size-4 text-moss" />
         ) : cost !== null ? (
           <span className="ml-auto text-[11px] text-ink-3 tabular-nums">
             ≈{" "}
@@ -129,10 +133,11 @@ function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
 function layout(
   def: WizardDefinition,
   selected: string | null,
-  issueSteps: Set<string>,
+  issueSteps: ReadonlySet<string>,
   activeStep: string | null,
   pulse: string[],
   costs: RunEstimate["steps"],
+  passed: ReadonlySet<string>,
 ) {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "TB", nodesep: 48, ranksep: 46, marginx: 20, marginy: 20 });
@@ -209,6 +214,7 @@ function layout(
           active: activeStep === s.id,
           pulse: pulse.includes(s.id),
           cost: costs[s.id]?.credits ?? null,
+          passed: passed.has(s.id),
         },
         draggable: false,
       } satisfies Node<StepData>;
@@ -242,6 +248,23 @@ function ZoomBar() {
 }
 
 const MIN_READABLE_ZOOM = 0.8;
+const NONE: ReadonlySet<string> = new Set();
+
+interface CanvasProps {
+  def: WizardDefinition;
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+  issueSteps: ReadonlySet<string>;
+  activeStep: string | null;
+  pulse?: string[];
+  costs?: RunEstimate["steps"];
+  /** Steps a run went through. */
+  passed?: ReadonlySet<string>;
+  /** How far the first fit may shrink the flow; the studio keeps it readable and scrolls. */
+  minFitZoom?: number;
+  /** Fit again when this changes (the frame got larger), besides the flow's shape. */
+  fitKey?: string;
+}
 
 function Inner({
   def,
@@ -250,21 +273,14 @@ function Inner({
   issueSteps,
   activeStep,
   pulse,
-  wizardId,
-}: {
-  def: WizardDefinition;
-  selected: string | null;
-  onSelect: (id: string | null) => void;
-  issueSteps: Set<string>;
-  activeStep: string | null;
-  pulse?: string[];
-  wizardId: string;
-}) {
-  const estimate = useEstimate(wizardId, def);
-  const costs = estimate.data?.available ? estimate.data.steps : NO_COSTS;
+  costs = NO_COSTS,
+  passed = NONE,
+  minFitZoom = MIN_READABLE_ZOOM,
+  fitKey,
+}: CanvasProps) {
   const { nodes, edges } = useMemo(
-    () => layout(def, selected, issueSteps, activeStep, pulse ?? [], costs),
-    [def, selected, issueSteps, activeStep, pulse, costs],
+    () => layout(def, selected, issueSteps, activeStep, pulse ?? [], costs, passed),
+    [def, selected, issueSteps, activeStep, pulse, costs, passed],
   );
   const rf = useReactFlow();
   const wrap = useRef<HTMLDivElement>(null);
@@ -291,16 +307,16 @@ function Inner({
         el.clientHeight / (bounds.height * 1.15),
         1,
       );
-      const zoom = Math.max(fit, MIN_READABLE_ZOOM);
+      const zoom = Math.max(fit, minFitZoom);
       const x = (el.clientWidth - bounds.width * zoom) / 2 - bounds.x * zoom;
       const y =
-        fit >= MIN_READABLE_ZOOM
+        fit >= minFitZoom
           ? (el.clientHeight - bounds.height * zoom) / 2 - bounds.y * zoom
           : 24 - bounds.y * zoom;
       void rf.setViewport({ x, y, zoom }, { duration: 400 });
     });
     return () => cancelAnimationFrame(id);
-  }, [shape, rf]);
+  }, [shape, fitKey, rf]);
   return (
     <div ref={wrap} className="h-full w-full">
       <ReactFlow
@@ -325,18 +341,19 @@ function Inner({
   );
 }
 
-export function FlowDiagram(props: {
-  def: WizardDefinition;
-  selected: string | null;
-  onSelect: (id: string | null) => void;
-  issueSteps: Set<string>;
-  activeStep: string | null;
-  pulse?: string[];
-  wizardId: string;
-}) {
+/** The flow without the studio around it: the flow widget in AI apps draws it too. */
+export function FlowCanvas(props: CanvasProps) {
   return (
     <ReactFlowProvider>
       <Inner {...props} />
     </ReactFlowProvider>
+  );
+}
+
+/** The studio's flow, with what each step is expected to cost. */
+export function FlowDiagram({ wizardId, ...props }: CanvasProps & { wizardId: string }) {
+  const estimate = useEstimate(wizardId, props.def);
+  return (
+    <FlowCanvas {...props} costs={estimate.data?.available ? estimate.data.steps : NO_COSTS} />
   );
 }

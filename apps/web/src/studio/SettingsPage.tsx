@@ -9,8 +9,8 @@ import { Button, Card, cn, IconButton, Input, Select } from "../ui";
 import { Account } from "./Account";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
+import { Integrate } from "./Integrate";
 import { LocalRuntimeCard } from "./LocalRuntime";
-import { McpAccess } from "./McpAccess";
 import { ProjectSettings } from "./project/ProjectSettings";
 import { settingsSections } from "./settings-sections";
 
@@ -153,6 +153,10 @@ export function SettingsPage() {
   const sections = settingsSections(me.data);
   const current = sections.find((s) => s.id === section);
   if (!current) {
+    // The page for AI clients was /settings/build before it became "Integrate".
+    if (section === "build") {
+      return <Navigate to="/settings/integrate" replace />;
+    }
     return <Navigate to="/settings/project" replace />;
   }
   // The project page brings its own switcher, next to the project's name.
@@ -189,7 +193,12 @@ export function SettingsPage() {
           onChange={(id) => navigate(`/settings/${id}`)}
           options={sections.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <div className={cn("min-w-0", current.id !== "project" && "max-w-2xl")}>
+        <div
+          className={cn(
+            "min-w-0",
+            current.id !== "project" && current.id !== "integrate" && "max-w-2xl",
+          )}
+        >
           {scoped ? (
             <div className="mb-6">
               <ProjectSwitcher />
@@ -205,7 +214,7 @@ export function SettingsPage() {
             </div>
           ) : null}
           {current.id === "models" ? <LocalRuntimeCard /> : null}
-          {current.id === "build" ? <McpAccess /> : null}
+          {current.id === "integrate" ? <Integrate /> : null}
           {current.id === "account" && me.data ? <Account me={me.data} /> : null}
         </div>
       </div>

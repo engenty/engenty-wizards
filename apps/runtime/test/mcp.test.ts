@@ -151,4 +151,148 @@ describe("MCP endpoint", () => {
     expect(published.body).toMatchObject({ version: 1 });
     expect(published.body.shareUrl).toMatch(/^http:\/\/localhost:5181\/w\//);
   });
+
+  it("offers the flow widget with the tools that show a wizard or a run", async () => {
+    const client = await connect();
+    const { tools } = await client.listTools();
+    const meta = (name: string) => tools.find((t) => t.name === name)?._meta as any;
+    for (const name of ["show_wizard", "run_wizard", "start_test_run"]) {
+      expect(meta(name)?.ui?.resourceUri).toMatch(/^ui:\/\/engenty-wizards\/flow-[0-9a-f]{10}\.html$/);
+    }
+    expect(meta("get_run")?.ui).toBeUndefined();
+    const { contents } = await client.readResource({ uri: meta("show_wizard").ui.resourceUri });
+    expect(contents[0]).toMatchObject({ mimeType: "text/html;profile=mcp-app" });
+    expect(String((contents[0] as { text: string }).text)).toMatch(/<html|flow widget/i);
+  });
+
+  it("runs a published wizard page by page, and only for the one who started it", async () => {
+    const client = await connect();
+    const created = await call(client, "create_wizard", {
+      definition: {
+        version: 1,
+        title: "Zwei Seiten",
+        description: "",
+        avatar: "round",
+        steps: [
+          {
+            id: "first",
+            type: "page",
+            title: "Thema",
+            fields: [{ id: "topic", label: "Thema", kind: "text", required: true }],
+          },
+          {
+            id: "second",
+            type: "page",
+            title: "Ton",
+            fields: [
+              { id: "tone", label: "Ton", kind: "select", options: ["locker", "förmlich"] },
+              { id: "logo", label: "Logo", kind: "image" },
+            ],
+          },
+          { id: "done", type: "result", title: "Fertig", deliverables: [] },
+        ],
+      },
+    });
+    const { wizardId } = created.body;
+
+    const unpublished = await call(client, "run_wizard", { wizardId });
+    expect(unpublished.isError).toBe(true);
+    await call(client, "publish_wizard", { wizardId });
+
+    const shown = await client.callTool({ name: "show_wizard", arguments: { wizardId } });
+    const view = (shown._meta as any)["engenty/flow"];
+    expect(view.wizard).toMatchObject({ id: wizardId, shows: "published", published: true });
+    expect(view.definition.steps.map((s: { id: string }) => s.id)).toEqual([
+      "first",
+      "second",
+      "done",
+    ]);
+
+    const startedRaw = await client.callTool({
+      name: "run_wizard",
+      arguments: { wizardId, answers: { topic: "Brot" } },
+    });
+    const started = {
+      isError: Boolean(startedRaw.isError),
+      body: JSON.parse((startedRaw.content as { text: string }[])[0].text),
+    };
+    expect(started.isError).toBe(false);
+    const runId = started.body.runId;
+    expect(started.body.mode).toBe("live");
+
+    // The widget reaches the run itself, from the host's origin, with the run's ticket only.
+    const { runtime } = (startedRaw._meta as any)["engenty/flow"];
+    expect(runtime.base).toBe("http://localhost:5181");
+    const fromWidget = (path: string, ticket: string, method = "GET") =>
+      app.fetch(
+        new Request(`http://localhost:5181/api/runs/${path}?rt=${ticket}`, {
+          method,
+          headers: { origin: "https://widget.example" },
+        }),
+      );
+    const seen = await fromWidget(runId, runtime.ticket);
+    expect(seen.status).toBe(200);
+    expect(seen.headers.get("access-control-allow-origin")).toBe("https://widget.example");
+    expect((await fromWidget(runId, runtime.ticket, "OPTIONS")).status).toBe(204);
+    expect((await fromWidget(runId, "1.forged")).status).toBe(404);
+    expect((await fromWidget(`${runId}/back`, "1.forged", "POST")).status).toBe(403);
+    const waiting = await call(client, "get_run", { runId, waitSeconds: 5 });
+    expect(waiting.body.waitingFor.page).toBe("second");
+    expect(waiting.body.passed).toContain("first");
+    const fields = waiting.body.waitingFor.fields;
+    expect(fields.find((f: { id: string }) => f.id === "logo").inChat).toBe(false);
+    expect(waiting.body.browserUrl).toMatch(new RegExp(`/w/[^/]+/${runId}$`));
+
+    const wrong = await call(client, "answer_page", {
+      runId,
+      stepId: "second",
+      values: { tone: "laut" },
+    });
+    expect(wrong.isError).toBe(true);
+    expect(wrong.body.code).toBe("invalid");
+
+    const back = await call(client, "control_run", { runId, action: "back" });
+    expect(back.body.waitingFor.page).toBe("first");
+    await call(client, "answer_page", { runId, stepId: "first", values: { topic: "Brot" } });
+    const done = await call(client, "answer_page", {
+      runId,
+      stepId: "second",
+      values: { tone: "locker" },
+      waitSeconds: 5,
+    });
+    expect(done.body.status).toBe("done");
+
+    // A run someone started on the wizard's link is theirs, not the client's.
+    const { withTenant, db, schema } = await import("../src/db/client");
+    const { eq } = await import("drizzle-orm");
+    await withTenant("local", () =>
+      db.update(schema.run).set({ userId: null }).where(eq(schema.run.id, runId)),
+    );
+    const foreign = await call(client, "get_run", { runId });
+    expect(foreign.body.code).toBe("not_found");
+  });
+
+  it("takes requests that `engenty-wizards mcp` signs with the data folder's secret", async () => {
+    const { env } = await import("../src/env");
+    const { mintLocalTicket } = await import("../src/auth/local-ticket");
+    const list = (ticket: string) =>
+      app.fetch(
+        new Request(MCP_URL, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            "x-engenty-local": ticket,
+            "x-engenty-client": "Claude Desktop",
+          },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+        }),
+      );
+    const signed = await list(mintLocalTicket(env.authSecret, Date.now(), "local-mcp"));
+    expect(signed.status).toBe(200);
+    expect(await signed.text()).toContain("run_wizard");
+    // A ticket for the browser's one-time link is not one for the MCP endpoint.
+    const other = await list(mintLocalTicket(env.authSecret, Date.now(), "local-enter"));
+    expect(other.status).toBe(401);
+  });
 });

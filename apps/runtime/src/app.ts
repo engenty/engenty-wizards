@@ -21,6 +21,7 @@ import { marketplaceStudio } from "./routes/marketplace.js";
 import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
+import { runTicketValid } from "./secrets/signing.js";
 import { ServiceError } from "./services/errors.js";
 import { tenantOfLink, tenantStatus } from "./tenants/control.js";
 
@@ -49,14 +50,46 @@ const ownHosts = new Set([new URL(env.appUrl).host, ...env.allowedHosts]);
 const loopback = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const hostAllowed = (host: string) => ownHosts.has(host) || loopback.test(host);
 
+/**
+ * The widget an AI app shows (MCP Apps) runs on the host's origin and reaches one run with its
+ * run ticket: those requests may come from anywhere, the ticket is what lets them in.
+ */
+const ticketedRun = /^\/api\/runs\/([^/]+)(\/|$)/;
+
 app.use("*", async (c, next) => {
-  if (managed) {
-    return next();
-  }
-  if (!hostAllowed(c.req.header("host") ?? new URL(c.req.url).host)) {
+  if (!managed && !hostAllowed(c.req.header("host") ?? new URL(c.req.url).host)) {
     return c.text("Forbidden host", 403);
   }
   const origin = c.req.header("origin");
+  const path = c.req.path.startsWith(`${basePath}/`)
+    ? c.req.path.slice(basePath.length)
+    : c.req.path;
+  const runId = ticketedRun.exec(path)?.[1];
+  if (origin && runId && runTicketValid(runId, c.req.query("rt"))) {
+    const cors = {
+      "access-control-allow-origin": origin,
+      "access-control-allow-credentials": "true",
+      vary: "Origin",
+    };
+    if (c.req.method === "OPTIONS") {
+      return c.body(null, 204, {
+        ...cors,
+        "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE",
+        "access-control-allow-headers": "content-type",
+        // A page on the internet asking a runtime on this computer (Private Network Access).
+        "access-control-allow-private-network": "true",
+        "access-control-max-age": "600",
+      });
+    }
+    await next();
+    for (const [name, value] of Object.entries(cors)) {
+      c.res.headers.set(name, value);
+    }
+    return;
+  }
+  if (managed) {
+    return next();
+  }
   const safe = c.req.method === "GET" || c.req.method === "HEAD" || c.req.method === "OPTIONS";
   // MCP clients and scripts send no Origin; a browser always does on a cross-origin write.
   if (!safe && origin && !hostAllowed(new URL(origin).host)) {

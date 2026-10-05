@@ -25,6 +25,12 @@ export function signedUrl(path: string, ttlSeconds = 3600): string {
   return url.toString();
 }
 
+function sameSignature(data: string, sig: string): boolean {
+  const expected = Buffer.from(sign(data));
+  const given = Buffer.from(sig);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}
+
 export function verifySignedUrl(href: string): boolean {
   const url = new URL(href, env.appUrl);
   const exp = url.searchParams.get("exp");
@@ -32,7 +38,22 @@ export function verifySignedUrl(href: string): boolean {
   if (!exp || !sig || Number(exp) * 1000 < Date.now()) {
     return false;
   }
-  const expected = Buffer.from(sign(payload(url, exp)));
-  const given = Buffer.from(sig);
-  return expected.length === given.length && timingSafeEqual(expected, given);
+  return sameSignature(payload(url, exp), sig);
+}
+
+/**
+ * A ticket to one run's routes without a session: the widget an AI app shows runs on the host's
+ * origin and reaches the run with it. Sent as `?rt=`, since an EventSource sends no headers.
+ */
+export function runTicket(runId: string, ttlSeconds = 12 * 3600): string {
+  const exp = String(Math.floor(Date.now() / 1000) + ttlSeconds);
+  return `${exp}.${sign(`run:${runId}|${exp}`)}`;
+}
+
+export function runTicketValid(runId: string, ticket: string | undefined): boolean {
+  const [exp, sig] = (ticket ?? "").split(".");
+  if (!exp || !sig || Number(exp) * 1000 < Date.now()) {
+    return false;
+  }
+  return sameSignature(`run:${runId}|${exp}`, sig);
 }

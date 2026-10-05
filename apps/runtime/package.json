@@ -23,6 +23,7 @@
     "@mastra/docker": "0.8.0",
     "@mastra/mcp": "^2.1.2",
     "@modelcontextprotocol/client": "2.2.0",
+    "@modelcontextprotocol/ext-apps": "2.0.3",
     "@modelcontextprotocol/server": "2.2.0",
     "@turbodocx/html-to-docx": "^1.23.1",
     "ai": "7.0.102",

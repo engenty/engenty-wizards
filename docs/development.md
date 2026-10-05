@@ -324,9 +324,69 @@ codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty
 ```
 
 The plugin is built from `plugin/` with this deployment's `APP_URL` filled in
-(`apps/runtime/src/plugin.ts`).
+(`apps/runtime/src/plugin.ts`): the `/wizard` command and the skills `build-wizard` and
+`use-wizard`.
 Test runs that a client starts spend the tenant's credits. Writes from a client show up live in an
 open editor.
+
+## Use wizards in AI apps
+
+The same MCP server runs published wizards for the person, in the chat (`apps/runtime/src/mcp/tools.ts`,
+`apps/runtime/src/services/runs.ts`): `show_wizard` (the flow), `run_wizard` (a live run that is
+the caller's, no visitor, no Turnstile), then what `waitingFor` names — `answer_page`,
+`review_step`, `answer_ask` (allow or skip a change in a connected account), `get_run` with
+`waitSeconds`, `control_run` (back, retry, cancel). Fields a chat cannot fill (files, recordings,
+signatures, line items) say `inChat: false`; the run page at `browserUrl` (`/w/<token>/<runId>`)
+takes them. These tools need the scope `runs:test`, like test runs: both spend credits.
+
+**The flow widget (MCP Apps).** `show_wizard`, `run_wizard` and `start_test_run` carry
+`_meta.ui.resourceUri = ui://engenty-wizards/flow-<hash>.html` (the hash of the build, so hosts drop a cached old widget). Hosts that render MCP Apps (Claude
+Desktop, Cursor, VS Code, Goose, ChatGPT) show the wizard as its diagram, and a run on it: the step
+it stands on, the page as a form, the review, the downloads. The widget is `apps/web/src/mcp-app/`
+and draws with the studio's `FlowCanvas`; `vite.mcp-app.config.ts` builds it into one HTML file,
+`apps/web/dist/mcp/flow.html` (part of `pnpm build`), which the runtime serves as the resource
+(`apps/runtime/src/mcp/flow-app.ts`). The definition reaches the widget in the result's
+`_meta["engenty/flow"]`, not in `structuredContent`, which hosts hand the model. Every button of
+the widget calls the server's tools through the host; the widget itself has no network. Hosts
+without MCP Apps (Claude Code, Codex, Gemini CLI, Windsurf, OpenClaw) get the same tools as text.
+
+**On the person's computer.** AI apps start MCP servers as commands, so a local install offers
+itself as one: `engenty-wizards mcp` (`apps/runtime/src/cli/mcp.ts`) speaks MCP over stdio and
+passes every message on to the running runtime's `/api/mcp`, signed with the data folder's secret
+(`x-engenty-local`, a ticket good for a minute, `apps/runtime/src/auth/local-ticket.ts`). No key
+in any app's config, no port either; when nothing runs, it starts the runtime in the background
+(log: `~/.engenty/wizards/logs/runtime.log`).
+
+```bash
+engenty-wizards connect              # every AI app found on this computer
+engenty-wizards connect cursor codex # or these
+engenty-wizards disconnect cursor
+```
+
+`connect` (`apps/runtime/src/cli/connect.ts`) writes the entry into each app's own config and
+keeps the file before it as `<file>.before-engenty`:
+
+| App | Where | Widget |
+|---|---|---|
+| Claude Desktop | `claude_desktop_config.json` | yes |
+| Claude Code | `claude mcp add --scope user` | no |
+| Codex · ChatGPT app | `~/.codex/config.toml` (`CODEX_HOME`) | no |
+| Cursor | `~/.cursor/mcp.json` | yes |
+| VS Code (Copilot) | user `mcp.json` | yes |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | no |
+| Gemini CLI | `~/.gemini/settings.json` | no |
+| Goose | `~/.config/goose/config.yaml` | yes |
+| OpenClaw | `openclaw mcp set`, else `~/.openclaw/openclaw.json` | no |
+| LM Studio | `~/.lmstudio/mcp.json` | no |
+
+A file that is not plain JSON (comments) is left alone; the command prints the entry to paste.
+Claude Desktop writes its config from memory while it runs, so a change made meanwhile is lost:
+while its process runs (macOS, Windows), `connect` writes nothing and asks to quit it first.
+The setup offers the apps it finds, and Settings → "Einbinden" does the same with one click per
+app (`/api/studio/local/apps`). Its test waits until the app has checked in, called a tool and
+fetched the widget: the MCP endpoint notes that per app, in memory (`/api/studio/integrations/seen`,
+`apps/runtime/src/mcp/seen.ts`). The web chats (chatgpt.com, claude.ai)
+reach only servers on the internet: for them a wizard runs on engenty.ai, not on the computer.
 
 ## How it is built
 

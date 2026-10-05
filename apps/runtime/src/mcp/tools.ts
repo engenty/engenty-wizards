@@ -8,7 +8,16 @@ import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { marketplaceWizard, searchMarketplace } from "../services/marketplace.js";
 import { defaultProject, listProjects, ownedProject } from "../services/projects.js";
-import { startTestRun, testRunReport } from "../services/runs.js";
+import {
+  answerRunAsk,
+  answerRunPage,
+  controlRun,
+  reviewRun,
+  runReport,
+  startRun,
+  startTestRun,
+  testRunReport,
+} from "../services/runs.js";
 import { checkDraftWidget } from "../services/widgets.js";
 import {
   createWizard,
@@ -25,6 +34,7 @@ import {
   writeDraft,
 } from "../services/wizards.js";
 import type { Principal } from "./auth.js";
+import { FLOW_VIEW_KEY, type FlowView, flowAppMeta, flowView } from "./flow-app.js";
 import type { Scope } from "./scopes.js";
 
 const definition = z
@@ -87,6 +97,40 @@ export function registerTools(server: McpServer, who: Principal) {
       (async (args: z.infer<S>) => {
         try {
           return ok(await run(args));
+        } catch (err) {
+          return failure(err);
+        }
+      }) as ToolCallback<S>,
+    );
+  };
+
+  /** A tool whose result also opens the flow widget, in hosts that render MCP Apps. */
+  const appTool = <S extends z.ZodObject>(
+    name: string,
+    scope: Scope,
+    config: { title: string; description: string; input: S; readOnly?: boolean },
+    run: (args: z.infer<S>) => Promise<{ result: Record<string, unknown>; view: FlowView }>,
+  ) => {
+    if (!who.scopes.includes(scope)) {
+      return;
+    }
+    server.registerTool(
+      name,
+      {
+        title: config.title,
+        description: config.description,
+        inputSchema: config.input,
+        annotations: { readOnlyHint: config.readOnly ?? false, openWorldHint: false },
+        _meta: flowAppMeta,
+      },
+      (async (args: z.infer<S>) => {
+        try {
+          const { result, view } = await run(args);
+          return {
+            ...ok(result),
+            structuredContent: result,
+            _meta: { [FLOW_VIEW_KEY]: view },
+          } satisfies CallToolResult;
         } catch (err) {
           return failure(err);
         }
@@ -403,13 +447,13 @@ Returns the new revision and the issues.`,
   );
 
   // --- test runs ---------------------------------------------------------------
-  tool(
+  appTool(
     "start_test_run",
     "runs:test",
     {
       title: "Start test run",
       description:
-        "Run the draft once with your answers. SPENDS THE ADMIN'S CREDITS (short copy + image ~15, research ~150, video ~250). Pages are filled from `answers`, reviews accepted when acceptReviews is true. Follow it with get_test_run.",
+        "Run the draft once with your answers. SPENDS THE ADMIN'S CREDITS (short copy + image ~15, research ~150, video ~250). Pages are filled from `answers`, reviews accepted when acceptReviews is true. Follow it with get_test_run. Shows the flow with the run on it.",
       input: z.object({
         wizardId: z.string(),
         answers: z
@@ -421,8 +465,14 @@ Returns the new revision and the issues.`,
         acceptReviews: z.boolean().default(true),
       }),
     },
-    async ({ wizardId, answers, acceptReviews }) =>
-      startTestRun(who.userId, wizardId, { answers, acceptReviews }),
+    async ({ wizardId, answers, acceptReviews }) => {
+      const { runId } = await startTestRun(who.userId, wizardId, { answers, acceptReviews });
+      const report = await runReport(who.userId, runId, 2, "test");
+      return {
+        result: report,
+        view: await flowView(who.userId, wizardId, { shows: "draft", run: report }),
+      };
+    },
   );
 
   tool(
@@ -445,6 +495,174 @@ Returns the new revision and the issues.`,
       readOnly: true,
     },
     async ({ runId, waitSeconds }) => testRunReport(who.userId, runId, waitSeconds),
+  );
+
+  // --- using wizards: the flow, and runs of the published version -------------
+  appTool(
+    "show_wizard",
+    "wizards:read",
+    {
+      title: "Show wizard",
+      description:
+        "Show a wizard as its flow diagram: its pages, AI steps, reviews and branches. The published version when there is one, else the draft. Also returns the steps as text.",
+      input: z.object({
+        wizardId: z.string(),
+        version: z.enum(["published", "draft"]).optional().describe("Default: published, if any."),
+      }),
+      readOnly: true,
+    },
+    async ({ wizardId, version }) => {
+      const view = await flowView(who.userId, wizardId, { shows: version });
+      return {
+        result: {
+          wizardId,
+          title: view.wizard.title,
+          shows: view.wizard.shows,
+          published: view.wizard.published,
+          steps: view.definition.steps.map((s) => ({
+            id: s.id,
+            type: s.type,
+            title: s.title,
+            ...(s.type === "page"
+              ? { fields: s.fields.map((f) => ({ id: f.id, label: f.label, kind: f.kind })) }
+              : {}),
+          })),
+        },
+        view,
+      };
+    },
+  );
+
+  appTool(
+    "run_wizard",
+    "runs:test",
+    {
+      title: "Run wizard",
+      description: `Start a run of a published wizard for the person, here in the chat. Spends credits like any run.
+Start it right away — no show_wizard first: the widget shows the wizard's pages and the person can answer there. What the person already said goes to the first page with answer_page, using the field ids in waitingFor. Then follow waitingFor:
+- page: ask the person for the fields with inChat=true, answer_page; fields with inChat=false (files, recordings, signatures) need the run page at browserUrl
+- review: show the outputs, then review_step
+- ask: answer_ask (allow/skip a change in a connected account) or the run page for a sign-in
+While status is running, get_run with waitSeconds. Hosts with MCP Apps also show the run as a widget the person can answer in.`,
+      input: z.object({
+        wizardId: z.string(),
+        answers: z.record(z.string(), z.unknown()).default({}),
+      }),
+    },
+    async ({ wizardId, answers }) => {
+      const { runId, refused } = await startRun(who.userId, wizardId, answers);
+      const report = await runReport(who.userId, runId, 2);
+      return {
+        result: { ...report, ...(refused ? { refusedAnswers: refused } : {}) },
+        view: await flowView(who.userId, wizardId, { run: report }),
+      };
+    },
+  );
+
+  const waitSeconds = z
+    .number()
+    .int()
+    .min(0)
+    .max(45)
+    .default(0)
+    .describe("Wait up to this long while the run is still working.");
+
+  tool(
+    "get_run",
+    "runs:test",
+    {
+      title: "Get run",
+      description:
+        "A run's status, what it waits for, its outputs (text clipped) with signed download links valid one hour, and the credits it spent.",
+      input: z.object({ runId: z.string(), waitSeconds }),
+      readOnly: true,
+    },
+    async ({ runId, waitSeconds }) => runReport(who.userId, runId, waitSeconds),
+  );
+
+  tool(
+    "answer_page",
+    "runs:test",
+    {
+      title: "Answer page",
+      description:
+        "Fill the page a run waits for: field id → value (items: an array of row objects; toggle: true/false; multiselect: an array). Returns the run, after waitSeconds.",
+      input: z.object({
+        runId: z.string(),
+        stepId: z.string().describe("waitingFor.page"),
+        values: z.record(z.string(), z.unknown()),
+        waitSeconds,
+      }),
+    },
+    async ({ runId, stepId, values, waitSeconds }) => {
+      await answerRunPage(who.userId, runId, stepId, values);
+      return runReport(who.userId, runId, waitSeconds);
+    },
+  );
+
+  tool(
+    "review_step",
+    "runs:test",
+    {
+      title: "Review step",
+      description:
+        "Answer the review a run waits for: accept (optionally with edited texts, step id → text, when the review is editable) or regenerate one step it shows, with a note what to change.",
+      input: z.object({
+        runId: z.string(),
+        stepId: z.string().describe("waitingFor.review"),
+        action: z.discriminatedUnion("type", [
+          z.object({
+            type: z.literal("accept"),
+            edits: z.record(z.string(), z.string()).optional(),
+          }),
+          z.object({
+            type: z.literal("regenerate"),
+            target: z.string().describe("One of waitingFor.show."),
+            note: z.string().max(2000),
+          }),
+        ]),
+        waitSeconds,
+      }),
+    },
+    async ({ runId, stepId, action, waitSeconds }) => {
+      await reviewRun(who.userId, runId, stepId, action);
+      return runReport(who.userId, runId, waitSeconds);
+    },
+  );
+
+  tool(
+    "answer_ask",
+    "runs:test",
+    {
+      title: "Answer ask",
+      description:
+        "A running step asks before it changes something in a connected account (waitingFor.ask, kind confirm): allow it once, or skip it. Ask the person first.",
+      input: z.object({
+        runId: z.string(),
+        askId: z.string(),
+        answer: z.enum(["allow", "skip"]),
+        waitSeconds,
+      }),
+    },
+    async ({ runId, askId, answer, waitSeconds }) => {
+      await answerRunAsk(who.userId, runId, askId, answer);
+      return runReport(who.userId, runId, waitSeconds);
+    },
+  );
+
+  tool(
+    "control_run",
+    "runs:test",
+    {
+      title: "Control run",
+      description:
+        "back: to the previous page or review. retry: a failed step again. cancel: stop the run.",
+      input: z.object({ runId: z.string(), action: z.enum(["back", "retry", "cancel"]) }),
+    },
+    async ({ runId, action }) => {
+      await controlRun(who.userId, runId, action);
+      return runReport(who.userId, runId);
+    },
   );
 
   // --- workspace (widget code, libraries, reference data) --------------------

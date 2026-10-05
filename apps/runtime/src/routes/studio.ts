@@ -11,6 +11,8 @@ import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscr
 import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
 import { createLocalKey, deleteLocalKey, listLocalKeys } from "../auth/keys.js";
+import { appStates, connectApps } from "../cli/connect.js";
+import { layout } from "../cli/home.js";
 import {
   connectorImportSchema,
   importConnector,
@@ -42,6 +44,7 @@ import {
   writeTerminal,
 } from "../harness/terminal.js";
 import { managed } from "../manage.js";
+import { seenApps } from "../mcp/seen.js";
 import { transcribeAudio } from "../media/transcribe.js";
 import {
   embeddingModel,
@@ -646,6 +649,23 @@ export const studio = new Hono<Vars>()
     await deleteLocalKey(c.req.param("id"));
     return c.json({ ok: true });
   })
+  // The person's AI apps on this machine (Claude Desktop, Cursor, Codex …) and whether they
+  // have this install's MCP server: the same as `engenty-wizards connect`.
+  .get("/local/apps", async (c) => (managed ? c.notFound() : c.json(await appStates(layout()))))
+  .post("/local/apps/:id", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const { connect } = z.object({ connect: z.boolean() }).parse(await c.req.json());
+    const [done] = await connectApps(layout(), [c.req.param("id")], !connect);
+    if (!done) {
+      return c.json({ error: "Unknown app" }, 404);
+    }
+    // Not done is an answer too: the app's file is no plain JSON, here is what to paste.
+    return c.json(done.outcome);
+  })
+  // What each AI client did with the MCP server since the start: the test on "Integrate".
+  .get("/integrations/seen", (c) => c.json(seenApps(c.get("user").tenantId)))
   .get("/local/models", (c) => (managed ? c.notFound() : c.json(localModelSettings())))
   .put("/local/models", async (c) => {
     if (managed) {

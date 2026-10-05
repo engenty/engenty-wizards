@@ -1,5 +1,6 @@
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import { API_KEY_PREFIX, verifyLocalKey } from "../auth/keys.js";
+import { LOCAL_CLIENT_HEADER, LOCAL_MCP_HEADER, localTicketExpiry } from "../auth/local-ticket.js";
 import { env } from "../env.js";
 import { managed, verifyKey, verifyToken } from "../manage.js";
 import { LOCAL_TENANT } from "../tenants/tenant.js";
@@ -107,8 +108,35 @@ async function tokenAuth(token: string): Promise<AuthInfo | Response> {
   return authInfoFor(who, token, claims.clientId);
 }
 
+/**
+ * A request from `engenty-wizards mcp` on this machine: signed with the data folder's secret,
+ * which only a runtime alone has. It acts as the admin, like a key from the settings.
+ */
+function localAuth(request: Request, ticket: string): AuthInfo | Response {
+  if (managed || !localTicketExpiry(env.authSecret, ticket, Date.now(), "local-mcp")) {
+    return challenge(401, "invalid_token", "This local signature is invalid or expired.");
+  }
+  const client =
+    request.headers
+      .get(LOCAL_CLIENT_HEADER)
+      ?.replace(/[^\p{L}\p{N} ._-]/gu, "")
+      .trim()
+      .slice(0, 60) || "MCP";
+  const who: Principal = {
+    userId: "local",
+    tenantId: LOCAL_TENANT,
+    client,
+    scopes: [...SCOPES],
+  };
+  return authInfoFor(who, ticket, "local");
+}
+
 /** Who an MCP or API request acts for: an API key (`x-api-key` or a `wz_…` bearer) or an OAuth access token. */
 export async function authenticate(request: Request): Promise<AuthInfo | Response> {
+  const local = request.headers.get(LOCAL_MCP_HEADER)?.trim();
+  if (local) {
+    return localAuth(request, local);
+  }
   const header = request.headers.get("x-api-key")?.trim();
   const token = bearer(request);
   const key = header || (token?.startsWith(API_KEY_PREFIX) ? token : null);

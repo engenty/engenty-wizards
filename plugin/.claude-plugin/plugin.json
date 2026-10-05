@@ -2,7 +2,7 @@
   "name": "engenty-wizards",
   "displayName": "engenty wizards",
   "version": "{{VERSION}}",
-  "description": "Build page-by-page AI wizards that people open on a shared link — designed, tested and published from Claude Code.",
+  "description": "Build page-by-page AI wizards that people open on a shared link — designed, tested and published from Claude Code — and run your published ones right in the chat.",
   "author": { "name": "engenty" },
   "homepage": "{{APP_URL}}",
   "keywords": ["wizards", "forms", "ai-workflows", "mcp"]

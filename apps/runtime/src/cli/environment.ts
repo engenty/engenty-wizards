@@ -1,4 +1,4 @@
-import { delimiter, dirname, join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 import type { Layout } from "./home.js";
 
 /**
@@ -94,6 +94,8 @@ export function runtimeEnv(
     APP_URL: start.url,
     DATA_DIR: start.dataDir,
     LOCAL_ACCESS_KEY: start.accessKey,
+    // The install the runtime belongs to: the studio connects AI apps to its command.
+    ...(basename(paths.home) === "wizards" ? { ENGENTY_HOME: dirname(paths.home) } : {}),
     // Keys entered in the settings live in the Keychain, as with the desktop app.
     ...(platform === "darwin" && !secretsGiven ? { SECRETS: "keychain" } : {}),
   };
