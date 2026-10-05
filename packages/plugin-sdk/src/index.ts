@@ -113,6 +113,25 @@ export interface PluginEvents {
 /** The tenant's database. A plugin reads and writes its own tables with it. */
 export type PluginDb = LibSQLDatabase<Record<string, never>>;
 
+/** What a plugin asks a model. */
+export interface PluginGenerateRequest<T = undefined> {
+  prompt: string;
+  system?: string;
+  /** The answer as an object of this shape instead of text. */
+  schema?: z.ZodType<T>;
+  /** The tenant's model class. Default `standard`; `classifier` is the fast, cheap one. */
+  model?: "classifier" | "standard" | "high" | "highest";
+  maxOutputTokens?: number;
+  /** Default: two minutes. */
+  signal?: AbortSignal;
+}
+
+export interface PluginGenerateResult<T = undefined> {
+  text: string;
+  /** Set when the request had a `schema`. */
+  object: T;
+}
+
 export interface PluginServerApi {
   registerHttpRoute(route: PluginRoute): void;
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
@@ -128,6 +147,12 @@ export interface PluginServerApi {
   ): void;
   /** The database of the tenant the current request, step or event belongs to. */
   getTenantDb(): PluginDb;
+  /**
+   * Asks a model of the current tenant, on the models its studio is set up with; the call is
+   * paid like any other of the tenant's. When no model is set up it throws an error with the
+   * status 503 and the code `no_model`, which a route passes on as it is.
+   */
+  generate<T = undefined>(request: PluginGenerateRequest<T>): Promise<PluginGenerateResult<T>>;
   /** Something to undo when the plugin unloads or reloads: a timer, a socket. */
   onUnload(dispose: () => void | Promise<void>): void;
 }

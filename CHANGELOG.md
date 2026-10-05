@@ -4,6 +4,11 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.2] - 2026-10-05
+- ADDED **[plugins]** Server.generate asks a model of the current tenant (a class, a prompt, optionally a zod schema for an object), on the models its studio is set up with and paid like any other call; without a model it throws with status 503 and the code no_model, which a route passes on
+- DEPLOY The documentation deploys to engenty.ai/docs: an image of its own (apps/docs/Dockerfile, a standalone Next.js server on port 8896), and a release tag moves the branch deploy/docs when the site or its pages changed
+- DOCS A documentation site with a user guide and the developer docs for plugins, built like the engenty repo's: Next.js and Fumadocs in apps/docs, the pages in docs/content, in the app's light and dark colours; docs/plugins.md became its pages, and the product's build, image, package and credits leave the site out
+
 ## [0.2.1] - 2026-10-05
 - ADDED The wizards run in the person's own AI apps — connect writes the MCP server into Claude Desktop, Cursor, Codex and others, a run shows the wizard itself as an MCP App widget, and Settings → Einbinden adds an app with one click and tests it until it works
 - FIXED The AI apps start the MCP server as the wizards command, after the rename from engenty-wizards

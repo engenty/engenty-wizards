@@ -12,6 +12,10 @@ process.env.APP_URL = "http://localhost:5181";
 process.env.LOCAL_ACCESS_KEY = "test-key";
 process.env.PLUGINS_DIR = pluginsDir;
 process.env.PLUGINS_WATCH = "0";
+// No model is set up: a plugin that asks one is told so.
+process.env.AI_GATEWAY_API_KEY = "";
+process.env.OPENAI_API_KEY = "";
+process.env.ANTHROPIC_API_KEY = "";
 
 /** Writes a file of a plugin, making its folders. */
 function put(path: string, content: string) {
@@ -105,6 +109,17 @@ export default definePlugin((wizards) => {
     },
   });
   server.registerHttpRoute({ method: "DELETE", path: "/", role: "admin", handler: () => ({ ok: true }) });
+  server.registerHttpRoute({
+    method: "GET",
+    path: "/ask",
+    handler: async () => {
+      try {
+        return await server.generate({ prompt: "Say hello", model: "classifier" });
+      } catch (err) {
+        return { refused: (err as Error).name, code: (err as { code?: string }).code };
+      }
+    },
+  });
   server.registerHttpRoute({
     method: "GET",
     path: "/boom",
@@ -262,6 +277,13 @@ describe("a plugin's routes", () => {
     const refused = await send("POST", "/api/studio/plugins/guestbook/", {});
     expect(refused.status).toBe(422);
     expect(await refused.json()).toEqual({ error: "Text fehlt.", code: "no_text" });
+  });
+
+  it("can ask a model, and hear when there is none", async () => {
+    expect(await json(get("/api/studio/plugins/guestbook/ask"))).toEqual({
+      refused: "ModelUnavailableError",
+      code: "no_model",
+    });
   });
 
   it("keep what went wrong inside to the log", async () => {

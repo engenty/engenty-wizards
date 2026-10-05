@@ -38,6 +38,7 @@ export default definePlugin((wizards) => {
 | `registerMigrations(folder)` | `.sql` files with the plugin's tables | [Tables](./tables.md) |
 | `on(event, listener)` | Called when a run ends | [Run events](./events.md) |
 | `getTenantDb()` | The database of the tenant the current request, step or event belongs to | [Tables](./tables.md) |
+| `generate(request)` | Asks a model of the current tenant | below |
 | `onUnload(fn)` | Something to undo when the plugin unloads | below |
 
 ## Settings
@@ -66,6 +67,33 @@ Either way a plugin never names a tenant:
   time: at load time there is no tenant.
 - State kept in a variable of the module is shared by all tenants. Keep per-tenant state in a
   table.
+
+## Asking a model
+
+`server.generate` asks one of the tenant's models, the same ones its wizards run on, and is paid
+like any other of its calls. With a `schema` the answer is an object of that shape:
+
+```ts
+const { object } = await server.generate({
+  model: "classifier",
+  system: "You sort support mails.",
+  prompt: `Which team does this mail go to?\n\n${mail}`,
+  schema: z.object({ team: z.enum(["sales", "support", "billing"]) }),
+});
+```
+
+| Field | | Default |
+|---|---|---|
+| `prompt` | What the model is asked | required |
+| `system` | How it should answer | |
+| `schema` | A zod schema: `object` is the answer in that shape | text only |
+| `model` | `classifier` (fast, cheap), `standard`, `high`, `highest` | `standard` |
+| `maxOutputTokens` | A limit on the answer | the model's |
+| `signal` | Aborts the call | two minutes |
+
+It answers `{ text, object }`. Without a model set up it throws an error with the status `503`
+and the code `no_model`: a route that lets it through answers just that, and the studio half
+says it in the person's language.
 
 ## Undo on unload
 
