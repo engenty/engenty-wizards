@@ -163,8 +163,10 @@ README. One container: API + built SPA + Chromium, data on the `/data` volume.
 
 Managed (the cloud runtime): `compose.cloud.yaml` runs the app and a separate Chromium
 container that holds no secrets and reaches no database. On engenty.ai the proxy sends the
-runtime only its own paths — `/studio`, `/api`, `/w`, `/s`, `/.well-known`, `/wizards.sh`,
-`/embed.js`, `/sw.js` — and the rest of the host to the landing page and the marketplace. Set the `MANAGE_*` block, `GATEWAY_URL`,
+runtime only its own paths — `/studio`, `/api`, `/w/`, `/s/`, `/.well-known`, `/wizards.sh`,
+`/embed.js`, `/sw.js` — and the rest of the host to the site (landing page, marketplace pages)
+and the marketplace's API. `/w/` and `/s/` keep their slash: a proxy prefix `/w` would also take
+`/wizards/…`. Set the `MANAGE_*` block, `GATEWAY_URL`,
 `APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
 start; a new one migrates when it is first opened.
 
