@@ -26,6 +26,9 @@ The Manage-App is an OAuth 2.1 / OIDC authorization server.
   sessions, API) and `<RUNTIME_URL>/api/mcp` (MCP clients). The Manage-App keeps the list of
   runtimes it serves.
 - The gateway accepts every access token the Manage-App issued, whatever its audience.
+- A new account may need an invitation code. `<MANAGE_URL>/sign-up?code=<code>&next=<path>` takes
+  one (`code` fills it in) and goes on to `next`, a path of the Manage-App: a runtime that runs
+  alone sends a person without an account there, with its authorization request as `next`.
 
 Clients:
 
@@ -44,7 +47,7 @@ Errors: `{ "error": string, "code": string }`.
 
 | Call | Body → answer |
 |---|---|
-| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects? }, modules?: string[], db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one); left out, the runtime's `LIMIT_PROJECTS` counts · `modules` (optional, a list of plugin ids): the plugins of the runtime switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`; an id the runtime has no plugin for is ignored ([content/dev/plugins/shipping.md](content/dev/plugins/shipping.md)) |
+| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects?, build? }, modules?: string[], db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one; a project a local install synced counts); left out, the runtime's `LIMIT_PROJECTS` counts · `limits.build: false`: the tenant makes and changes nothing on the runtime, its studio shows what its local install synced; left out, it builds · `modules` (optional, a list of plugin ids): the plugins of the runtime switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`; an id the runtime has no plugin for is ignored ([content/dev/plugins/shipping.md](content/dev/plugins/shipping.md)) |
 | `POST /v1/keys/verify` | `{ key }` → `{ valid: false }` or `{ valid: true, keyId, name, userId, userName, tenantId, role }` |
 | `POST /v1/reservations` | `{ tenantId, runId, credits }` → `{ id }` · `402` with code `no_credits` when the free balance is below `credits` · the same `runId` again replaces the earlier reservation |
 | `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |
@@ -60,7 +63,7 @@ With a user's access token instead of the service key:
 
 | Call | Answer |
 |---|---|
-| `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, balanceCredits }, tenants: [{ id, name, role }] }` |
+| `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, balanceCredits, expiring: [{ kind: "start" \| "monthly" \| "gift", credits, expiresAt }] }, tenants: [{ id, name, role }] }` · `expiring`: the part of the balance that ends on a date, the nearest first |
 
 ## Manage-App → runtime
 
@@ -69,6 +72,38 @@ With a user's access token instead of the service key:
 | Call | Body |
 |---|---|
 | `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
+
+## Spaces of a local install
+
+A runtime that runs alone, linked to an account, sends what it publishes to the account's cloud
+runtime (`CLOUD_URL`). Only the published version goes, when it is published; drafts, runs and
+connected accounts stay. The project keeps the ids it has on the install — its own and its
+wizards' — and is changed on the cloud runtime only by the next sync: the studio there shows it
+and runs it. The share link of a copy is the cloud runtime's own.
+
+Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's access token
+(`resource` = `<RUNTIME_URL>`) or an API key:
+
+| Call | Scopes | Body → answer |
+|---|---|---|
+| `PUT /spaces/:spaceId/wizards/:wizardId` | `wizards:write wizards:publish` | `{ space: { name, brand: { name?, about?, colors? }, facts, logo: { name, mime, description, data } \| null }, version, definition, files: [{ path, mime?, data }], shareEnabled, dailyRunLimit? }` (`data` is base64) → `{ wizardId, shareUrl, code, shareEnabled, publishedVersion: number \| null, runnable, problems }` · makes or updates the project and the wizard; the same wizard again keeps its link · `code`: the copy's ID for the mobile app |
+| `PATCH /spaces/:spaceId/wizards/:wizardId` | `wizards:publish` | `{ shareEnabled?, dailyRunLimit? }` → `{ ok: true }` |
+| `DELETE /spaces/:spaceId/wizards/:wizardId` | `wizards:write` | → `{ ok: true }` · the copy goes with its link and its runs |
+| `GET /spaces` | `wizards:read` | → `{ spaces: [{ id, name, syncedAt, wizards: [{ id, title, publishedVersion, shareUrl, shareEnabled }] }] }` |
+| `DELETE /spaces/:spaceId` | `wizards:write` | → `{ ok: true }` · the project goes with its wizards |
+| `POST /spaces/check` | `wizards:read` | `{ definition, files: [path] }` → `{ problems }` · what a wizard would lack there, nothing is written |
+
+- **Ids**: 8 to 40 characters of `A–Z a–z 0–9 _ -`, as the install makes them. An id a project or
+  wizard made on the cloud runtime already has is refused (`reason: "id_taken"`).
+- **Problems**: `{ code: "invalid" | "connector" | "model" | "sandbox" | "mcp", blocking, steps: [{ id, title }], detail }`.
+  A sent version with a blocking problem is kept and shown but not published: runs go on with the
+  version before (`publishedVersion`), and `runnable` is false.
+- **Room**: a synced project counts against `limits.projects`. Beyond it the call is refused with
+  `400 { reason: "space_limit", spaces: [{ id, name }] }`, naming the synced projects in the way.
+- **Limits**: 240 sendings an hour per tenant (`429`), 48 MB per wizard (`413`), and the
+  runtime's `LIMIT_SYNCED_WIZARDS` (50) wizards per synced project (`400 { reason: "wizard_limit" }`).
+- **Refusals**: `403 { code: "insufficient_scope" }`; and `403 { code: "read_only" }` from every
+  other write of a synced project, or by a tenant with `limits.build: false`.
 
 ## Model-gateway
 

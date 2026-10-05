@@ -7,7 +7,7 @@ import { managed } from "../manage.js";
 import { hasTextModel } from "../models.js";
 import { draftFiles, readFile } from "./files.js";
 import { ownedProject } from "./projects.js";
-import { addMessage, draftIssues, ownedWizard, wizardMessages } from "./wizards.js";
+import { addMessage, draftIssues, ownedWizard, wizardMessages, writableWizard } from "./wizards.js";
 
 /** The formats a model can look at; an SVG it reads as text. */
 const VISIBLE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -48,7 +48,8 @@ export async function architectTurn(
     onBuilding: () => void;
   },
 ) {
-  const w = await ownedWizard(userId, wizardId);
+  // Asked before the first model call: a wizard that is not changed here costs nothing to refuse.
+  const w = await writableWizard(userId, wizardId);
   const history = await wizardMessages(w.id);
   const project = await ownedProject(userId, w.projectId);
   const images = await attachedImages(userId, w.id, message);

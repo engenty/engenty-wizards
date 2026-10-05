@@ -5,8 +5,8 @@ import { Navigate, useNavigate } from "react-router";
 import { BASE } from "@/lib/base";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
-import { t } from "../lib/i18n";
-import { useCurrentProject, useMe, type WizardSummary } from "../lib/session";
+import { lang, t } from "../lib/i18n";
+import { useCurrentProject, useMayBuild, useMe, type WizardSummary } from "../lib/session";
 import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
 import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
@@ -15,6 +15,7 @@ import { openExternal } from "./LocalRuntime";
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
   const limit = useMe().data?.limits.projects ?? 1;
+  const build = useMayBuild();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -38,13 +39,18 @@ export function ProjectSwitcher() {
         onChange={(v) => (v === "__new" ? setOpen(true) : select(v))}
         options={[
           ...projects.map((p) => ({ value: p.id, label: p.name })),
-          projects.length < limit
-            ? { value: "__new", label: `+ ${t("home.newProject")}` }
-            : {
-                value: "__new",
-                label: t("home.projectLimit", { n: limit }),
-                disabled: true,
-              },
+          // A tenant that builds nothing here makes no project here either.
+          ...(build
+            ? [
+                projects.length < limit
+                  ? { value: "__new", label: `+ ${t("home.newProject")}` }
+                  : {
+                      value: "__new",
+                      label: t("home.projectLimit", { n: limit }),
+                      disabled: true,
+                    },
+              ]
+            : []),
         ]}
       />
       <Dialog open={open} onClose={() => setOpen(false)} title={t("home.newProject")}>
@@ -135,17 +141,75 @@ function WizardCard({ w }: { w: WizardSummary }) {
   );
 }
 
+const INSTALL = "curl -fsSL https://engenty.ai/install.sh | bash";
+
+/**
+ * Nothing is built on this server, and nothing has arrived yet: wizards get here from the
+ * person's own install. Three steps lead there.
+ */
+function FromLocal() {
+  const [copied, setCopied] = useState(false);
+  const steps = [t("home.local.install"), t("home.local.signIn"), t("home.local.publish")];
+  return (
+    <div className="mx-auto flex max-w-xl animate-rise flex-col items-center pt-4 text-center">
+      <Mascot kind="round" size={120} />
+      <h1 className="mt-2 font-display font-semibold text-[28px] leading-tight tracking-tight">
+        {t("home.local.title")}
+      </h1>
+      <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">{t("home.local.text")}</p>
+      <ol className="mt-8 flex w-full flex-col gap-4 text-left">
+        {steps.map((step, i) => (
+          <li key={step} className="flex gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-2 font-medium text-[13px] text-ink-2">
+              {i + 1}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p className="text-[15px] leading-snug">{step}</p>
+              {i === 0 ? (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-paper-2 py-1.5 pr-1.5 pl-3">
+                  <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap font-mono text-[13px] text-ink-2">
+                    {INSTALL}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(INSTALL);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                  >
+                    {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    {copied ? t("share.copied") : t("share.copy")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const { project, projects, loading } = useCurrentProject();
+  const build = useMayBuild();
   const wizards = useQuery({
     queryKey: ["wizards", project?.id],
     queryFn: () => api.get<WizardSummary[]>(`/api/studio/projects/${project!.id}/wizards`),
     enabled: Boolean(project),
   });
   const total = projects.reduce((n, p) => n + p.wizardCount, 0);
-  if (!loading && projects.length && total === 0) {
+  /** Wizards are made in this project: the tenant builds here, and the project is its own. */
+  const canCreate = build && !project?.readOnly;
+  if (!loading && canCreate && projects.length && total === 0) {
     return <Navigate to="/new" replace />;
+  }
+  // Nothing is built here and no install has sent anything yet: the way a wizard gets here.
+  if (!loading && !build && projects.length === 0) {
+    return <FromLocal />;
   }
   return (
     <div className="animate-rise">
@@ -153,16 +217,31 @@ export function HomePage() {
         <div>
           <ProjectSwitcher />
         </div>
-        <div className="flex items-center gap-2">
-          <ImportWizard />
-          <Button onClick={() => navigate("/new")}>
-            <Plus className="size-4" /> {t("home.new")}
-          </Button>
-        </div>
+        {canCreate ? (
+          <div className="flex items-center gap-2">
+            <ImportWizard />
+            <Button onClick={() => navigate("/new")}>
+              <Plus className="size-4" /> {t("home.new")}
+            </Button>
+          </div>
+        ) : null}
       </div>
       <h1 className="mt-10 font-display font-semibold text-[28px] tracking-tight">
         {t("home.title")}
       </h1>
+      {project?.origin === "local" ? (
+        <p className="mt-2 text-[14px] text-ink-3">
+          {t("home.fromLocal")}{" "}
+          {project.syncedAt
+            ? t("home.syncedAt", {
+                when: new Intl.DateTimeFormat(lang, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(project.syncedAt)),
+              })
+            : null}
+        </p>
+      ) : null}
       {wizards.data && wizards.data.length === 0 ? <Empty>{t("home.empty")}</Empty> : null}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {wizards.data?.map((w) => (

@@ -63,7 +63,13 @@ A model is written `vendor/model` for the AI Gateway, or with the provider in fr
 An account is optional. With it you
 
 - use credits instead of your own keys,
-- publish wizards to the cloud, where their links run while your computer is off.
+- publish wizards to the cloud, where their links run while your computer is off
+  ([Test and share](./test-and-share.md#in-the-cloud)).
 
-"Sign in or create an account" opens the sign-in in your browser. Without an account the app is
-not connected to anything: wizards, project data and files stay on your computer.
+Settings → Account signs you in, in your browser. A new account needs an invitation code: type it
+there and "Create an account" opens the sign-up page with it. An account starts with credits;
+some of them may end on a date, which the settings show. Runs in the cloud are paid from the
+account's credits and stop when they are used up, until you top up.
+
+Without an account the app is not connected to anything: wizards, project data and files stay on
+your computer.

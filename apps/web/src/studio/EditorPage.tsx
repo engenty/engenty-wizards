@@ -1,12 +1,12 @@
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, Play, Share2, X } from "lucide-react";
+import { ArrowLeft, Download, Lock, Play, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
 import { type Key, t } from "../lib/i18n";
-import { useMe, type WizardDetail } from "../lib/session";
+import { type PublishResult, useMe, useProjects, type WizardDetail } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
@@ -107,7 +107,8 @@ export function EditorPage() {
       setActiveStep(view && view.status !== "done" ? (view.step?.id ?? null) : null),
     [],
   );
-  const { save, saving, remote, merged } = useLiveDraft(id);
+  const { save, saving, remote, merged, refused } = useLiveDraft(id);
+  const projects = useProjects();
 
   const chat = useArchitectChat(wizard.data, (draft, revision) => {
     qc.setQueryData<WizardDetail>(["wizard", id], (old) =>
@@ -139,9 +140,17 @@ export function EditorPage() {
     onSuccess: ({ runId }) => setDrawerRun(runId),
   });
   const publish = useMutation({
-    mutationFn: () => api.post(`/api/studio/wizards/${id}/publish`),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["wizard", id] });
+    mutationFn: () => api.post<PublishResult>(`/api/studio/wizards/${id}/publish`),
+    onSuccess: async ({ cloud }) => {
+      // With an account linked the version went on to its cloud. How that went comes along: the
+      // share dialog opens with it, and says first when the cloud did not take the version.
+      if (cloud) {
+        qc.setQueryData(["cloud", id], { linked: true, ...cloud });
+      }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["wizard", id] }),
+        qc.invalidateQueries({ queryKey: ["cloud", id] }),
+      ]);
       setShareOpen(true);
     },
   });
@@ -165,6 +174,18 @@ export function EditorPage() {
   const def = w.draft;
   const building = chat.phase !== "idle" && w.blank;
   const hasIssues = w.issues.length > 0;
+  // Read-only for one of two reasons: the wizard is a local install's, or nothing is built here.
+  // Its project says which. A project that is not in the list was made here by a tenant that
+  // builds nothing here any more.
+  const project = projects.data?.find((p) => p.id === w.projectId);
+  const fromLocal = project
+    ? project.origin === "local"
+    : me.data.limits.build || projects.isLoading;
+  const readOnlyNote = w.readOnly ? t(fromLocal ? "readonly.wizard" : "readonly.server") : null;
+  // A local install with an account sends what it publishes on to the account's cloud.
+  const cloudLinked = me.data.mode === "local" && Boolean(me.data.account);
+  /** A write the server refused, in its own words. */
+  const failed = refused ?? (publish.error ? (publish.error as Error).message : null);
 
   const select = (sid: string | null) => {
     setSelected(sid);
@@ -175,6 +196,17 @@ export function EditorPage() {
 
   return (
     <div className="flex h-dvh flex-col">
+      {readOnlyNote ? (
+        <div className="flex shrink-0 items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[13px] text-ink-2 sm:px-6">
+          <Lock className="size-4 shrink-0 text-ink-3" />
+          <p className="min-w-0 flex-1">{readOnlyNote}</p>
+        </div>
+      ) : null}
+      {failed ? (
+        <div className="shrink-0 bg-rose-tint px-4 py-2 text-[13px] text-rose sm:px-6">
+          {failed}
+        </div>
+      ) : null}
       <header className="flex h-16 shrink-0 items-center gap-2 px-3 sm:px-4">
         <IconButton label="Zurück" onClick={() => navigate("/")}>
           <ArrowLeft className="size-5" />
@@ -221,19 +253,32 @@ export function EditorPage() {
           >
             <Play className="size-3.5" /> {t("editor.test")}
           </Button>
-          {w.published && !w.dirty ? (
+          {w.published && (!w.dirty || w.readOnly) ? (
             <Button size="sm" onClick={() => setShareOpen(true)}>
               <Share2 className="size-3.5" /> {t("editor.share")}
             </Button>
-          ) : (
-            <Button
-              size="sm"
-              disabled={hasIssues || building}
-              busy={publish.isPending}
-              onClick={() => publish.mutate()}
-            >
-              {t("editor.publish")}
-            </Button>
+          ) : w.readOnly ? null : (
+            <>
+              {/* What the cloud would lack for the draft is said in the share dialog: with an
+                  account linked it stays at hand while there is something to publish. */}
+              {cloudLinked ? (
+                <IconButton
+                  label={t("editor.share")}
+                  className="max-sm:hidden"
+                  onClick={() => setShareOpen(true)}
+                >
+                  <Share2 className="size-4" />
+                </IconButton>
+              ) : null}
+              <Button
+                size="sm"
+                disabled={hasIssues || building}
+                busy={publish.isPending}
+                onClick={() => publish.mutate()}
+              >
+                {t("editor.publish")}
+              </Button>
+            </>
           )}
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
@@ -254,20 +299,22 @@ export function EditorPage() {
                   <li key={k}>{i.message}</li>
                 ))}
               </ul>
-              <Button
-                size="sm"
-                variant="quiet"
-                className="mt-3"
-                disabled={chat.phase !== "idle"}
-                onClick={() => {
-                  setTab("chat");
-                  void chat.send(
-                    `Bitte behebe diese Probleme im Wizard:\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
-                  );
-                }}
-              >
-                {t("editor.fixWithChat")}
-              </Button>
+              {w.readOnly ? null : (
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  className="mt-3"
+                  disabled={chat.phase !== "idle"}
+                  onClick={() => {
+                    setTab("chat");
+                    void chat.send(
+                      `Bitte behebe diese Probleme im Wizard:\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
+                    );
+                  }}
+                >
+                  {t("editor.fixWithChat")}
+                </Button>
+              )}
             </div>
           ) : null}
           {!hasIssues && !building && missing.length ? (
@@ -351,7 +398,7 @@ export function EditorPage() {
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {tab === "chat" ? (
-              <ChatPanel chat={chat} avatar={def.avatar} />
+              <ChatPanel chat={chat} avatar={def.avatar} closed={readOnlyNote ?? undefined} />
             ) : tab === "step" ? (
               <Inspector
                 def={def}
@@ -362,9 +409,10 @@ export function EditorPage() {
                 mcpServers={w.mcpServers}
                 files={w.files}
                 wizardId={w.id}
+                readOnly={w.readOnly}
               />
             ) : tab === "files" ? (
-              <FilesPanel wizardId={w.id} files={w.files} />
+              <FilesPanel wizardId={w.id} files={w.files} readOnly={w.readOnly} />
             ) : (
               <RunsPanel wizardId={w.id} onOpen={setDrawerRun} />
             )}

@@ -13,12 +13,15 @@ export function Section({
   hint,
   save,
   action,
+  locked,
   children,
 }: {
   title: string;
   hint?: string;
   save?: { state: SaveState; error: string | null };
   action?: ReactNode;
+  /** The project is not changed here: every field and button of the section shows and takes nothing. */
+  locked?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -42,7 +45,13 @@ export function Section({
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       <Card className="p-5">
-        {children}
+        {locked ? (
+          <fieldset disabled className="min-w-0">
+            {children}
+          </fieldset>
+        ) : (
+          children
+        )}
         {save?.state === "error" && save.error ? (
           <p className="mt-4 text-[14px] text-rose">{save.error}</p>
         ) : null}

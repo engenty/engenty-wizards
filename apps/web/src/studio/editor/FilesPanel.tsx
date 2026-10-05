@@ -27,8 +27,19 @@ function bytes(n: number): string {
       : `${(n / 1_048_576).toFixed(1)} MB`;
 }
 
-/** The wizard's workspace: what the widgets and steps use on every run. */
-export function FilesPanel({ wizardId, files }: { wizardId: string; files: WorkspaceFile[] }) {
+/**
+ * The wizard's workspace: what the widgets and steps use on every run. `readOnly`: the files
+ * are there to see and to download, nothing is added or removed.
+ */
+export function FilesPanel({
+  wizardId,
+  files,
+  readOnly,
+}: {
+  wizardId: string;
+  files: WorkspaceFile[];
+  readOnly?: boolean;
+}) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -68,7 +79,12 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
     if (!window.confirm(t("files.confirmDelete", { path }))) {
       return;
     }
-    await api.del(`${base}/${path}`);
+    setError(null);
+    try {
+      await api.del(`${base}/${path}`);
+    } catch (err) {
+      setError((err as Error).message);
+    }
     await refresh();
   };
 
@@ -78,25 +94,31 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
       className={cn("flex min-h-full flex-col px-5 py-5", drag && "bg-ember-veil")}
       onDragOver={(e) => {
         e.preventDefault();
-        setDrag(true);
+        setDrag(!readOnly);
       }}
       onDragLeave={() => setDrag(false)}
       onDrop={(e) => {
         e.preventDefault();
         setDrag(false);
-        void upload(e.dataTransfer.files);
+        if (!readOnly) {
+          void upload(e.dataTransfer.files);
+        }
       }}
     >
-      <p className="text-[13px] text-ink-3 leading-relaxed">{t("files.explain")}</p>
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 hover:bg-paper-3 hover:text-ink"
-        >
-          {busy ? <Spinner className="size-3.5" /> : <Upload className="size-3.5" />}
-          {t("files.upload")}
-        </button>
+      {readOnly ? null : (
+        <p className="mb-4 text-[13px] text-ink-3 leading-relaxed">{t("files.explain")}</p>
+      )}
+      <div className="flex items-center gap-2">
+        {readOnly ? null : (
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 hover:bg-paper-3 hover:text-ink"
+          >
+            {busy ? <Spinner className="size-3.5" /> : <Upload className="size-3.5" />}
+            {t("files.upload")}
+          </button>
+        )}
         <span className="ml-auto text-[12px] text-ink-4">
           {t("files.count", { n: files.length, size: bytes(total) })}
         </span>
@@ -129,20 +151,22 @@ export function FilesPanel({ wizardId, files }: { wizardId: string; files: Works
               >
                 <Download className="size-4" />
               </a>
-              <IconButton
-                label={t("files.delete")}
-                className="opacity-0 hover:text-rose group-hover:opacity-100"
-                onClick={() => void remove(f.path)}
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+              {readOnly ? null : (
+                <IconButton
+                  label={t("files.delete")}
+                  className="opacity-0 hover:text-rose group-hover:opacity-100"
+                  onClick={() => void remove(f.path)}
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              )}
             </li>
           );
         })}
       </ul>
       {files.length === 0 ? (
         <div className="mt-6 rounded-xl border border-border border-dashed px-4 py-8 text-center text-[13px] text-ink-4">
-          {t("files.empty")}
+          {t(readOnly ? "files.none" : "files.empty")}
         </div>
       ) : null}
     </div>

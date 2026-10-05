@@ -377,7 +377,8 @@ function EntryDialog({
   id: string | null;
   fallback: MarketplaceEntry | null;
   onClose: () => void;
-  onUse: (entry: MarketplaceEntry) => void;
+  /** Without it the entry is there to look at: nothing is made of it. */
+  onUse?: (entry: MarketplaceEntry) => void;
   busy?: boolean;
 }) {
   const qc = useQueryClient();
@@ -592,18 +593,20 @@ function EntryDialog({
                 {t("editor.models.settings")}
               </Button>
             ) : null}
-            <Button
-              disabled={!entry.usable || entry.missing.length > 0}
-              title={
-                entry.missing.length
-                  ? t("market.missingHint", { list: capabilityList(entry.missing) })
-                  : undefined
-              }
-              busy={busy}
-              onClick={() => onUse(entry)}
-            >
-              {t("market.use")}
-            </Button>
+            {onUse ? (
+              <Button
+                disabled={!entry.usable || entry.missing.length > 0}
+                title={
+                  entry.missing.length
+                    ? t("market.missingHint", { list: capabilityList(entry.missing) })
+                    : undefined
+                }
+                busy={busy}
+                onClick={() => onUse(entry)}
+              >
+                {t("market.use")}
+              </Button>
+            ) : null}
           </div>
         </div>
       )}
@@ -765,7 +768,8 @@ export function MarketplaceBrowser({
   busy,
   open: opened,
 }: {
-  onUse: (entry: MarketplaceEntry) => void;
+  /** Makes a wizard of an entry; left out where nothing is made, the entries are only shown. */
+  onUse?: (entry: MarketplaceEntry) => void;
   busy?: boolean;
   /** An entry to open at once (a link from the gallery). */
   open?: string | null;

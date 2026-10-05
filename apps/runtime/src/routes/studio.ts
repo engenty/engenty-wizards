@@ -56,8 +56,20 @@ import {
   textModel,
 } from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
+import { mayBuild, projectWritable, requireWritable } from "../services/access.js";
 import { architectTurn } from "../services/architect.js";
-import { cloudCopy, publishToCloud } from "../services/cloud.js";
+import {
+  checkForCloud,
+  cloudLinked,
+  cloudSpaces,
+  cloudState,
+  forgetCloud,
+  publishAndSync,
+  pushSharing,
+  removeFromCloud,
+  replaceCloudSpaces,
+  syncToCloud,
+} from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
 import {
@@ -98,11 +110,11 @@ import {
   duplicateWizard,
   listWizards,
   ownedWizard,
-  publishWizard,
   rotateShareLink,
   updateWizardSettings,
   wizardMessages,
   wizardState,
+  writableWizard,
   writeDraft,
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
@@ -160,6 +172,8 @@ export const studio = new Hono<Vars>()
             name: linked.name,
             email: linked.email,
             credits: overview?.tenant.balanceCredits ?? null,
+            /** What of the credits ends on a date, the nearest first. */
+            expiring: overview?.tenant.expiring ?? [],
             url: env.local.accountUrl,
             cloudUrl: env.local.cloudUrl,
             signedIn: Boolean(overview),
@@ -176,8 +190,11 @@ export const studio = new Hono<Vars>()
       chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
       mcpUrl: `${env.appUrl}/api/mcp`,
-      /** One project: the studio shows no project switcher. */
-      limits: { projects: await projectLimit() },
+      /**
+       * One project: the studio shows no project switcher. `build: false`: nothing is made or
+       * changed here; the studio shows what the person's local install synced.
+       */
+      limits: { projects: await projectLimit(), build: await mayBuild() },
     });
   })
 
@@ -200,6 +217,7 @@ export const studio = new Hono<Vars>()
   // --- projects --------------------------------------------------------------
   .get("/projects", async (c) => {
     const projects = await listProjects(c.get("user").id);
+    const build = await mayBuild();
     return c.json(
       projects.map((p) => ({
         id: p.id,
@@ -208,6 +226,10 @@ export const studio = new Hono<Vars>()
         facts: p.facts,
         mcpServers: maskedServers(p),
         wizardCount: p.wizardCount,
+        /** `local`: synced from a local install, where it is changed. */
+        origin: p.origin,
+        syncedAt: p.syncedAt?.toISOString() ?? null,
+        readOnly: p.origin === "local" || !build,
       })),
     );
   })
@@ -316,6 +338,7 @@ export const studio = new Hono<Vars>()
   .post("/projects/:id/assist", async (c) => {
     const user = c.get("user");
     const project = await ownedProject(user.id, c.req.param("id"));
+    await requireWritable(project);
     const body = z
       .object({
         message: z.string().min(1).max(8000),
@@ -460,6 +483,8 @@ export const studio = new Hono<Vars>()
     const project = await ownedProject(user.id, w.projectId);
     return c.json({
       ...(await wizardState(w)),
+      /** Shown and run here, changed elsewhere: a local install's wizard, or nothing is built here. */
+      readOnly: !(await projectWritable(project)),
       blank: messages.length === 0 && !w.starter,
       messages: messages.map((m) => ({
         id: m.id,
@@ -488,6 +513,10 @@ export const studio = new Hono<Vars>()
       })
       .parse(await c.req.json());
     await updateWizardSettings(c.get("user").id, c.req.param("id"), patch);
+    // The copy in the cloud of a linked account is shared the same way.
+    if (patch.shareEnabled !== undefined || patch.dailyRunLimit !== undefined) {
+      await pushSharing(c.get("user").id, c.req.param("id"));
+    }
     return c.json({ ok: true });
   })
   // The wizard's ID for the mobile app, beside its link.
@@ -502,11 +531,15 @@ export const studio = new Hono<Vars>()
     c.json(await duplicateWizard(c.get("user").id, c.req.param("id"))),
   )
   .delete("/wizards/:id", async (c) => {
+    if (!managed) {
+      await removeFromCloud(c.get("user").id, c.req.param("id"));
+    }
     await deleteWizard(c.get("user").id, c.req.param("id"));
     return c.json({ ok: true });
   })
+  // With an account linked the published version also goes to its cloud: `cloud` says how that went.
   .post("/wizards/:id/publish", async (c) =>
-    c.json(await publishWizard(c.get("user").id, c.req.param("id"))),
+    c.json(await publishAndSync(c.get("user").id, c.req.param("id"))),
   )
   // What a run of the draft is expected to cost, per step and in total.
   .get("/wizards/:id/estimate", async (c) => {
@@ -521,13 +554,39 @@ export const studio = new Hono<Vars>()
   // A runtime that runs alone: the wizard's copy in the cloud of the linked account.
   .get("/wizards/:id/cloud", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
-    return c.json({ copy: managed ? null : await cloudCopy(w.id) });
+    const linked = await cloudLinked();
+    return c.json({ linked, ...(linked ? await cloudState(w.id) : { copy: null, error: null }) });
   })
+  // Sends the published version again: after a try that failed, or a change of the project.
   .post("/wizards/:id/cloud", async (c) => {
-    if (managed) {
+    if (!(await cloudLinked())) {
       return c.notFound();
     }
-    return c.json(await publishToCloud(c.get("user").id, c.req.param("id")));
+    return c.json({
+      linked: true,
+      ...(await syncToCloud(c.get("user").id, c.req.param("id"))),
+    });
+  })
+  // What the cloud would lack for the draft, before it is published.
+  .get("/wizards/:id/cloud/check", async (c) => {
+    if (!(await cloudLinked())) {
+      return c.notFound();
+    }
+    return c.json(await checkForCloud(c.get("user").id, c.req.param("id")));
+  })
+  // The projects of local installs the account's cloud holds.
+  .get("/cloud/spaces", async (c) => {
+    if (!(await cloudLinked())) {
+      return c.notFound();
+    }
+    return c.json({ spaces: await cloudSpaces() });
+  })
+  // Another install's project is in the way: it goes, and what is published here is sent.
+  .post("/cloud/replace", async (c) => {
+    if (!(await cloudLinked())) {
+      return c.notFound();
+    }
+    return c.json(await replaceCloudSpaces(c.get("user").id));
   })
   .post("/wizards/:id/chat", async (c) => {
     const user = c.get("user");
@@ -535,7 +594,7 @@ export const studio = new Hono<Vars>()
     const { message } = z
       .object({ message: z.string().min(1).max(8000) })
       .parse(await c.req.json());
-    await ownedWizard(user.id, wizardId);
+    await writableWizard(user.id, wizardId);
     if (!(await canSpend())) {
       throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
     }
@@ -837,12 +896,26 @@ export const studio = new Hono<Vars>()
     await setChatEngine(engine);
     return c.json({ ok: true });
   })
-  .post("/account/link", async (c) => (managed ? c.notFound() : c.json({ url: await startLink() })))
+  // The address the system browser opens: the account's sign-in, or — for someone without an
+  // account — its sign-up page with the invitation code, which then goes on to the sign-in.
+  .post("/account/link", async (c) => {
+    if (managed) {
+      return c.notFound();
+    }
+    const input = z
+      .object({ signup: z.boolean().optional(), code: z.string().max(64).optional() })
+      .parse(await c.req.json().catch(() => ({})));
+    return c.json({ url: await startLink(input) });
+  })
   .delete("/account", async (c) => {
     if (managed) {
       return c.notFound();
     }
     await unlink();
-    await saveLocalModels({ source: "own" });
+    await forgetCloud();
+    // Models that ran on the account's credits have nothing to run on now; another source stays.
+    if (localModelSettings().source === "account") {
+      await saveLocalModels({ source: "own" });
+    }
     return c.json({ ok: true });
   });

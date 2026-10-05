@@ -4,7 +4,7 @@ import { eq, lt } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { nanoid } from "nanoid";
-import { control, controlDb } from "../db/client.js";
+import { control, controlDb, withTenant } from "../db/client.js";
 import { basePath, env } from "../env.js";
 import {
   discovery,
@@ -46,6 +46,17 @@ let accessKey: string | null = managed
 /** The link that lets the person in; printed at start, opened by the desktop app. */
 export function localEntryUrl(): string | null {
   return accessKey ? `${env.appUrl}/api/local/enter?k=${accessKey}` : null;
+}
+
+/** Sends everything published here to the cloud of the account that was just linked. */
+async function firstSync(): Promise<void> {
+  try {
+    // Loaded here: the services read the session this module makes.
+    const { syncAllToCloud } = await import("../services/cloud.js");
+    await withTenant(LOCAL_TENANT, () => syncAllToCloud(localUser().id));
+  } catch (err) {
+    console.error("[cloud] first sync failed:", err);
+  }
 }
 
 const localUser = (): Principal => ({
@@ -328,6 +339,8 @@ export const authRoutes = new Hono()
       }
       try {
         await finishLink(code, rawState);
+        // What is published here goes to the account's cloud, from now on and once for all there is.
+        void firstSync();
         return c.html(closePage("Angemeldet. Du kannst dieses Fenster schließen."));
       } catch (err) {
         console.error("[account]", err);

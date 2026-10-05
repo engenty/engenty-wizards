@@ -1,0 +1,74 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "../db/client.js";
+import { managed, tenantInfo } from "../manage.js";
+import { currentTenant } from "../tenants/tenant.js";
+import { ServiceError } from "./errors.js";
+
+/**
+ * Who may change what on this runtime. A project a local install synced (`origin: "local"`) is
+ * changed only by that install's next sync: here it is shown and run. And a tenant the
+ * Manage-App gives no building (`limits.build: false`) makes and changes nothing on this
+ * runtime. Every write of a project or a wizard asks here, whichever way it came in: studio,
+ * MCP client or API.
+ */
+
+const sync = new AsyncLocalStorage<true>();
+
+/** Runs the writes of a sync: they are the one way a synced project changes. */
+export function asSync<T>(fn: () => T): T {
+  return sync.run(true, fn);
+}
+
+const syncing = () => sync.getStore() === true;
+
+/** Whether the tenant builds wizards on this runtime. A runtime that runs alone always does. */
+export async function mayBuild(): Promise<boolean> {
+  if (!managed) {
+    return true;
+  }
+  const info = await tenantInfo(currentTenant()).catch(() => null);
+  // An older Manage-App does not say: then it builds. One that cannot be reached: nothing changes.
+  return info ? info.limits.build !== false : false;
+}
+
+export const READ_ONLY_PROJECT =
+  "Dieses Projekt kommt aus einer lokalen Installation und wird dort geändert.";
+export const READ_ONLY_TENANT =
+  "Hier wird nichts gebaut: Auf diesem Server laufen die Wizards, die deine lokale Installation veröffentlicht.";
+
+/** Refuses when the tenant builds nothing here. */
+export async function requireBuild(): Promise<void> {
+  if (syncing() || (await mayBuild())) {
+    return;
+  }
+  throw new ServiceError("read_only", READ_ONLY_TENANT);
+}
+
+/** Refuses a change of a synced project, and any change by a tenant that builds nothing here. */
+export async function requireWritable(project: { origin: string | null }): Promise<void> {
+  if (syncing()) {
+    return;
+  }
+  if (project.origin === "local") {
+    throw new ServiceError("read_only", READ_ONLY_PROJECT);
+  }
+  await requireBuild();
+}
+
+export async function requireWritableProject(projectId: string): Promise<void> {
+  if (syncing()) {
+    return;
+  }
+  const project = await db.query.project.findFirst({
+    where: and(eq(schema.project.id, projectId), eq(schema.project.tenantId, currentTenant())),
+    columns: { origin: true },
+  });
+  // A project that is not there is the caller's "not found", not ours.
+  await requireWritable(project ?? { origin: null });
+}
+
+/** Whether the person may change this project's wizards and settings here. */
+export async function projectWritable(project: { origin: string | null }): Promise<boolean> {
+  return project.origin !== "local" && (await mayBuild());
+}

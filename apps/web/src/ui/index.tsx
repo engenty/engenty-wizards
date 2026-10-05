@@ -227,7 +227,7 @@ export function Segmented({
               }
             }}
             className={cn(
-              "h-10 rounded-full border px-4 text-sm transition coarse:h-11",
+              "h-10 rounded-full border px-4 text-sm transition disabled:pointer-events-none disabled:opacity-60 coarse:h-11",
               on
                 ? "border-ember bg-ember-tint text-ink"
                 : "border-input bg-card text-ink-2 hover:border-ink-4 hover:text-ink",
@@ -245,10 +245,12 @@ export function Switch({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -256,10 +258,11 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
         // The track stays slim; the tap area around it is a full 44 px.
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-['']",
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-[''] disabled:pointer-events-none disabled:opacity-60",
         checked ? "bg-primary" : "bg-paper-3",
       )}
     >

@@ -7,13 +7,14 @@ import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { PluginsSection } from "../plugins/PluginsSection";
-import { Button, Card, cn, IconButton, Input, Select } from "../ui";
+import { Button, Card, cn, Empty, IconButton, Input, Select } from "../ui";
 import { Account } from "./Account";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { Integrate } from "./Integrate";
 import { LocalRuntimeCard } from "./LocalRuntime";
 import { ProjectSettings } from "./project/ProjectSettings";
+import { projectReadOnlyText, ReadOnlyNote } from "./ReadOnly";
 import { settingsSections } from "./settings-sections";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
@@ -44,6 +45,8 @@ function McpServers({ project }: { project: Project }) {
     })),
   );
   const [saved, setSaved] = useState(false);
+  /** The project is not changed here: the systems are listed, none is added, edited or removed. */
+  const readOnly = project.readOnly;
   const save = useMutation({
     mutationFn: () =>
       api.patch(`/api/studio/projects/${project.id}`, {
@@ -64,7 +67,7 @@ function McpServers({ project }: { project: Project }) {
     <Card className="p-6">
       <h2 className="font-display font-semibold text-lg">{t("settings.mcp")}</h2>
       <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.mcpHint")}</p>
-      <div className="flex flex-col gap-3">
+      <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-3">
         {servers.map((s, i) => (
           <div
             key={i}
@@ -101,13 +104,17 @@ function McpServers({ project }: { project: Project }) {
                 )
               }
             />
-            <IconButton
-              label="Entfernen"
-              onClick={() => setServers((all) => all.filter((_, j) => j !== i))}
-              className="hover:text-rose"
-            >
-              <Trash2 className="size-4" />
-            </IconButton>
+            {readOnly ? (
+              <span />
+            ) : (
+              <IconButton
+                label="Entfernen"
+                onClick={() => setServers((all) => all.filter((_, j) => j !== i))}
+                className="hover:text-rose"
+              >
+                <Trash2 className="size-4" />
+              </IconButton>
+            )}
             <Input
               className="sm:col-span-2"
               placeholder={t("settings.serverHeader")}
@@ -123,22 +130,26 @@ function McpServers({ project }: { project: Project }) {
             ) : null}
           </div>
         ))}
-        <Button
-          variant="secondary"
-          className="self-start"
-          onClick={() => setServers((all) => [...all, { id: "", name: "", url: "", auth: "" }])}
-        >
-          <Plus className="size-4" /> {t("settings.addServer")}
-        </Button>
-      </div>
-      <div className="mt-5 flex items-center justify-end gap-3">
-        {save.error ? (
-          <p className="text-[14px] text-rose">{(save.error as Error).message}</p>
-        ) : null}
-        <Button busy={save.isPending} onClick={() => save.mutate()}>
-          {saved ? t("settings.saved") : t("settings.save")}
-        </Button>
-      </div>
+        {readOnly ? null : (
+          <Button
+            variant="secondary"
+            className="self-start"
+            onClick={() => setServers((all) => [...all, { id: "", name: "", url: "", auth: "" }])}
+          >
+            <Plus className="size-4" /> {t("settings.addServer")}
+          </Button>
+        )}
+      </fieldset>
+      {readOnly ? null : (
+        <div className="mt-5 flex items-center justify-end gap-3">
+          {save.error ? (
+            <p className="text-[14px] text-rose">{(save.error as Error).message}</p>
+          ) : null}
+          <Button busy={save.isPending} onClick={() => save.mutate()}>
+            {saved ? t("settings.saved") : t("settings.save")}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
@@ -148,7 +159,7 @@ export function SettingsPage() {
   const { section } = useParams();
   const navigate = useNavigate();
   const me = useMe();
-  const { project } = useCurrentProject();
+  const { project, loading } = useCurrentProject();
   const many = useManyProjects();
   const [key, setKey] = useState(project?.id);
   useEffect(() => setKey(project?.id), [project?.id]);
@@ -213,9 +224,16 @@ export function SettingsPage() {
           ) : null}
           {current.id === "connectors" && project ? (
             <div className="flex flex-col gap-6">
-              <Connectors key={key} projectId={project.id} />
+              {project.readOnly ? (
+                <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
+              ) : null}
+              <Connectors key={key} projectId={project.id} readOnly={project.readOnly} />
               <McpServers key={key} project={project} />
             </div>
+          ) : null}
+          {/* No project yet: nothing is built here, and no local install has sent one. */}
+          {(current.id === "project" || current.id === "connectors") && !project && !loading ? (
+            <Empty>{t("settings.noProject")}</Empty>
           ) : null}
           {current.id === "models" ? <LocalRuntimeCard /> : null}
           {current.id === "integrate" ? <Integrate /> : null}

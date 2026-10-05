@@ -7,6 +7,7 @@ import { t } from "../../lib/i18n";
 import { type Project, useManyProjects } from "../../lib/session";
 import { Button, Dialog, IconButton, Input, Label, Textarea } from "../../ui";
 import { ProjectSwitcher } from "../HomePage";
+import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
 import { Assistant } from "./Assistant";
 import { Colors } from "./Colors";
 import { Documents } from "./Documents";
@@ -28,7 +29,12 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
     save({ brand }),
   );
   return (
-    <Section title={t("project.base")} hint={t("project.baseHint")} save={status}>
+    <Section
+      title={t("project.base")}
+      hint={t("project.baseHint")}
+      save={status}
+      locked={project.readOnly}
+    >
       <div className="flex flex-col gap-5">
         <div>
           <Label>{t("project.title")}</Label>
@@ -94,7 +100,8 @@ function Rename({ project, save }: { project: Project; save: (patch: Patch) => P
 /**
  * What a project gives all its wizards: who it is, its logos and colours, assets, documents and
  * facts. Every section saves by itself; the assistant fills them in from a description, a
- * website or files.
+ * website or files. A read-only project (a local install's, or on a server where nothing is
+ * built) shows the same sections, and a note stands where the assistant would.
  */
 export function ProjectSettings({ project }: { project: Project }) {
   const qc = useQueryClient();
@@ -113,27 +120,38 @@ export function ProjectSettings({ project }: { project: Project }) {
   const many = useManyProjects();
   const data = files.data ?? { files: [], embeddings: true };
   const key = `${project.id}:${rev}`;
+  const readOnly = project.readOnly;
   return (
     // The lower padding leaves room for the assistant's dock under the last section.
     <div className="flex flex-col gap-9 pb-20">
       {many ? (
         <div className="-mb-3 flex items-center gap-1">
           <ProjectSwitcher />
-          <Rename project={project} save={save} />
+          {readOnly ? null : <Rename project={project} save={save} />}
         </div>
       ) : null}
-      <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
+      {readOnly ? (
+        <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
+      ) : (
+        <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
+      )}
       <Base key={`base:${key}`} project={project} save={save} />
-      <Logos projectId={project.id} data={data} />
+      <Logos projectId={project.id} data={data} readOnly={readOnly} />
       <Colors
         key={`colors:${key}`}
         colors={project.brand.colors ?? []}
         save={(colors) => save({ brand: { colors } })}
+        readOnly={readOnly}
       />
-      <Assets projectId={project.id} data={data} />
-      <Documents projectId={project.id} data={data} />
-      <Facts key={`facts:${key}`} facts={project.facts} save={(facts) => save({ facts })} />
-      {many ? (
+      <Assets projectId={project.id} data={data} readOnly={readOnly} />
+      <Documents projectId={project.id} data={data} readOnly={readOnly} />
+      <Facts
+        key={`facts:${key}`}
+        facts={project.facts}
+        save={(facts) => save({ facts })}
+        readOnly={readOnly}
+      />
+      {many && !readOnly ? (
         <div>
           <Button
             variant="danger"

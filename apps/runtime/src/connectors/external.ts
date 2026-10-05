@@ -39,6 +39,7 @@ import type {
 import type { ConnectorDefinition } from "../engenty/connections-sdk/types.js";
 import { encryptToken } from "../engenty/shims/connections-sdk.js";
 import { env } from "../env.js";
+import { requireWritableProject } from "../services/access.js";
 import { ServiceError } from "../services/errors.js";
 import { BUILTIN_CONNECTORS, builtinConnector, missingSetup, usable } from "./builtin.js";
 
@@ -345,6 +346,7 @@ export async function importConnector(
   projectId: string,
   input: ImportRequest,
 ): Promise<{ connector: ConnectorView; warnings: string[] }> {
+  await requireWritableProject(projectId);
   if (await load(projectId, input.id)) {
     throw new ServiceError("invalid", `Connector "${input.id}" already exists in this project.`);
   }
@@ -391,6 +393,7 @@ export async function importFromRegistry(
   projectId: string,
   input: { domain: string; kind?: "mcp" | "openapi" },
 ): Promise<{ connector: ConnectorView; warnings: string[] }> {
+  await requireWritableProject(projectId);
   const service = await registryService(input.domain);
   const order = input.kind ? [input.kind] : (["mcp", "openapi"] as const);
   const source = order
@@ -418,6 +421,7 @@ export async function importFromRegistry(
 }
 
 export async function removeConnector(projectId: string, id: string) {
+  await requireWritableProject(projectId);
   await db.delete(schema.projectConnector).where(where(projectId, id));
 }
 
@@ -430,6 +434,7 @@ export async function refreshConnector(
   id: string,
   accessToken: string | null,
 ): Promise<ConnectorView> {
+  await requireWritableProject(projectId);
   const record = await load(projectId, id);
   if (!record) {
     throw new ServiceError("not_found", "No such connector.");

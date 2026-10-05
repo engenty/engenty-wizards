@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
-import type { WizardDetail } from "../lib/session";
+import { readOnlyError, type WizardDetail } from "../lib/session";
 import { Chip } from "../ui";
 
 /** What the server announces when a wizard changed (see apps/runtime/src/services/draft-events.ts). */
@@ -45,6 +45,8 @@ export function useLiveDraft(wizardId: string | undefined) {
   const [saving, setSaving] = useState(false);
   const [merged, setMerged] = useState(0);
   const [remote, setRemote] = useState<RemoteChange | null>(null);
+  /** The server's sentence when it took no edit: the wizard is changed elsewhere. */
+  const [refused, setRefused] = useState<string | null>(null);
 
   const busy = useCallback(() => Boolean(timer.current || inflight.current || pending.current), []);
 
@@ -77,6 +79,18 @@ export function useLiveDraft(wizardId: string | undefined) {
           old ? { ...old, revision: res.revision, issues: res.issues } : old,
         );
       } catch (err) {
+        const readOnly = readOnlyError(err);
+        if (readOnly) {
+          // Nothing is changed here: the edit goes, the wizard comes back as the server has it.
+          pending.current = null;
+          base.current = null;
+          setRefused(readOnly);
+          const fresh = await api.get<WizardDetail>(path).catch(() => null);
+          if (fresh) {
+            qc.setQueryData<WizardDetail>(key, fresh);
+          }
+          return;
+        }
         if (!(err instanceof ApiError && err.status === 409)) {
           pending.current ??= local;
           console.error("[draft] save failed", err);
@@ -168,7 +182,7 @@ export function useLiveDraft(wizardId: string | undefined) {
     return () => clearTimeout(id);
   }, [merged]);
 
-  return { save, saving, remote, merged: merged > 0 };
+  return { save, saving, remote, merged: merged > 0, refused };
 }
 
 /** A quiet note in the editor header: who changed the wizard, or that edits were merged. */

@@ -358,6 +358,7 @@ export function ChatPanel({
   changedLabel = "Ablauf aktualisiert",
   compact,
   intro,
+  closed,
 }: {
   chat: Chat;
   avatar: string;
@@ -368,6 +369,8 @@ export function ChatPanel({
   compact?: boolean;
   /** What an empty thread shows in place of the avatar with `hello`. */
   intro?: ReactNode;
+  /** Nothing is sent here: this note stands in place of the composer, the thread is there to read. */
+  closed?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -448,7 +451,7 @@ export function ChatPanel({
         ref={scroller}
         className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5", !thread && "hidden")}
       >
-        {chat.messages.length === 0
+        {chat.messages.length === 0 && !closed
           ? (intro ?? (
               <div className="flex items-start gap-3">
                 <Mascot kind={avatar} size={32} interactive={false} />
@@ -492,131 +495,137 @@ export function ChatPanel({
           </div>
         ) : null}
       </div>
-      <div className={compact ? "p-2" : "p-3"}>
-        <div className="rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
-          {thumbs.size ? (
-            <div className="flex flex-wrap gap-2 px-1 pt-1 pb-1.5">
-              {files.map((f, i) => {
-                const url = thumbs.get(f);
-                return url ? (
-                  <Thumb key={`${f.name}-${i}`} url={url} label={f.name}>
-                    <button
-                      type="button"
-                      aria-label={t("editor.detach")}
-                      onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
-                      className="-top-1.5 -right-1.5 absolute flex size-5 items-center justify-center rounded-full bg-ink text-paper opacity-0 shadow-soft transition focus-visible:opacity-100 group-hover:opacity-100"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Thumb>
-                ) : null;
-              })}
-            </div>
-          ) : null}
-          {files.some((f) => !thumbs.has(f)) ? (
-            <ul className="flex flex-wrap gap-1.5 px-1 pt-1 pb-1.5">
-              {files.map((f, i) =>
-                thumbs.has(f) ? null : (
-                  <li
-                    key={`${f.name}-${i}`}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[12px] text-ink-2"
-                  >
-                    <Paperclip className="size-3 shrink-0 text-ink-4" />
-                    <span className="truncate">{f.name}</span>
-                    <button
-                      type="button"
-                      aria-label={t("editor.detach")}
-                      onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
-                      className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-3 hover:text-ink"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </li>
-                ),
-              )}
-            </ul>
-          ) : null}
-          <div className="flex items-end gap-1">
-            <IconButton label={t("editor.attach")} onClick={() => picker.current?.click()}>
-              <Plus className="size-4" />
-            </IconButton>
-            <input
-              ref={picker}
-              type="file"
-              multiple
-              hidden
-              onChange={(e) => {
-                const picked = Array.from(e.target.files ?? []);
-                e.target.value = "";
-                add(picked);
-              }}
-            />
-            <textarea
-              ref={area}
-              rows={1}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onPaste={(e) => {
-                const pasted = Array.from(e.clipboardData.files);
-                if (pasted.length) {
-                  e.preventDefault();
-                  add(pasted.map(pastedName));
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void submit();
-                }
-              }}
-              placeholder={speech.listening ? t("editor.listening") : placeholder}
-              className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[14px] outline-none placeholder:text-ink-4"
-            />
-            {speech.supported ? (
-              <IconButton
-                label={
-                  speech.processing
-                    ? t("editor.transcribing")
-                    : speech.listening
-                      ? t("editor.voiceStop")
-                      : t("editor.voice")
-                }
-                aria-pressed={speech.listening}
-                disabled={speech.processing}
-                onClick={speech.toggle}
-                className={cn(
-                  speech.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
-                )}
-              >
-                {speech.processing ? (
-                  <Spinner className="size-4" />
-                ) : speech.listening ? (
-                  <Square className="size-3.5 animate-pulse-dot fill-current" />
-                ) : (
-                  <Mic className="size-4" />
-                )}
-              </IconButton>
+      {closed ? (
+        <p className="m-3 rounded-xl bg-paper-2 px-4 py-3 text-[13px] text-ink-2 leading-relaxed">
+          {closed}
+        </p>
+      ) : (
+        <div className={compact ? "p-2" : "p-3"}>
+          <div className="rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
+            {thumbs.size ? (
+              <div className="flex flex-wrap gap-2 px-1 pt-1 pb-1.5">
+                {files.map((f, i) => {
+                  const url = thumbs.get(f);
+                  return url ? (
+                    <Thumb key={`${f.name}-${i}`} url={url} label={f.name}>
+                      <button
+                        type="button"
+                        aria-label={t("editor.detach")}
+                        onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
+                        className="-top-1.5 -right-1.5 absolute flex size-5 items-center justify-center rounded-full bg-ink text-paper opacity-0 shadow-soft transition focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Thumb>
+                  ) : null;
+                })}
+              </div>
             ) : null}
-            <button
-              type="button"
-              onClick={() => void submit()}
-              disabled={!ready}
-              className={cn(
-                "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition",
-                ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
-              )}
-              aria-label="Send"
-            >
-              <ArrowUp className="size-4" />
-            </button>
+            {files.some((f) => !thumbs.has(f)) ? (
+              <ul className="flex flex-wrap gap-1.5 px-1 pt-1 pb-1.5">
+                {files.map((f, i) =>
+                  thumbs.has(f) ? null : (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[12px] text-ink-2"
+                    >
+                      <Paperclip className="size-3 shrink-0 text-ink-4" />
+                      <span className="truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        aria-label={t("editor.detach")}
+                        onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
+                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-3 hover:text-ink"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </li>
+                  ),
+                )}
+              </ul>
+            ) : null}
+            <div className="flex items-end gap-1">
+              <IconButton label={t("editor.attach")} onClick={() => picker.current?.click()}>
+                <Plus className="size-4" />
+              </IconButton>
+              <input
+                ref={picker}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? []);
+                  e.target.value = "";
+                  add(picked);
+                }}
+              />
+              <textarea
+                ref={area}
+                rows={1}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = Array.from(e.clipboardData.files);
+                  if (pasted.length) {
+                    e.preventDefault();
+                    add(pasted.map(pastedName));
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void submit();
+                  }
+                }}
+                placeholder={speech.listening ? t("editor.listening") : placeholder}
+                className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[14px] outline-none placeholder:text-ink-4"
+              />
+              {speech.supported ? (
+                <IconButton
+                  label={
+                    speech.processing
+                      ? t("editor.transcribing")
+                      : speech.listening
+                        ? t("editor.voiceStop")
+                        : t("editor.voice")
+                  }
+                  aria-pressed={speech.listening}
+                  disabled={speech.processing}
+                  onClick={speech.toggle}
+                  className={cn(
+                    speech.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
+                  )}
+                >
+                  {speech.processing ? (
+                    <Spinner className="size-4" />
+                  ) : speech.listening ? (
+                    <Square className="size-3.5 animate-pulse-dot fill-current" />
+                  ) : (
+                    <Mic className="size-4" />
+                  )}
+                </IconButton>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={!ready}
+                className={cn(
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition",
+                  ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
+                )}
+                aria-label="Send"
+              >
+                <ArrowUp className="size-4" />
+              </button>
+            </div>
           </div>
+          {speech.error ? (
+            <p className="mt-2 px-1 text-[12px] text-rose">
+              {speech.error === "denied" ? t("editor.micDenied") : speech.error}
+            </p>
+          ) : null}
         </div>
-        {speech.error ? (
-          <p className="mt-2 px-1 text-[12px] text-rose">
-            {speech.error === "denied" ? t("editor.micDenied") : speech.error}
-          </p>
-        ) : null}
-      </div>
+      )}
     </div>
   );
 }

@@ -38,6 +38,10 @@ export function Description({ file, actions }: { file: ProjectFileView; actions:
     }
   }, [text]);
   const looking = file.status === "pending" && !text;
+  // Where the project is not changed, the description reads as plain text; none is no line.
+  if (actions.readOnly) {
+    return text ? <p className="text-[13px] text-ink-2 leading-snug">{text}</p> : null;
+  }
   return (
     <textarea
       ref={area}
@@ -163,7 +167,7 @@ function Tiles({
                   <Eye className="size-4" />
                 </IconButton>
               ) : null}
-              {kind === "logo" && i > 0 ? (
+              {kind === "logo" && i > 0 && !actions.readOnly ? (
                 <IconButton
                   label={t("project.logoMakeMain")}
                   onClick={() =>
@@ -177,13 +181,15 @@ function Tiles({
                   <Star className="size-4" />
                 </IconButton>
               ) : null}
-              <IconButton
-                label={t("project.remove")}
-                onClick={() => remove(file, actions)}
-                className="size-8 bg-card shadow-soft hover:text-rose"
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+              {actions.readOnly ? null : (
+                <IconButton
+                  label={t("project.remove")}
+                  onClick={() => remove(file, actions)}
+                  className="size-8 bg-card shadow-soft hover:text-rose"
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              )}
             </div>
           </div>
           {kind === "asset" ? (
@@ -194,7 +200,7 @@ function Tiles({
           <Description file={file} actions={actions} />
         </div>
       ))}
-      {addLabel ? (
+      {addLabel && !actions.readOnly ? (
         <DropArea
           accept={accept}
           multiple={false}
@@ -209,8 +215,16 @@ function Tiles({
   );
 }
 
-export function Logos({ projectId, data }: { projectId: string; data: ProjectFiles }) {
-  const actions = useFileActions(projectId);
+export function Logos({
+  projectId,
+  data,
+  readOnly,
+}: {
+  projectId: string;
+  data: ProjectFiles;
+  readOnly?: boolean;
+}) {
+  const actions = useFileActions(projectId, readOnly);
   return (
     <Section title={t("project.logos")} hint={t("project.logosHint")}>
       <Tiles
@@ -321,20 +335,30 @@ function AssetRow({
         <IconButton label={t("project.preview")} onClick={onPreview}>
           <Eye className="size-4" />
         </IconButton>
-        <IconButton
-          label={t("project.remove")}
-          onClick={() => remove(file, actions)}
-          className="hover:text-rose"
-        >
-          <Trash2 className="size-4" />
-        </IconButton>
+        {actions.readOnly ? null : (
+          <IconButton
+            label={t("project.remove")}
+            onClick={() => remove(file, actions)}
+            className="hover:text-rose"
+          >
+            <Trash2 className="size-4" />
+          </IconButton>
+        )}
       </div>
     </li>
   );
 }
 
-export function Assets({ projectId, data }: { projectId: string; data: ProjectFiles }) {
-  const actions = useFileActions(projectId);
+export function Assets({
+  projectId,
+  data,
+  readOnly,
+}: {
+  projectId: string;
+  data: ProjectFiles;
+  readOnly?: boolean;
+}) {
+  const actions = useFileActions(projectId, readOnly);
   const [layout, toggleLayout] = useLayout("assets", "cards");
   const [filter, setFilter] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -376,14 +400,21 @@ export function Assets({ projectId, data }: { projectId: string; data: ProjectFi
           )}
         </div>
       ) : null}
-      <DropArea
-        accept="image/*,video/*,audio/*"
-        onFiles={(picked) => actions.upload("asset", picked)}
-        className="h-16 w-full"
-      >
-        {actions.busy ? <Spinner className="size-4" /> : <Upload className="size-4" />}
-        {t("project.drop")} <span className="underline">{t("project.assetAdd")}</span>
-      </DropArea>
+      {readOnly ? (
+        // A local install sends its wizards, not what the project keeps for them.
+        all.length ? null : (
+          <p className="text-[14px] text-ink-3">{t("project.staysLocal")}</p>
+        )
+      ) : (
+        <DropArea
+          accept="image/*,video/*,audio/*"
+          onFiles={(picked) => actions.upload("asset", picked)}
+          className="h-16 w-full"
+        >
+          {actions.busy ? <Spinner className="size-4" /> : <Upload className="size-4" />}
+          {t("project.drop")} <span className="underline">{t("project.assetAdd")}</span>
+        </DropArea>
+      )}
       {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
       {preview ? (
         <AssetPreview

@@ -5,6 +5,7 @@ import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
 import { RunConflict } from "../engine/runner.js";
 import { pluginToolsOf } from "../plugins/registry.js";
+import { publishAndSync, pushSharing } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { marketplaceWizard, searchMarketplace } from "../services/marketplace.js";
@@ -26,7 +27,6 @@ import {
   listWizards,
   ownedWizard,
   parseDraft,
-  publishWizard,
   shareUrl,
   studioUrl,
   updateWizardSettings,
@@ -420,7 +420,7 @@ Returns the new revision and the issues.`,
         "Publish the draft as a new version behind the share link. Refused while the draft has issues. Only when the admin asked for it.",
       input: z.object({ wizardId: z.string() }),
     },
-    async ({ wizardId }) => publishWizard(who.userId, wizardId),
+    async ({ wizardId }) => publishAndSync(who.userId, wizardId),
   );
 
   tool(
@@ -440,6 +440,7 @@ Returns the new revision and the issues.`,
         shareEnabled: enabled,
         dailyRunLimit,
       });
+      await pushSharing(who.userId, wizardId);
       return {
         shareEnabled: w.shareEnabled,
         dailyRunLimit: w.dailyRunLimit,

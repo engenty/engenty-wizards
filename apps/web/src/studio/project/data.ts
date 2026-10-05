@@ -26,8 +26,11 @@ export function fileUrl(projectId: string, fileId: string): string {
   return withBase(`/api/studio/projects/${projectId}/files/${fileId}/content`);
 }
 
-/** Uploads, changes and removals of a project's files; each one refreshes the list. */
-export function useFileActions(projectId: string) {
+/**
+ * Uploads, changes and removals of a project's files; each one refreshes the list. `readOnly`:
+ * the project is not changed here, so what shows the files offers none of these.
+ */
+export function useFileActions(projectId: string, readOnly = false) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,7 @@ export function useFileActions(projectId: string) {
   return {
     busy,
     error,
+    readOnly,
     upload: async (kind: ProjectFileKind, files: File[]) => {
       setBusy(true);
       await run(async () => {

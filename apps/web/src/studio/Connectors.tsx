@@ -65,7 +65,15 @@ const AUTH_LABEL: Record<ConnectorView["auth"], string> = {
   api_key: "connectors.authKey",
 };
 
-function Imported({ projectId, connector }: { projectId: string; connector: ConnectorView }) {
+function Imported({
+  projectId,
+  connector,
+  readOnly,
+}: {
+  projectId: string;
+  connector: ConnectorView;
+  readOnly?: boolean;
+}) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const done = () => qc.invalidateQueries({ queryKey: ["connectors", projectId] });
@@ -99,27 +107,35 @@ function Imported({ projectId, connector }: { projectId: string; connector: Conn
                 })}
           </div>
         </button>
-        <IconButton label={t("connectors.refresh")} onClick={() => refresh.mutate()}>
-          {refresh.isPending ? <Spinner className="size-4" /> : <RefreshCw className="size-4" />}
-        </IconButton>
-        <IconButton
-          label={t("connectors.remove")}
-          className="hover:text-rose"
-          onClick={() =>
-            confirm(`${connector.name}: ${t("connectors.remove")}?`) && remove.mutate()
-          }
-        >
-          <Trash2 className="size-4" />
-        </IconButton>
+        {readOnly ? null : (
+          <>
+            <IconButton label={t("connectors.refresh")} onClick={() => refresh.mutate()}>
+              {refresh.isPending ? (
+                <Spinner className="size-4" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+            </IconButton>
+            <IconButton
+              label={t("connectors.remove")}
+              className="hover:text-rose"
+              onClick={() =>
+                confirm(`${connector.name}: ${t("connectors.remove")}?`) && remove.mutate()
+              }
+            >
+              <Trash2 className="size-4" />
+            </IconButton>
+          </>
+        )}
       </div>
       {connector.needsOAuthClient ? (
         <p className="border-border-soft border-t px-3 py-2 text-[12px] text-rose">
           {t("connectors.needsClient")}
         </p>
       ) : null}
-      {refresh.error ? (
+      {(refresh.error ?? remove.error) ? (
         <p className="border-border-soft border-t px-3 py-2 text-[12px] text-rose">
-          {(refresh.error as Error).message}
+          {((refresh.error ?? remove.error) as Error).message}
         </p>
       ) : null}
       {open && connector.actions.length ? (
@@ -238,9 +254,10 @@ function SourceRow({
 
 /**
  * The project's connectors: any service becomes one, found in the integrations registry by name
- * and imported from its OpenAPI spec or its MCP server.
+ * and imported from its OpenAPI spec or its MCP server. `readOnly`: the project is not changed
+ * here, so the list is shown and nothing is imported, refreshed or removed.
  */
-export function Connectors({ projectId }: { projectId: string }) {
+export function Connectors({ projectId, readOnly }: { projectId: string; readOnly?: boolean }) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<RegistryHit[] | null>(null);
   const [service, setService] = useState<RegistryService | null>(null);
@@ -284,28 +301,34 @@ export function Connectors({ projectId }: { projectId: string }) {
       {imported.length ? (
         <div className="mb-4 flex flex-col gap-2">
           {imported.map((c) => (
-            <Imported key={c.id} projectId={projectId} connector={c} />
+            <Imported key={c.id} projectId={projectId} connector={c} readOnly={readOnly} />
           ))}
         </div>
       ) : null}
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (query.trim()) {
-            search.mutate();
-          }
-        }}
-      >
-        <Input
-          value={query}
-          placeholder={t("connectors.search")}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <Button type="submit" variant="secondary" busy={search.isPending}>
-          <Search className="size-4" /> {t("connectors.find")}
-        </Button>
-      </form>
+      {readOnly ? (
+        imported.length ? null : (
+          <p className="text-[13px] text-ink-3">{t("connectors.noneImported")}</p>
+        )
+      ) : (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (query.trim()) {
+              search.mutate();
+            }
+          }}
+        >
+          <Input
+            value={query}
+            placeholder={t("connectors.search")}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <Button type="submit" variant="secondary" busy={search.isPending}>
+            <Search className="size-4" /> {t("connectors.find")}
+          </Button>
+        </form>
+      )}
       {search.error ? (
         <p className="mt-3 text-[13px] text-rose">{(search.error as Error).message}</p>
       ) : null}

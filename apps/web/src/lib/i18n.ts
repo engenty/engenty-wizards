@@ -37,17 +37,14 @@ const de = {
   "estimate.formula": "geschätzt, wird nach fünf Läufen genauer",
   "estimate.share":
     "Ein Lauf kostet etwa {run} Credits. Beim Tageslimit sind es höchstens {day} Credits am Tag.",
-  "local.title": "Modelle & Konto",
+  "local.title": "Modelle",
   "local.hint":
     "Diese App läuft auf deinem Gerät. Sie rechnet mit deinen eigenen Schlüsseln, einem lokalen Modell oder mit dem Guthaben deines Kontos.",
-  "local.account": "Konto",
-  "local.accountHint":
-    "Ein Konto ist freiwillig. Damit nutzt du Guthaben statt eigener Schlüssel und veröffentlichst Wizards in der Cloud.",
-  "local.accountSignIn": "Anmelden oder Konto erstellen",
   "local.accountWaiting": "Warte auf die Anmeldung im Browser …",
   "local.accountFailed": "Der Konto-Dienst ist gerade nicht erreichbar.",
   "local.accountExpired": "Die Anmeldung ist abgelaufen. Bitte neu anmelden.",
-  "local.topUp": "Guthaben",
+  "local.sourceNeedsAccount": "Dafür brauchst du ein Konto.",
+  "local.toAccount": "Zu Einstellungen → Konto",
   "local.source": "Modelle laufen über",
   "local.sourceOwn": "Eigene Schlüssel",
   "local.sourceAccount": "Guthaben des Kontos",
@@ -128,11 +125,43 @@ const de = {
   "setup.done": "Zum Studio",
   "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
   "cloud.title": "In der Cloud",
-  "cloud.publish": "Veröffentlichen",
-  "cloud.update": "Aktualisieren",
-  "cloud.hint":
-    "Legt den Wizard im Konto ab. Der Link dort läuft auf dem Guthaben des Kontos, auch wenn dieses Gerät aus ist.",
-  "cloud.failed": "Veröffentlichen in der Cloud hat nicht geklappt.",
+  "cloud.onPublish":
+    "Sobald du den Wizard veröffentlichst, geht die Version auch in die Cloud deines Kontos und läuft dort hinter einem eigenen Link.",
+  "cloud.notSent": "Diese Version ist noch nicht in der Cloud.",
+  "cloud.send": "Jetzt senden",
+  "cloud.resend": "Erneut senden",
+  "cloud.sent": "Version {v} · gesendet am {when}",
+  "cloud.sentBehind":
+    "In der Cloud liegt Version {v} (gesendet am {when}). Veröffentlicht ist hier Version {now}.",
+  "cloud.notRunnable": "Version {v} läuft in der Cloud nicht.",
+  "cloud.keepsRunning": "Dort läuft weiter Version {v}.",
+  "cloud.nothingRuns": "Dort läuft deshalb noch nichts.",
+  "cloud.notes": "Was in der Cloud anders läuft:",
+  "cloud.check": "Was dem jetzigen Stand in der Cloud fehlen würde:",
+  "cloud.checkBlocking": "So, wie der Wizard jetzt ist, würde er in der Cloud nicht laufen:",
+  "cloud.documents":
+    "Die Dokumente des Projekts bleiben auf diesem Gerät. In der Cloud arbeiten die Schritte ohne sie.",
+  "cloud.stepName": "„{title}“",
+  "cloud.problem.sandbox": "Der Server hat keine Maschine für Code. Dort läuft das ohne sie.",
+  "cloud.problem.mcp": "Die MCP-Server des Projekts gibt es auf dem Server nicht: {detail}.",
+  "cloud.problem.model": "Dafür gibt es in der Cloud kein Modell.",
+  "cloud.problem.connector": "Dem Projekt fehlt in der Cloud ein Connector.",
+  "cloud.problem.invalid": "So nimmt der Server den Wizard nicht an.",
+  "cloud.spaceLimit":
+    "In der Cloud deines Kontos liegt schon das Projekt einer anderen Installation:",
+  "cloud.replace": "Bisheriges Projekt ersetzen",
+  "cloud.replaceConfirm":
+    "Das bisherige Projekt aus der Cloud entfernen? Seine Wizards und ihre Links verschwinden dort. Danach wird gesendet, was hier veröffentlicht ist.",
+  "cloud.noticeError":
+    "Hier veröffentlicht. In der Cloud ist diese Version nicht angekommen – mehr dazu unten.",
+  "cloud.noticeNotRunnable":
+    "Hier veröffentlicht. In der Cloud läuft diese Version nicht – mehr dazu unten.",
+  "readonly.wizard":
+    "Dieser Wizard kommt aus deiner lokalen Installation und wird dort geändert. Hier läuft, was du dort veröffentlichst.",
+  "readonly.project":
+    "Dieses Projekt kommt aus deiner lokalen Installation und wird dort geändert.",
+  "readonly.server":
+    "Auf diesem Server wird nichts gebaut. Hier laufen die Wizards, die deine lokale Installation veröffentlicht.",
   "nav.wizards": "Wizards",
   "nav.settings": "Einstellungen",
   "account.title": "Konto",
@@ -151,6 +180,25 @@ const de = {
   "account.localText":
     "Diese App läuft auf deinem Gerät und ist mit keinem Konto verbunden. Wizards, Projektdaten und Dateien bleiben hier.",
   "account.linked": "Verbunden",
+  "account.with": "Mit einem Konto",
+  "account.withCredits":
+    "Guthaben für die Modelle, wo kein KI-Client installiert ist. Kein API Key nötig.",
+  "account.withCloud":
+    "Was du veröffentlichst, läuft auch auf engenty.ai – hinter einem öffentlichen Link, auch wenn dieses Gerät aus ist.",
+  "account.signIn": "Anmelden",
+  "account.signInAgain": "Neu anmelden",
+  "account.new": "Noch kein Konto?",
+  "account.newHint":
+    "Ein neues Konto braucht einen Einladungscode. Trag ihn hier ein, dann steht er bei der Registrierung schon im Formular.",
+  "account.code": "Einladungscode",
+  "account.create": "Konto erstellen",
+  "account.credits": "Guthaben",
+  "account.topUp": "Aufladen",
+  "account.expires": "{n} Credits gültig bis {date}",
+  "account.kind.start": "Startguthaben",
+  "account.kind.monthly": "Monatsguthaben",
+  "account.kind.gift": "Geschenkt",
+  "account.cloud": "Was du hier veröffentlichst, läuft auch auf {host}.",
   "account.look": "Darstellung",
   "account.lookHint": "Sprache und Design der App in diesem Browser.",
   "nav.logout": "Abmelden",
@@ -197,6 +245,14 @@ const de = {
   "home.newProject": "Neues Projekt",
   "home.projectName": "Name des Projekts",
   "home.projectLimit": "Höchstens {n} Projekte",
+  "home.fromLocal": "Aus deiner lokalen Installation – geändert wird dort.",
+  "home.syncedAt": "Zuletzt angekommen: {when}.",
+  "home.local.title": "Hier laufen die Wizards aus deiner lokalen Installation",
+  "home.local.text":
+    "Du baust auf deinem eigenen Computer. Was du dort veröffentlichst, läuft hier – für alle, hinter einem Link.",
+  "home.local.install": "Installiere engenty wizards auf deinem Computer:",
+  "home.local.signIn": "Melde dich dort unter Einstellungen → Konto mit diesem Konto an.",
+  "home.local.publish": "Veröffentliche einen Wizard. Er erscheint dann hier.",
   "new.title": "Was soll dein Wizard können?",
   "new.placeholder":
     "z. B. Kunden geben ihr Produkt und ihre Zielgruppe ein, der Wizard recherchiert Wettbewerber und erstellt daraus ein Positionierungs-Briefing als PDF.",
@@ -247,6 +303,7 @@ const de = {
   "files.download": "Herunterladen",
   "files.delete": "Löschen",
   "files.confirmDelete": "„{path}“ löschen?",
+  "files.none": "Dieser Wizard hat keine Dateien.",
   "editor.thinking": "Denkt nach …",
   "editor.chatBroken":
     "Die Verbindung ist abgebrochen. Was schon gebaut war, ist gespeichert – schick die Nachricht bitte noch einmal.",
@@ -291,6 +348,8 @@ const de = {
   "share.qrHint":
     "Mit der Kamera des Handys scannen: der Wizard öffnet sich, in der App engenty wizards, wenn sie installiert ist.",
   "share.code": "ID für die App:",
+  "share.readOnly":
+    "Ob der Link aktiv ist und wie viele Durchläufe er am Tag zulässt, stellst du in deiner lokalen Installation ein.",
   "embed.title": "In eine Website einbetten",
   "embed.inline": "In der Seite",
   "embed.modal": "Button + Fenster",
@@ -398,6 +457,8 @@ const de = {
   "settings.save": "Speichern",
   "settings.saved": "Gespeichert",
   "settings.delete": "Projekt löschen",
+  "settings.noProject":
+    "Hier erscheint dein Projekt, sobald deine lokale Installation den ersten Wizard veröffentlicht hat.",
   "settings.copy": "Kopieren",
   "settings.copied": "Kopiert",
   "settings.lastUsed": "zuletzt {when}",
@@ -536,6 +597,7 @@ const de = {
   "connectors.hint":
     "Dienste, in denen ein Wizard für die Person arbeiten kann – sie verbindet beim Durchlauf ihr eigenes Konto. Die wichtigsten sind eingebaut; jeden weiteren findest du im Verzeichnis integrations.sh und importierst ihn aus seiner OpenAPI-Beschreibung oder seinem MCP-Server.",
   "connectors.imported": "Aus dem Verzeichnis",
+  "connectors.noneImported": "Hier ist kein Connector aus dem Verzeichnis importiert.",
   "connectors.notSetUp": "nicht eingerichtet",
   "connectors.setup": "Auf dem Server fehlen:",
   "connectors.search": "Dienst suchen, z. B. Notion, Stripe, GitHub",
@@ -690,6 +752,7 @@ const de = {
     "PDFs, Listen, Excel, Word, Text. Sie werden gelesen und kommen in einen Index, den jeder KI-Schritt durchsucht.",
   "project.documentAdd": "Dokumente",
   "project.drop": "Hierher ziehen oder",
+  "project.staysLocal": "Bleibt in deiner lokalen Installation und wird nicht hierher gesendet.",
   "project.description": "Beschreibung hinzufügen …",
   "project.describing": "Wird angesehen …",
   "project.reading": "Wird gelesen …",
@@ -793,17 +856,14 @@ const en: Record<Key, string> = {
   "estimate.formula": "estimated, gets exact after five runs",
   "estimate.share":
     "A run costs about {run} credits. At the daily limit that is at most {day} credits a day.",
-  "local.title": "Models & account",
+  "local.title": "Models",
   "local.hint":
     "This app runs on your device. It works with your own keys, a local model or the credits of your account.",
-  "local.account": "Account",
-  "local.accountHint":
-    "An account is optional. With it you use credits instead of own keys and publish wizards to the cloud.",
-  "local.accountSignIn": "Sign in or create an account",
   "local.accountWaiting": "Waiting for the sign-in in your browser …",
   "local.accountFailed": "The account service cannot be reached right now.",
   "local.accountExpired": "The sign-in has expired. Please sign in again.",
-  "local.topUp": "Credits",
+  "local.sourceNeedsAccount": "This needs an account.",
+  "local.toAccount": "Go to Settings → Account",
   "local.source": "Models run on",
   "local.sourceOwn": "Own keys",
   "local.sourceAccount": "The account's credits",
@@ -883,11 +943,38 @@ const en: Record<Key, string> = {
   "setup.done": "Open the studio",
   "setup.untilWorks": "The studio opens once the test works.",
   "cloud.title": "In the cloud",
-  "cloud.publish": "Publish",
-  "cloud.update": "Update",
-  "cloud.hint":
-    "Puts the wizard into the account. Its link there runs on the account's credits, even when this device is off.",
-  "cloud.failed": "Publishing to the cloud did not work.",
+  "cloud.onPublish":
+    "When you publish the wizard, the version also goes to your account's cloud and runs there behind a link of its own.",
+  "cloud.notSent": "This version is not in the cloud yet.",
+  "cloud.send": "Send now",
+  "cloud.resend": "Send again",
+  "cloud.sent": "Version {v} · sent {when}",
+  "cloud.sentBehind": "The cloud has version {v} (sent {when}). Version {now} is published here.",
+  "cloud.notRunnable": "Version {v} does not run in the cloud.",
+  "cloud.keepsRunning": "Version {v} keeps running there.",
+  "cloud.nothingRuns": "So nothing runs there yet.",
+  "cloud.notes": "What runs differently in the cloud:",
+  "cloud.check": "What the cloud would lack for the wizard as it is now:",
+  "cloud.checkBlocking": "As it is now, the wizard would not run in the cloud:",
+  "cloud.documents":
+    "The project's documents stay on this device. In the cloud the steps work without them.",
+  "cloud.stepName": "“{title}”",
+  "cloud.problem.sandbox": "The server has no machine for code. There it works without one.",
+  "cloud.problem.mcp": "The project's MCP servers are not on the server: {detail}.",
+  "cloud.problem.model": "The cloud has no model for this.",
+  "cloud.problem.connector": "The project lacks a connector in the cloud.",
+  "cloud.problem.invalid": "The server does not take the wizard like this.",
+  "cloud.spaceLimit": "Your account's cloud already holds the project of another install:",
+  "cloud.replace": "Replace that project",
+  "cloud.replaceConfirm":
+    "Remove that project from the cloud? Its wizards and their links go from there. Then everything published here is sent.",
+  "cloud.noticeError": "Published here. This version did not arrive in the cloud — see below.",
+  "cloud.noticeNotRunnable": "Published here. This version does not run in the cloud — see below.",
+  "readonly.wizard":
+    "This wizard comes from your local install and is changed there. What you publish there runs here.",
+  "readonly.project": "This project comes from your local install and is changed there.",
+  "readonly.server":
+    "Nothing is built on this server. The wizards your local install publishes run here.",
   "nav.wizards": "Wizards",
   "nav.settings": "Settings",
   "account.title": "Account",
@@ -906,6 +993,25 @@ const en: Record<Key, string> = {
   "account.localText":
     "This app runs on your device and is not connected to an account. Wizards, project data and files stay here.",
   "account.linked": "Connected",
+  "account.with": "With an account",
+  "account.withCredits":
+    "Credits for the models where no AI client is installed. No API key needed.",
+  "account.withCloud":
+    "What you publish also runs on engenty.ai, behind a public link, even when this device is off.",
+  "account.signIn": "Sign in",
+  "account.signInAgain": "Sign in again",
+  "account.new": "No account yet?",
+  "account.newHint":
+    "A new account needs an invitation code. Enter it here and the sign-up page has it filled in.",
+  "account.code": "Invitation code",
+  "account.create": "Create account",
+  "account.credits": "Credits",
+  "account.topUp": "Top up",
+  "account.expires": "{n} credits valid until {date}",
+  "account.kind.start": "Starting credits",
+  "account.kind.monthly": "Monthly credits",
+  "account.kind.gift": "Gift",
+  "account.cloud": "What you publish here also runs on {host}.",
   "account.look": "Appearance",
   "account.lookHint": "Language and theme of the app in this browser.",
   "nav.logout": "Sign out",
@@ -952,6 +1058,14 @@ const en: Record<Key, string> = {
   "home.newProject": "New project",
   "home.projectName": "Project name",
   "home.projectLimit": "At most {n} projects",
+  "home.fromLocal": "From your local install — changed there.",
+  "home.syncedAt": "Last arrived: {when}.",
+  "home.local.title": "The wizards from your local install run here",
+  "home.local.text":
+    "You build on your own computer. What you publish there runs here — for everyone, behind a link.",
+  "home.local.install": "Install engenty wizards on your computer:",
+  "home.local.signIn": "Sign in there with this account, under Settings → Account.",
+  "home.local.publish": "Publish a wizard. It then shows up here.",
   "new.title": "What should your wizard do?",
   "new.placeholder":
     "e.g. Customers enter their product and audience, the wizard researches competitors and writes a positioning briefing as a PDF.",
@@ -1001,6 +1115,7 @@ const en: Record<Key, string> = {
   "files.download": "Download",
   "files.delete": "Delete",
   "files.confirmDelete": "Delete “{path}”?",
+  "files.none": "This wizard has no files.",
   "editor.thinking": "Thinking …",
   "editor.chatBroken":
     "The connection dropped. What was already built is saved – please send your message again.",
@@ -1045,6 +1160,8 @@ const en: Record<Key, string> = {
   "share.qrHint":
     "Scan it with a phone's camera: the wizard opens, in the engenty wizards app when it is installed.",
   "share.code": "ID for the app:",
+  "share.readOnly":
+    "Whether the link is active and how many runs a day it allows is set in your local install.",
   "embed.title": "Embed in a website",
   "embed.inline": "Inline",
   "embed.modal": "Button + modal",
@@ -1150,6 +1267,8 @@ const en: Record<Key, string> = {
   "settings.save": "Save",
   "settings.saved": "Saved",
   "settings.delete": "Delete project",
+  "settings.noProject":
+    "Your project shows up here once your local install has published its first wizard.",
   "settings.copy": "Copy",
   "settings.copied": "Copied",
   "settings.lastUsed": "last used {when}",
@@ -1287,6 +1406,7 @@ const en: Record<Key, string> = {
   "connectors.hint":
     "Services a wizard can work in for the person — they connect their own account during a run. The main ones are built in; any other you find in the integrations.sh registry and import from its OpenAPI spec or its MCP server.",
   "connectors.imported": "From the registry",
+  "connectors.noneImported": "No connector from the registry is imported here.",
   "connectors.notSetUp": "not set up",
   "connectors.setup": "The server still needs:",
   "connectors.search": "Find a service, e.g. Notion, Stripe, GitHub",
@@ -1436,6 +1556,7 @@ const en: Record<Key, string> = {
     "PDFs, lists, Excel, Word, text. They are read and put into an index every AI step searches.",
   "project.documentAdd": "Documents",
   "project.drop": "Drop here or",
+  "project.staysLocal": "Stays in your local install and is not sent here.",
   "project.description": "Add a description …",
   "project.describing": "Looking at it …",
   "project.reading": "Reading …",

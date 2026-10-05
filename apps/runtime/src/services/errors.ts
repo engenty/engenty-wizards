@@ -5,15 +5,18 @@ export type ServiceErrorCode =
   | "has_issues"
   | "revision_conflict"
   | "no_credits"
-  | "refused";
+  | "refused"
+  /** Nothing is changed here: the project is a local install's, or the tenant builds elsewhere. */
+  | "read_only";
 
-const STATUS: Record<ServiceErrorCode, 400 | 402 | 404 | 409> = {
+const STATUS: Record<ServiceErrorCode, 400 | 402 | 403 | 404 | 409> = {
   not_found: 404,
   invalid: 400,
   has_issues: 400,
   revision_conflict: 409,
   no_credits: 402,
   refused: 400,
+  read_only: 403,
 };
 
 export class ServiceError extends Error {

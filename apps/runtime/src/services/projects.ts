@@ -1,11 +1,12 @@
 import { FACT_TYPES, PROJECT_LIMITS, type ProjectFact } from "@engenty-wizards/shared/projects";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { mayBuild, requireBuild, requireWritable } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
 import { forgetWizardLinks } from "./links.js";
 import { removeProjectFiles } from "./project-files.js";
@@ -71,11 +72,20 @@ export async function ownedProject(_userId: string, projectId: string): Promise<
   return p;
 }
 
-/** A tenant always has a project: the first one is made when its studio is first opened. */
+/** The tenant's projects that were made here, not synced from a local install. */
+const madeHere = () =>
+  and(eq(schema.project.tenantId, currentTenant()), isNull(schema.project.origin));
+
+/** The tenant's projects a local install synced. */
+const synced = () =>
+  and(eq(schema.project.tenantId, currentTenant()), eq(schema.project.origin, "local"));
+
+/**
+ * A tenant that builds here always has a project of its own: the first one is made when its
+ * studio is first opened.
+ */
 async function ensureProject(): Promise<void> {
-  const any = await db.query.project.findFirst({
-    where: eq(schema.project.tenantId, currentTenant()),
-  });
+  const any = await db.query.project.findFirst({ where: madeHere() });
   if (!any) {
     await db
       .insert(schema.project)
@@ -83,11 +93,17 @@ async function ensureProject(): Promise<void> {
   }
 }
 
-/** The project a wizard lands in when the caller names none: the oldest one. */
+/**
+ * The project a caller means when it names none: the oldest one made here, where a wizard
+ * lands; for a tenant that builds nothing here, the one its local install synced.
+ */
 export async function defaultProject(_userId: string): Promise<ProjectRow> {
-  await ensureProject();
+  const build = await mayBuild();
+  if (build) {
+    await ensureProject();
+  }
   const p = await db.query.project.findFirst({
-    where: eq(schema.project.tenantId, currentTenant()),
+    where: build ? madeHere() : synced(),
     orderBy: [schema.project.createdAt],
   });
   if (!p) {
@@ -96,11 +112,18 @@ export async function defaultProject(_userId: string): Promise<ProjectRow> {
   return p;
 }
 
+/**
+ * The projects the studio shows. A tenant that builds here: its own and the synced ones, up to
+ * its number. One that does not: only what its local install synced — possibly nothing yet.
+ */
 export async function listProjects(_userId: string) {
-  await ensureProject();
+  const build = await mayBuild();
+  if (build) {
+    await ensureProject();
+  }
   // The oldest come first: with a limit of one, that is the project everything lands in.
   const projects = await db.query.project.findMany({
-    where: eq(schema.project.tenantId, currentTenant()),
+    where: build ? eq(schema.project.tenantId, currentTenant()) : synced(),
     orderBy: [schema.project.createdAt],
     limit: await projectLimit(),
   });
@@ -126,6 +149,7 @@ export function maskedServers(p: ProjectRow) {
 }
 
 export async function createProject(_userId: string, name: string): Promise<{ id: string }> {
+  await requireBuild();
   const [{ n }] = await db
     .select({ n: count() })
     .from(schema.project)
@@ -150,6 +174,7 @@ export async function updateProject(
   patch: z.infer<typeof projectPatchSchema>,
 ) {
   const p = await ownedProject(userId, projectId);
+  await requireWritable(p);
   const mcpServers = patch.mcpServers?.map((s) => {
     const before = p.mcpServers.find((x) => x.id === s.id);
     const headers = s.headers
@@ -194,13 +219,17 @@ export function projectProfile(p: ProjectRow): ProjectProfile {
   };
 }
 
-export async function deleteProject(_userId: string, projectId: string) {
-  const all = await db.query.project.findMany({
-    where: eq(schema.project.tenantId, currentTenant()),
-  });
+export async function deleteProject(userId: string, projectId: string) {
+  await requireWritable(await ownedProject(userId, projectId));
+  const all = await db.query.project.findMany({ where: madeHere() });
   if (all.length <= 1) {
     throw new ServiceError("refused", "Das letzte Projekt bleibt.");
   }
+  await removeProject(projectId);
+}
+
+/** Takes a project away with its wizards' links and its files. */
+export async function removeProject(projectId: string) {
   const wizards = await db
     .select({ id: schema.wizard.id })
     .from(schema.wizard)

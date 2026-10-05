@@ -49,6 +49,12 @@ export const project = sqliteTable(
       .$type<McpServerConfig[]>()
       .notNull()
       .default([]),
+    /**
+     * `local`: the project of a local install, synced here when that install publishes. It keeps
+     * the ids it has there and is changed only by the next sync. Null: made on this runtime.
+     */
+    origin: text("origin", { enum: ["local"] }),
+    syncedAt: integer("synced_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

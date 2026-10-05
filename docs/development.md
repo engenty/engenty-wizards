@@ -17,6 +17,11 @@ the user guide in [content/user](content/user/index.md).
 The Manage-App (accounts, tenants, credits, the model-gateway) is a separate, closed app. What
 the two speak is in [manage-contract.md](manage-contract.md).
 
+The two ways meet in an account: a runtime that runs alone and is linked to one sends what it
+publishes to the account's cloud runtime, which shows the project read-only and runs its wizards
+(the contract's "Spaces of a local install"). Building stays on the install; a tenant builds on
+the cloud runtime only when the Manage-App says so (`limits.build`).
+
 A runtime takes **plugins**: tools for agent steps, routes with tables of their own, pages in the
 studio, loaded from their files at start and again while it runs. How they are found, written
 and built is in the developer docs: [content/dev/plugins](content/dev/plugins/index.md).
@@ -470,7 +475,8 @@ reach only servers on the internet: for them a wizard runs on engenty.ai, not on
 | Installed AI clients as models (Claude Code, Codex, Gemini CLI, Cursor Agent): headless calls, tools over MCP, sign-in in an inline terminal; first-start setup | `apps/runtime/src/harness/`, `apps/runtime/src/mcp/bridge.ts`, `apps/web/src/studio/{SetupPage,Harness,Terminal}.tsx` |
 | Credits: balance, reservation, cost per step; estimate before a run | `apps/runtime/src/credits/credits.ts`, `apps/runtime/src/credits/estimate.ts` |
 | Studio chat on the Claude subscription | `apps/runtime/src/agents/subscription.ts` |
-| Publish to the cloud, import API | `apps/runtime/src/services/cloud.ts`, `apps/runtime/src/routes/api.ts` |
+| A local install's project in the cloud: what is sent on publish (alone), what takes it and runs it (managed), the import API | `docs/manage-contract.md` ("Spaces of a local install"), `apps/runtime/src/services/cloud.ts`, `apps/runtime/src/services/spaces.ts`, `apps/runtime/src/routes/api.ts` |
+| Who may change what: a synced project is read-only, a tenant without `limits.build` builds nothing | `apps/runtime/src/services/access.ts`, `apps/web/src/studio/ReadOnly.tsx` |
 | Files in the data folder or a bucket, per tenant | `apps/runtime/src/files/objects.ts` |
 | Studio (editor, diagram, chat, inspector) | `apps/web/src/studio/` |
 | Public runner | `apps/web/src/runner/` |

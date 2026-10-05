@@ -66,7 +66,10 @@ export interface Me {
     name: string;
     email: string;
     credits: number | null;
+    /** What of the credits ends on a date, the nearest first. */
+    expiring: ExpiringCredits[];
     url: string;
+    /** The account's cloud: what is published here also runs there. */
     cloudUrl: string;
     signedIn: boolean;
   } | null;
@@ -82,13 +85,28 @@ export interface Me {
   aiReady: boolean;
   /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
   mcpUrl: string;
-  /** `projects`: how many projects the tenant works with. */
-  limits: { projects: number };
+  /**
+   * `projects`: how many projects the tenant works with. `build: false`: nothing is made or
+   * changed on this runtime; the studio shows what the person's local install published.
+   */
+  limits: { projects: number; build: boolean };
+}
+
+/** A part of the account's credits that ends on a date. */
+export interface ExpiringCredits {
+  kind: "start" | "monthly" | "gift";
+  credits: number;
+  expiresAt: string;
 }
 
 /** Whether the studio deals with several projects at all: with one, there is nothing to switch. */
 export function useManyProjects(): boolean {
   return (useMe().data?.limits.projects ?? 1) > 1;
+}
+
+/** Whether wizards and projects are made and changed on this runtime at all. */
+export function useMayBuild(): boolean {
+  return useMe().data?.limits.build ?? true;
 }
 
 /** The credits a person can spend right now, wherever they come from. */
@@ -123,6 +141,11 @@ export interface Project {
   facts: ProjectFact[];
   mcpServers: { id: string; name: string; url: string; headers?: Record<string, string> }[];
   wizardCount: number;
+  /** `local`: sent here by a local install, where it is changed. */
+  origin: "local" | null;
+  syncedAt: string | null;
+  /** Shown here, changed elsewhere: a local install's project, or nothing is built on this runtime. */
+  readOnly: boolean;
 }
 
 export function useProjects(enabled = true) {
@@ -197,6 +220,8 @@ export interface WizardDetail extends WizardSummary {
   issues: { stepId?: string; message: string }[];
   blank: boolean;
   dirty: boolean;
+  /** Shown and run here, changed elsewhere: its project is read-only. */
+  readOnly: boolean;
   messages: {
     id: string;
     role: "user" | "assistant";
@@ -208,6 +233,52 @@ export interface WizardDetail extends WizardSummary {
   mcpServers: { id: string; name: string }[];
   shareUrl: string;
   studioUrl: string;
+}
+
+/**
+ * What keeps a wizard from running in the cloud as it does at home. `blocking`: no run can
+ * finish there. `detail` is the server's own text: a validator's sentence, a model class and why
+ * it is missing, or the names of what is missing.
+ */
+export interface ServerProblem {
+  code: "invalid" | "model" | "sandbox" | "mcp" | "connector";
+  blocking: boolean;
+  steps: { id: string; title: string }[];
+  detail: string;
+}
+
+/** A local wizard's copy in the cloud of the linked account. */
+export interface CloudCopy {
+  shareUrl: string;
+  /** The copy's ID for the mobile app; a cloud before it knew IDs sent none. */
+  code?: string;
+  /** The version last sent from here. */
+  version: number;
+  /** The version runs start on in the cloud; null when none could be published there. */
+  publishedVersion: number | null;
+  runnable: boolean;
+  problems: ServerProblem[];
+  syncedAt: string;
+}
+
+/** Where a local wizard stands in the cloud: its copy, and why the last try did not arrive. */
+export interface CloudState {
+  copy: CloudCopy | null;
+  /** `reason`: `space_limit`, `signed_out`, `unreachable` or `refused`. */
+  error: { message: string; reason?: string; at: string } | null;
+}
+
+/** What publishing answers; `cloud` is null where no account is linked or the runtime is managed. */
+export interface PublishResult {
+  version: number;
+  shareUrl: string;
+  shareEnabled: boolean;
+  cloud: CloudState | null;
+}
+
+/** The server's sentence when a write was refused because nothing is changed here; else null. */
+export function readOnlyError(err: unknown): string | null {
+  return err instanceof ApiError && err.body?.code === "read_only" ? err.message : null;
 }
 
 export function useRefreshMe() {

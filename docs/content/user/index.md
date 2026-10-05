@@ -39,6 +39,7 @@ briefing, an invoice, a quote, a damage report.
 
 ## Two places it runs
 
-This guide describes the install on your own computer. engenty.ai runs the same studio in the
-cloud: you sign in with an account there, and the models run on the account's credits. Where the
-two differ, the page says so.
+This guide describes the install on your own computer: there you build. engenty.ai is the cloud:
+with an account, what you publish on your computer also runs there, behind a link that works
+while your computer is off, on the account's credits. The studio at engenty.ai shows those
+wizards and their runs and changes nothing ([Test and share](./test-and-share.md#in-the-cloud)).

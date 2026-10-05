@@ -11,6 +11,7 @@ import { documentMime, UnreadableDocument } from "../documents/parse.js";
 import { loadAsset, removeAsset, saveAsset } from "../files/storage.js";
 import { textModel } from "../models.js";
 import { dropLinks, putLink } from "../tenants/control.js";
+import { requireWritableProject } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
 import { dropIndex, indexDocument } from "./project-index.js";
 
@@ -89,6 +90,7 @@ export async function addProjectFile(
     source?: string;
   },
 ): Promise<ProjectFileRow> {
+  await requireWritableProject(projectId);
   const mime = documentMime(input.name, input.mime) || "application/octet-stream";
   if (!accepts(input.kind, mime)) {
     throw new ServiceError(
@@ -251,6 +253,7 @@ async function prepare(row: ProjectFileRow) {
 }
 
 export async function reindexProjectFile(projectId: string, fileId: string) {
+  await requireWritableProject(projectId);
   const row = await projectFile(projectId, fileId);
   if (row.kind !== "document") {
     throw new ServiceError("invalid", "Nur Dokumente stehen im Index.");
@@ -269,6 +272,7 @@ export async function updateProjectFile(
   fileId: string,
   patch: { name?: string; description?: string },
 ): Promise<ProjectFileRow> {
+  await requireWritableProject(projectId);
   const row = await projectFile(projectId, fileId);
   const [updated] = await db
     .update(schema.projectFile)
@@ -285,6 +289,7 @@ export async function updateProjectFile(
 
 /** Puts the files of one kind into the order of `ids`; the first logo is the one end users see. */
 export async function orderProjectFiles(projectId: string, kind: ProjectFileKind, ids: string[]) {
+  await requireWritableProject(projectId);
   const rows = await projectFiles(projectId, kind);
   const order = [...ids.filter((id) => rows.some((r) => r.id === id))];
   for (const r of rows) {
@@ -307,6 +312,7 @@ async function removeRow(row: ProjectFileRow) {
 }
 
 export async function removeProjectFile(projectId: string, fileId: string) {
+  await requireWritableProject(projectId);
   await removeRow(await projectFile(projectId, fileId));
 }
 

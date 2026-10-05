@@ -69,3 +69,26 @@ export async function verifyTurnstile(
     return false;
   }
 }
+
+/** Times per key, kept in this process; old ones drop out as the key is asked. */
+const seen = new Map<string, number[]>();
+
+/** Counts one more try for `key`; false once `max` tries fell within the last `windowMs`. */
+export function allowed(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const recent = (seen.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    seen.set(key, recent);
+    return false;
+  }
+  recent.push(now);
+  seen.set(key, recent);
+  if (seen.size > 50_000) {
+    for (const [k, times] of seen) {
+      if (!times.some((t) => now - t < windowMs)) {
+        seen.delete(k);
+      }
+    }
+  }
+  return true;
+}

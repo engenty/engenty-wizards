@@ -15,6 +15,7 @@ import { env } from "../env.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { requireBuild, requireWritable, requireWritableProject } from "./access.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { copyFiles, draftFiles, sameFiles, seedFiles } from "./files.js";
@@ -54,6 +55,13 @@ export async function ownedWizard(_userId: string, wizardId: string): Promise<Wi
   if (!w) {
     throw notFound();
   }
+  return w;
+}
+
+/** The wizard, for a change: refused where its project is a local install's or nothing is built here. */
+export async function writableWizard(userId: string, wizardId: string): Promise<WizardRow> {
+  const w = await ownedWizard(userId, wizardId);
+  await requireWritableProject(w.projectId);
   return w;
 }
 
@@ -258,9 +266,12 @@ export async function createWizard(
   },
   writer: Writer = { source: "studio" },
 ) {
+  // Asked first: a tenant that builds nothing here has no project of its own to name.
+  await requireBuild();
   const project = input.projectId
     ? await ownedProject(userId, input.projectId)
     : await defaultProject(userId);
+  await requireWritable(project);
   const starter = input.starterId
     ? await marketplaceWizard(input.starterId, asLang(input.lang))
     : undefined;
@@ -315,7 +326,7 @@ export async function writeDraft(
   input: { definition: unknown; baseRevision: number; note?: string },
   writer: Writer = { source: "studio" },
 ) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const files = await draftFiles(w.id);
   const paths = files.map((f) => f.path);
   const { draft } = parseDraft(input.definition, paths);
@@ -357,7 +368,7 @@ export async function editWizard(
   input: { ops: WizardOp[]; baseRevision: number; note?: string },
   writer: Writer,
 ) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   if (w.revision !== input.baseRevision) {
     throw new ServiceError("revision_conflict", "Der Wizard wurde inzwischen geändert.", {
       revision: w.revision,
@@ -385,9 +396,9 @@ export async function updateWizardSettings(
   wizardId: string,
   patch: { shareEnabled?: boolean; dailyRunLimit?: number; projectId?: string },
 ) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   if (patch.projectId) {
-    await ownedProject(userId, patch.projectId);
+    await requireWritable(await ownedProject(userId, patch.projectId));
   }
   await db
     .update(schema.wizard)
@@ -397,7 +408,7 @@ export async function updateWizardSettings(
 }
 
 export async function rotateShareLink(userId: string, wizardId: string) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const token = newShareToken();
   await db
     .update(schema.wizard)
@@ -409,7 +420,7 @@ export async function rotateShareLink(userId: string, wizardId: string) {
 }
 
 export async function duplicateWizard(userId: string, wizardId: string) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const id = nanoid(12);
   const draft = { ...w.draft, title: `${w.draft.title} (Kopie)` };
   const shareToken = newShareToken();
@@ -428,7 +439,8 @@ export async function duplicateWizard(userId: string, wizardId: string) {
   return { id };
 }
 
-export async function deleteWizard(_userId: string, wizardId: string) {
+export async function deleteWizard(userId: string, wizardId: string) {
+  await writableWizard(userId, wizardId);
   await forgetWizardLinks(wizardId);
   await db
     .delete(schema.wizard)
@@ -450,7 +462,7 @@ export async function requireClean(w: WizardRow) {
 }
 
 export async function publishWizard(userId: string, wizardId: string) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const { definition, files } = await requireClean(w);
   const version = (w.publishedVersion ?? 0) + 1;
   await db

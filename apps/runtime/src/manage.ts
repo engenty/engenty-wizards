@@ -144,7 +144,11 @@ export interface TenantInfo {
   name: string;
   status: "active" | "suspended" | "deleted";
   balanceCredits: number;
-  limits: { concurrentRuns: number; projects?: number };
+  /**
+   * `projects`: how many projects the tenant works with. `build: false`: the tenant makes and
+   * changes nothing here; its studio shows what its local install synced.
+   */
+  limits: { concurrentRuns: number; projects?: number; build?: boolean };
   /** Ids of the plugins switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`. */
   modules?: string[];
   db: { url: string } | null;
@@ -158,9 +162,17 @@ export async function tenantInfo(id: string, fresh = false): Promise<TenantInfo>
   if (!fresh && hit && Date.now() - hit.at < 60_000) {
     return hit.value;
   }
-  const value = await call<TenantInfo>("GET", `/v1/tenants/${encodeURIComponent(id)}`);
-  tenants.set(id, { at: Date.now(), value });
-  return value;
+  try {
+    const value = await call<TenantInfo>("GET", `/v1/tenants/${encodeURIComponent(id)}`);
+    tenants.set(id, { at: Date.now(), value });
+    return value;
+  } catch (err) {
+    // The Manage-App is out of reach for a moment: what it said within the hour still counts.
+    if (hit && !(err instanceof ManageError) && Date.now() - hit.at < 3600_000) {
+      return hit.value;
+    }
+    throw err;
+  }
 }
 
 export function forgetTenant(id: string) {

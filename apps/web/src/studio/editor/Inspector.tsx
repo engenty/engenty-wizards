@@ -22,7 +22,7 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
@@ -68,7 +68,34 @@ function withKind(field: Field, kind: Field["kind"]): Field {
   };
 }
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+/** A wizard that is shown here and changed elsewhere: its settings are there to read. */
+const ReadOnly = createContext(false);
+
+/**
+ * A group of controls. Where the wizard is read-only they show their values and take no change:
+ * a disabled fieldset does that for every field, switch and button inside.
+ */
+function Fields({ className, children }: { className?: string; children: React.ReactNode }) {
+  return useContext(ReadOnly) ? (
+    <fieldset disabled className={cn("min-w-0", className)}>
+      {children}
+    </fieldset>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  loose,
+}: {
+  title?: string;
+  children: React.ReactNode;
+  /** Its rows lock themselves, so what opens and closes them stays usable. */
+  loose?: boolean;
+}) {
+  const group = "flex flex-col gap-4";
   return (
     <div className="border-border-soft border-t px-5 py-5 first:border-t-0">
       {title ? (
@@ -76,7 +103,11 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
           {title}
         </h4>
       ) : null}
-      <div className="flex flex-col gap-4">{children}</div>
+      {loose ? (
+        <div className={group}>{children}</div>
+      ) : (
+        <Fields className={group}>{children}</Fields>
+      )}
     </div>
   );
 }
@@ -124,7 +155,7 @@ function FieldEditor({
         <ChevronDown className={cn("size-4 text-ink-4 transition", open && "rotate-180")} />
       </button>
       {open ? (
-        <div className="flex flex-col gap-3 border-border-soft border-t px-3 py-3">
+        <Fields className="flex flex-col gap-3 border-border-soft border-t px-3 py-3">
           <Input
             value={field.label}
             onChange={(e) => onChange({ ...field, label: e.target.value })}
@@ -271,7 +302,7 @@ function FieldEditor({
               </IconButton>
             </div>
           </div>
-        </div>
+        </Fields>
       ) : null}
     </div>
   );
@@ -441,6 +472,7 @@ function StepBody({
   wizardId: string;
 }) {
   const index = def.steps.indexOf(step);
+  const readOnly = useContext(ReadOnly);
   // Tools the runtime's plugins add, listed by their full id next to the built-in ones.
   const pluginTools = useStudioPlugins().plugins.flatMap((plugin) => plugin.tools);
   const earlierProducers = def.steps
@@ -451,7 +483,7 @@ function StepBody({
       return <WidgetBody def={def} step={step} set={set} files={files} wizardId={wizardId} />;
     case "page":
       return (
-        <Section title="Fragen">
+        <Section title="Fragen" loose>
           <div className="flex flex-col gap-2">
             {step.fields.map((f, i) => (
               <FieldEditor
@@ -477,21 +509,23 @@ function StepBody({
               />
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              set({
-                ...step,
-                fields: [
-                  ...step.fields,
-                  { id: uniqueId(def, "frage"), label: "Neue Frage", kind: "text" },
-                ],
-              })
-            }
-            className="inline-flex h-9 items-center gap-1.5 self-start rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent"
-          >
-            <Plus className="size-4" /> Frage hinzufügen
-          </button>
+          {readOnly ? null : (
+            <button
+              type="button"
+              onClick={() =>
+                set({
+                  ...step,
+                  fields: [
+                    ...step.fields,
+                    { id: uniqueId(def, "frage"), label: "Neue Frage", kind: "text" },
+                  ],
+                })
+              }
+              className="inline-flex h-9 items-center gap-1.5 self-start rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent"
+            >
+              <Plus className="size-4" /> Frage hinzufügen
+            </button>
+          )}
         </Section>
       );
     case "agent":
@@ -858,6 +892,8 @@ interface InspectorProps {
   mcpServers: { id: string; name: string }[];
   files: WorkspaceFile[];
   wizardId: string;
+  /** The wizard is shown here and changed elsewhere: every setting is there to read. */
+  readOnly?: boolean;
 }
 
 const WIZARD = "__wizard";
@@ -1020,19 +1056,23 @@ function StepList({ def, onSelect, issues }: Pick<InspectorProps, "def" | "onSel
 }
 
 export function Inspector(props: InspectorProps) {
-  const { def, selected, update, onSelect, issues } = props;
+  const { def, selected, onSelect, issues, readOnly = false } = props;
+  // A read-only wizard takes no change, whatever a control inside still sends.
+  const update: Update = readOnly ? () => {} : props.update;
   const step = def.steps.find((s) => s.id === selected);
   return (
-    <div>
-      <StepNav def={def} selected={selected} onSelect={onSelect} issues={issues} />
-      {selected === WIZARD ? (
-        <WizardSettings def={def} update={update} />
-      ) : step ? (
-        <StepInspector {...props} step={step} />
-      ) : (
-        <StepList def={def} onSelect={onSelect} issues={issues} />
-      )}
-    </div>
+    <ReadOnly value={readOnly}>
+      <div>
+        <StepNav def={def} selected={selected} onSelect={onSelect} issues={issues} />
+        {selected === WIZARD ? (
+          <WizardSettings def={def} update={update} />
+        ) : step ? (
+          <StepInspector {...props} update={update} step={step} />
+        ) : (
+          <StepList def={def} onSelect={onSelect} issues={issues} />
+        )}
+      </div>
+    </ReadOnly>
   );
 }
 
@@ -1081,6 +1121,7 @@ function StepInspector({
   };
   const stepIssues = issues.filter((i) => i.stepId === step.id);
   const estimate = useEstimate(wizardId, def);
+  const readOnly = useContext(ReadOnly);
   return (
     <div>
       <div className="flex items-center gap-2 px-5 py-4">
@@ -1128,41 +1169,44 @@ function StepInspector({
         files={files}
         wizardId={wizardId}
       />
-      <Section>
-        <div className="flex flex-wrap items-center gap-1">
-          {step.type !== "result" ? (
-            <>
-              <IconButton label={t("editor.moveUp")} onClick={() => move(-1)}>
-                <ArrowUp className="size-4" />
-              </IconButton>
-              <IconButton label={t("editor.moveDown")} onClick={() => move(1)}>
-                <ArrowDown className="size-4" />
-              </IconButton>
-              <IconButton
-                label={t("editor.deleteStep")}
-                className="hover:text-rose"
-                onClick={() => {
-                  update({ ...def, steps: def.steps.filter((s) => s.id !== step.id) });
-                  onSelect(null);
-                }}
+      {/* Moving, deleting and adding steps is building: not offered where nothing is changed. */}
+      {readOnly ? null : (
+        <Section>
+          <div className="flex flex-wrap items-center gap-1">
+            {step.type !== "result" ? (
+              <>
+                <IconButton label={t("editor.moveUp")} onClick={() => move(-1)}>
+                  <ArrowUp className="size-4" />
+                </IconButton>
+                <IconButton label={t("editor.moveDown")} onClick={() => move(1)}>
+                  <ArrowDown className="size-4" />
+                </IconButton>
+                <IconButton
+                  label={t("editor.deleteStep")}
+                  className="hover:text-rose"
+                  onClick={() => {
+                    update({ ...def, steps: def.steps.filter((s) => s.id !== step.id) });
+                    onSelect(null);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              </>
+            ) : null}
+            <span className="ml-auto text-[12px] text-ink-4">Danach einfügen:</span>
+            {(["page", "agent", "generate", "widget"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => insertAfter(k)}
+                className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-accent"
               >
-                <Trash2 className="size-4" />
-              </IconButton>
-            </>
-          ) : null}
-          <span className="ml-auto text-[12px] text-ink-4">Danach einfügen:</span>
-          {(["page", "agent", "generate", "widget"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => insertAfter(k)}
-              className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-accent"
-            >
-              <Plus className="size-3.5" /> {t(`type.${k}`)}
-            </button>
-          ))}
-        </div>
-      </Section>
+                <Plus className="size-3.5" /> {t(`type.${k}`)}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

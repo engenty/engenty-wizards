@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { authRoutes, type Principal, principalOf } from "./auth/index.js";
@@ -178,6 +179,21 @@ app.on(["GET", "POST", "DELETE"], "/api/mcp", (c) => mcp(c.req.raw));
 // The tools of one model call, for the installed Claude Code while it answers that call.
 app.on(["GET", "POST", "DELETE"], "/api/mcp/bridge/:token", (c) =>
   bridgeRequest(c.req.param("token"), c.req.raw),
+);
+
+// What visitors send is read before anyone is known: a body is taken only up to a size. A page's
+// answers are text; an upload is a photo, a recording or a clip from a phone (routes/delivery.ts).
+const tooLarge = (max: number) =>
+  bodyLimit({
+    maxSize: max,
+    onError: (c) => c.json({ error: "Das ist zu groß.", code: "too_large" }, 413),
+  });
+const answers = tooLarge(4 * 1024 * 1024);
+const upload = tooLarge(48 * 1024 * 1024);
+app.use("/api/public/*", answers);
+app.use("/api/shares/*", answers);
+app.use("/api/runs/*", (c, next) =>
+  /\/uploads$/.test(c.req.path) ? upload(c, next) : answers(c, next),
 );
 
 app.route("/api/studio/wizards", wizardStream);

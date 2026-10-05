@@ -75,18 +75,20 @@ function RowActions({ file, actions, onPreview }: Omit<ItemProps, "projectId">) 
       <IconButton label={t("project.preview")} onClick={onPreview}>
         <Eye className="size-4" />
       </IconButton>
-      {file.status !== "pending" ? (
+      {file.status !== "pending" && !actions.readOnly ? (
         <IconButton label={t("project.reindex")} onClick={() => actions.reindex(file.id)}>
           <RefreshCw className="size-4" />
         </IconButton>
       ) : null}
-      <IconButton
-        label={t("project.remove")}
-        onClick={() => remove(file, actions)}
-        className="hover:text-rose"
-      >
-        <Trash2 className="size-4" />
-      </IconButton>
+      {actions.readOnly ? null : (
+        <IconButton
+          label={t("project.remove")}
+          onClick={() => remove(file, actions)}
+          className="hover:text-rose"
+        >
+          <Trash2 className="size-4" />
+        </IconButton>
+      )}
     </>
   );
 }
@@ -322,8 +324,16 @@ function IndexSearch({ projectId }: { projectId: string }) {
   );
 }
 
-export function Documents({ projectId, data }: { projectId: string; data: ProjectFiles }) {
-  const actions = useFileActions(projectId);
+export function Documents({
+  projectId,
+  data,
+  readOnly,
+}: {
+  projectId: string;
+  data: ProjectFiles;
+  readOnly?: boolean;
+}) {
+  const actions = useFileActions(projectId, readOnly);
   const [layout, toggleLayout] = useLayout("documents", "list");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const docs = data.files.filter((f) => f.kind === "document");
@@ -356,14 +366,21 @@ export function Documents({ projectId, data }: { projectId: string; data: Projec
           ))}
         </ul>
       ) : null}
-      <DropArea
-        accept=".pdf,.docx,.doc,.xlsx,.csv,.tsv,.txt,.md,.json,.html,.eml,image/*"
-        onFiles={(picked) => actions.upload("document", picked)}
-        className="h-16 w-full"
-      >
-        {actions.busy ? <Spinner className="size-4" /> : <Upload className="size-4" />}
-        {t("project.drop")} <span className="underline">{t("project.documentAdd")}</span>
-      </DropArea>
+      {readOnly ? (
+        // A local install sends its wizards; the project's documents stay with it.
+        docs.length ? null : (
+          <p className="text-[14px] text-ink-3">{t("project.staysLocal")}</p>
+        )
+      ) : (
+        <DropArea
+          accept=".pdf,.docx,.doc,.xlsx,.csv,.tsv,.txt,.md,.json,.html,.eml,image/*"
+          onFiles={(picked) => actions.upload("document", picked)}
+          className="h-16 w-full"
+        >
+          {actions.busy ? <Spinner className="size-4" /> : <Upload className="size-4" />}
+          {t("project.drop")} <span className="underline">{t("project.documentAdd")}</span>
+        </DropArea>
+      )}
       {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
       {docs.length && !data.embeddings ? (
         <p className="mt-3 text-[13px] text-ink-3">{t("project.keywordsOnly")}</p>

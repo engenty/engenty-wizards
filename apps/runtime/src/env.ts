@@ -249,6 +249,8 @@ export const env = {
      * can set another number per tenant; the database holds any number either way.
      */
     projects: num("LIMIT_PROJECTS", 1),
+    /** Wizards a local install may keep on this runtime in its synced project. */
+    syncedWizards: num("LIMIT_SYNCED_WIZARDS", 50),
     /** End-user runs (no account) and their shared links are deleted after this many days. */
     resultTtlDays: num("RESULT_TTL_DAYS", 7),
     /** What a wizard keeps for a person (lists, files, accounts) goes when unused this long. */

@@ -1,0 +1,493 @@
+import { createHash } from "node:crypto";
+import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import { PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
+import { WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { z } from "zod";
+import { db, schema } from "../db/client.js";
+import { missingModels, unavoidableSteps } from "../engine/requirements.js";
+import { env } from "../env.js";
+import { codeOf, putLink } from "../tenants/control.js";
+import { currentTenant } from "../tenants/tenant.js";
+import { asSync, mayBuild } from "./access.js";
+import { emitDraftChanged } from "./draft-events.js";
+import { notFound, ServiceError } from "./errors.js";
+import { draftFiles, writeFile } from "./files.js";
+import { addProjectFile, projectFiles, removeProjectFile } from "./project-files.js";
+import {
+  brandColorSchema,
+  type ProjectRow,
+  projectFactSchema,
+  projectLimit,
+  removeProject,
+} from "./projects.js";
+import { deleteWizard, draftIssues, parseDraft, shareUrl } from "./wizards.js";
+
+/**
+ * A local install's project on this runtime (docs/manage-contract.md, "Spaces of a local
+ * install"). The install sends a wizard when it publishes it: the published version and its
+ * workspace, under the ids they have there. Here the project is shown and its wizards run; it
+ * is changed only by the next sync. The share link is this runtime's own.
+ */
+
+/** Ids as the local install makes them (nanoid); nothing else is taken as a key. */
+const syncedId = z.string().regex(/^[A-Za-z0-9_-]{8,40}$/);
+
+const spaceSchema = z.object({
+  name: z.string().min(1).max(80),
+  brand: z
+    .object({
+      name: z.string().max(120).optional(),
+      about: z.string().max(8000).optional(),
+      colors: z.array(brandColorSchema).max(PROJECT_LIMITS.colors).optional(),
+    })
+    .default({}),
+  facts: z.array(projectFactSchema).max(PROJECT_LIMITS.facts).default([]),
+  /** The logo end users see; null for none. */
+  logo: z
+    .object({
+      name: z.string().min(1).max(120),
+      mime: z.string().max(100),
+      description: z.string().max(600).default(""),
+      data: z.string(),
+    })
+    .nullable()
+    .default(null),
+});
+export type SpaceInput = z.infer<typeof spaceSchema>;
+
+export const syncWizardSchema = z.object({
+  space: spaceSchema,
+  /** The version the install published, as it counts them. */
+  version: z.number().int().min(1).max(1_000_000),
+  definition: z.unknown(),
+  files: z
+    .array(
+      z.object({
+        path: z.string().max(300),
+        mime: z.string().max(100).optional(),
+        data: z.string(),
+      }),
+    )
+    .max(WORKSPACE_LIMITS.files)
+    .default([]),
+  shareEnabled: z.boolean().default(true),
+  dailyRunLimit: z.number().int().min(1).max(10_000).optional(),
+});
+export type SyncWizardInput = z.infer<typeof syncWizardSchema>;
+
+export const syncSettingsSchema = z.object({
+  shareEnabled: z.boolean().optional(),
+  dailyRunLimit: z.number().int().min(1).max(10_000).optional(),
+});
+
+export const checkSchema = z.object({
+  definition: z.unknown(),
+  /** Paths of the wizard's workspace files. */
+  files: z.array(z.string().max(300)).max(WORKSPACE_LIMITS.files).default([]),
+});
+
+/**
+ * What keeps a synced wizard from running here as it does at home. `blocking`: no run can
+ * finish, so the version is kept but not published. The words are the studio's to choose.
+ */
+export interface ServerProblem {
+  code: "invalid" | "model" | "sandbox" | "mcp" | "connector";
+  blocking: boolean;
+  steps: { id: string; title: string }[];
+  /** The validator's sentence, the class and why it is missing, or the name of what is missing. */
+  detail: string;
+}
+
+export interface SyncResult {
+  wizardId: string;
+  /** The link of the copy here; it stays over later syncs. */
+  shareUrl: string;
+  /** The copy's ID for the mobile app, for the install to show beside the link. */
+  code: string;
+  shareEnabled: boolean;
+  /** The version runs start on here; null when none could be published yet. */
+  publishedVersion: number | null;
+  /** The sent version is the one that runs. */
+  runnable: boolean;
+  problems: ServerProblem[];
+}
+
+const stepsWith = (
+  def: WizardDefinition,
+  has: (step: WizardDefinition["steps"][number]) => boolean,
+) => def.steps.filter(has).map((s) => ({ id: s.id, title: s.title }));
+
+/**
+ * What of a wizard does not work on this runtime: what its validator says here (a connector
+ * the project lacks, a plugin's tool), model classes nothing is bound to, the sandbox where
+ * there is none, MCP servers the project does not know.
+ */
+export async function serverProblems(
+  def: WizardDefinition,
+  issues: { stepId?: string; message: string }[],
+  mcpServers: string[],
+): Promise<ServerProblem[]> {
+  const problems: ServerProblem[] = issues.map((issue) => ({
+    code: /connector/i.test(issue.message) ? "connector" : "invalid",
+    blocking: true,
+    steps: stepsWith(def, (s) => s.id === issue.stepId),
+    detail: issue.message,
+  }));
+  for (const missing of await missingModels(def)) {
+    problems.push({
+      code: "model",
+      blocking: missing.blocking,
+      steps: missing.steps,
+      detail: `${missing.cls}: ${missing.problem}`,
+    });
+  }
+  if (env.sandbox === "off") {
+    const steps = stepsWith(def, (s) => s.type === "agent" && s.tools.includes("sandbox"));
+    if (steps.length) {
+      problems.push({ code: "sandbox", blocking: false, steps, detail: "" });
+    }
+  }
+  const unknown = new Set<string>();
+  const steps = stepsWith(def, (s) => {
+    const lacking =
+      s.type === "agent" ? (s.mcp ?? []).filter((id) => !mcpServers.includes(id)) : [];
+    for (const id of lacking) {
+      unknown.add(id);
+    }
+    return lacking.length > 0;
+  });
+  if (steps.length) {
+    const unavoidable = unavoidableSteps(def);
+    problems.push({
+      code: "mcp",
+      blocking: steps.some((s) => unavoidable.has(s.id)),
+      steps,
+      detail: [...unknown].join(", "),
+    });
+  }
+  return problems;
+}
+
+/** What a wizard would lack here, asked before it is sent: no project is touched. */
+export async function checkOnServer(input: z.infer<typeof checkSchema>): Promise<ServerProblem[]> {
+  const { draft, issues } = parseDraft(input.definition, input.files);
+  // Connectors are a project's; a project that is not here yet has none.
+  const connectors = (draft.connections ?? [])
+    .filter((c) => c.connector)
+    .map((c) => ({
+      message: `Connection "${c.id}" uses connector "${c.connector}", which this project has not imported.`,
+    }));
+  return serverProblems(draft, [...issues, ...connectors], []);
+}
+
+async function syncedProject(spaceId: string): Promise<ProjectRow | null> {
+  const p = await db.query.project.findFirst({
+    where: and(eq(schema.project.id, spaceId), eq(schema.project.tenantId, currentTenant())),
+  });
+  return p ?? null;
+}
+
+/** Refuses a project beyond the tenant's number; a synced one counts like one made here. */
+async function requireRoom(spaceId: string): Promise<void> {
+  const mine = eq(schema.project.tenantId, currentTenant());
+  // What a tenant that builds nothing here once made here is not shown, so it takes no place.
+  const counted = (await mayBuild()) ? mine : and(mine, eq(schema.project.origin, "local"));
+  const others = await db
+    .select({ id: schema.project.id, name: schema.project.name, origin: schema.project.origin })
+    .from(schema.project)
+    .where(and(counted, sql`${schema.project.id} <> ${spaceId}`));
+  const limit = await projectLimit();
+  if (others.length >= limit) {
+    throw new ServiceError(
+      "refused",
+      limit === 1
+        ? "Dieses Konto hat hier schon ein Projekt."
+        : `Dieses Konto hat hier schon ${limit} Projekte.`,
+      {
+        reason: "space_limit",
+        limit,
+        spaces: others.filter((p) => p.origin === "local").map((p) => ({ id: p.id, name: p.name })),
+      },
+    );
+  }
+}
+
+/** A synced project holds so many wizards: each brings up to 25 MB of files to keep. */
+async function requireWizardRoom(spaceId: string): Promise<void> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(schema.wizard)
+    .where(eq(schema.wizard.projectId, spaceId));
+  if ((row?.n ?? 0) >= env.limits.syncedWizards) {
+    throw new ServiceError(
+      "refused",
+      `Hier haben höchstens ${env.limits.syncedWizards} veröffentlichte Wizards Platz.`,
+      { reason: "wizard_limit", limit: env.limits.syncedWizards },
+    );
+  }
+}
+
+const hashOf = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
+
+/** The project's logo follows the install's: kept when it is the same picture, else replaced. */
+async function syncLogo(projectId: string, logo: SpaceInput["logo"]): Promise<void> {
+  const here = await projectFiles(projectId, "logo");
+  const data = logo ? Buffer.from(logo.data, "base64") : null;
+  const mark = data ? `sync:${hashOf(data)}` : null;
+  if (mark && here.length === 1 && here[0].source === mark) {
+    return;
+  }
+  for (const old of here) {
+    await removeProjectFile(projectId, old.id);
+  }
+  if (logo && data && mark) {
+    await addProjectFile(projectId, {
+      kind: "logo",
+      name: logo.name,
+      mime: logo.mime,
+      data,
+      // With words of its own no model is asked to describe it.
+      description: logo.description || logo.name,
+      source: mark,
+    });
+  }
+}
+
+/** Makes or updates the synced project: its name, what it says about itself, its logo. */
+async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow> {
+  const existing = await syncedProject(spaceId);
+  if (existing && existing.origin !== "local") {
+    throw new ServiceError("refused", "Ein Projekt mit dieser Kennung wurde hier angelegt.", {
+      reason: "id_taken",
+    });
+  }
+  if (!existing) {
+    await requireRoom(spaceId);
+  }
+  const now = new Date();
+  const values = { name: space.name, brand: space.brand, facts: space.facts, syncedAt: now };
+  if (existing) {
+    await db
+      .update(schema.project)
+      .set({ ...values, updatedAt: now })
+      .where(eq(schema.project.id, spaceId));
+  } else {
+    await db.insert(schema.project).values({
+      id: spaceId,
+      tenantId: currentTenant(),
+      origin: "local",
+      mcpServers: [],
+      ...values,
+    });
+  }
+  await syncLogo(spaceId, space.logo);
+  const project = await syncedProject(spaceId);
+  if (!project) {
+    throw notFound();
+  }
+  return project;
+}
+
+/**
+ * Takes a wizard a local install published: the project it is in, the wizard under its id, its
+ * workspace, and the version — published here when a run of it can finish. Sending the same
+ * wizard again updates the copy; its link stays.
+ */
+export async function syncWizard(
+  userId: string,
+  rawSpaceId: string,
+  rawWizardId: string,
+  input: SyncWizardInput,
+): Promise<SyncResult> {
+  const spaceId = syncedId.parse(rawSpaceId);
+  const wizardId = syncedId.parse(rawWizardId);
+  const paths = input.files.map((f) => f.path);
+  // The shape is checked before anything is written; a wrong one leaves nothing behind.
+  const { draft } = parseDraft(input.definition, paths);
+  return asSync(async () => {
+    const project = await syncSpace(spaceId, input.space);
+    const existing = await db.query.wizard.findFirst({
+      where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())),
+    });
+    if (existing && existing.projectId !== spaceId) {
+      throw new ServiceError("refused", "Ein Wizard mit dieser Kennung gehört hier woanders hin.", {
+        reason: "id_taken",
+      });
+    }
+    const settings = {
+      title: draft.title,
+      draft,
+      shareEnabled: input.shareEnabled,
+      ...(input.dailyRunLimit ? { dailyRunLimit: input.dailyRunLimit } : {}),
+    };
+    if (!existing) {
+      await requireWizardRoom(spaceId);
+    }
+    let shareToken = existing?.shareToken;
+    if (existing) {
+      await db
+        .update(schema.wizard)
+        .set({ ...settings, revision: sql`${schema.wizard.revision} + 1`, updatedAt: new Date() })
+        .where(eq(schema.wizard.id, wizardId));
+    } else {
+      // The link is made here: a token an install brought could be one another tenant holds.
+      shareToken = nanoid(14);
+      await db.insert(schema.wizard).values({
+        id: wizardId,
+        projectId: spaceId,
+        tenantId: currentTenant(),
+        shareToken,
+        dailyRunLimit: env.limits.defaultDailyRuns,
+        ...settings,
+      });
+      await putLink(shareToken, "wizard", wizardId);
+    }
+    // The workspace becomes what was sent: files that are gone there go here.
+    const before = await draftFiles(wizardId);
+    const gone = before.filter((f) => !paths.includes(f.path)).map((f) => f.path);
+    if (gone.length) {
+      await db
+        .delete(schema.wizardFile)
+        .where(
+          and(eq(schema.wizardFile.wizardId, wizardId), inArray(schema.wizardFile.path, gone)),
+        );
+    }
+    for (const file of input.files) {
+      await writeFile(userId, wizardId, file.path, Buffer.from(file.data, "base64"), file.mime);
+    }
+    const row = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, wizardId) });
+    if (!row) {
+      throw notFound();
+    }
+    const problems = await serverProblems(
+      draft,
+      await draftIssues(row),
+      project.mcpServers.map((s) => s.id),
+    );
+    const runnable = !problems.some((p) => p.blocking);
+    let publishedVersion = row.publishedVersion;
+    if (runnable) {
+      const files = await draftFiles(wizardId);
+      await db
+        .insert(schema.wizardVersion)
+        .values({ id: nanoid(12), wizardId, version: input.version, definition: draft, files })
+        .onConflictDoUpdate({
+          target: [schema.wizardVersion.wizardId, schema.wizardVersion.version],
+          set: { definition: draft, files },
+        });
+      await db
+        .update(schema.wizard)
+        .set({ publishedVersion: input.version })
+        .where(eq(schema.wizard.id, wizardId));
+      publishedVersion = input.version;
+    }
+    emitDraftChanged({
+      wizardId,
+      kind: "draft",
+      revision: row.revision,
+      source: "mcp",
+      client: "sync",
+      note: null,
+      touched: [],
+    });
+    return {
+      wizardId,
+      shareUrl: shareUrl(shareToken ?? row.shareToken),
+      code: await codeOf(shareToken ?? row.shareToken),
+      shareEnabled: row.shareEnabled,
+      publishedVersion,
+      runnable,
+      problems,
+    };
+  });
+}
+
+async function syncedWizard(rawSpaceId: string, rawWizardId: string) {
+  const spaceId = syncedId.parse(rawSpaceId);
+  const wizardId = syncedId.parse(rawWizardId);
+  const project = await syncedProject(spaceId);
+  const w =
+    project?.origin === "local"
+      ? await db.query.wizard.findFirst({
+          where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.projectId, spaceId)),
+        })
+      : null;
+  if (!w) {
+    throw notFound();
+  }
+  return w;
+}
+
+/** The install changed how a synced wizard is shared: its link on or off, its runs a day. */
+export async function patchSyncedWizard(
+  spaceId: string,
+  wizardId: string,
+  patch: z.infer<typeof syncSettingsSchema>,
+) {
+  const w = await syncedWizard(spaceId, wizardId);
+  await db
+    .update(schema.wizard)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(schema.wizard.id, w.id));
+  return { ok: true };
+}
+
+/** The install deleted a wizard: its copy here goes, with its link and its runs. */
+export async function removeSyncedWizard(userId: string, spaceId: string, wizardId: string) {
+  const w = await syncedWizard(spaceId, wizardId);
+  await asSync(() => deleteWizard(userId, w.id));
+  return { ok: true };
+}
+
+/** The projects local installs synced, with their wizards: what an install compares itself to. */
+export async function listSyncedSpaces() {
+  const projects = await db.query.project.findMany({
+    where: and(eq(schema.project.tenantId, currentTenant()), eq(schema.project.origin, "local")),
+    orderBy: [schema.project.createdAt],
+  });
+  const wizards = projects.length
+    ? await db
+        .select({
+          id: schema.wizard.id,
+          projectId: schema.wizard.projectId,
+          title: schema.wizard.title,
+          publishedVersion: schema.wizard.publishedVersion,
+          shareToken: schema.wizard.shareToken,
+          shareEnabled: schema.wizard.shareEnabled,
+        })
+        .from(schema.wizard)
+        .where(
+          inArray(
+            schema.wizard.projectId,
+            projects.map((p) => p.id),
+          ),
+        )
+    : [];
+  return projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    syncedAt: p.syncedAt?.toISOString() ?? null,
+    wizards: wizards
+      .filter((w) => w.projectId === p.id)
+      .map((w) => ({
+        id: w.id,
+        title: w.title,
+        publishedVersion: w.publishedVersion,
+        shareUrl: shareUrl(w.shareToken),
+        shareEnabled: w.shareEnabled,
+      })),
+  }));
+}
+
+/** Takes a synced project away from this runtime: its wizards, their links and runs, its files. */
+export async function removeSyncedSpace(rawSpaceId: string) {
+  const spaceId = syncedId.parse(rawSpaceId);
+  const project = await syncedProject(spaceId);
+  if (project?.origin !== "local") {
+    throw notFound();
+  }
+  await asSync(() => removeProject(spaceId));
+  return { ok: true };
+}

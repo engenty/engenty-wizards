@@ -157,9 +157,12 @@ function TypeMenu({
 export function Facts({
   facts,
   save,
+  readOnly,
 }: {
   facts: ProjectFact[];
   save: (facts: ProjectFact[]) => Promise<unknown>;
+  /** The facts are there to read: no value is changed, none added or removed. */
+  readOnly?: boolean;
 }) {
   const next = useRef(0);
   const focus = useRef<string | null>(null);
@@ -199,8 +202,9 @@ export function Facts({
       title={t("project.facts")}
       hint={t("project.factsHint")}
       save={status}
+      locked={readOnly}
       action={
-        rows.length < PROJECT_LIMITS.facts ? (
+        rows.length < PROJECT_LIMITS.facts && !readOnly ? (
           <Button variant="secondary" size="sm" onClick={() => add({}, "label", true)}>
             <Plus className="size-4" /> {t("project.factAdd")}
           </Button>
@@ -264,18 +268,20 @@ export function Facts({
                 detected={detected}
                 onChange={(next) => set(row.id, { type: next })}
               />
-              <IconButton
-                label={t("project.remove")}
-                onClick={() => setRows((all) => all.filter((r) => r.id !== row.id))}
-                className="size-11 rounded-lg hover:text-rose"
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+              {readOnly ? null : (
+                <IconButton
+                  label={t("project.remove")}
+                  onClick={() => setRows((all) => all.filter((r) => r.id !== row.id))}
+                  className="size-11 rounded-lg hover:text-rose"
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              )}
             </div>
           );
         })}
       </div>
-      {rows.length < PROJECT_LIMITS.facts ? (
+      {rows.length < PROJECT_LIMITS.facts && !readOnly ? (
         <div className={`flex flex-wrap items-center gap-2 ${rows.length ? "mt-4" : ""}`}>
           <Button variant="secondary" size="sm" onClick={() => add({}, "label")}>
             <Plus className="size-4" /> {t("project.factAdd")}

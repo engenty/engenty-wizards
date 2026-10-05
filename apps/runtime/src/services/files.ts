@@ -10,7 +10,7 @@ import { db, schema } from "../db/client.js";
 import { getBlob, putBlob } from "../files/blobs.js";
 import { emitDraftChanged, filesChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
-import { ownedWizard } from "./wizards.js";
+import { ownedWizard, writableWizard } from "./wizards.js";
 
 /** The draft's workspace, sorted by path — the same shape publishing and runs snapshot. */
 export async function draftFiles(wizardId: string): Promise<WorkspaceFile[]> {
@@ -65,7 +65,7 @@ export async function writeFile(
   content: Uint8Array | string,
   mime?: string,
 ): Promise<WorkspaceFile> {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const path = requirePath(rawPath);
   const data = typeof content === "string" ? Buffer.from(content, "utf8") : Buffer.from(content);
   if (data.byteLength > WORKSPACE_LIMITS.fileBytes) {
@@ -99,7 +99,7 @@ export async function writeFile(
 }
 
 export async function deleteFile(userId: string, wizardId: string, rawPath: string) {
-  const w = await ownedWizard(userId, wizardId);
+  const w = await writableWizard(userId, wizardId);
   const path = requirePath(rawPath);
   const gone = await db
     .delete(schema.wizardFile)

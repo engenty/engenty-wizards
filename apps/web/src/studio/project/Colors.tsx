@@ -67,9 +67,12 @@ function AddColor({ onAdd, onClose }: { onAdd: (color: BrandColor) => void; onCl
 export function Colors({
   colors,
   save,
+  readOnly,
 }: {
   colors: BrandColor[];
   save: (colors: BrandColor[]) => Promise<unknown>;
+  /** The colours are there to see: no value is changed, none added, moved or removed. */
+  readOnly?: boolean;
 }) {
   const next = useRef(0);
   const [rows, setRows] = useState(() => colors.map((c) => ({ ...c, id: `c${next.current++}` })));
@@ -82,7 +85,12 @@ export function Colors({
   const set = (id: string, patch: Partial<BrandColor>) =>
     setRows((all) => all.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   return (
-    <Section title={t("project.colors")} hint={t("project.colorsHint")} save={status}>
+    <Section
+      title={t("project.colors")}
+      hint={t("project.colorsHint")}
+      save={status}
+      locked={readOnly}
+    >
       <div className="flex flex-col gap-2">
         {rows.map((row, i) => (
           <div key={row.id} className="flex items-center gap-2">
@@ -109,7 +117,7 @@ export function Colors({
                 <span className="mr-1 max-sm:hidden">
                   <Chip tone="ember">{t("project.colorAccent")}</Chip>
                 </span>
-              ) : (
+              ) : readOnly ? null : (
                 <IconButton
                   label={t("project.colorFirst")}
                   onClick={() => setRows((all) => [row, ...all.filter((r) => r.id !== row.id)])}
@@ -117,21 +125,23 @@ export function Colors({
                   <ArrowUp className="size-4" />
                 </IconButton>
               )}
-              <IconButton
-                label={t("project.remove")}
-                onClick={() => setRows((all) => all.filter((r) => r.id !== row.id))}
-                className="hover:text-rose"
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+              {readOnly ? null : (
+                <IconButton
+                  label={t("project.remove")}
+                  onClick={() => setRows((all) => all.filter((r) => r.id !== row.id))}
+                  className="hover:text-rose"
+                >
+                  <Trash2 className="size-4" />
+                </IconButton>
+              )}
             </div>
           </div>
         ))}
       </div>
-      {rows.length ? (
+      {rows.length && !readOnly ? (
         <p className="mt-1.5 text-[13px] text-ink-3">{t("project.colorUse")}</p>
       ) : null}
-      {rows.length < PROJECT_LIMITS.colors ? (
+      {rows.length < PROJECT_LIMITS.colors && !readOnly ? (
         <Button
           variant="secondary"
           size="sm"

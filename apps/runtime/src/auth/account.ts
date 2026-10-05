@@ -32,7 +32,13 @@ function redirectUri(): string {
   return `http://127.0.0.1:${env.port}/api/auth/callback`;
 }
 
-export async function startLink(): Promise<string> {
+/**
+ * The address that links an account. `signup`: the person has none yet — the account's sign-up
+ * page takes the invitation code (`code` fills it in) and goes on to the same sign-in.
+ */
+export async function startLink(
+  options: { signup?: boolean; code?: string } = {},
+): Promise<string> {
   const d = await discovery(env.local.accountUrl);
   const verifier = randomBytes(32).toString("base64url");
   const state: LinkState = { verifier, redirect: redirectUri(), exp: Date.now() + 15 * 60_000 };
@@ -47,7 +53,17 @@ export async function startLink(): Promise<string> {
     code_challenge_method: "S256",
     state: seal(state),
   }).toString();
-  return url.toString();
+  if (!options.signup) {
+    return url.toString();
+  }
+  const signUp = new URL("/sign-up", env.local.accountUrl);
+  const code = options.code?.trim();
+  if (code) {
+    signUp.searchParams.set("code", code);
+  }
+  // The sign-up page goes on only to a path of its own origin.
+  signUp.searchParams.set("next", url.pathname + url.search);
+  return signUp.toString();
 }
 
 let cached: { token: string; expiresAt: number } | null = null;
@@ -140,7 +156,14 @@ export async function unlink(): Promise<void> {
 /** Balance and tenants of the linked account, straight from the Manage-App. */
 export async function accountOverview(): Promise<{
   user: { id: string; name: string; email: string; image?: string | null };
-  tenant: { id: string; name: string; role: string; balanceCredits: number };
+  tenant: {
+    id: string;
+    name: string;
+    role: string;
+    balanceCredits: number;
+    /** What of the balance ends on a date, the nearest first. */
+    expiring?: { kind: string; credits: number; expiresAt: string }[];
+  };
 } | null> {
   const token = await accountToken();
   if (!token) {
