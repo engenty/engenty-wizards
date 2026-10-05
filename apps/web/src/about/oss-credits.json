@@ -152,6 +152,12 @@
           "homepage": "https://imapflow.com/"
         },
         {
+          "name": "jiti",
+          "version": "2.7.0",
+          "license": "MIT",
+          "homepage": "https://github.com/unjs/jiti#readme"
+        },
+        {
           "name": "jose",
           "version": "6.2.12",
           "license": "MIT",
