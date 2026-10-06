@@ -1,12 +1,13 @@
 name: CI
 
 # The checks of docs/development.md on every push to main, every pull request and every release
-# tag. A push to main deploys nothing. On a release tag `v<version>` (pnpm release) the cloud
-# runtime's images are built here beside the checks and pushed to GHCR; when both are green the
-# images become `latest` and the branches `deploy/runtime` and `deploy/docs` move to the tag's
-# commit, each when what it is built from changed. The server deploys what a branch points at
-# (Coolify resources `runtime` and `docs`, Auto Deploy): the runtime by pulling its images
-# (compose.cloud.yaml), the docs by building. No secret and no call to the server from here.
+# tag. A push to main deploys nothing. On a release tag `v<version>` (pnpm release) the images of
+# the cloud runtime and of the documentation are built here beside the checks and pushed to GHCR;
+# when both are green the images become `latest` and the branches `deploy/runtime` and
+# `deploy/docs` move to the tag's commit, each when what it is built from changed. The server
+# deploys what a branch points at (Coolify resources `runtime` and `docs`, Auto Deploy) by pulling
+# the images (compose.cloud.yaml, deploy/Dockerfile.docs): it builds nothing. No secret and no
+# call to the server from here.
 #   pnpm release                         # commit + tag vX.Y.Z, locally
 #   git push origin main --follow-tags   # the tag is what deploys
 # Run by hand on a tag (workflow_dispatch), it deploys that tag again.
@@ -64,9 +65,9 @@ jobs:
       - name: Docs
         run: pnpm build:docs
 
-  # The cloud runtime's two images, built on GitHub's runners: the server only pulls them. The
-  # layers come from the registry's cache, so a release rebuilds only what changed. Pushed under
-  # the tag; `latest` follows in `deploy`, once the checks are green too.
+  # The cloud runtime's two images and the documentation's, built on GitHub's runners: the server
+  # only pulls them. The layers come from the registry's cache, so a release rebuilds only what
+  # changed. Pushed under the tag; `latest` follows in `deploy`, once the checks are green too.
   images:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -82,6 +83,10 @@ jobs:
             file: apps/runtime/Dockerfile
           - image: browser
             file: deploy/Dockerfile.browser
+          # The address the site is published at, for canonical links and link previews.
+          - image: docs
+            file: apps/docs/Dockerfile
+            build-args: NEXT_PUBLIC_DOCS_SITE_URL=https://engenty.ai
     steps:
       - uses: actions/checkout@v7
 
@@ -99,6 +104,7 @@ jobs:
           context: .
           file: ${{ matrix.file }}
           push: true
+          build-args: ${{ matrix.build-args }}
           tags: ghcr.io/engenty/engenty-wizards-${{ matrix.image }}:${{ github.ref_name }}
           cache-from: type=registry,ref=ghcr.io/engenty/engenty-wizards-${{ matrix.image }}:buildcache
           cache-to: type=registry,ref=ghcr.io/engenty/engenty-wizards-${{ matrix.image }}:buildcache,mode=max
@@ -129,11 +135,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # What the server pulls (compose.cloud.yaml): the release's images, checked and built.
+      # What the server pulls (compose.cloud.yaml, deploy/Dockerfile.docs): the release's images,
+      # checked and built.
       - name: The release's images become latest
         run: |
           set -euo pipefail
-          for image in runtime browser; do
+          for image in runtime browser docs; do
             ref="ghcr.io/engenty/engenty-wizards-$image"
             docker buildx imagetools create --tag "$ref:latest" "$ref:$GITHUB_REF_NAME"
           done
@@ -162,11 +169,12 @@ jobs:
           }
           # The runtime: compose.cloud.yaml with the two images (apps/runtime/Dockerfile,
           # deploy/Dockerfile.browser) built above.
-          move deploy/runtime apps/runtime apps/web packages modules plugin deploy \
-            compose.cloud.yaml .dockerignore \
+          move deploy/runtime apps/runtime apps/web packages modules plugin \
+            deploy/Dockerfile.browser deploy/browser-entrypoint.sh compose.cloud.yaml .dockerignore \
             package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json \
             ':(exclude)apps/runtime/test'
-          # The documentation site (apps/docs/Dockerfile). The root package.json is left out: its
-          # version changes with every release, the site with its pages.
-          move deploy/docs apps/docs docs/content docs/assets \
-            pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json
+          # The documentation site: deploy/Dockerfile.docs with the image (apps/docs/Dockerfile)
+          # built above. The root package.json is left out: its version changes with every
+          # release, the site with its pages.
+          move deploy/docs apps/docs docs/content docs/assets deploy/Dockerfile.docs \
+            deploy/Dockerfile.docs.dockerignore pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json

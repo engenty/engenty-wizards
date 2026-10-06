@@ -1,0 +1,6 @@
+# What the server builds for engenty.ai/docs (Coolify resource `docs`): nothing of its own. The
+# site's image is built from apps/docs/Dockerfile on GitHub's runners for every release
+# (.github/workflows/ci.yml, job `images`); Coolify builds this file with --pull, so each deploy
+# fetches the newest green release. IMAGE_TAG on the resource pins a release (`v0.2.12`).
+ARG IMAGE_TAG=latest
+FROM ghcr.io/engenty/engenty-wizards-docs:${IMAGE_TAG}

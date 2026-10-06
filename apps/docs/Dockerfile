@@ -3,11 +3,22 @@
 #   docker build -f apps/docs/Dockerfile .
 # Dockerfile.dockerignore beside this file is this image's ignore file; the root .dockerignore is
 # the runtime image's and leaves the site out.
-FROM node:24-bookworm-slim AS build
+#
+# Built on GitHub's runners and pulled by the server (.github/workflows/ci.yml, job `images`;
+# deploy/Dockerfile.docs).
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 RUN corepack enable
+
+# `pnpm release` bumps the root package.json's version every release; a copy with the version
+# blanked out keeps the install below cached until a dependency really changes.
+FROM base AS manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/docs/package.json apps/docs/
+RUN sed -i 's/"version": *"[^"]*"/"version": "0.0.0"/' package.json
+
+FROM base AS build
+COPY --from=manifests /app ./
 RUN pnpm install --frozen-lockfile --filter "@engenty-wizards/docs..."
 COPY tsconfig.base.json ./
 COPY apps/docs apps/docs

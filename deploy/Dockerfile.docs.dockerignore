@@ -1,0 +1,2 @@
+# deploy/Dockerfile.docs copies nothing: the image comes from GHCR.
+*

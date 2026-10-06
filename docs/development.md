@@ -233,10 +233,13 @@ a tag again, run the workflow by hand on that tag. To go back to an older releas
 `IMAGE_TAG=v<version>` on the Coolify resource and redeploy; remove it to follow `latest` again.
 
 The documentation at `engenty.ai/docs` deploys the same way from the branch `deploy/docs`
-(Coolify resource `docs`, `apps/docs/Dockerfile`): a green release tag moves it when the site's
-app or its pages changed, so the published docs describe the released version. The proxy sends
-`/docs` to it with the path kept (no prefix stripping: the site itself lives below `/docs`). To
-publish a change to the pages without a release: `git push origin <commit>:deploy/docs`.
+(Coolify resource `docs`): its image (`ghcr.io/engenty/engenty-wizards-docs`, built from
+`apps/docs/Dockerfile`) is built beside the runtime's, and the server builds
+`deploy/Dockerfile.docs`, which only pulls it. A green release tag moves the branch when the
+site's app or its pages changed, so the published docs describe the released version. The proxy
+sends `/docs` to it with the path kept (no prefix stripping: the site itself lives below
+`/docs`). Pages change with a release; `IMAGE_TAG=v<version>` on the resource goes back to an
+older one.
 
 ## Local install
 
