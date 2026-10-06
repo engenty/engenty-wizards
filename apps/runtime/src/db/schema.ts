@@ -5,10 +5,12 @@ import type { RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   blob,
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -283,17 +285,26 @@ export const projectFile = sqliteTable(
     chars: integer("chars"),
     /** What the index holds of a document; `embeddings` includes the keywords. */
     indexed: text("indexed", { enum: ["embeddings", "keywords"] }),
+    /** A plugin's file (`server.spaceData.putFile`): the plugin, its key and what it calls it. */
+    origin: text("origin"),
+    originKey: text("origin_key"),
+    originLabel: text("origin_label"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("project_file_project").on(t.projectId, t.kind, t.position)],
+  (t) => [
+    index("project_file_project").on(t.projectId, t.kind, t.position),
+    uniqueIndex("project_file_origin").on(t.projectId, t.origin, t.originKey),
+  ],
 );
 
 /**
- * The document index: passages of a project's documents, and of the texts plugins put in
- * (`server.index`). Keywords live in the FTS5 table `project_chunk_fts`, which triggers keep
- * in step (see the migrations); `embedding` is the passage's vector as float32 bytes, compared
- * with libSQL's `vector_distance_cos`.
+ * The index of Wissen: one unit per section of a page, row of a table, file, summary of a
+ * Kategorie's value, passage of a document read before pages, and passage of a plugin's text
+ * (`server.index`). Each unit's text starts with where it stands and its Kategorien. Keywords
+ * live in two FTS5 tables, words (`project_chunk_fts`) and trigrams (`project_chunk_tri`), which
+ * triggers keep in step (see the migrations); `embedding` is the unit's vector as float32
+ * bytes, compared with libSQL's `vector_distance_cos`.
  */
 export const projectChunk = sqliteTable(
   "project_chunk",
@@ -304,6 +315,23 @@ export const projectChunk = sqliteTable(
       .references(() => project.id, { onDelete: "cascade" }),
     /** The document the passage is of; null for a plugin's text. */
     fileId: text("file_id").references(() => projectFile.id, { onDelete: "cascade" }),
+    /** What the unit is of: a page, a row (with its table), a table (FAQ format: a row), a value. */
+    pageId: text("page_id").references((): AnySQLiteColumn => spacePage.id, {
+      onDelete: "cascade",
+    }),
+    rowId: text("row_id").references((): AnySQLiteColumn => spaceTableRow.id, {
+      onDelete: "cascade",
+    }),
+    tableId: text("table_id").references((): AnySQLiteColumn => spaceTable.id, {
+      onDelete: "cascade",
+    }),
+    valueId: text("value_id").references((): AnySQLiteColumn => spaceCategoryValue.id, {
+      onDelete: "cascade",
+    }),
+    /** A section's headings, outermost first, joined by " › ". */
+    heading: text("heading"),
+    /** The page of the original a section starts on (`<!-- S. 3 -->`). */
+    sheet: integer("sheet"),
     /** A plugin's text: the plugin, its key for the text, its title and where the studio shows it. */
     plugin: text("plugin"),
     ref: text("ref"),
@@ -319,6 +347,10 @@ export const projectChunk = sqliteTable(
     index("project_chunk_project").on(t.projectId, t.model),
     index("project_chunk_file").on(t.fileId),
     index("project_chunk_ref").on(t.projectId, t.plugin, t.ref),
+    index("project_chunk_page").on(t.pageId),
+    index("project_chunk_row").on(t.rowId),
+    index("project_chunk_table").on(t.tableId),
+    index("project_chunk_value").on(t.valueId),
   ],
 );
 
@@ -345,13 +377,31 @@ export const spaceTable = sqliteTable(
     /** The column a row is matched on, as the list says. */
     keyColumn: text("key_column"),
     title: text("title").notNull(),
+    /** Its name in a path (`tables/<slug>`), unique among the space's tables. */
+    slug: text("slug"),
+    /** `faq`: a question and its answer per row. */
+    format: text("format", { enum: ["faq"] }),
     columns: text("columns", { mode: "json" }).$type<TableColumn[]>().notNull(),
+    /**
+     * Written by a plugin (`server.spaceData`): the plugin, its key for the item and what it
+     * calls where it came from ("Tagesberichte"). Null: made in the studio or uploaded.
+     */
+    origin: text("origin"),
+    originKey: text("origin_key"),
+    originLabel: text("origin_label"),
+    /** A person changed what its origin wrote: the origin no longer writes it. */
+    kept: integer("kept", { mode: "boolean" }).notNull().default(false),
+    /** Why a person should look at it ("hardly readable"); null when nothing is in doubt. */
+    review: text("review"),
+    /** The file it was read from, kept as the evidence. */
+    fileId: text("file_id").references(() => projectFile.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index("space_table_project").on(t.projectId, t.wizardId),
     uniqueIndex("space_table_list").on(t.wizardId, t.list),
+    uniqueIndex("space_table_origin").on(t.projectId, t.origin, t.originKey),
   ],
 );
 
@@ -375,7 +425,10 @@ export const spaceTableRow = sqliteTable(
   ],
 );
 
-/** A page: a title and markdown, what the editor shows and an agent reads and writes. */
+/**
+ * A page: a title and markdown, what the editor shows and an agent reads and writes. A page of
+ * the space's own may have sub-pages: a long document split along its own headings.
+ */
 export const spacePage = sqliteTable(
   "space_page",
   {
@@ -385,12 +438,129 @@ export const spacePage = sqliteTable(
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
     wizardId: text("wizard_id").references(() => wizard.id, { onDelete: "cascade" }),
+    parentId: text("parent_id").references((): AnySQLiteColumn => spacePage.id, {
+      onDelete: "cascade",
+    }),
+    /** Its place among its parent's sub-pages. */
+    position: integer("position").notNull().default(0),
     title: text("title").notNull(),
+    /** Its name in a path (`pages/<parent>/<slug>`), unique among its siblings. */
+    slug: text("slug"),
     markdown: text("markdown").notNull().default(""),
+    /**
+     * Written by a plugin (`server.spaceData`): the plugin, its key for the item and what it
+     * calls where it came from ("Tagesberichte"). Null: made in the studio or uploaded.
+     */
+    origin: text("origin"),
+    originKey: text("origin_key"),
+    originLabel: text("origin_label"),
+    /** A person changed what its origin wrote: the origin no longer writes it. */
+    kept: integer("kept", { mode: "boolean" }).notNull().default(false),
+    /** Why a person should look at it ("hardly readable"); null when nothing is in doubt. */
+    review: text("review"),
+    /** The file it was read from, kept as the evidence. */
+    fileId: text("file_id").references(() => projectFile.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("space_page_project").on(t.projectId, t.wizardId)],
+  (t) => [
+    index("space_page_project").on(t.projectId, t.wizardId),
+    index("space_page_parent").on(t.parentId, t.position),
+    uniqueIndex("space_page_origin").on(t.projectId, t.origin, t.originKey),
+  ],
+);
+
+// --- Kategorien -----------------------------------------------------------------
+// Typed properties that run across Wissen: set on pages, rows, tables and files, any number of
+// each, so a step filters before it searches.
+
+/** A Kategorie of the space: a name, a type and, for a choice, the values it has met. */
+export const spaceCategory = sqliteTable(
+  "space_category",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type", { enum: ["choice", "date", "number", "text", "boolean"] }).notNull(),
+    /** A number's unit: `h`, `€`, `kg`. */
+    unit: text("unit"),
+    /** A choice: several values per item. */
+    multiple: integer("multiple", { mode: "boolean" }).notNull().default(false),
+    /** A choice whose values are ranked (niedrig, mittel, hoch): their position is the rank. */
+    ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+    /** Where its values come from, said in a few words ("Kopfzeile", "Spalte WLL"). */
+    hint: text("hint"),
+    /** The plugin that brought it; null: made in the studio. */
+    origin: text("origin"),
+    /** Proposed, not yet taken: shown to be confirmed, never filled. */
+    proposed: integer("proposed", { mode: "boolean" }).notNull().default(false),
+    /** A column of a table whose cells are its values for the table's rows. */
+    tableId: text("table_id").references(() => spaceTable.id, { onDelete: "set null" }),
+    columnId: text("column_id"),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("space_category_name").on(t.projectId, t.name)],
+);
+
+/** A value of a choice: grows as items arrive; its summary is the Übersicht of its items. */
+export const spaceCategoryValue = sqliteTable(
+  "space_category_value",
+  {
+    id: text("id").primaryKey(),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => spaceCategory.id, { onDelete: "cascade" }),
+    value: text("value").notNull(),
+    position: integer("position").notNull().default(0),
+    /** The Übersicht: Markdown a model wrote of the value's items, when it last did. */
+    summary: text("summary"),
+    summaryAt: integer("summary_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("space_category_value_value").on(t.categoryId, t.value)],
+);
+
+/**
+ * A Kategorie set on an item: exactly one of page, row, table and file. A choice points to its
+ * value; the other types keep theirs typed: a date as milliseconds, a number, a short text, yes
+ * or no. A choice with several values has a row per value.
+ */
+export const spaceItemCategory = sqliteTable(
+  "space_item_category",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => spaceCategory.id, { onDelete: "cascade" }),
+    pageId: text("page_id").references(() => spacePage.id, { onDelete: "cascade" }),
+    rowId: text("row_id").references(() => spaceTableRow.id, { onDelete: "cascade" }),
+    tableId: text("table_id").references(() => spaceTable.id, { onDelete: "cascade" }),
+    fileId: text("file_id").references(() => projectFile.id, { onDelete: "cascade" }),
+    valueId: text("value_id").references(() => spaceCategoryValue.id, { onDelete: "cascade" }),
+    text: text("text"),
+    num: real("num"),
+    at: integer("at"),
+    bool: integer("bool", { mode: "boolean" }),
+    /** Who set it: a person, the item's origin (a source's structure), or a model reading it. */
+    by: text("by", { enum: ["person", "origin", "model"] })
+      .notNull()
+      .default("person"),
+  },
+  (t) => [
+    index("space_item_category_category").on(t.categoryId, t.valueId),
+    index("space_item_category_page").on(t.pageId),
+    index("space_item_category_row").on(t.rowId),
+    index("space_item_category_table").on(t.tableId),
+    index("space_item_category_file").on(t.fileId),
+  ],
 );
 
 // --- The wizard's store ------------------------------------------------------

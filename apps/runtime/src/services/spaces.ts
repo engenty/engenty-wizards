@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { tableColumnsSchema } from "@engenty-wizards/shared/engenty/data-tables";
+import { CATEGORY_TYPES } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
 import { SPACE_DATA_LIMITS } from "@engenty-wizards/shared/space-data";
 import { WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
@@ -18,6 +19,7 @@ import { emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { keepFiles, replaceFiles } from "./files.js";
 import { addProjectFile, projectFiles, removeProjectFile } from "./project-files.js";
+import { reindexSpace } from "./project-index.js";
 import {
   brandColorSchema,
   type ProjectRow,
@@ -513,12 +515,16 @@ export async function removeSyncedSpace(rawSpaceId: string) {
 // What the admin made under Space → Daten on the install, not what a wizard keeps: those stay
 // where their runs write them. Sent as a whole, it replaces what came before.
 
+// Since Wissen: sub-pages, where an item came from, Kategorien and what has them. An install of
+// before sends none of it.
 export const syncDataSchema = z.object({
   tables: z
     .array(
       z.object({
         id: syncedId,
         title: z.string().min(1).max(120),
+        format: z.enum(["faq"]).nullish(),
+        originLabel: z.string().max(120).nullish(),
         columns: tableColumnsSchema,
         rows: z
           .array(z.object({ id: syncedId, cells: z.record(z.string(), z.unknown()) }))
@@ -532,9 +538,55 @@ export const syncDataSchema = z.object({
         id: syncedId,
         title: z.string().min(1).max(200),
         markdown: z.string().max(SPACE_DATA_LIMITS.pageChars),
+        parentId: syncedId.nullish(),
+        position: z.number().int().min(0).optional(),
+        originLabel: z.string().max(120).nullish(),
       }),
     )
     .max(SPACE_DATA_LIMITS.pages),
+  categories: z
+    .array(
+      z.object({
+        id: syncedId,
+        name: z.string().min(1).max(80),
+        type: z.enum(CATEGORY_TYPES),
+        unit: z.string().max(20).nullish(),
+        multiple: z.boolean(),
+        ordered: z.boolean(),
+        hint: z.string().max(120).nullish(),
+        tableId: syncedId.nullish(),
+        columnId: z.string().max(64).nullish(),
+        position: z.number().int().min(0),
+        values: z
+          .array(
+            z.object({
+              id: syncedId,
+              value: z.string().min(1).max(200),
+              position: z.number().int().min(0),
+              summary: z.string().max(20_000).nullish(),
+            }),
+          )
+          .max(2000),
+      }),
+    )
+    .max(60)
+    .optional(),
+  /** `p:<page>`, `t:<table>`, `r:<row>`: files stay with the install. */
+  assignments: z
+    .array(
+      z.object({
+        categoryId: syncedId,
+        item: z.string().regex(/^[ptr]:[A-Za-z0-9_-]{8,40}$/),
+        valueId: syncedId.nullish(),
+        text: z.string().max(300).nullish(),
+        num: z.number().nullish(),
+        at: z.number().int().nullish(),
+        bool: z.boolean().nullish(),
+        by: z.enum(["person", "origin", "model"]),
+      }),
+    )
+    .max(200_000)
+    .optional(),
 });
 export type SyncDataInput = z.infer<typeof syncDataSchema>;
 
@@ -612,12 +664,143 @@ export async function syncSpaceData(rawSpaceId: string, input: SyncDataInput) {
       }
     }
     for (const page of input.pages) {
-      const values = { title: page.title, markdown: page.markdown, updatedAt: now };
+      const values = {
+        title: page.title,
+        markdown: page.markdown,
+        position: page.position ?? 0,
+        originLabel: page.originLabel ?? null,
+        // Its place comes after every page is there.
+        parentId: null,
+        slug: null,
+        updatedAt: now,
+      };
       await db
         .insert(schema.spacePage)
         .values({ id: page.id, tenantId: currentTenant(), projectId: spaceId, ...values })
         .onConflictDoUpdate({ target: schema.spacePage.id, set: values });
     }
+    const pagesThere = new Set(pageIds);
+    for (const page of input.pages) {
+      if (page.parentId && pagesThere.has(page.parentId) && page.parentId !== page.id) {
+        await db
+          .update(schema.spacePage)
+          .set({ parentId: page.parentId })
+          .where(eq(schema.spacePage.id, page.id));
+      }
+    }
+    for (const table of input.tables) {
+      await db
+        .update(schema.spaceTable)
+        .set({ format: table.format ?? null, originLabel: table.originLabel ?? null, slug: null })
+        .where(eq(schema.spaceTable.id, table.id));
+    }
+    if (input.categories) {
+      await syncCategories(spaceId, input.categories, input.assignments ?? []);
+    }
   });
+  await reindexSpace(spaceId);
   return { tables: input.tables.length, pages: input.pages.length };
+}
+
+/** The Kategorien a local install sent, their values, and what has them: they replace these here. */
+async function syncCategories(
+  spaceId: string,
+  categories: NonNullable<SyncDataInput["categories"]>,
+  assignments: NonNullable<SyncDataInput["assignments"]>,
+) {
+  const ids = categories.map((c) => c.id);
+  const taken = ids.length
+    ? await db.query.spaceCategory.findMany({
+        where: inArray(schema.spaceCategory.id, ids),
+        columns: { id: true, projectId: true },
+      })
+    : [];
+  if (taken.some((c) => c.projectId !== spaceId)) {
+    throw new ServiceError("refused", "Eine Kennung ist hier schon vergeben.", {
+      reason: "id_taken",
+    });
+  }
+  await db
+    .delete(schema.spaceCategory)
+    .where(
+      and(
+        eq(schema.spaceCategory.projectId, spaceId),
+        ids.length ? notInArray(schema.spaceCategory.id, ids) : undefined,
+      ),
+    );
+  await db.delete(schema.spaceItemCategory).where(eq(schema.spaceItemCategory.projectId, spaceId));
+  const tables = new Set(
+    (
+      await db.query.spaceTable.findMany({
+        where: eq(schema.spaceTable.projectId, spaceId),
+        columns: { id: true },
+      })
+    ).map((t) => t.id),
+  );
+  const values = new Set<string>();
+  for (const c of categories) {
+    const row = {
+      name: c.name,
+      type: c.type,
+      unit: c.unit ?? null,
+      multiple: c.multiple,
+      ordered: c.ordered,
+      hint: c.hint ?? null,
+      proposed: false,
+      tableId: c.tableId && tables.has(c.tableId) ? c.tableId : null,
+      columnId: c.tableId && tables.has(c.tableId) ? (c.columnId ?? null) : null,
+      position: c.position,
+      updatedAt: new Date(),
+    };
+    await db
+      .insert(schema.spaceCategory)
+      .values({ id: c.id, tenantId: currentTenant(), projectId: spaceId, ...row })
+      .onConflictDoUpdate({ target: schema.spaceCategory.id, set: row });
+    const valueIds = c.values.map((v) => v.id);
+    await db
+      .delete(schema.spaceCategoryValue)
+      .where(
+        and(
+          eq(schema.spaceCategoryValue.categoryId, c.id),
+          valueIds.length ? notInArray(schema.spaceCategoryValue.id, valueIds) : undefined,
+        ),
+      );
+    for (const v of c.values) {
+      const set = {
+        value: v.value,
+        position: v.position,
+        summary: v.summary ?? null,
+        summaryAt: v.summary ? new Date() : null,
+      };
+      await db
+        .insert(schema.spaceCategoryValue)
+        .values({ id: v.id, categoryId: c.id, ...set })
+        .onConflictDoUpdate({ target: schema.spaceCategoryValue.id, set });
+      values.add(v.id);
+    }
+  }
+  const known = new Set(ids);
+  const rows = assignments.filter(
+    (a) => known.has(a.categoryId) && (!a.valueId || values.has(a.valueId)),
+  );
+  for (let i = 0; i < rows.length; i += 200) {
+    await db.insert(schema.spaceItemCategory).values(
+      rows.slice(i, i + 200).map((a) => {
+        const id = a.item.slice(2);
+        return {
+          projectId: spaceId,
+          categoryId: a.categoryId,
+          pageId: a.item[0] === "p" ? id : null,
+          tableId: a.item[0] === "t" ? id : null,
+          rowId: a.item[0] === "r" ? id : null,
+          valueId: a.valueId ?? null,
+          text: a.text ?? null,
+          num: a.num ?? null,
+          at: a.at ?? null,
+          bool: a.bool ?? null,
+          by: a.by,
+        };
+      }),
+    );
+  }
 }

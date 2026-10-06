@@ -27,7 +27,7 @@ function kindOf(file: File): ProjectFileKind {
  * The chat with the project assistant. The thread lives on this page only; what the assistant
  * finds is written into the project, and `onChanged` shows it in the sections below.
  */
-function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
+function useProjectAssistant(projectId: string, part: AssistantPart, onChanged: () => void): Chat {
   const qc = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<Chat["phase"]>("idle");
@@ -42,6 +42,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["projects"] }),
         qc.invalidateQueries({ queryKey: ["project-files", projectId] }),
+        qc.invalidateQueries({ queryKey: ["knowledge", projectId] }),
       ]);
       onChanged();
       refreshing.current = null;
@@ -84,7 +85,7 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
     try {
       await postStream(
         `/api/studio/projects/${projectId}/assist`,
-        { message: text, history },
+        { message: text, history, part },
         (event, data) => {
           if (event === "text") {
             const delta = JSON.parse(data) as string;
@@ -165,15 +166,18 @@ function PluginCard({ card, send }: { card: ChatCard; send: Chat["send"] }) {
   );
 }
 
+/** The part of the space page the assistant stands on: what it says it does there. */
+export type AssistantPart = "info" | "knowledge";
+
 /** What the assistant's card says before the first message; the engenty stands at its right. */
-function Intro() {
+function Intro({ part }: { part: AssistantPart }) {
   return (
     <div className="sm:pr-36">
       <h2 className="font-display font-semibold text-[1.25rem] leading-tight tracking-tight">
-        {t("project.assistantTitle")}
+        {part === "knowledge" ? t("project.assistantTitleKnowledge") : t("project.assistantTitle")}
       </h2>
       <p className="mt-1.5 max-w-2xl text-[0.9375rem] text-ink-2 leading-relaxed">
-        {t("project.assistantHello")}
+        {part === "knowledge" ? t("project.assistantHelloKnowledge") : t("project.assistantHello")}
       </p>
     </div>
   );
@@ -187,8 +191,19 @@ const DOCK_WIDTH = 720;
  * The assistant's card stands at the top of the page. Scrolled away, the same card docks at the
  * lower edge of the window in a compact form, so it stays at hand next to every section.
  */
-export function Assistant({ projectId, onChanged }: { projectId: string; onChanged: () => void }) {
-  const chat = useProjectAssistant(projectId, onChanged);
+export function Assistant({
+  projectId,
+  part,
+  docked = false,
+  onChanged,
+}: {
+  projectId: string;
+  part: AssistantPart;
+  /** Docked at the lower edge from the start: a page of its own stands where the card would. */
+  docked?: boolean;
+  onChanged: () => void;
+}) {
+  const chat = useProjectAssistant(projectId, part, onChanged);
   const slot = useRef<HTMLDivElement>(null);
   const [dock, setDock] = useState<{ left: number; width: number; height: number } | null>(null);
   useEffect(() => {
@@ -198,7 +213,7 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
         return;
       }
       setDock((prev) => {
-        if (rect.bottom >= PAST) {
+        if (!docked && rect.bottom >= PAST) {
           return null;
         }
         const width = Math.min(rect.width, DOCK_WIDTH);
@@ -216,12 +231,19 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
       window.removeEventListener("scroll", place);
       window.removeEventListener("resize", place);
     };
-  }, []);
+  }, [docked]);
   return (
-    <div ref={slot} style={dock ? { minHeight: dock.height } : undefined}>
-      <div className="mb-2 flex items-center gap-1.5 px-1 font-medium text-[0.75rem] text-ember-strong uppercase tracking-[0.07em]">
-        <Sparkles className="size-3.5" /> {t("project.assistant")}
-      </div>
+    <div
+      ref={slot}
+      style={dock && !docked ? { minHeight: dock.height } : undefined}
+      // Docked from the start it takes no room: the page's own gap after it goes too.
+      className={docked ? "-mb-9 h-0" : undefined}
+    >
+      {docked ? null : (
+        <div className="mb-2 flex items-center gap-1.5 px-1 font-medium text-[0.75rem] text-ember-strong uppercase tracking-[0.07em]">
+          <Sparkles className="size-3.5" /> {t("project.assistant")}
+        </div>
+      )}
       <div className="relative">
         {/* Before the first message the engenty stands on the card's upper edge. */}
         {!dock && chat.messages.length === 0 ? (
@@ -242,8 +264,12 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
             chat={chat}
             avatar="round"
             compact={Boolean(dock)}
-            intro={<Intro />}
-            placeholder={t("project.assistantComposer")}
+            intro={<Intro part={part} />}
+            placeholder={
+              part === "knowledge"
+                ? t("project.assistantComposerKnowledge")
+                : t("project.assistantComposer")
+            }
             changedLabel={t("project.assistantChanged")}
             card={(card) => <PluginCard card={card} send={chat.send} />}
           />

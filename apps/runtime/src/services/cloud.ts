@@ -183,14 +183,84 @@ async function spaceDataOf(projectId: string): Promise<SyncDataInput> {
     where: own(schema.spacePage),
     orderBy: [asc(schema.spacePage.id)],
   });
+  const categories = await db.query.spaceCategory.findMany({
+    where: and(
+      eq(schema.spaceCategory.projectId, projectId),
+      eq(schema.spaceCategory.proposed, false),
+    ),
+    orderBy: [asc(schema.spaceCategory.position), asc(schema.spaceCategory.id)],
+  });
+  const values = categories.length
+    ? await db.query.spaceCategoryValue.findMany({
+        where: inArray(
+          schema.spaceCategoryValue.categoryId,
+          categories.map((c) => c.id),
+        ),
+        orderBy: [asc(schema.spaceCategoryValue.position), asc(schema.spaceCategoryValue.id)],
+      })
+    : [];
+  const assignments = categories.length
+    ? await db.query.spaceItemCategory.findMany({
+        where: and(
+          eq(schema.spaceItemCategory.projectId, projectId),
+          isNull(schema.spaceItemCategory.fileId),
+        ),
+        orderBy: [asc(schema.spaceItemCategory.id)],
+      })
+    : [];
+  const tableIds = new Set(tables.map((t) => t.id));
+  const rowIds = new Set(rows.map((r) => r.id));
+  const pageIds = new Set(pages.map((p) => p.id));
   return {
     tables: tables.map((t) => ({
       id: t.id,
       title: t.title,
+      format: t.format,
+      originLabel: t.originLabel,
       columns: t.columns,
       rows: rows.filter((r) => r.tableId === t.id).map((r) => ({ id: r.id, cells: r.cells })),
     })),
-    pages: pages.map((p) => ({ id: p.id, title: p.title, markdown: p.markdown })),
+    pages: pages.map((p) => ({
+      id: p.id,
+      title: p.title,
+      markdown: p.markdown,
+      parentId: p.parentId,
+      position: p.position,
+      originLabel: p.originLabel,
+    })),
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      unit: c.unit,
+      multiple: c.multiple,
+      ordered: c.ordered,
+      hint: c.hint,
+      tableId: c.tableId && tableIds.has(c.tableId) ? c.tableId : null,
+      columnId: c.tableId && tableIds.has(c.tableId) ? c.columnId : null,
+      position: c.position,
+      values: values
+        .filter((v) => v.categoryId === c.id)
+        .map((v) => ({ id: v.id, value: v.value, position: v.position, summary: v.summary })),
+    })),
+    // Only what goes along: a page, a table or a row of it.
+    assignments: assignments
+      .filter(
+        (a) =>
+          (a.pageId && pageIds.has(a.pageId)) ||
+          (a.tableId && tableIds.has(a.tableId)) ||
+          (a.rowId && rowIds.has(a.rowId)),
+      )
+      .map((a) => ({
+        categoryId: a.categoryId,
+        item: a.pageId ? `p:${a.pageId}` : a.tableId ? `t:${a.tableId}` : `r:${a.rowId}`,
+        valueId: a.valueId,
+        text: a.text,
+        num: a.num,
+        at: a.at,
+        bool: a.bool,
+        by: a.by,
+      })),
   };
 }
 

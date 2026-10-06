@@ -1,12 +1,60 @@
 ---
 title: The space
-description: A block and tools for every AI step of a space, texts in its search index, tools and cards of its assistant.
+description: Wissen a plugin writes, a block and tools for every AI step of a space, texts in its search index, tools and cards of its assistant.
 ---
 
-A space holds what all its wizards share: a title, logos, colours, documents and facts. A plugin
-adds to what the space's AI steps know, to what its search finds, and to what its assistant can
-do. The runtime's own tables call a space a project: `wizard.projectId` in a
+A space holds what all its wizards share: a title, logos, colours, facts, and Wissen — pages,
+tables and files with their Kategorien. A plugin writes Wissen, adds to what the space's AI steps
+know, to what its search finds, and to what its assistant can do. The runtime's own tables call a space a project: `wizard.projectId` in a
 [run event](./events.md) is a space's id.
+
+## Wissen a plugin writes
+
+`server.spaceData` writes pages, tables and files into a space's Wissen under keys of the
+plugin's own, with their Kategorien. Every write is indexed: `project_search` finds it a moment
+later, filtered by its Kategorien and checked like everything else in Wissen.
+
+```ts
+// The source's Kategorien, once. `proposed: true` shows them to the person to take first.
+await server.spaceData.putCategories({
+  space,
+  categories: [
+    { name: "Baustelle", type: "choice", hint: "Kopfzeile" },
+    { name: "Berichtsdatum", type: "date" },
+    { name: "Arbeitsstunden", type: "number", unit: "h" },
+  ],
+});
+
+// Then an item per entry. The same key again rewrites it, never doubles it.
+await server.spaceData.putPage({
+  space,
+  key: `${source.id}:2026-03-14`,
+  label: "Tagesberichte",
+  title: "Tagesbericht 14.03.2026",
+  markdown,
+  categories: { Baustelle: "Graz Süd", Berichtsdatum: "2026-03-14", Arbeitsstunden: 38 },
+  fill: true, // a model fills the Kategorien the entry did not bring
+});
+
+// A file is read as an upload is: a page, sub-pages, a table per sheet, or a file.
+const doc = await server.spaceData.putDocument({ space, key, label, name, mime, data, fill: true });
+```
+
+| `server.spaceData.` | Does |
+|---|---|
+| `putCategories({ space, categories, proposed? })` | Adds Kategorien, or values to known ones. Types: `choice`, `date`, `number` (with `unit`), `text`, `boolean`. `column: { table, column }` makes a column of a table the plugin wrote one |
+| `putPage(input)` | A page: `title`, `markdown`, `parent` (the key of a page to stand under), `original` (the file it was read from), `categories`, `fill`, `review` (why a person should look) |
+| `putTable(input)` | A table: typed `columns`, `rows` (cells by column id, they replace the rows the key had), `format: "faq"` |
+| `putFile(input)` | A file that is no page: found by its name, `description` and Kategorien; `text` is what a step reads of it |
+| `putDocument(input)` | A file read as an upload is. Gives what it became: `items` (pages, tables), `review` when it read badly or not at all |
+| `list(space)` | Everything the plugin wrote, by key, with its path and `state` |
+| `remove(space, key?)` | Takes out one key, or everything of the plugin in the space |
+| `summarize(space, category?, value?)` | Writes the Übersicht of values with three items or more; a model call each |
+
+- `label` is what the person knows the source as; Wissen shows it beside the item.
+- A person who changes an item keeps it: the plugin's next write answers `state: "kept"` and
+  changes nothing, and `remove` leaves it.
+- What a step reads of an item is its path: `pages/…`, `tables/…`, `files/…`.
 
 ## A block for every AI step
 
@@ -40,8 +88,8 @@ server.registerSpaceContext({
 
 ## The search index
 
-Every agent step can search the space with `project_search`. It finds passages of the space's
-documents, and the texts plugins put in:
+Every agent step can search the space with `project_search`. It finds Wissen — written by people
+and by `server.spaceData` — and the texts plugins put in themselves, outside Wissen:
 
 ```ts
 await server.index.put({
@@ -57,10 +105,13 @@ await server.index.remove(space.id); // every text of the plugin in the space
 ```
 
 - Putting a key again replaces what it held.
-- A text is cut into passages like a document. Its title is searched with it, and a hit is called
-  by it. The test search under Dokumente shows hits as a step gets them.
-- The index searches by keywords; with an embedding model set up, also by meaning.
-- A step gets `project_search` as soon as the space has a document or a plugin's text.
+- A text is cut into passages. Its title is searched with it, and a hit is called by it. The test
+  search under Wissen shows hits as a step gets them.
+- The index searches by words and by trigrams (codes, parts of compounds); with an embedding model
+  set up, also by meaning. A classifier then judges each candidate.
+- Such a text has no Kategorien: a search with a filter leaves it out. Write Wissen with
+  `server.spaceData` when it should be filtered.
+- A step gets `project_search` as soon as the space has Wissen or a plugin's text.
 - A tenant without the plugin does not find its texts. They go with the space when it is
   deleted.
 

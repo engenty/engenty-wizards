@@ -18,6 +18,7 @@ import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
 import { ModelUnavailableError, textModel } from "../models.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
+import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
@@ -135,6 +136,7 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         put: (entry) => putIndexEntry(source.id, entry),
         remove: (space, key) => removeIndexEntries(source.id, space, key),
       },
+      spaceData: originData(source.id),
       web: {
         fetch: (url, init) => safeFetch(url, init),
         read: (url, options) => readPage(url, options?.signal),

@@ -191,6 +191,163 @@ export interface PluginIndex {
   remove(space: string, key?: string): Promise<void>;
 }
 
+/** A Kategorie of a space: a typed property set on pages, tables, rows and files of Wissen. */
+export interface PluginCategory {
+  name: string;
+  type: "choice" | "date" | "number" | "text" | "boolean";
+  /** A number's unit: `h`, `€`, `kg`. */
+  unit?: string;
+  /** A choice: several values per item. */
+  multiple?: boolean;
+  /** A choice whose values are ranked, in the order of `values`. */
+  ordered?: boolean;
+  /** Where its values come from, in a few words: "Kopfzeile", "Filter der Website". */
+  hint?: string;
+  /** A choice's values, known beforehand: a site's filter. Others are added as items bring them. */
+  values?: string[];
+  /** A column of a table the plugin wrote (by the table's key) whose cells are its values. */
+  column?: { table: string; column: string };
+}
+
+/**
+ * Kategorien of an item, by their names: a choice's value (or a list of them), a day as
+ * `YYYY-MM-DD`, a number, a short text, true or false. Null takes one off.
+ */
+export type PluginCategoryValues = Record<
+  string,
+  string | number | boolean | (string | number)[] | null
+>;
+
+/** The original an item was read from, kept as the evidence beside it. */
+export interface PluginOriginal {
+  name: string;
+  mime: string;
+  data: Uint8Array;
+}
+
+/** `written`: the plugin's version stands. `kept`: a person changed it, the plugin no longer writes it. */
+export type PluginItemState = "written" | "kept";
+
+export interface PluginPageInput {
+  space: string;
+  /** The plugin's own name for the page: the same key again rewrites it, never doubles it. */
+  key: string;
+  /** What the person knows its source as: "Tagesberichte". */
+  label?: string;
+  title: string;
+  markdown: string;
+  /** The key of a page the plugin wrote before, to stand under it as a sub-page. */
+  parent?: string;
+  position?: number;
+  original?: PluginOriginal;
+  categories?: PluginCategoryValues;
+  /** A model fills the space's Kategorien the page did not get from `categories`. */
+  fill?: boolean;
+  /** Why a person should look at it ("hardly readable"); shown in Wissen. */
+  review?: string | null;
+}
+
+export interface PluginTableInput {
+  space: string;
+  key: string;
+  label?: string;
+  title: string;
+  /** Typed columns, as a table of the space has them (`text`, `number`, `date`, `select` …). */
+  columns: unknown[];
+  /** Cells by column id. They replace the rows the key had. */
+  rows: Record<string, unknown>[];
+  /** `faq`: a question and its answer per row. */
+  format?: "faq";
+  original?: PluginOriginal;
+  categories?: PluginCategoryValues;
+  review?: string | null;
+}
+
+export interface PluginFileInput {
+  space: string;
+  key: string;
+  label?: string;
+  name: string;
+  mime: string;
+  data: Uint8Array;
+  /** What it is, in a sentence: a file that is no page is found by its name and this. */
+  description?: string;
+  /** What a step reads of it, when there is text. */
+  text?: string;
+  categories?: PluginCategoryValues;
+}
+
+export interface PluginDocumentInput {
+  space: string;
+  key: string;
+  label?: string;
+  name: string;
+  mime: string;
+  data: Uint8Array;
+  /** Set on what it becomes: its first page, its first table, or the file. */
+  categories?: PluginCategoryValues;
+  /** A model fills the space's Kategorien it did not get from `categories`. */
+  fill?: boolean;
+}
+
+/** What a document became: pages and tables (the first is the one it is found as), or a file. */
+export interface PluginDocumentResult {
+  /** The file, kept as the original. */
+  id: string;
+  path: string;
+  state: PluginItemState;
+  items: { kind: "page" | "table"; id: string; path: string; title: string }[];
+  /** Why a person should look at it: hardly readable, or not readable at all. */
+  review: string | null;
+}
+
+/** What a plugin wrote into a space. */
+export interface PluginSpaceItem {
+  key: string;
+  kind: "page" | "table" | "file";
+  id: string;
+  title: string;
+  /** How a step names it: `pages/…`, `tables/…`, `files/…`. */
+  path: string;
+  state: PluginItemState;
+  review: string | null;
+  updatedAt: string;
+}
+
+/**
+ * Wissen of a space, written by a plugin: pages, tables and files under keys of its own, with
+ * their Kategorien. Every write is indexed: `project_search` finds it a moment later.
+ */
+export interface PluginSpaceData {
+  /**
+   * Adds Kategorien to the space, or values to ones it has. `proposed`: shown to the person to
+   * confirm, never filled before; a later call without it takes them.
+   */
+  putCategories(input: {
+    space: string;
+    categories: PluginCategory[];
+    proposed?: boolean;
+  }): Promise<void>;
+  putPage(input: PluginPageInput): Promise<{ id: string; path: string; state: PluginItemState }>;
+  putTable(input: PluginTableInput): Promise<{ id: string; path: string; state: PluginItemState }>;
+  putFile(input: PluginFileInput): Promise<{ id: string; path: string }>;
+  /**
+   * A document read as an upload is: a page (sub-pages when it is long and has headings of its
+   * own), a table per sheet of a workbook, or a file when nothing reads it. The document stays as
+   * the original. The same key again reads it again, unless a person changed what it became.
+   */
+  putDocument(input: PluginDocumentInput): Promise<PluginDocumentResult>;
+  /** Everything the plugin wrote into the space. */
+  list(space: string): Promise<PluginSpaceItem[]>;
+  /** Takes out one key, or every item of the plugin in the space; what a person changed stays. */
+  remove(space: string, key?: string): Promise<number>;
+  /**
+   * Writes the Übersicht of values: of one, or of every value of a choice (or of every choice)
+   * that has three items or more. Returns how many were written. Costs a model call each.
+   */
+  summarize(space: string, category?: string, value?: string): Promise<number>;
+}
+
 /** What a tool of the space assistant knows about the turn that calls it. */
 export interface PluginAssistantContext {
   tenantId: string;
@@ -310,6 +467,8 @@ export interface PluginServerApi {
   every(name: string, everyMs: number, handler: (tick: PluginTick) => void | Promise<void>): void;
   /** The space's search index, which `project_search` asks. */
   index: PluginIndex;
+  /** Wissen of a space: pages, tables and files the plugin writes, with their Kategorien. */
+  spaceData: PluginSpaceData;
   web: PluginWeb;
   documents: PluginDocuments;
   /**

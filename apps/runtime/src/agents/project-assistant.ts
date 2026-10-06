@@ -12,6 +12,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { attachTools, costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
 import { ServiceError } from "../services/errors.js";
+import { knowledgeCounts } from "../services/knowledge.js";
 import {
   addProjectFile,
   projectFileContent,
@@ -20,6 +21,7 @@ import {
 } from "../services/project-files.js";
 import { documentText } from "../services/project-index.js";
 import { brandColorSchema, ownedProject, updateProject } from "../services/projects.js";
+import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { safeFetch } from "../tools/net-guard.js";
 import { assistantToolsOf } from "../tools/plugin.js";
@@ -30,6 +32,8 @@ export interface AssistantInput {
   projectId: string;
   message: string;
   history: { role: "user" | "assistant"; content: string }[];
+  /** The part of the space page the admin talks from: who they are, or Wissen. */
+  part?: "info" | "knowledge";
   signal?: AbortSignal;
   onText?: (delta: string) => void;
   /** A short line about what the assistant is doing right now. */
@@ -61,7 +65,13 @@ HOW YOU WORK
 - Logos: save the best candidate (an SVG or a large PNG rather than a favicon); a second one only if it truly differs (for dark ground, a signet). A few images that show the business (header, team, products) may be saved as assets — a handful, never everything.
 - Files the admin attached are stored already; the message names them. look_at_file shows you a picture or a document's text. Give a file a description with describe_file when it has none or the admin says what it is. Take facts from a document when the admin asks for it.
 - Call independent tools together. Work in few steps.
-- Finish with one to three sentences: what you filled in, what is still missing, and at most one question.`;
+- Finish with one to three sentences: what you filled in, what is still missing, and at most one question.
+
+WISSEN
+- Wissen (German „Wissen“) is what the wizards' steps look things up in: pages, tables and files, kept apart by typed Kategorien (Baustelle, Berichtsdatum, Art der Förderung …). The admin sees it on the page below you.
+- Documents the admin attaches are read into Wissen by themselves: a page, sub-pages for a long structured document, a table per sheet. Say so; do not copy their text into facts unless asked.
+- A website, a sitemap or a folder whose entries should go into Wissen is a source. Where a tool proposes sources, use it: the admin takes the proposal on its card. Where there is none, say that sources need the Sources plugin, and offer to read the site for the space's own details instead.
+- Talking from Wissen, change title, about, logos, colours and facts only when the admin asks.`;
 
 function activity(tool: string, args: Record<string, unknown>): string | null {
   const host = (u: unknown) => {
@@ -103,7 +113,12 @@ async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string }>
 async function projectState(userId: string, projectId: string) {
   const p = await ownedProject(userId, projectId);
   const files = await projectFiles(projectId);
+  const categories = await categoryRows(projectId);
   return {
+    wissen: {
+      ...(await knowledgeCounts(projectId)),
+      kategorien: categories.map((c) => `${c.name} (${c.type}${c.proposed ? ", proposed" : ""})`),
+    },
     title: p.brand.name ?? "",
     about: p.brand.about ?? "",
     colors: p.brand.colors ?? [],
@@ -391,8 +406,13 @@ export async function runProjectAssistant(input: AssistantInput): Promise<Assist
   });
   const context = [
     `The project now:\n\`\`\`json\n${JSON.stringify(await projectState(input.userId, input.projectId))}\n\`\`\``,
+    input.part === "knowledge"
+      ? "The admin talks to you from Wissen: they want the wizards to know something."
+      : "",
     input.message,
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const stream = await agent.stream(
     [
       ...input.history

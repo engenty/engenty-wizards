@@ -25,6 +25,7 @@ import {
   Switch,
   Textarea,
 } from "../../ui";
+import { KnowledgeHeader } from "./Knowledge";
 
 const MS: Record<DurationUnit, number> = {
   milliseconds: 1,
@@ -510,7 +511,10 @@ export function TableEditor({
   const [bad, setBad] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   useEffect(() => setTitle(table.data?.title ?? ""), [table.data?.title]);
-  const listed = () => qc.invalidateQueries({ queryKey: ["space-data", table.data?.projectId] });
+  const listed = async () => {
+    await qc.invalidateQueries({ queryKey: ["space-data", table.data?.projectId] });
+    await qc.invalidateQueries({ queryKey: ["knowledge", table.data?.projectId] });
+  };
   const put = (rows: (rows: SpaceTableRow[]) => SpaceTableRow[]) =>
     qc.setQueryData<SpaceTable>(key, (old) => (old ? { ...old, rows: rows(old.rows) } : old));
   const failed = (err: unknown) => {
@@ -603,6 +607,24 @@ export function TableEditor({
       </div>
       {fromList ? (
         <p className="-mt-1.5 px-1 text-[0.8125rem] text-ink-3">{t("data.fromList")}</p>
+      ) : null}
+      {table.data.knowledge ? (
+        <KnowledgeHeader
+          projectId={table.data.projectId}
+          itemKey={`t:${table.data.id}`}
+          has={table.data.knowledge.categories}
+          originLabel={table.data.knowledge.originLabel}
+          kept={table.data.knowledge.kept}
+          review={table.data.knowledge.review}
+          file={table.data.knowledge.file}
+          readOnly={readOnly}
+          onReviewed={() =>
+            void api
+              .patch(`/api/studio/tables/${tableId}`, { review: null })
+              .then(() => table.refetch())
+              .catch(failed)
+          }
+        />
       ) : null}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

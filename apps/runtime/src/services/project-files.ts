@@ -1,3 +1,4 @@
+import type { CategoryInput } from "@engenty-wizards/shared/knowledge";
 import {
   PROJECT_LIMITS,
   type ProjectFileKind,
@@ -8,13 +9,15 @@ import { generateText } from "ai";
 import { and, asc, count, eq, max } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { documentMime, UnreadableDocument } from "../documents/parse.js";
-import { loadAsset, removeAsset, saveAsset } from "../files/storage.js";
-import { textModel } from "../models.js";
+import { loadAsset, removeAsset, replaceAsset, saveAsset } from "../files/storage.js";
+import { embeddingModel, textModel } from "../models.js";
 import { spaceFileChanged } from "../plugins/events.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { requireWritableProject } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
-import { dropIndex, indexDocument } from "./project-index.js";
+import { convertDocument, fillCategories } from "./knowledge-model.js";
+import { dropIndex, keepText, queueIndex } from "./project-index.js";
+import { type ItemRef, setItemCategories } from "./space-categories.js";
 
 export type ProjectFileRow = typeof schema.projectFile.$inferSelect;
 
@@ -217,7 +220,33 @@ async function describeDocument(row: ProjectFileRow, text: string): Promise<stri
   return result.text.trim().slice(0, 600);
 }
 
-/** Reads a new file: a document goes into the index, and a file nobody described is described. */
+/**
+ * What a document became gets its Kategorien from a model, where the space has some: the first
+ * page or table it was read into, else the file itself.
+ */
+async function categorize(row: ProjectFileRow, items: string[], text: string) {
+  const first = items[0];
+  const ref: ItemRef = first?.startsWith("p:")
+    ? { pageId: first.slice(2) }
+    : first?.startsWith("t:")
+      ? { tableId: first.slice(2) }
+      : { fileId: row.id };
+  const changed = await fillCategories(row.projectId, ref, text || row.description, row.name).catch(
+    (err) => {
+      console.error("[project-file] Kategorien", row.name, err);
+      return false;
+    },
+  );
+  if (changed) {
+    queueIndex(first ? `${first[0] === "p" ? "P" : "t"}:${first.slice(2)}` : `f:${row.id}`);
+  }
+}
+
+/**
+ * Reads a new file. A document is read into Wissen — a page, a page with sub-pages, a table per
+ * sheet — and stays as the original behind it; one that reads into nothing stays a file, found
+ * by its name and description. A file nobody described is described.
+ */
 async function prepare(row: ProjectFileRow) {
   await slot(async () => {
     const set = (values: Partial<ProjectFileRow>) =>
@@ -237,10 +266,19 @@ async function prepare(row: ProjectFileRow) {
         spaceFileChanged("space.file.ready", row);
         return;
       }
-      const { text, ...indexed } = await indexDocument(row, data);
+      const { text, items, ...read } = await convertDocument(row, data);
       const description =
         row.description || (text ? await describeDocument(row, text).catch(() => "") : "");
-      await set({ ...indexed, status: "ready", error: null, description });
+      const embeddings = Boolean(await embeddingModel().catch(() => null));
+      await set({
+        ...read,
+        indexed: embeddings ? "embeddings" : "keywords",
+        status: "ready",
+        error: null,
+        description,
+      });
+      queueIndex(`f:${row.id}`);
+      await categorize({ ...row, description }, items, text);
       spaceFileChanged("space.file.ready", row);
     } catch (err) {
       console.error("[project-file]", row.name, err);
@@ -307,6 +345,9 @@ export async function orderProjectFiles(projectId: string, kind: ProjectFileKind
 
 async function removeRow(row: ProjectFileRow) {
   await dropIndex(row.id);
+  // What it was read into goes with it; what a person changed since stays.
+  const { dropConverted } = await import("./knowledge-model.js");
+  await dropConverted(row.id);
   await db.delete(schema.projectFile).where(eq(schema.projectFile.id, row.id));
   await removeAsset(row.id);
   if (row.kind === "logo") {
@@ -325,4 +366,103 @@ export async function removeProjectFiles(projectId: string) {
   for (const row of await projectFiles(projectId)) {
     await removeRow(row);
   }
+}
+
+// --- what plugins keep as files ----------------------------------------------------
+
+/**
+ * A plugin's file of Wissen (`server.spaceData.putFile`, or the original of a page it wrote):
+ * a document of the space under the plugin's key. The same key again replaces it. `text`: what
+ * a step reads of it; without one only its name and description are found.
+ */
+export async function putOriginFile(
+  origin: string,
+  input: {
+    space: string;
+    key: string;
+    label?: string | null;
+    name: string;
+    mime: string;
+    data: Uint8Array;
+    description?: string;
+    text?: string;
+    categories?: CategoryInput;
+  },
+): Promise<string> {
+  await requireWritableProject(input.space);
+  const key = input.key.trim().slice(0, 300);
+  const existing = await db.query.projectFile.findFirst({
+    where: and(
+      eq(schema.projectFile.projectId, input.space),
+      eq(schema.projectFile.origin, origin),
+      eq(schema.projectFile.originKey, key),
+    ),
+  });
+  const mime = documentMime(input.name, input.mime) || "application/octet-stream";
+  if (!input.data.byteLength || input.data.byteLength > projectFileLimit("document", mime)) {
+    throw new ServiceError("invalid", `"${input.name}" is empty or larger than a document may be.`);
+  }
+  const name = input.name.slice(0, 120) || "datei";
+  const values = {
+    name,
+    mime,
+    size: input.data.byteLength,
+    description: input.description?.trim().slice(0, 600) ?? existing?.description ?? "",
+    originLabel: input.label?.trim().slice(0, 120) || null,
+    status: "ready" as const,
+    error: null,
+    textHash: input.text ? await keepText(input.text) : null,
+    chars: input.text?.length ?? null,
+    updatedAt: new Date(),
+  };
+  let id = existing?.id;
+  if (existing) {
+    // New content under the id it has: pages that name it as their original keep it.
+    await replaceAsset(existing.id, { mime, name, data: input.data });
+    await db.update(schema.projectFile).set(values).where(eq(schema.projectFile.id, existing.id));
+  } else {
+    const [{ n, last }] = await db
+      .select({ n: count(), last: max(schema.projectFile.position) })
+      .from(schema.projectFile)
+      .where(
+        and(eq(schema.projectFile.projectId, input.space), eq(schema.projectFile.kind, "document")),
+      );
+    if (n >= PROJECT_LIMITS.files.document) {
+      throw new ServiceError(
+        "refused",
+        `A space keeps at most ${PROJECT_LIMITS.files.document} documents.`,
+      );
+    }
+    const ref = await saveAsset({ kind: "project", mime, name, data: input.data });
+    id = ref.id;
+    await db.insert(schema.projectFile).values({
+      id: ref.id,
+      projectId: input.space,
+      kind: "document",
+      position: (last ?? -1) + 1,
+      origin,
+      originKey: key,
+      ...values,
+    });
+  }
+  if (input.categories) {
+    await setItemCategories(input.space, { fileId: id as string }, input.categories, "origin");
+  }
+  queueIndex(`f:${id}`);
+  return id as string;
+}
+
+/** Takes out a plugin's files, by key or all of them in the space; returns how many went. */
+export async function removeOriginFiles(origin: string, projectId: string, key?: string) {
+  const rows = await db.query.projectFile.findMany({
+    where: and(
+      eq(schema.projectFile.projectId, projectId),
+      eq(schema.projectFile.origin, origin),
+      key === undefined ? undefined : eq(schema.projectFile.originKey, key),
+    ),
+  });
+  for (const row of rows) {
+    await removeRow(row);
+  }
+  return rows.length;
 }

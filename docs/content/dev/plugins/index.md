@@ -12,6 +12,7 @@ them from their files and loads one again when its files change.
 |---|---|---|
 | A tool for AI steps | In a step's tool list, in the assistant's and the MCP authoring guide | [Tools](./tools.md) |
 | A block and tools for every AI step of a space | In the steps' instructions | [The space](./space.md) |
+| Pages, tables and files of a space's Wissen, with Kategorien | In Wissen, and in what `project_search` finds | [The space](./space.md#wissen-a-plugin-writes) |
 | Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
 | Tools of the space assistant, and their cards | In the chat on the space page | [The space](./space.md#tools-of-the-space-assistant) |
 | Routes | Below `/api/studio/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
@@ -30,7 +31,7 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, routes, tables, listeners, jobs, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
+| Adds | Tools, routes, tables, listeners, jobs, Wissen, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.

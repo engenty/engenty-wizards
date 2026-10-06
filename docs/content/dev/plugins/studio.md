@@ -116,13 +116,13 @@ studio.registerSettingsSection({
 
 ## The space
 
-A space holds what all its wizards share: a title, logos, colours, documents and facts. The
+A space holds what all its wizards share: a title, logos, colours, facts and Wissen. The
 space page, behind the folder in the top bar, shows them in four parts:
 
 | Part | `group` | Holds |
 |---|---|---|
 | Info & Marke | `info` | Basis, Logos, Farben, Assets, Fakten |
-| Wissen | `knowledge` | Dokumente: what every AI step can search |
+| Wissen | `knowledge` | Pages, tables and files with their Kategorien: what every AI step looks things up in |
 | Daten | `data` | What the wizards keep |
 | Ergebnisse | `results` | The runs that reached their result |
 
@@ -153,7 +153,8 @@ studio.registerSpaceSection({
   and lists the section in the part's menu under the plugin's name. The component draws the
   rest, usually a `Card`.
 - `id` is the section's anchor: `/studio/space/data#contacts` opens the page there, and so does
-  `/studio/space#contacts`. Ids are unique on the whole page; the space's own are taken: `base`,
+  `/studio/space#contacts`. In Wissen a section is a page of its own, below the assistant:
+  `/studio/space/knowledge?show=s:<id>`, where `#<id>` leads too. Ids are unique on the whole page; the space's own are taken: `base`,
   `logos`, `colors`, `assets`, `documents`, `facts`.
 - `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A
   component that calls it draws again when the person picks another space. `readOnly`: the

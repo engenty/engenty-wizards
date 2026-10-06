@@ -237,13 +237,16 @@ describe("the search index", () => {
     expect(await json(send("POST", "/api/studio/plugins/atlas/index", { ...hours, space: spaceId }))).toEqual({
       ok: true,
     });
-    const { searchProject, hasIndexEntries } = await import("../src/services/project-index");
-    const hits = await client.withTenant(LOCAL, () => searchProject(spaceId, "Werkstatt geöffnet"));
-    expect(hits).toEqual([
+    const { searchKnowledge, hasIndexEntries } = await import("../src/services/project-index");
+    const found = await client.withTenant(LOCAL, () =>
+      searchKnowledge(spaceId, "Werkstatt geöffnet"),
+    );
+    expect(found.hits).toEqual([
       expect.objectContaining({
-        fileId: null,
+        key: "x:atlas:hours",
+        kind: "plugin",
         plugin: "atlas",
-        name: "Öffnungszeiten",
+        title: "Öffnungszeiten",
         link: "/space#atlas",
         text: expect.stringContaining("Montag bis Freitag"),
       }),
@@ -254,19 +257,20 @@ describe("the search index", () => {
   it("gives the steps project_search without documents", async () => {
     const { projectTools } = await import("../src/tools/project");
     const tools = await client.withTenant(LOCAL, () => projectTools(stepOf()));
-    expect(Object.keys(tools)).toEqual(["project_search"]);
+    expect(Object.keys(tools)).toEqual(["project_search", "project_list"]);
   });
 
   it("replaces a key that is put again, and takes keys out", async () => {
-    const { searchProject } = await import("../src/services/project-index");
-    const search = (q: string) => client.withTenant(LOCAL, () => searchProject(spaceId, q));
+    const { searchKnowledge } = await import("../src/services/project-index");
+    const search = async (q: string) =>
+      (await client.withTenant(LOCAL, () => searchKnowledge(spaceId, q))).hits;
     await send("POST", "/api/studio/plugins/atlas/index", {
       ...hours,
       space: spaceId,
       text: "Samstags nach Vereinbarung.",
     });
     expect(await search("Freitag")).toEqual([]);
-    expect((await search("Samstags")).map((h) => h.name)).toEqual(["Öffnungszeiten"]);
+    expect((await search("Samstags")).map((h) => h.title)).toEqual(["Öffnungszeiten"]);
     await send("DELETE", `/api/studio/plugins/atlas/index/${spaceId}/*`);
     expect(await search("Samstags")).toEqual([]);
   });

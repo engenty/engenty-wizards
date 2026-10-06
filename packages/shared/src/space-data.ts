@@ -3,6 +3,7 @@ import {
   type TableColumn,
   TableColumnValueError,
 } from "./engenty/data-tables/index.js";
+import type { ItemCategory, KnowledgePage } from "./knowledge.js";
 
 /**
  * What a space keeps as data: tables (typed columns, rows of cells, as engenty's data tables)
@@ -46,10 +47,22 @@ export interface SpaceTable {
   wizardId: string | null;
   list: string | null;
   title: string;
+  /** `faq`: a question and its answer per row. */
+  format: "faq" | null;
   columns: TableColumn[];
   rows: SpaceTableRow[];
   /** The space is not changed here: a local install's, or nothing is built on this runtime. */
   readOnly: boolean;
+  /** A table of Wissen (the space's own): where it came from and its Kategorien. */
+  knowledge: {
+    path: string;
+    categories: ItemCategory[];
+    origin: string | null;
+    originLabel: string | null;
+    kept: boolean;
+    review: string | null;
+    file: { id: string; name: string; mime: string } | null;
+  } | null;
 }
 
 export interface SpacePage {
@@ -60,11 +73,14 @@ export interface SpacePage {
   markdown: string;
   updatedAt: string;
   readOnly: boolean;
+  /** A page of Wissen (the space's own): where it stands, its sub-pages, its Kategorien. */
+  knowledge: KnowledgePage | null;
 }
 
 export const SPACE_DATA_LIMITS = {
   tables: 200,
-  pages: 500,
+  /** Sub-pages count: a law split along its paragraphs is a few thousand. */
+  pages: 5000,
   rowsPerTable: 5000,
   pageChars: 200_000,
 };

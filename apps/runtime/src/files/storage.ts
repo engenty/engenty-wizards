@@ -98,6 +98,25 @@ export async function inlineAssetRefs(html: string): Promise<string> {
   return out;
 }
 
+/** Gives an asset new content under the id it has: what points to it keeps pointing to it. */
+export async function replaceAsset(
+  id: string,
+  input: { mime: string; name: string; data: Uint8Array },
+) {
+  const row = await db.query.asset.findFirst({ where: eq(schema.asset.id, id) });
+  if (!row) {
+    return;
+  }
+  const bytes = Buffer.from(input.data);
+  const file = `${id}-${nanoid(6)}.${extFor(input.mime)}`;
+  await objects.put(assetKey(file), bytes);
+  await db
+    .update(schema.asset)
+    .set({ mime: input.mime, name: input.name, path: file, size: bytes.byteLength })
+    .where(eq(schema.asset.id, id));
+  await objects.remove(assetKey(row.path));
+}
+
 /** Deletes one asset: its file and its row. */
 export async function removeAsset(id: string) {
   const row = await db.query.asset.findFirst({ where: eq(schema.asset.id, id) });

@@ -106,11 +106,13 @@ describe("a table of the space", () => {
     expect(next.cells).toEqual({ name: "Ahorn" });
   });
 
-  it("is listed with its rows, and goes with its rows", async () => {
+  it("is listed in Wissen with its rows, not in Daten, and goes with its rows", async () => {
     await send("POST", `/api/studio/tables/${tableId}/rows`, { cells: { name: "Birke" } });
     const data = await json(send("GET", `/api/studio/projects/${spaceId}/data`));
-    expect(data.tables).toEqual([
-      expect.objectContaining({ id: tableId, title: "Kunden", rows: 2, wizardId: null }),
+    expect(data.tables).toEqual([]);
+    const knowledge = await json(send("GET", `/api/studio/projects/${spaceId}/knowledge`));
+    expect(knowledge.items).toEqual([
+      expect.objectContaining({ id: tableId, kind: "table", title: "Kunden", rows: 2, path: "tables/kunden" }),
     ]);
     const table = await json(send("GET", `/api/studio/tables/${tableId}`));
     await send("POST", `/api/studio/tables/${tableId}/rows/delete`, { ids: [table.rows[0].id] });
@@ -256,7 +258,7 @@ describe("a shared list", () => {
 });
 
 describe("a run's pages", () => {
-  it("writes its wizard's pages and reads the space's own", async () => {
+  it("writes its wizard's pages and reads the space's own by path", async () => {
     const client = await import("../src/db/client");
     const { pageTools } = await import("../src/tools/pages");
     const own = await json(
@@ -274,20 +276,17 @@ describe("a run's pages", () => {
       await tools.page_write.execute({ title: "Protokoll", markdown: "- Anna: Küche" });
       await tools.page_write.execute({ title: "protokoll", markdown: "- Ben: Treppe", append: true });
       expect(await tools.page_read.execute({ title: "Protokoll" })).toMatchObject({
-        of: "wizard",
         markdown: "- Anna: Küche\n\n- Ben: Treppe",
       });
-      expect(await tools.page_read.execute({ title: "Preise" })).toMatchObject({
-        of: "space",
-        markdown: "Ab 90 €.",
-      });
+      const read = await tools.page_read.execute({ path: "pages/preise" });
+      expect(read.page).toContain("title: Preise\npath: pages/preise");
+      expect(read.page).toContain("Ab 90 €.");
       expect((await tools.page_read.execute({})).pages.map((p: any) => p.title)).toEqual([
         "Protokoll",
-        "Preise",
       ]);
     });
     const page = { code: "writesPage", params: { title: "Protokoll" } };
-    expect(emitted).toEqual([page, page]);
+    expect(emitted).toEqual([page, page, { code: "reads", params: { name: "pages/preise" } }]);
     await send("DELETE", `/api/studio/pages/${own.id}`);
   });
 });

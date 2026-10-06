@@ -172,6 +172,8 @@ export const env = {
   falKey: str("FAL_KEY"),
   elevenlabsKey: str("ELEVENLABS_API_KEY"),
   replicateKey: str("REPLICATE_API_TOKEN"),
+  /** TypeSafe's own API, for the classifier that checks what a search found (Jev). */
+  typesafeKey: str("TYPESAFE_API_KEY"),
   ollamaUrl: str("OLLAMA_URL", "http://127.0.0.1:11434/v1"),
 
   /** What each model class runs on when this runtime resolves classes itself (own keys, Ollama). */

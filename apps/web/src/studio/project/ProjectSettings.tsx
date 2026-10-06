@@ -8,7 +8,6 @@ import { Button, Input, Label, Textarea } from "../../ui";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
 import { Assistant } from "./Assistant";
 import { Colors } from "./Colors";
-import { Documents } from "./Documents";
 import { useAutosave, useProjectFiles } from "./data";
 import { Facts } from "./Facts";
 import { Assets, Logos } from "./Files";
@@ -51,7 +50,8 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
 
 /**
  * What a project gives all its wizards, in two parts of the space page: `info` — who it is, its
- * logos and colours, assets and facts — and `knowledge` — its documents. Every section saves by
+ * logos and colours, assets and facts — and `knowledge` — Wissen, drawn by the caller as
+ * `children`. Every section saves by
  * itself; the assistant above both fills them in from a description, a website or files, and
  * stays when the person switches between them. A read-only project (a local install's, or on a
  * server where nothing is built) shows the same sections, and a note stands where the assistant
@@ -60,10 +60,13 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
 export function ProjectSettings({
   project,
   group,
+  docked = false,
   children,
 }: {
   project: Project;
   group: "info" | "knowledge";
+  /** The assistant waits at the lower edge: the page shows one item, a Kategorie or a value. */
+  docked?: boolean;
   children?: ReactNode;
 }) {
   const qc = useQueryClient();
@@ -89,7 +92,13 @@ export function ProjectSettings({
       {readOnly ? (
         <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
       ) : (
-        <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
+        <Assistant
+          key={project.id}
+          projectId={project.id}
+          part={group}
+          docked={docked}
+          onChanged={() => setRev((n) => n + 1)}
+        />
       )}
       {group === "info" ? (
         <>
@@ -119,11 +128,7 @@ export function ProjectSettings({
             />
           </Anchor>
         </>
-      ) : (
-        <Anchor id="documents">
-          <Documents projectId={project.id} data={data} readOnly={readOnly} />
-        </Anchor>
-      )}
+      ) : null}
       {children}
       {group === "info" && many && !readOnly ? (
         <div>

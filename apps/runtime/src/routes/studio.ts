@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
 import { generateText } from "ai";
@@ -78,8 +79,15 @@ import {
   rotateInCloud,
   syncToCloud,
 } from "../services/cloud.js";
-import { ServiceError } from "../services/errors.js";
+import { notFound, ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
+import {
+  categoryContents,
+  listKnowledge,
+  resolvePath,
+  valueContents,
+} from "../services/knowledge.js";
+import { writeSummary } from "../services/knowledge-model.js";
 import {
   exportWizard,
   importWizard,
@@ -99,7 +107,7 @@ import {
   removeProjectFile,
   updateProjectFile,
 } from "../services/project-files.js";
-import { documentText, searchProject } from "../services/project-index.js";
+import { documentText, queueIndex, searchKnowledge } from "../services/project-index.js";
 import {
   createProject,
   deleteProject,
@@ -112,6 +120,19 @@ import {
 } from "../services/projects.js";
 import { listResults, listRuns, startTestRun } from "../services/runs.js";
 import {
+  addCategoryValue,
+  categoryRow,
+  categoryValue,
+  deleteCategory,
+  deleteCategoryValue,
+  mergeCategoryValues,
+  orderCategoryValues,
+  putCategory,
+  renameCategoryValue,
+  setItemCategory,
+  updateCategory,
+} from "../services/space-categories.js";
+import {
   addTableRow,
   createPage,
   createTable,
@@ -121,6 +142,7 @@ import {
   getPage,
   getTable,
   listSpaceData,
+  orderSubPages,
   updatePage,
   updateTable,
   updateTableRow,
@@ -484,11 +506,13 @@ export const studio = new Hono<Vars>()
     const text = await documentText(row);
     return c.json({ text: text.slice(0, limit), chars: text.length });
   })
-  // What the document index finds for a question: the passages an agent step would get.
+  // What a search of Wissen finds for a question: the items an agent step would get.
   .post("/projects/:id/search", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));
-    const { query } = z.object({ query: z.string().min(1).max(400) }).parse(await c.req.json());
-    return c.json({ hits: await searchProject(project.id, query, 6) });
+    const body = z
+      .object({ query: z.string().min(1).max(400), where: whereSchema.optional() })
+      .parse(await c.req.json());
+    return c.json(await searchKnowledge(project.id, body.query, { where: body.where }));
   })
   // The assistant fills the project in: from a description, a website, the files given.
   .post("/projects/:id/assist", async (c) => {
@@ -502,6 +526,7 @@ export const studio = new Hono<Vars>()
           .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) }))
           .max(24)
           .default([]),
+        part: z.enum(["info", "knowledge"]).default("info"),
       })
       .parse(await c.req.json());
     if (!(await canSpend())) {
@@ -516,6 +541,7 @@ export const studio = new Hono<Vars>()
           projectId: project.id,
           message: body.message,
           history: body.history,
+          part: body.part,
           signal: abort.signal,
           onText: (delta) => {
             void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });
@@ -616,6 +642,134 @@ export const studio = new Hono<Vars>()
     );
   })
 
+  // --- Wissen: its items and Kategorien ---------------------------------------
+  .get("/projects/:id/knowledge", async (c) =>
+    c.json(await listKnowledge(c.get("user").id, c.req.param("id"))),
+  )
+  // What a link in a page names (`pages/bgb/p-281`): the studio opens it.
+  .get("/projects/:id/resolve", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const found = await resolvePath(project.id, z.string().max(600).parse(c.req.query("path")));
+    if (!found) {
+      throw notFound();
+    }
+    return c.json(found);
+  })
+  .post("/projects/:id/categories", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    await requireWritable(project);
+    const body = z
+      .object({
+        name: z.string().min(1).max(80),
+        type: z.enum(CATEGORY_TYPES),
+        unit: z.string().max(20).nullish(),
+        multiple: z.boolean().optional(),
+        ordered: z.boolean().optional(),
+        hint: z.string().max(120).nullish(),
+        values: z.array(z.string().max(200)).max(200).optional(),
+        tableId: z.string().nullish(),
+        columnId: z.string().nullish(),
+      })
+      .parse(await c.req.json());
+    const row = await putCategory(project.id, body);
+    return c.json({ id: row.id });
+  })
+  .patch("/categories/:id", async (c) => {
+    const row = await categoryRow(c.req.param("id"));
+    await ownedProject(c.get("user").id, row.projectId);
+    const body = z
+      .object({
+        name: z.string().min(1).max(80).optional(),
+        unit: z.string().max(20).nullish(),
+        multiple: z.boolean().optional(),
+        ordered: z.boolean().optional(),
+        hint: z.string().max(120).nullish(),
+        proposed: z.literal(false).optional(),
+        position: z.number().int().min(0).optional(),
+      })
+      .parse(await c.req.json());
+    await updateCategory(row.id, body);
+    return c.json({ ok: true });
+  })
+  .delete("/categories/:id", async (c) => {
+    const row = await categoryRow(c.req.param("id"));
+    await ownedProject(c.get("user").id, row.projectId);
+    await deleteCategory(row.id);
+    return c.json({ ok: true });
+  })
+  .post("/categories/:id/values", async (c) => {
+    const row = await categoryRow(c.req.param("id"));
+    await ownedProject(c.get("user").id, row.projectId);
+    const { value } = z.object({ value: z.string().min(1).max(200) }).parse(await c.req.json());
+    return c.json(await addCategoryValue(row.id, value));
+  })
+  .put("/categories/:id/values/order", async (c) => {
+    const row = await categoryRow(c.req.param("id"));
+    await ownedProject(c.get("user").id, row.projectId);
+    const { ids } = z.object({ ids: z.array(z.string()).max(500) }).parse(await c.req.json());
+    await orderCategoryValues(row.id, ids);
+    return c.json({ ok: true });
+  })
+  .get("/values/:id", async (c) => c.json(await valueContents(c.get("user").id, c.req.param("id"))))
+  // Everything that has a Kategorie: the entries its page lists.
+  .get("/categories/:id/items", async (c) =>
+    c.json(await categoryContents(c.get("user").id, c.req.param("id"))),
+  )
+  .patch("/values/:id", async (c) => {
+    const { category } = await categoryValue(c.req.param("id"));
+    await ownedProject(c.get("user").id, category.projectId);
+    const { value } = z.object({ value: z.string().min(1).max(200) }).parse(await c.req.json());
+    await renameCategoryValue(c.req.param("id"), value);
+    return c.json({ ok: true });
+  })
+  .post("/values/:id/merge", async (c) => {
+    const { category } = await categoryValue(c.req.param("id"));
+    await ownedProject(c.get("user").id, category.projectId);
+    const { into } = z.object({ into: z.string() }).parse(await c.req.json());
+    await mergeCategoryValues(c.req.param("id"), into);
+    return c.json({ ok: true });
+  })
+  .delete("/values/:id", async (c) => {
+    const { category } = await categoryValue(c.req.param("id"));
+    await ownedProject(c.get("user").id, category.projectId);
+    await deleteCategoryValue(c.req.param("id"));
+    return c.json({ ok: true });
+  })
+  // The Übersicht of a value: a model writes it from the value's items.
+  .post("/values/:id/summary", async (c) => {
+    const { category } = await categoryValue(c.req.param("id"));
+    const project = await ownedProject(c.get("user").id, category.projectId);
+    await requireWritable(project);
+    return c.json({ summary: await writeSummary(c.req.param("id")) });
+  })
+  // A Kategorie a person sets on an item: `p:<page>`, `t:<table>`, `r:<row>`, `f:<file>`.
+  .put("/projects/:id/items/:key/categories/:categoryId", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    await requireWritable(project);
+    const key = c.req.param("key");
+    const id = key.slice(2);
+    const ref =
+      key[0] === "p"
+        ? { pageId: id }
+        : key[0] === "t"
+          ? { tableId: id }
+          : key[0] === "r"
+            ? { rowId: id }
+            : key[0] === "f"
+              ? { fileId: id }
+              : null;
+    if (!ref || key[1] !== ":") {
+      throw new ServiceError("invalid", "Unbekannter Eintrag.");
+    }
+    const { values } = z
+      .object({ values: z.array(z.union([z.string().max(300), z.number(), z.boolean()])).max(50) })
+      .parse(await c.req.json());
+    if (await setItemCategory(project.id, ref, c.req.param("categoryId"), values)) {
+      queueIndex(key[0] === "p" ? `P:${id}` : key);
+    }
+    return c.json({ ok: true });
+  })
+
   // --- the space's tables and pages --------------------------------------------
   .get("/projects/:id/data", async (c) =>
     c.json(await listSpaceData(c.get("user").id, c.req.param("id"))),
@@ -626,6 +780,7 @@ export const studio = new Hono<Vars>()
         title: z.string().max(120),
         wizardId: z.string().nullish(),
         columns: z.unknown().optional(),
+        format: z.enum(["faq"]).nullish(),
       })
       .parse(await c.req.json());
     return c.json(await createTable(c.get("user").id, c.req.param("id"), body));
@@ -637,6 +792,8 @@ export const studio = new Hono<Vars>()
         title: z.string().max(120).optional(),
         wizardId: z.string().nullish(),
         columns: z.unknown().optional(),
+        format: z.enum(["faq"]).nullish(),
+        review: z.null().optional(),
       })
       .parse(await c.req.json());
     await updateTable(c.get("user").id, c.req.param("id"), body);
@@ -668,6 +825,7 @@ export const studio = new Hono<Vars>()
       .object({
         title: z.string().max(200),
         wizardId: z.string().nullish(),
+        parentId: z.string().nullish(),
         markdown: z.string().optional(),
       })
       .parse(await c.req.json());
@@ -679,10 +837,17 @@ export const studio = new Hono<Vars>()
       .object({
         title: z.string().max(200).optional(),
         wizardId: z.string().nullish(),
+        parentId: z.string().nullish(),
         markdown: z.string().optional(),
+        review: z.null().optional(),
       })
       .parse(await c.req.json());
     await updatePage(c.get("user").id, c.req.param("id"), body);
+    return c.json({ ok: true });
+  })
+  .put("/pages/:id/order", async (c) => {
+    const { ids } = z.object({ ids: z.array(z.string()).max(5000) }).parse(await c.req.json());
+    await orderSubPages(c.get("user").id, c.req.param("id"), ids);
     return c.json({ ok: true });
   })
   .delete("/pages/:id", async (c) => {

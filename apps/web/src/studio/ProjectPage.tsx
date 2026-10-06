@@ -6,6 +6,9 @@ import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
 import { useCrumbs } from "./AppFrame";
+import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
+import { FileView } from "./project/Documents";
+import { CategoryItems, ItemRow, KnowledgeOverview, useKnowledge } from "./project/Knowledge";
 import { PageEditor } from "./project/PageEditor";
 import { ProjectSettings } from "./project/ProjectSettings";
 import { NO_FILTER, Results, type ResultsFilter, useResults } from "./project/Results";
@@ -124,7 +127,8 @@ export function ProjectPage() {
   const { group: param } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { hash } = useLocation();
+  const location = useLocation();
+  const { hash } = location;
   const { project, loading } = useCurrentProject();
   const many = useManyProjects();
   const plugins = useStudioPlugins();
@@ -135,12 +139,15 @@ export function ProjectPage() {
   // own menu again.
   const [upAt, setUpAt] = useState<string | null>(null);
   const group: SpaceGroupId | undefined = isSpaceGroup(param) ? param : undefined;
+  // The folder in the top bar opens the space at its parts, with the first one beside them;
+  // picking a part opens its menu.
+  const atParts = (location.state as { parts?: boolean } | null)?.parts === true;
   const entries = spaceGroups().map((g) => ({ ...g, to: `/space/${g.id}` }));
   const entry = entries.find((e) => e.id === group);
   const show = params.get("show");
   // A phone: 0 the parts, 1 the part's menu, 2 the page.
   const phone = !group ? 0 : show ? 2 : 1;
-  const level = narrow ? Math.min(phone, 1) : group && upAt !== group ? 1 : 0;
+  const level = narrow ? Math.min(phone, 1) : group && upAt !== group && !atParts ? 1 : 0;
   const levelStep = useStepDirection(level);
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
@@ -157,14 +164,40 @@ export function ProjectPage() {
   const [filter, setFilter] = useState<ResultsFilter>(NO_FILTER);
   const results = useResults(group === "results" ? project?.id : undefined, wizardId, filter);
   const wizardTitle = results.data?.wizards.find((w) => w.id === wizardId)?.title;
-  // Daten: a table (`?show=t:<id>`) or a page (`p:<id>`), or all of them.
-  const picked = group === "data" && show && show !== "all" ? show : null;
-  const spaceData = useSpaceData(group === "data" ? project?.id : undefined);
-  const pickedTitle = spaceData.data
-    ? dataGroups(spaceData.data)
-        .flatMap((g) => g.items)
-        .find((item) => item.key === picked)?.title
+  // Daten: a table (`?show=t:<id>`) or a page (`p:<id>`), or all of them. Wissen: also a file
+  // (`f:`), a Kategorie (`c:`), one of its values (`v:`) or a plugin's section (`s:`), which in
+  // Wissen is a page of its own; a plain `show` is a section's anchor.
+  const picked =
+    group === "data" && show && show !== "all"
+      ? show
+      : group === "knowledge" && show && /^[ptfcvs]:/.test(show)
+        ? show
+        : null;
+  const pickedSection = picked?.startsWith("s:")
+    ? plugins.spaceSections.find((x) => x.id === picked.slice(2))
     : undefined;
+  // Wissen: a page, a table or a file, opened.
+  const item = group === "knowledge" && picked && /^[ptf]:/.test(picked) ? picked : null;
+  const spaceData = useSpaceData(group === "data" ? project?.id : undefined);
+  const knowledge = useKnowledge(group === "knowledge" ? project?.id : undefined);
+  const pickedValue = useValue(picked?.startsWith("v:") ? picked.slice(2) : "");
+  const pickedCategory = knowledge.data?.categories.find(
+    (c) => c.id === (picked?.startsWith("c:") ? picked.slice(2) : pickedValue.data?.category.id),
+  );
+  const pickedTitle =
+    group === "knowledge"
+      ? pickedSection
+        ? pickedSection.label()
+        : picked?.startsWith("v:")
+          ? pickedValue.data && `${pickedValue.data.category.name}: ${pickedValue.data.value}`
+          : picked?.startsWith("c:")
+            ? pickedCategory?.name
+            : knowledge.data?.items.find((item) => item.key === picked)?.title
+      : spaceData.data
+        ? dataGroups(spaceData.data)
+            .flatMap((g) => g.items)
+            .find((item) => item.key === picked)?.title
+        : undefined;
 
   useCrumbs([
     { label: title, to: "/space" },
@@ -176,7 +209,8 @@ export function ProjectPage() {
 
   // A section named in the address (`#logos`, or `?show=logos` on a phone) is scrolled to once
   // it is drawn: a plugin's comes after the space's own. A jump from the menu scrolls by itself.
-  const target = group === "results" || group === "data" ? hash.slice(1) : show || hash.slice(1);
+  const target =
+    group === "results" || group === "data" || picked ? hash.slice(1) : show || hash.slice(1);
   const scrolled = useRef("");
   // biome-ignore lint/correctness/useExhaustiveDependencies: drawn sections arrive with the project and the plugins.
   useEffect(() => {
@@ -191,6 +225,10 @@ export function ProjectPage() {
     // The space was one page: `/space#documents` opens the part the section is in now.
     const id = hash.slice(1);
     const of = id ? groupOfSection(id, plugins) : null;
+    // A plugin's section of Wissen is a page of its own.
+    if (of === "knowledge" && plugins.spaceSections.some((x) => x.id === id)) {
+      return <Navigate to={`/space/knowledge?show=s:${id}`} replace />;
+    }
     if (of) {
       return (
         <Navigate
@@ -204,8 +242,12 @@ export function ProjectPage() {
     }
     // A phone starts at the parts.
     if (param !== undefined || !narrow) {
-      return <Navigate to="/space/info" replace />;
+      return <Navigate to="/space/info" replace state={{ parts: true }} />;
     }
+  }
+
+  if (group === "knowledge" && !show && plugins.spaceSections.some((x) => x.id === hash.slice(1))) {
+    return <Navigate to={`/space/knowledge?show=s:${hash.slice(1)}`} replace />;
   }
 
   const jump = (id: string) => {
@@ -347,15 +389,150 @@ export function ProjectPage() {
                     : null}
                   <SectionRows groups={added} current={marked} onPick={jump} />
                 </SubMenu>
+              ) : group === "knowledge" ? (
+                <SubMenu>
+                  <ul className="flex flex-col gap-0.5">
+                    <MenuRow
+                      icon={LayoutGrid}
+                      label={t("know.all")}
+                      selected={!(narrow || picked)}
+                      onPick={() => pick("all")}
+                    />
+                  </ul>
+                  {knowledge.data?.categories.length ? (
+                    <MenuGroup label={t("know.categories")}>
+                      {knowledge.data.categories.map((c) => (
+                        <MenuRow
+                          key={c.id}
+                          icon={CATEGORY_ICON[c.type]}
+                          label={c.name}
+                          badge={
+                            <span className="text-[0.75rem] text-ink-3 tabular-nums">
+                              {c.proposed ? "·" : c.count}
+                            </span>
+                          }
+                          selected={
+                            !narrow &&
+                            (picked === `c:${c.id}` || pickedValue.data?.category.id === c.id)
+                          }
+                          onPick={() => pick(`c:${c.id}`)}
+                        />
+                      ))}
+                    </MenuGroup>
+                  ) : null}
+                  <SectionRows
+                    groups={added}
+                    current={narrow ? undefined : pickedSection?.id}
+                    onPick={(id) => pick(`s:${id}`)}
+                  />
+                </SubMenu>
               ) : (
                 <SubMenu>
                   <SectionRows groups={sections} current={marked} onPick={jump} />
                 </SubMenu>
               )}
 
+              {/* Every page of Wissen stands with the assistant, which stays while they change:
+                  on top of all of it and of a plugin's section, docked below the others. */}
               {project && (group === "info" || group === "knowledge") ? (
-                <ProjectSettings key={project.id} project={project} group={group}>
-                  {pluginSections(added)}
+                <ProjectSettings
+                  key={project.id}
+                  project={project}
+                  group={group}
+                  docked={group === "knowledge" && Boolean(picked) && !pickedSection}
+                >
+                  {group !== "knowledge" ? null : item ? (
+                    item.startsWith("p:") ? (
+                      <PageEditor
+                        key={item}
+                        pageId={item.slice(2)}
+                        onGone={() => pick("all")}
+                        onOpen={pick}
+                      />
+                    ) : item.startsWith("t:") ? (
+                      <TableEditor key={item} tableId={item.slice(2)} onGone={() => pick("all")} />
+                    ) : (
+                      <FileView
+                        key={item}
+                        projectId={project.id}
+                        fileId={item.slice(2)}
+                        readOnly={project.readOnly}
+                        onGone={() => pick("all")}
+                      />
+                    )
+                  ) : !knowledge.data ? null : pickedSection ? (
+                    <Section
+                      key={picked}
+                      title={pickedSection.label()}
+                      hint={pickedSection.hint?.()}
+                      plain
+                    >
+                      <PluginFrame of={pickedSection}>
+                        <pickedSection.component />
+                      </PluginFrame>
+                    </Section>
+                  ) : picked?.startsWith("c:") ? (
+                    pickedCategory ? (
+                      <div key={picked} className="flex flex-col gap-5">
+                        <CategoryView
+                          projectId={project.id}
+                          category={pickedCategory}
+                          readOnly={project.readOnly}
+                          onOpen={pick}
+                          onGone={() => pick("all")}
+                        />
+                        {pickedCategory.type === "choice" ? null : (
+                          <CategoryItems
+                            projectId={project.id}
+                            category={pickedCategory}
+                            categories={knowledge.data.categories}
+                            onOpen={pick}
+                          />
+                        )}
+                      </div>
+                    ) : null
+                  ) : picked?.startsWith("v:") ? (
+                    pickedValue.data ? (
+                      <ValueView key={picked} value={pickedValue.data} readOnly={project.readOnly}>
+                        <div className="flex flex-col gap-2">
+                          {pickedValue.data.items.length ? (
+                            <div className="flex flex-col rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border-soft">
+                              {pickedValue.data.items.map((i) => (
+                                <ItemRow
+                                  key={i.key}
+                                  item={i}
+                                  categories={knowledge.data.categories.filter(
+                                    (c) => c.id !== pickedValue.data?.category.id,
+                                  )}
+                                  onOpen={pick}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
+                          {pickedValue.data.rows.map((r) => (
+                            <button
+                              key={r.tableId}
+                              type="button"
+                              onClick={() => pick(`t:${r.tableId}`)}
+                              className="px-1 text-left text-[0.8125rem] text-ink-3 hover:text-ink"
+                            >
+                              {t("know.tocRows", { n: r.count, table: r.title })}
+                            </button>
+                          ))}
+                        </div>
+                      </ValueView>
+                    ) : null
+                  ) : (
+                    <Anchor id="documents">
+                      <KnowledgeOverview
+                        projectId={project.id}
+                        data={knowledge.data}
+                        readOnly={project.readOnly}
+                        onOpen={pick}
+                      />
+                    </Anchor>
+                  )}
+                  {group === "info" ? pluginSections(added) : null}
                 </ProjectSettings>
               ) : null}
               {project && group === "data" ? (

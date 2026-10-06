@@ -795,6 +795,53 @@ export async function embeddingModel(): Promise<{ model: EmbeddingModel; ref: st
     : null;
 }
 
+/** Where a System One question goes: the address, how to sign the request, the model to name. */
+export interface SystemOneAccess {
+  url: string;
+  headers: Record<string, string>;
+  /** Null: the gateway of the credits picks the model of the classifier class. */
+  model: string | null;
+}
+
+/**
+ * The way to TypeSafe's Jev, a classifier that answers typed questions with probabilities and
+ * writes no text: the credits on a Manage-App's runtime; alone, an AI Gateway key, a TypeSafe
+ * key, or the linked account's credits. Null when there is none.
+ */
+export async function systemOneAccess(): Promise<SystemOneAccess | null> {
+  const cfg = await config();
+  const viaCredits = (access: GatewayAccess): SystemOneAccess => ({
+    url: `${access.baseUrl}/v4/ai/systemone`,
+    headers: {
+      authorization: `Bearer ${access.token}`,
+      // Booked under the classifier class; its evaluation model answers.
+      "ai-model-id": "wizards/classifier",
+      ...(access.tenant ? { "x-wizards-tenant": access.tenant } : {}),
+    },
+    model: null,
+  });
+  if (managed) {
+    const access = await creditAccess(cfg, true).catch(() => null);
+    return access ? viaCredits(access) : null;
+  }
+  if (cfg.keys.gateway) {
+    return {
+      url: "https://ai-gateway.vercel.sh/typesafe/v1/systemone",
+      headers: { authorization: `Bearer ${cfg.keys.gateway}` },
+      model: "typesafe-ai/jev",
+    };
+  }
+  if (env.typesafeKey) {
+    return {
+      url: "https://api.typesafe.ai/v1/systemone",
+      headers: { authorization: `Bearer ${env.typesafeKey}` },
+      model: "jev-latest",
+    };
+  }
+  const access = await creditAccess(cfg, false).catch(() => null);
+  return access ? viaCredits(access) : null;
+}
+
 /** Search tools an AI Gateway runs itself; they travel in the request, so any gateway client names them. */
 export const gatewayTools = createGateway({ apiKey: "unused" }).tools;
 

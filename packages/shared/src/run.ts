@@ -157,6 +157,11 @@ export const RUN_NOTES = {
     de: "Sucht in den Dokumenten: {query}",
     en: "Searching the documents: {query}",
   },
+  searchesKnowledge: {
+    de: "Sucht in Wissen: {query} – {relevant} von {candidates} passen",
+    en: "Searching the knowledge: {query} – {relevant} of {candidates} fit",
+  },
+  listsKnowledge: { de: "Listet Wissen", en: "Listing the knowledge" },
   searchesMail: { de: "Durchsucht {label}", en: "Searching {label}" },
   savesReceipts: {
     de: "Speichert {count} Belege aus {label}",

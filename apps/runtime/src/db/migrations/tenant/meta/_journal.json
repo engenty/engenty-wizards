@@ -64,6 +64,13 @@
       "when": 1791307814904,
       "tag": "0008_run_event_note",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791311715390,
+      "tag": "0009_knowledge",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@ import {
 } from "../media/generate.js";
 import { type AiOrigin, markMedia } from "../media/marking.js";
 import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
+import { knowledgeBlock } from "../services/knowledge.js";
 import { buildStepTools } from "../tools/index.js";
 import { spaceContextOf } from "../tools/plugin.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
@@ -57,17 +58,6 @@ function brandBlock(ctx: StepContext): string {
     b.colors?.length ? `Colours (the first is the accent): ${colorLine(b.colors)}` : "",
   ].filter(Boolean);
   return parts.length ? `# WHO THIS WIZARD BELONGS TO\n${parts.join("\n")}` : "";
-}
-
-/** The project's documents, for a step that has the tools to search and read them. */
-function documentsBlock(ctx: StepContext): string {
-  const docs = ctx.projectFiles.filter((f) => f.kind === "document").slice(0, 40);
-  if (!docs.length) {
-    return "";
-  }
-  return `# THE PROJECT'S DOCUMENTS\nKnowledge the wizard's owner gave for all wizards. Find passages with project_search, read a whole document with project_document. Use them when the task touches what they cover.\n${docs
-    .map((d) => `- ${d.name}${d.description ? ` — ${d.description}` : ""}`)
-    .join("\n")}`;
 }
 
 /** Previous output of a step, for a revision. */
@@ -235,7 +225,8 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       GROUND_RULES,
       `Today is ${today(ctx)}.`,
       brandBlock(ctx),
-      documentsBlock(ctx),
+      // Wissen: what the space holds for its wizards, and how to find and read it.
+      await knowledgeBlock(ctx.project.id),
       // What the space's plugins hold for its wizards: a wiki, questions and answers.
       ...(await spaceContextOf(ctx)).blocks,
       formatHint,

@@ -135,7 +135,7 @@ export interface ProjectFileView {
 export const PROJECT_LIMITS = {
   facts: 100,
   colors: 12,
-  files: { logo: 8, asset: 100, document: 50 },
+  files: { logo: 8, asset: 100, document: 2000 },
   bytes: { logo: 5_000_000, asset: 15_000_000, video: 80_000_000, document: 30_000_000 },
 } as const;
 
@@ -145,20 +145,4 @@ export function projectFileLimit(kind: ProjectFileKind, mime: string): number {
     return PROJECT_LIMITS.bytes.video;
   }
   return PROJECT_LIMITS.bytes[kind];
-}
-
-/** One passage the document index found for a question. */
-export interface ProjectSearchHit {
-  /** The document the passage is of; null for a plugin's text. */
-  fileId: string | null;
-  /** The plugin whose text it is; null for a document. */
-  plugin: string | null;
-  /** The document's name, or the title of the plugin's text. */
-  name: string;
-  /** Where the studio shows a plugin's text. */
-  link: string | null;
-  /** The passage's place in its document, from 0. */
-  index: number;
-  text: string;
-  score: number;
 }

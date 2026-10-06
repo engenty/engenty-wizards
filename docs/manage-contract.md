@@ -134,6 +134,14 @@ and no stream, is a decision: the gateway asks the evaluation model and answers 
 object. Every other call, and a decision the model leaves open, is answered by the model of the
 `standard` class and booked under `classifier`.
 
+`POST <GATEWAY_URL>/v4/ai/systemone` (header `ai-model-id: wizards/classifier`) asks the evaluation
+model directly, in TypeSafe's System One shape: `{ state, questions }` in, `{ model, answers,
+usage }` out, each `noul` answer with its P(yes). A search of a space's Wissen asks it which of
+the candidates it found help answer the question. Answered by the model the classifier class is
+bound to when that is an evaluation model, else by `typesafe-ai/jev`; booked under
+`classifier`. `501` when no evaluation model is enabled: the runtime then keeps the order its
+index gave.
+
 `GET <GATEWAY_URL>/v1/models` (any valid token or service key) → what an estimate needs:
 
 ```json

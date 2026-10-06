@@ -2,12 +2,13 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { StepContext } from "../engine/types.js";
 import { runPages, writeRunPage } from "../services/space-data.js";
+import { pageReadInput, readKnowledgePage } from "./project.js";
 import { attempt, clip } from "./shared.js";
 
 /**
- * Pages of the space for a step that lists "pages": Markdown its wizard keeps for every run —
- * notes, a log, a summary that grows — and the space's own pages to read. They stand in the
- * studio under Space → Daten.
+ * Pages for a step that lists "pages": Markdown its wizard keeps for every run — notes, a log, a
+ * summary that grows — shown in the studio under Space → Daten. Its page_read also reads the
+ * pages of Wissen, by path.
  */
 export function pageTools(ctx: StepContext) {
   const projectId = ctx.project.id;
@@ -16,31 +17,34 @@ export function pageTools(ctx: StepContext) {
     page_read: createTool({
       id: "page_read",
       description:
-        "Read a page of the space: one this wizard wrote, or one of the space's own. Without a title it lists the pages there are.",
-      inputSchema: z.object({ title: z.string().optional() }),
-      execute: ({ title }) =>
-        attempt(async () => {
+        "Read a page: one this wizard wrote, by its title, or a page of Wissen, by its path (pages/…). Without either it lists the wizard's pages.",
+      inputSchema: z.object({
+        title: z.string().optional().describe("A page this wizard wrote"),
+        path: pageReadInput.path.optional(),
+        section: pageReadInput.section,
+        from: pageReadInput.from,
+      }),
+      execute: ({ title, path, section, from }) => {
+        if (path?.trim()) {
+          return readKnowledgePage(ctx, { path, section, from });
+        }
+        return attempt(async () => {
           const pages = await runPages(projectId, wizardId);
-          const of = (p: (typeof pages)[number]) => (p.wizardId ? "wizard" : "space");
           if (!title?.trim()) {
-            return {
-              pages: pages.map((p) => ({ title: p.title, of: of(p), chars: p.markdown.length })),
-            };
+            return { pages: pages.map((p) => ({ title: p.title, chars: p.markdown.length })) };
           }
           const page = pages.find((p) => p.title.toLowerCase() === title.trim().toLowerCase());
           if (!page) {
-            return {
-              error: `No page "${title}".`,
-              pages: pages.map((p) => p.title),
-            };
+            return { error: `No page "${title}".`, pages: pages.map((p) => p.title) };
           }
-          return { title: page.title, of: of(page), markdown: clip(page.markdown, 40_000) };
-        }),
+          return { title: page.title, markdown: clip(page.markdown, 40_000) };
+        });
+      },
     }),
     page_write: createTool({
       id: "page_write",
       description:
-        "Write a page of this wizard in Markdown, kept for every later run and shown to the admin in the studio. A page with the same title is replaced — or added to with append: true (a log, a list that grows). The space's own pages are read-only.",
+        "Write a page of this wizard in Markdown, kept for every later run and shown to the admin in the studio. A page with the same title is replaced — or added to with append: true (a log, a list that grows). Pages of Wissen are read-only.",
       inputSchema: z.object({
         title: z.string().min(1).max(200),
         markdown: z.string().max(200_000),

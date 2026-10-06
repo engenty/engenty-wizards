@@ -99,9 +99,11 @@ type AgentStep = {
   working?: string              // shown while it runs ("Recherchiert im Web …")
 }
 // Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
-//   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once).
+//   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once);
+//   and where the space has Wissen: project_search (a question, "where" on its typed Kategorien, hits checked for relevance),
+//   project_list (by Kategorien), page_read / table_read / project_document (an item whole, by its path).
 // "pages" brings: page_read / page_write — Markdown pages of the space the wizard keeps for every run (notes, a log
-//   that grows with append), shown to the admin under Space → Daten; page_read also reads the space's own pages.
+//   that grows with append), shown to the admin under Space → Daten; page_read also reads Wissen by path.
 // "browser" brings: browser_open/click/type, browser_screenshot (the model looks at the page),
 //   browser_request_credentials (the PERSON types a login into the page — the model never sees it; sign-ins can be remembered),
 //   browser_request_user (the person solves a captcha or "continue with Google" in a picture of the page),
@@ -154,7 +156,8 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{today}}
   · the project (its settings): {{brand.name}} {{brand.about}} {{brand.colors}} · {{facts.key}} (one fact: address, VAT id, …) · {{facts}} (all facts)
-    — every AI step already knows them, name one only where the text must carry it; agent steps can also search the project's documents
+    — every AI step already knows them, name one only where the text must carry it; agent steps also search the space's Wissen
+      and are told its Kategorien: say in a step's instructions which Kategorie to filter by when the task names one
   · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)
   · {{locationField}} {{locationField.lat|lng|accuracy|label|map}} · {{audioField}} (the transcript) · {{signatureField}} (asset://ID)
 A template may only use fields asked and steps run EARLIER.`;

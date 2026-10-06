@@ -36,6 +36,7 @@ export default definePlugin((wizards) => {
 | `registerTool(tool)` | A tool for AI steps | [Tools](./tools.md) |
 | `registerSpaceContext(context)` | A block and tools for every AI step of a space | [The space](./space.md) |
 | `registerAssistantTool(tool)` | A tool of the space assistant | [The space](./space.md#tools-of-the-space-assistant) |
+| `spaceData.putPage(input)`, `putTable`, `putFile`, `putDocument`, `putCategories`, … | Wissen of a space: pages, tables, files and Kategorien | [The space](./space.md#wissen-a-plugin-writes) |
 | `index.put(entry)`, `index.remove(space, key?)` | Texts in the space's search index | [The space](./space.md#the-search-index) |
 | `registerHttpRoute(route)` | A route below `/api/studio/plugins/<id>` | [Routes](./routes.md) |
 | `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
