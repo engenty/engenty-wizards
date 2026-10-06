@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.10] - 2026-10-06
+- FIXED Signing in from the studio returns to the studio page that asked for it, not to the host's root, which is the landing page since the studio moved to /studio
+
 ## [0.2.9] - 2026-10-06
 - ADDED Plugins add to the space: sections of the space page under the plugin's name in its menu, tools of the space assistant whose results the plugin draws as cards in its chat, a block and tools for every AI step of the space, texts in the space's search index that project_search finds beside its documents, events when a space is made, changed or deleted and when a file is read or removed, jobs that run on a schedule, public routes under an address of their own, and the runtime's web reader and document parser; the run-log example shows a space's last runs on the space page; the plugin docs describe the space
 

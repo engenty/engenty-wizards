@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.10",
+    "timestamp": 1791286324,
+    "commits": [
+      {
+        "id": "c5c99b0",
+        "message": "signing in from the studio returns to the studio page that asked for it, not to the host's root, which is the landing page since the studio moved to /studio",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.9",
-    "timestamp": 1791284803,
+    "timestamp": 1791284806,
     "commits": [
       {
         "id": "fff4ab3",
