@@ -11,7 +11,7 @@ import {
 import { resumeInterruptedRuns } from "./engine/runner.js";
 import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
-import { loadCatalog, loadLocalModels } from "./models.js";
+import { checkModelsAtStart, loadCatalog, loadLocalModels } from "./models.js";
 import { startJobs } from "./plugins/jobs.js";
 import { loadPlugins } from "./plugins/loader.js";
 import { closeBrowser } from "./render/chromium.js";
@@ -38,6 +38,7 @@ if (managed) {
   await openTenantDb(LOCAL_TENANT);
   await loadLocalModels();
   void loadCatalog();
+  void checkModelsAtStart().catch(() => undefined);
 }
 
 // The marketplace's starters and the starred entries, kept for offline use; checked hourly.

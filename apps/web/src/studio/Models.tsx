@@ -38,7 +38,7 @@ import { Link, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { type Lang, lang, t } from "../lib/i18n";
 import { type HarnessId, type HarnessStatus, type Me, useMe } from "../lib/session";
-import { Button, Card, cn, Input, Select, Spinner, Switch } from "../ui";
+import { Button, Card, cn, Input, LinkedText, Select, Spinner, Switch } from "../ui";
 import { billingUrl } from "./AppFrame";
 import { HarnessPanel } from "./Harness";
 import { openExternal } from "./LocalRuntime";
@@ -1115,10 +1115,12 @@ function CapabilityPanel({
           )
         ) : null}
 
-        {way.kind === "none" && way.problem ? (
+        {way.problem ? (
           <p className="flex items-start gap-2 rounded-lg bg-paper-2 px-3 py-2.5 text-[0.8125rem] text-ink-2">
             <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-ink-3" />
-            {way.problem}
+            <span>
+              <LinkedText text={way.problem} />
+            </span>
           </p>
         ) : null}
 

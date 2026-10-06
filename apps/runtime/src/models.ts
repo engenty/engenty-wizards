@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createElevenLabs } from "@ai-sdk/elevenlabs";
 import { createFal } from "@ai-sdk/fal";
@@ -22,13 +23,15 @@ import {
   providerInfo,
   providerOfRef,
 } from "@engenty-wizards/shared/providers";
-import type {
-  EmbeddingModel,
-  experimental_generateVideo,
-  ImageModel,
-  LanguageModel,
-  SpeechModel,
-  TranscriptionModel,
+import {
+  type EmbeddingModel,
+  type experimental_generateVideo,
+  generateSpeech,
+  generateText,
+  type ImageModel,
+  type LanguageModel,
+  type SpeechModel,
+  type TranscriptionModel,
 } from "ai";
 import { accountToken, linkedAccount } from "./auth/account.js";
 import { env } from "./env.js";
@@ -846,6 +849,86 @@ export async function systemOneAccess(): Promise<SystemOneAccess | null> {
 /** Search tools an AI Gateway runs itself; they travel in the request, so any gateway client names them. */
 export const gatewayTools = createGateway({ apiKey: "unused" }).tools;
 
+// --- An AI Gateway key on Vercel's free tier ------------------------------------------
+
+/** Where Vercel tops an AI Gateway account up to paid credits. */
+const GATEWAY_TOP_UP = "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dtop-up";
+
+/**
+ * The model Vercel refused because the key's account is on the free tier ("" where the answer
+ * names none); null where the error is something else.
+ */
+export function freeTierRefusal(err: unknown): string | null {
+  let text = "";
+  for (let e = err as any; e && text.length < 100_000; e = e.cause) {
+    text += ` ${e.message ?? ""} ${e.responseBody ?? ""}`;
+  }
+  if (!/RestrictedModelsError|Free tier users do not have access/i.test(text)) {
+    return null;
+  }
+  return /"originalModelId":"([^"]+)"/.exec(text)?.[1] ?? "";
+}
+
+/** What the person reads when Vercel's free tier leaves a model out, and how to fix it. */
+export function freeTierText(model: string): string {
+  return `Dein AI Gateway Key ist bei Vercel im kostenlosen Tarif, und der schließt ${model ? `„${model}“` : "dieses Modell"} aus. Abhilfe: bei Vercel Guthaben aufladen (${GATEWAY_TOP_UP}) oder unter Einstellungen → Modelle dafür einen anderen Weg wählen.`;
+}
+
+/** What a key was answered for a model: refusals are asked again soon, as a top-up lifts them. */
+const gatewayProbes = new Map<string, { refused: boolean; at: number }>();
+const probeId = (key: string, id: string) =>
+  `${createHash("sha256").update(key).digest("hex").slice(0, 16)}|${id}`;
+
+/** A call refused for the free tier: the next run's check knows before it starts. */
+export async function noteFreeTierRefusal(err: unknown) {
+  const model = freeTierRefusal(err);
+  const key = model ? (await config()).keys.gateway : undefined;
+  if (model && key) {
+    gatewayProbes.set(probeId(key, model), { refused: true, at: Date.now() });
+  }
+}
+
+/**
+ * Whether the key's account may call the model. Vercel refuses before any provider is asked, so
+ * a refused probe costs nothing; an allowed one costs a token or a word. Images (but those a chat
+ * model makes) and videos cannot be asked that cheaply: only a refusal already seen counts.
+ */
+async function gatewayRefuses(key: string, id: string, cls: ModelClass): Promise<boolean> {
+  const at = probeId(key, id);
+  const known = gatewayProbes.get(at);
+  if (known && Date.now() - known.at < (known.refused ? 300_000 : 86_400_000)) {
+    return known.refused;
+  }
+  if (cls === "video" || (cls === "image" && !isChatImageModel(id))) {
+    return known?.refused ?? false;
+  }
+  const gateway = createGateway({ apiKey: key });
+  const limits = { maxRetries: 0, abortSignal: AbortSignal.timeout(15_000) };
+  let refused = false;
+  try {
+    if (cls === "speech") {
+      await generateSpeech({ model: gateway.speechModel(id), text: "Ok.", ...limits });
+    } else {
+      await generateText({ model: gateway(id), prompt: "Ok.", maxOutputTokens: 1, ...limits });
+    }
+  } catch (err) {
+    // Anything else (a limit of the model, the network) is not the tier: the run will tell.
+    refused = freeTierRefusal(err) !== null;
+  }
+  gatewayProbes.set(at, { refused, at: Date.now() });
+  return refused;
+}
+
+/** Why the own AI Gateway key cannot reach what a class runs on, or null. */
+async function gatewayProblem(cls: ModelClass, ref: string): Promise<string | null> {
+  const { provider, id } = parse(ref);
+  const key = (await config()).keys.gateway;
+  if (!key || (provider !== null && provider !== "gateway")) {
+    return null;
+  }
+  return (await gatewayRefuses(key, id, cls)) ? freeTierText(id) : null;
+}
+
 /**
  * Whether a class can run here, found out without calling it: null, or what the person reads.
  * A class the gateway serves counts as there unless its catalog leaves it unbound.
@@ -878,7 +961,7 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
     if (client && (await detectHarness(client.id))?.auth === "none") {
       return signedOut(client);
     }
-    return null;
+    return resolved.gateway ? await gatewayProblem(cls, resolved.ref) : null;
   } catch (err) {
     if (err instanceof ModelUnavailableError) {
       return err.message;
@@ -954,7 +1037,7 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
             ? vendor
             : providerOfRef(ref),
         ref,
-        problem: null,
+        problem: client ? null : await gatewayProblem(cls, ref),
       };
       continue;
     }
@@ -976,6 +1059,15 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       : { kind: "none", by: null, ref: "", problem: problem ?? missingText(cfg, cls) };
   }
   return ways;
+}
+
+/** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */
+export async function checkModelsAtStart() {
+  for (const [cls, way] of Object.entries(await classWays())) {
+    if (way.kind !== "none" && way.problem) {
+      console.warn(`models: ${cls}: ${way.problem}`);
+    }
+  }
 }
 
 /** What the settings page shows: the choices, which keys are there (never the keys), and the ways. */

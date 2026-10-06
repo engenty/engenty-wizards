@@ -436,3 +436,22 @@ export function Dialog({
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="py-16 text-center text-ink-3">{children}</div>;
 }
+
+/** A sentence of the server with its web addresses as links, named by their host. */
+export function LinkedText({ text }: { text: string }) {
+  return text.split(/(https?:\/\/[^\s)]+)/).map((part, i) =>
+    i % 2 ? (
+      <a
+        key={part}
+        href={part}
+        target="_blank"
+        rel="noreferrer"
+        className="font-medium text-ink underline underline-offset-2"
+      >
+        {new URL(part).host}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}

@@ -16,7 +16,7 @@ import {
   type WizardDetail,
 } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
-import { Button, Chip, cn, IconButton, Spinner } from "../ui";
+import { Button, Chip, cn, IconButton, LinkedText, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
 import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
@@ -479,7 +479,8 @@ export function EditorPage() {
                 {missing.map((m) => (
                   <li key={m.cls}>
                     <span className="text-ink">{t(`class.${m.cls}` as Key)}</span> (
-                    {m.steps.map((s) => `„${s.title}“`).join(", ")}): {m.problem}
+                    {m.steps.map((s) => `„${s.title}“`).join(", ")}):{" "}
+                    <LinkedText text={m.problem} />
                   </li>
                 ))}
               </ul>

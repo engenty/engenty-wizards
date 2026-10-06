@@ -29,7 +29,12 @@ import { env } from "../env.js";
 import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
-import { ModelUnavailableError } from "../models.js";
+import {
+  freeTierRefusal,
+  freeTierText,
+  ModelUnavailableError,
+  noteFreeTierRefusal,
+} from "../models.js";
 import { runEnded } from "../plugins/events.js";
 import { projectFiles } from "../services/project-files.js";
 import { projectProfile } from "../services/projects.js";
@@ -165,6 +170,11 @@ function stepOf(def: WizardDefinition, id: string | null): Step | undefined {
 function friendly(err: unknown): string {
   if (err instanceof StepError || err instanceof ModelUnavailableError) {
     return err.message;
+  }
+  // An own AI Gateway key on Vercel's free tier: the person can top it up or pick another way.
+  const refused = freeTierRefusal(err);
+  if (refused !== null) {
+    return freeTierText(refused);
   }
   const msg = (err as Error)?.message ?? String(err);
   // The model-gateway answers 402 once the tenant's credits are used up.
@@ -383,6 +393,7 @@ async function drive(runId: string, signal: AbortSignal) {
         return;
       }
       console.error(`[run ${runId} step ${step.id}]`, err);
+      await noteFreeTierRefusal(err);
       const message = friendly(err);
       await emitEvent(runId, step.id, "error", message);
       await updateRun(runId, { status: "failed", error: message });

@@ -15,7 +15,7 @@ import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
 import { eventText, t } from "../lib/i18n";
 import { ShareResultButton } from "../share/ShareSheet";
-import { Button, Card, cn, Spinner, Textarea } from "../ui";
+import { Button, Card, cn, LinkedText, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
 import {
   disableNotify,
@@ -625,7 +625,9 @@ function Failed({ view, run }: { view: RunView; run: Run }) {
     <div className="flex animate-rise flex-col items-center pt-8 text-center">
       <Mascot kind={view.wizard.avatar} size={90} />
       <h2 className="mt-4 font-display font-semibold text-[1.375rem]">{t("run.failed")}</h2>
-      <p className="mt-2 max-w-md text-[0.9375rem] text-ink-3">{view.error}</p>
+      <p className="mt-2 max-w-md text-[0.9375rem] text-ink-3">
+        <LinkedText text={view.error ?? ""} />
+      </p>
       <div className="mt-8 flex gap-3">
         {view.canBack ? (
           <Button variant="ghost" onClick={() => void run.back()}>
