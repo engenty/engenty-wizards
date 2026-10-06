@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { linkedAccount } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
 import { managed } from "../manage.js";
 import { readSetting, writeSetting } from "../settings.js";
@@ -6,7 +7,8 @@ import { readSetting, writeSetting } from "../settings.js";
 /**
  * What a person says about themselves in the studio: how the app calls them and how to reach
  * them. A runtime that runs alone knows nobody — its one person starts as the machine's user
- * name and sets everything here. Managed, name and e-mail are the account's and stay with it.
+ * name and sets everything here. Managed, name and e-mail are the account's and stay with it; so
+ * they are while a runtime that runs alone is linked to an account.
  */
 export interface UserProfile {
   name: string;
@@ -24,17 +26,32 @@ export const profileSchema = z.object({
 
 const key = (user: SessionUser) => `profile:${user.tenantId}:${user.id}`;
 
+/** The account whose name and e-mail the profile shows; null where the person sets them here. */
+async function accountOf(user: SessionUser): Promise<{ name: string; email: string } | null> {
+  if (managed) {
+    return { name: user.name, email: user.email };
+  }
+  const linked = await linkedAccount();
+  return linked ? { name: linked.name, email: linked.email } : null;
+}
+
 export async function userProfile(user: SessionUser): Promise<UserProfile> {
   const stored = (await readSetting<Partial<UserProfile>>(key(user))) ?? {};
+  const account = await accountOf(user);
   return {
-    name: (managed ? "" : stored.name) || user.name,
+    name: account?.name || stored.name || user.name,
     about: stored.about ?? "",
-    email: (managed ? "" : stored.email) || user.email,
+    email: account ? account.email : stored.email || user.email,
     phone: stored.phone ?? "",
   };
 }
 
 export async function saveProfile(user: SessionUser, profile: UserProfile): Promise<UserProfile> {
-  await writeSetting(key(user), profile);
+  // Name and e-mail an account gives stay the person's own underneath: they come back unlinked.
+  const stored = (await readSetting<Partial<UserProfile>>(key(user))) ?? {};
+  const own = (await accountOf(user))
+    ? { ...profile, name: stored.name ?? "", email: stored.email ?? "" }
+    : profile;
+  await writeSetting(key(user), own);
   return userProfile(user);
 }

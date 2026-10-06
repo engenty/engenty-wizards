@@ -396,6 +396,24 @@ describe("a tenant that builds nothing here (the free tier)", () => {
     expect(wizard).toMatchObject({ shareEnabled: false, dailyRunLimit: 7 });
   });
 
+  it("makes a new link when the install makes one: the old one stops", async () => {
+    const before = shareUrl.split("/w/")[1];
+    const res = await api("POST", `/spaces/${SPACE_ID}/wizards/${WIZARD_ID}/rotate-link`, "free");
+    expect(res.status).toBe(200);
+    expect(res.body.shareUrl).toMatch(new RegExp(`^${RUNTIME}/w/[A-Za-z0-9_-]{14}$`));
+    expect(res.body.shareUrl).not.toBe(shareUrl);
+    expect(res.body.code).toMatch(/^[A-Z0-9]{8}$/);
+    expect(
+      (await app.fetch(new Request(`${RUNTIME}/api/public/wizards/${before}`))).status,
+    ).toBe(404);
+    shareUrl = res.body.shareUrl;
+    const listed = await api("GET", "/spaces", "free");
+    expect(listed.body.spaces[0].wizards[0].shareUrl).toBe(shareUrl);
+    // Only the install's own wizards: an unknown one is not found.
+    const other = await api("POST", `/spaces/${SPACE_ID}/wizards/unknownwiz1/rotate-link`, "free");
+    expect(other.status).toBe(404);
+  });
+
   it("has room for one project: another install's is refused until the first goes", async () => {
     const second = await sync("free", "otherspace002", "otherwizard2", {
       version: 1,

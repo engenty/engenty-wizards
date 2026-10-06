@@ -62,7 +62,8 @@ A model is written `vendor/model` for the AI Gateway, or with the provider in fr
 
 An account is optional. With it you
 
-- use credits instead of your own keys,
+- use credits instead of your own keys (the editor's note about missing models says so where
+  text, image or video models are missing),
 - publish wizards to the cloud, where their links run while your computer is off
   ([Test and share](./test-and-share.md#in-the-cloud)).
 
@@ -70,6 +71,10 @@ Settings → Account signs you in, in your browser. A new account needs an invit
 there and "Create an account" opens the sign-up page with it. An account starts with credits;
 some of them may end on a date, which the settings show. Runs in the cloud are paid from the
 account's credits and stop when they are used up, until you top up.
+
+While an account is signed in, the studio calls you by its name and e-mail: Settings → Account
+shows them under "Profile" without changing them. The avatar carries a small cloud; its menu
+says "Connected to engenty.ai" and the credits, or that the sign-in has run out.
 
 Without an account the app is not connected to anything: wizards, project data and files stay on
 your computer.

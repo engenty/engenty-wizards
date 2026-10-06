@@ -68,6 +68,7 @@ import {
   pushSharing,
   removeFromCloud,
   replaceCloudSpaces,
+  rotateInCloud,
   syncToCloud,
 } from "../services/cloud.js";
 import { ServiceError } from "../services/errors.js";
@@ -440,7 +441,14 @@ export const studio = new Hono<Vars>()
   .get("/projects/:id/wizards", async (c) => {
     const user = c.get("user");
     await ownedProject(user.id, c.req.param("id"));
-    return c.json(await listWizards(user.id, c.req.param("id")));
+    const wizards = await listWizards(user.id, c.req.param("id"));
+    // A local install with an account: where each wizard stands in its cloud, for the cards.
+    const linked = await cloudLinked();
+    return c.json(
+      await Promise.all(
+        wizards.map(async (w) => ({ ...w, cloud: linked ? await cloudState(w.id) : null })),
+      ),
+    );
   })
   .post("/wizards", async (c) => {
     const body = z
@@ -524,9 +532,12 @@ export const studio = new Hono<Vars>()
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
     return c.json({ code: await codeOf(w.shareToken) });
   })
-  .post("/wizards/:id/rotate-link", async (c) =>
-    c.json(await rotateShareLink(c.get("user").id, c.req.param("id"))),
-  )
+  // A new link here, and for the copy in the cloud of a linked account: the old ones stop.
+  .post("/wizards/:id/rotate-link", async (c) => {
+    const rotated = await rotateShareLink(c.get("user").id, c.req.param("id"));
+    const cloud = managed ? null : await rotateInCloud(c.get("user").id, c.req.param("id"));
+    return c.json({ ...rotated, cloud });
+  })
   .post("/wizards/:id/duplicate", async (c) =>
     c.json(await duplicateWizard(c.get("user").id, c.req.param("id"))),
   )

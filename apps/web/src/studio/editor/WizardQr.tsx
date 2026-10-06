@@ -49,7 +49,7 @@ export function WizardQr({ url, code, title }: { url: string; code?: string; tit
   const svg = useMemo(() => renderSVG(url, { ecc: "M", border: 2, pixelSize: 8 }), [url]);
   const file = (title.trim() || "wizard").replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase();
   return (
-    <div className="mt-6 flex gap-4 border-border-soft border-t pt-5">
+    <div className="flex gap-4">
       <div
         role="img"
         aria-label={t("share.qr")}
@@ -59,7 +59,6 @@ export function WizardQr({ url, code, title }: { url: string; code?: string; tit
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="text-[14px]">{t("share.qr")}</span>
         <p className="text-[13px] text-ink-3">{t("share.qrHint")}</p>
         {code ? (
           <p className="text-[13px] text-ink-3">

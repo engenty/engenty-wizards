@@ -212,6 +212,11 @@ export interface WizardSummary {
   dailyRunLimit: number;
   stepCount: number;
   updatedAt: string;
+  /**
+   * In a list: where the wizard stands in the cloud of the account a local install is linked
+   * to; null where none is linked or the runtime is managed.
+   */
+  cloud?: CloudState | null;
 }
 
 export interface WizardDetail extends WizardSummary {
@@ -275,6 +280,18 @@ export interface CloudState {
     tries: number;
     again: string | null;
   } | null;
+}
+
+/** A local wizard in the cloud, as this install knows it; `linked`: an account is linked at all. */
+export type CloudAnswer = CloudState & { linked: boolean };
+
+/** Where a local wizard stands in the cloud of the linked account. */
+export function useCloud(wizardId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["cloud", wizardId],
+    queryFn: () => api.get<CloudAnswer>(`/api/studio/wizards/${wizardId}/cloud`),
+    enabled,
+  });
 }
 
 /** What publishing answers; `cloud` is null where no account is linked or the runtime is managed. */

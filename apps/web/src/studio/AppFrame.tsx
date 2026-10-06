@@ -1,8 +1,9 @@
-import { CreditCard, LogOut, Settings } from "lucide-react";
+import { Cloud, CloudOff, CreditCard, Laptop, LogOut, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
+import { features } from "../lib/features";
 import { t } from "../lib/i18n";
 import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
@@ -12,6 +13,7 @@ import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { UpdateBanner } from "./UpdateBanner";
+import { hostOf } from "./where";
 
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
 const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
@@ -44,6 +46,20 @@ export function CreditsPill({ me }: { me: Me }) {
   );
 }
 
+/**
+ * Where a local install stands with its account, at the avatar: linked (its cloud runs what is
+ * published here), linked with the sign-in run out, or alone. Nothing for a managed runtime.
+ */
+function accountState(me: Me): "linked" | "expired" | "alone" | null {
+  if (me.mode !== "local") {
+    return null;
+  }
+  if (!me.account) {
+    return features.account ? "alone" : null;
+  }
+  return me.account.signedIn ? "linked" : "expired";
+}
+
 export function UserMenu({ me }: { me: Me }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,6 +75,7 @@ export function UserMenu({ me }: { me: Me }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
   const initials = initialsOf(me.user.name);
+  const state = accountState(me);
   const item =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
   return (
@@ -66,21 +83,80 @@ export function UserMenu({ me }: { me: Me }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[13px] text-ember-strong ring-1 ring-border-soft"
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[13px] text-ember-strong ring-1 ring-border-soft"
         aria-label={me.user.name || "Menu"}
       >
         {me.user.image ? (
-          <img src={me.user.image} alt="" className="size-full object-cover" />
+          <img src={me.user.image} alt="" className="size-full rounded-full object-cover" />
         ) : (
           initials
         )}
+        {state === "linked" || state === "expired" ? (
+          <span
+            title={
+              state === "linked"
+                ? t("nav.connected", { host: hostOf(me.account?.cloudUrl ?? "") })
+                : t("nav.expired")
+            }
+            className="-right-1 -bottom-1 absolute flex size-4 items-center justify-center rounded-full bg-card ring-1 ring-border-soft"
+          >
+            {state === "linked" ? (
+              <Cloud className="size-2.5 text-moss" />
+            ) : (
+              <CloudOff className="size-2.5 text-amber" />
+            )}
+          </span>
+        ) : null}
       </button>
       {open ? (
-        <div className="absolute top-11 right-0 z-50 w-60 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
+        <div className="absolute top-11 right-0 z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
           <div className="px-3 pt-2 pb-2.5">
-            <div className="truncate font-medium text-[14px]">{me.user.name}</div>
+            <div className="truncate font-medium text-[14px]">
+              {me.user.name}
+              {/* A local install without an account: the person is this computer's. */}
+              {state === "alone" ? (
+                <span className="font-normal text-ink-4"> ({t("nav.local")})</span>
+              ) : null}
+            </div>
             <div className="truncate text-[12px] text-ink-3">{me.user.email}</div>
           </div>
+          {state ? (
+            // Whether what is published here runs for others: where it runs, and what to do.
+            <button
+              type="button"
+              className="mx-1.5 mb-1.5 flex w-[calc(100%-0.75rem)] items-start gap-2.5 rounded-lg bg-paper-2 px-2.5 py-2 text-left text-[13px] text-ink-2 hover:text-ink"
+              onClick={() => {
+                setOpen(false);
+                navigate("/settings/account");
+              }}
+            >
+              {state === "linked" ? (
+                <Cloud className="mt-0.5 size-4 shrink-0 text-moss" />
+              ) : state === "expired" ? (
+                <CloudOff className="mt-0.5 size-4 shrink-0 text-amber" />
+              ) : (
+                <Laptop className="mt-0.5 size-4 shrink-0 text-ink-3" />
+              )}
+              <span className="flex min-w-0 flex-1 flex-col leading-snug">
+                <span className="break-words">
+                  {state === "linked"
+                    ? t("nav.connected", { host: hostOf(me.account?.cloudUrl ?? "") })
+                    : state === "expired"
+                      ? t("nav.expired")
+                      : t("nav.onlyHere")}
+                </span>
+                <span className="font-medium text-ink tabular-nums">
+                  {state === "linked"
+                    ? me.account?.credits !== null && me.account?.credits !== undefined
+                      ? t("nav.credits", { n: Math.floor(me.account.credits).toLocaleString() })
+                      : null
+                    : state === "expired"
+                      ? t("account.signInAgain")
+                      : t("account.signIn")}
+                </span>
+              </span>
+            </button>
+          ) : null}
           <div className="px-3 pt-1.5 pb-1 font-medium text-[11px] text-ink-4 uppercase tracking-[0.07em]">
             {t("nav.settings")}
           </div>

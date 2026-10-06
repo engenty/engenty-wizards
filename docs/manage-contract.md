@@ -88,6 +88,7 @@ Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's acc
 |---|---|---|
 | `PUT /spaces/:spaceId/wizards/:wizardId` | `wizards:write wizards:publish` | `{ space: { name, brand: { name?, about?, colors? }, facts, logo: { name, mime, description, data } \| null }, version, definition, files: [{ path, mime?, data }], shareEnabled, dailyRunLimit? }` (`data` is base64) → `{ wizardId, shareUrl, code, shareEnabled, publishedVersion: number \| null, runnable, problems }` · makes or updates the project and the wizard; the same wizard again keeps its link · `code`: the copy's ID for the mobile app |
 | `PATCH /spaces/:spaceId/wizards/:wizardId` | `wizards:publish` | `{ shareEnabled?, dailyRunLimit? }` → `{ ok: true }` |
+| `POST /spaces/:spaceId/wizards/:wizardId/rotate-link` | `wizards:publish` | → `{ shareUrl, code }` · the copy gets a new link (the install made one); the old one stops answering |
 | `DELETE /spaces/:spaceId/wizards/:wizardId` | `wizards:write` | → `{ ok: true }` · the copy goes with its link and its runs |
 | `GET /spaces` | `wizards:read` | → `{ spaces: [{ id, name, syncedAt, wizards: [{ id, title, publishedVersion, shareUrl, shareEnabled }] }] }` |
 | `DELETE /spaces/:spaceId` | `wizards:write` | → `{ ok: true }` · the project goes with its wizards |

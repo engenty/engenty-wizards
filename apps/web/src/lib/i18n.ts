@@ -124,7 +124,6 @@ const de = {
   "setup.recommended": "Empfohlen",
   "setup.done": "Zum Studio",
   "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
-  "cloud.title": "In der Cloud",
   "cloud.onPublish":
     "Sobald du den Wizard veröffentlichst, geht die Version auch in die Cloud deines Kontos und läuft dort hinter einem eigenen Link.",
   "cloud.notSent": "Diese Version ist noch nicht in der Cloud.",
@@ -132,8 +131,6 @@ const de = {
   "cloud.resend": "Erneut senden",
   "cloud.again": "Um {when} wird es noch einmal versucht.",
   "cloud.sent": "Version {v} · gesendet am {when}",
-  "cloud.sentBehind":
-    "In der Cloud liegt Version {v} (gesendet am {when}). Veröffentlicht ist hier Version {now}.",
   "cloud.notRunnable": "Version {v} läuft in der Cloud nicht.",
   "cloud.keepsRunning": "Dort läuft weiter Version {v}.",
   "cloud.nothingRuns": "Dort läuft deshalb noch nichts.",
@@ -175,8 +172,10 @@ const de = {
   "account.aboutHint": "Wer du bist und was du machst.",
   "account.email": "E-Mail",
   "account.phone": "Telefon",
-  "account.connection": "Installation",
-  "account.connectionHint": "Wo diese App läuft und womit sie verbunden ist.",
+  "account.connection": "engenty.ai",
+  "account.connectionHint":
+    "Anmeldung, Guthaben und die Cloud, in der deine Wizards für alle laufen.",
+  "account.profile": "Profil",
   "account.local": "Lokale Installation",
   "account.localText":
     "Diese App läuft auf deinem Gerät und ist mit keinem Konto verbunden. Wizards, Projektdaten und Dateien bleiben hier.",
@@ -203,6 +202,10 @@ const de = {
   "account.look": "Darstellung",
   "account.lookHint": "Sprache und Design der App in diesem Browser.",
   "nav.logout": "Abmelden",
+  "nav.connected": "Verbunden mit {host}",
+  "nav.expired": "Anmeldung abgelaufen",
+  "nav.onlyHere": "Nur auf diesem Computer",
+  "nav.local": "lokal",
   "nav.language": "Sprache",
   "nav.theme": "Design",
   "nav.credits": "{n} Credits",
@@ -242,6 +245,15 @@ const de = {
   "home.empty": "Noch keine Wizards in diesem Projekt.",
   "home.live": "Live",
   "home.draft": "Entwurf",
+  "where.here": "Lokal",
+  "where.hereVersion": "Lokal · Version {v}",
+  "where.hereHint": "Läuft nur auf diesem Computer, solange die App läuft.",
+  "where.liveHint": "Läuft auf {host} – für alle mit dem Link.",
+  "where.liveAt": "Live auf {host} · Version {v}",
+  "where.note": "1 Hinweis",
+  "where.notes": "{n} Hinweise",
+  "where.sending": "Wird gesendet",
+  "where.missing": "Nicht in der Cloud",
   "home.steps": "{n} Schritte",
   "home.newProject": "Neues Projekt",
   "home.projectName": "Name des Projekts",
@@ -344,6 +356,30 @@ const de = {
   "share.rotate": "Neuen Link erzeugen",
   "share.rotateHint": "Der alte Link funktioniert danach nicht mehr.",
   "share.publishFirst": "Veröffentliche den Wizard, damit der Link funktioniert.",
+  "share.unpublished":
+    "Deine Änderungen sind noch nicht veröffentlicht: der Link läuft mit der Version davor.",
+  "share.website": "Website",
+  "share.openHere": "Auf diesem Computer testen",
+  "share.settings": "Einstellungen",
+  "share.on": "aktiv",
+  "share.off": "aus",
+  "share.perDay": "{n} pro Tag",
+  "share.rotateCloud": "Der alte Link funktioniert danach nicht mehr – auch der in der Cloud.",
+  "share.others": "Mit anderen teilen",
+  "share.othersHint":
+    "Mit einem Konto läuft der Wizard auch auf engenty.ai: ein Link, ein QR-Code und ein Tag für deine Website – für alle, auch wenn dein Computer aus ist.",
+  "share.details": "Details",
+  "teaser.website":
+    "Eine Website braucht einen Link, den jeder erreicht. Mit einem Konto läuft der Wizard auch auf engenty.ai – dann steht hier der Tag für deine Seite.",
+  "teaser.qr":
+    "Ein QR-Code braucht einen Link, den jedes Handy erreicht. Mit einem Konto läuft der Wizard auch auf engenty.ai – dann stehen hier der QR-Code und die ID für die App.",
+  "teaser.link":
+    "Dieser Link geht nur auf diesem Computer, solange die App läuft. Mit einem Konto läuft der Wizard auch auf engenty.ai – mit einem Link für alle.",
+  "teaser.models":
+    "Ohne eigenen API Key: mit einem Konto laufen Text, Bilder und Videos über Guthaben.",
+  "teaser.connect": "Konto verbinden",
+  "teaser.modelsLinked":
+    "Oder über das Guthaben deines Kontos: unter Modelle „Guthaben des Kontos“ wählen.",
   "share.open": "Öffnen",
   "share.qr": "QR-Code",
   "share.qrHint":
@@ -351,7 +387,6 @@ const de = {
   "share.code": "ID für die App:",
   "share.readOnly":
     "Ob der Link aktiv ist und wie viele Durchläufe er am Tag zulässt, stellst du in deiner lokalen Installation ein.",
-  "embed.title": "In eine Website einbetten",
   "embed.inline": "In der Seite",
   "embed.modal": "Button + Fenster",
   "embed.inlineHint":
@@ -943,7 +978,6 @@ const en: Record<Key, string> = {
   "setup.recommended": "Recommended",
   "setup.done": "Open the studio",
   "setup.untilWorks": "The studio opens once the test works.",
-  "cloud.title": "In the cloud",
   "cloud.onPublish":
     "When you publish the wizard, the version also goes to your account's cloud and runs there behind a link of its own.",
   "cloud.notSent": "This version is not in the cloud yet.",
@@ -951,7 +985,6 @@ const en: Record<Key, string> = {
   "cloud.resend": "Send again",
   "cloud.again": "It is tried again at {when}.",
   "cloud.sent": "Version {v} · sent {when}",
-  "cloud.sentBehind": "The cloud has version {v} (sent {when}). Version {now} is published here.",
   "cloud.notRunnable": "Version {v} does not run in the cloud.",
   "cloud.keepsRunning": "Version {v} keeps running there.",
   "cloud.nothingRuns": "So nothing runs there yet.",
@@ -989,8 +1022,9 @@ const en: Record<Key, string> = {
   "account.aboutHint": "Who you are and what you do.",
   "account.email": "E-mail",
   "account.phone": "Phone",
-  "account.connection": "Install",
-  "account.connectionHint": "Where this app runs and what it is connected to.",
+  "account.connection": "engenty.ai",
+  "account.connectionHint": "Sign-in, credits and the cloud that runs your wizards for everyone.",
+  "account.profile": "Profile",
   "account.local": "Local install",
   "account.localText":
     "This app runs on your device and is not connected to an account. Wizards, project data and files stay here.",
@@ -1017,6 +1051,10 @@ const en: Record<Key, string> = {
   "account.look": "Appearance",
   "account.lookHint": "Language and theme of the app in this browser.",
   "nav.logout": "Sign out",
+  "nav.connected": "Connected to {host}",
+  "nav.expired": "Sign-in expired",
+  "nav.onlyHere": "Only on this computer",
+  "nav.local": "local",
   "nav.language": "Language",
   "nav.theme": "Theme",
   "nav.credits": "{n} credits",
@@ -1056,6 +1094,15 @@ const en: Record<Key, string> = {
   "home.empty": "No wizards in this project yet.",
   "home.live": "Live",
   "home.draft": "Draft",
+  "where.here": "Local",
+  "where.hereVersion": "Local · version {v}",
+  "where.hereHint": "Runs only on this computer, while the app is running.",
+  "where.liveHint": "Runs on {host}, for everyone with the link.",
+  "where.liveAt": "Live on {host} · version {v}",
+  "where.note": "1 note",
+  "where.notes": "{n} notes",
+  "where.sending": "Being sent",
+  "where.missing": "Not in the cloud",
   "home.steps": "{n} steps",
   "home.newProject": "New project",
   "home.projectName": "Project name",
@@ -1158,13 +1205,35 @@ const en: Record<Key, string> = {
   "share.rotateHint": "The old link stops working.",
   "share.publishFirst": "Publish the wizard so the link works.",
   "share.open": "Open",
+  "share.unpublished": "Your changes are not published yet: the link runs the version before.",
+  "share.website": "Website",
+  "share.openHere": "Test on this computer",
+  "share.settings": "Settings",
+  "share.on": "on",
+  "share.off": "off",
+  "share.perDay": "{n} a day",
+  "share.rotateCloud": "The old link stops working, the one in the cloud too.",
+  "share.others": "Share with others",
+  "share.othersHint":
+    "With an account the wizard also runs on engenty.ai: a link, a QR code and a tag for your website, for everyone, also while your computer is off.",
+  "share.details": "Details",
+  "teaser.website":
+    "A website needs a link everyone can reach. With an account the wizard also runs on engenty.ai, and the tag for your page is here.",
+  "teaser.qr":
+    "A QR code needs a link every phone can reach. With an account the wizard also runs on engenty.ai, and its QR code and the ID for the app are here.",
+  "teaser.link":
+    "This link only works on this computer, while the app is running. With an account the wizard also runs on engenty.ai, with a link for everyone.",
+  "teaser.models":
+    "No API key of your own: with an account, text, images and videos run on credits.",
+  "teaser.connect": "Connect an account",
+  "teaser.modelsLinked":
+    "Or on your account's credits: under Models, choose \"The account's credits\".",
   "share.qr": "QR code",
   "share.qrHint":
     "Scan it with a phone's camera: the wizard opens, in the engenty wizards app when it is installed.",
   "share.code": "ID for the app:",
   "share.readOnly":
     "Whether the link is active and how many runs a day it allows is set in your local install.",
-  "embed.title": "Embed in a website",
   "embed.inline": "Inline",
   "embed.modal": "Button + modal",
   "embed.inlineHint": "Paste the tag into your page's HTML. The wizard appears in that place.",
