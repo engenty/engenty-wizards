@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.12",
+    "timestamp": 1791289470,
+    "commits": [
+      {
+        "id": "3aaf939",
+        "message": "the documentation deploys like the cloud runtime: its image is built on GitHub's runners beside the checks of a release tag and pushed to GHCR, and the server only pulls it (deploy/Dockerfile.docs, built with --pull); the docs Dockerfile keeps its install cached across releases; a change of the docs image no longer redeploys the runtime",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.11",
-    "timestamp": 1791287678,
+    "timestamp": 1791287681,
     "commits": [
       {
         "id": "50041f3",
