@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.23",
+    "timestamp": 1791319360,
+    "commits": [
+      {
+        "id": "4db55b6",
+        "message": "a wizard's brand colour no longer makes its buttons unreadable: the text on a button is light or dark by the button's own colour, not by the theme (a black accent in dark mode got dark text), and ember as text and marks on the page keeps a lightness the paper can carry; the selected chip of an output follows the same rule instead of always white",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.22",
-    "timestamp": 1791318736,
+    "timestamp": 1791318739,
     "commits": [
       {
         "id": "cacabd1",

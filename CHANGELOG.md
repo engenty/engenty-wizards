@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.23] - 2026-10-06
+- FIXED A wizard's brand colour no longer makes its buttons unreadable: the text on a button is light or dark by the button's own colour, not by the theme (a black accent in dark mode got dark text), and ember as text and marks on the page keeps a lightness the paper can carry; the selected chip of an output follows the same rule instead of always white
+
 ## [0.2.22] - 2026-10-06
 - FIXED A model an own AI Gateway key may not use is found before a run starts, not after minutes of work: the check before a run (and the runtime's start, and the Models page) asks Vercel once per key and model with a call of a token or a word – a refusal of the free tier costs nothing, is asked again after five minutes so a top-up counts, and an allowed model is not asked again for a day; videos and images not made by a chat model cannot be asked that cheaply, there a refusal a run met counts; a step refused for the free tier says so and how to fix it (top up at Vercel, with the link, or pick another way under Einstellungen → Modelle) instead of Vercel's raw message, and web addresses in a run's error, the editor's missing-models notice and the Models page are links
 
