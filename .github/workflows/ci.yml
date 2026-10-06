@@ -178,3 +178,22 @@ jobs:
           # release, the site with its pages.
           move deploy/docs apps/docs docs/content docs/assets deploy/Dockerfile.docs \
             deploy/Dockerfile.docs.dockerignore pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json
+
+      # A repository that builds on the release's images (its own image on top of the runtime's)
+      # hears of it: a repository_dispatch `runtime-released` with the tag, to the repository named
+      # in the variable RELEASE_DISPATCH_REPO, with a token that may write there in the secret
+      # RELEASE_DISPATCH_TOKEN. Without the variable nothing is sent.
+      - name: Tell the repository that builds on the release
+        if: vars.RELEASE_DISPATCH_REPO != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_DISPATCH_TOKEN }}
+          REPO: ${{ vars.RELEASE_DISPATCH_REPO }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::RELEASE_DISPATCH_TOKEN is not set: $REPO is not told of $GITHUB_REF_NAME."
+            exit 0
+          fi
+          gh api "repos/$REPO/dispatches" -f event_type=runtime-released \
+            -f "client_payload[tag]=$GITHUB_REF_NAME"
+          echo "$REPO told of $GITHUB_REF_NAME."
