@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.20",
+    "timestamp": 1791314483,
+    "commits": [
+      {
+        "id": "d6a5fca",
+        "message": "a team's plan reaches the runtime: the Manage-App names the plan, its feature switches and the people it allows, and a count of spaces may be unbounded (null); in a team the owner and the admins make and delete wizards, spaces and connectors while a member edits, tests and publishes the wizards there are – enforced in the services for studio, API and MCP alike (403 forbidden); the settings get a Team page with the plan, the places and who is in the team, managed at the Manage-App; own API keys in the cloud studio are a feature of the plan; and the Manage-App learns which plugins a runtime carries (GET /api/internal/plugins)",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.19",
-    "timestamp": 1791313061,
+    "timestamp": 1791313075,
     "commits": [
       {
         "id": "3243a25",

@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.20] - 2026-10-06
+- ADDED A team's plan reaches the runtime: the Manage-App names the plan, its feature switches and the people it allows, and a count of spaces may be unbounded (null); in a team the owner and the admins make and delete wizards, spaces and connectors while a member edits, tests and publishes the wizards there are – enforced in the services for studio, API and MCP alike (403 forbidden); the settings get a Team page with the plan, the places and who is in the team, managed at the Manage-App; own API keys in the cloud studio are a feature of the plan; and the Manage-App learns which plugins a runtime carries (GET /api/internal/plugins)
+
 ## [0.2.19] - 2026-10-06
 - ADDED The gallery has three more categories (Bilder & Video, Anfragen & Termine, Beratung & Preise) so the category row fills two even rows
 
