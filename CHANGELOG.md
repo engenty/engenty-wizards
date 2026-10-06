@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.5] - 2026-10-06
+- ADDED A local install says where each wizard runs and which link others can open: the cards and the editor's top bar show Live with a cloud when engenty.ai runs the version, Lokal when it runs only on this computer, Wird gesendet or Nicht in der Cloud when it did not arrive; a card's Link copies the cloud's address; the share dialog leads with that one link, says on top where the wizard runs and what the cloud lacks, folds website, QR code and the settings away, and creates a new link in the cloud too; the avatar and its menu show whether an account is connected, with its credits; Settings → Konto puts engenty.ai first and takes name and e-mail from the account; without an account the share dialog, a card's Link and the note about missing models say what an account would add
+
 ## [0.2.4] - 2026-10-05
 - FIXED A wizard a local install sends arrives whole or not at all, and the install sends again by itself: the cloud runtime keeps the files' bytes first and writes the project, the wizard, its workspace, the version and the logo in one transaction, so an object store that fails in the middle leaves nothing half done; the install plans another try after a minute, then twice as long each time up to an hour, when the cloud was out of reach or answered with an error of its own, and the share dialog says when; refusals stay with the person; a first sync that stops at an unreachable cloud marks the remaining wizards for the retry too; the public link is set on every sync; the runtime asks GitHub for a newer release once an hour instead of every six
 
