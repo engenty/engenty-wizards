@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.2.15",
+    "timestamp": 1791294675,
+    "commits": [
+      {
+        "id": "2c5ae49",
+        "message": "on phones and small tablets the editor's pane is a bottom sheet whose height is dragged at its handle, touch included; a tap on the handle folds it to its tabs and unfolds it to the height it had, a step tapped in the diagram or a tab unfolds it too, and the height is remembered per browser; the sheet and the diagram now fit the screen, so the chat's input is no longer cut off at the bottom",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "cfe23fa",
+        "message": "a saved wizard whose link is gone (a new link, or the wizard deleted) shows as unavailable instead of offering Start into the runner's not-found page",
+        "group": "Fixed",
+        "scope": "mobile",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.14",
-    "timestamp": 1791291785,
+    "timestamp": 1791291788,
     "commits": [
       {
         "id": "ff63c86",

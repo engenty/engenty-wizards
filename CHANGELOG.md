@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.15] - 2026-10-06
+- ADDED On phones and small tablets the editor's pane is a bottom sheet whose height is dragged at its handle, touch included; a tap on the handle folds it to its tabs and unfolds it to the height it had, a step tapped in the diagram or a tab unfolds it too, and the height is remembered per browser; the sheet and the diagram now fit the screen, so the chat's input is no longer cut off at the bottom
+- FIXED **[mobile]** A saved wizard whose link is gone (a new link, or the wizard deleted) shows as unavailable instead of offering Start into the runner's not-found page
+
 ## [0.2.14] - 2026-10-06
 - FIXED "What's new" in the banner about a newer release opens the changelog of that release in the studio instead of its page on GitHub; offline it shows the changelog this version came with
 
