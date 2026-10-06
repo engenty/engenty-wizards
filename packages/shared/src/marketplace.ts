@@ -47,6 +47,9 @@ export const USE_CASES = {
   hr: { de: "Personal & Bewerbungen", en: "HR & applications" },
   operations: { de: "Planung & Abläufe", en: "Planning & operations" },
   website: { de: "Helfer für die Website", en: "Website helpers" },
+  visuals: { de: "Bilder & Video", en: "Images & video" },
+  inquiries: { de: "Anfragen & Termine", en: "Inquiries & bookings" },
+  advice: { de: "Beratung & Preise", en: "Advice & pricing" },
 } satisfies Record<string, Labels>;
 export type UseCase = keyof typeof USE_CASES;
 
