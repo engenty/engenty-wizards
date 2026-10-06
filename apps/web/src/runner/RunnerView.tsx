@@ -13,7 +13,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
-import { t } from "../lib/i18n";
+import { eventText, t } from "../lib/i18n";
 import { ShareResultButton } from "../share/ShareSheet";
 import { Button, Card, cn, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
@@ -322,7 +322,7 @@ function Working({
             {i === trail.length - 1 ? (
               <Sparkles className="size-3.5 animate-breathe text-ember" />
             ) : null}
-            <span className="truncate">{ev.message}</span>
+            <span className="truncate">{eventText(ev)}</span>
           </div>
         ))}
       </div>

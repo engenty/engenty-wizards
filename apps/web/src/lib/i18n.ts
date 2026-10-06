@@ -1,3 +1,4 @@
+import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
 const de = {
@@ -2121,6 +2122,11 @@ export function useLang(): Lang {
     },
     () => lang,
   );
+}
+
+/** What a run reports, in the language the person reads: its note where it has one. */
+export function eventText(ev: { message: string; note?: RunNote | null }): string {
+  return (ev.note && noteText(ev.note, lang)) || ev.message;
 }
 
 export function t(key: Key, vars?: Record<string, string | number>): string {

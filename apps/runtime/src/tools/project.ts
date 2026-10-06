@@ -25,7 +25,10 @@ export async function projectTools(ctx: StepContext): Promise<Record<string, any
       }),
       execute: ({ query, limit }) =>
         attempt(async () => {
-          await ctx.emit("tool", `Sucht in den Dokumenten: ${query.slice(0, 60)}`);
+          await ctx.emit("tool", {
+            code: "searchesDocuments",
+            params: { query: query.slice(0, 60) },
+          });
           const hits = await searchProject(ctx.project.id, query, limit ?? 6);
           return {
             passages: hits.map((h) => ({ document: h.name, part: h.index, text: h.text })),
@@ -54,7 +57,7 @@ export async function projectTools(ctx: StepContext): Promise<Record<string, any
             `No document "${name}". There are: ${docs.map((d) => d.name).join(", ")}`,
           );
         }
-        await ctx.emit("tool", `Liest ${doc.name}`);
+        await ctx.emit("tool", { code: "reads", params: { name: doc.name } });
         const text = await documentText(doc);
         const start = Math.min(from ?? 0, text.length);
         const part = text.slice(start, start + 12_000);

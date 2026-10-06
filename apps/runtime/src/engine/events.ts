@@ -1,6 +1,6 @@
 import { AsyncResource } from "node:async_hooks";
 import { EventEmitter } from "node:events";
-import type { RunEvent } from "@engenty-wizards/shared/run";
+import { noteText, type RunEvent, type RunNote } from "@engenty-wizards/shared/run";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 
@@ -14,12 +14,21 @@ export async function emitEvent(
   runId: string,
   stepId: string | null,
   type: RunEvent["type"],
-  message: string,
+  said: string | RunNote,
   asset?: string | null,
 ): Promise<void> {
+  const note = typeof said === "string" ? null : said;
+  const message = note ? noteText(note, "de") : (said as string);
   const [row] = await db
     .insert(schema.runEvent)
-    .values({ runId, stepId, type, message: message.slice(0, 2000), assetId: asset ?? null })
+    .values({
+      runId,
+      stepId,
+      type,
+      message: message.slice(0, 2000),
+      note,
+      assetId: asset ?? null,
+    })
     .returning();
   const event: RunEvent = {
     id: row.id,
@@ -27,6 +36,7 @@ export async function emitEvent(
     stepId: row.stepId,
     type: row.type,
     message: row.message,
+    note: row.note ?? null,
     asset: row.assetId,
   };
   bus.emit(runId, { runId, event } satisfies RunSignal);
@@ -56,6 +66,7 @@ export async function recentEvents(runId: string, afterId = 0, limit = 40): Prom
     stepId: r.stepId,
     type: r.type,
     message: r.message,
+    note: r.note ?? null,
     asset: r.assetId,
   }));
 }

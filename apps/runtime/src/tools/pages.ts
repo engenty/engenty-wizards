@@ -49,7 +49,7 @@ export function pageTools(ctx: StepContext) {
       execute: (input) =>
         attempt(async () => {
           const page = await writeRunPage(projectId, wizardId, input);
-          await ctx.emit("tool", `Schreibt die Seite „${page.title}“`);
+          await ctx.emit("tool", { code: "writesPage", params: { title: page.title } });
           return page;
         }),
     }),

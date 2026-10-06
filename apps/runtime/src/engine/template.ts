@@ -4,8 +4,10 @@ import {
   isAudioValue,
   isLocationValue,
   itemsTotals,
+  LOCALES,
   locationText,
   type WizardDefinition,
+  wizardLang,
 } from "@engenty-wizards/shared/definition";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { RunState } from "@engenty-wizards/shared/run";
@@ -24,9 +26,9 @@ export interface TemplateScope {
 
 const TEMPLATE_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
 
-function money(n: number, currency: string): string {
+function money(n: number, currency: string, locale: string): string {
   try {
-    return new Intl.NumberFormat("de-DE", { style: "currency", currency }).format(n);
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(n);
   } catch {
     return `${n.toFixed(2)} ${currency}`;
   }
@@ -37,7 +39,9 @@ export function itemsAsMarkdown(
   field: Field,
   value: unknown,
   values: Record<string, unknown>,
+  lang: "de" | "en" = "de",
 ): string {
+  const locale = LOCALES[lang];
   const totals = itemsTotals(field, value, values);
   const cols = field.columns ?? [];
   if (!totals.rows.length) {
@@ -48,14 +52,16 @@ export function itemsAsMarkdown(
     (r) =>
       `| ${cols
         .map((c) =>
-          c.kind === "money" ? money(Number(r[c.id]) || 0, totals.currency) : String(r[c.id] ?? ""),
+          c.kind === "money"
+            ? money(Number(r[c.id]) || 0, totals.currency, locale)
+            : String(r[c.id] ?? ""),
         )
-        .join(" | ")} | ${money(r.amount as number, totals.currency)} |`,
+        .join(" | ")} | ${money(r.amount as number, totals.currency, locale)} |`,
   );
   const sums = [
-    `Net: ${money(totals.net, totals.currency)}`,
-    totals.vatRate ? `VAT ${totals.vatRate}%: ${money(totals.vat, totals.currency)}` : null,
-    `Total: ${money(totals.gross, totals.currency)}`,
+    `Net: ${money(totals.net, totals.currency, locale)}`,
+    totals.vatRate ? `VAT ${totals.vatRate}%: ${money(totals.vat, totals.currency, locale)}` : null,
+    `Total: ${money(totals.gross, totals.currency, locale)}`,
   ].filter(Boolean);
   return [head, ...body, "", ...sums].join("\n");
 }
@@ -155,7 +161,7 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
   const value = state.values[head];
   if (field?.kind === "items") {
     if (!rest.length) {
-      return itemsAsMarkdown(field, value, state.values);
+      return itemsAsMarkdown(field, value, state.values, wizardLang(def));
     }
     const totals = itemsTotals(field, value, state.values) as unknown as Record<string, unknown>;
     return totals[rest[0]];

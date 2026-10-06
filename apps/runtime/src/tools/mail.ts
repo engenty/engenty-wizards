@@ -45,7 +45,7 @@ export function mailTools(step: AgentStep, ctx: StepContext, files: FileKeeper) 
     execute: (input) =>
       attempt(async () => {
         const { connector, ctx: actionCtx, label } = await open();
-        await ctx.emit("tool", `Durchsucht ${label}`);
+        await ctx.emit("tool", { code: "searchesMail", params: { label } });
         const { mails } = await mailAction<{ mails: MailSummary[] }>(
           connector,
           "search",
@@ -92,7 +92,10 @@ export function mailTools(step: AgentStep, ctx: StepContext, files: FileKeeper) 
     execute: ({ items }) =>
       attempt(async () => {
         const { connector, ctx: actionCtx, label } = await open();
-        await ctx.emit("tool", `Speichert ${items.length} Belege aus ${label}`);
+        await ctx.emit("tool", {
+          code: "savesReceipts",
+          params: { count: items.length, label },
+        });
         const saved: Record<string, unknown>[] = [];
         for (const item of items) {
           try {

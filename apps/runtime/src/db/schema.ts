@@ -1,7 +1,7 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
-import type { RunAsk, RunState } from "@engenty-wizards/shared/run";
+import type { RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
 import {
@@ -196,6 +196,8 @@ export const runEvent = sqliteTable(
     stepId: text("step_id"),
     type: text("type", { enum: ["step_started", "step_done", "tool", "info", "error"] }).notNull(),
     message: text("message").notNull(),
+    /** The message as a note of `RUN_NOTES`, for a runner in another language. */
+    note: text("note", { mode: "json" }).$type<RunNote>(),
     /** A picture of the run the event is about; shown while the step works. */
     assetId: text("asset_id"),
     createdAt: createdAt(),

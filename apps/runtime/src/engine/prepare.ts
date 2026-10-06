@@ -30,7 +30,7 @@ export async function prepareInputs(ctx: StepContext): Promise<void> {
       delete values[field.id];
       continue;
     }
-    await ctx.emit("info", `Hört „${field.label}“ an …`);
+    await ctx.emit("info", { code: "listen", params: { label: field.label } });
     try {
       const transcript = await transcribeAudio({
         bytes: new Uint8Array(found.data),
@@ -46,7 +46,10 @@ export async function prepareInputs(ctx: StepContext): Promise<void> {
       }
       // The step goes on without the words; the next one tries again.
       console.error(`[run ${ctx.runId}] transcribe ${field.id}`, err);
-      await ctx.emit("info", `„${field.label}“ konnte nicht verschriftlicht werden.`);
+      await ctx.emit("info", {
+        code: "listenFailed",
+        params: { label: field.label },
+      });
     }
   }
 }

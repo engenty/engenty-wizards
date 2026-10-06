@@ -262,11 +262,11 @@ describe("a run's pages", () => {
     const own = await json(
       send("POST", `/api/studio/projects/${spaceId}/pages`, { title: "Preise", markdown: "Ab 90 €." }),
     );
-    const emitted: string[] = [];
+    const emitted: unknown[] = [];
     const tools = pageTools({
       project: { id: spaceId },
       store: { wizardId, holder: "v:anna" },
-      emit: async (_type: string, message: string) => {
+      emit: async (_type: string, message: unknown) => {
         emitted.push(message);
       },
     } as never) as any;
@@ -286,7 +286,8 @@ describe("a run's pages", () => {
         "Preise",
       ]);
     });
-    expect(emitted).toEqual(["Schreibt die Seite „Protokoll“", "Schreibt die Seite „Protokoll“"]);
+    const page = { code: "writesPage", params: { title: "Protokoll" } };
+    expect(emitted).toEqual([page, page]);
     await send("DELETE", `/api/studio/pages/${own.id}`);
   });
 });

@@ -4,6 +4,7 @@ import {
   blockingMessage,
   closedChoices,
   missingModels,
+  mostAlongOnePath,
   optionalCapabilities,
   unavoidableSteps,
 } from "../src/engine/requirements";
@@ -154,5 +155,49 @@ describe("voice notes without a model to listen to them", () => {
     const def = report(true);
     expect((await missingModels(def)).map((m) => [m.cls, m.blocking])).toEqual([["audio", true]]);
     expect([...optionalCapabilities(def)]).toEqual([]);
+  });
+});
+
+describe("what a run adds up to along one way", () => {
+  /** The video ad's shape: 720p clips, 480p clips or animated stills, never two of them. */
+  const ad = {
+    title: "Werbevideo",
+    steps: [
+      { id: "look", type: "page", title: "Wie soll es aussehen?", fields: [] },
+      {
+        id: "stillsCheck",
+        type: "review",
+        title: "Passen die Bilder?",
+        show: [],
+        next: [
+          { when: { field: "motion", op: "equals", value: "Fotos" }, goto: "film" },
+          { when: { field: "motion", op: "equals", value: "480p" }, goto: "clipsDraft" },
+        ],
+      },
+      {
+        id: "clips",
+        type: "generate",
+        title: "Clips",
+        asset: "video",
+        next: [{ when: { field: "motion", op: "notEquals", value: "480p" }, goto: "film" }],
+      },
+      { id: "clipsDraft", type: "generate", title: "Clips 480p", asset: "video" },
+      { id: "film", type: "widget", title: "Schnitt" },
+    ],
+  } as unknown as WizardDefinition;
+  const costs: Record<string, number> = { clips: 100, clipsDraft: 40, film: 1 };
+  const cost = (s: { id: string }) => costs[s.id] ?? 0;
+
+  it("never adds up branches that exclude each other", () => {
+    expect(mostAlongOnePath(ad, cost)).toBe(101);
+  });
+
+  it("goes around the steps without a model here", () => {
+    expect(mostAlongOnePath(ad, cost, new Set(["clips", "clipsDraft"]))).toBe(1);
+  });
+
+  it("counts them again where nothing else reaches the end", () => {
+    const only = { ...ad, steps: ad.steps.map((s) => ({ ...s, next: undefined })) };
+    expect(mostAlongOnePath(only, cost, new Set(["clips"]))).toBe(141);
   });
 });

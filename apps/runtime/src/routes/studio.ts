@@ -26,7 +26,7 @@ import {
 } from "../connectors/external.js";
 import { balanceCredits, canSpend } from "../credits/credits.js";
 import { estimateRun } from "../credits/estimate.js";
-import { missingModels } from "../engine/requirements.js";
+import { missingModels, stepsWithoutModel } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { freshAuth, loginEnv } from "../harness/env.js";
 import {
@@ -808,7 +808,7 @@ export const studio = new Hono<Vars>()
   // What a run of the draft is expected to cost, per step and in total.
   .get("/wizards/:id/estimate", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
-    return c.json(await estimateRun(w.id, null, w.draft));
+    return c.json(await estimateRun(w.id, null, w.draft, await stepsWithoutModel(w.draft)));
   })
   // The models the draft needs that this runtime cannot serve, by class, with the steps that call them.
   .get("/wizards/:id/models", async (c) => {

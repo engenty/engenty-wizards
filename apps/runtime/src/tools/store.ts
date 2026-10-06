@@ -138,7 +138,7 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
               ? await saveRows(ctx.store, def, rows)
               : { added: 0, updated: 0 };
             const deleted = remove?.length ? await deleteRows(ctx.store, def, remove) : 0;
-            await ctx.emit("tool", `Merkt sich ${def.title}`);
+            await ctx.emit("tool", { code: "remembers", params: { title: def.title } });
             return { ...saved, deleted };
           } catch (err) {
             if (err instanceof TableColumnValueError) {
@@ -191,7 +191,7 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
       }),
       execute: ({ items }) =>
         attempt(async () => {
-          await ctx.emit("tool", `Legt ${items.length} Dateien ab`);
+          await ctx.emit("tool", { code: "files", params: { count: items.length } });
           const kept: Record<string, unknown>[] = [];
           for (const item of items) {
             try {
@@ -226,7 +226,7 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
         const source = await resolveFile(ctx, file);
         await ctx.emit(
           "tool",
-          `Liest ${source.name}`,
+          { code: "reads", params: { name: source.name } },
           file.startsWith("upload:") && source.mime.startsWith("image/")
             ? file.slice("upload:".length)
             : undefined,
@@ -252,10 +252,7 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
     }),
     execute: ({ files, kind }) =>
       attempt(async () => {
-        await ctx.emit(
-          "tool",
-          `Liest ${files.length} ${kind === "invoice" ? "Rechnungen" : "Belege"}`,
-        );
+        await ctx.emit("tool", { code: "readsMany", params: { count: files.length } });
         const results: Record<string, unknown>[] = [];
         for (let i = 0; i < files.length; i += 4) {
           const batch = await Promise.all(

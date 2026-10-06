@@ -104,12 +104,12 @@ async function runFilmStep(
   media: Map<string, FilmMedia>,
   origin: AiOrigin | undefined,
 ): Promise<StepOutput> {
-  await ctx.emit("info", "Der Film wird geschnitten – das dauert etwa eine Minute.");
+  await ctx.emit("info", { code: "filmCutting" });
   let told = 0;
   const film = await renderFilm(html, widgetSize(step), media, (done) => {
     if (done - told >= 0.25) {
       told = done;
-      void ctx.emit("info", `${Math.round(done * 100)} % geschnitten`);
+      void ctx.emit("info", { code: "filmProgress", params: { pct: Math.round(done * 100) } });
     }
   });
   if (!film) {
@@ -118,7 +118,10 @@ async function runFilmStep(
     );
   }
   if (film.errors.length) {
-    await ctx.emit("info", `Der Film meldet: ${film.errors[0].slice(0, 200)}`);
+    await ctx.emit("info", {
+      code: "filmError",
+      params: { detail: film.errors[0].slice(0, 200) },
+    });
   }
   const assets = [
     await ctx.saveAsset({
@@ -168,7 +171,10 @@ export async function runWidgetStep(step: WidgetStep, ctx: StepContext): Promise
     console.error(`[widget ${step.id}]`, err);
   }
   if (probe?.errors.length) {
-    await ctx.emit("info", `Das Widget meldet einen Fehler: ${probe.errors[0].slice(0, 200)}`);
+    await ctx.emit("info", {
+      code: "widgetError",
+      params: { detail: probe.errors[0].slice(0, 200) },
+    });
   }
   const assets = [
     await ctx.saveAsset({

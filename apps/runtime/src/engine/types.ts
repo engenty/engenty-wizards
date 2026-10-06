@@ -1,5 +1,5 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
-import type { AskInput, AssetRef, RunState } from "@engenty-wizards/shared/run";
+import type { AskInput, AssetRef, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import type { schema } from "../db/client.js";
 import type { SaveAssetInput } from "../files/storage.js";
@@ -31,7 +31,7 @@ export interface StepContext {
   signal: AbortSignal;
   resources: RunResources;
   /** Tells the person what the step is doing; `asset` is a picture of the run it is about. */
-  emit(type: "tool" | "info", message: string, asset?: string): Promise<void>;
+  emit(type: "tool" | "info", message: string | RunNote, asset?: string): Promise<void>;
   /**
    * Asks the person and waits for the answer. `null` when nobody is there to answer (a run an
    * MCP client drives).

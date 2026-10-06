@@ -7,6 +7,7 @@ import {
 import type { RunEstimate, StepEstimate } from "@engenty-wizards/shared/run";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
+import { mostAlongOnePath } from "../engine/requirements.js";
 import { type ClassPrice, classCatalog, type GatewayCatalog } from "../models.js";
 import { MICROS_PER_CREDIT } from "./credits.js";
 
@@ -81,12 +82,16 @@ function formula(step: Step, catalog: GatewayCatalog): number {
   return 0;
 }
 
-/** What a run of a definition costs by the formula alone — before anyone has run it. */
+/**
+ * What a run of a definition costs by the formula alone — before anyone has run it — along its
+ * most expensive way that avoids the steps in `closed`.
+ */
 export function formulaEstimate(
   definition: WizardDefinition,
   catalog: GatewayCatalog,
+  closed?: Set<string>,
 ): { credits: number; high: number } {
-  const credits = definition.steps.reduce((sum, step) => sum + formula(step, catalog), 0);
+  const credits = mostAlongOnePath(definition, (step) => formula(step, catalog), closed);
   return { credits: round(credits), high: Math.ceil(credits * 2) };
 }
 
@@ -134,10 +139,15 @@ async function measurements(
 
 const round = (credits: number) => Math.round(credits * 10) / 10;
 
+/**
+ * What a run will cost and how much to hold, along its most expensive way: steps on branches
+ * that exclude each other are not added up. `closed`: steps the run cannot take here.
+ */
 export async function estimateRun(
   wizardId: string,
   version: number | null,
   definition: WizardDefinition,
+  closed?: Set<string>,
 ): Promise<RunEstimate> {
   const catalog = await classCatalog();
   if (!catalog) {
@@ -146,8 +156,6 @@ export async function estimateRun(
   }
   const measured = await measurements(wizardId, version);
   const steps: Record<string, StepEstimate> = {};
-  let credits = 0;
-  let reserve = 0;
   for (const step of definition.steps) {
     const samples = (measured.get(step.id) ?? []).sort((a, b) => a - b);
     let estimate: StepEstimate;
@@ -166,8 +174,8 @@ export async function estimateRun(
       estimate = { credits: round(value), high: round(value * 2), measured: false };
     }
     steps[step.id] = estimate;
-    credits += estimate.credits;
-    reserve += estimate.high;
   }
+  const credits = mostAlongOnePath(definition, (s) => steps[s.id]?.credits ?? 0, closed);
+  const reserve = mostAlongOnePath(definition, (s) => steps[s.id]?.high ?? 0, closed);
   return { available: true, credits: round(credits), reserve: Math.ceil(reserve), steps };
 }

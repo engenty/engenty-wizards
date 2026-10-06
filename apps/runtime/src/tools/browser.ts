@@ -174,7 +174,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     execute: ({ url }) =>
       inTurn(async () => {
         const safe = await assertPublicUrl(url);
-        await ctx.emit("tool", `Öffnet ${safe.hostname}`);
+        await ctx.emit("tool", { code: "opens", params: { name: safe.hostname } });
         const p = await page();
         await p.goto(safe.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
         await p.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
@@ -189,7 +189,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     execute: ({ ref: n }) =>
       inTurn(async () => {
         const p = await page();
-        await ctx.emit("tool", "Klickt im Browser");
+        await ctx.emit("tool", { code: "clicks" });
         const popup = p
           .context()
           .waitForEvent("page", { timeout: 3000 })
@@ -214,7 +214,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     execute: ({ ref: n, text, submit }) =>
       inTurn(async () => {
         const p = await page();
-        await ctx.emit("tool", "Tippt im Browser");
+        await ctx.emit("tool", { code: "types" });
         const el = p.locator(ref(n)).first();
         await el.fill(text, { timeout: 10_000 });
         if (submit) {
@@ -233,7 +233,7 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     execute: ({ save, name }) =>
       inTurn(async () => {
         const p = await page();
-        await ctx.emit("tool", "Sieht sich die Seite an");
+        await ctx.emit("tool", { code: "looksAtPage" });
         const png = await p.screenshot({ type: "png" });
         let saved: string | undefined;
         if (save) {
@@ -281,7 +281,10 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
         };
       }
     }
-    await ctx.emit("tool", `Wartet auf deine Anmeldung bei ${new URL(origin).hostname}`);
+    await ctx.emit("tool", {
+      code: "waitsForSignIn",
+      params: { name: new URL(origin).hostname },
+    });
     const answer = await ctx.ask({
       kind: "login",
       reason: input.reason,
@@ -375,7 +378,10 @@ export function browserTools(ctx: StepContext, assets: AssetRef[], files: FileKe
     execute: ({ ref: n, url, path, source }) =>
       inTurn(async () => {
         const p = await page();
-        await ctx.emit("tool", `Lädt ${path.split("/").pop()} herunter`);
+        await ctx.emit("tool", {
+          code: "downloads",
+          params: { name: path.split("/").pop() ?? "" },
+        });
         let data: Buffer;
         let mime: string | undefined;
         if (url) {

@@ -101,12 +101,98 @@ export interface ShownList {
   label: string | null;
 }
 
+/**
+ * What a step reports while it works, in words for each language: the runtime writes the German
+ * line into the run's log, a runner shows it in the language the person reads.
+ */
+export const RUN_NOTES = {
+  batchDone: { de: "{done} von {total} fertig", en: "{done} of {total} done" },
+  editing: { de: "Bearbeitet {n} von {total}", en: "Editing {n} of {total}" },
+  filming: { de: "Dreht {n} von {total}", en: "Filming {n} of {total}" },
+  clipsRendering: {
+    de: "{count} Clips werden gerendert – das dauert einige Minuten.",
+    en: "Rendering {count} clips – this takes a few minutes.",
+  },
+  videoRendering: {
+    de: "Das Video wird gerendert – das dauert meist 1–3 Minuten.",
+    en: "Rendering the video – this usually takes 1–3 minutes.",
+  },
+  photo: { de: "Sieht sich Foto {n} von {total} an", en: "Looking at photo {n} of {total}" },
+  listen: { de: "Hört „{label}“ an …", en: "Listening to “{label}” …" },
+  listenFailed: {
+    de: "„{label}“ konnte nicht verschriftlicht werden.",
+    en: "“{label}” could not be written down.",
+  },
+  filmCutting: {
+    de: "Der Film wird geschnitten – das dauert etwa eine Minute.",
+    en: "Cutting the film – this takes about a minute.",
+  },
+  filmProgress: { de: "{pct} % geschnitten", en: "{pct} % cut" },
+  filmError: { de: "Der Film meldet: {detail}", en: "The film reports: {detail}" },
+  widgetError: {
+    de: "Das Widget meldet einen Fehler: {detail}",
+    en: "The widget reports an error: {detail}",
+  },
+  mcpConnected: { de: "Verbunden mit {names}", en: "Connected to {names}" },
+  mcpUnreachable: {
+    de: "MCP-Server nicht erreichbar: {detail}",
+    en: "MCP server unreachable: {detail}",
+  },
+  reads: { de: "Liest {name}", en: "Reading {name}" },
+  readsMany: { de: "Liest {count} Dokumente", en: "Reading {count} documents" },
+  opens: { de: "Öffnet {name}", en: "Opening {name}" },
+  clicks: { de: "Klickt im Browser", en: "Clicking in the browser" },
+  types: { de: "Tippt im Browser", en: "Typing in the browser" },
+  looksAtPage: { de: "Sieht sich die Seite an", en: "Looking at the page" },
+  waitsForSignIn: {
+    de: "Wartet auf deine Anmeldung bei {name}",
+    en: "Waiting for you to sign in at {name}",
+  },
+  downloads: { de: "Lädt {name} herunter", en: "Downloading {name}" },
+  runs: { de: "Führt aus: {command}", en: "Running: {command}" },
+  python: { de: "Führt Python aus", en: "Running Python" },
+  drawing: { de: "Zeichnet ein Bild", en: "Drawing an image" },
+  writesPage: { de: "Schreibt die Seite „{title}“", en: "Writing the page “{title}”" },
+  searchesDocuments: {
+    de: "Sucht in den Dokumenten: {query}",
+    en: "Searching the documents: {query}",
+  },
+  searchesMail: { de: "Durchsucht {label}", en: "Searching {label}" },
+  savesReceipts: {
+    de: "Speichert {count} Belege aus {label}",
+    en: "Saving {count} receipts from {label}",
+  },
+  remembers: { de: "Merkt sich {title}", en: "Remembering {title}" },
+  files: { de: "Legt {count} Dateien ab", en: "Filing {count} files" },
+} as const satisfies Record<string, { de: string; en: string }>;
+export type RunNoteCode = keyof typeof RUN_NOTES;
+
+/** A line of `RUN_NOTES` with what goes into its gaps. */
+export interface RunNote {
+  code: RunNoteCode;
+  params?: Record<string, string | number>;
+}
+
+/** A note in a language, its gaps filled. */
+export function noteText(note: RunNote, lang: "de" | "en"): string {
+  const line: { de: string; en: string } | undefined = RUN_NOTES[note.code];
+  if (!line) {
+    return "";
+  }
+  return line[lang].replace(/\{(\w+)\}/g, (gap, key: string) =>
+    note.params?.[key] === undefined ? gap : String(note.params[key]),
+  );
+}
+
 export interface RunEvent {
   id: number;
   at: string;
   stepId: string | null;
   type: "step_started" | "step_done" | "tool" | "info" | "error";
+  /** In German, as the run's log keeps it. */
   message: string;
+  /** The same as a note a runner shows in the person's language; null for free text. */
+  note?: RunNote | null;
   /** A picture of the run this is about (a photo being looked at, an image just made). */
   asset?: string | null;
 }

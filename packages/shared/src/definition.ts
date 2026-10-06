@@ -932,6 +932,35 @@ export function allFields(def: WizardDefinition): Field[] {
   return def.steps.flatMap((s) => (s.type === "page" ? s.fields : []));
 }
 
+const GERMAN =
+  /\b(und|der|die|das|ist|nicht|für|mit|ein|eine|wird|zu|dein|deine|ihr|wir|was|wie|oder)\b|[äöüß]/gi;
+const ENGLISH = /\b(and|the|is|not|for|with|a|an|your|you|we|what|how|or|to|of)\b/gi;
+
+/**
+ * The language a wizard speaks to people, read from its own words (titles, labels, intro).
+ * A definition carries none; German where it is not clearly English.
+ */
+export function wizardLang(def: WizardDefinition): "de" | "en" {
+  const text = [
+    def.title,
+    def.description,
+    def.intro,
+    ...def.steps.flatMap((s) => [
+      s.title,
+      s.description,
+      ...(s.type === "page" ? s.fields.flatMap((f) => [f.label, f.help, f.placeholder]) : []),
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const de = text.match(GERMAN)?.length ?? 0;
+  const en = text.match(ENGLISH)?.length ?? 0;
+  return en > de ? "en" : "de";
+}
+
+/** The locale amounts and dates are written in for a wizard's language. */
+export const LOCALES = { de: "de-DE", en: "en-GB" } as const;
+
 // --- can this app read a definition? ---------------------------------------------------------
 // The schema drops what it does not know. A definition written for a newer app would be read
 // without complaint and run wrongly, so it counts only when nothing of it is lost.

@@ -21,7 +21,11 @@ import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
 import { control, controlDb, db, schema, withTenant } from "../db/client.js";
-import { missingCapabilities, optionalCapabilities } from "../engine/requirements.js";
+import {
+  missingCapabilities,
+  optionalCapabilities,
+  stepsWithoutModel,
+} from "../engine/requirements.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
 import {
@@ -296,7 +300,11 @@ function listPrices(): GatewayCatalog {
 /** What a run costs: at the gateway's prices where there is one, else at list prices. */
 async function priced(definition: WizardDefinition) {
   const catalog = await classCatalog().catch(() => null);
-  const price = formulaEstimate(definition, catalog ?? listPrices());
+  const price = formulaEstimate(
+    definition,
+    catalog ?? listPrices(),
+    await stepsWithoutModel(definition),
+  );
   return { credits: Math.round(price.credits), high: price.high };
 }
 

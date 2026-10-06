@@ -40,7 +40,13 @@ import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
-import { blockingMessage, closedChoices, missingModels, openValue } from "./requirements.js";
+import {
+  blockingMessage,
+  closedChoices,
+  missingModels,
+  openValue,
+  stepsWithoutModel,
+} from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
 import { resolveRef } from "./template.js";
@@ -205,7 +211,12 @@ export async function createRun(input: {
     throw new ModelUnavailableError(blocked);
   }
   // The run's expected cost is held before it starts; what it really costs is booked per call.
-  const estimate = await estimateRun(input.wizardId, input.version, input.definition);
+  const estimate = await estimateRun(
+    input.wizardId,
+    input.version,
+    input.definition,
+    await stepsWithoutModel(input.definition),
+  );
   if (!(await reserveForRun(id, estimate.reserve))) {
     throw new NoCreditsError();
   }

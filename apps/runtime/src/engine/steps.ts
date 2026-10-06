@@ -4,8 +4,10 @@ import {
   dataRef,
   type GenerateStep,
   isDecisionStep,
+  LOCALES,
   type Step,
   templateRefs,
+  wizardLang,
 } from "@engenty-wizards/shared/definition";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import { Agent } from "@mastra/core/agent";
@@ -37,8 +39,13 @@ import {
 } from "./template.js";
 import { type StepContext, StepError } from "./types.js";
 
-function today(): string {
-  return new Date().toLocaleDateString("de-DE", { year: "numeric", month: "long", day: "numeric" });
+/** Today's date as the wizard's people write it. */
+function today(ctx: StepContext): string {
+  return new Date().toLocaleDateString(LOCALES[wizardLang(ctx.def)], {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function brandBlock(ctx: StepContext): string {
@@ -226,7 +233,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
           : "Finish with everything the result needs in your final answer; it is turned into structured data afterwards.";
     const system = [
       GROUND_RULES,
-      `Today is ${today()}.`,
+      `Today is ${today(ctx)}.`,
       brandBlock(ctx),
       documentsBlock(ctx),
       // What the space's plugins hold for its wizards: a wiki, questions and answers.
@@ -283,7 +290,11 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     // Working through a mailbox or a row of portals takes many small tool calls.
     const maxSteps = step.tools.includes("browser") || step.connections?.length ? 60 : 20;
     for (const [i, photo] of photos.entries()) {
-      await ctx.emit("info", `Sieht sich Foto ${i + 1} von ${photos.length} an`, photo.id);
+      await ctx.emit(
+        "info",
+        { code: "photo", params: { n: i + 1, total: photos.length } },
+        photo.id,
+      );
     }
     const message = photos.length
       ? [
@@ -472,7 +483,7 @@ async function writeHtml(
         ].join("\n");
   const system = [
     GROUND_RULES,
-    `Today is ${today()}.`,
+    `Today is ${today(ctx)}.`,
     brandBlock(ctx),
     guide,
     images.length
@@ -581,8 +592,8 @@ async function runMediaStep(
     await ctx.emit(
       "info",
       todo.length > 1
-        ? `${todo.length} Clips werden gerendert – das dauert einige Minuten.`
-        : "Das Video wird gerendert – das dauert meist 1–3 Minuten.",
+        ? { code: "clipsRendering", params: { count: todo.length } }
+        : { code: "videoRendering" },
     );
   }
   let finished = 0;
@@ -609,7 +620,10 @@ async function runMediaStep(
     if (entry.reference && todo.length > 1) {
       await ctx.emit(
         "info",
-        `${asset === "image" ? "Bearbeitet" : "Dreht"} ${entry.index + 1} von ${entries.length}`,
+        {
+          code: asset === "image" ? "editing" : "filming",
+          params: { n: entry.index + 1, total: entries.length },
+        },
         entry.reference,
       );
     }
@@ -648,7 +662,7 @@ async function runMediaStep(
     if (todo.length > 1) {
       await ctx.emit(
         "info",
-        `${finished} von ${todo.length} fertig`,
+        { code: "batchDone", params: { done: finished, total: todo.length } },
         asset === "image" ? ref.id : undefined,
       );
     }

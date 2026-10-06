@@ -2,6 +2,7 @@ import {
   isDecisionStep,
   MODEL_CLASSES,
   type ModelClass,
+  type NextRule,
   type PageStep,
   ruleMatches,
   type Step,
@@ -118,6 +119,132 @@ export function unavoidableFrom(
     return false;
   };
   return new Set(def.steps.filter((_, i) => !reachesEnd(i)).map((s) => s.id));
+}
+
+/** What the branches taken so far say about an answer. */
+interface Known {
+  is?: string;
+  not: string[];
+  filled?: boolean;
+}
+type Facts = Record<string, Known>;
+
+/** Whether a rule matches given what is known: true, false, or null = it may go either way. */
+function ruleHolds(rule: NextRule, facts: Facts): boolean | null {
+  const k = facts[rule.when.field];
+  const value = rule.when.value;
+  switch (rule.when.op) {
+    case "empty":
+      return k?.filled === undefined ? (k?.is !== undefined ? false : null) : !k.filled;
+    case "notEmpty":
+      return k?.filled === undefined ? (k?.is !== undefined ? true : null) : k.filled;
+    case "equals":
+      return k?.is !== undefined
+        ? k.is === String(value)
+        : k?.not.includes(String(value))
+          ? false
+          : null;
+    case "notEquals":
+      return k?.is !== undefined
+        ? k.is !== String(value)
+        : k?.not.includes(String(value))
+          ? true
+          : null;
+    case "in": {
+      const list = Array.isArray(value) ? value.map(String) : [];
+      if (k?.is !== undefined) {
+        return list.includes(k.is);
+      }
+      return list.every((v) => k?.not.includes(v)) ? false : null;
+    }
+  }
+}
+
+/** What is known once a rule did (`held`) or did not match. */
+function learn(rule: NextRule, held: boolean, facts: Facts): Facts {
+  const field = rule.when.field;
+  const k: Known = { ...(facts[field] ?? { not: [] }) };
+  k.not = [...k.not];
+  const value = String(rule.when.value);
+  const op = rule.when.op;
+  if ((op === "equals" && held) || (op === "notEquals" && !held)) {
+    k.is = value;
+    k.filled = true;
+  } else if ((op === "equals" && !held) || (op === "notEquals" && held)) {
+    k.not.push(value);
+  } else if (op === "in" && !held && Array.isArray(rule.when.value)) {
+    k.not.push(...rule.when.value.map(String));
+  } else if (op === "empty" || op === "notEmpty") {
+    k.filled = (op === "notEmpty") === held;
+  }
+  return { ...facts, [field]: k };
+}
+
+/**
+ * The most a run can add up to along one way through the wizard. A branch remembers what it
+ * implies of the answers, so ways that contradict themselves (the 720p clips and the 480p
+ * ones) are not added up. Steps in `closed` are not passed (no model for them here); where that
+ * leaves no way to the end, they count again. A branch back to an earlier step is not followed
+ * twice.
+ */
+export function mostAlongOnePath(
+  def: WizardDefinition,
+  cost: (step: Step) => number,
+  closed: Set<string> = new Set(),
+): number {
+  const index = new Map(def.steps.map((s, i) => [s.id, i]));
+  const end = def.steps.length;
+  const walk = (avoid: Set<string>): number | null => {
+    const best = (i: number, facts: Facts, seen: Set<number>): number | null => {
+      if (i >= end) {
+        return 0;
+      }
+      const step = def.steps[i];
+      if (i < 0 || avoid.has(step.id) || seen.has(i)) {
+        return null;
+      }
+      const passed = new Set(seen).add(i);
+      let most: number | null = null;
+      const consider = (j: number, known: Facts) => {
+        const rest = best(j, known, passed);
+        if (rest !== null && (most === null || rest > most)) {
+          most = rest;
+        }
+      };
+      // The rules are tried in order; the first that matches decides.
+      let known = facts;
+      let decided = false;
+      for (const rule of step.next ?? []) {
+        const holds = ruleHolds(rule, known);
+        if (holds === false) {
+          continue;
+        }
+        consider(
+          rule.goto === "end" ? end : (index.get(rule.goto) ?? -1),
+          learn(rule, true, known),
+        );
+        if (holds === true) {
+          decided = true;
+          break;
+        }
+        known = learn(rule, false, known);
+      }
+      if (!decided) {
+        consider(i + 1, known);
+      }
+      return most === null ? null : most + cost(step);
+    };
+    return best(0, {}, new Set());
+  };
+  return walk(closed) ?? walk(new Set()) ?? def.steps.reduce((sum, s) => sum + cost(s), 0);
+}
+
+/** The steps that call a class this runtime cannot serve. */
+export async function stepsWithoutModel(def: WizardDefinition): Promise<Set<string>> {
+  const missing = await missingClasses();
+  return new Set(
+    def.steps.filter((s) => stepClasses(s).some((cls) => missing.has(cls))).map((s) => s.id),
+  );
 }
 
 /** The classes this wizard needs that this runtime cannot serve; empty = every step can run. */

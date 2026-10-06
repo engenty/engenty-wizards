@@ -71,7 +71,7 @@ export async function buildStepTools(
       inputSchema: z.object({ url: z.string().describe("Absolute http(s) URL") }),
       execute: async ({ url }) => {
         const safe = await assertPublicUrl(url);
-        await ctx.emit("tool", `Liest ${safe.hostname}`);
+        await ctx.emit("tool", { code: "reads", params: { name: safe.hostname } });
         const res = await safeFetch(safe.toString(), {
           signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(20_000)]),
           headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
@@ -143,7 +143,7 @@ export async function buildStepTools(
       description: shellToolDescription(sandbox),
       inputSchema: z.object({ command: z.string(), timeoutSeconds: z.number().optional() }),
       execute: async ({ command, timeoutSeconds }) => {
-        await ctx.emit("tool", `Führt aus: ${command.slice(0, 80)}`);
+        await ctx.emit("tool", { code: "runs", params: { command: command.slice(0, 80) } });
         return report(
           await ctx.resources
             .sandboxHandle()
@@ -161,7 +161,7 @@ export async function buildStepTools(
           timeoutSeconds: z.number().optional(),
         }),
         execute: async ({ code, packages, timeoutSeconds }) => {
-          await ctx.emit("tool", "Führt Python aus");
+          await ctx.emit("tool", { code: "python" });
           return report(
             await ctx.resources.sandboxHandle().runPython!(code, {
               packages,
@@ -207,7 +207,7 @@ export async function buildStepTools(
         aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:5", "3:2", "2:3"]).optional(),
       }),
       execute: async ({ prompt, aspectRatio }) => {
-        await ctx.emit("tool", "Zeichnet ein Bild");
+        await ctx.emit("tool", { code: "drawing" });
         const media = await generateImageMedia({
           call: ctx.call,
           prompt,
@@ -262,9 +262,15 @@ export async function buildStepTools(
     });
     try {
       Object.assign(tools, await mcp.listTools());
-      await ctx.emit("tool", `Verbunden mit ${servers.map((s) => s.name).join(", ")}`);
+      await ctx.emit("tool", {
+        code: "mcpConnected",
+        params: { names: servers.map((s) => s.name).join(", ") },
+      });
     } catch (err) {
-      await ctx.emit("info", `MCP-Server nicht erreichbar: ${(err as Error).message}`);
+      await ctx.emit("info", {
+        code: "mcpUnreachable",
+        params: { detail: (err as Error).message },
+      });
     }
   }
 
