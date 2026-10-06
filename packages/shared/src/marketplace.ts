@@ -65,6 +65,11 @@ export const CAPABILITIES = {
   listening: { de: "Sprachnotizen verstehen", en: "Understands voice notes" },
   code: { de: "Code ausführen", en: "Runs code" },
   connectors: { de: "Verbundene Konten & Systeme", en: "Connected accounts & systems" },
+  /** A film the installed client makes: only on a computer with Claude Code, on its subscription. */
+  film: {
+    de: "Filme mit Claude Code (auf deinem Abo)",
+    en: "Films with Claude Code (on your subscription)",
+  },
 } satisfies Record<string, Labels>;
 export type Capability = keyof typeof CAPABILITIES;
 
@@ -160,6 +165,8 @@ export function capabilitiesOf(def: WizardDefinition): Capability[] {
       } else {
         found.add("text");
       }
+    } else if (step.type === "film") {
+      found.add("film");
     }
   }
   if (def.connections?.length) {
@@ -214,6 +221,9 @@ export function effortOf(def: WizardDefinition): Effort {
               : WORK_SECONDS.agent);
     } else if (step.type === "widget" && step.video) {
       seconds += 60;
+    } else if (step.type === "film") {
+      // A client writing a film from a style kit: ten minutes to half an hour (2026-10 tests).
+      seconds += 25 * 60;
     }
   }
   return { fields, required, reviews, minutes: Math.max(1, Math.round(seconds / 60)) };

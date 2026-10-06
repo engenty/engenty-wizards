@@ -10,7 +10,7 @@ import {
 } from "@engenty-wizards/shared/definition";
 import type { Capability } from "@engenty-wizards/shared/marketplace";
 import type { ClosedChoice, MissingModel } from "@engenty-wizards/shared/run";
-import { classProblem } from "../models.js";
+import { classProblem, filmClient } from "../models.js";
 
 /**
  * What a wizard needs of the models before a run starts: each class its steps call, and whether
@@ -45,6 +45,8 @@ export function stepClasses(step: Step): ModelClass[] {
         default:
           return [step.model ?? "high"];
       }
+    case "film":
+      return [step.model ?? "standard"];
     case "page":
       // A voice note the page asks for is listened to before the next step reads it.
       return step.fields.some((f) => f.kind === "audio" && f.required) ? ["audio"] : [];
@@ -260,6 +262,22 @@ export async function missingModels(def: WizardDefinition): Promise<MissingModel
     }
   }
   const missing: MissingModel[] = [];
+  // A film runs on an installed client only, whatever serves its class otherwise.
+  for (const step of def.steps) {
+    if (step.type !== "film") {
+      continue;
+    }
+    const cls = step.model ?? "standard";
+    const found = await filmClient(cls);
+    if ("problem" in found) {
+      missing.push({
+        cls,
+        problem: found.problem,
+        steps: [{ id: step.id, title: step.title }],
+        blocking: unavoidable.has(step.id),
+      });
+    }
+  }
   for (const [cls, uses] of needs) {
     const problem = await classProblem(cls);
     if (problem) {
@@ -302,6 +320,9 @@ export async function missingCapabilities(): Promise<Set<Capability>> {
     if (await classProblem(cls)) {
       missing.add(capability as Capability);
     }
+  }
+  if ("problem" in (await filmClient("standard"))) {
+    missing.add("film");
   }
   return missing;
 }

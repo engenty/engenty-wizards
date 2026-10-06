@@ -2,6 +2,7 @@ import type { Step } from "@engenty-wizards/shared/definition";
 import {
   AppWindow,
   Bot,
+  Clapperboard,
   Eye,
   FileText,
   Flag,
@@ -29,6 +30,8 @@ export function stepIcon(step: Step) {
             : FileText;
     case "widget":
       return AppWindow;
+    case "film":
+      return Clapperboard;
     case "review":
       return Eye;
     case "result":
@@ -42,6 +45,7 @@ export const TYPE_TONE: Record<Step["type"], string> = {
   agent: "bg-ember-tint text-ember-strong",
   generate: "bg-amber-tint text-ink-2",
   widget: "bg-ember-veil text-ember-strong",
+  film: "bg-amber-tint text-ink-2",
   review: "bg-moss-tint text-moss",
   result: "bg-paper-2 text-ink-2",
 };
@@ -84,6 +88,10 @@ export function stepSummary(step: Step): string {
     }
     case "widget":
       return [step.entry, Object.keys(step.data).join(", ")].filter(Boolean).join(" · ");
+    case "film":
+      return [step.format, step.seconds ? `${step.seconds}s` : null, step.skills.join(", ")]
+        .filter(Boolean)
+        .join(" · ");
     case "review":
       return [
         step.edit ? t("editor.reviewEditable") : null,

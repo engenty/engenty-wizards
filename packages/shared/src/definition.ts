@@ -193,6 +193,11 @@ export const fieldSchema = z.object({
   camera: z.boolean().optional(),
   /** file: the camera also records short video clips. */
   video: z.boolean().optional(),
+  /**
+   * file: a recording (video or audio) is listened to before the next step runs — what is said,
+   * piece by piece between pauses, with exact times. Read as {{field.speech}}.
+   */
+  listen: z.boolean().optional(),
   /** text: also fill it by scanning a QR code or barcode with the camera. */
   scan: z.boolean().optional(),
   /** connection: id of the wizard connection the person connects here. */
@@ -338,6 +343,50 @@ export const widgetStepSchema = z.object({
   working: z.string().optional(),
 });
 
+/** Formats a film step makes; the composition is drawn for this frame. */
+export const FILM_FORMATS = ["16:9", "9:16", "1:1"] as const;
+export type FilmFormat = (typeof FILM_FORMATS)[number];
+
+export const FILM_SIZES: Record<FilmFormat, { width: number; height: number }> = {
+  "16:9": { width: 1920, height: 1080 },
+  "9:16": { width: 1080, height: 1920 },
+  "1:1": { width: 1080, height: 1080 },
+};
+
+/**
+ * A film the AI client installed on this machine makes in a folder of its own: it writes the
+ * composition as code (HTML, CSS, JS) with the skills it is given, looks at its frames and fixes
+ * them; the runtime renders the MP4. It runs on the person's subscription, never on credits.
+ */
+export const filmStepSchema = z.object({
+  ...stepBase,
+  type: z.literal("film"),
+  /** What the film is: story, look, what to use. A template. */
+  brief: z.string().min(1),
+  /**
+   * Skill packages the client reads: platform packages ("hyperframes") or a folder of the
+   * workspace with a SKILL.md ("skills/<name>").
+   */
+  skills: z.array(z.string().min(1)).max(12).default(["hyperframes"]),
+  /**
+   * A style kit in the workspace — a showreel made once with its rules, helpers and stills, as
+   * a .zip — unpacked as `showcase/`: the bar every film of this wizard is made to.
+   */
+  kit: z.string().optional(),
+  /**
+   * What the film is made from: name → a field id or "steps.<id>". Files (uploads, voice lines,
+   * pictures) are copied into `input/<name>/`, text is written to `input/<name>.md`.
+   */
+  inputs: z.record(z.string(), z.string()).default({}),
+  format: z.enum(FILM_FORMATS).default("16:9"),
+  /** About how long the film runs, in seconds. */
+  seconds: z.number().int().min(3).max(600).optional(),
+  /** The kind of model; default `standard` — the kit carries the craft. */
+  model: z.enum(TEXT_CLASSES).optional(),
+  effort: z.enum(EFFORTS).optional(),
+  working: z.string().optional(),
+});
+
 export const reviewStepSchema = z.object({
   ...stepBase,
   type: z.literal("review"),
@@ -365,6 +414,7 @@ export const stepSchema = z.discriminatedUnion("type", [
   agentStepSchema,
   generateStepSchema,
   widgetStepSchema,
+  filmStepSchema,
   reviewStepSchema,
   resultStepSchema,
 ]);
@@ -391,6 +441,7 @@ export function isDecisionStep(step: AgentStep): boolean {
 }
 export type GenerateStep = z.infer<typeof generateStepSchema>;
 export type WidgetStep = z.infer<typeof widgetStepSchema>;
+export type FilmStep = z.infer<typeof filmStepSchema>;
 export type ReviewStep = z.infer<typeof reviewStepSchema>;
 export type ResultStep = z.infer<typeof resultStepSchema>;
 export type StepType = Step["type"];
@@ -451,6 +502,14 @@ export type WizardDefinition = z.infer<typeof wizardSchema>;
 
 export const INTERACTIVE: ReadonlySet<StepType> = new Set(["page", "review", "result"]);
 
+/**
+ * A wizard with a film step runs only where an AI client is installed and signed in, on the
+ * person's own subscription: one film takes a client many minutes and many tokens.
+ */
+export function needsInstalledClient(def: WizardDefinition): boolean {
+  return def.steps.some((s) => s.type === "film");
+}
+
 export function isInteractive(step: Step): boolean {
   return INTERACTIVE.has(step.type);
 }
@@ -470,6 +529,9 @@ export function formatsFor(step: Step): Format[] {
       case "dashboard":
         return ["html", "pdf", "png"];
     }
+  }
+  if (step.type === "film") {
+    return ["mp4"];
   }
   if (step.type === "widget") {
     return step.video ? ["mp4", "png"] : ["html", "png", "pdf", "mp4", "json"];
@@ -624,6 +686,12 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             message: `Field "${field.id}": "scan" fills a text field; kind is "${field.kind}".`,
           });
         }
+        if (field.listen && field.kind !== "file") {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": "listen" belongs to a file field; kind is "${field.kind}".`,
+          });
+        }
         if (field.video && field.kind !== "file") {
           issues.push({
             stepId: step.id,
@@ -699,6 +767,7 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         break;
       case "generate":
         checkTemplate(step, step.prompt);
+        checkTemplate(step, step.options?.style ?? "");
         if (
           step.referenceImage &&
           !seenFields.has(step.referenceImage) &&
@@ -744,6 +813,42 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             stepId: step.id,
             message: `Widget sample "${step.sample}" is not in the workspace.`,
           });
+        }
+        break;
+      case "film":
+        checkTemplate(step, step.brief);
+        for (const [name, ref] of Object.entries(step.inputs)) {
+          if (!/^[a-z][a-z0-9-]{0,40}$/.test(name)) {
+            issues.push({
+              stepId: step.id,
+              message: `Film input "${name}" is not a folder name (lowercase letters, digits, -).`,
+            });
+          }
+          const r = dataRef(ref);
+          if (r.startsWith("steps.")) {
+            checkTemplate(step, `{{${r}}}`);
+          } else if (!seenFields.has(r)) {
+            issues.push({
+              stepId: step.id,
+              message: `Film input "${name}": "${ref}" is not an earlier field or "steps.<id>".`,
+            });
+          }
+        }
+        if (step.kit && !step.kit.endsWith(".zip")) {
+          issues.push({ stepId: step.id, message: `Film kit "${step.kit}" is a .zip.` });
+        } else if (files && step.kit && !files.includes(step.kit)) {
+          issues.push({
+            stepId: step.id,
+            message: `Film kit "${step.kit}" is not in the workspace.`,
+          });
+        }
+        for (const skill of step.skills) {
+          if (skill.startsWith("skills/") && files && !files.includes(`${skill}/SKILL.md`)) {
+            issues.push({
+              stepId: step.id,
+              message: `Skill "${skill}" has no SKILL.md in the workspace.`,
+            });
+          }
         }
         break;
       case "review":

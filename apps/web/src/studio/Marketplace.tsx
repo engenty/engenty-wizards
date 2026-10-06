@@ -246,6 +246,7 @@ const CAPABILITY_ICONS: Record<Capability, LucideIcon> = {
   listening: Mic,
   code: Terminal,
   connectors: Plug,
+  film: Clapperboard,
 };
 
 /** A step of the flow as its icon: what the person or the wizard does there. */
@@ -267,6 +268,8 @@ function stepIcon(step: OutlineStep): LucideIcon {
               : FileText;
     case "widget":
       return step.video ? Clapperboard : AppWindow;
+    case "film":
+      return Clapperboard;
     case "review":
       return Eye;
     case "result":

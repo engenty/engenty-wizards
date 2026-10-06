@@ -396,54 +396,57 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
     <div className="animate-rise">
       <StepHeading title={step.title} description={step.description} />
       <div className="flex flex-col gap-6">
-        {view.shown.map(({ step: s, output }) => {
-          const editable = Boolean(step.edit) && s.type === "agent" && s.output.format !== "json";
-          return (
-            <section key={s.id}>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
-                  {s.title}
-                </h3>
-                <div className="flex items-center">
-                  {editable && !editing[s.id] ? (
-                    <button
-                      type="button"
-                      onClick={() => setEditing((e) => ({ ...e, [s.id]: true }))}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
-                    >
-                      <Pencil className="size-3.5" /> {t("run.edit")}
-                    </button>
-                  ) : null}
+        {/* A step the run skipped (a branch) has nothing to review. */}
+        {view.shown
+          .filter((x) => x.output)
+          .map(({ step: s, output }) => {
+            const editable = Boolean(step.edit) && s.type === "agent" && s.output.format !== "json";
+            return (
+              <section key={s.id}>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
+                    {s.title}
+                  </h3>
+                  <div className="flex items-center">
+                    {editable && !editing[s.id] ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditing((e) => ({ ...e, [s.id]: true }))}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
+                      >
+                        <Pencil className="size-3.5" /> {t("run.edit")}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <OutputView
-                base={`/api/runs/${view.id}`}
-                step={s}
-                output={output}
-                editable={editable && editing[s.id]}
-                draft={drafts[s.id]}
-                onDraft={(text) => setDrafts((d) => ({ ...d, [s.id]: text }))}
-                picked={picked[s.id]}
-                onPick={
-                  step.regenerate
-                    ? (i) => {
-                        // Picking a result says what the change is about.
-                        setTarget(s.id);
-                        setPicked((p) => {
-                          const now = p[s.id] ?? [];
-                          return {
-                            ...p,
-                            [s.id]: now.includes(i) ? now.filter((x) => x !== i) : [...now, i],
-                          };
-                        });
-                        prompt.current?.focus();
-                      }
-                    : undefined
-                }
-              />
-            </section>
-          );
-        })}
+                <OutputView
+                  base={`/api/runs/${view.id}`}
+                  step={s}
+                  output={output}
+                  editable={editable && editing[s.id]}
+                  draft={drafts[s.id]}
+                  onDraft={(text) => setDrafts((d) => ({ ...d, [s.id]: text }))}
+                  picked={picked[s.id]}
+                  onPick={
+                    step.regenerate
+                      ? (i) => {
+                          // Picking a result says what the change is about.
+                          setTarget(s.id);
+                          setPicked((p) => {
+                            const now = p[s.id] ?? [];
+                            return {
+                              ...p,
+                              [s.id]: now.includes(i) ? now.filter((x) => x !== i) : [...now, i],
+                            };
+                          });
+                          prompt.current?.focus();
+                        }
+                      : undefined
+                  }
+                />
+              </section>
+            );
+          })}
         {view.lists.map((list) => (
           <section key={list.def.id}>
             <h3 className="mb-2 font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">

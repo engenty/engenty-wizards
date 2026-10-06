@@ -325,11 +325,14 @@ export function OutputView({
     return null;
   }
   const assetUrl = (id: string) => withBase(`${base}/assets/${id}`);
-  if (step.type === "widget") {
+  if (step.type === "widget" || step.type === "film") {
     const film = output.assets?.find((a) => a.kind === "video");
     if (film) {
       const poster = output.assets?.find((a) => a.kind === "poster");
-      const tall = (step.size?.height ?? 0) > (step.size?.width ?? 1);
+      const tall =
+        step.type === "film"
+          ? step.format === "9:16"
+          : (step.size?.height ?? 0) > (step.size?.width ?? 1);
       return (
         <div className={cn("relative mx-auto", tall ? "w-fit" : "w-full")}>
           {/* biome-ignore lint/a11y/useMediaCaption: the film's captions are part of the picture */}
@@ -346,6 +349,9 @@ export function OutputView({
           <AiBadge ai={film.ai} className="top-2 right-2" />
         </div>
       );
+    }
+    if (step.type === "film") {
+      return null;
     }
     const html = output.assets?.find((a) => a.mime === "text/html");
     const size = step.size ?? { width: 1280, height: 720 };

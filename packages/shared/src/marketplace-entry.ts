@@ -91,6 +91,9 @@ function resultKind(definition: WizardDefinition, from: string): ItemFormat {
   if (step?.type === "widget") {
     return step.video ? "video" : "dashboard";
   }
+  if (step?.type === "film") {
+    return "video";
+  }
   return step?.type === "agent" && step.output.format === "json" ? "table" : "text";
 }
 

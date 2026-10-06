@@ -34,6 +34,7 @@ import { accountToken, linkedAccount } from "./auth/account.js";
 import { env } from "./env.js";
 import {
   detectHarness,
+  type Harness,
   type HarnessId,
   HarnessModel,
   harness,
@@ -884,6 +885,35 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
     }
     throw err;
   }
+}
+
+/** Clients that can make a film: they work in a folder of their own with a shell and skills. */
+const FILM_CLIENTS = new Set<string>(["claude"]);
+
+/**
+ * The installed client a film step of this class runs on, and the model it names; or why a
+ * film cannot be made here. Films never run on credits or keys: one takes a client many minutes.
+ */
+export async function filmClient(
+  cls: TextClass,
+): Promise<{ client: Harness; alias: string } | { problem: string }> {
+  const cfg = await config();
+  const client = managed ? null : harness(cfg.settings.source);
+  if (!client || !FILM_CLIENTS.has(client.id)) {
+    return {
+      problem:
+        "Filme macht Claude Code auf diesem Computer mit deinem Abo. Richte es unter „Modelle“ als KI-Abo ein.",
+    };
+  }
+  const status = await detectHarness(client.id);
+  if (!status?.version) {
+    return { problem: notInstalled(client) };
+  }
+  if (status.auth === "none") {
+    return { problem: signedOut(client) };
+  }
+  const ref = ownRef(cfg, cls);
+  return { client, alias: ref.slice(client.id.length + 1) || client.classes[cls] };
 }
 
 /** Whether any text model can answer at all: the studio says so before the first chat turn. */

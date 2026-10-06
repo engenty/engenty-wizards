@@ -208,8 +208,13 @@ interface AudioTrack {
   start: number;
   /** Seconds of the track that play; default: all of it. */
   duration?: number;
+  /** Second of the source the track plays from; default 0. Cuts of a recording set it. */
+  from?: number;
   volume?: number;
 }
+
+/** A film names at most this many sound tracks: voice-over, music, and every cut of a recording. */
+const MAX_TRACKS = 48;
 
 export interface Film {
   mp4: Uint8Array;
@@ -323,8 +328,18 @@ export async function renderFilm(
       const png = await page.screenshot({ type: "png" });
 
       const tracks: (AudioTrack & { path: string })[] = [];
-      for (const track of timeline.audio.slice(0, 16)) {
-        const path = files.get(String(track.src).split(/[?#]/)[0])?.path;
+      // Sounds from the wizard's workspace (wizard.url) arrive as data URLs.
+      const inline = new Map<string, string>();
+      for (const track of timeline.audio.slice(0, MAX_TRACKS)) {
+        const data = String(track.src).match(/^data:(audio\/[\w.+-]+);base64,(.+)$/);
+        if (data && !inline.has(track.src)) {
+          const path = join(dir, `sound-${inline.size}.${extFor(data[1])}`);
+          await writeFile(path, Buffer.from(data[2], "base64"));
+          inline.set(track.src, path);
+        }
+      }
+      for (const track of timeline.audio.slice(0, MAX_TRACKS)) {
+        const path = inline.get(track.src) ?? files.get(String(track.src).split(/[?#]/)[0])?.path;
         if (path && track.start < seconds && (await probeMedia(path)).audio) {
           tracks.push({ ...track, path });
         }
@@ -336,7 +351,12 @@ export async function renderFilm(
           const length = Math.min(track.duration ?? seconds, seconds - track.start);
           const volume = Math.max(0, Math.min(2, track.volume ?? 1));
           const delay = Math.round(Math.max(0, track.start) * 1000);
-          return `[${i + 1}:a]atrim=0:${length.toFixed(3)},afade=t=out:st=${Math.max(0, length - 0.25).toFixed(3)}:d=0.25,adelay=${delay}:all=1,volume=${volume}[a${i}]`;
+          const cut = track.from !== undefined;
+          const from = Math.max(0, Number(track.from) || 0);
+          // A cut out of a recording gets short fades, so the hard cut does not click.
+          const fade = cut ? Math.min(0.03, length / 4) : 0.25;
+          const fadeIn = cut ? `afade=t=in:d=${fade.toFixed(3)},` : "";
+          return `[${i + 1}:a]atrim=${from.toFixed(3)}:${(from + length).toFixed(3)},asetpts=PTS-STARTPTS,${fadeIn}afade=t=out:st=${Math.max(0, length - fade).toFixed(3)}:d=${fade.toFixed(3)},adelay=${delay}:all=1,volume=${volume}[a${i}]`;
         });
         const mix = `${tracks.map((_, i) => `[a${i}]`).join("")}amix=inputs=${tracks.length}:normalize=0:duration=longest[mix]`;
         const { code, stderr } = await ffmpeg([

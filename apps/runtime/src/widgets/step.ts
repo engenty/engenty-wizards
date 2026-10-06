@@ -78,6 +78,22 @@ async function widgetData(step: WidgetStep, ctx: StepContext) {
         : await urlOf(value);
       continue;
     }
+    const kept = ref.match(/^steps\.([^.]+)\.assets$/);
+    const keeper = kept && ctx.def.steps.find((s) => s.id === kept[1]);
+    if (keeper && keeper.type === "agent") {
+      // The pictures an agent step kept (screenshots, drawn or exported images), by asset id:
+      // its JSON names them by id, the widget looks the URL up here.
+      const assets = (ctx.state.outputs[keeper.id]?.assets ?? []).filter((a) => a.kind === "image");
+      const urls: Record<string, string> = {};
+      for (const a of assets) {
+        const url = await urlOf(a.id);
+        if (url) {
+          urls[a.id] = url;
+        }
+      }
+      out[key] = urls;
+      continue;
+    }
     const source = ctx.def.steps.find((s) => `steps.${s.id}` === ref);
     if (source?.type === "generate" && source.asset in MEDIA_KINDS) {
       const kind = MEDIA_KINDS[source.asset as keyof typeof MEDIA_KINDS];

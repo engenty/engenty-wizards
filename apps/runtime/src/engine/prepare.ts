@@ -1,6 +1,6 @@
 import { allFields, isAudioValue } from "@engenty-wizards/shared/definition";
-import { loadAsset } from "../files/storage.js";
-import { transcribeAudio } from "../media/transcribe.js";
+import { extFor, loadAsset } from "../files/storage.js";
+import { listenPieces, transcribeAudio } from "../media/transcribe.js";
 import type { StepContext } from "./types.js";
 
 /**
@@ -17,6 +17,10 @@ export async function prepareInputs(ctx: StepContext): Promise<void> {
       if (drawn?.row.runId !== ctx.runId || !drawn.row.mime.startsWith("image/")) {
         delete values[field.id];
       }
+      continue;
+    }
+    if (field.kind === "file" && field.listen) {
+      await listenTo(ctx, field.id, field.label, value);
       continue;
     }
     if (field.kind !== "audio" || !isAudioValue(value)) {
@@ -51,5 +55,36 @@ export async function prepareInputs(ctx: StepContext): Promise<void> {
         params: { label: field.label },
       });
     }
+  }
+}
+
+/** A recording in a file field with `listen`: written down once, piece by piece with its times. */
+async function listenTo(ctx: StepContext, id: string, label: string, value: unknown) {
+  if (ctx.state.heard?.[id]) {
+    return;
+  }
+  // Several recordings: the first is the one that is cut.
+  const first = Array.isArray(value) ? value[0] : value;
+  const found = typeof first === "string" && first ? await loadAsset(first) : null;
+  if (!found || found.row.runId !== ctx.runId || !/^(audio|video)\//.test(found.row.mime)) {
+    return;
+  }
+  await ctx.emit("info", `Hört „${label}“ an …`);
+  try {
+    const { pieces, costUsd } = await listenPieces({
+      bytes: new Uint8Array(found.data),
+      ext: extFor(found.row.mime),
+      abortSignal: ctx.signal,
+      call: ctx.call,
+    });
+    await ctx.chargeUsd(costUsd);
+    ctx.state.heard = { ...ctx.state.heard, [id]: pieces };
+  } catch (err) {
+    if (ctx.signal.aborted) {
+      throw err;
+    }
+    // The step goes on without the words; the next one tries again.
+    console.error(`[run ${ctx.runId}] listen ${id}`, err);
+    await ctx.emit("info", `„${label}“ konnte nicht verschriftlicht werden.`);
   }
 }

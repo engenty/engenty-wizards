@@ -17,7 +17,8 @@
  *                          synchronously, or as a promise that resolves once it is drawn (a
  *                          film waits for its clips). Enables the MP4 export; `poster` is the
  *                          second the PNG/PDF show (default 0). A film names its sound in
- *                          `audio`: [{ src, start, duration?, volume? }].
+ *                          `audio`: [{ src, start, duration?, from?, volume? }] — `from` is the
+ *                          second of the source a cut plays from.
  */
 export const WIDGET_RUNTIME = `(function () {
   var el = document.getElementById("wizard-payload");

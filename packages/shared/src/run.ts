@@ -38,6 +38,8 @@ export interface RunState {
   notes: Record<string, string>;
   /** Steps that make several results: the entries (from 0) to make again; the others stay. */
   redo?: Record<string, number[]>;
+  /** File fields with `listen`: what is said in the recording, piece by piece with its times. */
+  heard?: Record<string, { start: number; end: number; text: string }[]>;
 }
 
 interface AskBase {
@@ -169,6 +171,24 @@ export const RUN_NOTES = {
   },
   remembers: { de: "Merkt sich {title}", en: "Remembering {title}" },
   files: { de: "Legt {count} Dateien ab", en: "Filing {count} files" },
+  filmSetup: {
+    de: "Richtet den Arbeitsordner für den Film ein",
+    en: "Setting up the folder for the film",
+  },
+  filmClient: {
+    de: "{client} arbeitet am Film – das dauert meist 10–40 Minuten.",
+    en: "{client} is working on the film – this usually takes 10–40 minutes.",
+  },
+  filmTask: { de: "Am Film: {task}", en: "On the film: {task}" },
+  filmLooks: { de: "Sieht sich Bilder des Films an", en: "Looking at frames of the film" },
+  filmFix: {
+    de: "Der Film ließ sich nicht rendern – Claude Code bessert nach",
+    en: "The film did not render – Claude Code is fixing it",
+  },
+  filmResume: {
+    de: "Macht dort weiter, wo der Film stehen geblieben ist",
+    en: "Picking the film up where it stopped",
+  },
 } as const satisfies Record<string, { de: string; en: string }>;
 export type RunNoteCode = keyof typeof RUN_NOTES;
 

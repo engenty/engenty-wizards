@@ -1,7 +1,10 @@
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import type { AssetRef } from "@engenty-wizards/shared/run";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
+import { env } from "../env.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { objects } from "./objects.js";
 
@@ -126,11 +129,15 @@ export async function removeAsset(id: string) {
   }
 }
 
-/** Deletes every file a run made (uploads, results, renders) and their rows. */
+/** Deletes every file a run made (uploads, results, renders, film folders) and their rows. */
 export async function removeAssetFiles(runId: string) {
   const rows = await db.query.asset.findMany({ where: eq(schema.asset.runId, runId) });
   for (const row of rows) {
     await objects.remove(assetKey(row.path));
   }
   await db.delete(schema.asset).where(eq(schema.asset.runId, runId));
+  // The folders its films were made in (../film/project.ts).
+  if (/^[A-Za-z0-9_-]+$/.test(runId)) {
+    await rm(join(env.dataDir, "films", runId), { recursive: true, force: true });
+  }
 }

@@ -68,6 +68,8 @@ type Field = {
                                 //   every file costs something later (a video clip per photo)
   camera?: boolean              // file: also offer the camera, for papers the person has not scanned (image always offers it)
   video?: boolean               // file: the camera also records a short clip (up to 30 s); the clip is a file like any other
+  listen?: boolean              // file: a recording (video/audio) is listened to before the next step: {{field.speech}} gives what is
+                                //   said piece by piece between pauses, with exact times "[12.40–15.10] text" — to cut slips and pauses
   scan?: boolean                // text: a "scan" button fills it from a QR code or barcode (serial number, ticket, article number)
   connection?: connectionId     // kind "connection": the page shows "connect your account"; with required the person must connect
   list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
@@ -115,7 +117,7 @@ type GenerateStep = {
   prompt: string                // the brief, with {{templates}}; for "voice" the exact text that is read aloud
   options?: { aspectRatio?: "1:1"|"16:9"|"9:16"|"4:5"|"3:2"|"2:3", duration?: 4–10 (video seconds; 4, 6 or 8 are safe),
               resolution?: "720p"|"480p",   // video: 720p by default and at most; 480p for drafts and many clips
-              style?: string,   // image/video: the look · voice: how to speak ("ruhig, warm")
+              style?: string,   // image/video: the look · voice: how to speak ("ruhig, warm"; may name a field: "{{voiceStyle}}")
               template?: "invoice"|"offer"|"briefing"|"letter"|"report"|"free" }   // template for documents
   referenceImage?: fieldId | stepId   // the image the image/video starts from: an image field, or an earlier step that made images
   each?: fieldId | stepId | "steps.<id>.<key>"
@@ -137,9 +139,30 @@ type WidgetStep = {
   video?: boolean               // a FILM: the timeline is rendered to an MP4 WITH SOUND when the step runs; the person sees and
                                 //   downloads that video. data may then name generate steps: "steps.<id>" of an image / video / voice
                                 //   step arrives as a URL (a list of URLs for a step with "each").
+                                //   "steps.<agentStepId>.assets" gives the pictures an agent step kept (browser screenshots
+                                //   with save, export_file, generate_image) as { assetId: URL }; the step's JSON names them by id.
   working?: string
 }
 // an interactive HTML app written ONCE into the workspace; every run only brings new data (no model call, no cost)
+
+type FilmStep = {
+  type: "film"
+  brief: string                 // a template: what the film is — story, look, length, what to use. The kit carries the craft.
+  skills?: string[]             // skill packages the client reads; default ["hyperframes"]. A workspace package: "skills/<name>" (has SKILL.md)
+  kit?: string                  // workspace path of a STYLE KIT (.zip): a showreel made once with its rules (frame.md),
+                                //   techniques (SHOWCASE.md), helpers and stills — the bar every film of this wizard reaches
+  inputs?: { [name]: string }   // name (lowercase, -) → fieldId | steps.stepId: voice lines, pictures, uploads become files in
+                                //   input/<name>/, text in input/<name>.md, json in input/<name>.json
+  format?: "16:9" | "9:16" | "1:1"
+  seconds?: number              // about how long
+  model?: "standard" | "high"   // default standard
+  effort?: Effort
+  working?: string
+}
+// the AI client installed on the person's computer (Claude Code) writes the film as code in a folder of its own, with the
+// skills, the kit, the space's brand (colours, logo, facts) and the inputs; it looks at its frames and fixes them; the
+// runtime renders the MP4. It runs only where Claude Code is set up as the AI subscription — never on credits or in the
+// cloud — and takes 10–40 minutes. Sounds come from a fixed catalog (CC0); voice comes from a generate voice step before it.
 
 type ReviewStep = { type: "review", show: (stepId | "lists.<listId>")[], edit?: boolean, regenerate?: boolean }
 // shows earlier outputs; the person accepts, edits text outputs (edit), or asks for a new version with a note (regenerate)
@@ -147,7 +170,7 @@ type ReviewStep = { type: "review", show: (stepId | "lists.<listId>")[], edit?: 
 
 type ResultStep = { type: "result", message?: string, deliverables: { from: stepId | "lists.<listId>", label?, formats: Format[] }[] }
 // formats per source: image→png · video→mp4 (several results: zip) · voice→mp3 · document→pdf docx html md png · dashboard→html pdf png
-//                     film widget (video: true)→mp4 png
+//                     film widget (video: true)→mp4 png · film→mp4
 //                     widget→html png pdf mp4 json (mp4 only when the widget registers a timeline)
 //                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md (xlsx: one sheet per table)
 //                     agent, any format→zip: the FILES the step kept with mail_save / browser_download
@@ -184,6 +207,9 @@ ${sandboxGuideLine()}
 - Collecting documents (invoices from mail or portals): the step keeps each file with mail_save / browser_download under a dated path ("invoices/2026-09/2026-09-03_Notion_INV-123.pdf"); its deliverable offers "zip". Split a big job into steps (mail, then statements, then portals) — one step manages about 60 tool calls.
 - Going through documents one by one (receipts against payments): never one model step per document. One step reads them in batches (scan_documents takes 30 at once) and writes rows into a list with "check"; the review shows that list split-screen — the person answers each row beside its file, without any model call.
 - Video that convinces is built in stages, each with its own review: idea and script (agent, json with a table of shots) → one still per shot (generate image with "each", starting from the person's product photo) → one clip per still (generate video with "each" and referenceImage = the stills step) → a voice-over (generate voice) → a film widget (video: true) that cuts clips, captions, voice and a closing card with the call to action. The starters "facebook-video-ad" and "property-film" carry such a widget (film/film.js) to copy. Offer a cheaper path without clips: the film animates the stills.
+- Motion-graphics films (explainers, product spots, shorts) are a "film" step after the preparation, each with a review:
+  research and script (agent, high) → the voice-over (one generate voice step for the whole script; the film step finds the
+  word timings itself) → film (inputs: the voice, pictures, the script). The look comes from a style kit in the workspace (kit), so the film step stays on "standard".
 - Prices come from a file the admin keeps in the workspace (a CSV price list): the agent step looks them up with read_workspace_file and proposes positions as a table; the next page shows them in an "items" field with "prefill" for the person to correct; the runner computes the totals.
 - AI media is marked for you (EU AI Act, Art. 50): images, clips, voice-overs and films carry the marking in their file metadata, and the pages lay the EU's "AI" label over them. Never ask an image step to draw such a label into the picture. A film is different — it leaves the page as a video file, so its widget shows the EU label in the picture: wizard.ai tells a widget whether the run's media in its data is "generated" or "edited" (film/film.js draws the matching icon).
 - Every step a person sees later (review/result) must come from an earlier step id.
@@ -210,8 +236,10 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
   export steps through it frame by frame. In mode "export" hide all controls and do not autoplay.
 - A film (step.video): seek(t) may return a promise that resolves once the frame is drawn (set a clip's
   currentTime, wait for "seeked", draw it to a canvas). Name the sound in the timeline:
-  audio: [{ src, start, duration?, volume? }] with the URLs from wizard.data (the voice-over, the clips
-  themselves for their own sound). Clips and images of the run arrive as URLs, not inlined.
+  audio: [{ src, start, duration?, from?, volume? }] with the URLs from wizard.data (the voice-over, the
+  clips themselves for their own sound; up to 48 tracks). "from" is the second of the source a track
+  plays from — a recording cut into pieces names one track per piece. Clips and images of the run
+  arrive as URLs, not inlined.
 - Call wizard.ready() once the first frame is drawn. Lay out for the step's size and scale to fit
   the window on every "resize" event — the window can be 0×0 when your script first runs.
 - Plain HTML/CSS/JS, SVG or canvas. Calm design, one accent colour (brand.accent), legible labels.

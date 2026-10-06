@@ -166,6 +166,14 @@ export function resolveRef(ref: string, scope: TemplateScope): unknown {
     const totals = itemsTotals(field, value, state.values) as unknown as Record<string, unknown>;
     return totals[rest[0]];
   }
+  if (field?.kind === "file" && rest[0] === "speech") {
+    const pieces = state.heard?.[head];
+    // The lines an agent reads and cuts by: "[12.40–15.10] what is said".
+    return pieces
+      ? pieces.map((p) => `[${p.start.toFixed(2)}–${p.end.toFixed(2)}] ${p.text}`).join("\n") ||
+          "(no intelligible speech)"
+      : "";
+  }
   if (field?.kind === "image" || field?.kind === "file") {
     // The files themselves are read with read_document / scan_documents by these names.
     const ids = (Array.isArray(value) ? value : [value]).filter(

@@ -15,6 +15,7 @@ import type { MastraModelConfig } from "@mastra/core/llm";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
+import { runFilmStep } from "../film/step.js";
 import {
   type GeneratedMedia,
   generateImageMedia,
@@ -685,7 +686,11 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
       const media = await generateSpeechMedia({
         call: ctx.call,
         text,
-        style: [step.options?.style, note].filter(Boolean).join(". ") || undefined,
+        // The style may name the person's answer: "{{voiceStyle}}, natural pace".
+        style:
+          [step.options?.style && renderTemplate(step.options.style, ctx.scope).trim(), note]
+            .filter(Boolean)
+            .join(". ") || undefined,
         abortSignal: ctx.signal,
       });
       await ctx.chargeUsd(media.costUsd);
@@ -724,6 +729,9 @@ export async function runAutomaticStep(step: Step, ctx: StepContext): Promise<St
   }
   if (step.type === "widget") {
     return runWidgetStep(step, ctx);
+  }
+  if (step.type === "film") {
+    return runFilmStep(step, ctx);
   }
   throw new StepError(`Step ${step.id} is not automatic.`);
 }
