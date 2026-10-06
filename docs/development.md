@@ -222,11 +222,15 @@ and the marketplace's API. `/w/` and `/s/` keep their slash: a proxy prefix `/w`
 `APP_SECRET`, the Turso and R2 variables. After a release every tenant database is migrated at
 start; a new one migrates when it is first opened.
 
-engenty's own cloud runtime deploys from the branch `deploy/runtime`. A release tag `v<version>`
-on `main` runs the checks; when they are green the same workflow (`.github/workflows/ci.yml`)
-moves that branch to the tag's commit, and the server deploys what the branch points at. A push
-to `main` without a tag deploys nothing. To deploy a tag again, run the workflow by hand on that
-tag. To go back to an older commit: `git push --force origin <commit>:deploy/runtime`.
+engenty's own cloud runtime deploys from the branch `deploy/runtime`, and the server builds
+nothing: a release tag `v<version>` on `main` runs the checks and, beside them, builds the two
+images on GitHub's runners (`ghcr.io/engenty/engenty-wizards-runtime` and `-browser`, tagged
+with the version; the layers come from the registry's cache, so a release rebuilds only what
+changed). When both are green the same workflow (`.github/workflows/ci.yml`) tags the images
+`latest` and moves the branch to the tag's commit; the server deploys what the branch points at
+by pulling them (`compose.cloud.yaml`). A push to `main` without a tag deploys nothing. To deploy
+a tag again, run the workflow by hand on that tag. To go back to an older release: set
+`IMAGE_TAG=v<version>` on the Coolify resource and redeploy; remove it to follow `latest` again.
 
 The documentation at `engenty.ai/docs` deploys the same way from the branch `deploy/docs`
 (Coolify resource `docs`, `apps/docs/Dockerfile`): a green release tag moves it when the site's
