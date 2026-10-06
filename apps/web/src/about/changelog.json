@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.18",
+    "timestamp": 1791312076,
+    "commits": [
+      {
+        "id": "661b2c9",
+        "message": "Wissen in the space: what the space's wizards look things up in, as pages with sub-pages, tables and files sorted by typed Kategorien (choice, date, number, text, yes/no), filtered by them and searched by words and meaning, with a classifier that keeps only what answers the question; an upload is converted on arrival (a long document becomes a page with sub-pages, a sheet a table, the original stays beside it) and a model fills its Kategorien; every value of a Kategorie has its Übersicht and its entries, numbers in ranges; steps get project_search with a filter, project_list, page_read and table_read by path; the assistant docks at the bottom of an opened item and knows Wissen; plugins write into Wissen through server.spaceData (pages, tables, files, documents with their Kategorien), and what a person edits stays theirs",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.17",
-    "timestamp": 1791310686,
+    "timestamp": 1791310689,
     "commits": [
       {
         "id": "6a0e1ba",
