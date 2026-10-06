@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, IconButton, Spinner } from "../ui";
+
+const ChangelogDialog = lazy(() =>
+  import("../about/ChangelogDialog").then((m) => ({ default: m.ChangelogDialog })),
+);
 
 interface UpdateStatus {
   current: string;
@@ -28,12 +32,14 @@ function dismissedFor(): string | null {
 /**
  * A newer release is out. A runtime installed by install.sh installs it from here and starts
  * the new version; the page waits for it and loads again. One that cannot (npm, a checkout)
- * links to the release. Closing it hides this release; the next one shows again.
+ * only says so. "Was ist neu" opens the changelog of the new release. Closing it hides this
+ * release; the next one shows again.
  */
 export function UpdateBanner() {
   const qc = useQueryClient();
   const [closed, setClosed] = useState(dismissedFor);
   const [waiting, setWaiting] = useState<string | null>(null);
+  const [notes, setNotes] = useState(false);
   const status = useQuery({
     queryKey: ["update"],
     queryFn: () => api.get<UpdateStatus>("/api/studio/update"),
@@ -105,15 +111,19 @@ export function UpdateBanner() {
         <Download className="size-4 shrink-0 text-ember-strong" />
       )}
       <p className="min-w-0 flex-1">{line}</p>
-      {data.url && !busy ? (
-        <a
-          href={data.url}
-          target="_blank"
-          rel="noreferrer"
+      {busy ? null : (
+        <button
+          type="button"
+          onClick={() => setNotes(true)}
           className="shrink-0 underline transition hover:text-ink"
         >
           {t("about.update.notes")}
-        </a>
+        </button>
+      )}
+      {notes ? (
+        <Suspense fallback={null}>
+          <ChangelogDialog open version={latest} onClose={() => setNotes(false)} />
+        </Suspense>
       ) : null}
       {data.canApply && (data.applying === "idle" || data.applying === "failed") ? (
         <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate()}>

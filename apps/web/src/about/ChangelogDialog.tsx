@@ -70,8 +70,40 @@ function filterReleases(releases: ChangelogRelease[], query: string): ChangelogR
   return out;
 }
 
-/** What changed from release to release: apps/web/src/about/changelog.json, written by `pnpm release`. */
-export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * The changelog as a release newer than this build has it: the file at its tag on GitHub. Offline,
+ * the bundled one, which ends at this build.
+ */
+async function loadReleases(version?: string): Promise<ChangelogRelease[]> {
+  if (version) {
+    try {
+      const response = await fetch(
+        `https://raw.githubusercontent.com/engenty/engenty-wizards/v${version}/apps/web/src/about/changelog.json`,
+        { signal: AbortSignal.timeout(5000) },
+      );
+      if (response.ok) {
+        return (await response.json()) as ChangelogRelease[];
+      }
+    } catch {
+      // offline: the bundled changelog
+    }
+  }
+  return (await import("./changelog.json")).default as ChangelogRelease[];
+}
+
+/**
+ * What changed from release to release: apps/web/src/about/changelog.json, written by `pnpm release`.
+ * With `version`, the changelog of that release instead of this build's.
+ */
+export function ChangelogDialog({
+  open,
+  onClose,
+  version,
+}: {
+  open: boolean;
+  onClose: () => void;
+  version?: string;
+}) {
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
   const [query, setQuery] = useState("");
 
@@ -81,15 +113,15 @@ export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () 
       return;
     }
     let cancelled = false;
-    void import("./changelog.json").then((mod) => {
+    void loadReleases(version).then((next) => {
       if (!cancelled) {
-        setReleases(mod.default as ChangelogRelease[]);
+        setReleases(next);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [open, releases]);
+  }, [open, releases, version]);
 
   useEffect(() => {
     if (!open) {
