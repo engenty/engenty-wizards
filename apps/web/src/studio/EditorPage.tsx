@@ -96,6 +96,118 @@ function usePaneWidth() {
   return { width, onPointerDown, onKeyDown, reset: () => set(PANE_DEFAULT) };
 }
 
+const SHEET_KEY = "wizards.editor.sheet";
+/** Percent of the room below the header. */
+const SHEET_DEFAULT = 55;
+/** The folded sheet: its handle and tabs. */
+const SHEET_MIN = 76;
+/** Room the diagram keeps above the sheet. */
+const SHEET_ROOM = 96;
+/** Pixels a touch moves before it drags instead of tapping. */
+const SHEET_SLOP = 6;
+
+function storedSheet(): number {
+  try {
+    const raw = localStorage.getItem(SHEET_KEY);
+    const n = raw === null ? Number.NaN : Number(raw);
+    return Number.isFinite(n) ? Math.min(Math.max(n, 0), 100) : SHEET_DEFAULT;
+  } catch {
+    return SHEET_DEFAULT;
+  }
+}
+
+/**
+ * The pane as a bottom sheet on small screens: its height in percent of the room below the
+ * header, dragged at its handle, 0 when folded to its tabs. A tap on the handle folds and unfolds
+ * it. Remembered per browser.
+ */
+function useSheetHeight() {
+  const [percent, setPercent] = useState(storedSheet);
+  const [dragging, setDragging] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  /** The last open height, for unfolding. */
+  const opened = useRef(percent || SHEET_DEFAULT);
+  /** Sets the height; `settled` false while a drag passes through heights on its way. */
+  const set = useCallback((next: number, settled = true) => {
+    const p = Math.round(Math.min(Math.max(next, 0), 100) * 10) / 10;
+    if (p > 0 && settled) {
+      opened.current = p;
+    }
+    setPercent(p);
+    try {
+      localStorage.setItem(SHEET_KEY, String(p));
+    } catch {
+      // the height only lasts this page then
+    }
+  }, []);
+  const folded = percent === 0;
+  const toggle = () => set(folded ? opened.current : 0);
+  const unfold = () => {
+    if (folded) {
+      set(opened.current);
+    }
+  };
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const sheet = ref.current;
+    const room = sheet?.parentElement;
+    if (!(sheet && room) || e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = sheet.getBoundingClientRect().height;
+    const roomH = room.getBoundingClientRect().height;
+    let moved = false;
+    let last = percent;
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientY - startY) < SHEET_SLOP) {
+        return;
+      }
+      if (!moved) {
+        moved = true;
+        setDragging(true);
+      }
+      const h = Math.min(startH + startY - ev.clientY, roomH - SHEET_ROOM);
+      last = h < SHEET_MIN + 16 ? 0 : (h / roomH) * 100;
+      set(last, false);
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      document.body.style.removeProperty("cursor");
+      document.body.style.removeProperty("user-select");
+      setDragging(false);
+      if (moved) {
+        set(last);
+      } else if (ev.type === "pointerup") {
+        toggle();
+      }
+    };
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 25 : 10;
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      set(percent + step);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      set(percent - step < 15 ? 0 : percent - step);
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggle();
+    }
+  };
+  /** The sheet's height, kept between folded and the room the diagram keeps. */
+  const height = `clamp(${SHEET_MIN}px, ${percent}%, calc(100% - ${SHEET_ROOM}px))`;
+  return { ref, percent, height, folded, dragging, unfold, onPointerDown, onKeyDown };
+}
+
 export function EditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -111,6 +223,7 @@ export function EditorPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
   const pane = usePaneWidth();
+  const sheet = useSheetHeight();
   const [shareOpen, setShareOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<string | null>(null);
@@ -219,6 +332,7 @@ export function EditorPage() {
     setSelected(sid);
     if (sid) {
       setTab("step");
+      sheet.unfold();
     }
   };
 
@@ -324,7 +438,7 @@ export function EditorPage() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="relative min-h-[45vh] flex-1 overflow-hidden lg:min-h-0">
+        <section className="relative min-h-0 flex-1 overflow-hidden">
           {hasIssues && !building ? (
             <div className="absolute top-3 right-3 left-3 z-10 mx-auto max-w-xl animate-rise rounded-xl bg-card p-4 shadow-elevated ring-1 ring-rose/30">
               <p className="text-[0.875rem]">{t("editor.issues")}</p>
@@ -408,9 +522,32 @@ export function EditorPage() {
         </section>
 
         <aside
-          className="relative flex h-[55vh] min-h-0 w-full shrink-0 flex-col bg-card shadow-[0_0_0_1px_var(--border-soft)] lg:h-auto lg:w-(--pane) lg:rounded-tl-3xl"
-          style={{ "--pane": `${pane.width}px` } as React.CSSProperties}
+          ref={sheet.ref}
+          className={cn(
+            "relative flex h-(--sheet) min-h-0 w-full shrink-0 flex-col rounded-t-3xl bg-card shadow-[0_0_0_1px_var(--border-soft)] lg:h-auto lg:w-(--pane) lg:rounded-tr-none",
+            !sheet.dragging &&
+              "max-lg:motion-safe:transition-[height] max-lg:motion-safe:duration-200",
+          )}
+          style={{ "--pane": `${pane.width}px`, "--sheet": sheet.height } as React.CSSProperties}
         >
+          {/* On small screens the pane is a sheet over the bottom: its handle drags its height, a
+              tap folds it to its tabs. The handle reaches a little above the sheet for fingers. */}
+          {/* biome-ignore lint/a11y/useSemanticElements: a draggable splitter has no element of its own */}
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label={t("editor.resizeSheet")}
+            aria-valuenow={sheet.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            tabIndex={0}
+            title={t("editor.resizeSheet")}
+            onPointerDown={sheet.onPointerDown}
+            onKeyDown={sheet.onKeyDown}
+            className="group before:-top-4 relative z-10 flex h-7 shrink-0 cursor-row-resize touch-none select-none items-center justify-center outline-none before:absolute before:inset-x-0 before:h-4 lg:hidden"
+          >
+            <span className="h-1.5 w-10 rounded-full bg-ink-4/40 transition-all group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:w-14 group-active:bg-ember" />
+          </div>
           {/* biome-ignore lint/a11y/useSemanticElements: a draggable splitter has no element of its own */}
           <div
             role="separator"
@@ -426,12 +563,15 @@ export function EditorPage() {
           >
             <span className="-translate-y-1/2 absolute top-1/2 left-[9px] h-12 w-1.5 rounded-full bg-ink-4/40 transition group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:h-16 group-active:bg-ember" />
           </div>
-          <nav className="flex shrink-0 gap-1 px-3 pt-3">
+          <nav className="flex shrink-0 gap-1 px-3 lg:pt-3">
             {(["chat", "step", "files", "runs"] as Tab[]).map((k) => (
               <button
                 key={k}
                 type="button"
-                onClick={() => setTab(k)}
+                onClick={() => {
+                  setTab(k);
+                  sheet.unfold();
+                }}
                 className={cn(
                   "h-9 rounded-full px-4 font-medium text-[0.8125rem] transition",
                   tab === k ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
@@ -441,7 +581,7 @@ export function EditorPage() {
               </button>
             ))}
           </nav>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className={cn("min-h-0 flex-1 overflow-y-auto", sheet.folded && "max-lg:hidden")}>
             {tab === "chat" ? (
               <ChatPanel chat={chat} avatar={def.avatar} closed={readOnlyNote ?? undefined} />
             ) : tab === "step" ? (
