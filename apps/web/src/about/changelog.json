@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.21",
+    "timestamp": 1791314987,
+    "commits": [
+      {
+        "id": "23b5001",
+        "message": "a wizard can make a film with Claude Code: the new step type \"film\" lets the AI client installed on this computer write a motion-graphics film as code in a folder of its own – with HyperFrames' skills (fetched once from GitHub at a pinned version), the wizard's style kit (a .zip in its workspace, unpacked as the bar to reach), the space's brand (name, colours named by use, facts, logos) and the run's material (voice, script, pictures, uploads) – and the runtime renders the MP4 with HyperFrames (installed into the data folder on the first film); the client's shell runs in its sandbox, writing only inside the folder and without network, and reaches HyperFrames' render, snapshots and checks through a tool of the step limited to the folder; sounds come only from a catalog of CC0 effects (soundcn by Kenney, HyperFrames' own); a film runs only where Claude Code is the AI subscription, never on credits or in the cloud, the runner says so before a run starts and the marketplace shows it as a capability; a film that stops picks up the client's session on the next try, a failed final render goes back to the client to fix, and a review's note changes the film's code instead of making it again; the folder goes with the run's files",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.20",
-    "timestamp": 1791314483,
+    "timestamp": 1791314485,
     "commits": [
       {
         "id": "d6a5fca",
