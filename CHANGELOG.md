@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.7] - 2026-10-06
+- ADDED The space is a page of its own: the top bar opens it beside the gear, and a menu at its left jumps to Basis, Logos, Farben, Assets, Dokumente and Fakten and marks the one in view (a picker on a phone); the studio, its assistant and the docs call a project a space (German „Space“), the address is /space and /settings/project leads there; the settings keep Konto, Connectors, Modelle and Einbinden, and the gear opens Konto; the assistant's input is one line until the text needs more, in its card and docked at the bottom
+
 ## [0.2.6] - 2026-10-06
 - ADDED A wizard's link installs and bookmarks with the wizard's own icon: its engenty in its own colour on a pale ground of that colour with its name in small capitals below, drawn by the runtime for the manifest, the iPhone's home screen and phones that cut icons to their own shape; the page's favicon is the engenty alone, so a bookmark or tab shows it too; the name keeps the whole words that fit and never ends on a short word like "aus"; the studio's icon stands in where the runtime cannot draw; on a computer the start page offers a bookmark (⌘ D or Strg + D) instead of an install, phones keep "Zum Startbildschirm hinzufügen"
 

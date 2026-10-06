@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.7",
+    "timestamp": 1791281336,
+    "commits": [
+      {
+        "id": "cc15aad",
+        "message": "the space is a page of its own: the top bar opens it beside the gear, and a menu at its left jumps to Basis, Logos, Farben, Assets, Dokumente and Fakten and marks the one in view (a picker on a phone); the studio, its assistant and the docs call a project a space (German „Space“), the address is /space and /settings/project leads there; the settings keep Konto, Connectors, Modelle and Einbinden, and the gear opens Konto; the assistant's input is one line until the text needs more, in its card and docked at the bottom",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.6",
-    "timestamp": 1791280940,
+    "timestamp": 1791280942,
     "commits": [
       {
         "id": "198e23c",
