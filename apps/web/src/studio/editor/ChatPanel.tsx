@@ -383,13 +383,29 @@ export function ChatPanel({
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [chat.messages, chat.phase]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the height follows the text, typed or spoken
+  // The height follows the text, typed or spoken, and the field's width: the card's, or the
+  // narrower one docked at the bottom. Empty, the field is one line; a placeholder that wraps
+  // does not make it taller.
   useEffect(() => {
     const el = area.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    if (!el) {
+      return;
     }
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = text ? `${Math.min(el.scrollHeight, 200)}px` : "";
+    };
+    fit();
+    let width = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      // Only a new width: the height this sets would call it again.
+      if (el.clientWidth !== width) {
+        width = el.clientWidth;
+        fit();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [text]);
   const ready = (text.trim() || files.length > 0) && chat.phase === "idle";
   const add = (picked: File[]) =>

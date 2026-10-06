@@ -13,7 +13,6 @@ import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { Integrate } from "./Integrate";
 import { LocalRuntimeCard } from "./LocalRuntime";
-import { ProjectSettings } from "./project/ProjectSettings";
 import { projectReadOnlyText, ReadOnlyNote } from "./ReadOnly";
 import { settingsSections } from "./settings-sections";
 
@@ -171,10 +170,14 @@ export function SettingsPage() {
     if (section === "build") {
       return <Navigate to="/settings/integrate" replace />;
     }
+    // The space was the settings section "project" before it got a page of its own.
+    if (section === "project") {
+      return <Navigate to="/space" replace />;
+    }
     // A plugin's section is there once the plugin loaded.
-    return plugins.status === "ready" ? <Navigate to="/settings/project" replace /> : null;
+    return plugins.status === "ready" ? <Navigate to="/settings/account" replace /> : null;
   }
-  // The project page brings its own switcher, next to the project's name.
+  // Connectors belong to a project: with several, the switcher stands above them.
   const scoped = current.id === "connectors" && many;
   return (
     <div className="animate-rise">
@@ -208,19 +211,11 @@ export function SettingsPage() {
           onChange={(id) => navigate(`/settings/${id}`)}
           options={sections.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <div
-          className={cn(
-            "min-w-0",
-            current.id !== "project" && current.id !== "integrate" && "max-w-2xl",
-          )}
-        >
+        <div className={cn("min-w-0", current.id !== "integrate" && "max-w-2xl")}>
           {scoped ? (
             <div className="mb-6">
               <ProjectSwitcher />
             </div>
-          ) : null}
-          {current.id === "project" && project ? (
-            <ProjectSettings key={key} project={project} />
           ) : null}
           {current.id === "connectors" && project ? (
             <div className="flex flex-col gap-6">
@@ -232,7 +227,7 @@ export function SettingsPage() {
             </div>
           ) : null}
           {/* No project yet: nothing is built here, and no local install has sent one. */}
-          {(current.id === "project" || current.id === "connectors") && !project && !loading ? (
+          {current.id === "connectors" && !project && !loading ? (
             <Empty>{t("settings.noProject")}</Empty>
           ) : null}
           {current.id === "models" ? <LocalRuntimeCard /> : null}

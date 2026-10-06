@@ -1,7 +1,7 @@
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { type Project, useManyProjects } from "../../lib/session";
@@ -98,6 +98,18 @@ function Rename({ project, save }: { project: Project; save: (patch: Patch) => P
 }
 
 /**
+ * Where the sections menu jumps to (`projectSections`): the section's heading lands below the
+ * sticky top bar, and below the section picker on narrow screens.
+ */
+function Anchor({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <div id={id} className="scroll-mt-24 max-md:scroll-mt-36">
+      {children}
+    </div>
+  );
+}
+
+/**
  * What a project gives all its wizards: who it is, its logos and colours, assets, documents and
  * facts. Every section saves by itself; the assistant fills them in from a description, a
  * website or files. A read-only project (a local install's, or on a server where nothing is
@@ -135,22 +147,34 @@ export function ProjectSettings({ project }: { project: Project }) {
       ) : (
         <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
       )}
-      <Base key={`base:${key}`} project={project} save={save} />
-      <Logos projectId={project.id} data={data} readOnly={readOnly} />
-      <Colors
-        key={`colors:${key}`}
-        colors={project.brand.colors ?? []}
-        save={(colors) => save({ brand: { colors } })}
-        readOnly={readOnly}
-      />
-      <Assets projectId={project.id} data={data} readOnly={readOnly} />
-      <Documents projectId={project.id} data={data} readOnly={readOnly} />
-      <Facts
-        key={`facts:${key}`}
-        facts={project.facts}
-        save={(facts) => save({ facts })}
-        readOnly={readOnly}
-      />
+      <Anchor id="base">
+        <Base key={`base:${key}`} project={project} save={save} />
+      </Anchor>
+      <Anchor id="logos">
+        <Logos projectId={project.id} data={data} readOnly={readOnly} />
+      </Anchor>
+      <Anchor id="colors">
+        <Colors
+          key={`colors:${key}`}
+          colors={project.brand.colors ?? []}
+          save={(colors) => save({ brand: { colors } })}
+          readOnly={readOnly}
+        />
+      </Anchor>
+      <Anchor id="assets">
+        <Assets projectId={project.id} data={data} readOnly={readOnly} />
+      </Anchor>
+      <Anchor id="documents">
+        <Documents projectId={project.id} data={data} readOnly={readOnly} />
+      </Anchor>
+      <Anchor id="facts">
+        <Facts
+          key={`facts:${key}`}
+          facts={project.facts}
+          save={(facts) => save({ facts })}
+          readOnly={readOnly}
+        />
+      </Anchor>
       {many && !readOnly ? (
         <div>
           <Button

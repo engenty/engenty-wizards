@@ -114,7 +114,7 @@ export function useStudioPlugins(): StudioPlugins {
 }
 
 /** Addresses the studio keeps for itself, and the sections of its own settings. */
-const OWN_PAGES = new Set(["", "new", "edit", "settings", "setup", "sign-in"]);
+const OWN_PAGES = new Set(["", "new", "edit", "settings", "space", "setup", "sign-in"]);
 const OWN_SECTIONS = new Set(["account", "project", "connectors", "models", "build", "plugins"]);
 
 interface Mounted {

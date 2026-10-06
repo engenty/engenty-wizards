@@ -1,4 +1,4 @@
-import { Blocks, Cable, Cpu, FolderCog, type LucideIcon, Plug, UserRound } from "lucide-react";
+import { Blocks, Cable, Cpu, type LucideIcon, Plug, UserRound } from "lucide-react";
 import type { ComponentType } from "react";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
@@ -24,7 +24,6 @@ export function settingsSections(
 ): SettingsSection[] {
   return [
     { id: "account", label: t("account.title"), icon: UserRound, menu: true },
-    { id: "project", label: t("settings.project"), icon: FolderCog, menu: true },
     { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },
     // Models are chosen on the machine only when the runtime runs alone.
     ...(me?.mode === "local"

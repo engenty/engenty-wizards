@@ -76,5 +76,5 @@ While an account is signed in, the studio calls you by its name and e-mail: Sett
 shows them under "Profile" without changing them. The avatar carries a small cloud; its menu
 says "Connected to engenty.ai" and the credits, or that the sign-in has run out.
 
-Without an account the app is not connected to anything: wizards, project data and files stay on
+Without an account the app is not connected to anything: wizards, the space and its files stay on
 your computer.

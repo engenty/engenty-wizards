@@ -1,9 +1,9 @@
 ---
-title: Project
+title: Space
 description: What every wizard knows about you — name, logos, colours, assets, documents and facts.
 ---
 
-Settings → Project holds what all your wizards share. Every AI step knows it, so a wizard never
+Space, in the top bar, holds what all your wizards share. Every AI step knows it, so a wizard never
 has to ask for your company's name or address.
 
 | Section | Holds | Used for |
@@ -17,7 +17,7 @@ has to ask for your company's name or address.
 
 ## Have it filled in
 
-The assistant at the bottom of the page fills the project for you. Tell it about your project,
+The assistant at the bottom of the page fills the space for you. Tell it about yourselves,
 name your website or give it files:
 
 > Read our website example.com
@@ -32,6 +32,6 @@ It enters what it finds: title, description, logo, colours and facts. You correc
 - The index searches by keywords. With a Vercel AI Gateway or OpenAI key it also searches by
   meaning. See [Models and account](./models.md).
 
-## One project
+## One space
 
-An install has one project. Its wizards, settings and files belong together.
+An install has one space. Its wizards, settings and files belong together.

@@ -1,6 +1,6 @@
-import { Cloud, CloudOff, CreditCard, Laptop, LogOut, Settings } from "lucide-react";
+import { Cloud, CloudOff, CreditCard, Folder, Laptop, LogOut, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { features } from "../lib/features";
@@ -208,6 +208,20 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
       <Logo onClick={() => navigate("/")} />
       <div className="min-w-0 flex-1">{children}</div>
       <CreditsPill me={me} />
+      <NavLink
+        to="/space"
+        title={t("nav.project")}
+        aria-label={t("nav.project")}
+        className={({ isActive }) =>
+          cn(
+            "flex h-9 shrink-0 items-center gap-2 rounded-full px-3 font-medium text-[14px] ring-1 ring-border-soft transition coarse:h-11 sm:px-3.5",
+            isActive ? "bg-paper-2 text-ink" : "text-ink-2 hover:bg-accent hover:text-ink",
+          )
+        }
+      >
+        <Folder className="size-4" />
+        <span className="max-sm:hidden">{t("nav.project")}</span>
+      </NavLink>
       {/* The pages plugins added, each behind its icon. */}
       {plugins.nav.map((entry) => (
         <PluginFrame key={entry.serial} of={entry}>
@@ -222,7 +236,7 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
       ))}
       <IconButton
         label={t("nav.settings")}
-        onClick={() => navigate("/settings/project")}
+        onClick={() => navigate("/settings/account")}
         className="ring-1 ring-border-soft"
       >
         <Settings className="size-4" />

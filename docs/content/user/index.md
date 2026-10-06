@@ -34,7 +34,7 @@ briefing, an invoice, a quote, a damage report.
 | Wizard | A flow of steps a person walks through on a link |
 | Step | One part of the flow: a page, an AI step, a review, the result |
 | Run | One person going through a wizard once |
-| Project | What all your wizards know: name, logo, colours, facts, documents |
+| Space | What all your wizards know: name, logo, colours, facts, documents |
 | Model class | The kind of model a step needs. Which model serves a class is a setting, not part of the wizard |
 
 ## Two places it runs

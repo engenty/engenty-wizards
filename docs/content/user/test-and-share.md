@@ -71,7 +71,7 @@ your computer. On top it says:
 | "Live on engenty.ai · version 3" | The cloud runs this version |
 | "Version 3 does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
 | "What runs differently in the cloud" | A step works there with less, for example without a machine for code |
-| "Send again" | The last sending did not arrive, or the project changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
+| "Send again" | The last sending did not arrive, or the space changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
 
 Without an account the dialog says that the wizard runs only on this computer, and offers to
 sign in or create an account. "Website" and "QR code" are there too, marked with a cloud: they
@@ -82,12 +82,12 @@ What goes and what stays:
 | Goes to the cloud | Stays on your computer |
 |---|---|
 | The published version and its files | Drafts and the chat with the assistant |
-| The project's name, what it says about itself, its logo | Runs and results of your computer |
-| How the link is shared: on or off, runs a day | Connected accounts, keys, the project's documents and MCP servers |
+| The space's name, what it says about itself, its logo | Runs and results of your computer |
+| How the link is shared: on or off, runs a day | Connected accounts, keys, the space's documents and MCP servers |
 
-At engenty.ai/studio you see the project and its runs there. It is changed on your computer:
-the studio there edits nothing. An account holds one project of one computer. On a new computer
-the share dialog offers to replace the project of the old one, which removes its wizards and
+At engenty.ai/studio you see the space and its runs there. It is changed on your computer:
+the studio there edits nothing. An account holds one space of one computer. On a new computer
+the share dialog offers to replace the space of the old one, which removes its wizards and
 their links from the cloud.
 
 Deleting a wizard here removes its copy; switching its link off here switches it off there.
