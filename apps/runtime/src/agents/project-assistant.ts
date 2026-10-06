@@ -20,7 +20,9 @@ import {
 } from "../services/project-files.js";
 import { documentText } from "../services/project-index.js";
 import { brandColorSchema, ownedProject, updateProject } from "../services/projects.js";
+import { currentTenant } from "../tenants/tenant.js";
 import { safeFetch } from "../tools/net-guard.js";
+import { assistantToolsOf } from "../tools/plugin.js";
 import { readWebsite } from "./website.js";
 
 export interface AssistantInput {
@@ -34,6 +36,8 @@ export interface AssistantInput {
   onActivity?: (label: string) => void;
   /** The project changed: the page shows it. */
   onChanged?: () => void;
+  /** A plugin's tool returned what its card in the chat draws. */
+  onCard?: (card: { plugin: string; tool: string; data: unknown }) => void;
 }
 
 export interface AssistantResult {
@@ -354,10 +358,25 @@ function buildTools(input: AssistantInput, resolved: ResolvedModel<unknown>, wro
 export async function runProjectAssistant(input: AssistantInput): Promise<AssistantResult> {
   let changed = false;
   const resolved = await textModel("high");
-  const tools = buildTools(input, resolved, () => {
+  const wrote = () => {
     changed = true;
     input.onChanged?.();
-  });
+  };
+  const tools = buildTools(input, resolved, wrote);
+  // What the tenant's plugins let the assistant do besides: a source of knowledge, say.
+  const project = await ownedProject(input.userId, input.projectId);
+  Object.assign(
+    tools,
+    await assistantToolsOf({
+      tenantId: currentTenant(),
+      space: { id: project.id, name: project.name },
+      userId: input.userId,
+      signal: input.signal ?? new AbortController().signal,
+      emit: (message) => input.onActivity?.(message),
+      changed: wrote,
+      card: (card) => input.onCard?.(card),
+    }),
+  );
   attachTools(resolved, tools);
   const agent = new Agent({
     id: "project-assistant",

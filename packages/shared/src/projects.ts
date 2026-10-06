@@ -149,8 +149,14 @@ export function projectFileLimit(kind: ProjectFileKind, mime: string): number {
 
 /** One passage the document index found for a question. */
 export interface ProjectSearchHit {
-  fileId: string;
+  /** The document the passage is of; null for a plugin's text. */
+  fileId: string | null;
+  /** The plugin whose text it is; null for a document. */
+  plugin: string | null;
+  /** The document's name, or the title of the plugin's text. */
   name: string;
+  /** Where the studio shows a plugin's text. */
+  link: string | null;
   /** The passage's place in its document, from 0. */
   index: number;
   text: string;

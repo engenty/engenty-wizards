@@ -72,8 +72,39 @@ throw Object.assign(new Error("No such contact."), { status: 404, code: "no_cont
 - Only the studio, signed in. A request without a session gets `401` before it reaches the
   plugin.
 - Only people of a tenant that has the plugin. For any other tenant the address answers `404`.
-- Not the people who run a wizard on its link, and not the outside world: a plugin has no
-  public route. A webhook from another service cannot reach a plugin directly.
+- Not the people who run a wizard on its link, and not the outside world. For a webhook of
+  another service, a plugin has [public routes](#public-routes).
+
+## Public routes
+
+A public route answers anyone: a CMS that says a page changed, another service's webhook. Its
+address names the tenant without giving its id away; the plugin hands it out:
+
+```ts
+server.registerPublicRoute({
+  method: "POST",
+  path: "/signal/:token",
+  handler: async ({ params, tenantId, json }) => {
+    const source = await sourceByToken(params.token);
+    if (!source) {
+      throw Object.assign(new Error("Unknown."), { status: 404, code: "unknown" });
+    }
+    await refreshSoon(source, await json());
+    return { ok: true };
+  },
+});
+
+// In a route of the studio: the address to paste into the CMS.
+const address = await server.publicUrl(`/signal/${source.token}`);
+// https://…/api/public/plugins/<id>/<ref>/signal/<token>
+```
+
+- Nobody is signed in. Check a secret of your own: a token in the address, a signature of the
+  body. Keep only a hash of it.
+- The handler runs inside the tenant of the address: `server.getTenantDb()` is its database.
+- `publicUrl` gives the same address for a tenant every time.
+- A body is taken up to 4 MB. Answers and errors work as for the plugin's other routes.
+- A tenant without the plugin, or a suspended one, answers `404`.
 
 ## From the studio half
 

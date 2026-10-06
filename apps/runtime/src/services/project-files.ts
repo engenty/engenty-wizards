@@ -10,6 +10,7 @@ import { db, schema } from "../db/client.js";
 import { documentMime, UnreadableDocument } from "../documents/parse.js";
 import { loadAsset, removeAsset, saveAsset } from "../files/storage.js";
 import { textModel } from "../models.js";
+import { spaceFileChanged } from "../plugins/events.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { requireWritableProject } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
@@ -233,12 +234,14 @@ async function prepare(row: ProjectFileRow) {
       if (row.kind !== "document") {
         const description = await describeImage(row, data).catch(() => "");
         await set({ status: "ready", ...(description ? { description } : {}) });
+        spaceFileChanged("space.file.ready", row);
         return;
       }
       const { text, ...indexed } = await indexDocument(row, data);
       const description =
         row.description || (text ? await describeDocument(row, text).catch(() => "") : "");
       await set({ ...indexed, status: "ready", error: null, description });
+      spaceFileChanged("space.file.ready", row);
     } catch (err) {
       console.error("[project-file]", row.name, err);
       await set({
@@ -309,6 +312,7 @@ async function removeRow(row: ProjectFileRow) {
   if (row.kind === "logo") {
     await dropLinks([row.id]);
   }
+  spaceFileChanged("space.file.removed", row);
 }
 
 export async function removeProjectFile(projectId: string, fileId: string) {

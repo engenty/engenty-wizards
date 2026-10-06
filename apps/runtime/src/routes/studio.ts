@@ -512,6 +512,9 @@ export const studio = new Hono<Vars>()
           onChanged: () => {
             void stream.writeSSE({ event: "changed", data: "1" });
           },
+          onCard: (card) => {
+            void stream.writeSSE({ event: "card", data: JSON.stringify(card) });
+          },
         });
         await stream.writeSSE({
           event: "done",

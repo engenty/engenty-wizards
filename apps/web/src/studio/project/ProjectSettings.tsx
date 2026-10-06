@@ -14,7 +14,7 @@ import { Documents } from "./Documents";
 import { useAutosave, useProjectFiles } from "./data";
 import { Facts } from "./Facts";
 import { Assets, Logos } from "./Files";
-import { Section } from "./Section";
+import { Anchor, Section } from "./Section";
 
 type Patch = {
   name?: string;
@@ -98,24 +98,13 @@ function Rename({ project, save }: { project: Project; save: (patch: Patch) => P
 }
 
 /**
- * Where the sections menu jumps to (`projectSections`): the section's heading lands below the
- * sticky top bar, and below the section picker on narrow screens.
- */
-function Anchor({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <div id={id} className="scroll-mt-24 max-md:scroll-mt-36">
-      {children}
-    </div>
-  );
-}
-
-/**
  * What a project gives all its wizards: who it is, its logos and colours, assets, documents and
  * facts. Every section saves by itself; the assistant fills them in from a description, a
  * website or files. A read-only project (a local install's, or on a server where nothing is
- * built) shows the same sections, and a note stands where the assistant would.
+ * built) shows the same sections, and a note stands where the assistant would. `children`: the
+ * sections plugins add, after the space's own.
  */
-export function ProjectSettings({ project }: { project: Project }) {
+export function ProjectSettings({ project, children }: { project: Project; children?: ReactNode }) {
   const qc = useQueryClient();
   const files = useProjectFiles(project.id);
   // What the assistant wrote is shown by mounting the sections again with the new project.
@@ -175,6 +164,7 @@ export function ProjectSettings({ project }: { project: Project }) {
           readOnly={readOnly}
         />
       </Anchor>
+      {children}
       {many && !readOnly ? (
         <div>
           <Button

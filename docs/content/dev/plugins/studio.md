@@ -1,6 +1,6 @@
 ---
 title: The studio half
-description: Pages, icons in the top bar and sections of the settings — written in React, built once, drawn inside the studio.
+description: Pages, icons in the top bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -86,8 +86,11 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerPage({ path, component, wide? })` | A page of the studio at `/studio<path>`, inside the studio's frame. `path` takes `:name` parts. `wide`: the page lays out its own columns and takes the screen's width |
 | `studio.registerNav({ to, label, icon })` | An icon in the top bar that opens a page |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
+| `studio.registerSpaceSection({ id, label, hint?, component })` | A section of the space page at `/studio/space#<id>`, below the space's own. See [The space](#the-space) |
+| `studio.registerAssistantCard({ tool, component })` | A card in the space assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
-- The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/setup`, `/sign-in`.
+- The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,
+  `/sign-in`.
 - `label` is a function, since the language can change while the studio is open.
 - `icon` is a component that takes `className`: any icon of `lucide-react`.
 
@@ -110,6 +113,42 @@ studio.registerSettingsSection({
   component: ContactsSettings,
 });
 ```
+
+## The space
+
+A space holds what all its wizards share: a title, logos, colours, documents and facts. The
+space page, behind "Space" in the top bar, shows them in sections. A plugin adds its own below
+them:
+
+```tsx
+function ContactsOfSpace() {
+  const space = studio.useSpace();
+  const list = useQuery({
+    queryKey: ["contacts", space?.id],
+    queryFn: () => studio.api.get<{ contacts: Person[] }>(`/?space=${space?.id}`),
+    enabled: Boolean(space),
+  });
+  return <Card className="p-5 text-[14px] text-ink-2">…</Card>;
+}
+
+studio.registerSpaceSection({
+  id: "contacts",
+  label: () => t("title"),
+  hint: () => t("hint"),
+  component: ContactsOfSpace,
+});
+```
+
+- The studio draws the heading and the hint above the section, as it does for the space's own,
+  and lists the section in the page's menu under the plugin's name. The component draws the rest,
+  usually a `Card`.
+- `id` is the section's anchor: `/studio/space#contacts` opens the page there. The space's own
+  ids are taken: `base`, `logos`, `colors`, `assets`, `documents`, `facts`.
+- `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A
+  component that calls it draws again when the person picks another space. `readOnly`: the
+  space came from a local install, or nothing is built on this runtime; show it, change nothing.
+- Every wizard belongs to a space: a [run event](./events.md) names it as
+  `wizard.projectId`. Keep it with what the plugin stores to show a space's part of it.
 
 ## Words in two languages
 
@@ -193,8 +232,8 @@ does not have, such as `lucide-react`, comes from the studio's.
 
 ## Undo on reload
 
-The studio half loads again when its built files change. Pages, icons and sections are taken
-back for it. Anything else it started, it undoes itself:
+The studio half loads again when its built files change. Pages, icons and sections, also those
+of the space page, are taken back for it. Anything else it started, it undoes itself:
 
 ```ts
 const timer = setInterval(refresh, 30_000);

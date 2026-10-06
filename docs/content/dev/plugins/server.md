@@ -34,9 +34,16 @@ export default definePlugin((wizards) => {
 | `wizards.server.` | Does | Page |
 |---|---|---|
 | `registerTool(tool)` | A tool for AI steps | [Tools](./tools.md) |
+| `registerSpaceContext(context)` | A block and tools for every AI step of a space | [The space](./space.md) |
+| `registerAssistantTool(tool)` | A tool of the space assistant | [The space](./space.md#tools-of-the-space-assistant) |
+| `index.put(entry)`, `index.remove(space, key?)` | Texts in the space's search index | [The space](./space.md#the-search-index) |
 | `registerHttpRoute(route)` | A route below `/api/studio/plugins/<id>` | [Routes](./routes.md) |
+| `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
 | `registerMigrations(folder)` | `.sql` files with the plugin's tables | [Tables](./tables.md) |
-| `on(event, listener)` | Called when a run ends | [Run events](./events.md) |
+| `on(event, listener)` | Called when a run ends or a space changes | [Events](./events.md) |
+| `every(name, everyMs, handler)` | A job, again and again | below |
+| `web.fetch(url, init?)`, `web.read(url)` | Requests to the web, guarded | below |
+| `documents.parse(file)` | A file as Markdown | below |
 | `getTenantDb()` | The database of the tenant the current request, step or event belongs to | [Tables](./tables.md) |
 | `generate(request)` | Asks a model of the current tenant | below |
 | `onUnload(fn)` | Something to undo when the plugin unloads | below |
@@ -94,6 +101,54 @@ const { object } = await server.generate({
 It answers `{ text, object }`. Without a model set up it throws an error with the status `503`
 and the code `no_model`: a route that lets it through answers just that, and the studio half
 says it in the person's language.
+
+## Jobs
+
+```ts
+server.every("refresh", 60 * 60_000, async ({ tenantId, lastRun, signal }) => {
+  for (const source of await dueSources()) {
+    await refresh(source, signal);
+  }
+});
+```
+
+- The handler runs for every tenant that has the plugin, inside that tenant, at most once per
+  `everyMs`. A minute is the least.
+- When it ran is kept: a restart does not start the count again. A runtime that was off runs a
+  due job once when it starts, not once per turn it missed. A local install runs jobs while it
+  runs.
+- One turn per tenant at a time. A turn that throws is logged and counts as run.
+- `lastRun` is when the turn before started; `null` the first time. `signal` is aborted
+  when the plugin unloads.
+- `PLUGIN_JOBS=0` keeps a runtime from running jobs, for one whose jobs another process runs.
+
+## The web
+
+```ts
+const page = await server.web.read("https://example.com/preise");
+// { url, status, etag, lastModified, title, description, text, links }
+
+const res = await server.web.fetch(`${origin}/sitemap.xml`, {
+  headers: { "if-none-match": source.etag ?? "" },
+});
+```
+
+- Both refuse addresses of this machine and of the local network, after a redirect too, as the
+  runtime's own requests do.
+- `read` gives the page's text as Markdown and every link, absolute and each once. A page with
+  hardly any text without its scripts is drawn in a browser first. `etag` and
+  `lastModified` are what the server sent, for asking later whether the page changed.
+- `fetch` is `fetch` behind the guard: for a sitemap, `robots.txt`, a question with
+  `if-none-match`.
+
+## Documents
+
+```ts
+const { markdown, pages } = await server.documents.parse({ data, name: "preise.pdf", mime });
+```
+
+PDF and Word files by their own text, scans and photos by a vision model, spreadsheets and CSV as
+tables. What was read is kept by content: the same bytes are read, and paid for, once.
 
 ## Undo on unload
 

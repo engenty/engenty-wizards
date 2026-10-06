@@ -1,12 +1,37 @@
+import type { PluginSpace, PluginTool } from "@engenty-wizards/plugin-sdk";
 import { type AgentStep, pluginToolOf } from "@engenty-wizards/shared/definition";
 import { createTool } from "@mastra/core/tools";
 import { type StepContext, StepError } from "../engine/types.js";
-import { loadedPlugin, pluginIdsOf } from "../plugins/registry.js";
-import { attempt } from "./shared.js";
+import { loadedPlugin, pluginIdsOf, pluginsOf } from "../plugins/registry.js";
+import { attempt, clip } from "./shared.js";
 
 /** The model's name of a plugin's tool: `<plugin>_<tool>`, since a tool name takes no dot. */
 export function pluginToolName(plugin: string, tool: string): string {
   return `${plugin.replaceAll("-", "_")}_${tool}`;
+}
+
+/** A plugin's tool as an agent step calls it. */
+function stepTool(plugin: string, tool: PluginTool, ctx: StepContext) {
+  const id = pluginToolName(plugin, tool.name);
+  const space = { id: ctx.project.id, name: ctx.project.name };
+  return createTool({
+    id,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    execute: (input) =>
+      attempt(async () =>
+        tool.execute(input, {
+          runId: ctx.runId,
+          stepId: ctx.stepId,
+          tenantId: ctx.tenantId,
+          space,
+          project: space,
+          wizard: { title: ctx.def.title },
+          signal: ctx.signal,
+          emit: (message) => ctx.emit("tool", message),
+        }),
+      ),
+  });
 }
 
 /**
@@ -27,24 +52,102 @@ export async function pluginTools(step: AgentStep, ctx: StepContext): Promise<Re
         `Dieser Schritt braucht das Werkzeug „${plugin}.${tool}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
       );
     }
-    const id = pluginToolName(plugin, tool);
-    tools[id] = createTool({
-      id,
-      description: found.description,
-      inputSchema: found.inputSchema,
-      execute: (input) =>
-        attempt(async () =>
-          found.execute(input, {
-            runId: ctx.runId,
-            stepId: ctx.stepId,
-            tenantId: ctx.tenantId,
-            project: { id: ctx.project.id, name: ctx.project.name },
-            wizard: { title: ctx.def.title },
-            signal: ctx.signal,
-            emit: (message) => ctx.emit("tool", message),
+    tools[pluginToolName(plugin, tool)] = stepTool(plugin, found, ctx);
+  }
+  return tools;
+}
+
+/** A block of a plugin is cut here: the step's instructions stay the step's. */
+const MAX_BLOCK = 8000;
+
+export interface SpaceContext {
+  /** Blocks of the step's instructions, one per plugin context that has something to say. */
+  blocks: string[];
+  /** The tools that come with them. */
+  tools: Record<string, any>;
+}
+
+const contexts = new WeakMap<StepContext, Promise<SpaceContext>>();
+
+/**
+ * What the tenant's plugins add to an agent step of a space's wizard (`registerSpaceContext`):
+ * asked once per step, for its instructions and for its tools. A context that fails adds nothing.
+ */
+export function spaceContextOf(ctx: StepContext): Promise<SpaceContext> {
+  let found = contexts.get(ctx);
+  if (!found) {
+    found = gather(ctx);
+    contexts.set(ctx, found);
+  }
+  return found;
+}
+
+async function gather(ctx: StepContext): Promise<SpaceContext> {
+  const space: PluginSpace = { id: ctx.project.id, name: ctx.project.name };
+  const result: SpaceContext = { blocks: [], tools: {} };
+  for (const plugin of await pluginsOf(ctx.tenantId)) {
+    for (const context of plugin.contexts) {
+      const block = await Promise.resolve()
+        .then(() => context.block(space))
+        .catch((err) => {
+          console.error(`[plugin ${plugin.source.id}] space context:`, err);
+          return null;
+        });
+      if (!block?.trim()) {
+        continue;
+      }
+      result.blocks.push(clip(block.trim(), MAX_BLOCK));
+      for (const tool of context.tools ?? []) {
+        result.tools[pluginToolName(plugin.source.id, tool.name)] = stepTool(
+          plugin.source.id,
+          tool,
+          ctx,
+        );
+      }
+    }
+  }
+  return result;
+}
+
+/** What the space assistant hands the tools of plugins for one turn. */
+export interface AssistantTurn {
+  tenantId: string;
+  space: PluginSpace;
+  userId: string;
+  signal: AbortSignal;
+  emit(message: string): void;
+  changed(): void;
+  /** A tool registered with `card: true` returned: the chat draws its card. */
+  card(card: { plugin: string; tool: string; data: unknown }): void;
+}
+
+/** The tenant's plugins' tools of the space assistant (`registerAssistantTool`). */
+export async function assistantToolsOf(turn: AssistantTurn): Promise<Record<string, any>> {
+  const tools: Record<string, any> = {};
+  for (const plugin of await pluginsOf(turn.tenantId)) {
+    for (const tool of plugin.assistantTools.values()) {
+      const id = pluginToolName(plugin.source.id, tool.name);
+      tools[id] = createTool({
+        id,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        execute: (input) =>
+          attempt(async () => {
+            const result = await tool.execute(input, {
+              tenantId: turn.tenantId,
+              space: turn.space,
+              userId: turn.userId,
+              signal: turn.signal,
+              emit: turn.emit,
+              changed: turn.changed,
+            });
+            if (tool.card) {
+              turn.card({ plugin: plugin.source.id, tool: tool.name, data: result ?? null });
+            }
+            return result;
           }),
-        ),
-    });
+      });
+    }
   }
   return tools;
 }

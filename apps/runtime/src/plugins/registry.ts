@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
-import type { PluginEvents, PluginRoute, PluginTool } from "@engenty-wizards/plugin-sdk";
+import type {
+  PluginAssistantTool,
+  PluginEvents,
+  PluginPublicRoute,
+  PluginRoute,
+  PluginSpaceContext,
+  PluginTick,
+  PluginTool,
+} from "@engenty-wizards/plugin-sdk";
 import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
 import type { PluginSource } from "./discovery.js";
@@ -13,11 +21,18 @@ import type { PluginSource } from "./discovery.js";
 
 type Listener<E extends keyof PluginEvents> = (payload: PluginEvents[E]) => void | Promise<void>;
 
-export interface PluginRouteEntry {
-  route: PluginRoute;
+export interface RouteEntry<R> {
+  route: R;
   /** Matches the address below the plugin's own; the groups are the `:name` parts in order. */
   pattern: RegExp;
   params: string[];
+}
+export type PluginRouteEntry = RouteEntry<PluginRoute>;
+
+/** A job of `server.every`. */
+export interface PluginJob {
+  everyMs: number;
+  handler: (tick: PluginTick) => void | Promise<void>;
 }
 
 export interface LoadedPlugin {
@@ -28,10 +43,18 @@ export interface LoadedPlugin {
   error: string | null;
   routes: PluginRouteEntry[];
   tools: Map<string, PluginTool>;
+  /** Blocks and tools for every agent step of a space's wizards. */
+  contexts: PluginSpaceContext[];
+  /** Tools of the space assistant, by name. */
+  assistantTools: Map<string, PluginAssistantTool>;
+  publicRoutes: RouteEntry<PluginPublicRoute>[];
+  jobs: Map<string, PluginJob>;
   listeners: { [E in keyof PluginEvents]?: Listener<E>[] };
   /** Folders of `.sql` files for the tenant databases. */
   migrations: string[];
   disposers: (() => void | Promise<void>)[];
+  /** Aborted when the plugin unloads: what its jobs are handed. */
+  stopped: AbortController;
 }
 
 const plugins = new Map<string, LoadedPlugin>();
@@ -48,9 +71,14 @@ export function emptyRecord(source: PluginSource): LoadedPlugin {
     error: null,
     routes: [],
     tools: new Map(),
+    contexts: [],
+    assistantTools: new Map(),
+    publicRoutes: [],
+    jobs: new Map(),
     listeners: {},
     migrations: [],
     disposers: [],
+    stopped: new AbortController(),
   };
 }
 
@@ -73,7 +101,7 @@ export function loadedPlugins(): LoadedPlugin[] {
 }
 
 /** `/items/:id` as a pattern for the address below the plugin's own. */
-export function compileRoute(route: PluginRoute): PluginRouteEntry {
+export function compileRoute<R extends { path: string }>(route: R): RouteEntry<R> {
   const params: string[] = [];
   const path = route.path.startsWith("/") ? route.path : `/${route.path}`;
   const source = path

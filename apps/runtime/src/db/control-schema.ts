@@ -1,6 +1,13 @@
 import type { MarketplaceExport } from "@engenty-wizards/shared/marketplace";
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 const now = sql`(unixepoch() * 1000)`;
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
@@ -103,3 +110,30 @@ export const marketplaceCache = sqliteTable("marketplace_cache", {
   entry: text("entry", { mode: "json" }).$type<MarketplaceExport>().notNull(),
   fetchedAt: integer("fetched_at", { mode: "timestamp_ms" }).notNull().default(now),
 });
+
+/** When a plugin's job (`server.every`) last ran for a tenant: the next turn counts from it. */
+export const pluginJob = sqliteTable(
+  "plugin_job",
+  {
+    tenantId: text("tenant_id").notNull(),
+    plugin: text("plugin").notNull(),
+    name: text("name").notNull(),
+    lastRunAt: integer("last_run_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.plugin, t.name] })],
+);
+
+/**
+ * The part of a plugin's public address (`server.publicUrl`) that names the tenant, without
+ * giving its id away: `/api/public/plugins/<plugin>/<ref>/…`.
+ */
+export const pluginAddress = sqliteTable(
+  "plugin_address",
+  {
+    ref: text("ref").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    plugin: text("plugin").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("plugin_address_tenant").on(t.tenantId, t.plugin)],
+);

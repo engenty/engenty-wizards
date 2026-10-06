@@ -2,9 +2,10 @@ import type { ComponentType } from "react";
 
 /**
  * What the studio hands a plugin's studio half: the built `client.js` the studio loads after
- * sign-in. Its default export registers pages, entries of the top bar and sections of the
- * settings. React, the router and the studio's own components come from the studio
- * (docs/content/dev/plugins), so the page a plugin draws is part of the same app.
+ * sign-in. Its default export registers pages, entries of the top bar, sections of the settings
+ * and of the space page, and cards of the space assistant's chat. React, the router and the
+ * studio's own components come from the studio (docs/content/dev/plugins), so the page a plugin
+ * draws is part of the same app.
  */
 
 export type StudioLang = "de" | "en";
@@ -40,6 +41,48 @@ export interface StudioSettingsSection {
   menu?: boolean;
 }
 
+/**
+ * A section of the space page, below the space's own sections. The studio draws its heading and
+ * hint above it, and its entry in the page's menu under the plugin's name; the component draws
+ * the rest, usually a `Card`.
+ */
+export interface StudioSpaceSection {
+  /** Its anchor on the page: `/space#<id>`. */
+  id: string;
+  label: () => string;
+  /** One line under the heading: what the section is for. */
+  hint?: () => string;
+  component: ComponentType;
+}
+
+/** What a card in the assistant's chat is handed. */
+export interface StudioAssistantCardProps<T = unknown> {
+  /** What the assistant tool returned. */
+  data: T;
+  /** Sends a message to the assistant, as if the person typed it: "Übernehmen". */
+  send(message: string): void;
+}
+
+/**
+ * Draws the result of a tool of the space assistant inside its chat: a tool the server half
+ * registered with `card: true`.
+ */
+export interface StudioAssistantCard {
+  /** The tool's name, as the server half registered it. */
+  tool: string;
+  // Each card knows the shape of its own tool's result.
+  component: ComponentType<StudioAssistantCardProps<any>>;
+}
+
+/** The space the studio shows: what all its wizards share. */
+export interface StudioSpace {
+  id: string;
+  /** What the switcher calls it. */
+  name: string;
+  /** Synced from a local install, or on a runtime where nothing is built: shown, not changed. */
+  readOnly: boolean;
+}
+
 export interface StudioMe {
   user: { id: string; name: string; email: string };
   tenant: { id: string; role: "owner" | "admin" | "member" };
@@ -52,6 +95,13 @@ export interface StudioPluginContext {
   registerPage(page: StudioPage): void;
   registerNav(entry: StudioNavEntry): void;
   registerSettingsSection(section: StudioSettingsSection): void;
+  registerSpaceSection(section: StudioSpaceSection): void;
+  registerAssistantCard(card: StudioAssistantCard): void;
+  /**
+   * A hook: the space the studio shows, `null` while it has none. A component that calls it draws
+   * again when the person picks another space.
+   */
+  useSpace(): StudioSpace | null;
   i18n: {
     /** Takes the plugin's words and gives the function that reads them in the language in effect. */
     register<M extends StudioMessages>(

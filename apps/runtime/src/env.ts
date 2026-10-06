@@ -241,6 +241,8 @@ export const env = {
      * alone. A runtime of a Manage-App never reloads: it would hit every tenant.
      */
     watch: !manageUrl && str("PLUGINS_WATCH", "1") === "1",
+    /** Plugins' jobs (`server.every`) run. Off (`PLUGIN_JOBS=0`) where another process runs them. */
+    jobs: str("PLUGIN_JOBS", "1") === "1",
   },
 
   limits: {

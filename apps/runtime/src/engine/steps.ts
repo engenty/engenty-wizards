@@ -23,6 +23,7 @@ import {
 import { type AiOrigin, markMedia } from "../media/marking.js";
 import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
 import { buildStepTools } from "../tools/index.js";
+import { spaceContextOf } from "../tools/plugin.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { prepareInputs } from "./prepare.js";
@@ -228,6 +229,8 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       `Today is ${today()}.`,
       brandBlock(ctx),
       documentsBlock(ctx),
+      // What the space's plugins hold for its wizards: a wiki, questions and answers.
+      ...(await spaceContextOf(ctx)).blocks,
       formatHint,
     ]
       .filter(Boolean)

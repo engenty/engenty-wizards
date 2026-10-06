@@ -2,6 +2,7 @@ import { existsSync, type FSWatcher, mkdirSync, watch } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
+  PluginAssistantTool,
   PluginDb,
   PluginTool,
   WizardsPluginApi,
@@ -10,12 +11,17 @@ import type {
 import { PLUGIN_TOOL_NAME } from "@engenty-wizards/shared/definition";
 import { generateText, Output } from "ai";
 import { createJiti } from "jiti";
+import { readPage } from "../agents/website.js";
 import { packageRoot } from "../cli/home.js";
 import { db, onTenantOpen } from "../db/client.js";
+import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
 import { ModelUnavailableError, textModel } from "../models.js";
+import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
+import { safeFetch } from "../tools/net-guard.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
+import { publicUrlOf } from "./public.js";
 import {
   announceChange,
   compileRoute,
@@ -61,9 +67,22 @@ async function importFactory(entry: string): Promise<WizardsPluginFactory> {
   return factory as WizardsPluginFactory;
 }
 
+/** A job runs at most this often. */
+const MIN_EVERY_MS = 60_000;
+
 function apiFor(record: LoadedPlugin): WizardsPluginApi {
   const { source } = record;
   const tag = `[plugin ${source.id}]`;
+  /** The names a step's model sees: the plugin's step tools and its context tools share them. */
+  const stepToolNames = () => [
+    ...record.tools.keys(),
+    ...record.contexts.flatMap((c) => (c.tools ?? []).map((t) => t.name)),
+  ];
+  const named = (kind: string, name: string) => {
+    if (!PLUGIN_TOOL_NAME.test(name)) {
+      throw new Error(`${kind} "${name}": a name is lower case, digits and "_".`);
+    }
+  };
   return {
     plugin: source.manifest,
     resolvePath: (relative) => resolve(source.root, relative),
@@ -78,13 +97,53 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         record.routes.push(compileRoute(route));
       },
       registerTool(tool) {
-        if (!PLUGIN_TOOL_NAME.test(tool.name)) {
-          throw new Error(`Tool "${tool.name}": a name is lower case, digits and "_".`);
-        }
-        if (record.tools.has(tool.name)) {
+        named("Tool", tool.name);
+        if (stepToolNames().includes(tool.name)) {
           throw new Error(`Tool "${tool.name}" is registered twice.`);
         }
         record.tools.set(tool.name, tool as unknown as PluginTool);
+      },
+      registerSpaceContext(context) {
+        const names = (context.tools ?? []).map((t) => t.name);
+        for (const name of names) {
+          named("Tool", name);
+          if (stepToolNames().includes(name) || names.indexOf(name) !== names.lastIndexOf(name)) {
+            throw new Error(`Tool "${name}" is registered twice.`);
+          }
+        }
+        record.contexts.push(context);
+      },
+      registerAssistantTool(tool) {
+        named("Assistant tool", tool.name);
+        if (record.assistantTools.has(tool.name)) {
+          throw new Error(`Assistant tool "${tool.name}" is registered twice.`);
+        }
+        record.assistantTools.set(tool.name, tool as unknown as PluginAssistantTool);
+      },
+      registerPublicRoute(route) {
+        record.publicRoutes.push(compileRoute(route));
+      },
+      publicUrl: (path) => publicUrlOf(source.id, path),
+      every(name, everyMs, handler) {
+        named("Job", name);
+        if (record.jobs.has(name)) {
+          throw new Error(`Job "${name}" is registered twice.`);
+        }
+        record.jobs.set(name, { everyMs: Math.max(MIN_EVERY_MS, everyMs), handler });
+      },
+      index: {
+        put: (entry) => putIndexEntry(source.id, entry),
+        remove: (space, key) => removeIndexEntries(source.id, space, key),
+      },
+      web: {
+        fetch: (url, init) => safeFetch(url, init),
+        read: (url, options) => readPage(url, options?.signal),
+      },
+      documents: {
+        async parse(file, options) {
+          const parsed = await parseDocument(file, { signal: options?.signal });
+          return { markdown: parsed.markdown, pages: parsed.pages };
+        },
       },
       registerMigrations(folder) {
         record.migrations.push(resolve(source.root, folder));
@@ -124,6 +183,8 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
 
 /** Runs what the plugin asked to have undone, the last first. */
 async function dispose(record: LoadedPlugin) {
+  // Its jobs are told to stop; the runtime stops starting them with the record gone.
+  record.stopped.abort();
   for (const undo of record.disposers.splice(0).reverse()) {
     try {
       await undo();
@@ -144,6 +205,10 @@ async function load(source: PluginSource): Promise<LoadedPlugin> {
       await dispose(record);
       record.routes = [];
       record.tools.clear();
+      record.contexts = [];
+      record.assistantTools.clear();
+      record.publicRoutes = [];
+      record.jobs.clear();
       record.listeners = {};
       record.migrations = [];
       record.error = (err as Error)?.message || String(err);

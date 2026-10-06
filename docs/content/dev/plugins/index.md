@@ -11,11 +11,16 @@ them from their files and loads one again when its files change.
 | It adds | Where it shows | Page |
 |---|---|---|
 | A tool for AI steps | In a step's tool list, in the assistant's and the MCP authoring guide | [Tools](./tools.md) |
-| Routes | Below `/api/studio/plugins/<id>` | [Routes](./routes.md) |
+| A block and tools for every AI step of a space | In the steps' instructions | [The space](./space.md) |
+| Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
+| Tools of the space assistant, and their cards | In the chat on the space page | [The space](./space.md#tools-of-the-space-assistant) |
+| Routes | Below `/api/studio/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
 | Tables | In every tenant's database | [Tables](./tables.md) |
-| A listener on runs that end | Nowhere: it works in the background | [Run events](./events.md) |
+| A listener on runs that end and spaces that change | Nowhere: it works in the background | [Events](./events.md) |
+| A job, again and again | Nowhere: it works in the background | [The server half](./server.md#jobs) |
 | A page of the studio | Behind an icon in the top bar, or at its address | [The studio half](./studio.md) |
 | A section of the settings | In the settings' list | [The studio half](./studio.md) |
+| A section of the space page | Below the space's own sections | [The studio half](./studio.md#the-space) |
 
 ## Two halves
 
@@ -25,7 +30,7 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, routes, tables, listeners | Pages, icons in the top bar, sections of the settings |
+| Adds | Tools, routes, tables, listeners, jobs, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.

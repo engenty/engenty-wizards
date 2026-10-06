@@ -1,11 +1,12 @@
 import { definePlugin, type PluginRunEvent } from "@engenty-wizards/plugin-sdk";
-import { count, desc } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { entry } from "./schema";
 
 /**
  * The server half of the example: its own table, a listener on runs that end, two routes for
- * its page in the studio and a tool agent steps can list as `run-log.recent`.
+ * its page and its section of the space page, and a tool agent steps can list as
+ * `run-log.recent`.
  */
 export default definePlugin((wizards) => {
   const { server } = wizards;
@@ -17,6 +18,7 @@ export default definePlugin((wizards) => {
     await db().insert(entry).values({
       runId: run.id,
       wizardId: wizard.id,
+      projectId: wizard.projectId,
       title: wizard.title,
       mode: run.mode,
       status: run.status,
@@ -27,15 +29,26 @@ export default definePlugin((wizards) => {
   server.on("run.failed", keep);
   server.on("run.cancelled", keep);
 
-  const recent = (limit: number) =>
-    db().select().from(entry).orderBy(desc(entry.endedAt), desc(entry.id)).limit(limit);
+  /** The last lines, of all spaces or of one. */
+  const recent = (limit: number, space?: string) =>
+    db()
+      .select()
+      .from(entry)
+      .where(space ? eq(entry.projectId, space) : undefined)
+      .orderBy(desc(entry.endedAt), desc(entry.id))
+      .limit(limit);
 
+  // `?space=<id>`: only the runs of that space's wizards, for its section of the space page.
   server.registerHttpRoute({
     method: "GET",
     path: "/",
-    handler: async () => {
-      const [{ total }] = await db().select({ total: count() }).from(entry);
-      return { total, entries: await recent(100) };
+    handler: async ({ query }) => {
+      const space = query.get("space") ?? undefined;
+      const [{ total }] = await db()
+        .select({ total: count() })
+        .from(entry)
+        .where(space ? eq(entry.projectId, space) : undefined);
+      return { total, entries: await recent(space ? 5 : 100, space) };
     },
   });
 

@@ -5,8 +5,21 @@ import { Card, cn, IconButton, Spinner } from "../../ui";
 import type { Layout, SaveState } from "./data";
 
 /**
- * One section of the project page, as engenty lays them out: the heading and what the section is
+ * Where the sections menu jumps to (`projectSections`): the section's heading lands below the
+ * sticky top bar, and below the section picker on narrow screens.
+ */
+export function Anchor({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <div id={id} className="scroll-mt-24 max-md:scroll-mt-36">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One section of the space page, as engenty lays them out: the heading and what the section is
  * for stand above the card, the card holds the content. The heading says how the last save went.
+ * `plain`: the content draws its own cards, as a plugin's section does.
  */
 export function Section({
   title,
@@ -14,6 +27,7 @@ export function Section({
   save,
   action,
   locked,
+  plain,
   children,
 }: {
   title: string;
@@ -22,6 +36,7 @@ export function Section({
   action?: ReactNode;
   /** The project is not changed here: every field and button of the section shows and takes nothing. */
   locked?: boolean;
+  plain?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -44,18 +59,22 @@ export function Section({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <Card className="p-5">
-        {locked ? (
-          <fieldset disabled className="min-w-0">
-            {children}
-          </fieldset>
-        ) : (
-          children
-        )}
-        {save?.state === "error" && save.error ? (
-          <p className="mt-4 text-[14px] text-rose">{save.error}</p>
-        ) : null}
-      </Card>
+      {plain ? (
+        children
+      ) : (
+        <Card className="p-5">
+          {locked ? (
+            <fieldset disabled className="min-w-0">
+              {children}
+            </fieldset>
+          ) : (
+            children
+          )}
+          {save?.state === "error" && save.error ? (
+            <p className="mt-4 text-[14px] text-rose">{save.error}</p>
+          ) : null}
+        </Card>
+      )}
     </section>
   );
 }

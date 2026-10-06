@@ -54,10 +54,11 @@ keeps a line for every run that ended and shows them in the studio.
 |---|---|
 | `engenty.plugin.json` | A manifest |
 | `migrations/0001_init.sql` | A table, `run_log_entry`, with an index |
+| `migrations/0002_space.sql` | A column added later: the space of each line |
 | `src/schema.ts` | The same table for Drizzle |
-| `src/plugin.ts` | A listener on all three events, two routes (one for admins only) and a tool, `run-log.recent` |
+| `src/plugin.ts` | A listener on all three events, two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
 | `ui/messages.ts` | Words in German and English |
-| `ui/plugin.tsx` | A page behind an icon of the top bar, and a section of the settings that empties the log |
+| `ui/plugin.tsx` | A page behind an icon of the top bar, a section of the settings that empties the log, and a section of the space page with the space's last runs |
 | `package.json` | A workspace package whose `build` script builds the studio half |
 
 Build its studio half once, or on every save:
@@ -75,7 +76,8 @@ Then, in the studio:
 1. The list icon in the top bar opens "Runs".
 2. Test a wizard to its end. A line appears on the page.
 3. Settings → Runs shows how many lines are kept and deletes them.
-4. An AI step can list the tool "Run log" and tell how the last runs ended.
+4. Space shows "Runs" below the space's own sections: the last five runs of its wizards.
+5. An AI step can list the tool "Run log" and tell how the last runs ended.
 
 ## The plugin of these pages
 
@@ -84,7 +86,7 @@ The `contacts` plugin these pages build up, piece by piece:
 | Piece | Page |
 |---|---|
 | The table `contacts_person` | [Tables](./tables.md) |
-| The listener that keeps who ran a wizard | [Run events](./events.md) |
+| The listener that keeps who ran a wizard | [Events](./events.md) |
 | The routes that list and remove contacts | [Routes](./routes.md) |
 | The tool `contacts.lookup` | [Tools](./tools.md) |
 | The page and the settings section | [The studio half](./studio.md) |

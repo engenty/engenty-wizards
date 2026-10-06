@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
+import { spaceChanged } from "../plugins/events.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { mayBuild, requireBuild, requireWritable } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
@@ -87,9 +88,11 @@ const synced = () =>
 async function ensureProject(): Promise<void> {
   const any = await db.query.project.findFirst({ where: madeHere() });
   if (!any) {
+    const id = nanoid(12);
     await db
       .insert(schema.project)
-      .values({ id: nanoid(12), tenantId: currentTenant(), name: "Meine Wizards" });
+      .values({ id, tenantId: currentTenant(), name: "Meine Wizards" });
+    spaceChanged("space.created", id);
   }
 }
 
@@ -165,6 +168,7 @@ export async function createProject(_userId: string, name: string): Promise<{ id
   await db
     .insert(schema.project)
     .values({ id, tenantId: currentTenant(), name, brand: {}, mcpServers: [] });
+  spaceChanged("space.created", id);
   return { id };
 }
 
@@ -200,6 +204,7 @@ export async function updateProject(
       updatedAt: new Date(),
     })
     .where(eq(schema.project.id, p.id));
+  spaceChanged("space.updated", p.id);
 }
 
 /** What a step knows of the project it runs in: who it is, its colours and its facts. */
@@ -241,4 +246,5 @@ export async function removeProject(projectId: string) {
   await db
     .delete(schema.project)
     .where(and(eq(schema.project.id, projectId), eq(schema.project.tenantId, currentTenant())));
+  spaceChanged("space.deleted", projectId);
 }

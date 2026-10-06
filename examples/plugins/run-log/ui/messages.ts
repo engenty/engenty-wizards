@@ -10,6 +10,9 @@ export const messages = {
     settings: "Durchläufe",
     kept: "{n} Einträge sind gespeichert.",
     clear: "Alle löschen",
+    spaceHint: "Die letzten Durchläufe der Wizards dieses Space.",
+    spaceEmpty: "In diesem Space ist noch kein Durchlauf zu Ende gegangen.",
+    all: "Alle {n} Durchläufe",
   },
   en: {
     title: "Runs",
@@ -22,5 +25,8 @@ export const messages = {
     settings: "Runs",
     kept: "{n} entries are kept.",
     clear: "Delete all",
+    spaceHint: "The last runs of this space's wizards.",
+    spaceEmpty: "No run of this space has ended yet.",
+    all: "All {n} runs",
   },
 };

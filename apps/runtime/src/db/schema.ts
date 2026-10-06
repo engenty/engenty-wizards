@@ -287,9 +287,10 @@ export const projectFile = sqliteTable(
 );
 
 /**
- * The document index: passages of a project's documents. Keywords live in the FTS5 table
- * `project_chunk_fts`, which triggers keep in step (see the migration); `embedding` is the
- * passage's vector as float32 bytes, compared with libSQL's `vector_distance_cos`.
+ * The document index: passages of a project's documents, and of the texts plugins put in
+ * (`server.index`). Keywords live in the FTS5 table `project_chunk_fts`, which triggers keep
+ * in step (see the migrations); `embedding` is the passage's vector as float32 bytes, compared
+ * with libSQL's `vector_distance_cos`.
  */
 export const projectChunk = sqliteTable(
   "project_chunk",
@@ -298,9 +299,13 @@ export const projectChunk = sqliteTable(
     projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    fileId: text("file_id")
-      .notNull()
-      .references(() => projectFile.id, { onDelete: "cascade" }),
+    /** The document the passage is of; null for a plugin's text. */
+    fileId: text("file_id").references(() => projectFile.id, { onDelete: "cascade" }),
+    /** A plugin's text: the plugin, its key for the text, its title and where the studio shows it. */
+    plugin: text("plugin"),
+    ref: text("ref"),
+    title: text("title"),
+    link: text("link"),
     idx: integer("idx").notNull(),
     text: text("text").notNull(),
     embedding: blob("embedding", { mode: "buffer" }),
@@ -310,6 +315,7 @@ export const projectChunk = sqliteTable(
   (t) => [
     index("project_chunk_project").on(t.projectId, t.model),
     index("project_chunk_file").on(t.fileId),
+    index("project_chunk_ref").on(t.projectId, t.plugin, t.ref),
   ],
 );
 

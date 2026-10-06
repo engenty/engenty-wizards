@@ -24,9 +24,17 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | Call | |
 |---|---|
 | `registerTool(tool: PluginTool)` | [Tools](./tools.md) |
+| `registerSpaceContext({ block, tools? })` | [The space](./space.md). `block(space): string \| null` |
+| `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
+| `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
 | `registerHttpRoute(route: PluginRoute)` | [Routes](./routes.md) |
+| `registerPublicRoute(route: PluginPublicRoute)` | [Routes](./routes.md#public-routes) |
+| `publicUrl(path): Promise<string>` | The full address of a public route for the current tenant |
 | `registerMigrations(folder: string)` | [Tables](./tables.md). The folder is relative to the plugin's |
-| `on(event, listener)` | [Run events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"` |
+| `on(event, listener)` | [Events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"`, `"space.created"`, `"space.updated"`, `"space.deleted"`, `"space.file.ready"`, `"space.file.removed"` |
+| `every(name, everyMs, handler)` | [Jobs](./server.md#jobs). `handler({ tenantId, lastRun, signal })` |
+| `web.fetch(url, init?)`, `web.read(url, { signal? })` | [The web](./server.md#the-web) |
+| `documents.parse({ data, name, mime }, { signal? })` | [Documents](./server.md#documents). `{ markdown, pages }` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
 | `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`. See [The server half](./server.md#asking-a-model) |
 | `onUnload(fn)` | Runs when the plugin unloads or loads again |
@@ -46,7 +54,8 @@ interface PluginStepContext {
   runId: string;
   stepId: string;
   tenantId: string;
-  project: { id: string; name: string };
+  space: { id: string; name: string };    // the space of the step's wizard
+  project: { id: string; name: string };  // the same, by its older name
   wizard: { title: string };
   signal: AbortSignal;                    // aborted when the run is cancelled
   emit(message: string): Promise<void>;   // tells the person what the step is doing
@@ -73,6 +82,46 @@ interface PluginRequest {
 }
 ```
 
+### `PluginAssistantTool`
+
+```ts
+interface PluginAssistantTool<S extends z.ZodType = z.ZodType> {
+  name: string;           // lower case, digits and "_"
+  description: string;    // for the model
+  inputSchema: S;
+  card?: boolean;         // the result also goes to the chat, for the studio half's card
+  execute(input: z.infer<S>, turn: PluginAssistantContext): unknown | Promise<unknown>;
+}
+
+interface PluginAssistantContext {
+  tenantId: string;
+  space: { id: string; name: string };
+  userId: string;
+  signal: AbortSignal;
+  emit(message: string): void;   // the line the chat shows
+  changed(): void;               // the space page draws again
+}
+```
+
+### `PluginPublicRoute`
+
+```ts
+interface PluginPublicRoute {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  handler(request: PluginPublicRequest): unknown | Promise<unknown>;
+}
+
+interface PluginPublicRequest {
+  request: Request;
+  path: string;
+  params: Record<string, string>;
+  query: URLSearchParams;
+  tenantId: string;    // the tenant of the address; nobody is signed in
+  json<T = unknown>(): Promise<T>;
+}
+```
+
 ### `PluginRunEvent`
 
 ```ts
@@ -95,6 +144,9 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerPage({ path, component, wide? })` | A page at `/studio<path>` |
 | `studio.registerNav({ to, label, icon })` | An icon in the top bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
+| `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
+| `studio.registerSpaceSection({ id, label, hint?, component })` | A section of the space page at `/studio/space#<id>` |
+| `studio.useSpace()` | A hook: `{ id, name, readOnly }` of the space the studio shows, or `null` |
 | `studio.i18n.register({ de, en })` | Gives `t(key, vars?)` |
 | `studio.i18n.lang()` | `"de"` or `"en"` |
 | `studio.api.get`, `.post`, `.put`, `.patch`, `.del` | The plugin's own routes |

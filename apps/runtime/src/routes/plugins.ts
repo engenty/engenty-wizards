@@ -56,7 +56,9 @@ function view(plugin: LoadedPlugin) {
 }
 
 /** A thrown error that says how to answer: `{ status, code }`, as the runtime's own errors do. */
-function answerOf(err: unknown): { status: number; body: { error: string; code: string } } | null {
+export function answerOf(
+  err: unknown,
+): { status: number; body: { error: string; code: string } } | null {
   const e = err as { status?: unknown; code?: unknown; message?: unknown };
   return typeof e?.status === "number" &&
     e.status >= 400 &&

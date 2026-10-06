@@ -87,6 +87,6 @@ reason. Mend the file and save again.
 | To | Read |
 |---|---|
 | Keep data | [Tables](./tables.md) |
-| React when a run ends | [Run events](./events.md) |
+| React when a run ends | [Events](./events.md) |
 | Show a page in the studio | [The studio half](./studio.md) |
 | Give the plugin a name, a version and more than one file | [Files and manifest](./layout.md) |

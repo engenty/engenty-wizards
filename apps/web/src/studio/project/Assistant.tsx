@@ -5,8 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { api, postStream } from "../../lib/api";
 import { t } from "../../lib/i18n";
+import { PluginFrame, useStudioPlugins } from "../../plugins/host";
 import { cn } from "../../ui";
-import { type Chat, type ChatMessage, ChatPanel, previewsOf } from "../editor/ChatPanel";
+import {
+  type Chat,
+  type ChatCard,
+  type ChatMessage,
+  ChatPanel,
+  previewsOf,
+} from "../editor/ChatPanel";
 
 /** Where a file given to the assistant goes: pictures and clips are assets, the rest documents. */
 function kindOf(file: File): ProjectFileKind {
@@ -86,6 +93,21 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
             );
           } else if (event === "activity") {
             setActivity(JSON.parse(data) as string);
+          } else if (event === "card") {
+            const card = JSON.parse(data) as Omit<ChatCard, "id">;
+            setMessages((m) =>
+              m.map((x) =>
+                x.id === pendingId
+                  ? {
+                      ...x,
+                      cards: [
+                        ...(x.cards ?? []),
+                        { ...card, id: `${pendingId}-${x.cards?.length ?? 0}` },
+                      ],
+                    }
+                  : x,
+              ),
+            );
           } else if (event === "changed") {
             setPhase("building");
             void refresh();
@@ -114,7 +136,9 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
       setActivity(null);
       setStartedAt(null);
       setMessages((m) =>
-        m.filter((x) => !(x.id === pendingId && !x.content)).map((x) => ({ ...x, pending: false })),
+        m
+          .filter((x) => !(x.id === pendingId && !x.content && !x.cards?.length))
+          .map((x) => ({ ...x, pending: false })),
       );
       setPhase("idle");
       await refreshing.current;
@@ -125,6 +149,20 @@ function useProjectAssistant(projectId: string, onChanged: () => void): Chat {
   };
 
   return { messages, phase, activity, startedAt, error, send };
+}
+
+/** A plugin's card for what its tool returned, drawn by the plugin's studio half. */
+function PluginCard({ card, send }: { card: ChatCard; send: Chat["send"] }) {
+  const plugins = useStudioPlugins();
+  const found = plugins.cards.find((c) => c.plugin === card.plugin && c.tool === card.tool);
+  if (!found) {
+    return null;
+  }
+  return (
+    <PluginFrame of={found}>
+      <found.component data={card.data} send={(message: string) => void send(message)} />
+    </PluginFrame>
+  );
 }
 
 /** What the assistant's card says before the first message; the engenty stands at its right. */
@@ -207,6 +245,7 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
             intro={<Intro />}
             placeholder={t("project.assistantComposer")}
             changedLabel={t("project.assistantChanged")}
+            card={(card) => <PluginCard card={card} send={chat.send} />}
           />
         </div>
       </div>

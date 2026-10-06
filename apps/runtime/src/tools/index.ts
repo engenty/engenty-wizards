@@ -22,7 +22,7 @@ import { browserTools } from "./browser.js";
 import { connectorTools } from "./connector.js";
 import { mailTools } from "./mail.js";
 import { assertPublicUrl, safeFetch } from "./net-guard.js";
-import { pluginTools } from "./plugin.js";
+import { pluginTools, spaceContextOf } from "./plugin.js";
 import { projectTools } from "./project.js";
 import { clip, FileKeeper } from "./shared.js";
 import { storeTools, type UploadRef } from "./store.js";
@@ -119,10 +119,11 @@ export async function buildStepTools(
   // The wizard's lists and files, the documents the person gave and the project's documents are
   // always at hand.
   Object.assign(tools, storeTools(ctx, uploads, files));
-  Object.assign(tools, projectTools(ctx));
+  Object.assign(tools, await projectTools(ctx));
   Object.assign(tools, mailTools(step, ctx, files));
   Object.assign(tools, await connectorTools(step, ctx, files));
   Object.assign(tools, await pluginTools(step, ctx));
+  Object.assign(tools, (await spaceContextOf(ctx)).tools);
 
   const sandbox = sandboxCapabilities();
   if (allowed.has("sandbox") && sandbox) {

@@ -1,9 +1,9 @@
 ---
-title: Run events
-description: Do something when a run ends — keep who it was, post a message, start a follow-up.
+title: Events
+description: Do something when a run ends or a space changes — keep who it was, post a message, read a new document.
 ---
 
-A plugin can listen to runs that reach their end.
+A plugin can listen to runs that reach their end, and to spaces that change.
 
 ```ts
 // A real run ended: keep who it was.
@@ -32,7 +32,27 @@ server.on("run.done", async ({ run, wizard, values }) => {
 | `run.failed` | stopped with an error |
 | `run.cancelled` | was cancelled |
 
-## What a listener gets
+| Event | A space | Gets |
+|---|---|---|
+| `space.created` | was made, here or by a local install's sync | `{ space: { id } }` |
+| `space.updated` | changed its title, about, colours, facts or systems | `{ space: { id } }` |
+| `space.deleted` | was deleted | `{ space: { id } }` |
+| `space.file.ready` | has a file that was read: a document is in the index now | `{ space: { id }, file: { id, name, kind, mime } }` |
+| `space.file.removed` | lost a file | `{ space: { id }, file: { id, name, kind, mime } }` |
+
+```ts
+// A document arrived: read it into the wiki.
+server.on("space.file.ready", async ({ space, file }) => {
+  if (file.kind === "document") {
+    await queue(space.id, file.id);
+  }
+});
+```
+
+The space events are not waited for: the request that changed the space answers before its
+listeners are done.
+
+## What a run listener gets
 
 | | |
 |---|---|

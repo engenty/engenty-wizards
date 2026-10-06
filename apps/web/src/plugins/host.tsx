@@ -1,14 +1,17 @@
 import type {
+  StudioAssistantCard,
   StudioNavEntry,
   StudioPage,
   StudioPlugin,
   StudioPluginContext,
   StudioSettingsSection,
+  StudioSpace,
+  StudioSpaceSection,
 } from "@engenty-wizards/plugin-sdk/studio";
 import * as sdk from "@engenty-wizards/plugin-sdk/studio";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
-import { Component, type ReactNode, useSyncExternalStore } from "react";
+import { Component, type ReactNode, useMemo, useSyncExternalStore } from "react";
 import * as jsx from "react/jsx-runtime";
 import { createPortal, flushSync } from "react-dom";
 import {
@@ -23,13 +26,15 @@ import {
 import { api } from "../lib/api";
 import { withBase } from "../lib/base";
 import { lang, t } from "../lib/i18n";
-import type { Me } from "../lib/session";
+import { type Me, useCurrentProject } from "../lib/session";
+import { OWN_SPACE_SECTIONS } from "../studio/project-sections";
 import * as ui from "../ui";
 
 /**
  * The studio's side of plugins (docs/content/dev/plugins). After sign-in the studio asks the runtime
  * which plugins the tenant has, loads each one's built studio half and lets it register pages,
- * entries of the top bar and sections of the settings.
+ * entries of the top bar, sections of the settings and of the space page, and cards of the space
+ * assistant's chat.
  *
  * A plugin's script is built to take React, the router and the studio's own components from
  * here (`__WIZARDS_STUDIO__`), so what it draws is part of this app, not a second one beside it.
@@ -82,6 +87,8 @@ export interface StudioPlugins extends Listing {
   pages: Of<StudioPage>[];
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
+  spaceSections: Of<StudioSpaceSection>[];
+  cards: Of<StudioAssistantCard>[];
 }
 
 let state: StudioPlugins = {
@@ -93,6 +100,8 @@ let state: StudioPlugins = {
   pages: [],
   nav: [],
   sections: [],
+  spaceSections: [],
+  cards: [],
 };
 const listeners = new Set<() => void>();
 
@@ -134,7 +143,18 @@ interface Draft {
   pages: Of<StudioPage>[];
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
+  spaceSections: Of<StudioSpaceSection>[];
+  cards: Of<StudioAssistantCard>[];
   disposers: (() => void)[];
+}
+
+/** The space the studio shows, as a plugin sees it; the same object while nothing changes. */
+function useSpace(): StudioSpace | null {
+  const { project } = useCurrentProject();
+  const id = project?.id;
+  const name = project?.name ?? "";
+  const readOnly = project?.readOnly ?? false;
+  return useMemo(() => (id ? { id, name, readOnly } : null), [id, name, readOnly]);
 }
 
 function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
@@ -165,6 +185,22 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
       }
       draft.sections.push({ ...section, plugin: id, serial: ++serials });
     },
+    registerSpaceSection(section) {
+      const taken = [...others(state.spaceSections), ...draft.spaceSections].some(
+        (s) => s.id === section.id,
+      );
+      if (OWN_SPACE_SECTIONS.includes(section.id) || taken) {
+        throw new Error(`The space page has a section "${section.id}" already.`);
+      }
+      draft.spaceSections.push({ ...section, plugin: id, serial: ++serials });
+    },
+    registerAssistantCard(card) {
+      if (draft.cards.some((c) => c.tool === card.tool)) {
+        throw new Error(`The tool "${card.tool}" has a card already.`);
+      }
+      draft.cards.push({ ...card, plugin: id, serial: ++serials });
+    },
+    useSpace,
     i18n: {
       register: (messages) => (key, vars) => {
         let text = messages[lang]?.[key] ?? messages.de[key] ?? key;
@@ -246,6 +282,8 @@ function unmount(id: string) {
     pages: state.pages.filter((p) => p.plugin !== id),
     nav: state.nav.filter((n) => n.plugin !== id),
     sections: state.sections.filter((s) => s.plugin !== id),
+    spaceSections: state.spaceSections.filter((s) => s.plugin !== id),
+    cards: state.cards.filter((c) => c.plugin !== id),
   });
 }
 
@@ -255,7 +293,14 @@ function unmount(id: string) {
  */
 async function mount(plugin: PluginInfo) {
   const { id } = plugin;
-  const draft: Draft = { pages: [], nav: [], sections: [], disposers: [] };
+  const draft: Draft = {
+    pages: [],
+    nav: [],
+    sections: [],
+    spaceSections: [],
+    cards: [],
+    disposers: [],
+  };
   let link: HTMLLinkElement | null = null;
   try {
     if (plugin.styles) {
@@ -289,6 +334,8 @@ async function mount(plugin: PluginInfo) {
     pages: [...state.pages.filter((p) => p.plugin !== id), ...draft.pages],
     nav: [...state.nav.filter((n) => n.plugin !== id), ...draft.nav],
     sections: [...state.sections.filter((s) => s.plugin !== id), ...draft.sections],
+    spaceSections: [...state.spaceSections.filter((s) => s.plugin !== id), ...draft.spaceSections],
+    cards: [...state.cards.filter((c) => c.plugin !== id), ...draft.cards],
   });
   release(id, was?.disposers ?? [], was?.link ?? null);
 }

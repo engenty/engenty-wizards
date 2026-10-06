@@ -2,6 +2,7 @@ import { defineStudioPlugin } from "@engenty-wizards/plugin-sdk/studio";
 import { Button, Card, Chip, Empty, Spinner } from "@engenty-wizards/web/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListChecks } from "lucide-react";
+import { Link } from "react-router";
 import { messages } from "./messages";
 
 interface Entry {
@@ -20,8 +21,8 @@ interface Log {
 const TONE = { done: "live", failed: "warn", cancelled: "neutral" } as const;
 
 /**
- * The studio half of the example: a page behind an icon of the top bar and a section of the
- * settings. Both read the plugin's own routes.
+ * The studio half of the example: a page behind an icon of the top bar, a section of the
+ * settings and a section of the space page. All read the plugin's own routes.
  */
 export default defineStudioPlugin((studio) => {
   const t = studio.i18n.register(messages);
@@ -76,6 +77,36 @@ export default defineStudioPlugin((studio) => {
     );
   }
 
+  /** The space's last runs, under the space's own sections; it follows the space picked. */
+  function RunLogSpace() {
+    const space = studio.useSpace();
+    const log = useQuery({
+      queryKey: ["run-log", space?.id],
+      queryFn: () => studio.api.get<Log>(`/?space=${space?.id}`),
+      enabled: Boolean(space),
+    });
+    if (!log.data) {
+      return log.isLoading ? <Spinner className="mx-auto" /> : null;
+    }
+    if (!log.data.entries.length) {
+      return <Empty>{t("spaceEmpty")}</Empty>;
+    }
+    return (
+      <Card className="flex flex-col divide-y divide-border-soft px-5 py-1.5">
+        {log.data.entries.map((entry) => (
+          <div key={entry.id} className="flex items-center gap-3 py-2.5">
+            <span className="min-w-0 flex-1 truncate text-[14px]">{entry.title}</span>
+            {entry.mode === "test" ? <Chip>{t("test")}</Chip> : null}
+            <Chip tone={TONE[entry.status]}>{t(entry.status)}</Chip>
+          </div>
+        ))}
+        <Link to="/run-log" className="py-2.5 text-[13px] text-ink-3 hover:text-ink">
+          {t("all", { n: log.data.total })}
+        </Link>
+      </Card>
+    );
+  }
+
   studio.registerPage({ path: "/run-log", component: RunLogPage });
   studio.registerNav({ to: "/run-log", label: () => t("title"), icon: ListChecks });
   studio.registerSettingsSection({
@@ -83,5 +114,11 @@ export default defineStudioPlugin((studio) => {
     label: () => t("settings"),
     icon: ListChecks,
     component: RunLogSettings,
+  });
+  studio.registerSpaceSection({
+    id: "run-log",
+    label: () => t("title"),
+    hint: () => t("spaceHint"),
+    component: RunLogSpace,
   });
 });

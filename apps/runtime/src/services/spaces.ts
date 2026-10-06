@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db, inTransaction, schema } from "../db/client.js";
 import { missingModels, unavoidableSteps } from "../engine/requirements.js";
 import { env } from "../env.js";
+import { spaceChanged } from "../plugins/events.js";
 import { codeOf, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { asSync, mayBuild } from "./access.js";
@@ -285,6 +286,7 @@ async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow
       ...values,
     });
   }
+  spaceChanged(existing ? "space.updated" : "space.created", spaceId);
   const project = await syncedProject(spaceId);
   if (!project) {
     throw notFound();

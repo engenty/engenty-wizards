@@ -12,7 +12,7 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
 import { withBase } from "../../lib/base";
@@ -22,10 +22,20 @@ import { useDictation } from "../../lib/speech";
 import { Markdown } from "../../runner/outputs";
 import { cn, IconButton, Spinner } from "../../ui";
 
+/** What a plugin's tool returned in a turn, for the plugin's card in the thread. */
+export interface ChatCard {
+  id: string;
+  plugin: string;
+  tool: string;
+  data: unknown;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Cards of plugins' tools, below the answer's text. */
+  cards?: ChatCard[];
   changed?: boolean;
   pending?: boolean;
   source?: "studio" | "mcp";
@@ -359,6 +369,7 @@ export function ChatPanel({
   compact,
   intro,
   closed,
+  card,
 }: {
   chat: Chat;
   avatar: string;
@@ -371,6 +382,8 @@ export function ChatPanel({
   intro?: ReactNode;
   /** Nothing is sent here: this note stands in place of the composer, the thread is there to read. */
   closed?: string;
+  /** Draws a card of a plugin's tool; without it, cards are not shown. */
+  card?: (card: ChatCard) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -492,6 +505,13 @@ export function ChatPanel({
                     </div>
                   ) : null}
                   {m.content ? <Markdown text={m.content} className="text-[14px]" /> : null}
+                  {card && m.cards?.length ? (
+                    <div className="mt-2 flex flex-col gap-2">
+                      {m.cards.map((c) => (
+                        <Fragment key={c.id}>{card(c)}</Fragment>
+                      ))}
+                    </div>
+                  ) : null}
                   {m.pending ? (
                     <Working chat={chat} thought className="mt-1 text-[13px] text-ink-3" />
                   ) : null}

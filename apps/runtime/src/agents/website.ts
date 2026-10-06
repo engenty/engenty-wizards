@@ -1,3 +1,4 @@
+import type { PluginWebPage } from "@engenty-wizards/plugin-sdk";
 import { webContext } from "../render/chromium.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { safeFetch } from "../tools/net-guard.js";
@@ -124,7 +125,8 @@ async function rendered(url: string): Promise<string | null> {
   }
 }
 
-export async function readWebsite(raw: string, signal?: AbortSignal): Promise<WebsiteReading> {
+/** A page's HTML, drawn in a browser when it has hardly any text without its scripts. */
+async function loadPage(raw: string, signal?: AbortSignal) {
   const res = await safeFetch(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`, {
     headers: UA,
     signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]),
@@ -135,14 +137,63 @@ export async function readWebsite(raw: string, signal?: AbortSignal): Promise<We
   if (res.ok && htmlToMarkdown(html).replace(/\s+/g, " ").length < 500) {
     html = ((await rendered(base)) ?? html).slice(0, 1_500_000);
   }
-  const tags = (name: string) =>
-    [...html.matchAll(new RegExp(`<${name}\\b[^>]*>`, "gi"))].map((m) => m[0]);
-  const meta = (key: string) => {
-    const tag = tags("meta").find((t) =>
-      [attr(t, "name"), attr(t, "property")].some((v) => v.toLowerCase() === key),
-    );
-    return tag ? attr(tag, "content") : "";
+  return { res, base, html };
+}
+
+const tagsOf = (html: string, name: string) =>
+  [...html.matchAll(new RegExp(`<${name}\\b[^>]*>`, "gi"))].map((m) => m[0]);
+
+/** A `<meta>` by its name or property. */
+function metaOf(html: string, key: string): string {
+  const tag = tagsOf(html, "meta").find((t) =>
+    [attr(t, "name"), attr(t, "property")].some((v) => v.toLowerCase() === key),
+  );
+  return tag ? attr(tag, "content") : "";
+}
+
+const titleOf = (html: string) =>
+  html
+    .match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+    .replace(/\s+/g, " ")
+    .trim() ?? "";
+
+/** The text of a link, as a reader sees it. */
+const linkText = (inner: string) =>
+  inner
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+
+/**
+ * A page for a plugin (`server.web.read`): its whole text as Markdown and every link, as against
+ * `readWebsite`, which picks what the assistant needs of a company's site.
+ */
+export async function readPage(raw: string, signal?: AbortSignal): Promise<PluginWebPage> {
+  const { res, base, html } = await loadPage(raw, signal);
+  const links: { url: string; text: string }[] = [];
+  for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const url = absolute(attr(`<a ${m[1]}>`, "href"), base)?.replace(/#.*$/, "");
+    if (url && !links.some((l) => l.url === url) && links.length < 2000) {
+      links.push({ url, text: linkText(m[2]) });
+    }
+  }
+  return {
+    url: base,
+    status: res.status,
+    etag: res.headers.get("etag"),
+    lastModified: res.headers.get("last-modified"),
+    title: titleOf(html),
+    description: metaOf(html, "description") || metaOf(html, "og:description"),
+    text: htmlToMarkdown(html).slice(0, 400_000),
+    links,
   };
+}
+
+export async function readWebsite(raw: string, signal?: AbortSignal): Promise<WebsiteReading> {
+  const { res, base, html } = await loadPage(raw, signal);
+  const tags = (name: string) => tagsOf(html, name);
+  const meta = (key: string) => metaOf(html, key);
 
   const logos: { url: string; hint: string }[] = [];
   const addLogo = (href: string, hint: string) => {
@@ -198,11 +249,7 @@ export async function readWebsite(raw: string, signal?: AbortSignal): Promise<We
   const links: { url: string; text: string }[] = [];
   for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
     const url = absolute(attr(`<a ${m[1]}>`, "href"), base);
-    const text = m[2]
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 60);
+    const text = linkText(m[2]).slice(0, 60);
     if (
       url &&
       new URL(url).hostname === host &&

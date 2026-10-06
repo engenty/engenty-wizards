@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { t } from "../lib/i18n";
 import { useCurrentProject } from "../lib/session";
+import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty, Select } from "../ui";
 import { ProjectSettings } from "./project/ProjectSettings";
+import { Anchor, Section } from "./project/Section";
 import { projectSections } from "./project-sections";
 
 /**
@@ -55,51 +57,73 @@ function scrollToSection(id: string, smooth: boolean) {
 
 /**
  * The space at /space: what all its wizards share. One page; the sections menu at its left
- * (a picker above it on narrow screens) jumps to a section and marks the one in view.
+ * (a picker above it on narrow screens) jumps to a section and marks the one in view. The
+ * sections plugins add follow the space's own, each plugin's under its name.
  */
 export function ProjectPage() {
   const { project, loading } = useCurrentProject();
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const sections = projectSections();
-  const current = useSectionInView(sections.map((s) => s.id));
+  const plugins = useStudioPlugins();
+  const groups = projectSections(plugins);
+  const all = groups.flatMap((g) => g.sections);
+  const current = useSectionInView(all.map((s) => s.id));
   const go = (id: string) => {
     scrollToSection(id, true);
     navigate({ hash: id }, { replace: true });
   };
-  // An address with a section opens the page there, once the sections are drawn.
+  // An address with a section opens the page there, once that section is drawn: a plugin's
+  // comes after the space's own. Only once; a jump from the menu scrolls by itself.
   const projectId = project?.id;
+  const opened = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the address counts when the page opens, not after each jump.
   useEffect(() => {
-    if (projectId && hash) {
-      requestAnimationFrame(() => scrollToSection(hash.slice(1), false));
+    const id = hash.slice(1);
+    if (!opened.current && projectId && id && document.getElementById(id)) {
+      opened.current = true;
+      requestAnimationFrame(() => scrollToSection(id, false));
     }
-  }, [projectId]);
+  }, [projectId, plugins.spaceSections]);
+  // The plugins' sections in the order of the menu.
+  const added = groups
+    .slice(1)
+    .flatMap((g) => g.sections)
+    .map((s) => plugins.spaceSections.find((x) => x.id === s.id))
+    .filter((s) => s !== undefined);
   return (
     <div className="animate-rise">
       <h1 className="font-display font-semibold text-[28px] tracking-tight">{t("nav.project")}</h1>
       <div className="mt-6 grid gap-6 md:mt-8 md:grid-cols-[200px_minmax(0,1fr)] md:gap-10">
         <nav className="max-md:hidden">
           <ul className="sticky top-24 flex flex-col gap-0.5">
-            {sections.map((s) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    go(s.id);
-                  }}
-                  aria-current={s.id === current ? "location" : undefined}
-                  className={cn(
-                    "block rounded-lg px-3 py-2 text-[14px] transition",
-                    s.id === current
-                      ? "bg-paper-2 font-medium text-ink"
-                      : "text-ink-3 hover:bg-accent hover:text-ink",
-                  )}
-                >
-                  {s.label}
-                </a>
-              </li>
+            {groups.map((group) => (
+              <Fragment key={group.plugin ?? ""}>
+                {group.label ? (
+                  <li className="truncate px-3 pt-4 pb-1 font-medium text-[11px] text-ink-4 uppercase tracking-[0.07em]">
+                    {group.label}
+                  </li>
+                ) : null}
+                {group.sections.map((s) => (
+                  <li key={s.id}>
+                    <a
+                      href={`#${s.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        go(s.id);
+                      }}
+                      aria-current={s.id === current ? "location" : undefined}
+                      className={cn(
+                        "block rounded-lg px-3 py-2 text-[14px] transition",
+                        s.id === current
+                          ? "bg-paper-2 font-medium text-ink"
+                          : "text-ink-3 hover:bg-accent hover:text-ink",
+                      )}
+                    >
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </Fragment>
             ))}
           </ul>
         </nav>
@@ -107,11 +131,23 @@ export function ProjectPage() {
           <Select
             value={current ?? ""}
             onChange={go}
-            options={sections.map((s) => ({ value: s.id, label: s.label }))}
+            options={all.map((s) => ({ value: s.id, label: s.label }))}
           />
         </div>
         <div className="min-w-0">
-          {project ? <ProjectSettings key={project.id} project={project} /> : null}
+          {project ? (
+            <ProjectSettings key={project.id} project={project}>
+              {added.map((section) => (
+                <Anchor key={section.serial} id={section.id}>
+                  <Section title={section.label()} hint={section.hint?.()} plain>
+                    <PluginFrame of={section}>
+                      <section.component />
+                    </PluginFrame>
+                  </Section>
+                </Anchor>
+              ))}
+            </ProjectSettings>
+          ) : null}
           {/* No project yet: nothing is built here, and no local install has sent one. */}
           {!(project || loading) ? <Empty>{t("settings.noProject")}</Empty> : null}
         </div>

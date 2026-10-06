@@ -5,6 +5,8 @@ export const entry = sqliteTable("run_log_entry", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   runId: text("run_id").notNull(),
   wizardId: text("wizard_id").notNull(),
+  /** The space the wizard belongs to; lines kept before `0002_space.sql` have none. */
+  projectId: text("project_id"),
   title: text("title").notNull(),
   mode: text("mode", { enum: ["test", "live"] }).notNull(),
   status: text("status", { enum: ["done", "failed", "cancelled"] }).notNull(),
