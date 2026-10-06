@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.6",
+    "timestamp": 1791280940,
+    "commits": [
+      {
+        "id": "198e23c",
+        "message": "a wizard's link installs and bookmarks with the wizard's own icon: its engenty in its own colour on a pale ground of that colour with its name in small capitals below, drawn by the runtime for the manifest, the iPhone's home screen and phones that cut icons to their own shape; the page's favicon is the engenty alone, so a bookmark or tab shows it too; the name keeps the whole words that fit and never ends on a short word like \"aus\"; the studio's icon stands in where the runtime cannot draw; on a computer the start page offers a bookmark (⌘ D or Strg + D) instead of an install, phones keep \"Zum Startbildschirm hinzufügen\"",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.5",
-    "timestamp": 1791272367,
+    "timestamp": 1791272370,
     "commits": [
       {
         "id": "fc58644",
