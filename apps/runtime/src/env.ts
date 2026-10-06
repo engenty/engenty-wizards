@@ -168,6 +168,10 @@ export const env = {
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),
   openaiKey: str("OPENAI_API_KEY"),
   anthropicKey: str("ANTHROPIC_API_KEY"),
+  googleKey: str("GOOGLE_GENERATIVE_AI_API_KEY"),
+  falKey: str("FAL_KEY"),
+  elevenlabsKey: str("ELEVENLABS_API_KEY"),
+  replicateKey: str("REPLICATE_API_TOKEN"),
   ollamaUrl: str("OLLAMA_URL", "http://127.0.0.1:11434/v1"),
 
   /** What each model class runs on when this runtime resolves classes itself (own keys, Ollama). */

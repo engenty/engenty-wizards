@@ -2,13 +2,10 @@ import { MODEL_CLASSES, type ModelClass } from "@engenty-wizards/shared/definiti
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
 import { t } from "../lib/i18n";
-import { type LocalModels, type Me, useMe } from "../lib/session";
-import { Button, Card, Input, Label, Segmented } from "../ui";
-import { HarnessPanel, ModelTest } from "./Harness";
+import type { LocalModels } from "../lib/session";
+import { Button, Input, Label } from "../ui";
 
 /** Opens a page in the person's own browser — also from inside the desktop app's window. */
 export function openExternal(url: string) {
@@ -108,127 +105,5 @@ export function OwnModels({ models }: { models: LocalModels }) {
         </Button>
       </div>
     </div>
-  );
-}
-
-type Source = LocalModels["source"];
-
-/** Where the models of a runtime that runs alone come from; the choices this machine offers. */
-export function SourcePicker({ me }: { me: Me }) {
-  const qc = useQueryClient();
-  const models = me.models;
-  const source = useMutation({
-    mutationFn: (next: Source) => api.put("/api/studio/local/models", { source: next }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
-  });
-  const [needsAccount, setNeedsAccount] = useState(false);
-  if (!models) {
-    return null;
-  }
-  const options: { value: Source; label: string }[] = [
-    // The installed clients, and the one chosen even if it went missing.
-    ...me.harnesses
-      .filter((h) => h.version !== null || models.source === h.id)
-      .map((h) => ({ value: h.id, label: h.name })),
-    { value: "own", label: t("local.sourceOwn") },
-    ...(features.account ? [{ value: "account" as const, label: t("local.sourceAccount") }] : []),
-  ];
-  if (options.length < 2) {
-    return null;
-  }
-  return (
-    <div>
-      <Segmented
-        value={options.find((o) => o.value === models.source)?.label ?? options[0].label}
-        options={options.map((o) => o.label)}
-        onChange={(label: string) => {
-          const next = options.find((o) => o.label === label)?.value;
-          if (!next) {
-            return;
-          }
-          // The account's credits need an account: the way to it, not a click that does nothing.
-          if (next === "account" && !me.account) {
-            setNeedsAccount(true);
-            return;
-          }
-          setNeedsAccount(false);
-          source.mutate(next);
-        }}
-      />
-      {needsAccount && !me.account ? (
-        <p className="mt-3 text-[13px] text-ink-2">
-          {t("local.sourceNeedsAccount")} <AccountLink />
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/** The way to the one place the account of a local install is linked: Settings → Account. */
-function AccountLink() {
-  return (
-    <Link
-      to="/settings/account"
-      className="font-medium text-ember-strong underline-offset-2 hover:underline"
-    >
-      {t("local.toAccount")}
-    </Link>
-  );
-}
-
-/** Settings of a runtime that runs alone: where its models come from. */
-export function LocalRuntimeCard() {
-  const me = useMe();
-  const qc = useQueryClient();
-  const chat = useMutation({
-    mutationFn: (engine: "models" | "claude") => api.put("/api/studio/local/chat", { engine }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
-  });
-  if (!me.data?.models || me.data.mode !== "local") {
-    return null;
-  }
-  const models = me.data.models;
-  return (
-    <Card className="p-6">
-      <h2 className="font-display font-semibold text-lg">{t("local.title")}</h2>
-      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("local.hint")}</p>
-      <Label>{t("local.source")}</Label>
-      <SourcePicker me={me.data} />
-      {me.data.harnesses.some((h) => h.id === models.source) ? (
-        <div className="mt-4 flex flex-col gap-4">
-          <HarnessPanel me={me.data} id={models.source as Exclude<Source, "own" | "account">} />
-          <div className="mt-2 border-border-soft border-t pt-5">
-            <OwnModels models={models} />
-          </div>
-        </div>
-      ) : models.source === "account" ? (
-        me.data.account?.signedIn === false ? (
-          // The models run on an account whose sign-in is gone: it is renewed where it was made.
-          <p className="mt-3 text-[13px] text-rose">
-            {t("local.accountExpired")} <AccountLink />
-          </p>
-        ) : (
-          <p className="mt-3 text-[13px] text-ink-3">{t("local.sourceAccountHint")}</p>
-        )
-      ) : (
-        <div className="mt-5 flex flex-col gap-5">
-          <OwnModels models={models} />
-          <ModelTest />
-        </div>
-      )}
-      {me.data.subscriptions.includes("claude") ? (
-        <div className="mt-6 border-border-soft border-t pt-5">
-          <Label>{t("local.chat")}</Label>
-          <Segmented
-            value={me.data.chatEngine === "claude" ? t("local.chatClaude") : t("local.chatModels")}
-            options={[t("local.chatModels"), t("local.chatClaude")]}
-            onChange={(label: string) =>
-              chat.mutate(label === t("local.chatClaude") ? "claude" : "models")
-            }
-          />
-          <p className="mt-3 text-[13px] text-ink-3">{t("local.subscription")}</p>
-        </div>
-      ) : null}
-    </Card>
   );
 }

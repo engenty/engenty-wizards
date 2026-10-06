@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
+import { isCreditsRef } from "@engenty-wizards/shared/providers";
 import { generateText } from "ai";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -45,14 +46,20 @@ import {
 } from "../harness/terminal.js";
 import { managed } from "../manage.js";
 import { seenApps } from "../mcp/seen.js";
+import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
 import { transcribeAudio } from "../media/transcribe.js";
 import {
+  checkKey,
+  classProblem,
   embeddingModel,
   hasTextModel,
   LOCAL_KEYS,
   localModelSettings,
   ModelUnavailableError,
+  modelSettings,
   saveLocalModels,
+  saveModels,
+  storedKey,
   textModel,
 } from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
@@ -142,6 +149,140 @@ async function setupDone(): Promise<boolean> {
     return Boolean(status?.version) && status?.auth !== "none";
   }
   return hasTextModel();
+}
+
+const modelsInput = z.object({
+  source: z.enum([...HARNESS_IDS, "account", "own"]).optional(),
+  bindings: z.partialRecord(z.enum(MODEL_CLASSES), z.string().max(160)).optional(),
+  ollamaUrl: z.string().max(200).optional(),
+  creditFallback: z.boolean().optional(),
+  keys: z.partialRecord(z.enum(LOCAL_KEYS), z.string().max(400)).optional(),
+});
+
+/** Alone the person changes everything; in a team its owner and admins. */
+function mayChangeModels(user: SessionUser): boolean {
+  return !managed || user.role === "owner" || user.role === "admin";
+}
+
+/** A binding the cloud can run: a provider's model or the credits, no client, no local model. */
+function cloudBinding(ref: string): boolean {
+  return (
+    isCreditsRef(ref) || /^(openai|anthropic|google|fal|elevenlabs|replicate|gateway):/.test(ref)
+  );
+}
+
+const TEST_TEXT = {
+  de: {
+    image:
+      "Ein kleiner, freundlicher Zauberhut aus orangem Filz auf einem Holztisch, weiches Licht, flache Illustration.",
+    speech: "Hallo! So klingt die Stimme deiner Wizards.",
+    video: "Ein orangefarbener Zauberhut dreht sich langsam auf einem Holztisch, weiches Licht.",
+  },
+  en: {
+    image:
+      "A small, friendly wizard hat of orange felt on a wooden table, soft light, flat illustration.",
+    speech: "Hello! This is how your wizards sound.",
+    video: "An orange wizard hat slowly turns on a wooden table, soft light.",
+  },
+} as const;
+
+const asDataUrl = (bytes: Uint8Array, mime: string) =>
+  `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
+
+/** One second of silence as WAV: what a voice note test listens to where nothing speaks. */
+function silentWav(): Uint8Array {
+  const rate = 16_000;
+  const samples = rate;
+  const buf = Buffer.alloc(44 + samples * 2);
+  buf.write("RIFF", 0);
+  buf.writeUInt32LE(36 + samples * 2, 4);
+  buf.write("WAVEfmt ", 8);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(rate, 24);
+  buf.writeUInt32LE(rate * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34);
+  buf.write("data", 36);
+  buf.writeUInt32LE(samples * 2, 40);
+  return new Uint8Array(buf);
+}
+
+interface ClassTest {
+  ok: boolean;
+  ms: number;
+  ref?: string;
+  /** What a text model answered, or what was heard in a voice note. */
+  reply?: string;
+  /** The image, voice or clip that came back, as a data URL. */
+  media?: string;
+  error?: string;
+}
+
+async function testClass(
+  cls: (typeof MODEL_CLASSES)[number],
+  lang: "de" | "en",
+): Promise<ClassTest> {
+  const started = Date.now();
+  const signal = AbortSignal.timeout(cls === "video" ? 300_000 : 120_000);
+  const done = (result: Omit<ClassTest, "ok" | "ms">): ClassTest => ({
+    ok: true,
+    ms: Date.now() - started,
+    ...result,
+  });
+  try {
+    if ((TEXT_CLASSES as readonly string[]).includes(cls)) {
+      const resolved = await textModel(cls as (typeof TEXT_CLASSES)[number]);
+      const result = await generateText({
+        model: resolved.model,
+        prompt: "Reply with the single word: OK",
+        maxOutputTokens: 20,
+        abortSignal: signal,
+      });
+      return done({ ref: resolved.ref, reply: result.text.trim().slice(0, 200) });
+    }
+    if (cls === "image") {
+      const image = await generateImageMedia({
+        prompt: TEST_TEXT[lang].image,
+        aspectRatio: "1:1",
+        abortSignal: signal,
+      });
+      return done({ ref: image.system, media: asDataUrl(image.bytes, image.mime) });
+    }
+    if (cls === "speech") {
+      const voice = await generateSpeechMedia({
+        text: TEST_TEXT[lang].speech,
+        abortSignal: signal,
+      });
+      return done({ ref: voice.system, media: asDataUrl(voice.bytes, voice.mime) });
+    }
+    if (cls === "video") {
+      const clip = await generateVideoMedia({
+        prompt: TEST_TEXT[lang].video,
+        aspectRatio: "16:9",
+        duration: 4,
+        resolution: "480p",
+        abortSignal: signal,
+      });
+      return done({ ref: clip.system, media: asDataUrl(clip.bytes, clip.mime) });
+    }
+    // A voice note: the test voice where one speaks here, else a second of silence.
+    const voice = (await classProblem("speech"))
+      ? null
+      : await generateSpeechMedia({ text: TEST_TEXT[lang].speech, abortSignal: signal }).catch(
+          () => null,
+        );
+    const heard = await transcribeAudio({
+      bytes: voice?.bytes ?? silentWav(),
+      mediaType: voice?.mime ?? "audio/wav",
+      abortSignal: signal,
+    });
+    return done({ reply: heard.text.slice(0, 300) });
+  } catch (err) {
+    const message = (err as Error)?.message ?? String(err);
+    return { ok: false, ms: Date.now() - started, error: message.slice(0, 500) };
+  }
 }
 
 /** The size of an inline terminal, as the page lays it out. */
@@ -739,16 +880,51 @@ export const studio = new Hono<Vars>()
     if (managed) {
       return c.notFound();
     }
-    const body = z
-      .object({
-        source: z.enum([...HARNESS_IDS, "account", "own"]).optional(),
-        bindings: z.partialRecord(z.enum(MODEL_CLASSES), z.string().max(120)).optional(),
-        ollamaUrl: z.string().max(200).optional(),
-        keys: z.partialRecord(z.enum(LOCAL_KEYS), z.string().max(400)).optional(),
-      })
-      .parse(await c.req.json());
-    await saveLocalModels(body);
+    await saveLocalModels(modelsInput.parse(await c.req.json()));
     return c.json(localModelSettings());
+  })
+  // --- models: where each class runs, own API keys, the credits behind them -----------------
+  // Alone for this machine; on a Manage-App's runtime for the team, whose admins change it.
+  .get("/models", async (c) => c.json(await modelSettings()))
+  .put("/models", async (c) => {
+    if (!mayChangeModels(c.get("user"))) {
+      return c.json({ error: "Only an admin of the team changes its models." }, 403);
+    }
+    const input = modelsInput.parse(await c.req.json());
+    // In the cloud nothing runs on a machine's client or local model.
+    if (
+      managed &&
+      (input.source ||
+        input.ollamaUrl ||
+        Object.values(input.bindings ?? {}).some((ref) => ref && !cloudBinding(ref)))
+    ) {
+      return c.json({ error: "Not available in the cloud." }, 400);
+    }
+    await saveModels(input);
+    return c.json(await modelSettings());
+  })
+  // Whether a provider takes a key — the one typed, or the one stored. Nothing is generated.
+  .post("/models/keys/:provider/check", async (c) => {
+    const provider = z.enum(LOCAL_KEYS).parse(c.req.param("provider"));
+    const { key } = z
+      .object({ key: z.string().max(400).optional() })
+      .parse(await c.req.json().catch(() => ({})));
+    const value = key?.trim() || (await storedKey(provider));
+    if (!value) {
+      return c.json({ ok: false, message: "Kein API Key hinterlegt." });
+    }
+    return c.json(await checkKey(provider, value));
+  })
+  // One call on a class, as a run makes it: text answers a word, an image, a voice or a short
+  // clip comes back to look at, a voice note comes back as text. Paid like any call.
+  .post("/models/test", async (c) => {
+    if (!mayChangeModels(c.get("user"))) {
+      return c.json({ error: "Only an admin of the team tests its models." }, 403);
+    }
+    const { cls, lang } = z
+      .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(["de", "en"]).default("de") })
+      .parse(await c.req.json());
+    return c.json(await testClass(cls, lang));
   })
   // One short call on a class, as a run would make it: shows that the way to the model is open.
   .post("/local/models/test", async (c) => {

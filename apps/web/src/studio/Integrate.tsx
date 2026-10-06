@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AppWindow,
-  ArrowRight,
   Check,
   Copy,
   Globe,
@@ -13,10 +12,19 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useMe } from "../lib/session";
 import { Button, Card, Chip, cn, IconButton, Spinner } from "../ui";
+import {
+  MenuGroup,
+  MenuRow,
+  type MenuTone,
+  SubMenu,
+  useDetail,
+  useSettingsMenu,
+} from "./settings-menu";
 
 /** The name the server gets in every client's config. */
 const NAME = "engenty-wizards";
@@ -310,102 +318,23 @@ function Check3({
   );
 }
 
-/** The two things an app can get: the tools (MCP) and the wizard itself as a widget (MCP App). */
+/** The two things an app can get, in one line: the tools (MCP), the wizard itself (MCP App). */
 function Kinds({ widgets }: { widgets: boolean }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div className="rounded-xl bg-paper p-4 ring-1 ring-border-soft">
-        <div className="flex items-center gap-2 font-medium text-[14px]">
-          <Wrench className="size-4 text-ember-strong" /> MCP
-        </div>
-        <p className="mt-1.5 text-[13px] text-ink-3">{t("integrate.kindMcp")}</p>
-      </div>
-      <div
-        className={cn(
-          "rounded-xl p-4 ring-1",
-          widgets ? "bg-paper ring-border-soft" : "bg-paper-2/60 ring-border-soft/60",
-        )}
-      >
-        <div
-          className={cn(
-            "flex items-center gap-2 font-medium text-[14px]",
-            widgets ? null : "text-ink-3",
-          )}
-        >
-          <AppWindow className={cn("size-4", widgets ? "text-ember-strong" : "text-ink-4")} /> MCP
-          App
-        </div>
-        <p className="mt-1.5 text-[13px] text-ink-3">
-          {widgets ? t("integrate.kindApp") : t("integrate.kindAppNo")}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/** A row of the list on the left. */
-function Row({
-  selected,
-  title,
-  note,
-  tone,
-  widgets,
-  disabled,
-  onPick,
-}: {
-  selected: boolean;
-  title: string;
-  note?: string;
-  tone?: "done" | "ok" | "dim";
-  widgets?: boolean;
-  disabled?: boolean;
-  onPick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onPick}
-      aria-pressed={selected}
-      className={cn(
-        "group flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition",
-        selected ? "bg-card shadow-soft ring-1 ring-border-soft" : "hover:bg-accent",
-        disabled && "cursor-default opacity-55 hover:bg-transparent",
-      )}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="truncate font-medium text-[14px]">{title}</span>
-          {widgets ? (
-            <span
-              title="MCP App"
-              className="rounded bg-ember-tint px-1 font-semibold text-[10px] text-ember-strong leading-4"
-            >
-              APP
-            </span>
-          ) : null}
-        </span>
-        {note ? (
-          <span
-            className={cn(
-              "flex items-center gap-1 text-[12px]",
-              tone === "done" ? "text-moss" : tone === "ok" ? "text-ink-2" : "text-ink-4",
-            )}
-          >
-            {tone === "done" ? <Check className="size-3" strokeWidth={3} /> : null}
-            {note}
-          </span>
-        ) : null}
+    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-3">
+      <span className="inline-flex items-center gap-1.5" title={t("integrate.kindMcp")}>
+        <Wrench className="size-3.5 text-ember-strong" />
+        <span className="font-medium text-ink-2">MCP</span> {t("integrate.kindMcpShort")}
       </span>
-      {disabled ? null : (
-        <ArrowRight
-          className={cn(
-            "size-3.5 shrink-0 transition",
-            selected ? "text-ink-3" : "text-ink-4 opacity-0 group-hover:opacity-100",
-          )}
-        />
-      )}
-    </button>
+      <span
+        className={cn("inline-flex items-center gap-1.5", widgets ? null : "opacity-60")}
+        title={widgets ? t("integrate.kindApp") : t("integrate.kindAppNo")}
+      >
+        <AppWindow className={cn("size-3.5", widgets ? "text-ember-strong" : "text-ink-4")} />
+        <span className="font-medium text-ink-2">MCP App</span>{" "}
+        {widgets ? t("integrate.kindAppShort") : t("integrate.kindAppNoShort")}
+      </span>
+    </p>
   );
 }
 
@@ -483,22 +412,20 @@ function ClientPanel({
   const ask = (text: string) => <CopyLine text={text} />;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display font-semibold text-[22px] leading-tight tracking-tight">
+            {client.name}
+          </h2>
+          <Kinds widgets={client.widgets} />
+        </div>
         <Stages at={stage} done={works} />
-        <h2 className="mt-1.5 font-display font-semibold text-[26px] leading-tight tracking-tight">
-          {client.name}
-        </h2>
-        <p className="mt-1 text-[14px] text-ink-3">
-          {client.widgets ? t("integrate.leadApp") : t("integrate.leadMcp")}
-        </p>
       </div>
 
-      <Kinds widgets={client.widgets} />
-
-      <Card className="flex flex-col gap-6 p-6">
+      <Card className="flex flex-col gap-6 p-5 sm:p-6">
         {canHere || !client.oauth ? (
-          <Part title={t("integrate.where")}>
+          <fieldset aria-label={t("integrate.where")} className="min-w-0">
             <div className="grid gap-2 sm:grid-cols-2">
               {(["here", "address"] as const).map((w) => {
                 const off = w === "here" && !canHere;
@@ -510,7 +437,7 @@ function ClientPanel({
                     onClick={() => setWay(w)}
                     aria-pressed={way === w}
                     className={cn(
-                      "flex items-start gap-3 rounded-xl p-3.5 text-left ring-1 transition",
+                      "flex items-start gap-3 rounded-xl px-3.5 py-2.5 text-left ring-1 transition",
                       way === w
                         ? "bg-ember-tint/50 ring-ember-strong/40"
                         : "ring-border-soft hover:bg-accent",
@@ -538,7 +465,7 @@ function ClientPanel({
                 );
               })}
             </div>
-          </Part>
+          </fieldset>
         ) : null}
 
         {blocked ? (
@@ -681,11 +608,9 @@ export function Integrate() {
     queryFn: () => api.get<Record<string, Seen>>("/api/studio/integrations/seen"),
     refetchInterval: 2500,
   });
-  const [picked, setPicked] = useState<string | null>(null);
-  if (!me.data || (!managed && !apps.data)) {
-    return null;
-  }
-  const url = me.data.mcpUrl ?? "";
+  const [params, setParams] = useSearchParams();
+  const { narrow } = useSettingsMenu();
+  const show = params.get("show");
   const localOf = (id: string) => apps.data?.find((app) => app.id === id);
   const seenOf = (id: string) => seen.data?.[id];
   // The apps on this computer first. Not by what works: the list stays put while a test runs.
@@ -694,77 +619,69 @@ export function Integrate() {
     return local?.installed || local?.connected ? 0 : 1;
   };
   const clients = [...CLIENTS].sort((a, b) => rank(a.id) - rank(b.id));
-  const current = clients.find((c) => c.id === picked) ?? clients[0];
-  const noteOf = (id: string): { note?: string; tone?: "done" | "ok" | "dim" } => {
+  const current = clients.find((c) => c.id === show) ?? clients[0];
+  useDetail(show || !narrow ? current.name : null);
+  if (!me.data || (!managed && !apps.data)) {
+    return null;
+  }
+  const url = me.data.mcpUrl ?? "";
+  // A dot says how far an app is: it works, it is entered, it is on this computer.
+  const toneOf = (id: string): { tone?: MenuTone; toneLabel?: string } => {
     const local = localOf(id);
     if (seenOf(id)?.toolAt) {
-      return { note: t("integrate.stateWorks"), tone: "done" };
+      return { tone: "done", toneLabel: t("integrate.stateWorks") };
     }
     if (local?.connected) {
-      return { note: t("integrate.stateConnected"), tone: "ok" };
+      return { tone: "on", toneLabel: t("integrate.stateConnected") };
     }
     if (local?.installed) {
-      return { note: t("integrate.stateInstalled"), tone: "dim" };
+      return { tone: "off", toneLabel: t("integrate.stateInstalled") };
     }
     return {};
   };
+  // On a phone the menu marks nothing: a row opens the page.
+  const selected = (id: string) => Boolean(show || !narrow) && id === current.id;
 
   return (
     <div className="flex flex-col gap-10">
-      <div>
-        <h2 className="font-display font-semibold text-[22px] tracking-tight">
-          {t("integrate.title")}
-        </h2>
-        <p className="mt-1 max-w-2xl text-[14px] text-ink-2">{t("integrate.lead")}</p>
-      </div>
-      <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <nav className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
-          <div>
-            <p className="mb-1.5 px-3 font-medium text-[11px] text-ink-4 uppercase tracking-[0.14em]">
-              {t("integrate.groupApps")}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {clients.map((c) => (
-                <Row
-                  key={c.id}
-                  selected={c.id === current.id}
-                  title={c.name}
-                  widgets={c.widgets}
-                  onPick={() => setPicked(c.id)}
-                  {...noteOf(c.id)}
-                />
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1.5 px-3 font-medium text-[11px] text-ink-4 uppercase tracking-[0.14em]">
-              {t("integrate.groupShare")}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              <Row
-                selected={false}
-                disabled
-                title={t("integrate.shareLink")}
-                note={t("integrate.soon")}
-              />
-              <Row
-                selected={false}
-                disabled
-                title={t("integrate.shareSite")}
-                note={t("integrate.soon")}
-              />
-            </div>
-          </div>
-        </nav>
-        <ClientPanel
-          key={current.id}
-          client={current}
-          local={localOf(current.id)}
-          seen={seenOf(current.id)}
-          managed={managed}
-          url={url}
-        />
-      </div>
+      <SubMenu>
+        <MenuGroup label={t("integrate.groupApps")}>
+          {clients.map((c) => (
+            <MenuRow
+              key={c.id}
+              icon={c.widgets ? AppWindow : Wrench}
+              label={c.name}
+              {...toneOf(c.id)}
+              selected={selected(c.id)}
+              onPick={() => setParams({ show: c.id }, { replace: !narrow })}
+            />
+          ))}
+        </MenuGroup>
+        <MenuGroup label={t("integrate.groupShare")}>
+          <MenuRow
+            icon={Link2}
+            label={t("integrate.shareLink")}
+            badge={<span className="text-[11px] text-ink-4">{t("integrate.soon")}</span>}
+            selected={false}
+            disabled
+          />
+          <MenuRow
+            icon={Globe}
+            label={t("integrate.shareSite")}
+            badge={<span className="text-[11px] text-ink-4">{t("integrate.soon")}</span>}
+            selected={false}
+            disabled
+          />
+        </MenuGroup>
+      </SubMenu>
+      <ClientPanel
+        key={current.id}
+        client={current}
+        local={localOf(current.id)}
+        seen={seenOf(current.id)}
+        managed={managed}
+        url={url}
+      />
       {managed ? null : <KeyList />}
       <p className="flex items-start gap-2 text-[13px] text-ink-3">
         <Link2 className="mt-0.5 size-3.5 shrink-0" />

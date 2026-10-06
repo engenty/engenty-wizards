@@ -19,17 +19,15 @@ export interface SettingsSection {
  * plugins added, then the plugins themselves.
  */
 export function settingsSections(
-  me: Me | null | undefined,
+  _me: Me | null | undefined,
   plugins: StudioPlugins,
 ): SettingsSection[] {
   return [
     { id: "account", label: t("account.title"), icon: UserRound, menu: true },
     { id: "project", label: t("settings.project"), icon: FolderCog, menu: true },
     { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },
-    // Models are chosen on the machine only when the runtime runs alone.
-    ...(me?.mode === "local"
-      ? [{ id: "models", label: t("local.title"), icon: Cpu, menu: true }]
-      : []),
+    // Alone for this machine; in the cloud for the team, on its credits unless it brings keys.
+    { id: "models", label: t("local.title"), icon: Cpu, menu: true },
     { id: "integrate", label: t("integrate.nav"), icon: Cable, menu: true },
     ...plugins.sections.map((section) => ({
       id: section.id,

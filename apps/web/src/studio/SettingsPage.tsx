@@ -1,21 +1,29 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router";
+import { ArrowLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { PluginsSection } from "../plugins/PluginsSection";
-import { Button, Card, cn, Empty, IconButton, Input, Select } from "../ui";
+import { Button, Card, cn, Empty, IconButton, Input } from "../ui";
 import { Account } from "./Account";
+import { useCrumbs } from "./AppFrame";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { Integrate } from "./Integrate";
-import { LocalRuntimeCard } from "./LocalRuntime";
+import { Models } from "./Models";
 import { ProjectSettings } from "./project/ProjectSettings";
 import { projectReadOnlyText, ReadOnlyNote } from "./ReadOnly";
-import { settingsSections } from "./settings-sections";
+import {
+  BackRow,
+  SettingsMenuContext,
+  stepClass,
+  useNarrow,
+  useStepDirection,
+} from "./settings-menu";
+import { type SettingsSection, settingsSections } from "./settings-sections";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -154,9 +162,95 @@ function McpServers({ project }: { project: Project }) {
   );
 }
 
-/** Section of the settings at /settings/<section>; the left list on wide screens, a dropdown on narrow ones. */
+/** The sections whose menu goes one level down in the left container. */
+const MENUS = new Set(["models", "integrate"]);
+
+/** The left container's top row: the back arrow (one level down only) and the level's name. */
+function MenuHead({ section, onBack }: { section: SettingsSection | null; onBack: () => void }) {
+  return (
+    <div className="mb-2 flex h-9 min-w-0 items-center px-1">
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden transition-[width,margin,opacity] duration-200 ease-out",
+          section ? "-ml-1.5 mr-0.5 w-8 opacity-100" : "w-0 opacity-0",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          aria-hidden={!section}
+          tabIndex={section ? undefined : -1}
+          aria-label={t("settings.title")}
+          className="grid size-8 place-items-center rounded-lg text-ink-3 transition hover:bg-accent hover:text-ink"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+      </div>
+      {section ? (
+        <span className="flex min-w-0 items-center gap-2 font-medium text-[14px]">
+          <section.icon className="size-4 shrink-0 text-ember-strong" />
+          <span className="truncate">{section.label}</span>
+        </span>
+      ) : (
+        <span className="font-medium text-[14px]">{t("settings.title")}</span>
+      )}
+    </div>
+  );
+}
+
+/** The sections, the left container's upper level. */
+function SectionList({
+  sections,
+  current,
+  onPick,
+}: {
+  sections: SettingsSection[];
+  current: SettingsSection | undefined;
+  onPick: (section: SettingsSection) => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {sections.map((s) => (
+        <li key={s.id}>
+          <Link
+            to={`/settings/${s.id}`}
+            onClick={(e) => {
+              // The section that is open already: its menu comes back, nothing else changes.
+              if (s.id === current?.id) {
+                e.preventDefault();
+                onPick(s);
+              }
+            }}
+            aria-current={s.id === current?.id ? "page" : undefined}
+            className={cn(
+              "group flex items-center gap-2 rounded-lg px-2 py-1 text-[14px] transition max-md:py-2",
+              s.id === current?.id
+                ? "bg-paper-2 font-medium text-ink"
+                : "text-ink-2 hover:bg-accent hover:text-ink",
+            )}
+          >
+            <span className="grid size-7 shrink-0 place-items-center">
+              <s.icon className="size-4 transition-transform duration-200 ease-out group-hover:scale-110" />
+            </span>
+            <span className="min-w-0 flex-1 truncate">{s.label}</span>
+            {/* On a phone every row goes one step deeper. */}
+            <ChevronRight className="size-4 text-ink-4 md:hidden" />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Settings at /settings/<section>. One container on the left shows one level at a time: the
+ * sections, or — for Models and Integrate — the section's own menu one level down, with the way
+ * back at its top. On a phone the levels and the page take turns: the sections, a section's
+ * menu, then the page, each with the way back.
+ */
 export function SettingsPage() {
   const { section } = useParams();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const me = useMe();
   const { project, loading } = useCurrentProject();
@@ -164,88 +258,119 @@ export function SettingsPage() {
   const [key, setKey] = useState(project?.id);
   useEffect(() => setKey(project?.id), [project?.id]);
   const plugins = useStudioPlugins();
+  const narrow = useNarrow();
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+  // Back up to the sections on a wide page, while the section's page stays; another section
+  // opens its own menu again.
+  const [upAt, setUpAt] = useState<string | null>(null);
   const sections = settingsSections(me.data, plugins);
   const current = sections.find((s) => s.id === section);
+  const hasMenu = current ? MENUS.has(current.id) : false;
+  // A phone: 0 the sections, 1 the section's menu, 2 the page.
+  const phone = !current ? 0 : hasMenu && !params.get("show") ? 1 : 2;
+  const level = narrow ? Math.min(phone, 1) : hasMenu && upAt !== section ? 1 : 0;
+  const levelStep = useStepDirection(level);
+  const pageStep = useStepDirection(phone);
+  const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
+  // The page's name stands in the top bar: the section's content starts right at the top.
+  useCrumbs([
+    { label: t("settings.title"), to: "/settings" },
+    ...(current ? [{ label: current.label, to: `/settings/${current.id}` }] : []),
+    ...(current && detail ? [{ label: detail }] : []),
+  ]);
   if (!current) {
     // The page for AI clients was /settings/build before it became "Integrate".
     if (section === "build") {
       return <Navigate to="/settings/integrate" replace />;
     }
-    // A plugin's section is there once the plugin loaded.
-    return plugins.status === "ready" ? <Navigate to="/settings/project" replace /> : null;
+    // A plugin's section is there once the plugin loaded. A phone starts at the sections.
+    if (section !== undefined || !narrow) {
+      return plugins.status === "ready" || section === undefined ? (
+        <Navigate to="/settings/project" replace />
+      ) : null;
+    }
   }
   // The project page brings its own switcher, next to the project's name.
-  const scoped = current.id === "connectors" && many;
+  const scoped = current?.id === "connectors" && many;
   return (
-    <div className="animate-rise">
-      <h1 className="font-display font-semibold text-[28px] tracking-tight">
-        {t("settings.title")}
-      </h1>
-      <div className="mt-6 grid gap-6 md:mt-8 md:grid-cols-[200px_minmax(0,1fr)] md:gap-10">
-        <nav className="max-md:hidden">
-          <ul className="sticky top-24 flex flex-col gap-0.5">
-            {sections.map((s) => (
-              <li key={s.id}>
-                <Link
-                  to={`/settings/${s.id}`}
-                  aria-current={s.id === current.id ? "page" : undefined}
-                  className={cn(
-                    "block rounded-lg px-3 py-2 text-[14px] transition",
-                    s.id === current.id
-                      ? "bg-paper-2 font-medium text-ink"
-                      : "text-ink-3 hover:bg-accent hover:text-ink",
-                  )}
-                >
-                  {s.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <Select
-          className="md:hidden"
-          value={current.id}
-          onChange={(id) => navigate(`/settings/${id}`)}
-          options={sections.map((s) => ({ value: s.id, label: s.label }))}
-        />
-        <div
-          className={cn(
-            "min-w-0",
-            current.id !== "project" && current.id !== "integrate" && "max-w-2xl",
-          )}
-        >
-          {scoped ? (
-            <div className="mb-6">
-              <ProjectSwitcher />
+    <SettingsMenuContext.Provider value={menu}>
+      <div className="animate-rise">
+        <div className="grid gap-6 md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+          <aside
+            className={cn(
+              "min-w-0 md:sticky md:top-20 md:self-start",
+              narrow && phone === 2 && "hidden",
+              narrow && pageStep === "back" && stepClass("back"),
+            )}
+          >
+            <MenuHead
+              section={level === 1 ? (current ?? null) : null}
+              onBack={() => (narrow ? navigate("/settings") : setUpAt(section ?? null))}
+            />
+            <div key={level} className={cn(stepClass(levelStep))}>
+              {level === 0 ? (
+                <SectionList
+                  sections={sections}
+                  current={narrow ? undefined : current}
+                  onPick={() => setUpAt(null)}
+                />
+              ) : (
+                <div ref={setSlot} />
+              )}
             </div>
-          ) : null}
-          {current.id === "project" && project ? (
-            <ProjectSettings key={key} project={project} />
-          ) : null}
-          {current.id === "connectors" && project ? (
-            <div className="flex flex-col gap-6">
-              {project.readOnly ? (
-                <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
+          </aside>
+          {current ? (
+            <div
+              className={cn(
+                "min-w-0",
+                !["project", "integrate", "models"].includes(current.id) && "max-w-2xl",
+                narrow && phone < 2 && "hidden",
+                narrow && pageStep === "deeper" && stepClass("deeper"),
+              )}
+            >
+              {narrow ? (
+                <div className="mb-3">
+                  <BackRow
+                    label={hasMenu ? current.label : t("settings.title")}
+                    onBack={() => navigate(hasMenu ? `/settings/${current.id}` : "/settings")}
+                  />
+                </div>
               ) : null}
-              <Connectors key={key} projectId={project.id} readOnly={project.readOnly} />
-              <McpServers key={key} project={project} />
+              {scoped ? (
+                <div className="mb-6">
+                  <ProjectSwitcher />
+                </div>
+              ) : null}
+              {current.id === "project" && project ? (
+                <ProjectSettings key={key} project={project} />
+              ) : null}
+              {current.id === "connectors" && project ? (
+                <div className="flex flex-col gap-6">
+                  {project.readOnly ? (
+                    <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
+                  ) : null}
+                  <Connectors key={key} projectId={project.id} readOnly={project.readOnly} />
+                  <McpServers key={key} project={project} />
+                </div>
+              ) : null}
+              {/* No project yet: nothing is built here, and no local install has sent one. */}
+              {(current.id === "project" || current.id === "connectors") && !project && !loading ? (
+                <Empty>{t("settings.noProject")}</Empty>
+              ) : null}
+              {current.id === "models" ? <Models /> : null}
+              {current.id === "integrate" ? <Integrate /> : null}
+              {current.id === "account" && me.data ? <Account me={me.data} /> : null}
+              {current.id === "plugins" ? <PluginsSection /> : null}
+              {current.plugin ? (
+                <PluginFrame of={current.plugin}>
+                  <current.plugin.component />
+                </PluginFrame>
+              ) : null}
             </div>
-          ) : null}
-          {/* No project yet: nothing is built here, and no local install has sent one. */}
-          {(current.id === "project" || current.id === "connectors") && !project && !loading ? (
-            <Empty>{t("settings.noProject")}</Empty>
-          ) : null}
-          {current.id === "models" ? <LocalRuntimeCard /> : null}
-          {current.id === "integrate" ? <Integrate /> : null}
-          {current.id === "account" && me.data ? <Account me={me.data} /> : null}
-          {current.id === "plugins" ? <PluginsSection /> : null}
-          {current.plugin ? (
-            <PluginFrame of={current.plugin}>
-              <current.plugin.component />
-            </PluginFrame>
           ) : null}
         </div>
       </div>
-    </div>
+    </SettingsMenuContext.Provider>
   );
 }

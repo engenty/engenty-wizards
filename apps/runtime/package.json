@@ -12,8 +12,12 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.54",
+    "@ai-sdk/elevenlabs": "3.0.42",
+    "@ai-sdk/fal": "3.0.42",
     "@ai-sdk/gateway": "^4.0.82",
+    "@ai-sdk/google": "4.0.72",
     "@ai-sdk/openai": "^4.0.67",
+    "@ai-sdk/replicate": "3.0.42",
     "@clack/prompts": "^1.8.1",
     "@engenty-wizards/plugin-sdk": "workspace:*",
     "@engenty-wizards/shared": "workspace:*",

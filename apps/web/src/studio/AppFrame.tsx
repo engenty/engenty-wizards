@@ -1,6 +1,6 @@
 import { CreditCard, LogOut, Settings } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Fragment, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Link, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { t } from "../lib/i18n";
@@ -13,11 +13,70 @@ import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { UpdateBanner } from "./UpdateBanner";
 
+/** A step of the trail after the logo; the last one is the page itself. */
+export interface Crumb {
+  label: string;
+  to?: string;
+}
+
+let crumbs: Crumb[] = [];
+const crumbListeners = new Set<() => void>();
+
+function setCrumbs(next: Crumb[]) {
+  crumbs = next;
+  for (const listener of crumbListeners) {
+    listener();
+  }
+}
+
+/**
+ * Where in the studio a page stands, said once in the top bar instead of a heading of its own:
+ * the content starts at the top. Set while the page is shown.
+ */
+export function useCrumbs(items: Crumb[]) {
+  const key = JSON.stringify(items);
+  useEffect(() => {
+    setCrumbs(JSON.parse(key) as Crumb[]);
+    return () => setCrumbs([]);
+  }, [key]);
+}
+
+function Trail() {
+  const trail = useSyncExternalStore(
+    (listener) => {
+      crumbListeners.add(listener);
+      return () => crumbListeners.delete(listener);
+    },
+    () => crumbs,
+  );
+  if (!trail.length) {
+    return null;
+  }
+  return (
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center text-[15px] max-sm:hidden">
+      {trail.map((crumb, i) => (
+        <Fragment key={`${i}:${crumb.label}`}>
+          <span className="mx-2 text-ink-4">/</span>
+          {crumb.to && i < trail.length - 1 ? (
+            <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
+              {crumb.label}
+            </Link>
+          ) : (
+            <span aria-current="page" className="truncate font-medium text-ink">
+              {crumb.label}
+            </span>
+          )}
+        </Fragment>
+      ))}
+    </nav>
+  );
+}
+
 /** Where the account lives: the Manage-App of the runtime, or of the linked account. */
 const accountBase = (me: Me): string | null => me.manageUrl ?? me.account?.url ?? null;
 
 /** Where credits are bought. */
-function billingUrl(me: Me): string | null {
+export function billingUrl(me: Me): string | null {
   const base = accountBase(me);
   return base ? `${base}/billing` : null;
 }
@@ -130,7 +189,10 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-4 backdrop-blur-md sm:gap-3 sm:px-6">
       <Logo onClick={() => navigate("/")} />
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex min-w-0 flex-1 items-center">
+        <Trail />
+        {children}
+      </div>
       <CreditsPill me={me} />
       {/* The pages plugins added, each behind its icon. */}
       {plugins.nav.map((entry) => (
@@ -146,7 +208,7 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
       ))}
       <IconButton
         label={t("nav.settings")}
-        onClick={() => navigate("/settings/project")}
+        onClick={() => navigate("/settings")}
         className="ring-1 ring-border-soft"
       >
         <Settings className="size-4" />

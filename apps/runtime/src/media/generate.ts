@@ -5,7 +5,6 @@ import {
   type CallMeta,
   imageCostUsd,
   imageModel,
-  isChatImageModel,
   isHarnessVendor,
   speechCostUsd,
   speechModel,
@@ -44,7 +43,7 @@ export async function generateImageMedia(input: {
   const image = await imageModel(input.call);
   // The gateway books its own calls; a client's images are part of the person's subscription.
   const costUsd = image.metered || isHarnessVendor(image.vendor) ? 0 : imageCostUsd(image.ref);
-  if (isChatImageModel(image.ref)) {
+  if (image.chat) {
     const chat = await textModel("image", input.call);
     const text = `${prompt}\n\nAspect ratio: ${aspect}. Return exactly one image.`;
     const result = await generateText({

@@ -1,6 +1,10 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createElevenLabs } from "@ai-sdk/elevenlabs";
+import { createFal } from "@ai-sdk/fal";
 import { createGateway } from "@ai-sdk/gateway";
+import { createGoogle } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createReplicate } from "@ai-sdk/replicate";
 import type { VideoResolution } from "@engenty-wizards/shared/definition";
 import {
   type Effort,
@@ -9,8 +13,24 @@ import {
   TEXT_CLASSES,
   type TextClass,
 } from "@engenty-wizards/shared/definition";
-import type { EmbeddingModel, LanguageModel } from "ai";
-import { accountToken } from "./auth/account.js";
+import {
+  type CreditModel,
+  creditsModelOf,
+  isCreditsRef,
+  PROVIDER_IDS,
+  type ProviderId,
+  providerInfo,
+  providerOfRef,
+} from "@engenty-wizards/shared/providers";
+import type {
+  EmbeddingModel,
+  experimental_generateVideo,
+  ImageModel,
+  LanguageModel,
+  SpeechModel,
+  TranscriptionModel,
+} from "ai";
+import { accountToken, linkedAccount } from "./auth/account.js";
 import { env } from "./env.js";
 import {
   detectHarness,
@@ -23,21 +43,23 @@ import {
 } from "./harness/index.js";
 import { managed } from "./manage.js";
 import { ModelUnavailableError } from "./model-errors.js";
+import { seal, unseal } from "./secrets/crypto.js";
 import { vaultDelete, vaultGet, vaultSet } from "./secrets/vault.js";
 import { readSetting, writeSetting } from "./settings.js";
-import { currentTenantOrNull } from "./tenants/tenant.js";
+import { currentTenant, currentTenantOrNull } from "./tenants/tenant.js";
 
 export { isHarnessVendor } from "./harness/index.js";
 /**
- * A step names a model class, never a model. Where the class runs is decided here:
- *  - a runtime of a Manage-App sends `wizards/<class>` to the model-gateway, which binds it,
- *    meters the call and books the tenant's credits;
- *  - a runtime that runs alone uses the linked account's credits through the same gateway, or
- *    resolves the class itself: an AI client installed on the machine (Claude Code, Codex,
- *    Gemini CLI, Cursor Agent — on its subscription), own keys (AI Gateway, OpenAI, Anthropic)
- *    or a local model.
- * A local binding is `[provider:]vendor/model`, e.g. `anthropic/claude-haiku-4.5`,
- * `openai:gpt-5.4-mini`, `ollama:qwen3`, `claude/sonnet`, `codex/default`.
+ * A step names a model class, never a model. Where the class runs is decided here, in this order:
+ *  1. its own way: an AI client installed on the machine (Claude Code, Codex, Gemini CLI, Cursor
+ *     Agent — on its subscription), an API key the person brought (OpenAI, Anthropic, Google,
+ *     fal.ai, ElevenLabs, Replicate, AI Gateway) or a local model;
+ *  2. credits: the model-gateway binds `wizards/<class>`, meters the call and books it — on the
+ *     tenant of a Manage-App's runtime, or on the account a runtime that runs alone is linked to.
+ * A runtime of a Manage-App keeps a tenant's own keys (sealed) and runs on its credits where it
+ * has none. A binding is `[provider:]vendor/model`, e.g. `anthropic/claude-haiku-4.5` (AI
+ * Gateway), `openai:gpt-5.4-mini`, `fal:fal-ai/flux/schnell`, `ollama:qwen3`, `claude/sonnet`
+ * (an installed client), or `credits`.
  */
 export { ModelUnavailableError } from "./model-errors.js";
 
@@ -47,6 +69,8 @@ export interface CallMeta {
   stepId?: string;
   effort?: Effort;
 }
+
+type VideoModel = Parameters<typeof experimental_generateVideo>[0]["model"];
 
 export interface ResolvedModel<M> {
   model: M;
@@ -59,24 +83,51 @@ export interface ResolvedModel<M> {
   metered: boolean;
 }
 
-// --- local configuration -------------------------------------------------------
+// --- configuration -----------------------------------------------------------------
 
-export const LOCAL_KEYS = ["gateway", "openai", "anthropic"] as const;
-export type LocalKey = (typeof LOCAL_KEYS)[number];
+export const LOCAL_KEYS = PROVIDER_IDS;
+export type LocalKey = ProviderId;
 
-/** A client's id = that installed client; `account` = the linked account's credits; `own` = own keys or a local model. */
+/** A client's id = text on that installed client; `account` = text on the account's credits; `own` = own keys or a local model. */
 export type LocalSource = HarnessId | "account" | "own";
 
 export interface LocalModelSettings {
   source: LocalSource;
   bindings: Partial<Record<ModelClass, string>>;
   ollamaUrl?: string;
+  /** The credits of the linked account step in for a class without a way of its own. Default: on. */
+  creditFallback?: boolean;
 }
 
-const local: { settings: LocalModelSettings; keys: Partial<Record<LocalKey, string>> } = {
-  settings: { source: "own", bindings: {} },
-  keys: {},
-};
+/** What decides where a class runs: the settings and the keys, of this machine or of a tenant. */
+interface ModelConfig {
+  settings: LocalModelSettings;
+  keys: Partial<Record<LocalKey, string>>;
+}
+
+export interface ModelSettingsInput {
+  source?: LocalSource;
+  bindings?: Partial<Record<ModelClass, string>>;
+  ollamaUrl?: string;
+  creditFallback?: boolean;
+  /** A key to store; an empty string removes it. */
+  keys?: Partial<Record<LocalKey, string>>;
+}
+
+const local: ModelConfig = { settings: { source: "own", bindings: {} }, keys: {} };
+
+function envKey(name: LocalKey): string | undefined {
+  const value = {
+    gateway: env.aiGatewayKey,
+    openai: env.openaiKey,
+    anthropic: env.anthropicKey,
+    google: env.googleKey,
+    fal: env.falKey,
+    elevenlabs: env.elevenlabsKey,
+    replicate: env.replicateKey,
+  }[name];
+  return value || undefined;
+}
 
 /** Reads the model settings and keys of a runtime that runs alone; called at start and after a change. */
 export async function loadLocalModels() {
@@ -87,20 +138,71 @@ export async function loadLocalModels() {
     source: "own",
     bindings: {},
   };
-  local.keys = {
-    gateway: (await vaultGet("key.gateway")) ?? env.aiGatewayKey,
-    openai: (await vaultGet("key.openai")) ?? env.openaiKey,
-    anthropic: (await vaultGet("key.anthropic")) ?? env.anthropicKey,
+  const keys: ModelConfig["keys"] = {};
+  for (const name of LOCAL_KEYS) {
+    keys[name] = (await vaultGet(`key.${name}`)) ?? envKey(name);
+  }
+  local.keys = keys;
+}
+
+/** A team on a runtime of a Manage-App: its own keys, sealed, and what each class runs on. */
+interface StoredTenantModels {
+  bindings: Partial<Record<ModelClass, string>>;
+  keys: string | null;
+}
+
+const tenantConfigs = new Map<string, ModelConfig>();
+const tenantSetting = (tenant: string) => `models:${tenant}`;
+
+/** A team thinks on its credits unless it brought a key: `own`, with the credits behind it. */
+function teamSettings(bindings: Partial<Record<ModelClass, string>>): LocalModelSettings {
+  return { source: "own", bindings, creditFallback: true };
+}
+
+async function tenantConfig(tenant: string): Promise<ModelConfig> {
+  const hit = tenantConfigs.get(tenant);
+  if (hit) {
+    return hit;
+  }
+  const stored = await readSetting<StoredTenantModels>(tenantSetting(tenant));
+  const value: ModelConfig = {
+    settings: teamSettings(stored?.bindings ?? {}),
+    keys: (stored?.keys ? unseal<ModelConfig["keys"]>(stored.keys) : null) ?? {},
   };
+  tenantConfigs.set(tenant, value);
+  return value;
+}
+
+async function config(): Promise<ModelConfig> {
+  if (!managed) {
+    return local;
+  }
+  const tenant = currentTenantOrNull();
+  return tenant ? tenantConfig(tenant) : { settings: teamSettings({}), keys: {} };
+}
+
+function mergeBindings(
+  current: Partial<Record<ModelClass, string>>,
+  changes: Partial<Record<ModelClass, string>> = {},
+) {
+  const bindings = { ...current };
+  for (const [cls, ref] of Object.entries(changes)) {
+    if (ref?.trim()) {
+      bindings[cls as ModelClass] = ref.trim();
+    } else {
+      delete bindings[cls as ModelClass];
+    }
+  }
+  return bindings;
 }
 
 export function localModelSettings() {
   return {
     ...local.settings,
-    bindings: Object.fromEntries(MODEL_CLASSES.map((c) => [c, localRef(c)])) as Record<
-      ModelClass,
-      string
-    >,
+    creditFallback: local.settings.creditFallback !== false,
+    bindings: Object.fromEntries(
+      MODEL_CLASSES.map((c) => [c, ownRef(local, c) || local.settings.bindings[c] || ""]),
+    ) as Record<ModelClass, string>,
     ollamaUrl: local.settings.ollamaUrl ?? env.ollamaUrl,
     keys: Object.fromEntries(LOCAL_KEYS.map((k) => [k, Boolean(local.keys[k])])) as Record<
       LocalKey,
@@ -109,25 +211,12 @@ export function localModelSettings() {
   };
 }
 
-export async function saveLocalModels(input: {
-  source?: LocalSource;
-  bindings?: Partial<Record<ModelClass, string>>;
-  ollamaUrl?: string;
-  /** A key to store; an empty string removes it. */
-  keys?: Partial<Record<LocalKey, string>>;
-}) {
-  const bindings = { ...local.settings.bindings };
-  for (const [cls, ref] of Object.entries(input.bindings ?? {})) {
-    if (ref?.trim()) {
-      bindings[cls as ModelClass] = ref.trim();
-    } else {
-      delete bindings[cls as ModelClass];
-    }
-  }
+export async function saveLocalModels(input: ModelSettingsInput) {
   await writeSetting("models", {
     source: input.source ?? local.settings.source,
-    bindings,
+    bindings: mergeBindings(local.settings.bindings, input.bindings),
     ollamaUrl: input.ollamaUrl?.trim() || local.settings.ollamaUrl,
+    creditFallback: input.creditFallback ?? local.settings.creditFallback,
   } satisfies LocalModelSettings);
   for (const [name, value] of Object.entries(input.keys ?? {})) {
     if (value?.trim()) {
@@ -139,7 +228,134 @@ export async function saveLocalModels(input: {
   await loadLocalModels();
 }
 
-// --- the model-gateway of a Manage-App -------------------------------------------
+/** A team's keys and bindings on a runtime of a Manage-App. No client and no local model there. */
+async function saveTenantModels(tenant: string, input: ModelSettingsInput) {
+  const current = await tenantConfig(tenant);
+  const keys = { ...current.keys };
+  for (const [name, value] of Object.entries(input.keys ?? {})) {
+    if (value?.trim()) {
+      keys[name as LocalKey] = value.trim();
+    } else {
+      delete keys[name as LocalKey];
+    }
+  }
+  await writeSetting(tenantSetting(tenant), {
+    bindings: mergeBindings(current.settings.bindings, input.bindings),
+    keys: Object.keys(keys).length ? seal(keys) : null,
+  } satisfies StoredTenantModels);
+  tenantConfigs.delete(tenant);
+}
+
+/** Saves for this machine, or for the current tenant of a Manage-App's runtime. */
+export async function saveModels(input: ModelSettingsInput) {
+  if (managed) {
+    await saveTenantModels(currentTenant(), input);
+  } else {
+    await saveLocalModels(input);
+  }
+}
+
+/** A stored key, for a check of the key itself; never sent to the studio. */
+export async function storedKey(name: LocalKey): Promise<string | undefined> {
+  return (await config()).keys[name];
+}
+
+// --- where a class runs -------------------------------------------------------------
+
+const isText = (cls: ModelClass) => (TEXT_CLASSES as readonly string[]).includes(cls);
+
+/**
+ * `fal:fal-ai/flux/schnell` → provider fal, id `fal-ai/flux/schnell`. Without a provider the
+ * binding is an AI Gateway id (`google/veo-…`) or an installed client (`codex/default`).
+ */
+function parse(ref: string): { provider: string | null; id: string; vendor: string } {
+  const match = /^([a-z]+):(.*)$/s.exec(ref);
+  if (match) {
+    const [, provider, id] = match;
+    // Ollama and the gateway name a model as the gateway does; the others are their own vendor.
+    const vendor = provider === "ollama" || provider === "gateway" ? id.split("/")[0] : provider;
+    return { provider, id, vendor };
+  }
+  return { provider: null, id: ref, vendor: ref.split("/")[0] };
+}
+
+const vendorOf = (ref: string) => parse(ref).vendor;
+
+/** The part of `codex/default` after the client. */
+const aliasOf = (id: string) => id.split("/").slice(1).join("/");
+
+/** Whether this configuration can reach a binding without credits. */
+function reachable(cfg: ModelConfig, ref: string): boolean {
+  if (!ref || isCreditsRef(ref)) {
+    return false;
+  }
+  const { provider, vendor } = parse(ref);
+  if ((provider === null && isHarnessVendor(vendor)) || provider === "ollama") {
+    // An installed client and a local model are of this machine.
+    return !managed;
+  }
+  if (provider === null || provider === "gateway") {
+    return (
+      Boolean(cfg.keys.gateway) ||
+      (provider === null &&
+        (vendor === "openai" || vendor === "anthropic") &&
+        Boolean(cfg.keys[vendor]))
+    );
+  }
+  return Boolean(cfg.keys[provider as LocalKey]);
+}
+
+/** What a class runs on without credits: a client, an own key or a local model. "" = no way of its own. */
+function ownRef(cfg: ModelConfig, cls: ModelClass): string {
+  const bound = cfg.settings.bindings[cls];
+  const client = managed ? null : harness(cfg.settings.source);
+  if (isText(cls) && client) {
+    // Text thinks on the installed client; a binding counts only where it names that client.
+    return bound?.startsWith(`${client.id}/`)
+      ? bound
+      : `${client.id}/${client.classes[cls as TextClass]}`;
+  }
+  // Text on the account's credits: every text class goes there.
+  if (isText(cls) && cfg.settings.source === "account") {
+    return "";
+  }
+  if (isCreditsRef(bound)) {
+    return "";
+  }
+  if (bound) {
+    return reachable(cfg, bound) ? bound : "";
+  }
+  // A client that makes images on the sign-in makes them too, before any key is paid for.
+  if (cls === "image" && client?.image) {
+    return `${client.id}/${client.image.alias}`;
+  }
+  // The defaults name gateway models; without a gateway key nothing reaches them.
+  return reachable(cfg, env.models[cls]) ? env.models[cls] : "";
+}
+
+const NOTHING: Record<ModelClass, string> = {
+  classifier: "Für Text ist kein Modell eingerichtet.",
+  standard: "Für Text ist kein Modell eingerichtet.",
+  high: "Für Text ist kein Modell eingerichtet.",
+  highest: "Für Text ist kein Modell eingerichtet.",
+  image: "Für Bilder ist kein Modell eingerichtet.",
+  video: "Für Videos ist kein Modell eingerichtet.",
+  speech: "Für Sprachausgabe ist kein Modell eingerichtet.",
+  audio: "Für Sprachnotizen ist kein Modell eingerichtet.",
+};
+
+/** Why a class has no way: the provider picked for it lacks its key, or nothing is set up. */
+function missingText(cfg: ModelConfig, cls: ModelClass): string {
+  const bound = cfg.settings.bindings[cls];
+  if (isCreditsRef(bound)) {
+    return "Dafür ist das Guthaben gewählt, aber kein Konto angemeldet.";
+  }
+  const provider = bound ? providerInfo(providerOfRef(bound) ?? "") : null;
+  if (provider) {
+    return `${NOTHING[cls].replace(/ ist kein Modell eingerichtet\.$/, "")} ist ${provider.name} gewählt, aber kein API Key hinterlegt.`;
+  }
+  return NOTHING[cls];
+}
 
 interface GatewayAccess {
   baseUrl: string;
@@ -147,7 +363,11 @@ interface GatewayAccess {
   tenant: string | null;
 }
 
-async function gatewayAccess(): Promise<GatewayAccess | null> {
+/**
+ * The way to the credits. On a Manage-App's runtime always; alone, through the linked account —
+ * where text runs on it (`chosen`), or as the fallback for what has no way of its own.
+ */
+async function creditAccess(cfg: ModelConfig, chosen: boolean): Promise<GatewayAccess | null> {
   if (managed) {
     return {
       baseUrl: env.manage.gatewayUrl,
@@ -155,16 +375,56 @@ async function gatewayAccess(): Promise<GatewayAccess | null> {
       tenant: currentTenantOrNull(),
     };
   }
-  if (local.settings.source !== "account") {
+  if (!chosen && (cfg.settings.creditFallback === false || !(await linkedAccount()))) {
     return null;
   }
   const token = await accountToken();
   if (!token) {
-    throw new ModelUnavailableError(
-      "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
-    );
+    if (chosen) {
+      throw new ModelUnavailableError(
+        "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
+      );
+    }
+    return null;
   }
   return { baseUrl: env.local.gatewayUrl, token, tenant: null };
+}
+
+/** A class goes to the credits on purpose: text on the account, or a binding that says so. */
+function creditsChosen(cfg: ModelConfig, cls: ModelClass): boolean {
+  return (
+    isCreditsRef(cfg.settings.bindings[cls]) ||
+    (isText(cls) && cfg.settings.source === "account" && !managed)
+  );
+}
+
+/** `model`: the model a `credits:<id>` binding names; null where the gateway's class decides. */
+type Route =
+  | { kind: "own"; cfg: ModelConfig; ref: string }
+  | { kind: "credits"; access: GatewayAccess; model: string | null };
+
+async function routeOf(cls: ModelClass): Promise<Route> {
+  const cfg = await config();
+  const ref = ownRef(cfg, cls);
+  if (ref) {
+    return { kind: "own", cfg, ref };
+  }
+  const access = await creditAccess(cfg, creditsChosen(cfg, cls));
+  if (access) {
+    return { kind: "credits", access, model: creditsModelOf(cfg.settings.bindings[cls]) };
+  }
+  throw new ModelUnavailableError(missingText(cfg, cls));
+}
+
+/** The key of a provider, or why the call cannot be made. */
+function need(cfg: ModelConfig, name: LocalKey): string {
+  const key = cfg.keys[name];
+  if (!key) {
+    throw new ModelUnavailableError(
+      `Für ${providerInfo(name)?.name ?? name} ist kein API Key hinterlegt.`,
+    );
+  }
+  return key;
 }
 
 function gatewayClient(access: GatewayAccess, meta: CallMeta) {
@@ -187,19 +447,26 @@ export interface ClassPrice {
   outputCreditsPerMTok?: number;
   creditsPerImage?: number;
   creditsPerSecond?: number;
+  creditsPer1kCharacters?: number;
+  creditsPerMinute?: number;
+  /** The audio class is bound to a transcription model: called on /transcription-model. */
+  transcribes?: boolean;
 }
 
 export interface GatewayCatalog {
   markup: number;
   classes: Partial<Record<ModelClass | "embedding", ClassPrice | null>>;
   webSearchCredits: number;
+  /** The media models the credits pay for that a binding may name (`credits:<id>`). */
+  models?: CreditModel[];
 }
 
 let gatewayCatalog: { at: number; base: string; value: GatewayCatalog } | null = null;
 
 /** What the gateway binds each class to, with prices in credits. Cached for five minutes. */
 export async function classCatalog(): Promise<GatewayCatalog | null> {
-  const access = await gatewayAccess().catch(() => null);
+  const cfg = await config();
+  const access = await creditAccess(cfg, cfg.settings.source === "account").catch(() => null);
   if (!access) {
     return null;
   }
@@ -229,99 +496,16 @@ export async function classCatalog(): Promise<GatewayCatalog | null> {
   }
 }
 
-// --- resolving a class -------------------------------------------------------------
-
-function split(ref: string): { provider: string | null; vendor: string; model: string } {
-  const [maybeProvider, rest] = ref.includes(":") ? ref.split(/:(.*)/s, 2) : [null, ref];
-  const [vendor, ...model] = (rest ?? ref).split("/");
-  return { provider: maybeProvider, vendor, model: model.join("/") };
-}
-
-const vendorOf = (ref: string) => split(ref).vendor;
-
-function localRef(cls: ModelClass): string {
-  const bound = local.settings.bindings[cls];
-  const client = harness(local.settings.source);
-  if (client && (TEXT_CLASSES as readonly string[]).includes(cls)) {
-    // Text thinks on the installed client; a binding counts only where it names that client.
-    return bound?.startsWith(`${client.id}/`)
-      ? bound
-      : `${client.id}/${client.classes[cls as TextClass]}`;
-  }
-  if (bound) {
-    return bound;
-  }
-  // A client that makes images on the sign-in makes them too, before any key is paid for.
-  if (cls === "image" && client?.image) {
-    return `${client.id}/${client.image.alias}`;
-  }
-  // The defaults for images, video and sound name gateway models; without a gateway key nothing
-  // reaches them, so the class stays empty instead of showing a model that cannot run.
-  if (!(TEXT_CLASSES as readonly string[]).includes(cls) && !local.keys.gateway) {
-    return "";
-  }
-  return env.models[cls];
-}
-
-function ownGateway() {
-  return local.keys.gateway ? createGateway({ apiKey: local.keys.gateway }) : null;
-}
-
-async function localLanguageModel(
-  ref: string,
-  meta: CallMeta,
-): Promise<{ model: LanguageModel; gateway: boolean }> {
-  if (!ref) {
-    throw new ModelUnavailableError("Für diese Klasse ist kein Modell eingerichtet.");
-  }
-  const { provider, vendor, model } = split(ref);
-  const client = harness(vendor);
-  if (client) {
-    if (!(await detectHarness(client.id))?.version) {
-      throw new ModelUnavailableError(notInstalled(client));
-    }
-    return { model: client.model(model, meta.effort), gateway: false };
-  }
-  if (provider === "ollama") {
-    const ollama = createOpenAI({
-      baseURL: local.settings.ollamaUrl ?? env.ollamaUrl,
-      apiKey: "ollama",
-    });
-    return { model: ollama.chat(model ? `${vendor}/${model}` : vendor), gateway: false };
-  }
-  const gateway = ownGateway();
-  if ((provider === null || provider === "gateway") && gateway) {
-    return { model: gateway(`${vendor}/${model}`), gateway: true };
-  }
-  if ((provider === "openai" || vendor === "openai") && local.keys.openai) {
-    return {
-      model: createOpenAI({ apiKey: local.keys.openai })(model || vendor),
-      gateway: false,
-    };
-  }
-  if ((provider === "anthropic" || vendor === "anthropic") && local.keys.anthropic) {
-    return {
-      model: createAnthropic({ apiKey: local.keys.anthropic })(model || vendor),
-      gateway: false,
-    };
-  }
-  throw new ModelUnavailableError(
-    `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen Schlüssel hinterlegen oder ein Konto anmelden.`,
-  );
-}
-
-async function viaGateway<M>(
+/** A call on the credits: the model a binding names, or the gateway's model of the class. */
+async function viaCredits<M>(
+  route: Extract<Route, { kind: "credits" }>,
   cls: ModelClass,
   meta: CallMeta,
   pick: (client: ReturnType<typeof createGateway>, id: string) => M,
-): Promise<ResolvedModel<M> | null> {
-  const access = await gatewayAccess();
-  if (!access) {
-    return null;
-  }
-  const bound = (await classCatalog())?.classes[cls]?.model ?? "";
+): Promise<ResolvedModel<M>> {
+  const bound = route.model ?? (await classCatalog())?.classes[cls]?.model ?? "";
   return {
-    model: pick(gatewayClient(access, meta), `wizards/${cls}`),
+    model: pick(gatewayClient(route.access, meta), route.model ?? `wizards/${cls}`),
     ref: bound,
     vendor: vendorOf(bound.replace(/^[a-z]+:/, "")),
     gateway: true,
@@ -329,18 +513,72 @@ async function viaGateway<M>(
   };
 }
 
+/** The installed client a binding names, checked to be there. */
+async function installedClient(ref: string) {
+  const { provider, vendor } = parse(ref);
+  const client = provider === null ? harness(vendor) : null;
+  if (client && !(await detectHarness(client.id))?.version) {
+    throw new ModelUnavailableError(notInstalled(client));
+  }
+  return client;
+}
+
+async function ownLanguageModel(
+  cfg: ModelConfig,
+  ref: string,
+  meta: CallMeta,
+): Promise<{ model: LanguageModel; gateway: boolean }> {
+  const { provider, id, vendor } = parse(ref);
+  const client = await installedClient(ref);
+  if (client) {
+    return { model: client.model(aliasOf(id), meta.effort), gateway: false };
+  }
+  switch (provider) {
+    case "ollama":
+      return {
+        model: createOpenAI({
+          baseURL: cfg.settings.ollamaUrl ?? env.ollamaUrl,
+          apiKey: "ollama",
+        }).chat(id),
+        gateway: false,
+      };
+    case "openai":
+      return { model: createOpenAI({ apiKey: need(cfg, "openai") })(id), gateway: false };
+    case "anthropic":
+      return { model: createAnthropic({ apiKey: need(cfg, "anthropic") })(id), gateway: false };
+    case "google":
+      return { model: createGoogle({ apiKey: need(cfg, "google") })(id), gateway: false };
+    case null:
+    case "gateway":
+      if (cfg.keys.gateway) {
+        return { model: createGateway({ apiKey: cfg.keys.gateway })(id), gateway: true };
+      }
+      if (provider === null && vendor === "openai" && cfg.keys.openai) {
+        return { model: createOpenAI({ apiKey: cfg.keys.openai })(aliasOf(id)), gateway: false };
+      }
+      if (provider === null && vendor === "anthropic" && cfg.keys.anthropic) {
+        return {
+          model: createAnthropic({ apiKey: cfg.keys.anthropic })(aliasOf(id)),
+          gateway: false,
+        };
+      }
+  }
+  throw new ModelUnavailableError(
+    `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen API Key hinterlegen oder ein Konto anmelden.`,
+  );
+}
+
 /** The language model a text class runs on. */
 export async function textModel(
   cls: TextClass | "audio" | "image",
   meta: CallMeta = {},
 ): Promise<ResolvedModel<LanguageModel>> {
-  const remote = await viaGateway(cls, meta, (client, id) => client(id) as LanguageModel);
-  if (remote) {
-    return remote;
+  const route = await routeOf(cls);
+  if (route.kind === "credits") {
+    return viaCredits(route, cls, meta, (client, id) => client(id) as LanguageModel);
   }
-  const ref = localRef(cls);
-  const { model, gateway } = await localLanguageModel(ref, meta);
-  return { model, ref, vendor: vendorOf(ref), gateway, metered: false };
+  const { model, gateway } = await ownLanguageModel(route.cfg, route.ref, meta);
+  return { model, ref: route.ref, vendor: vendorOf(route.ref), gateway, metered: false };
 }
 
 /** Hands the tools an agent will call to a model that runs them itself (an installed AI client). */
@@ -350,100 +588,171 @@ export function attachTools(resolved: ResolvedModel<unknown>, tools: Record<stri
   }
 }
 
-export async function imageModel(meta: CallMeta = {}) {
-  const remote = await viaGateway("image", meta, (client, id) => client.imageModel(id));
-  if (remote) {
-    return remote;
+/** Gemini image models of the gateway are chat models answering with image files. */
+export function isChatImageModel(ref: string): boolean {
+  return ref.includes("gemini") && ref.includes("image");
+}
+
+/** `chat`: the model answers through chat with an image file (`textModel("image")`). */
+export async function imageModel(
+  meta: CallMeta = {},
+): Promise<ResolvedModel<ImageModel> & { chat: boolean }> {
+  const route = await routeOf("image");
+  if (route.kind === "credits") {
+    const resolved = await viaCredits(route, "image", meta, (c, id) => c.imageModel(id));
+    return { ...resolved, chat: isChatImageModel(resolved.ref) };
   }
-  const ref = localRef("image");
-  const { vendor, model } = split(ref);
-  const client = harness(vendor);
+  const { cfg, ref } = route;
+  const { provider, id, vendor } = parse(ref);
+  const own = (model: ImageModel, gateway = false) => ({
+    model,
+    ref,
+    vendor,
+    gateway,
+    metered: false,
+    chat: false,
+  });
+  const client = await installedClient(ref);
   if (client?.image) {
-    if (!(await detectHarness(client.id))?.version) {
-      throw new ModelUnavailableError(notInstalled(client));
-    }
-    return { model: client.image.model(model), ref, vendor, gateway: false, metered: false };
+    return own(client.image.model(aliasOf(id)));
   }
-  const gateway = ownGateway();
-  if (gateway) {
-    return {
-      model: gateway.imageModel(`${vendor}/${model}`),
-      ref,
-      vendor,
-      gateway: true,
-      metered: false,
-    };
-  }
-  if (local.keys.openai && vendor === "openai") {
-    return {
-      model: createOpenAI({ apiKey: local.keys.openai }).image(model),
-      ref,
-      vendor,
-      gateway: false,
-      metered: false,
-    };
+  switch (provider) {
+    case "openai":
+      return own(createOpenAI({ apiKey: need(cfg, "openai") }).image(id));
+    case "google":
+      return own(createGoogle({ apiKey: need(cfg, "google") }).image(id));
+    case "fal":
+      return own(createFal({ apiKey: need(cfg, "fal") }).image(id));
+    case "replicate":
+      return own(createReplicate({ apiToken: need(cfg, "replicate") }).image(id));
+    case null:
+    case "gateway":
+      if (cfg.keys.gateway) {
+        return {
+          ...own(createGateway({ apiKey: cfg.keys.gateway }).imageModel(id), true),
+          chat: isChatImageModel(id),
+        };
+      }
+      if (provider === null && vendor === "openai" && cfg.keys.openai) {
+        return own(createOpenAI({ apiKey: cfg.keys.openai }).image(aliasOf(id)));
+      }
   }
   throw new ModelUnavailableError("Für Bilder ist kein Modell eingerichtet.");
 }
 
-export async function videoModel(meta: CallMeta = {}) {
-  const remote = await viaGateway("video", meta, (client, id) => client.videoModel(id));
-  if (remote) {
-    return remote;
+export async function videoModel(meta: CallMeta = {}): Promise<ResolvedModel<VideoModel>> {
+  const route = await routeOf("video");
+  if (route.kind === "credits") {
+    return viaCredits(route, "video", meta, (c, id) => c.videoModel(id));
   }
-  const ref = localRef("video");
-  const { vendor, model } = split(ref);
-  const gateway = ownGateway();
-  if (gateway) {
-    return {
-      model: gateway.videoModel(`${vendor}/${model}`),
-      ref,
-      vendor,
-      gateway: true,
-      metered: false,
-    };
+  const { cfg, ref } = route;
+  const { provider, id, vendor } = parse(ref);
+  const own = (model: VideoModel, gateway = false) => ({
+    model,
+    ref,
+    vendor,
+    gateway,
+    metered: false,
+  });
+  switch (provider) {
+    case "google":
+      return own(createGoogle({ apiKey: need(cfg, "google") }).video(id));
+    case "fal":
+      return own(createFal({ apiKey: need(cfg, "fal") }).video(id));
+    case "replicate":
+      return own(createReplicate({ apiToken: need(cfg, "replicate") }).video(id));
+    case null:
+    case "gateway":
+      if (cfg.keys.gateway) {
+        return own(createGateway({ apiKey: cfg.keys.gateway }).videoModel(id), true);
+      }
   }
   throw new ModelUnavailableError("Für Videos ist kein Modell eingerichtet.");
 }
 
 /** The model that reads a text aloud. */
-export async function speechModel(meta: CallMeta = {}) {
-  const access = await gatewayAccess();
-  if (access) {
-    const bound = (await classCatalog())?.classes.speech?.model;
-    if (!bound) {
+export async function speechModel(meta: CallMeta = {}): Promise<ResolvedModel<SpeechModel>> {
+  const route = await routeOf("speech");
+  if (route.kind === "credits") {
+    const resolved = await viaCredits(route, "speech", meta, (c, id) => c.speechModel(id));
+    if (!resolved.ref) {
       throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
     }
-    return {
-      model: gatewayClient(access, meta).speechModel("wizards/speech"),
-      ref: bound,
-      vendor: vendorOf(bound.replace(/^[a-z]+:/, "")),
-      gateway: true,
-      metered: true,
-    };
+    return resolved;
   }
-  const ref = localRef("speech");
-  const { vendor, model } = split(ref);
-  const gateway = ownGateway();
-  if (gateway) {
-    return {
-      model: gateway.speechModel(`${vendor}/${model}`),
-      ref,
-      vendor,
-      gateway: true,
-      metered: false,
-    };
-  }
-  if (local.keys.openai && vendor === "openai") {
-    return {
-      model: createOpenAI({ apiKey: local.keys.openai }).speech(model),
-      ref,
-      vendor,
-      gateway: false,
-      metered: false,
-    };
+  const { cfg, ref } = route;
+  const { provider, id, vendor } = parse(ref);
+  const own = (model: SpeechModel, gateway = false) => ({
+    model,
+    ref,
+    vendor,
+    gateway,
+    metered: false,
+  });
+  switch (provider) {
+    case "openai":
+      return own(createOpenAI({ apiKey: need(cfg, "openai") }).speech(id));
+    case "google":
+      return own(createGoogle({ apiKey: need(cfg, "google") }).speech(id));
+    case "fal":
+      return own(createFal({ apiKey: need(cfg, "fal") }).speech(id));
+    case "elevenlabs":
+      return own(createElevenLabs({ apiKey: need(cfg, "elevenlabs") }).speech(id));
+    case null:
+    case "gateway":
+      if (cfg.keys.gateway) {
+        return own(createGateway({ apiKey: cfg.keys.gateway }).speechModel(id), true);
+      }
+      if (provider === null && vendor === "openai" && cfg.keys.openai) {
+        return own(createOpenAI({ apiKey: cfg.keys.openai }).speech(aliasOf(id)));
+      }
   }
   throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+}
+
+/**
+ * What turns a voice note into text: a transcription model (ElevenLabs Scribe, Whisper), or a
+ * chat model that takes audio files (Gemini) — that one also on the credits.
+ */
+export async function listenerModel(
+  meta: CallMeta = {},
+): Promise<
+  | { kind: "transcription"; resolved: ResolvedModel<TranscriptionModel> }
+  | { kind: "chat"; resolved: ResolvedModel<LanguageModel> }
+> {
+  const route = await routeOf("audio");
+  if (route.kind === "credits") {
+    // On the credits a transcription model is called as one: named so, or bound to the class.
+    const catalog = await classCatalog();
+    const transcribes = route.model
+      ? catalog?.models?.find((m) => m.id === route.model)?.kind === "transcription"
+      : Boolean(catalog?.classes.audio?.transcribes);
+    if (transcribes) {
+      return {
+        kind: "transcription",
+        resolved: await viaCredits(route, "audio", meta, (c, id) => c.transcriptionModel(id)),
+      };
+    }
+  }
+  if (route.kind === "own") {
+    const { cfg, ref } = route;
+    const { provider, id, vendor } = parse(ref);
+    const transcriber =
+      provider === "elevenlabs"
+        ? createElevenLabs({ apiKey: need(cfg, "elevenlabs") }).transcription(id)
+        : provider === "fal"
+          ? createFal({ apiKey: need(cfg, "fal") }).transcription(id)
+          : provider === "openai" && /transcribe|whisper/.test(id)
+            ? createOpenAI({ apiKey: need(cfg, "openai") }).transcription(id)
+            : null;
+    if (transcriber) {
+      return {
+        kind: "transcription",
+        resolved: { model: transcriber, ref, vendor, gateway: false, metered: false },
+      };
+    }
+  }
+  return { kind: "chat", resolved: await textModel("audio", meta) };
 }
 
 /**
@@ -452,41 +761,43 @@ export async function speechModel(meta: CallMeta = {}) {
  * works on keywords alone.
  */
 export async function embeddingModel(): Promise<{ model: EmbeddingModel; ref: string } | null> {
-  const access = await gatewayAccess().catch(() => null);
-  if (access) {
-    const bound = (await classCatalog())?.classes.embedding;
-    return bound
+  const cfg = await config();
+  if (managed) {
+    const access = await creditAccess(cfg, true).catch(() => null);
+    const bound = access ? (await classCatalog())?.classes.embedding : null;
+    return access && bound
       ? { model: gatewayClient(access, {}).embeddingModel("wizards/embedding"), ref: bound.model }
       : null;
   }
   const ref = env.models.embedding;
-  const { provider, vendor, model } = split(ref);
+  const { provider, id, vendor } = parse(ref);
   if (provider === "ollama") {
     const ollama = createOpenAI({
-      baseURL: local.settings.ollamaUrl ?? env.ollamaUrl,
+      baseURL: cfg.settings.ollamaUrl ?? env.ollamaUrl,
       apiKey: "ollama",
     });
-    return { model: ollama.embedding(model ? `${vendor}/${model}` : vendor), ref };
+    return { model: ollama.embedding(id), ref };
   }
-  const gateway = ownGateway();
-  if ((provider === null || provider === "gateway") && gateway) {
-    return { model: gateway.embeddingModel(`${vendor}/${model}`), ref };
+  if ((provider === null || provider === "gateway") && cfg.keys.gateway) {
+    return { model: createGateway({ apiKey: cfg.keys.gateway }).embeddingModel(id), ref };
   }
-  if ((provider === "openai" || vendor === "openai") && local.keys.openai) {
-    return { model: createOpenAI({ apiKey: local.keys.openai }).embedding(model || vendor), ref };
+  if ((provider === "openai" || vendor === "openai") && cfg.keys.openai) {
+    return {
+      model: createOpenAI({ apiKey: cfg.keys.openai }).embedding(provider ? id : aliasOf(id)),
+      ref,
+    };
   }
-  return null;
-}
-
-/** Gemini image models are chat models answering with image files. */
-export function isChatImageModel(ref: string): boolean {
-  return ref.includes("gemini") && ref.includes("image");
+  // No key of its own: the linked account's gateway, where its catalog has the class.
+  const access = await creditAccess(cfg, false).catch(() => null);
+  const bound = access ? (await classCatalog())?.classes.embedding : null;
+  return access && bound
+    ? { model: gatewayClient(access, {}).embeddingModel("wizards/embedding"), ref: bound.model }
+    : null;
 }
 
 /** Search tools an AI Gateway runs itself; they travel in the request, so any gateway client names them. */
 export const gatewayTools = createGateway({ apiKey: "unused" }).tools;
 
-/** Whether any text model can answer at all: the studio says so before the first chat turn. */
 /**
  * Whether a class can run here, found out without calling it: null, or what the person reads.
  * A class the gateway serves counts as there unless its catalog leaves it unbound.
@@ -500,10 +811,20 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
           ? await videoModel()
           : cls === "speech"
             ? await speechModel()
-            : await textModel(cls);
+            : cls === "audio"
+              ? (await listenerModel()).resolved
+              : await textModel(cls);
     if (resolved.metered) {
-      const bound = (await classCatalog())?.classes;
-      return bound && !bound[cls] ? "Dafür ist beim Konto kein Modell eingerichtet." : null;
+      const catalog = await classCatalog();
+      const named = creditsModelOf((await config()).settings.bindings[cls]);
+      if (named) {
+        return catalog?.models && !catalog.models.some((m) => m.id === named)
+          ? "Dieses Modell gibt es beim Konto nicht."
+          : null;
+      }
+      return catalog?.classes && !catalog.classes[cls]
+        ? "Dafür ist beim Konto kein Modell eingerichtet."
+        : null;
     }
     const client = harness(resolved.vendor);
     if (client && (await detectHarness(client.id))?.auth === "none") {
@@ -518,12 +839,133 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
   }
 }
 
+/** Whether any text model can answer at all: the studio says so before the first chat turn. */
 export async function hasTextModel(): Promise<boolean> {
   try {
     await textModel("standard");
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * How a class runs, as the settings show it. `client`: an installed AI client (`by` its id);
+ * `key`: an own API key (`by` the provider); `local`: a model on this machine; `credits`: the
+ * credits; `none`: nothing, `problem` says why.
+ */
+export interface ClassWay {
+  kind: "client" | "key" | "local" | "credits" | "none";
+  by: string | null;
+  ref: string;
+  problem: string | null;
+}
+
+export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
+  const cfg = await config();
+  const ways = {} as Record<ModelClass, ClassWay>;
+  for (const cls of MODEL_CLASSES) {
+    const ref = ownRef(cfg, cls);
+    if (ref) {
+      const { provider, vendor } = parse(ref);
+      const client = provider === null && isHarnessVendor(vendor);
+      ways[cls] = {
+        kind: client ? "client" : provider === "ollama" ? "local" : "key",
+        by: client
+          ? vendor
+          : providerOfRef(ref) === "gateway" && !cfg.keys.gateway
+            ? vendor
+            : providerOfRef(ref),
+        ref,
+        problem: null,
+      };
+      continue;
+    }
+    let problem: string | null = null;
+    const access = await creditAccess(cfg, creditsChosen(cfg, cls)).catch((err: Error) => {
+      problem = err.message;
+      return null;
+    });
+    ways[cls] = access
+      ? {
+          kind: "credits",
+          by: null,
+          ref:
+            creditsModelOf(cfg.settings.bindings[cls]) ??
+            (await classCatalog())?.classes[cls]?.model ??
+            "",
+          problem: null,
+        }
+      : { kind: "none", by: null, ref: "", problem: problem ?? missingText(cfg, cls) };
+  }
+  return ways;
+}
+
+/** What the settings page shows: the choices, which keys are there (never the keys), and the ways. */
+export async function modelSettings() {
+  const cfg = await config();
+  return {
+    source: cfg.settings.source,
+    bindings: cfg.settings.bindings,
+    ollamaUrl: cfg.settings.ollamaUrl ?? env.ollamaUrl,
+    creditFallback: cfg.settings.creditFallback !== false,
+    keys: Object.fromEntries(LOCAL_KEYS.map((k) => [k, Boolean(cfg.keys[k])])) as Record<
+      LocalKey,
+      boolean
+    >,
+    ways: await classWays(),
+    /** What a class costs on the credits, where they are at hand. */
+    prices: (await classCatalog())?.classes ?? null,
+    /** The media models the credits pay for, which a binding may name. */
+    creditModels: (await classCatalog())?.models ?? [],
+  };
+}
+
+// --- Checking a key ------------------------------------------------------------------
+
+/** A cheap authenticated call: whether the provider takes the key. Nothing is generated. */
+export async function checkKey(
+  name: LocalKey,
+  key: string,
+): Promise<{ ok: boolean; message: string | null }> {
+  const requests: Record<LocalKey, [string, Record<string, string>]> = {
+    openai: ["https://api.openai.com/v1/models", { authorization: `Bearer ${key}` }],
+    anthropic: [
+      "https://api.anthropic.com/v1/models?limit=1",
+      { "x-api-key": key, "anthropic-version": "2023-06-01" },
+    ],
+    google: [
+      "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1",
+      { "x-goog-api-key": key },
+    ],
+    fal: [
+      "https://api.fal.ai/v1/models?endpoint_id=fal-ai/flux/schnell",
+      { authorization: `Key ${key}` },
+    ],
+    elevenlabs: ["https://api.elevenlabs.io/v1/models", { "xi-api-key": key }],
+    replicate: ["https://api.replicate.com/v1/account", { authorization: `Bearer ${key}` }],
+    gateway: ["https://ai-gateway.vercel.sh/v1/credits", { authorization: `Bearer ${key}` }],
+  };
+  const [url, headers] = requests[name];
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+    if (res.ok) {
+      return { ok: true, message: null };
+    }
+    const body = await res.text().catch(() => "");
+    // A key restricted to some permissions is still a key the provider knows.
+    if (res.status === 403 || /missing_permissions/.test(body)) {
+      return { ok: true, message: null };
+    }
+    return {
+      ok: false,
+      message:
+        res.status === 401
+          ? "Der Anbieter kennt diesen Key nicht."
+          : `Der Anbieter antwortet mit ${res.status}.`,
+    };
+  } catch {
+    return { ok: false, message: "Der Anbieter ist gerade nicht erreichbar." };
   }
 }
 
@@ -554,9 +996,13 @@ export async function loadCatalog(force = false): Promise<void> {
   }
 }
 
+/** The AI Gateway's prices, by its id of the model: what an own key of the same model costs too. */
 function priceOf(ref: string): Record<string, unknown> {
-  const { vendor, model } = split(ref);
-  return catalog.get(`${vendor}/${model}`)?.pricing ?? {};
+  const { provider, id } = parse(ref);
+  return (
+    catalog.get(provider === null || provider === "gateway" ? id : `${provider}/${id}`)?.pricing ??
+    {}
+  );
 }
 
 const n = (v: unknown, fallback: number) => {
@@ -635,3 +1081,8 @@ export function speechCostUsd(ref: string, characters: number): number {
 }
 
 export const WEB_SEARCH_COST_USD = 0.01;
+
+/** A transcript, priced by the minute; the gateway's catalog has no transcription prices. */
+export function transcriptionCostUsd(seconds: number): number {
+  return (seconds / 60) * 0.006;
+}

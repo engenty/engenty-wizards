@@ -116,7 +116,7 @@ The gateway speaks the Vercel AI Gateway protocol, so `@ai-sdk/gateway` works wi
 
 | | |
 |---|---|
-| Model id (header `ai-language-model-id` for language models, `ai-model-id` for the others — as `@ai-sdk/gateway` sends them) | `wizards/<class>` with class `classifier`, `standard`, `high`, `highest`, `image`, `video`, `audio`; the gateway binds it to a model. A concrete model id is refused unless the catalog enables it. |
+| Model id (header `ai-language-model-id` for language models, `ai-model-id` for the others — as `@ai-sdk/gateway` sends them) | `wizards/<class>` with class `classifier`, `standard`, `high`, `highest`, `image`, `video`, `audio`, `speech`; the gateway binds it to a model. A concrete model id — an AI Gateway id, `fal:<endpoint>`, `elevenlabs:<model>` — is refused unless the catalog enables it; `models` of `/v1/models` lists the media models it enables. |
 | Caller: a person (desktop app) | `Authorization: Bearer <access token>`; the tenant is the token's |
 | Caller: a runtime | `Authorization: Bearer <service key>` plus `x-wizards-tenant`; visitors have no token |
 | Attribution (optional, both callers) | `x-wizards-run`, `x-wizards-step`, `x-wizards-effort` (`low` \| `medium` \| `high`); a runtime may add `x-wizards-user` |
@@ -141,11 +141,23 @@ object. Every other call, and a decision the model leaves open, is answered by t
     "standard": { "model": "google/gemini-3.5-flash-lite", "kind": "text", "inputCreditsPerMTok": 60, "outputCreditsPerMTok": 500 },
     "image":    { "model": "google/gemini-3.1-flash-image", "kind": "image", "creditsPerImage": 13.4 },
     "video":    { "model": "google/veo-3.1-fast-generate-001", "kind": "video", "creditsPerSecond": 30 },
-    "audio":    null
+    "audio":    { "model": "fal:fal-ai/wizper", "kind": "audio", "transcribes": true, "creditsPerMinute": 1.2 },
+    "speech":   { "model": "google/gemini-3.8-flash-tts", "kind": "speech", "creditsPer1kCharacters": 3.334 }
   },
-  "webSearchCredits": 2
+  "webSearchCredits": 2,
+  "models": [
+    { "id": "fal:fal-ai/flux/schnell", "name": "FLUX.1 [schnell]", "source": "fal", "provider": "fal", "kind": "image", "creditsPerImage": 0.6 },
+    { "id": "elevenlabs:eleven_multilingual_v2", "name": "ElevenLabs Multilingual v2", "source": "elevenlabs", "provider": "elevenlabs", "kind": "speech", "creditsPer1kCharacters": 20 }
+  ]
 }
 ```
+
+`audio.transcribes`: the class is bound to a transcription model and is called on
+`/transcription-model` (body `{ audio: <base64>, mediaType }`); otherwise it is a language model
+that takes the audio file on `/language-model`. `speech` is called on `/speech-model`. `models`
+are the media models a caller may name itself (`kind` `image`, `video`, `speech`,
+`transcription`), each with its retail price; the gateway serves fal and ElevenLabs models in
+the AI Gateway's shapes and books them by the catalog's price.
 
 A catalog that lists the class `embedding` (`"kind": "embedding"`) says the gateway also takes
 `wizards/embedding` on `/embedding-model`: the runtime then keeps vectors of a project's documents.

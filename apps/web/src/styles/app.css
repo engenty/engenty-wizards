@@ -315,6 +315,26 @@ a,
   animation: settle 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both;
 }
 
+/* The settings menu one level down or up, and the page on a phone: deeper from the right, back from the left. */
+@keyframes step-deeper {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+@keyframes step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+}
+.animate-step-deeper {
+  animation: step-deeper 0.2s ease-out backwards;
+}
+.animate-step-back {
+  animation: step-back 0.2s ease-out backwards;
+}
+
 @keyframes breathe {
   0%,
   100% {
@@ -372,6 +392,8 @@ dialog.media-sheet::backdrop {
   .animate-rise,
   .animate-dock,
   .animate-settle,
+  .animate-step-deeper,
+  .animate-step-back,
   .animate-breathe,
   .animate-pulse-dot {
     animation: none;
