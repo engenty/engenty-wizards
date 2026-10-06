@@ -14,6 +14,7 @@ import {
   patchSyncedWizard,
   removeSyncedSpace,
   removeSyncedWizard,
+  rotateSyncedLink,
   syncSettingsSchema,
   syncWizard,
   syncWizardSchema,
@@ -118,6 +119,19 @@ export const apiRoutes = new Hono()
     const body = syncSettingsSchema.parse(await c.req.json());
     return withTenant(who.tenantId, async () =>
       c.json(await patchSyncedWizard(c.req.param("spaceId"), c.req.param("wizardId"), body)),
+    );
+  })
+  .post("/spaces/:spaceId/wizards/:wizardId/rotate-link", async (c) => {
+    const who = await caller(c, ["wizards:publish"]);
+    if (who instanceof Response) {
+      return who;
+    }
+    const limited = withinSyncLimit(c, who);
+    if (limited) {
+      return limited;
+    }
+    return withTenant(who.tenantId, async () =>
+      c.json(await rotateSyncedLink(who.userId, c.req.param("spaceId"), c.req.param("wizardId"))),
     );
   })
   .delete("/spaces/:spaceId/wizards/:wizardId", async (c) => {

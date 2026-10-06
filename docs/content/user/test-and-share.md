@@ -13,24 +13,38 @@ measured from the latest runs after five of them.
 
 ## Publish
 
-"Publish" makes the draft the live version. The editor's top bar says where you are:
+"Publish" makes the draft the live version. The editor's top bar and the wizard's card on the
+start page say where it runs:
 
 | It says | Means |
 |---|---|
-| Not published yet | Only you can run it, as a test |
-| Live · version 3 | The link runs this version |
+| Not published yet · Draft | Only you can run it, as a test |
+| Live · version 3 | The link runs this version. With a cloud icon: on engenty.ai, for everyone with the link |
+| Live · 1 note | It runs in the cloud, one step there with less (see "Share") |
+| Local | Published on an install without an account: the link answers only on this computer |
+| Being sent | The version did not reach engenty.ai yet; the studio tries again by itself |
+| Not in the cloud | engenty.ai does not run this version. "Share" says why and what helps |
 | Unpublished changes | You changed the draft since. The link still runs the published version |
+
+On a card, "Link" copies the address others can open, and the arrow opens it. A wizard that
+runs only on this computer has no address for others: its "Link" says so and how an account
+gives it one, and the arrow opens it here.
 
 ## Share
 
-"Share" opens the wizard's link:
+"Share" says on top where the wizard runs, then gives its link:
 
-| Setting | Does |
+| Part | Does |
 |---|---|
-| Link | The address people open. "Copy" puts it on the clipboard |
-| Link is active | Switch it off and the link stops answering |
-| Runs per day | How many runs the link allows a day. 50 unless you change it |
-| Create a new link | Replaces the address. The old link stops working |
+| Link | The address people open. "Copy" puts it on the clipboard, "Open" opens it |
+| Website | The tag for a website (see below) |
+| QR code | The link as a QR code, and the wizard's ID for the mobile app |
+| Settings | One line, "on · 50 a day", that folds out: |
+| · Link is active | Switch it off and the link stops answering |
+| · Runs per day | How many runs the link allows a day. 50 unless you change it |
+| · Create a new link | Replaces the address. The old link stops working, in the cloud too |
+
+Where the draft is not published as it is, the dialog says so first and publishes from there.
 
 One visitor can start 6 runs an hour.
 
@@ -47,14 +61,21 @@ for anyone else. To let others run the wizard:
 ### In the cloud
 
 Once an account is signed in under Settings → Account, every "Publish" sends the published
-version to engenty.ai. The share dialog shows the section "In the cloud":
+version to engenty.ai. The avatar then carries a small cloud, and its menu says "Connected to
+engenty.ai" with the credits. The share dialog gives the wizard's address at engenty.ai, which
+stays the same when you publish again; "Test on this computer" at its foot opens the copy on
+your computer. On top it says:
 
 | It shows | Means |
 |---|---|
-| A link | The wizard's address at engenty.ai. It stays the same when you publish again |
-| "This version does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
-| A note | A step works there with less, for example without a machine for code |
+| "Live on engenty.ai · version 3" | The cloud runs this version |
+| "Version 3 does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
+| "What runs differently in the cloud" | A step works there with less, for example without a machine for code |
 | "Send again" | The last sending did not arrive, or the project changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
+
+Without an account the dialog says that the wizard runs only on this computer, and offers to
+sign in or create an account. "Website" and "QR code" are there too, marked with a cloud: they
+need an address everyone reaches, and say so.
 
 What goes and what stays:
 

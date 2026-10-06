@@ -258,6 +258,34 @@ export async function pushSharing(userId: string, wizardId: string): Promise<voi
   }).catch((err) => console.error("[cloud] sharing not sent:", (err as Error).message));
 }
 
+/**
+ * A new link was made here: the copy in the cloud gets a new one too, and its old one stops
+ * answering. Null where no account is linked; the state as it was where the cloud has no copy.
+ */
+export async function rotateInCloud(userId: string, wizardId: string): Promise<CloudState | null> {
+  if (!(await cloudLinked())) {
+    return null;
+  }
+  const state = await cloudState(wizardId);
+  if (!state.copy) {
+    return state;
+  }
+  const w = await ownedWizard(userId, wizardId);
+  const answer = await call<{ shareUrl: string; code?: string }>(
+    "POST",
+    `/spaces/${w.projectId}/wizards/${w.id}/rotate-link`,
+  );
+  if (!answer.ok || !answer.body.shareUrl) {
+    throw refusal(answer, "Der Link in der Cloud ließ sich nicht erneuern.");
+  }
+  const next: CloudState = {
+    ...state,
+    copy: { ...state.copy, shareUrl: answer.body.shareUrl, code: answer.body.code },
+  };
+  await writeSetting(key(w.id), next);
+  return next;
+}
+
 /** A wizard is about to be deleted here: its copy in the cloud goes too. */
 export async function removeFromCloud(userId: string, wizardId: string): Promise<void> {
   const state = await cloudState(wizardId);

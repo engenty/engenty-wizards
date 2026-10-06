@@ -11,6 +11,7 @@ import { openExternal } from "./LocalRuntime";
 import { useAutosave } from "./project/data";
 import { Section } from "./project/Section";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { hostOf } from "./where";
 
 const hint = "mt-1.5 text-[13px] text-ink-3";
 
@@ -18,7 +19,7 @@ const hint = "mt-1.5 text-[13px] text-ink-3";
  * Links this install to an account. The sign-in — or the sign-up, for someone without an
  * account — runs in the person's own browser; the studio notices that it is done by asking again.
  */
-function useAccountLink(signedIn: boolean) {
+export function useAccountLink(signedIn: boolean) {
   const qc = useQueryClient();
   const [waiting, setWaiting] = useState(false);
   const link = useMutation({
@@ -49,7 +50,7 @@ function useAccountLink(signedIn: boolean) {
 }
 
 /** One line under the buttons while the browser has the sign-in, or when it could not be opened. */
-function LinkStatus({ link, waiting }: ReturnType<typeof useAccountLink>) {
+export function LinkStatus({ link, waiting }: ReturnType<typeof useAccountLink>) {
   if (link.isError) {
     return <p className="text-[13px] text-rose">{t("local.accountFailed")}</p>;
   }
@@ -149,15 +150,6 @@ const CREDIT_KIND: Record<ExpiringCredits["kind"], Key> = {
   gift: "account.kind.gift",
 };
 
-/** The host of an address, as one says it ("engenty.ai"); the address itself where it is none. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
-
 /**
  * The account a local install is linked to: whose it is, its credits and when parts of them end,
  * and the cloud that also runs what is published here.
@@ -242,14 +234,9 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
   );
 }
 
-/**
- * Who the person is to the app, what the app is connected to, and how it looks for them. The
- * avatar shows the name's initials: a runtime that runs alone starts with the machine's user
- * name, which is why it may read a single letter until a name is set here.
- */
-export function Account({ me }: { me: Me }) {
+/** What the person says about themselves; name and e-mail come from an account where there is one. */
+function Profile({ me, fromAccount }: { me: Me; fromAccount: boolean }) {
   const qc = useQueryClient();
-  const managed = me.mode === "managed";
   const [profile, setProfile] = useState<UserProfile>(me.profile);
   const set = (patch: Partial<UserProfile>) => setProfile((now) => ({ ...now, ...patch }));
   const status = useAutosave(profile, async (next) => {
@@ -258,67 +245,77 @@ export function Account({ me }: { me: Me }) {
     await qc.invalidateQueries({ queryKey: ["me"] });
   });
   return (
-    <div className="flex flex-col gap-9">
-      <Section title={t("account.title")} hint={t("account.hint")} save={status}>
-        <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
-          <div className="flex shrink-0 flex-col items-center gap-2 sm:w-32">
-            <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[28px] text-ember-strong ring-1 ring-border-soft">
-              {me.user.image ? (
-                <img src={me.user.image} alt="" className="size-full object-cover" />
-              ) : (
-                initialsOf(profile.name) || "?"
-              )}
-            </div>
-            <p className="text-center text-[12px] text-ink-3 leading-snug">
-              {t("account.initials")}
-            </p>
+    <Section title={t("account.profile")} hint={t("account.hint")} save={status}>
+      <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+        <div className="flex shrink-0 flex-col items-center gap-2 sm:w-32">
+          <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[28px] text-ember-strong ring-1 ring-border-soft">
+            {me.user.image ? (
+              <img src={me.user.image} alt="" className="size-full object-cover" />
+            ) : (
+              initialsOf(profile.name) || "?"
+            )}
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-5">
+          <p className="text-center text-[12px] text-ink-3 leading-snug">{t("account.initials")}</p>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          <div>
+            <Label>{t("account.name")}</Label>
+            <Input
+              value={profile.name}
+              maxLength={80}
+              disabled={fromAccount}
+              onChange={(e) => set({ name: e.target.value })}
+            />
+            <p className={hint}>{fromAccount ? t("account.fromAccount") : t("account.nameHint")}</p>
+          </div>
+          <div>
+            <Label>{t("account.about")}</Label>
+            <Textarea
+              minRows={3}
+              maxLength={2000}
+              value={profile.about}
+              onChange={(e) => set({ about: e.target.value })}
+            />
+            <p className={hint}>{t("account.aboutHint")}</p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <Label>{t("account.name")}</Label>
+              <Label>{t("account.email")}</Label>
               <Input
-                value={profile.name}
-                maxLength={80}
-                disabled={managed}
-                onChange={(e) => set({ name: e.target.value })}
+                type="email"
+                value={profile.email}
+                maxLength={200}
+                disabled={fromAccount}
+                onChange={(e) => set({ email: e.target.value })}
               />
-              <p className={hint}>{managed ? t("account.fromAccount") : t("account.nameHint")}</p>
             </div>
             <div>
-              <Label>{t("account.about")}</Label>
-              <Textarea
-                minRows={3}
-                maxLength={2000}
-                value={profile.about}
-                onChange={(e) => set({ about: e.target.value })}
+              <Label>{t("account.phone")}</Label>
+              <Input
+                type="tel"
+                value={profile.phone}
+                maxLength={40}
+                onChange={(e) => set({ phone: e.target.value })}
               />
-              <p className={hint}>{t("account.aboutHint")}</p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <Label>{t("account.email")}</Label>
-                <Input
-                  type="email"
-                  value={profile.email}
-                  maxLength={200}
-                  disabled={managed}
-                  onChange={(e) => set({ email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>{t("account.phone")}</Label>
-                <Input
-                  type="tel"
-                  value={profile.phone}
-                  maxLength={40}
-                  onChange={(e) => set({ phone: e.target.value })}
-                />
-              </div>
             </div>
           </div>
         </div>
-      </Section>
+      </div>
+    </Section>
+  );
+}
 
+/**
+ * What the app is connected to, who the person is to it, and how it looks for them. The avatar
+ * shows the name's initials: a runtime that runs alone starts with the machine's user name,
+ * which is why it may read a single letter until a name is set here or an account gives one.
+ */
+export function Account({ me }: { me: Me }) {
+  const managed = me.mode === "managed";
+  /** Name and e-mail are the account's: managed, or a local install linked to one. */
+  const fromAccount = managed || Boolean(me.account);
+  return (
+    <div className="flex flex-col gap-9">
       <Section title={t("account.connection")} hint={t("account.connectionHint")}>
         {managed ? (
           <div className="flex flex-wrap items-center gap-4">
@@ -342,6 +339,9 @@ export function Account({ me }: { me: Me }) {
           <Unlinked />
         )}
       </Section>
+
+      {/* Linking or unlinking changes where name and e-mail come from: the form starts anew. */}
+      <Profile key={fromAccount ? "account" : "own"} me={me} fromAccount={fromAccount} />
 
       <Section title={t("account.look")} hint={t("account.lookHint")}>
         <div className="flex flex-col divide-y divide-border-soft">

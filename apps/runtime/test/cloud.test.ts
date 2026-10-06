@@ -68,6 +68,9 @@ const cloud: Server = createServer(async (req, res) => {
       problems: [{ code: "sandbox", blocking: false, steps: [{ id: "w", title: "W" }], detail: "" }],
     });
   }
+  if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/rotate-link$/.test(url.pathname)) {
+    return json({ shareUrl: `${origin}/w/cloudtoken00002`, code: "K7WM4TQ9" });
+  }
   const wizard = url.pathname.match(/^\/api\/v1\/spaces\/([^/]+)\/wizards\/([^/]+)$/);
   if (wizard && req.method === "PUT") {
     if (refuseWith) {
@@ -229,6 +232,17 @@ describe("a runtime that runs alone and the cloud of its account", () => {
       path: `/api/v1/spaces/${projectId}/wizards/${wizardId}`,
       body: { shareEnabled: false, dailyRunLimit: 9 },
     });
+  });
+
+  it("gives the copy a new link when one is made here", async () => {
+    const state = await local(() => sync.rotateInCloud(USER, wizardId));
+    expect(sent("POST").at(-1)).toMatchObject({
+      path: `/api/v1/spaces/${projectId}/wizards/${wizardId}/rotate-link`,
+    });
+    expect(state?.copy).toMatchObject({ shareUrl: `${origin}/w/cloudtoken00002`, code: "K7WM4TQ9" });
+    expect((await local(() => sync.cloudState(wizardId))).copy?.shareUrl).toBe(
+      `${origin}/w/cloudtoken00002`,
+    );
   });
 
   it("keeps the copy from before when the cloud refuses, and says why", async () => {

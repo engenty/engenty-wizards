@@ -320,24 +320,30 @@ export function Card({
   );
 }
 
+/** `icon`: in place of the live dot. `title`: what the chip means, on hover. */
 export function Chip({
   children,
   tone = "neutral",
+  icon,
+  title,
 }: {
   children: ReactNode;
   tone?: "neutral" | "live" | "warn" | "ember";
+  icon?: ReactNode;
+  title?: string;
 }) {
   return (
     <span
+      title={title}
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 font-medium text-[12px]",
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-medium text-[12px]",
         tone === "neutral" && "bg-paper-2 text-ink-2",
         tone === "live" && "bg-moss-tint text-moss",
         tone === "warn" && "bg-amber-tint text-ink-2",
         tone === "ember" && "bg-ember-tint text-ember-strong",
       )}
     >
-      {tone === "live" ? <span className="size-1.5 rounded-full bg-moss" /> : null}
+      {icon ?? (tone === "live" ? <span className="size-1.5 rounded-full bg-moss" /> : null)}
       {children}
     </span>
   );

@@ -19,10 +19,10 @@ description: What to do when a link is no longer valid, a client shows as not si
 
 | What you see | Do |
 |---|---|
-| An AI client shows as not signed in | Sign it in on the setup page or under Settings → Models & account, or in your own terminal (`claude`, `codex login`). Then "Check again" |
+| An AI client shows as not signed in | Sign it in on the setup page or under Settings → Models, or in your own terminal (`claude`, `codex login`). Then "Check again" |
 | "Signed in with an API key from your shell" | The client runs on that key, not on your subscription. "Sign in here" switches it |
 | The test does not work | The message names the reason. Check the key, or sign the client in again |
-| "Models are missing" in the editor | A step needs a model this install has no way to, often video or audio. Add a key under Settings → Models & account |
+| "Models are missing" in the editor | A step needs a model this install has no way to, often video or audio. Add a key under Settings → Models |
 | A template says "Not set up here" | The same: it needs a model that is not set up |
 
 ## Running wizards

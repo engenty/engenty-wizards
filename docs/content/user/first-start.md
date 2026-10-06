@@ -39,4 +39,4 @@ Gateway key serves text, images, video and web search. You can add it later unde
 
 ## Change it later
 
-Settings → Models & account. See [Models and account](./models.md).
+Settings → Models. See [Models and account](./models.md).

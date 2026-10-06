@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.5",
+    "timestamp": 1791272367,
+    "commits": [
+      {
+        "id": "fc58644",
+        "message": "a local install says where each wizard runs and which link others can open: the cards and the editor's top bar show Live with a cloud when engenty.ai runs the version, Lokal when it runs only on this computer, Wird gesendet or Nicht in der Cloud when it did not arrive; a card's Link copies the cloud's address; the share dialog leads with that one link, says on top where the wizard runs and what the cloud lacks, folds website, QR code and the settings away, and creates a new link in the cloud too; the avatar and its menu show whether an account is connected, with its credits; Settings → Konto puts engenty.ai first and takes name and e-mail from the account; without an account the share dialog, a card's Link and the note about missing models say what an account would add",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.4",
-    "timestamp": 1791242527,
+    "timestamp": 1791242529,
     "commits": [
       {
         "id": "fbcfbc3",

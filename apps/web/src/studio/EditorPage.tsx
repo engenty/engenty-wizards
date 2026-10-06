@@ -1,3 +1,4 @@
+import { type ModelClass, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Download, Lock, Play, Share2, X } from "lucide-react";
@@ -5,8 +6,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
+import { features } from "../lib/features";
 import { type Key, t } from "../lib/i18n";
-import { type PublishResult, useMe, useProjects, type WizardDetail } from "../lib/session";
+import {
+  type PublishResult,
+  useCloud,
+  useMe,
+  useProjects,
+  type WizardDetail,
+} from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
@@ -17,8 +25,12 @@ import { Inspector } from "./editor/Inspector";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
+import { WhereChip, whereItRuns } from "./where";
 
 type Tab = "chat" | "step" | "files" | "runs";
+
+/** The model classes an account's credits run: text, images, videos. */
+const CREDIT_CLASSES: readonly ModelClass[] = [...TEXT_CLASSES, "image", "video"];
 
 const TAB_LABEL: Record<Tab, string> = {
   chat: "editor.chat",
@@ -134,6 +146,9 @@ export function EditorPage() {
     enabled: Boolean(wizard.data),
   });
   const missing = models.data?.missing ?? [];
+  // A local install with an account sends what it publishes on to the account's cloud.
+  const cloudLinked = me.data?.mode === "local" && Boolean(me.data.account);
+  const cloud = useCloud(id ?? "", Boolean(id) && cloudLinked);
   const blocked = missing.some((m) => m.blocking);
   const testRun = useMutation({
     mutationFn: () => api.post<{ runId: string }>(`/api/studio/wizards/${id}/test-runs`),
@@ -150,6 +165,7 @@ export function EditorPage() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["wizard", id] }),
         qc.invalidateQueries({ queryKey: ["cloud", id] }),
+        qc.invalidateQueries({ queryKey: ["wizards"] }),
       ]);
       setShareOpen(true);
     },
@@ -182,8 +198,20 @@ export function EditorPage() {
     ? project.origin === "local"
     : me.data.limits.build || projects.isLoading;
   const readOnlyNote = w.readOnly ? t(fromLocal ? "readonly.wizard" : "readonly.server") : null;
-  // A local install with an account sends what it publishes on to the account's cloud.
-  const cloudLinked = me.data.mode === "local" && Boolean(me.data.account);
+  /**
+   * What the account's credits would do for the models that are missing — text, images, videos:
+   * `connect` without an account, `use` with one whose credits the models do not run on yet.
+   */
+  const credits =
+    me.data.mode === "local" &&
+    features.account &&
+    missing.some((m) => CREDIT_CLASSES.includes(m.cls))
+      ? !me.data.account
+        ? "connect"
+        : me.data.models?.source !== "account"
+          ? "use"
+          : null
+      : null;
   /** A write the server refused, in its own words. */
   const failed = refused ?? (publish.error ? (publish.error as Error).message : null);
 
@@ -223,7 +251,11 @@ export function EditorPage() {
             w.dirty ? (
               <Chip tone="warn">{t("editor.unpublishedChanges")}</Chip>
             ) : (
-              <Chip tone="live">{t("editor.published", { v: w.publishedVersion ?? 0 })}</Chip>
+              <WhereChip
+                where={whereItRuns(w, me.data, cloudLinked ? cloud.data : null)}
+                me={me.data}
+                version={w.publishedVersion}
+              />
             )
           ) : (
             <Chip>{t("editor.notPublished")}</Chip>
@@ -335,14 +367,25 @@ export function EditorPage() {
                   </li>
                 ))}
               </ul>
-              <Button
-                size="sm"
-                variant="quiet"
-                className="mt-3"
-                onClick={() => navigate("/settings/models")}
-              >
-                {t("editor.models.settings")}
-              </Button>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Button size="sm" variant="quiet" onClick={() => navigate("/settings/models")}>
+                  {t("editor.models.settings")}
+                </Button>
+                {credits === "connect" ? (
+                  <p className="text-[13px] text-ink-3">
+                    {t("teaser.models")}{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-ink underline underline-offset-2"
+                      onClick={() => navigate("/settings/account")}
+                    >
+                      {t("teaser.connect")}
+                    </button>
+                  </p>
+                ) : credits === "use" ? (
+                  <p className="text-[13px] text-ink-3">{t("teaser.modelsLinked")}</p>
+                ) : null}
+              </div>
             </div>
           ) : null}
           {building ? (
@@ -459,7 +502,20 @@ export function EditorPage() {
         </div>
       ) : null}
 
-      <ShareDialog wizard={w} open={shareOpen} onClose={() => setShareOpen(false)} />
+      <ShareDialog
+        wizard={w}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        publish={
+          w.readOnly
+            ? undefined
+            : {
+                run: () => publish.mutate(),
+                busy: publish.isPending,
+                disabled: hasIssues || building,
+              }
+        }
+      />
     </div>
   );
 }
