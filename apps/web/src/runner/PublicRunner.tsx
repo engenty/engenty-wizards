@@ -1,6 +1,6 @@
 import type { BrandView, PublicWizard } from "@engenty-wizards/shared/run";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Smartphone, SquarePlus } from "lucide-react";
+import { ArrowRight, Bookmark, Smartphone, SquarePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { BASE, withBase } from "@/lib/base";
@@ -29,22 +29,45 @@ export function useBrandAccent(accent: string | null | undefined) {
 
 /**
  * A wizard's link is an app of its own: the browser's "add to home screen" then installs this
- * wizard — its name, its start address — not the studio.
+ * wizard — its name, its start address, its engenty as the icon — not the studio. A bookmark
+ * keeps the engenty as its favicon.
  */
 function useWizardApp(token: string | undefined, title: string | undefined) {
   useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    if (!token || !title || !link) {
+    if (!token || !title) {
       return;
     }
-    const before = link.getAttribute("href") ?? "/manifest.webmanifest";
-    link.setAttribute("href", `/api/public/wizards/${token}/manifest.webmanifest`);
+    const own = withBase(`/api/public/wizards/${token}`);
+    const swaps = [
+      { rel: "manifest", href: `${own}/manifest.webmanifest` },
+      { rel: "apple-touch-icon", href: `${own}/icons/apple-touch-icon.png` },
+      { rel: "icon", href: `${own}/icons/favicon.png`, type: "image/png" },
+    ].flatMap(({ rel, href, type }) => {
+      const link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+      if (!link) {
+        return [];
+      }
+      const before = { href: link.getAttribute("href"), type: link.getAttribute("type") };
+      link.setAttribute("href", href);
+      if (type) {
+        link.setAttribute("type", type);
+      }
+      return [{ link, before }];
+    });
     const name = document.createElement("meta");
     name.name = "apple-mobile-web-app-title";
     name.content = title;
     document.head.appendChild(name);
     return () => {
-      link.setAttribute("href", before);
+      for (const { link, before } of swaps) {
+        for (const [attr, value] of Object.entries(before)) {
+          if (value === null) {
+            link.removeAttribute(attr);
+          } else {
+            link.setAttribute(attr, value);
+          }
+        }
+      }
       name.remove();
     };
   }, [token, title]);
@@ -61,7 +84,16 @@ declare global {
   }
 }
 
-/** "Add to home screen", where the browser offers it; on an iPhone the way through the share menu. */
+/** iPadOS calls itself a Mac; its touch screen gives it away. */
+const IOS =
+  /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const PHONE = IOS || /Android/.test(navigator.userAgent);
+
+/**
+ * On a phone "add to home screen", where the browser offers it, on an iPhone the way through the
+ * share menu. On a computer a bookmark: a wizard is rarely worth a window of its own there.
+ */
 function InstallHint() {
   const [prompt, setPrompt] = useState(() => window.wizardInstall ?? null);
   const [shown, setShown] = useState(false);
@@ -73,19 +105,17 @@ function InstallHint() {
   const standalone =
     window.matchMedia("(display-mode: standalone)").matches ||
     (navigator as { standalone?: boolean }).standalone === true;
-  // iPadOS calls itself a Mac; its touch screen gives it away.
-  const ios =
-    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  if (standalone || (!prompt && !ios)) {
+  if (standalone || (PHONE && !prompt && !IOS)) {
     return null;
   }
+  const mac = /Mac/.test(navigator.platform);
+  const hint = PHONE ? t("install.ios") : t(mac ? "install.bookmark.mac" : "install.bookmark.pc");
   return (
     <div className="mt-6 flex flex-col items-center gap-2 text-[13px] text-ink-3">
       <button
         type="button"
         onClick={() => {
-          if (prompt) {
+          if (PHONE && prompt) {
             void prompt.prompt();
             window.wizardInstall = null;
             setPrompt(null);
@@ -95,9 +125,10 @@ function InstallHint() {
         }}
         className="inline-flex items-center gap-1.5 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
       >
-        <SquarePlus className="size-4" /> {t("install.add")}
+        {PHONE ? <SquarePlus className="size-4" /> : <Bookmark className="size-4" />}
+        {t(PHONE ? "install.add" : "install.bookmark")}
       </button>
-      {shown ? <p className="max-w-xs leading-relaxed">{t("install.ios")}</p> : null}
+      {shown ? <p className="max-w-xs leading-relaxed">{hint}</p> : null}
     </div>
   );
 }

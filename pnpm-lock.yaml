@@ -247,6 +247,9 @@ importers:
       '@modelcontextprotocol/server':
         specifier: 2.2.0
         version: 2.2.0
+      '@napi-rs/canvas':
+        specifier: 0.1.80
+        version: 0.1.80
       '@turbodocx/html-to-docx':
         specifier: ^1.23.1
         version: 1.23.1

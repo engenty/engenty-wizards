@@ -20,7 +20,7 @@ Generated files — run again when their source changes:
 
 | File | From | Command |
 |---|---|---|
-| `src/engenty/shapes.ts` | `apps/web/src/engenty/engenty.tsx` | `pnpm --filter @engenty-wizards/web exec tsx ../mobile/scripts/engenty-shapes.tsx` |
+| `src/engenty/shapes.ts`, `apps/runtime/src/services/engenty-shapes.ts` | `apps/web/src/engenty/engenty.tsx` | `pnpm --filter @engenty-wizards/web exec tsx ../mobile/scripts/engenty-shapes.tsx` |
 | `assets/*.png` | the drop in `shapes.ts` | `node scripts/icons.mjs` |
 
 Links into the app: `engenty.ai/w/*` and `/s/*` (Universal Links, App Links; the runtime serves

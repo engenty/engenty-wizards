@@ -740,6 +740,9 @@ const de = {
   "notify.needsYou": "Der Wizard braucht dich kurz.",
   "install.add": "Zum Startbildschirm hinzufügen",
   "install.ios": "Tippe unten auf „Teilen“ und dann auf „Zum Home-Bildschirm“.",
+  "install.bookmark": "Als Lesezeichen speichern",
+  "install.bookmark.mac": "Drücke ⌘ D, dann liegt dieser Wizard in deinen Lesezeichen.",
+  "install.bookmark.pc": "Drücke Strg + D, dann liegt dieser Wizard in deinen Lesezeichen.",
   "install.app": "In der App öffnen",
   "install.app.offer":
     "Installiere das Studio als App: eigenes Fenster, eigenes Symbol im Dock oder in der Taskleiste.",
@@ -1581,6 +1584,9 @@ const en: Record<Key, string> = {
   "notify.needsYou": "The wizard needs you for a moment.",
   "install.add": "Add to home screen",
   "install.ios": "Tap “Share” below, then “Add to Home Screen”.",
+  "install.bookmark": "Bookmark this wizard",
+  "install.bookmark.mac": "Press ⌘ D to keep this wizard in your bookmarks.",
+  "install.bookmark.pc": "Press Ctrl + D to keep this wizard in your bookmarks.",
   "install.app": "Open in the app",
   "install.app.offer":
     "Install the studio as an app: its own window, its own icon in the Dock or taskbar.",

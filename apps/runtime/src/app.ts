@@ -247,13 +247,21 @@ if (existsSync(webDir)) {
     }
     const html = await readFile(join(webDir, "index.html"), "utf8");
     const preview = await previewFor(c.req.path).catch(() => null);
-    // A wizard's link installs as that wizard: its own name and start address on the home screen.
+    // A wizard's link installs as that wizard: its own name, start address and icon on the home
+    // screen; a bookmark keeps its engenty too.
     const token = c.req.path.match(/^\/w\/([A-Za-z0-9_-]{6,64})(?:\/|$)/)?.[1];
+    const own = `${basePath}/api/public/wizards/${token}`;
     const page = token
-      ? html.replace(
-          /href="[^"]*manifest\.webmanifest"/,
-          `href="${basePath}/api/public/wizards/${token}/manifest.webmanifest"`,
-        )
+      ? html
+          .replace(/href="[^"]*manifest\.webmanifest"/, `href="${own}/manifest.webmanifest"`)
+          .replace(
+            /<link rel="apple-touch-icon"[^>]*>/,
+            `<link rel="apple-touch-icon" href="${own}/icons/apple-touch-icon.png" />`,
+          )
+          .replace(
+            /<link rel="icon"[^>]*>/,
+            `<link rel="icon" href="${own}/icons/favicon.png" type="image/png" />`,
+          )
       : html;
     return c.html(
       preview

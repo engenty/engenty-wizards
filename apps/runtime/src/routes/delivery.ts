@@ -5,8 +5,11 @@ export function uploadLimit(mime: string): number {
   return mime.startsWith("video/") ? 40_000_000 : 15_000_000;
 }
 
-export function wizardManifest(token: string, title: string, description: string) {
+/** `version`: the published one, so a new engenty or name reaches icons a phone has kept. */
+export function wizardManifest(token: string, title: string, description: string, version = 0) {
   const start = `${basePath}/w/${token}`;
+  const icon = (file: string) =>
+    `${basePath}/api/public/wizards/${token}/icons/${file}?v=${version}`;
   return {
     id: start,
     name: title,
@@ -18,20 +21,10 @@ export function wizardManifest(token: string, title: string, description: string
     background_color: "#faf8f5",
     theme_color: "#faf8f5",
     icons: [
+      { src: icon("icon-192.png"), sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: icon("icon-512.png"), sizes: "512x512", type: "image/png", purpose: "any" },
       {
-        src: `${basePath}/studio/icons/icon-192.png`,
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: `${basePath}/studio/icons/icon-512.png`,
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: `${basePath}/studio/icons/icon-maskable-512.png`,
+        src: icon("icon-maskable-512.png"),
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

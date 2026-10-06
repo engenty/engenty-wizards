@@ -229,6 +229,7 @@ describe("delivery", () => {
     expect(manifest.display).toBe("standalone");
     expect(manifest.short_name.length).toBeLessThanOrEqual(14);
     expect(manifest.icons.some((i) => i.purpose === "maskable")).toBe(true);
+    expect(manifest.icons.every((i) => i.src.includes("/wizards/tok123/icons/"))).toBe(true);
   });
 
   it("names a place from a geocoder's answer", () => {
