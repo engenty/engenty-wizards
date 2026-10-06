@@ -116,7 +116,7 @@ function Pad({ strokes, onStrokes }: { strokes: Strokes; onStrokes: (s: Strokes)
       {/* The line to sign on. */}
       <div className="pointer-events-none absolute inset-x-6 bottom-[22%] border-[#1d1a17]/25 border-b" />
       {strokes.length ? null : (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[#1d1a17]/40 text-[14px]">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[#1d1a17]/40 text-[0.875rem]">
           {t("sign.hint")}
         </div>
       )}
@@ -204,7 +204,7 @@ export function SignatureField({
             setStrokes([]);
             setOpen(true);
           }}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-4 py-7 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink"
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-4 py-7 text-[0.875rem] text-ink-3 transition hover:border-ember hover:text-ink"
         >
           <PenLine className="size-6" />
           {t("sign.open")}
@@ -212,7 +212,7 @@ export function SignatureField({
       )}
       <Dialog open={open} onClose={() => setOpen(false)} title={label} wide>
         <Pad strokes={strokes} onStrokes={setStrokes} />
-        {error ? <p className="mt-2 text-[13px] text-rose">{error}</p> : null}
+        {error ? <p className="mt-2 text-[0.8125rem] text-rose">{error}</p> : null}
         <div className="mt-5 flex items-center justify-between gap-3">
           <Button variant="ghost" disabled={!strokes.length || busy} onClick={() => setStrokes([])}>
             <Eraser className="size-4" /> {t("sign.clear")}

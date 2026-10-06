@@ -91,7 +91,7 @@ export function LangSwitch({
           <button
             aria-pressed={selected}
             className={cn(
-              "relative h-7 cursor-pointer overflow-hidden whitespace-nowrap rounded-full font-medium text-[12px] motion-reduce:transition-none",
+              "relative h-7 cursor-pointer overflow-hidden whitespace-nowrap rounded-full font-medium text-[0.75rem] motion-reduce:transition-none",
               ground
                 ? selected
                   ? "text-[oklch(32%_0.15_262)]"

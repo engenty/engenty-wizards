@@ -43,7 +43,7 @@ export function StepCost({ estimate, stepId }: { estimate?: RunEstimate; stepId:
     return null;
   }
   return (
-    <p className="text-[12px] text-ink-3 tabular-nums">
+    <p className="text-[0.75rem] text-ink-3 tabular-nums">
       {t("estimate.step", { n: credits(step.credits), high: credits(step.high) })}
       {" · "}
       {step.measured ? t("estimate.measured") : t("estimate.formula")}
@@ -70,7 +70,7 @@ export function ModelClassControl({
         onChange={(v) => onChange({ model: v as TextClass, effort })}
         options={TEXT_CLASSES.map((c) => ({ value: c, label: t(`class.${c}`) }))}
       />
-      <p className="text-[12px] text-ink-3">{t(`class.${model ?? "high"}.hint`)}</p>
+      <p className="text-[0.75rem] text-ink-3">{t(`class.${model ?? "high"}.hint`)}</p>
       <Label>{t("class.effort")}</Label>
       <Segmented
         value={effort ? t(`class.effort.${effort}`) : none}

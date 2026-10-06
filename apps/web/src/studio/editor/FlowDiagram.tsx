@@ -72,7 +72,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
         >
           <Icon className="size-3.5" />
         </span>
-        <span className="font-medium text-[11px] text-ink-3 uppercase tracking-[0.07em]">
+        <span className="font-medium text-[0.6875rem] text-ink-3 uppercase tracking-[0.07em]">
           {typeLabel(step)}
         </span>
         {issue ? (
@@ -80,7 +80,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
         ) : passed && !active ? (
           <Check className="ml-auto size-4 text-moss" />
         ) : cost !== null ? (
-          <span className="ml-auto text-[11px] text-ink-3 tabular-nums">
+          <span className="ml-auto text-[0.6875rem] text-ink-3 tabular-nums">
             ≈{" "}
             {cost < 10
               ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
@@ -89,10 +89,10 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
           </span>
         ) : null}
       </div>
-      <div className="mt-1.5 truncate font-display font-semibold text-[15px] text-ink">
+      <div className="mt-1.5 truncate font-display font-semibold text-[0.9375rem] text-ink">
         {step.title}
       </div>
-      <div className="truncate text-[12px] text-ink-3">{stepSummary(step) || " "}</div>
+      <div className="truncate text-[0.75rem] text-ink-3">{stepSummary(step) || " "}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -107,7 +107,7 @@ function StartNode({ data }: NodeProps<Node<StartData>>) {
       )}
     >
       <Mascot kind={data.avatar} size={40} interactive={false} />
-      <span className="truncate font-display font-semibold text-[15px]">{data.title}</span>
+      <span className="truncate font-display font-semibold text-[0.9375rem]">{data.title}</span>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

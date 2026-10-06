@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import { tableColumnsSchema } from "@engenty-wizards/shared/engenty/data-tables";
 import { PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
+import { SPACE_DATA_LIMITS } from "@engenty-wizards/shared/space-data";
 import { WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db, inTransaction, schema } from "../db/client.js";
@@ -505,4 +507,117 @@ export async function removeSyncedSpace(rawSpaceId: string) {
   }
   await asSync(() => removeProject(spaceId));
   return { ok: true };
+}
+
+// --- the space's own tables and pages --------------------------------------------
+// What the admin made under Space → Daten on the install, not what a wizard keeps: those stay
+// where their runs write them. Sent as a whole, it replaces what came before.
+
+export const syncDataSchema = z.object({
+  tables: z
+    .array(
+      z.object({
+        id: syncedId,
+        title: z.string().min(1).max(120),
+        columns: tableColumnsSchema,
+        rows: z
+          .array(z.object({ id: syncedId, cells: z.record(z.string(), z.unknown()) }))
+          .max(SPACE_DATA_LIMITS.rowsPerTable),
+      }),
+    )
+    .max(SPACE_DATA_LIMITS.tables),
+  pages: z
+    .array(
+      z.object({
+        id: syncedId,
+        title: z.string().min(1).max(200),
+        markdown: z.string().max(SPACE_DATA_LIMITS.pageChars),
+      }),
+    )
+    .max(SPACE_DATA_LIMITS.pages),
+});
+export type SyncDataInput = z.infer<typeof syncDataSchema>;
+
+/**
+ * Takes the space's own tables and pages a local install sent: those it no longer has go, the
+ * others are written under the ids they have there. The space must be here already: it comes
+ * with the first wizard.
+ */
+export async function syncSpaceData(rawSpaceId: string, input: SyncDataInput) {
+  const spaceId = syncedId.parse(rawSpaceId);
+  const project = await syncedProject(spaceId);
+  if (project?.origin !== "local") {
+    throw notFound();
+  }
+  const own = (table: typeof schema.spaceTable | typeof schema.spacePage) =>
+    and(eq(table.projectId, spaceId), isNull(table.wizardId));
+  const tableIds = input.tables.map((t) => t.id);
+  const pageIds = input.pages.map((p) => p.id);
+  // An id this tenant uses for something else is not taken over.
+  const [tablesHere, pagesHere] = await Promise.all([
+    tableIds.length
+      ? db.query.spaceTable.findMany({
+          where: inArray(schema.spaceTable.id, tableIds),
+          columns: { id: true, projectId: true, wizardId: true },
+        })
+      : [],
+    pageIds.length
+      ? db.query.spacePage.findMany({
+          where: inArray(schema.spacePage.id, pageIds),
+          columns: { id: true, projectId: true, wizardId: true },
+        })
+      : [],
+  ]);
+  if ([...tablesHere, ...pagesHere].some((x) => x.projectId !== spaceId || x.wizardId !== null)) {
+    throw new ServiceError("refused", "Eine Kennung ist hier schon vergeben.", {
+      reason: "id_taken",
+    });
+  }
+  const now = new Date();
+  await inTransaction(async () => {
+    await db
+      .delete(schema.spaceTable)
+      .where(
+        and(
+          own(schema.spaceTable),
+          tableIds.length ? notInArray(schema.spaceTable.id, tableIds) : undefined,
+        ),
+      );
+    await db
+      .delete(schema.spacePage)
+      .where(
+        and(
+          own(schema.spacePage),
+          pageIds.length ? notInArray(schema.spacePage.id, pageIds) : undefined,
+        ),
+      );
+    for (const table of input.tables) {
+      const values = { title: table.title, columns: table.columns, updatedAt: now };
+      await db
+        .insert(schema.spaceTable)
+        .values({ id: table.id, tenantId: currentTenant(), projectId: spaceId, ...values })
+        .onConflictDoUpdate({ target: schema.spaceTable.id, set: values });
+      await db.delete(schema.spaceTableRow).where(eq(schema.spaceTableRow.tableId, table.id));
+      for (let i = 0; i < table.rows.length; i += 200) {
+        const batch = table.rows.slice(i, i + 200);
+        // The order they stand in there: one millisecond apart.
+        await db.insert(schema.spaceTableRow).values(
+          batch.map((row, j) => ({
+            id: row.id,
+            tableId: table.id,
+            cells: row.cells,
+            createdAt: new Date(now.getTime() - table.rows.length + i + j),
+          })),
+        );
+      }
+    }
+    for (const page of input.pages) {
+      const values = { title: page.title, markdown: page.markdown, updatedAt: now };
+      await db
+        .insert(schema.spacePage)
+        .values({ id: page.id, tenantId: currentTenant(), projectId: spaceId, ...values })
+        .onConflictDoUpdate({ target: schema.spacePage.id, set: values });
+    }
+  });
+  return { tables: input.tables.length, pages: input.pages.length };
 }

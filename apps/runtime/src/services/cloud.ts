@@ -1,4 +1,5 @@
-import { and, eq, isNotNull, like } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, asc, eq, inArray, isNotNull, isNull, like } from "drizzle-orm";
 import { accountToken, linkedAccount } from "../auth/account.js";
 import { control, controlDb, db, schema } from "../db/client.js";
 import { env } from "../env.js";
@@ -10,7 +11,7 @@ import { mainLogoId } from "./brand.js";
 import { ServiceError } from "./errors.js";
 import { projectFileContent, projectFiles } from "./project-files.js";
 import { ownedProject } from "./projects.js";
-import type { ServerProblem, SpaceInput, SyncResult } from "./spaces.js";
+import type { ServerProblem, SpaceInput, SyncDataInput, SyncResult } from "./spaces.js";
 import { ownedWizard, publishedVersion, publishWizard } from "./wizards.js";
 
 /**
@@ -161,10 +162,65 @@ async function spaceOf(userId: string, projectId: string): Promise<SpaceInput> {
   };
 }
 
+/** The space's own tables and pages, as they are sent: not what a wizard's runs keep. */
+async function spaceDataOf(projectId: string): Promise<SyncDataInput> {
+  const own = (table: typeof schema.spaceTable | typeof schema.spacePage) =>
+    and(eq(table.projectId, projectId), isNull(table.wizardId));
+  const tables = await db.query.spaceTable.findMany({
+    where: own(schema.spaceTable),
+    orderBy: [asc(schema.spaceTable.id)],
+  });
+  const rows = tables.length
+    ? await db.query.spaceTableRow.findMany({
+        where: inArray(
+          schema.spaceTableRow.tableId,
+          tables.map((t) => t.id),
+        ),
+        orderBy: [asc(schema.spaceTableRow.createdAt), asc(schema.spaceTableRow.id)],
+      })
+    : [];
+  const pages = await db.query.spacePage.findMany({
+    where: own(schema.spacePage),
+    orderBy: [asc(schema.spacePage.id)],
+  });
+  return {
+    tables: tables.map((t) => ({
+      id: t.id,
+      title: t.title,
+      columns: t.columns,
+      rows: rows.filter((r) => r.tableId === t.id).map((r) => ({ id: r.id, cells: r.cells })),
+    })),
+    pages: pages.map((p) => ({ id: p.id, title: p.title, markdown: p.markdown })),
+  };
+}
+
+/**
+ * Sends the space's own tables and pages along with a wizard, when they changed since they last
+ * arrived. A sending that fails is tried with the next wizard; the wizard is there either way.
+ */
+async function syncSpaceDataToCloud(projectId: string): Promise<void> {
+  const data = await spaceDataOf(projectId);
+  const hash = createHash("sha256").update(JSON.stringify(data)).digest("hex");
+  const sent = `cloud-data:${projectId}`;
+  if ((await readSetting<string>(sent)) === hash) {
+    return;
+  }
+  try {
+    const answer = await call("PUT", `/spaces/${projectId}/data`, data, 120_000);
+    if (answer.ok) {
+      await writeSetting(sent, hash);
+    } else {
+      console.error("[cloud] the space's data was not taken:", answer.status, answer.body);
+    }
+  } catch (err) {
+    console.error("[cloud] sending the space's data failed:", err);
+  }
+}
+
 /**
  * Sends a wizard's published version to the cloud: the same wizard again updates its copy
  * there, whose link stays. What came back is kept; a try that failed is kept as such beside
- * the copy from before.
+ * the copy from before. The space's own tables and pages follow it.
  */
 export async function syncToCloud(userId: string, wizardId: string): Promise<CloudState> {
   const w = await ownedWizard(userId, wizardId);
@@ -210,6 +266,7 @@ export async function syncToCloud(userId: string, wizardId: string): Promise<Clo
       error: null,
     };
     await writeSetting(key(w.id), state);
+    await syncSpaceDataToCloud(w.projectId);
     return state;
   } catch (err) {
     const now = new Date();
@@ -337,10 +394,18 @@ export async function retryFailedSends(userId: string): Promise<void> {
 /** The account was unlinked: what this runtime kept of its cloud belongs to no account now. */
 export async function forgetCloud(): Promise<void> {
   await controlDb.delete(control.setting).where(like(control.setting.key, "cloud:%"));
+  await forgetSentData();
+}
+
+/** The space's data counts as not sent: the next wizard takes it along again. */
+async function forgetSentData() {
+  await controlDb.delete(control.setting).where(like(control.setting.key, "cloud-data:%"));
 }
 
 /** Sends every published wizard: once after an account was linked. */
 export async function syncAllToCloud(userId: string): Promise<{ sent: number; failed: number }> {
+  // A cloud that was linked anew, or whose spaces were replaced, has none of it.
+  await forgetSentData();
   const wizards = await db
     .select({ id: schema.wizard.id })
     .from(schema.wizard)

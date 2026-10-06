@@ -92,7 +92,15 @@ export function locationText(v: LocationValue): string {
 /** A field takes at most this many files. */
 export const MAX_FILES = 30;
 
-export const TOOL_IDS = ["web_search", "web_fetch", "browser", "sandbox", "image", "http"] as const;
+export const TOOL_IDS = [
+  "web_search",
+  "web_fetch",
+  "browser",
+  "sandbox",
+  "image",
+  "http",
+  "pages",
+] as const;
 
 /**
  * A tool a plugin of the runtime adds: `<plugin id>.<tool name>`. A wizard that names one runs
@@ -401,6 +409,12 @@ export const listSchema = z.object({
    * answers — the first one means "not looked at yet".
    */
   check: z.object({ file: z.string().optional(), status: z.string().optional() }).optional(),
+  /**
+   * The list is the wizard's, not one person's: every run reads and writes the same rows, and
+   * the studio shows it under Space → Daten. It is never shown to the person running the wizard,
+   * who would see what others gave.
+   */
+  shared: z.boolean().optional(),
 });
 
 export const connectionSchema = z.object({
@@ -427,7 +441,7 @@ export const wizardSchema = z.object({
   avatar: z.enum(ENGENTY_KINDS).default("round"),
   /** Shown on the first page above the first question. */
   intro: z.string().optional(),
-  /** Tabular data the wizard keeps between runs, per person. */
+  /** Tabular data the wizard keeps between runs, per person — or for all runs (`shared`). */
   lists: z.array(listSchema).max(12).optional(),
   /** Accounts the person connects; kept between runs, per person. */
   connections: z.array(connectionSchema).max(12).optional(),
@@ -515,13 +529,22 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
   const seenSteps = new Set<string>();
   const seenFields = new Set<string>();
   const listIds = new Set<string>();
+  const sharedLists = new Set<string>();
   const connectionIds = new Set<string>();
+  const notShown = (id: string) =>
+    `List "${id}" is shared: every run writes it, so the person running the wizard never sees it.`;
 
   for (const list of def.lists ?? []) {
     if (listIds.has(list.id)) {
       issues.push({ message: `Duplicate list id "${list.id}".` });
     }
     listIds.add(list.id);
+    if (list.shared) {
+      sharedLists.add(list.id);
+      if (list.check) {
+        issues.push({ message: `${notShown(list.id)} It cannot be checked row by row.` });
+      }
+    }
     if (list.key && !list.columns.some((c) => c.id === list.key)) {
       issues.push({ message: `List "${list.id}": key "${list.key}" is not one of its columns.` });
     }
@@ -575,6 +598,11 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           issues.push({
             stepId: step.id,
             message: `Field "${field.id}" needs "list": the id of one of the wizard's lists.`,
+          });
+        } else if (field.kind === "list" && sharedLists.has(field.list ?? "")) {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": ${notShown(field.list ?? "")}`,
           });
         }
         if (field.min !== undefined || field.max !== undefined) {
@@ -726,6 +754,8 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
               stepId: step.id,
               message: `Review shows unknown ${list ? "list" : "step"} "${ref}".`,
             });
+          } else if (list && sharedLists.has(list)) {
+            issues.push({ stepId: step.id, message: notShown(list) });
           }
         }
         break;
@@ -737,6 +767,8 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
               stepId: step.id,
               message: `Deliverable from unknown ${list ? "list" : "step"} "${d.from}".`,
             });
+          } else if (list && sharedLists.has(list)) {
+            issues.push({ stepId: step.id, message: notShown(list) });
           }
         }
         break;

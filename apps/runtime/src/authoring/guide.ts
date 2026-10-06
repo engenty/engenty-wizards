@@ -12,7 +12,7 @@ type Wizard = {
   description: string           // one sentence
   avatar: "round"|"drop"|"dome"|"flame"|"oval"|"bean"|"pebble"|"sprout"|"tower"|"wedge"  // the engenty mascot shown to end users
   intro?: string                // one friendly sentence above the first page
-  lists?: List[]                // tabular data the wizard KEEPS between runs — separately for each person who runs it
+  lists?: List[]                // tabular data the wizard KEEPS between runs — separately for each person who runs it, or for all with "shared"
   connections?: Connection[]    // accounts the PERSON connects during a run (their mailbox); kept for their next run
   steps: Step[]                 // run top to bottom; the LAST step is always a "result"
 }
@@ -20,6 +20,9 @@ type Wizard = {
 type List = {
   id, title, description?,
   key?: columnId                // rows are matched on this column: saving a row with a known key updates that row
+  shared?: true                 // ONE list for every run (leads, sign-ups, bookings, a log) instead of one per person.
+                                //   The person running the wizard never sees it: no list field, review or deliverable of it;
+                                //   the admin sees and edits it in the studio under Space → Daten
   check?: { file?: columnId, status?: columnId }
                                 // a review that shows the list lets the person go through it ROW BY ROW on a split screen:
                                 //   "file" = a text column holding the path of a kept file (PDF, photo), previewed beside the row;
@@ -85,7 +88,7 @@ type Field = {
 type AgentStep = {
   type: "agent"
   instructions: string          // the task, with {{templates}}
-  tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http")[]
+  tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
   output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice", description, columns?: string[], options?: string[] }[] }
@@ -97,6 +100,8 @@ type AgentStep = {
 }
 // Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
 //   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once).
+// "pages" brings: page_read / page_write — Markdown pages of the space the wizard keeps for every run (notes, a log
+//   that grows with append), shown to the admin under Space → Daten; page_read also reads the space's own pages.
 // "browser" brings: browser_open/click/type, browser_screenshot (the model looks at the page),
 //   browser_request_credentials (the PERSON types a login into the page — the model never sees it; sign-ins can be remembered),
 //   browser_request_user (the person solves a captcha or "continue with Google" in a picture of the page),
@@ -165,6 +170,7 @@ How good wizards look:
 - Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
 ${sandboxGuideLine()}
 - Remembering between runs ("merke dir", "führe eine Liste"): declare a list and let an agent step save into it with list_write; a later run reads it as {{lists.id}} or list_read. Give it a key column so known rows are updated, not duplicated. Never make the person re-upload last time's result.
+- Collecting from everyone who runs the wizard (requests, leads, sign-ups, feedback): a list with "shared": true, saved with list_write. It is the admin's, under Space → Daten; never show one person's rows to another. Longer text for every run (a running summary, a log): the "pages" tool.
 - The person's mail: one connection of kind "mail", a page field of kind "connection" early in the wizard, and the agent step lists it in "connections". Do not ask for the provider or the address in other fields — the connect field does that.
 - Working in a service for the person (read their Notion, create an issue, look up a customer): import the service as a connector, declare a connection with "connector", put a page field of kind "connection" before the step, and list the connection in the step's "connections". Prefer a connector over the browser whenever the service has one.
 - Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.

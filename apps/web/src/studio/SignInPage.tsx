@@ -69,13 +69,13 @@ export function SignInPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">
       <div className="flex w-full max-w-sm animate-rise flex-col items-center text-center">
         <Mascot kind="round" size={200} fluffy />
-        <EngentyWordmark className="mt-2 font-display font-semibold text-[15px] text-ink-3 tracking-tight" />
-        <h1 className="mt-3 font-display font-semibold text-[34px] leading-[1.1] tracking-tight">
+        <EngentyWordmark className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight" />
+        <h1 className="mt-3 font-display font-semibold text-[2.125rem] leading-[1.1] tracking-tight">
           {t("brand.tagline")}
         </h1>
-        <p className="mt-4 text-[16px] text-ink-2 leading-relaxed">{t("brand.sub")}</p>
+        <p className="mt-4 text-[1rem] text-ink-2 leading-relaxed">{t("brand.sub")}</p>
         <div className="mt-10 flex w-full flex-col gap-3">
-          {failed ? <p className="text-[14px] text-rose">{t("auth.failed")}</p> : null}
+          {failed ? <p className="text-[0.875rem] text-rose">{t("auth.failed")}</p> : null}
           {config.data?.mode === "managed" ? (
             <Button
               size="lg"
@@ -117,11 +117,11 @@ export function SignInPage() {
             </Button>
           ) : null}
           {config.data?.mode === "local" && !config.data.devLogin ? (
-            <p className="text-[14px] text-ink-3">{t("auth.localLink")}</p>
+            <p className="text-[0.875rem] text-ink-3">{t("auth.localLink")}</p>
           ) : null}
         </div>
         {config.data?.mode === "managed" ? (
-          <p className="mt-6 text-[13px] text-ink-3">{t("auth.legal")}</p>
+          <p className="mt-6 text-[0.8125rem] text-ink-3">{t("auth.legal")}</p>
         ) : null}
       </div>
     </div>

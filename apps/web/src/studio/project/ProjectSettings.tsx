@@ -1,12 +1,10 @@
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { type Project, useManyProjects } from "../../lib/session";
-import { Button, Dialog, IconButton, Input, Label, Textarea } from "../../ui";
-import { ProjectSwitcher } from "../HomePage";
+import { Button, Input, Label, Textarea } from "../../ui";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
 import { Assistant } from "./Assistant";
 import { Colors } from "./Colors";
@@ -39,72 +37,35 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
         <div>
           <Label>{t("project.title")}</Label>
           <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
-          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.titleHint")}</p>
+          <p className="mt-1.5 text-[0.8125rem] text-ink-3">{t("project.titleHint")}</p>
         </div>
         <div>
           <Label>{t("project.about")}</Label>
           <Textarea minRows={4} value={about} onChange={(e) => setAbout(e.target.value)} />
-          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.aboutHint")}</p>
+          <p className="mt-1.5 text-[0.8125rem] text-ink-3">{t("project.aboutHint")}</p>
         </div>
       </div>
     </Section>
   );
 }
 
-/** The project's own name: what the switcher calls it, never shown to end users. */
-function Rename({ project, save }: { project: Project; save: (patch: Patch) => Promise<unknown> }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(project.name);
-  const rename = useMutation({
-    mutationFn: () => save({ name: name.trim() }),
-    onSuccess: () => setOpen(false),
-  });
-  return (
-    <>
-      <IconButton
-        label={t("project.rename")}
-        onClick={() => {
-          setName(project.name);
-          setOpen(true);
-        }}
-      >
-        <Pencil className="size-4" />
-      </IconButton>
-      <Dialog open={open} onClose={() => setOpen(false)} title={t("project.rename")}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (name.trim()) {
-              rename.mutate();
-            }
-          }}
-        >
-          <Input autoFocus value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-          {rename.error ? (
-            <p className="mt-3 text-[14px] text-rose">{(rename.error as Error).message}</p>
-          ) : null}
-          <div className="mt-5 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit" busy={rename.isPending} disabled={!name.trim()}>
-              {t("settings.save")}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-    </>
-  );
-}
-
 /**
- * What a project gives all its wizards: who it is, its logos and colours, assets, documents and
- * facts. Every section saves by itself; the assistant fills them in from a description, a
- * website or files. A read-only project (a local install's, or on a server where nothing is
- * built) shows the same sections, and a note stands where the assistant would. `children`: the
- * sections plugins add, after the space's own.
+ * What a project gives all its wizards, in two parts of the space page: `info` — who it is, its
+ * logos and colours, assets and facts — and `knowledge` — its documents. Every section saves by
+ * itself; the assistant above both fills them in from a description, a website or files, and
+ * stays when the person switches between them. A read-only project (a local install's, or on a
+ * server where nothing is built) shows the same sections, and a note stands where the assistant
+ * would. `children`: the sections plugins add to the part, after its own.
  */
-export function ProjectSettings({ project, children }: { project: Project; children?: ReactNode }) {
+export function ProjectSettings({
+  project,
+  group,
+  children,
+}: {
+  project: Project;
+  group: "info" | "knowledge";
+  children?: ReactNode;
+}) {
   const qc = useQueryClient();
   const files = useProjectFiles(project.id);
   // What the assistant wrote is shown by mounting the sections again with the new project.
@@ -125,47 +86,46 @@ export function ProjectSettings({ project, children }: { project: Project; child
   return (
     // The lower padding leaves room for the assistant's dock under the last section.
     <div className="flex flex-col gap-9 pb-20">
-      {many ? (
-        <div className="-mb-3 flex items-center gap-1">
-          <ProjectSwitcher />
-          {readOnly ? null : <Rename project={project} save={save} />}
-        </div>
-      ) : null}
       {readOnly ? (
         <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
       ) : (
         <Assistant key={project.id} projectId={project.id} onChanged={() => setRev((n) => n + 1)} />
       )}
-      <Anchor id="base">
-        <Base key={`base:${key}`} project={project} save={save} />
-      </Anchor>
-      <Anchor id="logos">
-        <Logos projectId={project.id} data={data} readOnly={readOnly} />
-      </Anchor>
-      <Anchor id="colors">
-        <Colors
-          key={`colors:${key}`}
-          colors={project.brand.colors ?? []}
-          save={(colors) => save({ brand: { colors } })}
-          readOnly={readOnly}
-        />
-      </Anchor>
-      <Anchor id="assets">
-        <Assets projectId={project.id} data={data} readOnly={readOnly} />
-      </Anchor>
-      <Anchor id="documents">
-        <Documents projectId={project.id} data={data} readOnly={readOnly} />
-      </Anchor>
-      <Anchor id="facts">
-        <Facts
-          key={`facts:${key}`}
-          facts={project.facts}
-          save={(facts) => save({ facts })}
-          readOnly={readOnly}
-        />
-      </Anchor>
+      {group === "info" ? (
+        <>
+          <Anchor id="base">
+            <Base key={`base:${key}`} project={project} save={save} />
+          </Anchor>
+          <Anchor id="logos">
+            <Logos projectId={project.id} data={data} readOnly={readOnly} />
+          </Anchor>
+          <Anchor id="colors">
+            <Colors
+              key={`colors:${key}`}
+              colors={project.brand.colors ?? []}
+              save={(colors) => save({ brand: { colors } })}
+              readOnly={readOnly}
+            />
+          </Anchor>
+          <Anchor id="assets">
+            <Assets projectId={project.id} data={data} readOnly={readOnly} />
+          </Anchor>
+          <Anchor id="facts">
+            <Facts
+              key={`facts:${key}`}
+              facts={project.facts}
+              save={(facts) => save({ facts })}
+              readOnly={readOnly}
+            />
+          </Anchor>
+        </>
+      ) : (
+        <Anchor id="documents">
+          <Documents projectId={project.id} data={data} readOnly={readOnly} />
+        </Anchor>
+      )}
       {children}
-      {many && !readOnly ? (
+      {group === "info" && many && !readOnly ? (
         <div>
           <Button
             variant="danger"
@@ -175,7 +135,7 @@ export function ProjectSettings({ project, children }: { project: Project; child
             {t("settings.delete")}
           </Button>
           {remove.error ? (
-            <p className="mt-2 text-[14px] text-rose">{(remove.error as Error).message}</p>
+            <p className="mt-2 text-[0.875rem] text-rose">{(remove.error as Error).message}</p>
           ) : null}
         </div>
       ) : null}

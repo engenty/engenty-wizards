@@ -54,7 +54,7 @@ export function InstallBanner() {
     setClosed(true);
   };
   return (
-    <div className="flex items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[13px] text-ink-2 sm:px-6">
+    <div className="flex items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[0.8125rem] text-ink-2 sm:px-6">
       <AppWindow className="size-4 shrink-0 text-ink-3" />
       <p className="min-w-0 flex-1">{prompt ? t("install.app.offer") : t("install.app.browser")}</p>
       {prompt ? (

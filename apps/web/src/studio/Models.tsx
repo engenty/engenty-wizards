@@ -298,7 +298,7 @@ function Part({
   return (
     <section className="flex flex-col gap-3 border-border-soft border-t pt-5 first:border-t-0 first:pt-0">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-medium text-[14px]">{title}</h3>
+        <h3 className="font-medium text-[0.875rem]">{title}</h3>
         {aside}
       </div>
       {children}
@@ -307,7 +307,7 @@ function Part({
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <p className="text-[13px] text-ink-3">{children}</p>;
+  return <p className="text-[0.8125rem] text-ink-3">{children}</p>;
 }
 
 /** The status of a panel, beside its name. */
@@ -315,7 +315,7 @@ function Status({ text, tone }: { text: string; tone: "done" | "ok" | "warn" }) 
   return (
     <span
       className={cn(
-        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-[12px]",
+        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium text-[0.75rem]",
         tone === "done" && "bg-moss-tint text-moss",
         tone === "ok" && "bg-amber-tint text-ink-2",
         tone === "warn" && "bg-paper-2 text-ink-3",
@@ -348,12 +348,12 @@ function PanelHead({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 className="font-display font-semibold text-[22px] leading-tight tracking-tight">
+          <h2 className="font-display font-semibold text-[1.375rem] leading-tight tracking-tight">
             {title}
           </h2>
           {status}
         </div>
-        <p className="mt-0.5 text-[14px] text-ink-3">{lead}</p>
+        <p className="mt-0.5 text-[0.875rem] text-ink-3">{lead}</p>
       </div>
     </div>
   );
@@ -363,7 +363,7 @@ function PanelHead({
 function OptionGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid items-start gap-x-4 gap-y-1.5 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
-      <span className="pt-2 text-[12px] text-ink-3">{label}</span>
+      <span className="pt-2 text-[0.75rem] text-ink-3">{label}</span>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -396,7 +396,7 @@ function Option({
       aria-pressed={selected}
       title={note}
       className={cn(
-        "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition coarse:h-11",
+        "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[0.8125rem] transition coarse:h-11",
         selected
           ? "border-ember bg-ember-tint font-medium text-ink"
           : noteTone === "done"
@@ -455,7 +455,7 @@ function KeyField({
           <Input
             type="password"
             autoComplete="off"
-            className="min-w-0 flex-1 font-mono text-[13px]"
+            className="min-w-0 flex-1 font-mono text-[0.8125rem]"
             placeholder={provider.keyPlaceholder}
             value={value}
             disabled={!place.canEdit}
@@ -481,7 +481,7 @@ function KeyField({
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="flex items-center gap-2 text-[14px] text-ink-2">
+          <span className="flex items-center gap-2 text-[0.875rem] text-ink-2">
             <KeyRound className="size-4 text-moss" /> {t("models.keyStored")}
           </span>
           <Button
@@ -522,7 +522,7 @@ function KeyField({
       {said ? (
         <p
           className={cn(
-            "flex items-center gap-1.5 text-[13px]",
+            "flex items-center gap-1.5 text-[0.8125rem]",
             said.ok ? "text-moss" : "text-rose",
           )}
         >
@@ -530,7 +530,7 @@ function KeyField({
           {said.message}
         </p>
       ) : null}
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-4">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] text-ink-4">
         <button
           type="button"
           onClick={() => openExternal(provider.keyUrl)}
@@ -591,7 +591,7 @@ function ModelPick({
       {custom ? (
         <div className="flex flex-wrap items-center gap-2">
           <Input
-            className="min-w-0 flex-1 font-mono text-[13px]"
+            className="min-w-0 flex-1 font-mono text-[0.8125rem]"
             value={draft}
             disabled={disabled}
             placeholder={offered[0]?.ref.replace(/^[a-z]+:/, "") ?? ""}
@@ -614,7 +614,7 @@ function ModelPick({
 function TextSummary({ provider, state }: { provider: ProviderInfo; state: ModelsState }) {
   const of = (cls: TextClass) => modelLabel(state.bindings[cls] ?? provider.text?.[cls] ?? "");
   return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[14px]">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[0.875rem]">
       <dt className="text-ink-3">{t("models.textSimple")}</dt>
       <dd className="truncate font-medium">{of("standard")}</dd>
       <dt className="text-ink-3">{t("models.textDemanding")}</dt>
@@ -637,7 +637,7 @@ function PerClass({
 }) {
   return (
     <details className="group rounded-lg ring-1 ring-border-soft">
-      <summary className="cursor-pointer list-none px-3 py-2.5 text-[13px] text-ink-2 hover:text-ink">
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-[0.8125rem] text-ink-2 hover:text-ink">
         <span className="inline-flex items-center gap-1.5">
           <ArrowRight className="size-3.5 transition group-open:rotate-90" />
           {t("models.perClass")}
@@ -647,8 +647,10 @@ function PerClass({
         {TEXT_CLASSES.map((cls) => (
           <div key={cls} className="grid items-center gap-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
             <div>
-              <div className="text-[13px] text-ink-2">{t(`class.${cls}`)}</div>
-              <div className="text-[11px] text-ink-4 leading-snug">{t(`class.${cls}.hint`)}</div>
+              <div className="text-[0.8125rem] text-ink-2">{t(`class.${cls}`)}</div>
+              <div className="text-[0.6875rem] text-ink-4 leading-snug">
+                {t(`class.${cls}.hint`)}
+              </div>
             </div>
             <ModelPick
               provider={provider}
@@ -684,12 +686,12 @@ function TryIt({ cap, disabled }: { cap: ModelCapability; disabled?: boolean }) 
         >
           {t(`models.try.${cap}`)}
         </Button>
-        <span className="text-[12px] text-ink-4">
+        <span className="text-[0.75rem] text-ink-4">
           {cap === "video" ? t("models.tryCostVideo") : isText(cap) ? null : t("models.tryCost")}
         </span>
       </div>
       {test.isPending && cap !== "text" ? (
-        <p className="flex items-center gap-2 text-[13px] text-ink-3">
+        <p className="flex items-center gap-2 text-[0.8125rem] text-ink-3">
           <Spinner className="size-3.5" />{" "}
           {t(cap === "video" ? "models.tryWaitVideo" : "models.tryWait")}
         </p>
@@ -710,7 +712,7 @@ function TryIt({ cap, disabled }: { cap: ModelCapability; disabled?: boolean }) 
           {r.media && cap === "video" ? (
             <video src={r.media} controls autoPlay muted className="w-full max-w-md rounded-lg" />
           ) : null}
-          <p className="flex items-start gap-2 text-[13px] text-ink-2">
+          <p className="flex items-start gap-2 text-[0.8125rem] text-ink-2">
             <Check className="mt-0.5 size-3.5 shrink-0 text-moss" strokeWidth={3} />
             <span>
               {cap === "listening"
@@ -732,10 +734,12 @@ function TryIt({ cap, disabled }: { cap: ModelCapability; disabled?: boolean }) 
         </div>
       ) : null}
       {r && !r.ok ? (
-        <p className="text-[13px] text-rose">{t("models.tryFailed", { error: r.error ?? "" })}</p>
+        <p className="text-[0.8125rem] text-rose">
+          {t("models.tryFailed", { error: r.error ?? "" })}
+        </p>
       ) : null}
       {test.isError ? (
-        <p className="text-[13px] text-rose">
+        <p className="text-[0.8125rem] text-rose">
           {t("models.tryFailed", { error: (test.error as Error).message })}
         </p>
       ) : null}
@@ -839,13 +843,13 @@ function CreditOffers({
           <li key={m.id} className="flex flex-wrap items-center gap-3 py-2.5">
             <Coins className="size-4 shrink-0 text-ink-3" />
             <span className="min-w-0 flex-1">
-              <span className="block font-medium text-[14px]">{m.name}</span>
-              <span className="block text-[12px] text-ink-3">
+              <span className="block font-medium text-[0.875rem]">{m.name}</span>
+              <span className="block text-[0.75rem] text-ink-3">
                 {t(`models.cap.${cap}`)} · {creditPrice(m)}
               </span>
             </span>
             {inUse ? (
-              <span className="flex items-center gap-1 font-medium text-[12px] text-moss">
+              <span className="flex items-center gap-1 font-medium text-[0.75rem] text-moss">
                 <Check className="size-3.5" strokeWidth={3} /> {t("models.inUse")}
               </span>
             ) : (
@@ -943,7 +947,7 @@ function CapabilityPanel({
         lead={t(`models.cap.${cap}.hint`)}
         status={<Status {...status} />}
       />
-      <Card className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card className="flex flex-col gap-6 p-3.5 sm:p-5 sm:p-6">
         <Part title={t("models.who")}>
           <div className="flex flex-col gap-3">
             {clients.length ? (
@@ -998,12 +1002,12 @@ function CapabilityPanel({
             </OptionGroup>
           </div>
           {needsAccount ? (
-            <p className="text-[13px] text-ink-2">
+            <p className="text-[0.8125rem] text-ink-2">
               {t("local.sourceNeedsAccount")} <AccountLink />
             </p>
           ) : null}
           {save.isError ? (
-            <p className="text-[13px] text-rose">{(save.error as Error).message}</p>
+            <p className="text-[0.8125rem] text-rose">{(save.error as Error).message}</p>
           ) : null}
         </Part>
 
@@ -1036,7 +1040,7 @@ function CapabilityPanel({
                   <button
                     type="button"
                     onClick={() => onOpen({ type: "provider", id: provider.id })}
-                    className="text-[12px] text-ink-3 hover:text-ink"
+                    className="text-[0.75rem] text-ink-3 hover:text-ink"
                   >
                     {t("models.manageKey", { name: provider.name })}
                   </button>
@@ -1105,7 +1109,7 @@ function CapabilityPanel({
         ) : null}
 
         {way.kind === "none" && way.problem ? (
-          <p className="flex items-start gap-2 rounded-lg bg-paper-2 px-3 py-2.5 text-[13px] text-ink-2">
+          <p className="flex items-start gap-2 rounded-lg bg-paper-2 px-3 py-2.5 text-[0.8125rem] text-ink-2">
             <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-ink-3" />
             {way.problem}
           </p>
@@ -1137,13 +1141,13 @@ function OllamaPart({ state, disabled }: { state: ModelsState; disabled?: boolea
       <Hint>{t("models.ollamaHint")}</Hint>
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <Input
-          className="font-mono text-[13px]"
+          className="font-mono text-[0.8125rem]"
           value={url}
           disabled={disabled}
           onChange={(e) => setUrl(e.target.value)}
         />
         <Input
-          className="font-mono text-[13px]"
+          className="font-mono text-[0.8125rem]"
           value={model}
           disabled={disabled}
           onChange={(e) => setModel(e.target.value)}
@@ -1183,7 +1187,7 @@ function ChatEngine({ me }: { me: Me }) {
             aria-pressed={me.chatEngine === engine}
             onClick={() => chat.mutate(engine)}
             className={cn(
-              "h-9 rounded-full border px-3.5 text-[13px] transition",
+              "h-9 rounded-full border px-3.5 text-[0.8125rem] transition",
               me.chatEngine === engine
                 ? "border-ember bg-ember-tint text-ink"
                 : "border-input bg-card text-ink-2 hover:text-ink",
@@ -1231,7 +1235,7 @@ function ProviderPanel({
           />
         }
       />
-      <Card className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card className="flex flex-col gap-6 p-3.5 sm:p-5 sm:p-6">
         <Part title={t("models.key")}>
           <KeyField provider={provider} stored={stored} place={place} />
         </Part>
@@ -1249,13 +1253,15 @@ function ProviderPanel({
                     onClick={() => onOpen({ type: "cap", id: cap })}
                     className="min-w-0 flex-1 text-left"
                   >
-                    <span className="block font-medium text-[14px]">{t(`models.cap.${cap}`)}</span>
-                    <span className="block truncate text-[12px] text-ink-3">
+                    <span className="block font-medium text-[0.875rem]">
+                      {t(`models.cap.${cap}`)}
+                    </span>
+                    <span className="block truncate text-[0.75rem] text-ink-3">
                       {(provider.models[cap] ?? []).map((m) => m.label).join(" · ")}
                     </span>
                   </button>
                   {inUse ? (
-                    <span className="flex items-center gap-1 font-medium text-[12px] text-moss">
+                    <span className="flex items-center gap-1 font-medium text-[0.75rem] text-moss">
                       <Check className="size-3.5" strokeWidth={3} /> {t("models.inUse")}
                     </span>
                   ) : (
@@ -1319,7 +1325,7 @@ function ClientPanel({
         lead={t(`harness.desc.${id}`)}
         status={<Status text={clientNote(client).note} tone={ready ? "done" : "warn"} />}
       />
-      <Card className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card className="flex flex-col gap-6 p-3.5 sm:p-5 sm:p-6">
         <Part title={t("models.clientSignIn")}>
           <HarnessPanel me={me} id={id} />
         </Part>
@@ -1333,11 +1339,11 @@ function ClientPanel({
                 return (
                   <li key={cap} className="flex items-center gap-3 py-2.5">
                     <Icon className="size-4 shrink-0 text-ink-3" />
-                    <span className="min-w-0 flex-1 font-medium text-[14px]">
+                    <span className="min-w-0 flex-1 font-medium text-[0.875rem]">
                       {t(`models.cap.${cap}`)}
                     </span>
                     {inUse ? (
-                      <span className="flex items-center gap-1 font-medium text-[12px] text-moss">
+                      <span className="flex items-center gap-1 font-medium text-[0.75rem] text-moss">
                         <Check className="size-3.5" strokeWidth={3} /> {t("models.inUse")}
                       </span>
                     ) : (
@@ -1403,13 +1409,13 @@ function CreditsPanel({
         lead={place.cloud ? t("models.creditsCloudHint") : t("models.creditsLocalLead")}
         status={
           place.balance !== null ? (
-            <span className="font-display font-semibold text-[20px] tabular-nums">
+            <span className="font-display font-semibold text-[1.25rem] tabular-nums">
               {t("nav.credits", { n: Math.floor(place.balance).toLocaleString() })}
             </span>
           ) : undefined
         }
       />
-      <Card className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card className="flex flex-col gap-6 p-3.5 sm:p-5 sm:p-6">
         {!place.cloud && !place.account ? (
           <Part title={t("models.creditsConnectTitle")}>
             <Hint>{t("models.creditsLocalHint")}</Hint>
@@ -1421,7 +1427,7 @@ function CreditsPanel({
           </Part>
         ) : null}
         {place.account && !place.account.signedIn ? (
-          <p className="text-[13px] text-rose">
+          <p className="text-[0.8125rem] text-rose">
             {t("local.accountExpired")} <AccountLink />
           </p>
         ) : null}
@@ -1451,7 +1457,7 @@ function CreditsPanel({
                   href={place.topUp}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-[13px] text-ember-strong hover:underline"
+                  className="inline-flex items-center gap-1 font-medium text-[0.8125rem] text-ember-strong hover:underline"
                 >
                   {t("models.creditsTopUp")} <ExternalLink className="size-3" />
                 </a>
@@ -1471,10 +1477,10 @@ function CreditsPanel({
                         className="flex w-full items-center gap-3 py-2.5 text-left"
                       >
                         <Icon className="size-4 shrink-0 text-ink-3" />
-                        <span className="min-w-0 flex-1 font-medium text-[14px]">
+                        <span className="min-w-0 flex-1 font-medium text-[0.875rem]">
                           {t(`models.cap.${cap}`)}
                         </span>
-                        <span className="truncate text-[12px] text-ink-3">
+                        <span className="truncate text-[0.75rem] text-ink-3">
                           {way.ref ? modelLabel(way.ref) : ""} · {priceNote(cap, state)}
                         </span>
                       </button>
@@ -1524,7 +1530,7 @@ function Preview({ view, onView }: { view: View; onView: (v: View) => void }) {
     return null;
   }
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft border-dashed px-3 py-2 text-[12px] text-ink-3">
+    <div className="mt-5 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft border-dashed px-3 py-2 text-[0.75rem] text-ink-3">
       <span className="mr-1">{t("models.viewAs")}</span>
       {(["auto", "local", "linked", "cloud"] as const).map((v) => (
         <button
@@ -1581,7 +1587,7 @@ export function Models() {
   useDetail(show || !narrow ? targetLabel(target, me.data) : null);
   if (!me.data || !models.data) {
     return models.isError ? (
-      <p className="text-[14px] text-rose">{(models.error as Error).message}</p>
+      <p className="text-[0.875rem] text-rose">{(models.error as Error).message}</p>
     ) : null;
   }
   const state = models.data;
@@ -1618,7 +1624,7 @@ export function Models() {
             label={place.cloud ? t("models.creditsTeam") : t("models.creditsName")}
             badge={
               place.balance !== null ? (
-                <span className="text-[12px] text-ink-3 tabular-nums">
+                <span className="text-[0.75rem] text-ink-3 tabular-nums">
                   {Math.floor(place.balance).toLocaleString()}
                 </span>
               ) : null
@@ -1678,7 +1684,7 @@ export function Models() {
         <Preview view={view} onView={setView} />
       </SubMenu>
       {place.canEdit ? null : (
-        <p className="mb-4 rounded-lg bg-paper-2 px-3 py-2 text-[13px] text-ink-2">
+        <p className="mb-4 rounded-lg bg-paper-2 px-3 py-2 text-[0.8125rem] text-ink-2">
           {t("models.readOnly")}
         </p>
       )}

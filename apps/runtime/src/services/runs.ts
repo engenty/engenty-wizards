@@ -1,5 +1,5 @@
 import { formatsFor, type Step } from "@engenty-wizards/shared/definition";
-import { and, count, desc, eq, inArray, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
 import { answerAsk, unattended } from "../engine/asks.js";
@@ -473,4 +473,103 @@ export async function listRuns(userId: string, wizardId: string) {
     assets: assetCounts.find((a) => a.runId === r.id)?.n ?? 0,
     stepTitle: r.definition.steps.find((s) => s.id === r.cursor)?.title ?? null,
   }));
+}
+
+/** What the results of a space are narrowed to. */
+export interface ResultsFilter {
+  /** One wizard's. */
+  wizardId?: string;
+  /** Words in the wizard's title, or in what the run was given and produced. */
+  q?: string;
+  mode?: "live" | "test";
+  /** Done within the last this many days. */
+  days?: number;
+}
+
+/**
+ * The results of a space: its wizards' runs that reached their result, newest first, narrowed by
+ * `filter`; and each wizard with how many it has and when its last one came, the latest first.
+ */
+export async function listResults(projectId: string, filter: ResultsFilter = {}) {
+  const wizards = await db
+    .select({
+      id: schema.wizard.id,
+      title: schema.wizard.title,
+      results: count(schema.run.id),
+      lastAt: max(schema.run.updatedAt),
+    })
+    .from(schema.wizard)
+    .leftJoin(
+      schema.run,
+      and(eq(schema.run.wizardId, schema.wizard.id), eq(schema.run.status, "done")),
+    )
+    .where(and(eq(schema.wizard.projectId, projectId), eq(schema.wizard.tenantId, currentTenant())))
+    .groupBy(schema.wizard.id)
+    // Wizards without a result last: SQLite sorts null below every time.
+    .orderBy(desc(max(schema.run.updatedAt)), desc(schema.wizard.updatedAt));
+  const q = filter.q?.trim().toLowerCase();
+  const like = q ? `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+  const titled = like
+    ? new Set(wizards.filter((w) => w.title.toLowerCase().includes(q as string)).map((w) => w.id))
+    : null;
+  const ids = wizards.map((w) => w.id).filter((id) => !filter.wizardId || id === filter.wizardId);
+  const rows = ids.length
+    ? await db
+        .select({
+          id: schema.run.id,
+          wizardId: schema.run.wizardId,
+          mode: schema.run.mode,
+          version: schema.run.version,
+          costMicros: schema.run.costMicros,
+          updatedAt: schema.run.updatedAt,
+        })
+        .from(schema.run)
+        .where(
+          and(
+            inArray(schema.run.wizardId, ids),
+            eq(schema.run.status, "done"),
+            filter.mode ? eq(schema.run.mode, filter.mode) : undefined,
+            filter.days
+              ? gte(schema.run.updatedAt, new Date(Date.now() - filter.days * 86_400_000))
+              : undefined,
+            like
+              ? or(
+                  titled?.size ? inArray(schema.run.wizardId, [...titled]) : undefined,
+                  sql`lower(${schema.run.state}) like ${like} escape '\\'`,
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(desc(schema.run.updatedAt))
+        .limit(100)
+    : [];
+  const assetCounts = rows.length
+    ? await db
+        .select({ runId: schema.asset.runId, n: count() })
+        .from(schema.asset)
+        .where(
+          inArray(
+            schema.asset.runId,
+            rows.map((r) => r.id),
+          ),
+        )
+        .groupBy(schema.asset.runId)
+    : [];
+  return {
+    wizards: wizards.map((w) => ({
+      id: w.id,
+      title: w.title,
+      results: w.results,
+      lastAt: w.lastAt ? new Date(w.lastAt).toISOString() : null,
+    })),
+    runs: rows.map((r) => ({
+      id: r.id,
+      wizardId: r.wizardId,
+      mode: r.mode,
+      version: r.version,
+      doneAt: r.updatedAt.toISOString(),
+      credits: Math.ceil(r.costMicros / MICROS_PER_CREDIT),
+      assets: assetCounts.find((a) => a.runId === r.id)?.n ?? 0,
+    })),
+  };
 }

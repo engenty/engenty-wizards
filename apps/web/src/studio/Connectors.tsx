@@ -26,10 +26,11 @@ function Builtin({ connector }: { connector: ConnectorView }) {
         <span
           className={cn("size-2 shrink-0 rounded-full", connector.usable ? "bg-moss" : "bg-ink-4")}
         />
-        <span className="min-w-0 flex-1 truncate text-[13px]">
-          {connector.name} <span className="font-mono text-[11px] text-ink-4">{connector.id}</span>
+        <span className="min-w-0 flex-1 truncate text-[0.8125rem]">
+          {connector.name}{" "}
+          <span className="font-mono text-[0.6875rem] text-ink-4">{connector.id}</span>
         </span>
-        <span className="shrink-0 text-[12px] text-ink-3">
+        <span className="shrink-0 text-[0.75rem] text-ink-3">
           {connector.usable
             ? t("connectors.actions", {
                 n: connector.actions.length,
@@ -39,7 +40,7 @@ function Builtin({ connector }: { connector: ConnectorView }) {
         </span>
       </button>
       {open ? (
-        <div className="border-border-soft border-t px-3 py-2 text-[12px]">
+        <div className="border-border-soft border-t px-3 py-2 text-[0.75rem]">
           {connector.missingSetup ? (
             <p className="mb-1 text-ink-3">
               {t("connectors.setup")}{" "}
@@ -93,10 +94,10 @@ function Imported({
           className="min-w-0 flex-1 text-left"
         >
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-[14px]">{connector.name}</span>
-            <span className="font-mono text-[11px] text-ink-4">{connector.id}</span>
+            <span className="truncate font-medium text-[0.875rem]">{connector.name}</span>
+            <span className="font-mono text-[0.6875rem] text-ink-4">{connector.id}</span>
           </div>
-          <div className="truncate text-[12px] text-ink-3">
+          <div className="truncate text-[0.75rem] text-ink-3">
             {connector.domain} · {connector.sourceKind === "mcp" ? "MCP" : "OpenAPI"} ·{" "}
             {t(AUTH_LABEL[connector.auth] as "connectors.authNone")} ·{" "}
             {connector.toolsPending
@@ -129,22 +130,22 @@ function Imported({
         )}
       </div>
       {connector.needsOAuthClient ? (
-        <p className="border-border-soft border-t px-3 py-2 text-[12px] text-rose">
+        <p className="border-border-soft border-t px-3 py-2 text-[0.75rem] text-rose">
           {t("connectors.needsClient")}
         </p>
       ) : null}
       {(refresh.error ?? remove.error) ? (
-        <p className="border-border-soft border-t px-3 py-2 text-[12px] text-rose">
+        <p className="border-border-soft border-t px-3 py-2 text-[0.75rem] text-rose">
           {((refresh.error ?? remove.error) as Error).message}
         </p>
       ) : null}
       {open && connector.actions.length ? (
         <ul className="max-h-64 overflow-y-auto border-border-soft border-t px-3 py-2">
           {connector.actions.map((a) => (
-            <li key={a.id} className="flex items-baseline gap-2 py-1 text-[12px]">
+            <li key={a.id} className="flex items-baseline gap-2 py-1 text-[0.75rem]">
               <span
                 className={cn(
-                  "w-14 shrink-0 text-[11px] uppercase tracking-wide",
+                  "w-14 shrink-0 text-[0.6875rem] uppercase tracking-wide",
                   a.group === "read"
                     ? "text-moss"
                     : a.group === "write"
@@ -209,15 +210,15 @@ function SourceRow({
           {source.sourceKind === "mcp" ? "MCP" : "OpenAPI"}
         </Chip>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px]">{source.name ?? source.suggestedId}</div>
-          <div className="truncate font-mono text-[11px] text-ink-4">{source.sourceUrl}</div>
+          <div className="truncate text-[0.8125rem]">{source.name ?? source.suggestedId}</div>
+          <div className="truncate font-mono text-[0.6875rem] text-ink-4">{source.sourceUrl}</div>
         </div>
         {source.blocked || exists ? null : (
           <>
             <button
               type="button"
               onClick={() => setCredentials((v) => !v)}
-              className="text-[12px] text-ink-3 hover:text-ink"
+              className="text-[0.75rem] text-ink-3 hover:text-ink"
             >
               {t("connectors.ownClient")}
             </button>
@@ -227,8 +228,8 @@ function SourceRow({
           </>
         )}
       </div>
-      {source.blocked ? <p className="mt-2 text-[12px] text-ink-3">{source.blocked}</p> : null}
-      {exists ? <p className="mt-2 text-[12px] text-ink-3">{t("connectors.exists")}</p> : null}
+      {source.blocked ? <p className="mt-2 text-[0.75rem] text-ink-3">{source.blocked}</p> : null}
+      {exists ? <p className="mt-2 text-[0.75rem] text-ink-3">{t("connectors.exists")}</p> : null}
       {credentials ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <Input
@@ -246,7 +247,7 @@ function SourceRow({
         </div>
       ) : null}
       {run.error ? (
-        <p className="mt-2 text-[12px] text-rose">{(run.error as Error).message}</p>
+        <p className="mt-2 text-[0.75rem] text-rose">{(run.error as Error).message}</p>
       ) : null}
     </div>
   );
@@ -285,9 +286,9 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
   );
   const imported = connectors.filter((c) => c.sourceKind !== "builtin");
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <h2 className="font-display font-semibold text-lg">{t("connectors.title")}</h2>
-      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("connectors.hint")}</p>
+      <p className="mt-1 mb-5 text-[0.875rem] text-ink-3">{t("connectors.hint")}</p>
       {builtin.length ? (
         <div className="mb-5 grid gap-1.5 sm:grid-cols-2">
           {builtin.map((c) => (
@@ -295,7 +296,7 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
           ))}
         </div>
       ) : null}
-      <h3 className="mb-2 font-medium text-[12px] text-ink-3 uppercase tracking-[0.07em]">
+      <h3 className="mb-2 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.07em]">
         {t("connectors.imported")}
       </h3>
       {imported.length ? (
@@ -307,7 +308,7 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
       ) : null}
       {readOnly ? (
         imported.length ? null : (
-          <p className="text-[13px] text-ink-3">{t("connectors.noneImported")}</p>
+          <p className="text-[0.8125rem] text-ink-3">{t("connectors.noneImported")}</p>
         )
       ) : (
         <form
@@ -330,11 +331,13 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
         </form>
       )}
       {search.error ? (
-        <p className="mt-3 text-[13px] text-rose">{(search.error as Error).message}</p>
+        <p className="mt-3 text-[0.8125rem] text-rose">{(search.error as Error).message}</p>
       ) : null}
       {hits && !service ? (
         <div className="mt-3 flex flex-col gap-1">
-          {hits.length ? null : <p className="text-[13px] text-ink-3">{t("connectors.none")}</p>}
+          {hits.length ? null : (
+            <p className="text-[0.8125rem] text-ink-3">{t("connectors.none")}</p>
+          )}
           {hits.map((hit) => (
             <button
               key={hit.domain}
@@ -344,32 +347,34 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-paper-2 disabled:opacity-50"
             >
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px]">{hit.domain}</div>
-                <div className="truncate text-[12px] text-ink-3">{hit.description}</div>
+                <div className="truncate text-[0.875rem]">{hit.domain}</div>
+                <div className="truncate text-[0.75rem] text-ink-3">{hit.description}</div>
               </div>
-              <span className="text-[11px] text-ink-4 uppercase">{hit.kinds.join(" · ")}</span>
+              <span className="text-[0.6875rem] text-ink-4 uppercase">{hit.kinds.join(" · ")}</span>
               <ChevronDown className="-rotate-90 size-4 text-ink-4" />
             </button>
           ))}
           {open.isPending ? <Spinner className="mx-auto mt-2 size-4 text-ink-4" /> : null}
           {open.error ? (
-            <p className="text-[13px] text-rose">{(open.error as Error).message}</p>
+            <p className="text-[0.8125rem] text-rose">{(open.error as Error).message}</p>
           ) : null}
         </div>
       ) : null}
       {service ? (
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-3">
-            <div className="font-medium text-[14px]">{service.domain}</div>
+            <div className="font-medium text-[0.875rem]">{service.domain}</div>
             <button
               type="button"
               onClick={() => setService(null)}
-              className="text-[12px] text-ink-3 hover:text-ink"
+              className="text-[0.75rem] text-ink-3 hover:text-ink"
             >
               {t("run.back")}
             </button>
           </div>
-          {service.summary ? <p className="text-[13px] text-ink-3">{service.summary}</p> : null}
+          {service.summary ? (
+            <p className="text-[0.8125rem] text-ink-3">{service.summary}</p>
+          ) : null}
           {service.sources.map((source) => (
             <SourceRow
               key={`${source.sourceKind}:${source.sourceUrl}`}
@@ -383,7 +388,7 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
           {service.credentials
             .filter((c) => c.setup || c.url)
             .map((c) => (
-              <p key={c.label} className="text-[12px] text-ink-3">
+              <p key={c.label} className="text-[0.75rem] text-ink-3">
                 <span className="text-ink-2">{c.label}:</span> {c.setup}{" "}
                 {c.url ? (
                   <a href={c.url} target="_blank" rel="noreferrer" className="text-ember underline">
@@ -393,7 +398,7 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
               </p>
             ))}
           {warnings.map((w) => (
-            <p key={w} className="text-[12px] text-ink-3">
+            <p key={w} className="text-[0.75rem] text-ink-3">
               {w}
             </p>
           ))}

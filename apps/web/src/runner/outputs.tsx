@@ -217,21 +217,21 @@ function labelFor(step: Step, key: string): string {
 
 function JsonView({ step, json }: { step: Step; json: unknown }) {
   if (!json || typeof json !== "object") {
-    return <pre className="text-[13px]">{JSON.stringify(json, null, 2)}</pre>;
+    return <pre className="text-[0.8125rem]">{JSON.stringify(json, null, 2)}</pre>;
   }
   return (
     <div className="flex flex-col gap-4">
       {Object.entries(json as Record<string, unknown>).map(([key, v]) => (
         <div key={key}>
-          <div className="mb-1 font-medium text-[12px] text-ink-3 uppercase tracking-[0.06em]">
+          <div className="mb-1 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.06em]">
             {labelFor(step, key)}
           </div>
           {typeof v === "boolean" ? (
-            <div className="text-[15px]">{t(v ? "run.yes" : "run.no")}</div>
+            <div className="text-[0.9375rem]">{t(v ? "run.yes" : "run.no")}</div>
           ) : typeof v === "string" || typeof v === "number" ? (
-            <div className="whitespace-pre-wrap text-[15px]">{String(v)}</div>
+            <div className="whitespace-pre-wrap text-[0.9375rem]">{String(v)}</div>
           ) : Array.isArray(v) && v.every((x) => typeof x !== "object") ? (
-            <ul className="list-disc pl-5 text-[14px]">
+            <ul className="list-disc pl-5 text-[0.875rem]">
               {v.map((x, i) => (
                 <li key={i} className="break-words">
                   {String(x)}
@@ -241,7 +241,7 @@ function JsonView({ step, json }: { step: Step; json: unknown }) {
           ) : Array.isArray(v) && v.length && typeof v[0] === "object" ? (
             <Table rows={v as Record<string, unknown>[]} />
           ) : (
-            <pre className="overflow-auto rounded-lg bg-paper-2 p-3 text-[12px]">
+            <pre className="overflow-auto rounded-lg bg-paper-2 p-3 text-[0.75rem]">
               {JSON.stringify(v, null, 2)}
             </pre>
           )}
@@ -255,7 +255,7 @@ function Table({ rows }: { rows: Record<string, unknown>[] }) {
   const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   return (
     <div className="overflow-x-auto rounded-lg ring-1 ring-border-soft">
-      <table className="w-full text-[13px]">
+      <table className="w-full text-[0.8125rem]">
         <thead className="bg-paper-2 text-ink-2">
           <tr>
             {cols.map((c) => (
@@ -291,7 +291,7 @@ function CopyButton({ text }: { text: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1500);
       }}
-      className="inline-flex h-8 items-center gap-1.5 rounded-full bg-paper-2 px-3 text-[13px] text-ink-2 hover:text-ink coarse:h-11 coarse:px-4"
+      className="inline-flex h-8 items-center gap-1.5 rounded-full bg-paper-2 px-3 text-[0.8125rem] text-ink-2 hover:text-ink coarse:h-11 coarse:px-4"
     >
       {done ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {done ? t("share.copied") : t("run.copy")}
@@ -365,7 +365,7 @@ export function OutputView({
           <audio src={assetUrl(asset.id)} controls className="w-full" />
           <AiBadge ai={asset.ai} className="static" />
           {output.text ? (
-            <p className="text-[14px] text-ink-2 leading-relaxed">{output.text}</p>
+            <p className="text-[0.875rem] text-ink-2 leading-relaxed">{output.text}</p>
           ) : null}
         </div>
       );
@@ -397,7 +397,7 @@ export function OutputView({
                     aria-pressed={on}
                     onClick={() => onPick(i)}
                     className={cn(
-                      "absolute top-2 left-2 inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[12px] shadow-soft backdrop-blur coarse:h-11",
+                      "absolute top-2 left-2 inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.75rem] shadow-soft backdrop-blur coarse:h-11",
                       on ? "bg-ember text-white" : "bg-card/90 text-ink-2 hover:text-ink",
                     )}
                   >
@@ -405,7 +405,7 @@ export function OutputView({
                     {t(on ? "run.pickedItem" : "run.pickItem", { n: i + 1 })}
                   </button>
                 ) : (
-                  <span className="absolute top-2 left-2 rounded-full bg-card/90 px-2.5 py-1 font-medium text-[12px] text-ink-2">
+                  <span className="absolute top-2 left-2 rounded-full bg-card/90 px-2.5 py-1 font-medium text-[0.75rem] text-ink-2">
                     {i + 1}
                   </span>
                 )}
@@ -474,7 +474,7 @@ export function OutputView({
         ) : step.output.format === "markdown" ? (
           <Markdown text={output.text ?? ""} />
         ) : (
-          <div className="whitespace-pre-wrap text-[16px] leading-relaxed">{output.text}</div>
+          <div className="whitespace-pre-wrap text-[1rem] leading-relaxed">{output.text}</div>
         )}
         {images.map((img) => (
           <div key={img.id} className="relative">
@@ -494,7 +494,7 @@ export function OutputView({
                   href={assetUrl(f.id)}
                   download={f.name}
                   onClick={(e) => appDownload(e, assetUrl(f.id), f.name)}
-                  className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
+                  className="flex items-center gap-2 px-3 py-2 text-[0.8125rem] hover:bg-paper-2 coarse:min-h-11"
                 >
                   <FileText className="size-3.5 shrink-0 text-ink-3" />
                   <span className="min-w-0 flex-1 truncate">{f.name}</span>
@@ -587,7 +587,7 @@ function ShareFileButton({ url, format, title }: { url: string; format: Format; 
       aria-label={t("run.shareFile")}
       title={t("run.shareFile")}
       className={cn(
-        "inline-flex h-9 items-center gap-1.5 rounded-full px-3 font-medium text-[13px] transition coarse:h-11 coarse:px-4",
+        "inline-flex h-9 items-center gap-1.5 rounded-full px-3 font-medium text-[0.8125rem] transition coarse:h-11 coarse:px-4",
         state === "ready"
           ? "bg-ember-tint text-ink ring-1 ring-ember"
           : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
@@ -622,7 +622,7 @@ export function DownloadButtons({
           href={href(f)}
           onClick={(e) => appDownload(e, href(f))}
           className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[13px] transition coarse:h-11 coarse:px-4",
+            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[0.8125rem] transition coarse:h-11 coarse:px-4",
             i === 0
               ? "bg-primary text-primary-foreground hover:brightness-105"
               : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",

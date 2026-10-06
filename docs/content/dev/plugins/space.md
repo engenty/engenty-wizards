@@ -49,7 +49,7 @@ await server.index.put({
   key: `page:${page.id}`,
   title: page.title,
   text: page.markdown,
-  link: "/space#wiki",
+  link: "/space/knowledge#wiki",
 });
 
 await server.index.remove(space.id, `page:${page.id}`);
@@ -104,7 +104,7 @@ studio.registerAssistantCard({
   tool: "propose_source",
   component: ({ data, send }) => (
     <Card className="flex items-center gap-3 p-4">
-      <span className="flex-1 text-[14px]">
+      <span className="flex-1 text-[0.875rem]">
         {data.url}: {data.pages} pages
       </span>
       <Button size="sm" onClick={() => send("Übernehmen")}>

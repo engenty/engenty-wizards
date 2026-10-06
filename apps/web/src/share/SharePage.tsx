@@ -61,22 +61,26 @@ export function SharePage() {
         <div className="mb-8 flex flex-wrap items-center gap-4">
           <Mascot kind={view.wizard.avatar} size={64} />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-ink-4">
+            <p className="text-[0.8125rem] text-ink-4">
               {view.expiresAt
                 ? t("sharePage.until", { date: date(view.expiresAt) })
                 : t("sharePage.shared", { date: date(view.createdAt) })}
             </p>
-            <h1 className="font-display font-semibold text-[28px] leading-tight tracking-tight sm:text-[32px]">
+            <h1 className="font-display font-semibold text-[1.75rem] leading-tight tracking-tight sm:text-[2rem]">
               {view.title}
             </h1>
-            {view.message ? <p className="mt-1 text-[15px] text-ink-3">{view.message}</p> : null}
+            {view.message ? (
+              <p className="mt-1 text-[0.9375rem] text-ink-3">{view.message}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col gap-6">
           {view.shown.map(({ step, output, formats, label }) => (
             <Card key={step.id} className="p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-display font-semibold text-[17px]">{label ?? step.title}</h2>
+                <h2 className="font-display font-semibold text-[1.0625rem]">
+                  {label ?? step.title}
+                </h2>
                 <DownloadButtons
                   base={base}
                   stepId={step.id}
@@ -95,18 +99,18 @@ export function SharePage() {
           >
             <Mascot kind={view.wizard.avatar} size={44} interactive={false} />
             <div className="min-w-0 flex-1">
-              <div className="font-display font-semibold text-[16px]">{view.wizard.title}</div>
+              <div className="font-display font-semibold text-[1rem]">{view.wizard.title}</div>
               {view.wizard.description ? (
-                <div className="truncate text-[14px] text-ink-3">{view.wizard.description}</div>
+                <div className="truncate text-[0.875rem] text-ink-3">{view.wizard.description}</div>
               ) : null}
             </div>
-            <span className="inline-flex items-center gap-1.5 font-medium text-[14px] text-ember-strong">
+            <span className="inline-flex items-center gap-1.5 font-medium text-[0.875rem] text-ember-strong">
               {t("sharePage.own")} <ArrowRight className="size-4" />
             </span>
           </a>
         ) : null}
       </main>
-      <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
+      <footer className="safe-bottom pt-6 text-center text-[0.75rem] text-ink-4">
         <a href={`${BASE}/`} className="inline-block py-3.5 hover:text-ink-2">
           {t("run.madeWith").replace("engenty wizards", BRAND.name)}
         </a>

@@ -61,9 +61,9 @@ export function ImportWizard({
         }}
       />
       <Dialog open={upload.isError} onClose={upload.reset} title={t("import.failed")}>
-        <p className="text-[14px] text-ink-2">{(upload.error as Error | null)?.message}</p>
+        <p className="text-[0.875rem] text-ink-2">{(upload.error as Error | null)?.message}</p>
         {issues.length ? (
-          <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-[13px] text-ink-2">
+          <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-[0.8125rem] text-ink-2">
             {issues.slice(0, 8).map((i) => (
               <li key={i.message}>{i.message}</li>
             ))}

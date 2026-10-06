@@ -43,19 +43,19 @@ export function PluginsSection() {
             <li key={plugin.id} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span className="font-medium text-[15px]">{plugin.name}</span>
+                  <span className="font-medium text-[0.9375rem]">{plugin.name}</span>
                   {/* A plugin of one file has no name and no version of its own. */}
                   {plugin.name !== plugin.id ? (
-                    <span className="font-mono text-[12px] text-ink-4">
+                    <span className="font-mono text-[0.75rem] text-ink-4">
                       {plugin.id} · {plugin.version}
                     </span>
                   ) : null}
                 </div>
                 {plugin.description ? (
-                  <p className="mt-0.5 text-[14px] text-ink-3">{plugin.description}</p>
+                  <p className="mt-0.5 text-[0.875rem] text-ink-3">{plugin.description}</p>
                 ) : null}
                 {plugin.tools.length ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.75rem] text-ink-3">
                     {t("plugins.tools")}
                     {plugin.tools.map((tool) => (
                       <Chip key={tool.id}>{tool.id}</Chip>
@@ -63,12 +63,12 @@ export function PluginsSection() {
                   </div>
                 ) : null}
                 {plugin.error ? (
-                  <p className="mt-2 text-[13px] text-rose">
+                  <p className="mt-2 text-[0.8125rem] text-rose">
                     {t("plugins.serverFailed", { error: plugin.error })}
                   </p>
                 ) : null}
                 {studioError ? (
-                  <p className="mt-2 text-[13px] text-rose">
+                  <p className="mt-2 text-[0.8125rem] text-rose">
                     {t("plugins.studioFailed", { error: studioError })}
                   </p>
                 ) : null}
@@ -89,13 +89,13 @@ export function PluginsSection() {
           <li key={problem.path} className="py-4 first:pt-0 last:pb-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <Chip tone="warn">{t("plugins.problems")}</Chip>
-              <span className="break-all font-mono text-[12px] text-ink-3">{problem.path}</span>
+              <span className="break-all font-mono text-[0.75rem] text-ink-3">{problem.path}</span>
             </div>
-            <p className="mt-1.5 text-[13px] text-ink-3">{problem.message}</p>
+            <p className="mt-1.5 text-[0.8125rem] text-ink-3">{problem.message}</p>
           </li>
         ))}
       </ul>
-      {error ? <p className="mt-4 text-[13px] text-rose">{error}</p> : null}
+      {error ? <p className="mt-4 text-[0.8125rem] text-rose">{error}</p> : null}
     </Section>
   );
 }

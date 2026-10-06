@@ -98,7 +98,7 @@ export function UpdateBanner() {
             ? t("about.update.failed")
             : t("about.update.available", { v: latest });
   return (
-    <div className="flex items-center gap-3 border-border-soft border-b bg-ember-tint px-4 py-2 text-[13px] text-ink-2 sm:px-6">
+    <div className="flex items-center gap-3 border-border-soft border-b bg-ember-tint px-4 py-2 text-[0.8125rem] text-ink-2 sm:px-6">
       {busy ? (
         <Spinner className="size-4 shrink-0 text-ember-strong" />
       ) : (

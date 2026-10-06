@@ -673,7 +673,8 @@ export const runRoutes = new Hono()
   // --- the wizard's lists and files for this person -------------------------------
   .post("/:id/lists/:list/rows", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    // A shared list is every run's: the person never sees it.
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
       return c.json({ error: "not found" }, 404);
     }
@@ -690,7 +691,8 @@ export const runRoutes = new Hono()
   })
   .patch("/:id/lists/:list/rows/:rowId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    // A shared list is every run's: the person never sees it.
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
       return c.json({ error: "not found" }, 404);
     }
@@ -709,7 +711,8 @@ export const runRoutes = new Hono()
   })
   .delete("/:id/lists/:list/rows/:rowId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    // A shared list is every run's: the person never sees it.
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
       return c.json({ error: "not found" }, 404);
     }
@@ -719,7 +722,8 @@ export const runRoutes = new Hono()
   })
   .get("/:id/lists/:list/download", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list"));
+    // A shared list is every run's: the person never sees it.
+    const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     const format = z.enum(FORMATS).safeParse(c.req.query("format"));
     if (!run || !def || !format.success || !LIST_FORMATS.includes(format.data)) {
       return c.notFound();
@@ -727,7 +731,7 @@ export const runRoutes = new Hono()
     const scope = scopeOf(run);
     const download = await listDownload(
       def,
-      await listRows(scope, def.id),
+      await listRows(scope, def),
       format.data,
       `${run.definition.title} ${def.title}`,
       async (path) => {
@@ -744,11 +748,13 @@ export const runRoutes = new Hono()
     }
     const scope = scopeOf(run);
     const lists = await Promise.all(
-      (run.definition.lists ?? []).map(async (def) => ({
-        id: def.id,
-        title: def.title,
-        rows: (await listRows(scope, def.id)).length,
-      })),
+      (run.definition.lists ?? [])
+        .filter((def) => !def.shared)
+        .map(async (def) => ({
+          id: def.id,
+          title: def.title,
+          rows: (await listRows(scope, def)).length,
+        })),
     );
     const secrets = await listSecrets(scope);
     return c.json({

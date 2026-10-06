@@ -19,6 +19,8 @@ export interface ListDef {
    * shown beside the row, `status` is a select whose options are the answers (first = open).
    */
   check?: { file?: string; status?: string };
+  /** Every run reads and writes the same rows; kept as a table of the space, not per person. */
+  shared?: boolean;
 }
 
 export interface ListRow {

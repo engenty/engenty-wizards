@@ -225,13 +225,13 @@ export function EditorPage() {
   return (
     <div className="flex h-dvh flex-col">
       {readOnlyNote ? (
-        <div className="flex shrink-0 items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[13px] text-ink-2 sm:px-6">
+        <div className="flex shrink-0 items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[0.8125rem] text-ink-2 sm:px-6">
           <Lock className="size-4 shrink-0 text-ink-3" />
           <p className="min-w-0 flex-1">{readOnlyNote}</p>
         </div>
       ) : null}
       {failed ? (
-        <div className="shrink-0 bg-rose-tint px-4 py-2 text-[13px] text-rose sm:px-6">
+        <div className="shrink-0 bg-rose-tint px-4 py-2 text-[0.8125rem] text-rose sm:px-6">
           {failed}
         </div>
       ) : null}
@@ -244,7 +244,9 @@ export function EditorPage() {
           onClick={() => select("__wizard")}
           className="min-w-0 truncate rounded-md px-2 py-1 text-left hover:bg-accent"
         >
-          <span className="font-display font-semibold text-[17px] tracking-tight">{def.title}</span>
+          <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
+            {def.title}
+          </span>
         </button>
         <span className="hidden sm:inline-flex">
           {w.published ? (
@@ -325,8 +327,8 @@ export function EditorPage() {
         <section className="relative min-h-[45vh] flex-1 overflow-hidden lg:min-h-0">
           {hasIssues && !building ? (
             <div className="absolute top-3 right-3 left-3 z-10 mx-auto max-w-xl animate-rise rounded-xl bg-card p-4 shadow-elevated ring-1 ring-rose/30">
-              <p className="text-[14px]">{t("editor.issues")}</p>
-              <ul className="mt-2 list-disc pl-5 text-[13px] text-ink-2">
+              <p className="text-[0.875rem]">{t("editor.issues")}</p>
+              <ul className="mt-2 list-disc pl-5 text-[0.8125rem] text-ink-2">
                 {w.issues.slice(0, 4).map((i, k) => (
                   <li key={k}>{i.message}</li>
                 ))}
@@ -356,10 +358,10 @@ export function EditorPage() {
                 blocked ? "ring-rose/30" : "ring-amber/30",
               )}
             >
-              <p className="text-[14px]">
+              <p className="text-[0.875rem]">
                 {t(blocked ? "editor.models.blocking" : "editor.models.optional")}
               </p>
-              <ul className="mt-2 list-disc pl-5 text-[13px] text-ink-2">
+              <ul className="mt-2 list-disc pl-5 text-[0.8125rem] text-ink-2">
                 {missing.map((m) => (
                   <li key={m.cls}>
                     <span className="text-ink">{t(`class.${m.cls}` as Key)}</span> (
@@ -372,7 +374,7 @@ export function EditorPage() {
                   {t("editor.models.settings")}
                 </Button>
                 {credits === "connect" ? (
-                  <p className="text-[13px] text-ink-3">
+                  <p className="text-[0.8125rem] text-ink-3">
                     {t("teaser.models")}{" "}
                     <button
                       type="button"
@@ -383,13 +385,13 @@ export function EditorPage() {
                     </button>
                   </p>
                 ) : credits === "use" ? (
-                  <p className="text-[13px] text-ink-3">{t("teaser.modelsLinked")}</p>
+                  <p className="text-[0.8125rem] text-ink-3">{t("teaser.modelsLinked")}</p>
                 ) : null}
               </div>
             </div>
           ) : null}
           {building ? (
-            <div className="flex h-full items-center justify-center px-6 text-[14px] text-ink-3">
+            <div className="flex h-full items-center justify-center px-6 text-[0.875rem] text-ink-3">
               <Working chat={chat} spinner="size-4 text-ember" />
             </div>
           ) : (
@@ -431,7 +433,7 @@ export function EditorPage() {
                 type="button"
                 onClick={() => setTab(k)}
                 className={cn(
-                  "h-9 rounded-full px-4 font-medium text-[13px] transition",
+                  "h-9 rounded-full px-4 font-medium text-[0.8125rem] transition",
                   tab === k ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
                 )}
               >

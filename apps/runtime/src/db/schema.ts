@@ -1,4 +1,5 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { RunAsk, RunState } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -317,6 +318,77 @@ export const projectChunk = sqliteTable(
     index("project_chunk_file").on(t.fileId),
     index("project_chunk_ref").on(t.projectId, t.plugin, t.ref),
   ],
+);
+
+// --- The space's data -------------------------------------------------------
+// Tables and pages a space keeps, its own or one of its wizards'. Shared by everyone who works
+// in the space, unlike the wizard's store below, which belongs to one person.
+
+/** A table: its columns are engenty data-table columns, its rows in `space_table_row`. */
+export const spaceTable = sqliteTable(
+  "space_table",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    /** The wizard it belongs to; null: the space's own. */
+    wizardId: text("wizard_id").references(() => wizard.id, { onDelete: "cascade" }),
+    /**
+     * The wizard's shared list it keeps: its title, columns and key come from the wizard's
+     * definition, its rows from every run. Null: a table made in the studio.
+     */
+    list: text("list"),
+    /** The column a row is matched on, as the list says. */
+    keyColumn: text("key_column"),
+    title: text("title").notNull(),
+    columns: text("columns", { mode: "json" }).$type<TableColumn[]>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("space_table_project").on(t.projectId, t.wizardId),
+    uniqueIndex("space_table_list").on(t.wizardId, t.list),
+  ],
+);
+
+/** A row of a table: cells by column id. Rows stand in the order they were added. */
+export const spaceTableRow = sqliteTable(
+  "space_table_row",
+  {
+    id: text("id").primaryKey(),
+    tableId: text("table_id")
+      .notNull()
+      .references(() => spaceTable.id, { onDelete: "cascade" }),
+    /** The key column's value, normalised: saving a row with a known key updates that row. */
+    key: text("key"),
+    cells: text("cells", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("space_table_row_table").on(t.tableId, t.createdAt),
+    index("space_table_row_key").on(t.tableId, t.key),
+  ],
+);
+
+/** A page: a title and markdown, what the editor shows and an agent reads and writes. */
+export const spacePage = sqliteTable(
+  "space_page",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    wizardId: text("wizard_id").references(() => wizard.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    markdown: text("markdown").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("space_page_project").on(t.projectId, t.wizardId)],
 );
 
 // --- The wizard's store ------------------------------------------------------

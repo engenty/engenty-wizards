@@ -48,18 +48,18 @@ function CreditRow({
             href={homepage}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-[14px] text-ink underline-offset-4 hover:underline"
+            className="inline-flex items-center gap-1 font-medium text-[0.875rem] text-ink underline-offset-4 hover:underline"
           >
             {name}
             <ExternalLink aria-hidden className="size-3 text-ink-4" />
           </a>
         ) : (
-          <span className="font-medium text-[14px] text-ink">{name}</span>
+          <span className="font-medium text-[0.875rem] text-ink">{name}</span>
         )}
-        {version ? <span className="text-[12px] text-ink-3 tabular-nums">{version}</span> : null}
-        <span className="text-[12px] text-ink-3">{license}</span>
+        {version ? <span className="text-[0.75rem] text-ink-3 tabular-nums">{version}</span> : null}
+        <span className="text-[0.75rem] text-ink-3">{license}</span>
       </div>
-      {description ? <p className="mt-0.5 text-[13px] text-ink-3">{description}</p> : null}
+      {description ? <p className="mt-0.5 text-[0.8125rem] text-ink-3">{description}</p> : null}
     </li>
   );
 }
@@ -67,10 +67,10 @@ function CreditRow({
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <section className="mt-6">
-      <h3 className="border-border-soft border-b pb-2 font-display font-semibold text-[16px]">
+      <h3 className="border-border-soft border-b pb-2 font-display font-semibold text-[1rem]">
         {title}
       </h3>
-      {hint ? <p className="mt-2 text-[13px] text-ink-3">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-[0.8125rem] text-ink-3">{hint}</p> : null}
       {children}
     </section>
   );
@@ -95,7 +95,7 @@ function ProductList({ credits }: { credits: ProductCredit[] }) {
 function PackageList({ label, packages }: { label: string; packages: OssCredit[] }) {
   return (
     <div className="mt-4">
-      <h4 className="font-medium text-[12px] text-ink-3 tracking-wide">{label}</h4>
+      <h4 className="font-medium text-[0.75rem] text-ink-3 tracking-wide">{label}</h4>
       <ul className="divide-y divide-border-soft">
         {packages.map((pkg) => (
           <CreditRow key={pkg.name} {...pkg} />
@@ -156,7 +156,7 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onClose={onClose} title={t("about.credits")} wide>
-      <p className="-mt-3 mb-4 text-[14px] text-ink-3">{t("about.creditsHint")}</p>
+      <p className="-mt-3 mb-4 text-[0.875rem] text-ink-3">{t("about.creditsHint")}</p>
       <Input
         type="search"
         value={query}

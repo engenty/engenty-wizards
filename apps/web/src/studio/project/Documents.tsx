@@ -45,13 +45,13 @@ const meta = (file: ProjectFileView) =>
 function Status({ file }: { file: ProjectFileView }) {
   if (file.status === "pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-3">
+      <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
         <Spinner className="size-3" /> {t("project.reading")}
       </span>
     );
   }
   if (file.status === "failed") {
-    return <span className="text-[12px] text-rose">{file.error}</span>;
+    return <span className="text-[0.75rem] text-rose">{file.error}</span>;
   }
   return file.indexed ? (
     <Chip tone="live">
@@ -106,11 +106,11 @@ function DocumentRow({ file, actions, onPreview }: ItemProps) {
             type="button"
             onClick={onPreview}
             title={file.name}
-            className="min-w-0 truncate font-medium text-[14px] hover:underline"
+            className="min-w-0 truncate font-medium text-[0.875rem] hover:underline"
           >
             {file.name}
           </button>
-          <span className="text-[12px] text-ink-3">{meta(file)}</span>
+          <span className="text-[0.75rem] text-ink-3">{meta(file)}</span>
           <Status file={file} />
         </div>
         <Description file={file} actions={actions} />
@@ -162,11 +162,11 @@ function DocumentCard({ projectId, file, actions, onPreview }: ItemProps) {
         </div>
       </div>
       <div className="mt-1 flex flex-col gap-1 px-0.5">
-        <div className="truncate font-medium text-[13px]" title={file.name}>
+        <div className="truncate font-medium text-[0.8125rem]" title={file.name}>
           {file.name}
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[12px] text-ink-3">{meta(file)}</span>
+          <span className="text-[0.75rem] text-ink-3">{meta(file)}</span>
           <Status file={file} />
         </div>
       </div>
@@ -200,7 +200,7 @@ function DocumentPreview({
       aria-pressed={view === id}
       onClick={() => setView(id)}
       className={cn(
-        "h-8 rounded-full px-3 text-[13px] transition",
+        "h-8 rounded-full px-3 text-[0.8125rem] transition",
         view === id ? "bg-paper-2 font-medium text-ink" : "text-ink-3 hover:text-ink",
       )}
     >
@@ -210,7 +210,7 @@ function DocumentPreview({
   return (
     <Dialog open onClose={onClose} wide="page" title={file.name}>
       <div className="-mt-2 mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-[13px] text-ink-3">{meta(file)}</span>
+        <span className="text-[0.8125rem] text-ink-3">{meta(file)}</span>
         <Status file={file} />
         <div className="ml-auto flex items-center gap-1">
           {shown ? (
@@ -248,10 +248,10 @@ function DocumentPreview({
       ) : text.data?.text ? (
         <>
           <div className="overflow-x-auto rounded-lg bg-paper p-5 ring-1 ring-border-soft">
-            <Markdown text={text.data.text} className="text-[14px]" />
+            <Markdown text={text.data.text} className="text-[0.875rem]" />
           </div>
           {text.data.chars > text.data.text.length ? (
-            <p className="mt-3 text-[13px] text-ink-3">
+            <p className="mt-3 text-[0.8125rem] text-ink-3">
               {t("project.textCut", {
                 shown: text.data.text.length.toLocaleString(),
                 total: text.data.chars.toLocaleString(),
@@ -260,7 +260,7 @@ function DocumentPreview({
           ) : null}
         </>
       ) : (
-        <p className="py-8 text-center text-[14px] text-ink-3">{t("project.noText")}</p>
+        <p className="py-8 text-center text-[0.875rem] text-ink-3">{t("project.noText")}</p>
       )}
     </Dialog>
   );
@@ -310,14 +310,14 @@ function IndexSearch({ projectId }: { projectId: string }) {
         hits.length ? (
           <ul className="mt-2 flex flex-col gap-2">
             {hits.map((hit, i) => (
-              <li key={i} className="rounded-lg bg-paper-2 px-3 py-2 text-[13px]">
-                <div className="mb-0.5 font-medium text-[12px] text-ink-3">{hit.name}</div>
+              <li key={i} className="rounded-lg bg-paper-2 px-3 py-2 text-[0.8125rem]">
+                <div className="mb-0.5 font-medium text-[0.75rem] text-ink-3">{hit.name}</div>
                 <p className="line-clamp-3 whitespace-pre-line text-ink-2">{hit.text}</p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[13px] text-ink-3">{t("project.searchNone")}</p>
+          <p className="mt-2 text-[0.8125rem] text-ink-3">{t("project.searchNone")}</p>
         )
       ) : null}
     </>
@@ -369,7 +369,7 @@ export function Documents({
       {readOnly ? (
         // A local install sends its wizards; the project's documents stay with it.
         docs.length ? null : (
-          <p className="text-[14px] text-ink-3">{t("project.staysLocal")}</p>
+          <p className="text-[0.875rem] text-ink-3">{t("project.staysLocal")}</p>
         )
       ) : (
         <DropArea
@@ -381,9 +381,9 @@ export function Documents({
           {t("project.drop")} <span className="underline">{t("project.documentAdd")}</span>
         </DropArea>
       )}
-      {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
+      {actions.error ? <p className="mt-3 text-[0.875rem] text-rose">{actions.error}</p> : null}
       {docs.length && !data.embeddings ? (
-        <p className="mt-3 text-[13px] text-ink-3">{t("project.keywordsOnly")}</p>
+        <p className="mt-3 text-[0.8125rem] text-ink-3">{t("project.keywordsOnly")}</p>
       ) : null}
       {preview ? (
         <DocumentPreview projectId={projectId} file={preview} onClose={() => setPreviewId(null)} />

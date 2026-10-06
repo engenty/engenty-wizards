@@ -379,14 +379,14 @@ export function FlowApp() {
         )}
       >
         <header className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-display font-semibold text-[15px]">
+          <span className="truncate font-display font-semibold text-[0.9375rem]">
             {view.wizard.title}
           </span>
           <Chip>
             {view.wizard.shows === "published" ? t("flowApp.published") : t("flowApp.draft")}
           </Chip>
           {view.wizard.issues ? (
-            <span className="text-[12px] text-rose">
+            <span className="text-[0.75rem] text-rose">
               {t("flowApp.issues", { n: view.wizard.issues })}
             </span>
           ) : null}
@@ -438,11 +438,11 @@ function WizardIntro({ view, onStart }: { view: FlowView; onStart: () => Promise
     >
       <div className="mx-auto flex max-w-lg flex-col items-center px-6 pt-6 pb-6 text-center">
         <Mascot kind={view.wizard.avatar ?? view.definition.avatar} size={120} fluffy />
-        <h1 className="mt-2 text-balance font-display font-semibold text-[26px] leading-[1.1] tracking-tight">
+        <h1 className="mt-2 text-balance font-display font-semibold text-[1.625rem] leading-[1.1] tracking-tight">
           {view.wizard.title}
         </h1>
         {description ? (
-          <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">{description}</p>
+          <p className="mt-3 text-[0.9375rem] text-ink-2 leading-relaxed">{description}</p>
         ) : null}
         {view.wizard.published ? (
           <Button
@@ -463,11 +463,11 @@ function WizardIntro({ view, onStart }: { view: FlowView; onStart: () => Promise
             {t("run.start")} <ArrowRight className="size-4" />
           </Button>
         ) : (
-          <p className="mt-8 rounded-xl bg-paper-2 px-5 py-4 text-[14px] text-ink-2">
+          <p className="mt-8 rounded-xl bg-paper-2 px-5 py-4 text-[0.875rem] text-ink-2">
             {t("flowApp.notPublished")}
           </p>
         )}
-        {error ? <p className="mt-4 text-[14px] text-rose">{error}</p> : null}
+        {error ? <p className="mt-4 text-[0.875rem] text-rose">{error}</p> : null}
         <Button size="sm" variant="ghost" className="mt-4" onClick={() => setFlow(!flow)}>
           <Workflow className="size-4" />
           {t("flowApp.flow")}
@@ -524,7 +524,7 @@ function RunPanel({
   let body: ReactNode = null;
   if (report.status === "running" && !(waiting && "ask" in waiting)) {
     body = (
-      <p className="flex items-center gap-2 text-[13px] text-ink-2">
+      <p className="flex items-center gap-2 text-[0.8125rem] text-ink-2">
         <Spinner className="size-4" />
         {last?.message || t("run.working")}
       </p>
@@ -559,8 +559,8 @@ function RunPanel({
     body =
       waiting.kind === "confirm" ? (
         <div className="flex flex-col gap-2">
-          <div className="font-medium text-[13px]">{t("flowApp.ask")}</div>
-          <p className="text-[13px] text-ink-2">
+          <div className="font-medium text-[0.8125rem]">{t("flowApp.ask")}</div>
+          <p className="text-[0.8125rem] text-ink-2">
             {waiting.reason} — {waiting.service}: {waiting.action}
           </p>
           <div className="flex gap-2">
@@ -583,7 +583,9 @@ function RunPanel({
         </div>
       ) : (
         <div className="flex flex-col items-start gap-2">
-          <p className="text-[13px] text-ink-2">{t("flowApp.signIn", { site: waiting.site })}</p>
+          <p className="text-[0.8125rem] text-ink-2">
+            {t("flowApp.signIn", { site: waiting.site })}
+          </p>
           {toRunPage ? (
             <Button size="sm" onClick={toRunPage}>
               <ExternalLink className="size-4" />
@@ -595,21 +597,21 @@ function RunPanel({
   } else if (report.status === "failed") {
     body = (
       <div className="flex flex-col items-start gap-2">
-        <p className="text-[13px] text-rose">{report.error || t("run.failed")}</p>
+        <p className="text-[0.8125rem] text-rose">{report.error || t("run.failed")}</p>
         <Button size="sm" busy={busy} onClick={() => act("control_run", { action: "retry" })}>
           {t("run.retry")}
         </Button>
       </div>
     );
   } else if (report.status === "cancelled") {
-    body = <p className="text-[13px] text-ink-3">{t("run.cancelled")}</p>;
+    body = <p className="text-[0.8125rem] text-ink-3">{t("run.cancelled")}</p>;
   } else if (report.status === "done") {
     body = <Outputs outputs={report.outputs} open={open} />;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-[12px] text-ink-3">
+      <div className="flex items-center gap-2 text-[0.75rem] text-ink-3">
         <span className="font-medium text-ink-2">
           {report.status === "done" ? t("flowApp.done") : report.step?.title}
         </span>
@@ -635,7 +637,9 @@ function RunPanel({
         </span>
       </div>
       {body}
-      {error ? <p className="text-[13px] text-rose">{t("flowApp.failed", { error })}</p> : null}
+      {error ? (
+        <p className="text-[0.8125rem] text-rose">{t("flowApp.failed", { error })}</p>
+      ) : null}
       {shown.length && report.status !== "done" ? <Outputs outputs={shown} open={open} /> : null}
     </div>
   );
@@ -674,7 +678,7 @@ function PageForm({
   if (elsewhere.some((f) => f.required)) {
     return (
       <div className="flex flex-col items-start gap-2">
-        <p className="text-[13px] text-ink-2">
+        <p className="text-[0.8125rem] text-ink-2">
           {t("flowApp.inBrowser", { fields: elsewhere.map((f) => f.label).join(", ") })}
         </p>
         {onBrowser ? (
@@ -719,7 +723,7 @@ function PageForm({
           {t("run.next")}
         </Button>
         {elsewhere.length ? (
-          <span className="text-[12px] text-ink-3">
+          <span className="text-[0.75rem] text-ink-3">
             {t("flowApp.inBrowser", { fields: elsewhere.map((f) => f.label).join(", ") })}
           </span>
         ) : null}
@@ -860,8 +864,8 @@ function Outputs({ outputs, open }: { outputs: RunOutput[]; open: (url: string) 
     <div className="flex flex-col gap-3">
       {outputs.map((o) => (
         <section key={o.stepId} className="rounded-xl bg-paper-2 p-3">
-          <div className="mb-1.5 font-medium text-[13px] text-ink-2">{o.title}</div>
-          {o.text ? <Markdown text={o.text} className="text-[13px]" /> : null}
+          <div className="mb-1.5 font-medium text-[0.8125rem] text-ink-2">{o.title}</div>
+          {o.text ? <Markdown text={o.text} className="text-[0.8125rem]" /> : null}
           {o.assets
             .filter((a) => a.mime.startsWith("image/"))
             .map((a) => (

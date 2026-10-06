@@ -43,15 +43,15 @@ export function OwnModels({ models }: { models: LocalModels }) {
     <div className="flex flex-col gap-5">
       <div>
         <Label>{t("local.keys")}</Label>
-        <p className="mb-3 text-[13px] text-ink-3">{t("local.keysHint")}</p>
+        <p className="mb-3 text-[0.8125rem] text-ink-3">{t("local.keysHint")}</p>
         <div className="flex flex-col gap-2">
           {(Object.keys(KEY_LABEL) as KeyName[]).map((name) => (
             <div key={name} className="flex flex-wrap items-center gap-2">
-              <span className="w-40 text-[14px] text-ink-2">{KEY_LABEL[name]}</span>
+              <span className="w-40 text-[0.875rem] text-ink-2">{KEY_LABEL[name]}</span>
               <Input
                 type="password"
                 autoComplete="off"
-                className="min-w-0 flex-1 font-mono text-[13px]"
+                className="min-w-0 flex-1 font-mono text-[0.8125rem]"
                 placeholder={models.keys[name] ? t("local.keySet") : t("local.keyEmpty")}
                 value={keys[name] ?? ""}
                 onChange={(e) => setKeys({ ...keys, [name]: e.target.value })}
@@ -76,22 +76,22 @@ export function OwnModels({ models }: { models: LocalModels }) {
       </div>
       <div>
         <Label>{t("local.classes")}</Label>
-        <p className="mb-3 text-[13px] text-ink-3">{t("local.classesHint")}</p>
+        <p className="mb-3 text-[0.8125rem] text-ink-3">{t("local.classesHint")}</p>
         <div className="flex flex-col gap-2">
           {MODEL_CLASSES.map((cls: ModelClass) => (
             <div key={cls} className="flex flex-wrap items-center gap-2">
-              <span className="w-40 text-[14px] text-ink-2">{t(`class.${cls}`)}</span>
+              <span className="w-40 text-[0.875rem] text-ink-2">{t(`class.${cls}`)}</span>
               <Input
-                className="min-w-0 flex-1 font-mono text-[13px]"
+                className="min-w-0 flex-1 font-mono text-[0.8125rem]"
                 value={bindings[cls] ?? ""}
                 onChange={(e) => setBindings({ ...bindings, [cls]: e.target.value })}
               />
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="w-40 text-[14px] text-ink-2">Ollama</span>
+            <span className="w-40 text-[0.875rem] text-ink-2">Ollama</span>
             <Input
-              className="min-w-0 flex-1 font-mono text-[13px]"
+              className="min-w-0 flex-1 font-mono text-[0.8125rem]"
               value={ollamaUrl}
               onChange={(e) => setOllamaUrl(e.target.value)}
             />

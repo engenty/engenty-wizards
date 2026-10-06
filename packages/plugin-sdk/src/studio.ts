@@ -42,13 +42,22 @@ export interface StudioSettingsSection {
 }
 
 /**
- * A section of the space page, below the space's own sections. The studio draws its heading and
- * hint above it, and its entry in the page's menu under the plugin's name; the component draws
- * the rest, usually a `Card`.
+ * The parts of the space page: `info` (who the space is, its logos, colours, assets and facts),
+ * `knowledge` (its documents and what its steps search), `data` (what its wizards keep) and
+ * `results` (what its runs produced).
+ */
+export type StudioSpaceGroup = "info" | "knowledge" | "data" | "results";
+
+/**
+ * A section of the space page, in one of its parts, below the part's own sections. The studio
+ * draws its heading and hint above it, and its entry in the part's menu under the plugin's name;
+ * the component draws the rest, usually a `Card`.
  */
 export interface StudioSpaceSection {
-  /** Its anchor on the page: `/space#<id>`. */
+  /** Its anchor: `/space/<group>#<id>`. Unique on the whole space page. */
   id: string;
+  /** The part it stands in; `knowledge` when left out. */
+  group?: StudioSpaceGroup;
   label: () => string;
   /** One line under the heading: what the section is for. */
   hint?: () => string;

@@ -48,6 +48,7 @@ An AI step has instructions and the tools you allow it:
 | Code & shell | run code in a sandbox, where the install has one |
 | Images | make images while it works |
 | API | call an HTTP API |
+| Pages | write pages of the wizard in Markdown, kept for every later run, and read them and the space's own pages |
 
 Every AI step can also read and write the wizard's lists, list its files and read documents:
 PDFs, scans and photos, Word, Excel, CSV and saved mails.
@@ -132,6 +133,8 @@ follows. The diagram draws the branches with their conditions.
 
 - **Lists** hold rows between runs, separately for each person who runs the wizard: the
   receipts already booked, the customers already written to.
+- **Shared lists** hold one set of rows for every run: requests, sign-ups, a log. The person
+  running the wizard never sees them; you find them under Space → Data, below the wizard.
 - **Connected accounts and sign-ins** are kept for the person's next run.
 
 The person sees and deletes all of it under "What this wizard remembers". See

@@ -215,7 +215,9 @@ export function SheetBar({
         <SheetButton label={t("common.close")} onClick={onClose}>
           <X className="size-5" />
         </SheetButton>
-        <div className="min-w-0 flex-1 truncate text-center font-medium text-[15px]">{title}</div>
+        <div className="min-w-0 flex-1 truncate text-center font-medium text-[0.9375rem]">
+          {title}
+        </div>
         {camera.torchable ? (
           <SheetButton
             label={t("camera.torch")}
@@ -269,7 +271,7 @@ export function CameraStage({
       />
       {camera.error ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black px-8 text-center">
-          <p className="max-w-sm text-[15px] text-white/85 leading-relaxed">
+          <p className="max-w-sm text-[0.9375rem] text-white/85 leading-relaxed">
             {t(`camera.${camera.error}` as "camera.denied")}
           </p>
           {actions}
@@ -279,7 +281,7 @@ export function CameraStage({
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center text-white/75">
           <Spinner />
-          <p className="max-w-xs text-[14px] leading-relaxed">{asking}</p>
+          <p className="max-w-xs text-[0.875rem] leading-relaxed">{asking}</p>
         </div>
       )}
     </div>
@@ -462,7 +464,7 @@ export function CameraDialog({
       />
       <div className={cn("safe-bottom px-4 pt-3", camera.error && "invisible")}>
         {allowVideo && canRecordClips && recording === null ? (
-          <div className="mb-3 flex justify-center gap-1 text-[13px]">
+          <div className="mb-3 flex justify-center gap-1 text-[0.8125rem]">
             {(["photo", "video"] as const).map((m) => (
               <button
                 key={m}
@@ -480,7 +482,7 @@ export function CameraDialog({
           </div>
         ) : null}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <span className="text-[13px] text-white/70 leading-snug">
+          <span className="text-[0.8125rem] text-white/70 leading-snug">
             {recording !== null
               ? t("camera.recording")
               : mode === "video"
@@ -543,7 +545,7 @@ export function SheetAction({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 font-medium text-[14px] transition",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 font-medium text-[0.875rem] transition",
         quiet ? "text-white/75 hover:text-white" : "bg-white text-black hover:bg-white/90",
       )}
     >

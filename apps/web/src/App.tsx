@@ -102,6 +102,13 @@ function Unknown() {
 export function StudioApp() {
   // A switch of language renders the whole app again, in place.
   useLang();
+  // The studio's own sizes (app.css): smaller on laptops than a wizard's page.
+  useEffect(() => {
+    document.documentElement.dataset.studio = "";
+    return () => {
+      delete document.documentElement.dataset.studio;
+    };
+  }, []);
   const plugins = useStudioPlugins();
   return (
     <Suspense fallback={<Splash />}>
@@ -139,7 +146,7 @@ export function StudioApp() {
           }
         />
         <Route
-          path="/space"
+          path="/space/:group?"
           element={
             <Studio wide>
               <ProjectPage />

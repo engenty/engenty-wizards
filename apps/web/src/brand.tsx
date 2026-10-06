@@ -109,7 +109,7 @@ export function Logo({ onClick, place }: { onClick?: () => void; place?: string 
       className="flex min-w-0 items-center gap-2.5 whitespace-nowrap rounded-full pr-2 text-ink"
     >
       <EngentyLogoMark size={30} />
-      <span className="font-display font-semibold text-[17px] tracking-tight">
+      <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
         engenty<span className="text-ember">.</span>
         {/* With a place to name, a phone has no room for the product's own name. */}
         <span

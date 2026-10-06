@@ -14,6 +14,8 @@ import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { getBlob, putBlob } from "../files/blobs.js";
 import { seal, unseal } from "../secrets/crypto.js";
+import { StoreError } from "./errors.js";
+import { deleteSharedRows, saveSharedRows, sharedRows } from "./shared-lists.js";
 
 /** Whose store: one wizard, one person. */
 export interface StoreScope {
@@ -21,7 +23,7 @@ export interface StoreScope {
   holder: string;
 }
 
-export class StoreError extends Error {}
+export { StoreError };
 
 /** The person a run belongs to: the signed-in admin, else the visitor of the shared link. */
 export function holderOf(run: { id: string; userId: string | null; visitorId: string | null }) {
@@ -64,9 +66,13 @@ function toRow(r: typeof schema.storeRow.$inferSelect): ListRow {
   return { id: r.id, cells: r.cells, updatedAt: r.updatedAt.toISOString() };
 }
 
-export async function listRows(scope: StoreScope, list: string): Promise<ListRow[]> {
+/** The rows of a list: the person's, or every run's where the list is shared. */
+export async function listRows(scope: StoreScope, def: ListDef): Promise<ListRow[]> {
+  if (def.shared) {
+    return sharedRows(scope.wizardId, def);
+  }
   const rows = await db.query.storeRow.findMany({
-    where: inList(scope, list),
+    where: inList(scope, def.id),
     orderBy: [asc(schema.storeRow.createdAt), asc(schema.storeRow.id)],
   });
   return rows.map(toRow);
@@ -82,6 +88,9 @@ export async function saveRows(
   def: ListDef,
   input: Record<string, unknown>[],
 ): Promise<{ added: number; updated: number }> {
+  if (def.shared) {
+    return saveSharedRows(scope.wizardId, def, input);
+  }
   let added = 0;
   let updated = 0;
   const existing = await db.query.storeRow.findMany({ where: inList(scope, def.id) });
@@ -119,13 +128,16 @@ export async function saveRows(
   return { added, updated };
 }
 
-/** Changes cells of one row (the person edited it). */
+/** Changes cells of one row (the person edited it). A shared list is never the person's. */
 export async function updateRow(
   scope: StoreScope,
   def: ListDef,
   rowId: string,
   patch: Record<string, unknown>,
 ): Promise<boolean> {
+  if (def.shared) {
+    return false;
+  }
   const row = await db.query.storeRow.findFirst({
     where: and(inList(scope, def.id), eq(schema.storeRow.id, rowId)),
   });
@@ -152,6 +164,9 @@ export async function updateRow(
 
 /** Deletes rows by id, or by the value of the key column. */
 export async function deleteRows(scope: StoreScope, def: ListDef, idsOrKeys: string[]) {
+  if (def.shared) {
+    return deleteSharedRows(scope.wizardId, def, idsOrKeys);
+  }
   if (!idsOrKeys.length) {
     return 0;
   }

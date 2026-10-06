@@ -40,7 +40,7 @@ export function Description({ file, actions }: { file: ProjectFileView; actions:
   const looking = file.status === "pending" && !text;
   // Where the project is not changed, the description reads as plain text; none is no line.
   if (actions.readOnly) {
-    return text ? <p className="text-[13px] text-ink-2 leading-snug">{text}</p> : null;
+    return text ? <p className="text-[0.8125rem] text-ink-2 leading-snug">{text}</p> : null;
   }
   return (
     <textarea
@@ -56,7 +56,7 @@ export function Description({ file, actions }: { file: ProjectFileView; actions:
           void actions.describe(file.id, text.trim());
         }
       }}
-      className="-mx-1 block w-[calc(100%+0.5rem)] resize-none overflow-hidden rounded-md bg-transparent px-1 py-0.5 text-[13px] text-ink-2 leading-snug outline-none transition placeholder:text-ink-4 hover:bg-paper-2 focus:bg-card focus:text-ink focus:ring-1 focus:ring-border"
+      className="-mx-1 block w-[calc(100%+0.5rem)] resize-none overflow-hidden rounded-md bg-transparent px-1 py-0.5 text-[0.8125rem] text-ink-2 leading-snug outline-none transition placeholder:text-ink-4 hover:bg-paper-2 focus:bg-card focus:text-ink focus:ring-1 focus:ring-border"
     />
   );
 }
@@ -193,7 +193,7 @@ function Tiles({
             </div>
           </div>
           {kind === "asset" ? (
-            <div className="truncate px-0.5 text-[12px] text-ink-3" title={file.name}>
+            <div className="truncate px-0.5 text-[0.75rem] text-ink-3" title={file.name}>
               {file.name}
             </div>
           ) : null}
@@ -235,7 +235,7 @@ export function Logos({
         accept="image/*"
         addLabel={t("project.logoAdd")}
       />
-      {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
+      {actions.error ? <p className="mt-3 text-[0.875rem] text-rose">{actions.error}</p> : null}
     </Section>
   );
 }
@@ -266,7 +266,7 @@ function AssetPreview({
   return (
     <Dialog open onClose={onClose} wide="page" title={file.name}>
       <div className="-mt-2 mb-4 flex items-center justify-between gap-3">
-        <span className="text-[13px] text-ink-3">{assetMeta(file)}</span>
+        <span className="text-[0.8125rem] text-ink-3">{assetMeta(file)}</span>
         <a
           href={src}
           target="_blank"
@@ -323,11 +323,11 @@ function AssetRow({
             type="button"
             onClick={onPreview}
             title={file.name}
-            className="min-w-0 truncate font-medium text-[14px] hover:underline"
+            className="min-w-0 truncate font-medium text-[0.875rem] hover:underline"
           >
             {file.name}
           </button>
-          <span className="text-[12px] text-ink-3">{assetMeta(file)}</span>
+          <span className="text-[0.75rem] text-ink-3">{assetMeta(file)}</span>
         </div>
         <Description file={file} actions={actions} />
       </div>
@@ -403,7 +403,7 @@ export function Assets({
       {readOnly ? (
         // A local install sends its wizards, not what the project keeps for them.
         all.length ? null : (
-          <p className="text-[14px] text-ink-3">{t("project.staysLocal")}</p>
+          <p className="text-[0.875rem] text-ink-3">{t("project.staysLocal")}</p>
         )
       ) : (
         <DropArea
@@ -415,7 +415,7 @@ export function Assets({
           {t("project.drop")} <span className="underline">{t("project.assetAdd")}</span>
         </DropArea>
       )}
-      {actions.error ? <p className="mt-3 text-[14px] text-rose">{actions.error}</p> : null}
+      {actions.error ? <p className="mt-3 text-[0.875rem] text-rose">{actions.error}</p> : null}
       {preview ? (
         <AssetPreview
           projectId={projectId}

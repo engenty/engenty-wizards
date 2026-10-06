@@ -21,8 +21,8 @@ interface Log {
 const TONE = { done: "live", failed: "warn", cancelled: "neutral" } as const;
 
 /**
- * The studio half of the example: a page behind an icon of the top bar, a section of the
- * settings and a section of the space page. All read the plugin's own routes.
+ * The studio half of the example: a section of the space page under Ergebnisse, which leads to
+ * a page of the whole log, and a section of the settings. All read the plugin's own routes.
  */
 export default defineStudioPlugin((studio) => {
   const t = studio.i18n.register(messages);
@@ -32,17 +32,19 @@ export default defineStudioPlugin((studio) => {
     const log = useLog();
     return (
       <div className="animate-rise">
-        <h1 className="font-display font-semibold text-[28px] tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-[15px] text-ink-3">{t("hint")}</p>
+        <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">{t("title")}</h1>
+        <p className="mt-1 text-[0.9375rem] text-ink-3">{t("hint")}</p>
         <div className="mt-8 flex flex-col gap-2">
           {log.isLoading ? <Spinner className="mx-auto" /> : null}
           {log.data && !log.data.entries.length ? <Empty>{t("empty")}</Empty> : null}
           {log.data?.entries.map((entry) => (
             <Card key={entry.id} className="flex items-center gap-3 px-5 py-3.5">
-              <span className="min-w-0 flex-1 truncate font-medium text-[15px]">{entry.title}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-[0.9375rem]">
+                {entry.title}
+              </span>
               {entry.mode === "test" ? <Chip>{t("test")}</Chip> : null}
               <Chip tone={TONE[entry.status]}>{t(entry.status)}</Chip>
-              <time className="w-36 shrink-0 text-right text-[13px] text-ink-3 tabular-nums max-sm:hidden">
+              <time className="w-36 shrink-0 text-right text-[0.8125rem] text-ink-3 tabular-nums max-sm:hidden">
                 {new Date(entry.endedAt).toLocaleString(studio.i18n.lang())}
               </time>
             </Card>
@@ -63,7 +65,7 @@ export default defineStudioPlugin((studio) => {
       <section className="flex flex-col gap-2.5">
         <h2 className="px-1 font-display font-semibold text-lg leading-tight">{t("settings")}</h2>
         <Card className="flex items-center justify-between gap-4 p-5">
-          <p className="text-[14px] text-ink-2">{t("kept", { n: log.data?.total ?? 0 })}</p>
+          <p className="text-[0.875rem] text-ink-2">{t("kept", { n: log.data?.total ?? 0 })}</p>
           <Button
             variant="danger"
             busy={clear.isPending}
@@ -95,12 +97,12 @@ export default defineStudioPlugin((studio) => {
       <Card className="flex flex-col divide-y divide-border-soft px-5 py-1.5">
         {log.data.entries.map((entry) => (
           <div key={entry.id} className="flex items-center gap-3 py-2.5">
-            <span className="min-w-0 flex-1 truncate text-[14px]">{entry.title}</span>
+            <span className="min-w-0 flex-1 truncate text-[0.875rem]">{entry.title}</span>
             {entry.mode === "test" ? <Chip>{t("test")}</Chip> : null}
             <Chip tone={TONE[entry.status]}>{t(entry.status)}</Chip>
           </div>
         ))}
-        <Link to="/run-log" className="py-2.5 text-[13px] text-ink-3 hover:text-ink">
+        <Link to="/run-log" className="py-2.5 text-[0.8125rem] text-ink-3 hover:text-ink">
           {t("all", { n: log.data.total })}
         </Link>
       </Card>
@@ -108,7 +110,6 @@ export default defineStudioPlugin((studio) => {
   }
 
   studio.registerPage({ path: "/run-log", component: RunLogPage });
-  studio.registerNav({ to: "/run-log", label: () => t("title"), icon: ListChecks });
   studio.registerSettingsSection({
     id: "run-log",
     label: () => t("settings"),
@@ -117,6 +118,7 @@ export default defineStudioPlugin((studio) => {
   });
   studio.registerSpaceSection({
     id: "run-log",
+    group: "results",
     label: () => t("title"),
     hint: () => t("spaceHint"),
     component: RunLogSpace,

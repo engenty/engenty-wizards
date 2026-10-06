@@ -48,16 +48,16 @@ export function RunsPanel({
           className="flex items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-accent"
         >
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-[14px]">
+            <div className="flex items-center gap-2 text-[0.875rem]">
               {fmt.format(new Date(r.createdAt))}
               {r.mode === "test" ? <Chip>Test</Chip> : <Chip tone="live">Live v{r.version}</Chip>}
             </div>
-            <div className="truncate text-[12px] text-ink-3">
+            <div className="truncate text-[0.75rem] text-ink-3">
               {STATUS[r.status] ?? r.status}
               {r.stepTitle && r.status !== "done" ? ` · ${r.stepTitle}` : ""}
             </div>
           </div>
-          <span className="text-[12px] text-ink-4 tabular-nums">{r.credits} cr</span>
+          <span className="text-[0.75rem] text-ink-4 tabular-nums">{r.credits} cr</span>
         </button>
       ))}
     </div>

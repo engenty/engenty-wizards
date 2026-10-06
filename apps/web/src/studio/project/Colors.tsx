@@ -35,7 +35,7 @@ function AddColor({ onAdd, onClose }: { onAdd: (color: BrandColor) => void; onCl
               placeholder="#e0531b"
               spellCheck={false}
               onChange={(e) => setValue(e.target.value.trim())}
-              className="font-mono text-[14px]"
+              className="font-mono text-[0.875rem]"
             />
           </div>
         </div>
@@ -48,7 +48,7 @@ function AddColor({ onAdd, onClose }: { onAdd: (color: BrandColor) => void; onCl
             placeholder={t("project.colorName")}
             onChange={(e) => setName(e.target.value)}
           />
-          <p className="mt-1.5 text-[13px] text-ink-3">{t("project.colorUse")}</p>
+          <p className="mt-1.5 text-[0.8125rem] text-ink-3">{t("project.colorUse")}</p>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
@@ -110,7 +110,7 @@ export function Colors({
               placeholder="#e0531b"
               spellCheck={false}
               onChange={(e) => set(row.id, { value: e.target.value.trim() })}
-              className="w-28 font-mono text-[13px]"
+              className="w-28 font-mono text-[0.8125rem]"
             />
             <div className="flex w-24 shrink-0 items-center justify-end max-sm:w-auto">
               {i === 0 ? (
@@ -139,7 +139,7 @@ export function Colors({
         ))}
       </div>
       {rows.length && !readOnly ? (
-        <p className="mt-1.5 text-[13px] text-ink-3">{t("project.colorUse")}</p>
+        <p className="mt-1.5 text-[0.8125rem] text-ink-3">{t("project.colorUse")}</p>
       ) : null}
       {rows.length < PROJECT_LIMITS.colors && !readOnly ? (
         <Button

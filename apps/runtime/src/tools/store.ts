@@ -95,17 +95,17 @@ export function storeTools(ctx: StepContext, uploads: UploadRef[], keeper: FileK
     const catalog = lists
       .map(
         (l) =>
-          `- ${l.id} — ${l.title}${l.key ? ` (rows are matched on "${l.key}")` : ""}: ${describeColumns(l)}`,
+          `- ${l.id} — ${l.title}${l.shared ? " (shared: every run of the wizard reads and writes the same rows — never repeat other people's rows to the person)" : ""}${l.key ? ` (rows are matched on "${l.key}")` : ""}: ${describeColumns(l)}`,
       )
       .join("\n");
 
     tools.list_read = createTool({
       id: "list_read",
-      description: `Read one of the lists this wizard keeps for the person between runs.\n${catalog}`,
+      description: `Read one of the lists this wizard keeps between runs: for the person, or for every run where the list is shared.\n${catalog}`,
       inputSchema: z.object({ list: listId }),
       execute: ({ list }) =>
         attempt(async () => {
-          const rows = await listRows(ctx.store, list);
+          const rows = await listRows(ctx.store, defOf(list));
           return {
             list,
             total: rows.length,

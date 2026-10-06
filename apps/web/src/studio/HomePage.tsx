@@ -95,7 +95,7 @@ function CopyLink({ url }: { url: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1500);
       }}
-      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] text-ink-3 hover:bg-accent hover:text-ink"
+      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-3 hover:bg-accent hover:text-ink"
     >
       {done ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {done ? t("share.copied") : t("share.link")}
@@ -140,13 +140,13 @@ function LinkTeaser() {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] text-ink-3 hover:bg-accent hover:text-ink"
+        className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-3 hover:bg-accent hover:text-ink"
       >
         <Copy className="size-3.5" /> {t("share.link")}
       </button>
       {open ? (
         <div className="absolute right-0 bottom-10 z-20 flex w-72 animate-rise flex-col gap-3 rounded-xl bg-card p-3.5 shadow-overlay ring-1 ring-border-soft">
-          <p className="text-[13px] text-ink-2 leading-relaxed">{t("teaser.link")}</p>
+          <p className="text-[0.8125rem] text-ink-2 leading-relaxed">{t("teaser.link")}</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" busy={linking.link.isPending} onClick={() => linking.link.mutate({})}>
               {t("account.signIn")}
@@ -185,10 +185,10 @@ function WizardCard({ w, me }: { w: WizardSummary; me: Me }) {
         <div className="absolute top-3 right-3">
           {w.published ? <WhereChip where={where} me={me} /> : <Chip>{t("home.draft")}</Chip>}
         </div>
-        <h3 className="font-display font-semibold text-[17px] leading-snug">{w.title}</h3>
-        <p className="mt-1 line-clamp-2 text-[14px] text-ink-3">{w.description}</p>
+        <h3 className="font-display font-semibold text-[1.0625rem] leading-snug">{w.title}</h3>
+        <p className="mt-1 line-clamp-2 text-[0.875rem] text-ink-3">{w.description}</p>
         <div className="mt-auto flex min-h-8 items-center justify-between pt-3">
-          <span className="text-[12px] text-ink-4">{t("home.steps", { n: w.stepCount })}</span>
+          <span className="text-[0.75rem] text-ink-4">{t("home.steps", { n: w.stepCount })}</span>
           <div className="flex items-center">
             {link ? (
               <CopyLink url={link} />
@@ -227,21 +227,21 @@ function FromLocal() {
   return (
     <div className="mx-auto flex max-w-xl animate-rise flex-col items-center pt-4 text-center">
       <Mascot kind="round" size={120} />
-      <h1 className="mt-2 font-display font-semibold text-[28px] leading-tight tracking-tight">
+      <h1 className="mt-2 font-display font-semibold text-[1.75rem] leading-tight tracking-tight">
         {t("home.local.title")}
       </h1>
-      <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">{t("home.local.text")}</p>
+      <p className="mt-3 text-[0.9375rem] text-ink-2 leading-relaxed">{t("home.local.text")}</p>
       <ol className="mt-8 flex w-full flex-col gap-4 text-left">
         {steps.map((step, i) => (
           <li key={step} className="flex gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-2 font-medium text-[13px] text-ink-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-2 font-medium text-[0.8125rem] text-ink-2">
               {i + 1}
             </span>
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className="text-[15px] leading-snug">{step}</p>
+              <p className="text-[0.9375rem] leading-snug">{step}</p>
               {i === 0 ? (
                 <div className="mt-2 flex items-center gap-2 rounded-lg bg-paper-2 py-1.5 pr-1.5 pl-3">
-                  <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap font-mono text-[13px] text-ink-2">
+                  <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap font-mono text-[0.8125rem] text-ink-2">
                     {INSTALL}
                   </code>
                   <Button
@@ -302,11 +302,11 @@ export function HomePage() {
           </div>
         ) : null}
       </div>
-      <h1 className="mt-10 font-display font-semibold text-[28px] tracking-tight">
+      <h1 className="mt-10 font-display font-semibold text-[1.75rem] tracking-tight">
         {t("home.title")}
       </h1>
       {project?.origin === "local" ? (
-        <p className="mt-2 text-[14px] text-ink-3">
+        <p className="mt-2 text-[0.875rem] text-ink-3">
           {t("home.fromLocal")}{" "}
           {project.syncedAt
             ? t("home.syncedAt", {

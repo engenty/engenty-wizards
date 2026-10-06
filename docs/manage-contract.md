@@ -87,6 +87,7 @@ Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's acc
 | Call | Scopes | Body → answer |
 |---|---|---|
 | `PUT /spaces/:spaceId/wizards/:wizardId` | `wizards:write wizards:publish` | `{ space: { name, brand: { name?, about?, colors? }, facts, logo: { name, mime, description, data } \| null }, version, definition, files: [{ path, mime?, data }], shareEnabled, dailyRunLimit? }` (`data` is base64) → `{ wizardId, shareUrl, code, shareEnabled, publishedVersion: number \| null, runnable, problems }` · makes or updates the project and the wizard; the same wizard again keeps its link · `code`: the copy's ID for the mobile app |
+| `PUT /spaces/:spaceId/data` | `wizards:write` | `{ tables: [{ id, title, columns, rows: [{ id, cells }] }], pages: [{ id, title, markdown }] }` → `{ tables, pages }` · the space's own tables and pages (not a wizard's), sent after a wizard when they changed; replaces what came before, under the install's ids · `404` before the space's first wizard arrived |
 | `PATCH /spaces/:spaceId/wizards/:wizardId` | `wizards:publish` | `{ shareEnabled?, dailyRunLimit? }` → `{ ok: true }` |
 | `POST /spaces/:spaceId/wizards/:wizardId/rotate-link` | `wizards:publish` | → `{ shareUrl, code }` · the copy gets a new link (the install made one); the old one stops answering |
 | `DELETE /spaces/:spaceId/wizards/:wizardId` | `wizards:write` | → `{ ok: true }` · the copy goes with its link and its runs |

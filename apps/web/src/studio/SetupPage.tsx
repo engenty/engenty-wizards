@@ -98,7 +98,7 @@ function Wordmark() {
   return (
     <span className="inline-flex items-center gap-2.5">
       <EngentyLogoMark size={28} />
-      <span className="font-display font-semibold text-[17px] tracking-tight">
+      <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
         engenty
         <span className="mr-[0.09em] ml-[0.06em]" style={{ color: CREAM }}>
           .
@@ -141,7 +141,7 @@ function Choice({
     >
       {badge ? (
         <span
-          className="absolute -top-2.5 right-4 rounded-full px-2.5 py-[3px] font-semibold text-[11px] leading-none tracking-wide shadow-[0_2px_8px_oklch(0%_0_0/0.22)]"
+          className="absolute -top-2.5 right-4 rounded-full px-2.5 py-[3px] font-semibold text-[0.6875rem] leading-none tracking-wide shadow-[0_2px_8px_oklch(0%_0_0/0.22)]"
           style={{ background: CREAM, color: GROUND_INK }}
         >
           {badge}
@@ -157,10 +157,10 @@ function Choice({
         {selected ? <Check className="size-3.5 text-white" /> : null}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-medium text-[15px]">{title}</span>
+        <span className="block font-medium text-[0.9375rem]">{title}</span>
         <span
           className={cn(
-            "mt-0.5 block truncate text-[13px]",
+            "mt-0.5 block truncate text-[0.8125rem]",
             selected ? "opacity-70" : "text-white/65",
           )}
         >
@@ -168,7 +168,7 @@ function Choice({
         </span>
       </span>
       {note ? (
-        <span className={cn("shrink-0 text-[12px]", selected ? "opacity-70" : "text-white/65")}>
+        <span className={cn("shrink-0 text-[0.75rem]", selected ? "opacity-70" : "text-white/65")}>
           {note}
         </span>
       ) : null}
@@ -194,7 +194,7 @@ function Stages({ name, at, done }: { name: string; at: number; done: boolean })
   const stages = [t("setup.stage.connect"), t("setup.stage.test"), t("setup.stage.done")];
   const level = done ? stages.length : at + 1;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-medium text-[12px] uppercase tracking-[0.14em]">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-medium text-[0.75rem] uppercase tracking-[0.14em]">
       <span className="text-white/70">{name}</span>
       <ol className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {stages.map((stage, i) => {
@@ -365,7 +365,7 @@ export function SetupPage() {
               <p
                 className={cn(
                   LINE,
-                  "font-medium text-[12px] text-white/70 uppercase tracking-[0.16em]",
+                  "font-medium text-[0.75rem] text-white/70 uppercase tracking-[0.16em]",
                   selected ? LINE_LEFT : LINE_MIDDLE,
                 )}
               >
@@ -374,7 +374,7 @@ export function SetupPage() {
               <h1
                 className={cn(
                   LINE,
-                  "mt-2 font-display font-semibold text-[26px] leading-[1.08] tracking-[-0.02em] sm:text-[28px]",
+                  "mt-2 font-display font-semibold text-[1.625rem] leading-[1.08] tracking-[-0.02em] sm:text-[1.75rem]",
                   selected ? LINE_LEFT : LINE_MIDDLE,
                 )}
               >
@@ -383,7 +383,7 @@ export function SetupPage() {
               <p
                 className={cn(
                   LINE,
-                  "mt-2.5 text-[15px] text-white/75 leading-relaxed",
+                  "mt-2.5 text-[0.9375rem] text-white/75 leading-relaxed",
                   selected ? LINE_LEFT : LINE_MIDDLE,
                 )}
               >
@@ -415,7 +415,7 @@ export function SetupPage() {
                 onPick={() => choose.mutate("own")}
               />
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-white/60">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[0.8125rem] text-white/60">
               <span>{installed.length ? null : t("setup.noHarness")}</span>
               <Button
                 variant="ghost"
@@ -439,7 +439,7 @@ export function SetupPage() {
                   setListOpen(true);
                   toTop();
                 }}
-                className="-ml-1.5 mb-5 inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-[14px] text-white/80 transition hover:text-white lg:hidden"
+                className="-ml-1.5 mb-5 inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-[0.875rem] text-white/80 transition hover:text-white lg:hidden"
               >
                 <ArrowLeft className="size-4" /> {t("run.back")}
               </button>
@@ -471,7 +471,7 @@ export function SetupPage() {
                 <div className="mt-9">
                   {works ? (
                     <p
-                      className="mb-3 flex animate-rise items-center gap-2 font-medium text-[15px]"
+                      className="mb-3 flex animate-rise items-center gap-2 font-medium text-[0.9375rem]"
                       style={{ color: STEP_DONE }}
                     >
                       <Check className="size-4" strokeWidth={3} />
@@ -485,7 +485,7 @@ export function SetupPage() {
                       disabled={!works}
                       onClick={() => navigate("/", { replace: true })}
                       className={cn(
-                        "group inline-flex h-12 items-center gap-2.5 rounded-full px-6 font-semibold text-[16px] transition-[background-color,color,box-shadow,filter] duration-300",
+                        "group inline-flex h-12 items-center gap-2.5 rounded-full px-6 font-semibold text-[1rem] transition-[background-color,color,box-shadow,filter] duration-300",
                         works
                           ? "shadow-[0_6px_24px_oklch(88%_0.17_150/0.35)] hover:brightness-105"
                           : "cursor-not-allowed bg-white/20 text-white/65",
@@ -501,7 +501,9 @@ export function SetupPage() {
                       </span>
                     </button>
                     {works ? null : (
-                      <span className="text-[13px] text-white/65">{t("setup.untilWorks")}</span>
+                      <span className="text-[0.8125rem] text-white/65">
+                        {t("setup.untilWorks")}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -512,7 +514,7 @@ export function SetupPage() {
       </main>
       {/* One quiet line at the foot: whose app this is and where it runs. Its other end holds
           a place, marked with the wordmark's dot at its own size, for what belongs there later. */}
-      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-[12px] text-white/55 sm:pb-8">
+      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-[0.75rem] text-white/55 sm:pb-8">
         <span>
           © {new Date().getFullYear()} engenty · {t("setup.local")}
         </span>

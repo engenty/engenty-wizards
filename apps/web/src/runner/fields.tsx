@@ -59,7 +59,7 @@ function ItemsField({
   return (
     <div className="rounded-xl bg-card p-2 ring-1 ring-input">
       <div
-        className="hidden gap-2 px-2 pt-1 pb-2 text-[12px] text-ink-3 sm:grid"
+        className="hidden gap-2 px-2 pt-1 pb-2 text-[0.75rem] text-ink-3 sm:grid"
         style={{ gridTemplateColumns: `${grid} 36px` }}
       >
         {cols.map((c) => (
@@ -85,7 +85,7 @@ function ItemsField({
                   ci === 0 ? "col-span-5" : cols.length - 1 <= 2 ? "col-span-3" : "col-span-2",
                 )}
               >
-                <span className="px-0.5 text-[11px] text-ink-3 sm:hidden">{c.label}</span>
+                <span className="px-0.5 text-[0.6875rem] text-ink-3 sm:hidden">{c.label}</span>
                 <input
                   aria-label={c.label}
                   placeholder={c.label}
@@ -94,7 +94,7 @@ function ItemsField({
                   value={String(row[c.id] ?? "")}
                   onChange={(e) => set(i, c.id, e.target.value)}
                   className={cn(
-                    "h-11 w-full min-w-0 rounded-md border border-transparent bg-paper-2 px-2.5 text-[14px] outline-none placeholder:text-transparent focus:border-focus focus:bg-card sm:placeholder:text-ink-4",
+                    "h-11 w-full min-w-0 rounded-md border border-transparent bg-paper-2 px-2.5 text-[0.875rem] outline-none placeholder:text-transparent focus:border-focus focus:bg-card sm:placeholder:text-ink-4",
                     c.kind !== "text" && "text-right tabular-nums",
                   )}
                 />
@@ -114,11 +114,11 @@ function ItemsField({
         <button
           type="button"
           onClick={() => onChange([...rows, {}])}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent coarse:h-11"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent coarse:h-11"
         >
           <Plus className="size-4" /> {t("run.addRow")}
         </button>
-        <div className="text-right text-[13px] tabular-nums">
+        <div className="text-right text-[0.8125rem] tabular-nums">
           <div className="text-ink-3">
             {t("run.net")} {money(totals.net, totals.currency)}
           </div>
@@ -127,7 +127,7 @@ function ItemsField({
               {t("run.vat", { r: totals.vatRate })} {money(totals.vat, totals.currency)}
             </div>
           ) : null}
-          <div className="font-semibold text-[15px] text-ink">
+          <div className="font-semibold text-[0.9375rem] text-ink">
             {t("run.total")} {money(totals.gross, totals.currency)}
           </div>
         </div>
@@ -261,7 +261,7 @@ function UploadField({
   }, [room]);
 
   const tile = cn(
-    "flex flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-3 text-[14px] text-ink-3 transition hover:border-ember hover:text-ink",
+    "flex flex-col items-center justify-center gap-2 rounded-xl border border-input border-dashed bg-card px-3 text-[0.875rem] text-ink-3 transition hover:border-ember hover:text-ink",
     ids.length ? "py-4" : "py-8",
   );
   return (
@@ -336,7 +336,7 @@ function UploadField({
                       }
                     }}
                   >
-                    <span className="font-medium text-[12px] tabular-nums">{index + 1}</span>
+                    <span className="font-medium text-[0.75rem] tabular-nums">{index + 1}</span>
                     <GripVertical className="size-4" />
                   </button>
                 ) : null}
@@ -355,7 +355,7 @@ function UploadField({
                     )}
                   </div>
                 )}
-                <div className="min-w-0 flex-1 truncate text-[14px]">{known?.name ?? "✓"}</div>
+                <div className="min-w-0 flex-1 truncate text-[0.875rem]">{known?.name ?? "✓"}</div>
                 <IconButton label={t("run.removeFile")} onClick={() => remove(id)}>
                   <X className="size-4" />
                 </IconButton>
@@ -445,7 +445,7 @@ function UploadField({
         onNative={() => nativeCamera.current?.click()}
       />
       {multiple && (field.min || field.max) ? (
-        <div className="mt-2 text-[13px] text-ink-3 tabular-nums">
+        <div className="mt-2 text-[0.8125rem] text-ink-3 tabular-nums">
           {field.min && ids.length < field.min
             ? t("run.filesMin", { n: ids.length, min: field.min })
             : field.max
@@ -453,7 +453,7 @@ function UploadField({
               : null}
         </div>
       ) : null}
-      {error ? <div className="mt-2 text-[13px] text-rose">{error}</div> : null}
+      {error ? <div className="mt-2 text-[0.8125rem] text-rose">{error}</div> : null}
     </div>
   );
 }
@@ -518,7 +518,7 @@ function ScanInput({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-card px-3.5 font-medium text-[14px] text-ink-2 transition hover:border-ember hover:text-ink"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-card px-3.5 font-medium text-[0.875rem] text-ink-2 transition hover:border-ember hover:text-ink"
       >
         <ScanLine className="size-4" /> {t("scan.button")}
       </button>
@@ -731,7 +731,7 @@ export function FieldInput({
           {control}
         </>
       )}
-      {error ? <div className="mt-1.5 text-[13px] text-rose">{error}</div> : null}
+      {error ? <div className="mt-1.5 text-[0.8125rem] text-rose">{error}</div> : null}
     </div>
   );
 }

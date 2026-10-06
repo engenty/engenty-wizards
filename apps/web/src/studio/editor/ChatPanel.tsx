@@ -124,7 +124,7 @@ function Attachments({
           {others.map((name) => (
             <span
               key={name}
-              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 px-2.5 py-1 text-[12px] text-ink-2"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 px-2.5 py-1 text-[0.75rem] text-ink-2"
             >
               <Paperclip className="size-3 shrink-0 text-ink-4" />
               <span className="truncate">{name}</span>
@@ -332,7 +332,7 @@ export function Working({
         )}
       </div>
       {thought && chat.thought ? (
-        <p className="mt-0.5 truncate pl-5.5 text-[12px] text-ink-4">{chat.thought}</p>
+        <p className="mt-0.5 truncate pl-5.5 text-[0.75rem] text-ink-4">{chat.thought}</p>
       ) : null}
     </div>
   );
@@ -352,7 +352,7 @@ function UserMessage({
         <Attachments names={names} previews={message.previews} fileUrl={fileUrl} />
       ) : null}
       {text ? (
-        <div className="rounded-xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[14px] leading-relaxed">
+        <div className="rounded-xl rounded-br-md bg-paper-2 px-4 py-2.5 text-[0.875rem] leading-relaxed">
           <span className="whitespace-pre-wrap">{text}</span>
         </div>
       ) : null}
@@ -460,7 +460,7 @@ export function ChatPanel({
           aria-expanded={open}
           aria-label={t("editor.thread")}
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[13px] text-ink-3 transition hover:text-ink"
+          className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[0.8125rem] text-ink-3 transition hover:text-ink"
         >
           {!(chat.error || open) && last?.pending ? (
             <Working chat={chat} className="flex-1" />
@@ -484,7 +484,7 @@ export function ChatPanel({
           ? (intro ?? (
               <div className="flex items-start gap-3">
                 <Mascot kind={avatar} size={32} interactive={false} />
-                <p className="pt-1 text-[14px] text-ink-2 leading-relaxed">{hello}</p>
+                <p className="pt-1 text-[0.875rem] text-ink-2 leading-relaxed">{hello}</p>
               </div>
             ))
           : null}
@@ -497,14 +497,14 @@ export function ChatPanel({
                 <div className="shrink-0">
                   <Mascot kind={avatar} size={28} interactive={false} />
                 </div>
-                <div className="min-w-0 pt-0.5 text-[14px]">
+                <div className="min-w-0 pt-0.5 text-[0.875rem]">
                   {m.source === "mcp" ? (
-                    <div className="mb-1 inline-flex items-center gap-1.5 text-[12px] text-ink-3">
+                    <div className="mb-1 inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
                       <Plug className="size-3" />{" "}
                       {t("editor.viaClient", { client: m.client ?? "MCP" })}
                     </div>
                   ) : null}
-                  {m.content ? <Markdown text={m.content} className="text-[14px]" /> : null}
+                  {m.content ? <Markdown text={m.content} className="text-[0.875rem]" /> : null}
                   {card && m.cards?.length ? (
                     <div className="mt-2 flex flex-col gap-2">
                       {m.cards.map((c) => (
@@ -513,10 +513,10 @@ export function ChatPanel({
                     </div>
                   ) : null}
                   {m.pending ? (
-                    <Working chat={chat} thought className="mt-1 text-[13px] text-ink-3" />
+                    <Working chat={chat} thought className="mt-1 text-[0.8125rem] text-ink-3" />
                   ) : null}
                   {m.changed ? (
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[12px] text-ember-strong">
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[0.75rem] text-ember-strong">
                       <Sparkles className="size-3" /> {changedLabel}
                     </div>
                   ) : null}
@@ -526,13 +526,13 @@ export function ChatPanel({
           )}
         </div>
         {chat.error ? (
-          <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
+          <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
             {chat.error}
           </div>
         ) : null}
       </div>
       {closed ? (
-        <p className="m-3 rounded-xl bg-paper-2 px-4 py-3 text-[13px] text-ink-2 leading-relaxed">
+        <p className="m-3 rounded-xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-2 leading-relaxed">
           {closed}
         </p>
       ) : (
@@ -563,7 +563,7 @@ export function ChatPanel({
                   thumbs.has(f) ? null : (
                     <li
                       key={`${f.name}-${i}`}
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[12px] text-ink-2"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[0.75rem] text-ink-2"
                     >
                       <Paperclip className="size-3 shrink-0 text-ink-4" />
                       <span className="truncate">{f.name}</span>
@@ -614,7 +614,7 @@ export function ChatPanel({
                   }
                 }}
                 placeholder={speech.listening ? t("editor.listening") : placeholder}
-                className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[14px] outline-none placeholder:text-ink-4"
+                className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[0.875rem] outline-none placeholder:truncate placeholder:text-ink-4"
               />
               {speech.supported ? (
                 <IconButton
@@ -656,7 +656,7 @@ export function ChatPanel({
             </div>
           </div>
           {speech.error ? (
-            <p className="mt-2 px-1 text-[12px] text-rose">
+            <p className="mt-2 px-1 text-[0.75rem] text-rose">
               {speech.error === "denied" ? t("editor.micDenied") : speech.error}
             </p>
           ) : null}

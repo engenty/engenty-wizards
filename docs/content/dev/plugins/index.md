@@ -20,7 +20,7 @@ them from their files and loads one again when its files change.
 | A job, again and again | Nowhere: it works in the background | [The server half](./server.md#jobs) |
 | A page of the studio | Behind an icon in the top bar, or at its address | [The studio half](./studio.md) |
 | A section of the settings | In the settings' list | [The studio half](./studio.md) |
-| A section of the space page | Below the space's own sections | [The studio half](./studio.md#the-space) |
+| A section of the space page | In one of its parts, below the part's own sections | [The studio half](./studio.md#the-space) |
 
 ## Two halves
 

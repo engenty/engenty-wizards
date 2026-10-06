@@ -74,7 +74,7 @@ function Embed({ url, title }: { url: string; title: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-[13px] text-ink-3">
+        <p className="text-[0.8125rem] text-ink-3">
           {t(modal ? "embed.modalHint" : "embed.inlineHint")}
         </p>
         <Button
@@ -95,7 +95,7 @@ function Embed({ url, title }: { url: string; title: string }) {
         onChange={(v) => setModal(v === modes[1])}
         options={modes}
       />
-      <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[12px] text-ink-2 leading-relaxed">
+      <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[0.75rem] text-ink-2 leading-relaxed">
         {tag}
       </pre>
     </div>
@@ -107,7 +107,7 @@ type Way = "website" | "qr";
 
 const pill = (on: boolean) =>
   cn(
-    "inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[13px] transition",
+    "inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.8125rem] transition",
     on ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
   );
 
@@ -126,7 +126,7 @@ function ShareLink({ url, code, title }: { url: string; code?: string; title: st
           readOnly
           value={url}
           onFocus={(e) => e.target.select()}
-          className="font-mono text-[13px]"
+          className="font-mono text-[0.8125rem]"
         />
         <Button
           variant="secondary"
@@ -181,7 +181,7 @@ const PROBLEM_TEXT: Record<ServerProblem["code"], Key> = {
  */
 function Problems({ problems, quiet }: { problems: ServerProblem[]; quiet?: boolean }) {
   return (
-    <ul className={cn("flex flex-col gap-2 text-[13px]", quiet ? "text-ink-3" : "text-ink-2")}>
+    <ul className={cn("flex flex-col gap-2 text-[0.8125rem]", quiet ? "text-ink-3" : "text-ink-2")}>
       {problems.map((problem, i) => (
         <li key={i}>
           {problem.steps.length ? (
@@ -193,10 +193,10 @@ function Problems({ problems, quiet }: { problems: ServerProblem[]; quiet?: bool
           {/* The MCP sentence names the servers itself; a missing sandbox has nothing to add. */}
           {problem.detail && problem.code !== "mcp" && problem.code !== "sandbox" ? (
             <details className="mt-0.5">
-              <summary className="cursor-pointer text-[12px] text-ink-4 hover:text-ink-3">
+              <summary className="cursor-pointer text-[0.75rem] text-ink-4 hover:text-ink-3">
                 {t("share.details")}
               </summary>
-              <span className="mt-0.5 block break-words font-mono text-[11px] text-ink-4">
+              <span className="mt-0.5 block break-words font-mono text-[0.6875rem] text-ink-4">
                 {problem.detail}
               </span>
             </details>
@@ -297,7 +297,7 @@ function Status({
       void qc.invalidateQueries({ queryKey: ["wizards"] });
     },
   });
-  const line = "flex items-start gap-2 text-[14px] text-ink-2";
+  const line = "flex items-start gap-2 text-[0.875rem] text-ink-2";
   switch (where.kind) {
     case "draft":
       return null;
@@ -346,10 +346,10 @@ function Status({
     error?.reason !== "space_limit" &&
     error?.reason !== "signed_out";
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-amber-tint px-3 py-2.5 text-[14px]">
+    <div className="flex flex-col gap-2 rounded-lg bg-amber-tint px-3 py-2.5 text-[0.875rem]">
       {error ? <CloudError error={error} /> : where.kind === "missing" ? <p>{where.why}</p> : null}
       {error && where.runs !== null ? (
-        <p className="text-[13px] text-ink-3">{t("cloud.keepsRunning", { v: where.runs })}</p>
+        <p className="text-[0.8125rem] text-ink-3">{t("cloud.keepsRunning", { v: where.runs })}</p>
       ) : null}
       {blocking.length ? <Problems problems={blocking} /> : null}
       {resend ? (
@@ -360,7 +360,9 @@ function Status({
           </Button>
         </div>
       ) : null}
-      {send.error ? <p className="text-[13px] text-rose">{(send.error as Error).message}</p> : null}
+      {send.error ? (
+        <p className="text-[0.8125rem] text-rose">{(send.error as Error).message}</p>
+      ) : null}
     </div>
   );
 }
@@ -386,27 +388,27 @@ function CloudNotes({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswe
   if (!(notes.length || lacking.length || (differs && check.data?.documents))) {
     // The cloud did not answer the question; a failed try above already says so.
     return differs && check.error && !cloud?.error ? (
-      <p className="text-[13px] text-ink-3">{(check.error as Error).message}</p>
+      <p className="text-[0.8125rem] text-ink-3">{(check.error as Error).message}</p>
     ) : null;
   }
   return (
     <div className="flex flex-col gap-2">
       {notes.length ? (
         <>
-          <p className="text-[13px] text-ink-3">{t("cloud.notes")}</p>
+          <p className="text-[0.8125rem] text-ink-3">{t("cloud.notes")}</p>
           <Problems problems={notes} quiet />
         </>
       ) : null}
       {lacking.length ? (
         <>
-          <p className="text-[13px] text-ink-2">
+          <p className="text-[0.8125rem] text-ink-2">
             {t(lacking.some((p) => p.blocking) ? "cloud.checkBlocking" : "cloud.check")}
           </p>
           <Problems problems={lacking} quiet />
         </>
       ) : null}
       {differs && check.data?.documents ? (
-        <p className="text-[13px] text-ink-3">{t("cloud.documents")}</p>
+        <p className="text-[0.8125rem] text-ink-3">{t("cloud.documents")}</p>
       ) : null}
     </div>
   );
@@ -425,8 +427,8 @@ function SignInOffer({ way }: { way: Way | null }) {
       )}
     >
       <div>
-        <div className="font-medium text-[14px]">{t("share.others")}</div>
-        <p className="mt-1 text-[13px] text-ink-2 leading-relaxed">
+        <div className="font-medium text-[0.875rem]">{t("share.others")}</div>
+        <p className="mt-1 text-[0.8125rem] text-ink-2 leading-relaxed">
           {t(
             way === "website" ? "teaser.website" : way === "qr" ? "teaser.qr" : "share.othersHint",
           )}
@@ -488,13 +490,13 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
         type="button"
         aria-expanded={shown}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 text-left text-[14px]"
+        className="flex w-full items-center justify-between gap-4 text-left text-[0.875rem]"
       >
         <span className="flex items-center gap-1.5">
           <ChevronRight className={cn("size-4 text-ink-3 transition", shown && "rotate-90")} />
           {t("share.settings")}
         </span>
-        <span className="text-[13px] text-ink-3 tabular-nums">
+        <span className="text-[0.8125rem] text-ink-3 tabular-nums">
           {t(wizard.shareEnabled ? "share.on" : "share.off")} ·{" "}
           {t("share.perDay", { n: wizard.dailyRunLimit })}
         </span>
@@ -502,7 +504,7 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
       {shown ? (
         <div className="mt-4 flex flex-col gap-5">
           <div className="flex items-center justify-between">
-            <span className="text-[14px]">{t("share.enabled")}</span>
+            <span className="text-[0.875rem]">{t("share.enabled")}</span>
             <Switch
               checked={wizard.shareEnabled}
               disabled={locked}
@@ -510,7 +512,7 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="whitespace-nowrap text-[14px]">{t("share.limit")}</span>
+            <span className="whitespace-nowrap text-[0.875rem]">{t("share.limit")}</span>
             <div className="w-24">
               <Input
                 inputMode="numeric"
@@ -528,7 +530,7 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
             </div>
           </div>
           {perDay !== null && estimate.data ? (
-            <p className="text-[13px] text-ink-3 tabular-nums">
+            <p className="text-[0.8125rem] text-ink-3 tabular-nums">
               {t("estimate.share", {
                 run: Math.round(estimate.data.credits).toLocaleString(),
                 day: perDay.toLocaleString(),
@@ -536,7 +538,7 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
             </p>
           ) : null}
           <div className="flex items-center justify-between gap-4">
-            <span className="text-[13px] text-ink-3">
+            <span className="text-[0.8125rem] text-ink-3">
               {t(cloud?.copy ? "share.rotateCloud" : "share.rotateHint")}
             </span>
             <Button
@@ -549,10 +551,12 @@ function Settings({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswer 
               <RefreshCw className="size-3.5" /> {t("share.rotate")}
             </Button>
           </div>
-          {failed ? <p className="text-[13px] text-rose">{(failed as Error).message}</p> : null}
+          {failed ? (
+            <p className="text-[0.8125rem] text-rose">{(failed as Error).message}</p>
+          ) : null}
         </div>
       ) : null}
-      {locked ? <p className="mt-3 text-[13px] text-ink-3">{t("share.readOnly")}</p> : null}
+      {locked ? <p className="mt-3 text-[0.8125rem] text-ink-3">{t("share.readOnly")}</p> : null}
     </div>
   );
 }
@@ -599,7 +603,7 @@ export function ShareDialog({
         {unpublished ? (
           <div className="flex flex-col gap-2 rounded-lg bg-amber-tint px-3 py-2.5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[14px]">
+              <p className="text-[0.875rem]">
                 {t(wizard.published ? "share.unpublished" : "share.publishFirst")}
               </p>
               {publish ? (
@@ -614,7 +618,7 @@ export function ShareDialog({
               ) : null}
             </div>
             {linked && !wizard.published ? (
-              <p className="text-[13px] text-ink-3">{t("cloud.onPublish")}</p>
+              <p className="text-[0.8125rem] text-ink-3">{t("cloud.onPublish")}</p>
             ) : null}
           </div>
         ) : null}
@@ -622,7 +626,7 @@ export function ShareDialog({
           <Status wizard={wizard} where={where} me={me.data} cloud={cloud.data} />
         ) : null}
         {cloud.isError ? (
-          <p className="text-[13px] text-rose">{(cloud.error as Error).message}</p>
+          <p className="text-[0.8125rem] text-rose">{(cloud.error as Error).message}</p>
         ) : null}
         {link ? (
           <ShareLink
@@ -638,7 +642,7 @@ export function ShareDialog({
                 readOnly
                 value={ownLink(wizard)}
                 onFocus={(e) => e.target.select()}
-                className="font-mono text-[13px] text-ink-3"
+                className="font-mono text-[0.8125rem] text-ink-3"
               />
               <Button variant="secondary" onClick={() => openExternal(ownLink(wizard))}>
                 <ExternalLink className="size-4" /> {t("share.open")}
@@ -675,7 +679,7 @@ export function ShareDialog({
           <button
             type="button"
             onClick={() => openExternal(ownLink(wizard))}
-            className="inline-flex items-center gap-1.5 self-start text-[13px] text-ink-3 hover:text-ink"
+            className="inline-flex items-center gap-1.5 self-start text-[0.8125rem] text-ink-3 hover:text-ink"
           >
             <Laptop className="size-3.5" /> {t("share.openHere")}
             <ExternalLink className="size-3" />

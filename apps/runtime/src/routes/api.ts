@@ -15,7 +15,9 @@ import {
   removeSyncedSpace,
   removeSyncedWizard,
   rotateSyncedLink,
+  syncDataSchema,
   syncSettingsSchema,
+  syncSpaceData,
   syncWizard,
   syncWizardSchema,
 } from "../services/spaces.js";
@@ -105,6 +107,21 @@ export const apiRoutes = new Hono()
     const body = syncWizardSchema.parse(await c.req.json());
     return withTenant(who.tenantId, async () =>
       c.json(await syncWizard(c.req.param("spaceId"), c.req.param("wizardId"), body)),
+    );
+  })
+  // The space's own tables and pages, sent with a wizard when they changed.
+  .put("/spaces/:spaceId/data", tooLarge, async (c) => {
+    const who = await caller(c, ["wizards:write"]);
+    if (who instanceof Response) {
+      return who;
+    }
+    const limited = withinSyncLimit(c, who);
+    if (limited) {
+      return limited;
+    }
+    const body = syncDataSchema.parse(await c.req.json());
+    return withTenant(who.tenantId, async () =>
+      c.json(await syncSpaceData(c.req.param("spaceId"), body)),
     );
   })
   .patch("/spaces/:spaceId/wizards/:wizardId", async (c) => {

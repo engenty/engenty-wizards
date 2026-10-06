@@ -56,5 +56,6 @@ files stay on your computer.
 | Your wizards and your test runs | Until you delete them |
 | A real run of a published wizard (over its link or from an AI app), its result and the result's shared link | 7 days |
 | What a wizard keeps for a person: lists, files, connected accounts, sign-ins | Until they delete it, or 400 days after its last use |
+| The space's tables and pages, and what wizards keep for every run: shared lists, pages | Until you delete them, or the wizard they belong to |
 
 Connected accounts and kept sign-ins are stored encrypted.

@@ -37,14 +37,14 @@ export function ModelTest({ auto = false }: { auto?: boolean }) {
   const r = test.data;
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[13px] text-ink-3">{t("local.testHint")}</p>
+      <p className="text-[0.8125rem] text-ink-3">{t("local.testHint")}</p>
       <div>
         <Button variant="secondary" busy={test.isPending} onClick={() => test.mutate()}>
           {t("local.test")}
         </Button>
       </div>
       {r?.ok ? (
-        <p className="flex items-start gap-2 text-[14px] text-ink-2">
+        <p className="flex items-start gap-2 text-[0.875rem] text-ink-2">
           <Check className="mt-0.5 size-4 shrink-0 text-moss" />
           <span>
             {t("local.testOk", {
@@ -56,10 +56,12 @@ export function ModelTest({ auto = false }: { auto?: boolean }) {
         </p>
       ) : null}
       {r && !r.ok ? (
-        <p className="text-[14px] text-rose">{t("local.testFailed", { error: r.error ?? "" })}</p>
+        <p className="text-[0.875rem] text-rose">
+          {t("local.testFailed", { error: r.error ?? "" })}
+        </p>
       ) : null}
       {test.isError ? (
-        <p className="text-[14px] text-rose">
+        <p className="text-[0.875rem] text-rose">
           {t("local.testFailed", { error: (test.error as Error).message })}
         </p>
       ) : null}
@@ -122,16 +124,16 @@ export function HarnessPanel({
   );
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[13px] text-ink-3">
+      <p className="text-[0.8125rem] text-ink-3">
         {t(client.images ? "harness.hintImages" : "harness.hint", { name: client.name, sub })}
       </p>
       {installed ? (
         <div className="flex flex-col gap-2">
-          <p className="flex items-center gap-2 text-[14px] text-ink-2">
+          <p className="flex items-center gap-2 text-[0.875rem] text-ink-2">
             <Check className="size-4 text-moss" />
             {t("harness.found", { name: client.name, version: client.version ?? "" })}
           </p>
-          <p className={cn("text-[13px]", signedIn ? "text-ink-3" : "text-rose")}>
+          <p className={cn("text-[0.8125rem]", signedIn ? "text-ink-3" : "text-rose")}>
             {signedIn
               ? t("harness.authSubscription", { sub })
               : client.auth === "api_key"
@@ -147,14 +149,14 @@ export function HarnessPanel({
             </div>
           )}
           {login.isError ? (
-            <p className="text-[13px] text-rose">{(login.error as Error).message}</p>
+            <p className="text-[0.8125rem] text-rose">{(login.error as Error).message}</p>
           ) : null}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-[14px] text-rose">{t("harness.missing", { name: client.name })}</p>
+          <p className="text-[0.875rem] text-rose">{t("harness.missing", { name: client.name })}</p>
           {client.app ? (
-            <p className="text-[13px] text-ink-3">
+            <p className="text-[0.8125rem] text-ink-3">
               {t("harness.appHere", { app: client.app, name: client.name, sub })}
             </p>
           ) : null}
@@ -167,11 +169,11 @@ export function HarnessPanel({
             </div>
           )}
           {install.isError ? (
-            <p className="text-[13px] text-rose">{(install.error as Error).message}</p>
+            <p className="text-[0.8125rem] text-rose">{(install.error as Error).message}</p>
           ) : null}
-          <p className="text-[13px] text-ink-3">
+          <p className="text-[0.8125rem] text-ink-3">
             {t("harness.install")}{" "}
-            <code className="rounded bg-paper px-1.5 py-0.5 font-mono text-[12px] text-ink-2">
+            <code className="rounded bg-paper px-1.5 py-0.5 font-mono text-[0.75rem] text-ink-2">
               {client.install}
             </code>
           </p>
@@ -179,7 +181,7 @@ export function HarnessPanel({
       )}
       {terminal ? (
         <div className="flex flex-col gap-2">
-          <p className="text-[13px] text-ink-3">
+          <p className="text-[0.8125rem] text-ink-3">
             {terminal.job === "install"
               ? t("harness.installing", { name: client.name })
               : client.interactiveLogin
@@ -214,12 +216,12 @@ export function HarnessPanel({
                 </Button>
                 {terminal.job === "install" ? (
                   installed ? null : (
-                    <span className="text-[13px] text-rose">
+                    <span className="text-[0.8125rem] text-rose">
                       {t("harness.installEnded", { name: client.name })}
                     </span>
                   )
                 ) : signedIn ? null : (
-                  <span className="text-[13px] text-rose">
+                  <span className="text-[0.8125rem] text-rose">
                     {t("harness.loginEnded", { name: client.name })}
                   </span>
                 )}

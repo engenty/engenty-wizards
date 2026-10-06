@@ -51,17 +51,17 @@ export default defineStudioPlugin((studio) => {
     const admin = studio.me().tenant.role !== "member";
     return (
       <div>
-        <h1 className="font-display font-semibold text-[28px] tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-[15px] text-ink-3">{t("hint")}</p>
+        <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">{t("title")}</h1>
+        <p className="mt-1 text-[0.9375rem] text-ink-3">{t("hint")}</p>
         <div className="mt-8 flex flex-col gap-2">
           {list.isLoading ? <Spinner className="mx-auto" /> : null}
           {list.data && !list.data.contacts.length ? <Empty>{t("empty")}</Empty> : null}
           {list.data?.contacts.map((person) => (
             <Card key={person.id} className="flex items-center gap-3 px-5 py-3.5">
-              <span className="min-w-0 flex-1 truncate font-medium text-[15px]">
+              <span className="min-w-0 flex-1 truncate font-medium text-[0.9375rem]">
                 {person.name ?? person.email}
               </span>
-              <span className="text-[13px] text-ink-3 max-sm:hidden">{person.wizard}</span>
+              <span className="text-[0.8125rem] text-ink-3 max-sm:hidden">{person.wizard}</span>
               {admin ? (
                 <Button variant="ghost" size="sm" onClick={() => remove.mutate(person.id)}>
                   {t("remove")}
@@ -86,7 +86,7 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerPage({ path, component, wide? })` | A page of the studio at `/studio<path>`, inside the studio's frame. `path` takes `:name` parts. `wide`: the page lays out its own columns and takes the screen's width |
 | `studio.registerNav({ to, label, icon })` | An icon in the top bar that opens a page |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
-| `studio.registerSpaceSection({ id, label, hint?, component })` | A section of the space page at `/studio/space#<id>`, below the space's own. See [The space](#the-space) |
+| `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
 | `studio.registerAssistantCard({ tool, component })` | A card in the space assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
 - The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,
@@ -101,7 +101,7 @@ function ContactsSettings() {
   return (
     <section className="flex flex-col gap-2.5">
       <h2 className="px-1 font-display font-semibold text-lg leading-tight">{t("title")}</h2>
-      <Card className="p-5 text-[14px] text-ink-2">…</Card>
+      <Card className="p-5 text-[0.875rem] text-ink-2">…</Card>
     </section>
   );
 }
@@ -117,8 +117,16 @@ studio.registerSettingsSection({
 ## The space
 
 A space holds what all its wizards share: a title, logos, colours, documents and facts. The
-space page, behind "Space" in the top bar, shows them in sections. A plugin adds its own below
-them:
+space page, behind the folder in the top bar, shows them in four parts:
+
+| Part | `group` | Holds |
+|---|---|---|
+| Info & Marke | `info` | Basis, Logos, Farben, Assets, Fakten |
+| Wissen | `knowledge` | Dokumente: what every AI step can search |
+| Daten | `data` | What the wizards keep |
+| Ergebnisse | `results` | The runs that reached their result |
+
+A plugin adds a section to one of them, below the part's own:
 
 ```tsx
 function ContactsOfSpace() {
@@ -128,22 +136,25 @@ function ContactsOfSpace() {
     queryFn: () => studio.api.get<{ contacts: Person[] }>(`/?space=${space?.id}`),
     enabled: Boolean(space),
   });
-  return <Card className="p-5 text-[14px] text-ink-2">…</Card>;
+  return <Card className="p-5 text-[0.875rem] text-ink-2">…</Card>;
 }
 
 studio.registerSpaceSection({
   id: "contacts",
+  group: "data",
   label: () => t("title"),
   hint: () => t("hint"),
   component: ContactsOfSpace,
 });
 ```
 
+- `group` is the part; without one the section stands under Wissen.
 - The studio draws the heading and the hint above the section, as it does for the space's own,
-  and lists the section in the page's menu under the plugin's name. The component draws the rest,
-  usually a `Card`.
-- `id` is the section's anchor: `/studio/space#contacts` opens the page there. The space's own
-  ids are taken: `base`, `logos`, `colors`, `assets`, `documents`, `facts`.
+  and lists the section in the part's menu under the plugin's name. The component draws the
+  rest, usually a `Card`.
+- `id` is the section's anchor: `/studio/space/data#contacts` opens the page there, and so does
+  `/studio/space#contacts`. Ids are unique on the whole page; the space's own are taken: `base`,
+  `logos`, `colors`, `assets`, `documents`, `facts`.
 - `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A
   component that calls it draws again when the person picks another space. `readOnly`: the
   space came from a local install, or nothing is built on this runtime; show it, change nothing.

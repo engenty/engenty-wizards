@@ -169,10 +169,10 @@ function PluginCard({ card, send }: { card: ChatCard; send: Chat["send"] }) {
 function Intro() {
   return (
     <div className="sm:pr-36">
-      <h2 className="font-display font-semibold text-[20px] leading-tight tracking-tight">
+      <h2 className="font-display font-semibold text-[1.25rem] leading-tight tracking-tight">
         {t("project.assistantTitle")}
       </h2>
-      <p className="mt-1.5 max-w-2xl text-[15px] text-ink-2 leading-relaxed">
+      <p className="mt-1.5 max-w-2xl text-[0.9375rem] text-ink-2 leading-relaxed">
         {t("project.assistantHello")}
       </p>
     </div>
@@ -219,7 +219,7 @@ export function Assistant({ projectId, onChanged }: { projectId: string; onChang
   }, []);
   return (
     <div ref={slot} style={dock ? { minHeight: dock.height } : undefined}>
-      <div className="mb-2 flex items-center gap-1.5 px-1 font-medium text-[12px] text-ember-strong uppercase tracking-[0.07em]">
+      <div className="mb-2 flex items-center gap-1.5 px-1 font-medium text-[0.75rem] text-ember-strong uppercase tracking-[0.07em]">
         <Sparkles className="size-3.5" /> {t("project.assistant")}
       </div>
       <div className="relative">

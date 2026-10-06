@@ -58,7 +58,7 @@ keeps a line for every run that ended and shows them in the studio.
 | `src/schema.ts` | The same table for Drizzle |
 | `src/plugin.ts` | A listener on all three events, two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
 | `ui/messages.ts` | Words in German and English |
-| `ui/plugin.tsx` | A page behind an icon of the top bar, a section of the settings that empties the log, and a section of the space page with the space's last runs |
+| `ui/plugin.tsx` | A section of the space page with the space's last runs, under Ergebnisse, a page with the whole log, and a section of the settings that empties the log |
 | `package.json` | A workspace package whose `build` script builds the studio half |
 
 Build its studio half once, or on every save:
@@ -73,11 +73,11 @@ node scripts/build-plugin.mjs examples/plugins/run-log --watch
 
 Then, in the studio:
 
-1. The list icon in the top bar opens "Runs".
-2. Test a wizard to its end. A line appears on the page.
+1. Test a wizard to its end.
+2. The folder in the top bar → Ergebnisse shows "Runs" below the results: the last five runs of
+   the space's wizards. Its last line opens the page with the whole log.
 3. Settings → Runs shows how many lines are kept and deletes them.
-4. Space shows "Runs" below the space's own sections: the last five runs of its wizards.
-5. An AI step can list the tool "Run log" and tell how the last runs ended.
+4. An AI step can list the tool "Run log" and tell how the last runs ended.
 
 ## The plugin of these pages
 

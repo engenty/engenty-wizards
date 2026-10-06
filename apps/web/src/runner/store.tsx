@@ -60,8 +60,8 @@ function CredentialsForm({
           />
         </div>
       ))}
-      {connector.hint ? <p className="text-[13px] text-ink-3">{connector.hint}</p> : null}
-      {error ? <p className="text-[13px] text-rose">{error}</p> : null}
+      {connector.hint ? <p className="text-[0.8125rem] text-ink-3">{connector.hint}</p> : null}
+      {error ? <p className="text-[0.8125rem] text-rose">{error}</p> : null}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           {t("common.cancel")}
@@ -97,8 +97,8 @@ export function ConnectionField({
           <Check className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-[15px]">{connection.account.label}</div>
-          <div className="text-[13px] text-ink-3">{t("connect.connected", { name })}</div>
+          <div className="truncate font-medium text-[0.9375rem]">{connection.account.label}</div>
+          <div className="text-[0.8125rem] text-ink-3">{t("connect.connected", { name })}</div>
         </div>
         <IconButton
           label={t("connect.disconnect")}
@@ -143,7 +143,7 @@ export function ConnectionField({
   };
   const open = connection.connectors.find((c) => c.id === form);
   if (!connection.connectors.length) {
-    return <p className="text-[14px] text-ink-3">{t("connect.none")}</p>;
+    return <p className="text-[0.875rem] text-ink-3">{t("connect.none")}</p>;
   }
   return (
     <div className="flex flex-col gap-3">
@@ -156,7 +156,7 @@ export function ConnectionField({
               c.auth === "oauth2" ? void oauth(c) : setForm(form === c.id ? null : c.id)
             }
             className={cn(
-              "inline-flex h-11 items-center gap-2 rounded-full px-4 font-medium text-[14px] ring-1 transition",
+              "inline-flex h-11 items-center gap-2 rounded-full px-4 font-medium text-[0.875rem] ring-1 transition",
               form === c.id
                 ? "bg-ember-veil text-ink ring-ember"
                 : "bg-card text-ink-2 ring-input hover:text-ink hover:ring-ember",
@@ -179,12 +179,12 @@ export function ConnectionField({
           href={link}
           target="_blank"
           rel="noreferrer"
-          className="text-[14px] text-ember underline"
+          className="text-[0.875rem] text-ember underline"
         >
           {t("connect.openLink")}
         </a>
       ) : null}
-      {error ? <p className="text-[13px] text-rose">{error}</p> : null}
+      {error ? <p className="text-[0.8125rem] text-rose">{error}</p> : null}
     </div>
   );
 }
@@ -230,7 +230,7 @@ function CellInput({
   const [text, setText] = useState(inputText(value));
   useEffect(() => setText(inputText(value)), [value]);
   const base = cn(
-    "w-full min-w-0 rounded-md border border-transparent px-2 text-[13px] outline-none focus:border-ember focus:bg-card",
+    "w-full min-w-0 rounded-md border border-transparent px-2 text-[0.8125rem] outline-none focus:border-ember focus:bg-card",
     boxed ? "h-11 bg-paper-2" : "h-9 bg-transparent hover:bg-paper-2 coarse:h-11",
   );
   if (column.type === "boolean") {
@@ -314,7 +314,7 @@ export function ListTable({
     });
   const hasDraft = Object.values(draft).some((v) => v !== null && v !== undefined && v !== "");
   if (!rows.length && !editable) {
-    return <p className="text-[14px] text-ink-3">{t("list.empty")}</p>;
+    return <p className="text-[0.875rem] text-ink-3">{t("list.empty")}</p>;
   }
   const wide = (c: TableColumn, i: number) =>
     i === 0 || (c.type === "text" && c.format?.style === "multiline");
@@ -329,7 +329,7 @@ export function ListTable({
             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               {def.columns.map((c, i) => (
                 <div key={c.id} className={cn("min-w-0", wide(c, i) && "col-span-2")}>
-                  <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                  <div className="px-1 pb-0.5 text-[0.6875rem] text-ink-3">{c.name}</div>
                   {editable ? (
                     <CellInput
                       boxed
@@ -340,7 +340,7 @@ export function ListTable({
                   ) : (
                     <div
                       className={cn(
-                        "break-words px-1 text-[14px]",
+                        "break-words px-1 text-[0.875rem]",
                         c.type === "number" && "tabular-nums",
                       )}
                     >
@@ -367,7 +367,7 @@ export function ListTable({
             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               {def.columns.map((c, i) => (
                 <div key={c.id} className={cn("min-w-0", wide(c, i) && "col-span-2")}>
-                  <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                  <div className="px-1 pb-0.5 text-[0.6875rem] text-ink-3">{c.name}</div>
                   <CellInput
                     boxed
                     column={c}
@@ -391,7 +391,7 @@ export function ListTable({
         ) : null}
       </div>
       <div className="hidden overflow-x-auto rounded-lg ring-1 ring-border-soft sm:block">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-[0.8125rem]">
           <thead className="bg-paper-2 text-ink-2">
             <tr>
               {def.columns.map((c) => (
@@ -461,7 +461,7 @@ export function ListTable({
           </tbody>
         </table>
       </div>
-      {error ? <p className="mt-2 text-[13px] text-rose">{error}</p> : null}
+      {error ? <p className="mt-2 text-[0.8125rem] text-rose">{error}</p> : null}
     </div>
   );
 }
@@ -548,7 +548,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
     }
   };
   if (!rows.length) {
-    return <p className="text-[14px] text-ink-3">{t("list.empty")}</p>;
+    return <p className="text-[0.875rem] text-ink-3">{t("list.empty")}</p>;
   }
   const path = fileColumn && current ? String(current.cells[fileColumn.id] ?? "").trim() : "";
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
@@ -566,7 +566,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
     <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]" onKeyDown={keys}>
       <div className="flex min-h-0 flex-col">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[13px] text-ink-3 tabular-nums">
+          <span className="text-[0.8125rem] text-ink-3 tabular-nums">
             {t("check.progress", { done, total: rows.length })}
           </span>
           {statusColumn ? (
@@ -575,7 +575,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
               aria-pressed={onlyOpen}
               onClick={() => setOnlyOpen((v) => !v)}
               className={cn(
-                "inline-flex h-8 items-center rounded-full px-3 text-[13px] ring-1 transition coarse:h-11",
+                "inline-flex h-8 items-center rounded-full px-3 text-[0.8125rem] ring-1 transition coarse:h-11",
                 onlyOpen
                   ? "bg-ember-tint text-ink ring-ember"
                   : "bg-card text-ink-2 ring-input hover:text-ink",
@@ -600,12 +600,12 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
                 )}
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-[14px]">
+                  <span className="block truncate font-medium text-[0.875rem]">
                     {(titleColumn &&
                       formatTableCell(titleColumn, row.cells[titleColumn.id], lang)) ||
                       "—"}
                   </span>
-                  <span className="block truncate text-[12px] text-ink-3 tabular-nums">
+                  <span className="block truncate text-[0.75rem] text-ink-3 tabular-nums">
                     {restColumns
                       .slice(0, 2)
                       .map((c) => formatTableCell(c, row.cells[c.id], lang))
@@ -616,7 +616,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
                 {statusColumn ? (
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 font-medium text-[11px]",
+                      "shrink-0 rounded-full px-2 py-0.5 font-medium text-[0.6875rem]",
                       tone(row),
                     )}
                   >
@@ -641,7 +641,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
                 >
                   {statusOf(current) === a.id ? <Check className="size-4" /> : null}
                   {a.label}
-                  <kbd className="ml-1 hidden rounded bg-black/10 px-1.5 text-[11px] lg:inline">
+                  <kbd className="ml-1 hidden rounded bg-black/10 px-1.5 text-[0.6875rem] lg:inline">
                     {i + 1}
                   </kbd>
                 </Button>
@@ -656,7 +656,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
           <div className="overflow-hidden rounded-lg bg-paper-2 ring-1 ring-border-soft">
             {path ? (
               <>
-                <div className="flex items-center gap-2 border-border-soft border-b bg-card px-3 py-2 text-[13px]">
+                <div className="flex items-center gap-2 border-border-soft border-b bg-card px-3 py-2 text-[0.8125rem]">
                   <FileText className="size-3.5 shrink-0 text-ink-3" />
                   <span className="min-w-0 flex-1 truncate">{path.split("/").pop()}</span>
                   <a
@@ -685,13 +685,15 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
                     />
                   </div>
                 ) : (
-                  <p className="px-4 py-10 text-center text-[14px] text-ink-3">
+                  <p className="px-4 py-10 text-center text-[0.875rem] text-ink-3">
                     {t("check.noPreview")}
                   </p>
                 )}
               </>
             ) : (
-              <p className="px-4 py-14 text-center text-[14px] text-ink-3">{t("check.noFile")}</p>
+              <p className="px-4 py-14 text-center text-[0.875rem] text-ink-3">
+                {t("check.noFile")}
+              </p>
             )}
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
@@ -703,7 +705,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
                   c.type === "text" && c.format?.style === "multiline" && "col-span-full",
                 )}
               >
-                <div className="px-1 pb-0.5 text-[11px] text-ink-3">{c.name}</div>
+                <div className="px-1 pb-0.5 text-[0.6875rem] text-ink-3">{c.name}</div>
                 <CellInput
                   boxed
                   column={c}
@@ -713,7 +715,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
               </div>
             ))}
           </div>
-          {error ? <p className="text-[13px] text-rose">{error}</p> : null}
+          {error ? <p className="text-[0.8125rem] text-rose">{error}</p> : null}
         </div>
       ) : null}
     </div>
@@ -735,7 +737,7 @@ export function ListDownloads({ runId, list }: { runId: string; list: ShownList 
         <a
           key={f}
           href={withBase(`/api/runs/${runId}/lists/${list.def.id}/download?format=${f}`)}
-          className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink coarse:h-11 coarse:px-4"
+          className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[0.8125rem] text-ink-2 transition hover:bg-paper-3 hover:text-ink coarse:h-11 coarse:px-4"
         >
           {LIST_FORMAT_LABEL[f] ?? f}
         </a>
@@ -781,7 +783,7 @@ export function StoreButton({ runId }: { runId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-[13px] text-ink-4 transition hover:text-ink-2 coarse:min-h-11"
+        className="inline-flex items-center gap-1.5 text-[0.8125rem] text-ink-4 transition hover:text-ink-2 coarse:min-h-11"
       >
         <Database className="size-3.5" /> {t("store.open")}
       </button>
@@ -791,7 +793,7 @@ export function StoreButton({ runId }: { runId: string }) {
             <Spinner />
           </div>
         ) : (
-          <div className="flex flex-col gap-5 text-[14px]">
+          <div className="flex flex-col gap-5 text-[0.875rem]">
             <p className="text-ink-3">{t("store.explain")}</p>
             {empty ? <p className="text-ink-2">{t("store.empty")}</p> : null}
             {data.lists.some((l) => l.rows) ? (
@@ -831,7 +833,7 @@ export function StoreButton({ runId }: { runId: string }) {
                     <li key={f.path} className="border-border-soft border-b last:border-0">
                       <a
                         href={withBase(`/api/runs/${runId}/store/files/${f.path}`)}
-                        className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-paper-2 coarse:min-h-11"
+                        className="flex items-center gap-2 px-3 py-2 text-[0.8125rem] hover:bg-paper-2 coarse:min-h-11"
                         title={f.source ?? undefined}
                       >
                         <FileText className="size-3.5 shrink-0 text-ink-3" />

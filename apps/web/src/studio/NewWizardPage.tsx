@@ -62,7 +62,7 @@ export function NewWizardPage() {
       <div className="mx-auto max-w-2xl">
         <div className="flex flex-col items-center text-center">
           <Mascot kind="sprout" size={150} fluffy />
-          <h1 className="mt-2 font-display font-semibold text-[32px] leading-tight tracking-tight sm:text-[38px]">
+          <h1 className="mt-2 font-display font-semibold text-[2rem] leading-tight tracking-tight sm:text-[2.375rem]">
             {t("new.title")}
           </h1>
         </div>
@@ -78,10 +78,10 @@ export function NewWizardPage() {
               }
             }}
             placeholder={t("new.placeholder")}
-            className="border-0 bg-transparent text-[16px] shadow-none focus:ring-0"
+            className="border-0 bg-transparent text-[1rem] shadow-none focus:ring-0"
           />
           <div className="flex items-center justify-between gap-3 px-2 pb-1">
-            <span className="hidden text-[12px] text-ink-4 sm:block">{t("new.hint")}</span>
+            <span className="hidden text-[0.75rem] text-ink-4 sm:block">{t("new.hint")}</span>
             <Button
               size="md"
               onClick={submit}
@@ -98,7 +98,7 @@ export function NewWizardPage() {
               key={idea}
               type="button"
               onClick={() => setPrompt(idea)}
-              className="rounded-full bg-paper-2 px-3.5 py-1.5 text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink"
+              className="rounded-full bg-paper-2 px-3.5 py-1.5 text-[0.8125rem] text-ink-2 transition hover:bg-paper-3 hover:text-ink"
             >
               {idea}
             </button>
@@ -107,7 +107,7 @@ export function NewWizardPage() {
       </div>
 
       <section className="mx-auto max-w-5xl">
-        <h2 className="mt-16 mb-5 text-center font-medium text-[13px] text-ink-3 uppercase tracking-[0.08em]">
+        <h2 className="mt-16 mb-5 text-center font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.08em]">
           {t("new.orStarter")}
         </h2>
         <MarketplaceBrowser
@@ -116,7 +116,7 @@ export function NewWizardPage() {
           onUse={(entry) => project && !create.isPending && create.mutate(entry.id)}
         />
         {create.error ? (
-          <p className="mt-3 text-center text-[14px] text-rose">
+          <p className="mt-3 text-center text-[0.875rem] text-rose">
             {(create.error as Error).message}
           </p>
         ) : null}

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
@@ -17,12 +17,14 @@ import { Models } from "./Models";
 import { projectReadOnlyText, ReadOnlyNote } from "./ReadOnly";
 import {
   BackRow,
+  LevelHead,
+  LevelList,
   SettingsMenuContext,
   stepClass,
   useNarrow,
   useStepDirection,
 } from "./settings-menu";
-import { type SettingsSection, settingsSections } from "./settings-sections";
+import { settingsSections } from "./settings-sections";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -71,9 +73,9 @@ function McpServers({ project }: { project: Project }) {
     },
   });
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <h2 className="font-display font-semibold text-lg">{t("settings.mcp")}</h2>
-      <p className="mt-1 mb-5 text-[14px] text-ink-3">{t("settings.mcpHint")}</p>
+      <p className="mt-1 mb-5 text-[0.875rem] text-ink-3">{t("settings.mcpHint")}</p>
       <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-3">
         {servers.map((s, i) => (
           <div
@@ -133,7 +135,7 @@ function McpServers({ project }: { project: Project }) {
               }
             />
             {s.id ? (
-              <span className="self-center font-mono text-[11px] text-ink-4">{s.id}</span>
+              <span className="self-center font-mono text-[0.6875rem] text-ink-4">{s.id}</span>
             ) : null}
           </div>
         ))}
@@ -150,7 +152,7 @@ function McpServers({ project }: { project: Project }) {
       {readOnly ? null : (
         <div className="mt-5 flex items-center justify-end gap-3">
           {save.error ? (
-            <p className="text-[14px] text-rose">{(save.error as Error).message}</p>
+            <p className="text-[0.875rem] text-rose">{(save.error as Error).message}</p>
           ) : null}
           <Button busy={save.isPending} onClick={() => save.mutate()}>
             {saved ? t("settings.saved") : t("settings.save")}
@@ -163,83 +165,6 @@ function McpServers({ project }: { project: Project }) {
 
 /** The sections whose menu goes one level down in the left container. */
 const MENUS = new Set(["models", "integrate"]);
-
-/** The left container's top row: the back arrow (one level down only) and the level's name. */
-function MenuHead({ section, onBack }: { section: SettingsSection | null; onBack: () => void }) {
-  return (
-    <div className="mb-2 flex h-9 min-w-0 items-center px-1">
-      <div
-        className={cn(
-          "shrink-0 overflow-hidden transition-[width,margin,opacity] duration-200 ease-out",
-          section ? "-ml-1.5 mr-0.5 w-8 opacity-100" : "w-0 opacity-0",
-        )}
-      >
-        <button
-          type="button"
-          onClick={onBack}
-          aria-hidden={!section}
-          tabIndex={section ? undefined : -1}
-          aria-label={t("settings.title")}
-          className="grid size-8 place-items-center rounded-lg text-ink-3 transition hover:bg-accent hover:text-ink"
-        >
-          <ArrowLeft className="size-4" />
-        </button>
-      </div>
-      {section ? (
-        <span className="flex min-w-0 items-center gap-2 font-medium text-[14px]">
-          <section.icon className="size-4 shrink-0 text-ember-strong" />
-          <span className="truncate">{section.label}</span>
-        </span>
-      ) : (
-        <span className="font-medium text-[14px]">{t("settings.title")}</span>
-      )}
-    </div>
-  );
-}
-
-/** The sections, the left container's upper level. */
-function SectionList({
-  sections,
-  current,
-  onPick,
-}: {
-  sections: SettingsSection[];
-  current: SettingsSection | undefined;
-  onPick: (section: SettingsSection) => void;
-}) {
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {sections.map((s) => (
-        <li key={s.id}>
-          <Link
-            to={`/settings/${s.id}`}
-            onClick={(e) => {
-              // The section that is open already: its menu comes back, nothing else changes.
-              if (s.id === current?.id) {
-                e.preventDefault();
-                onPick(s);
-              }
-            }}
-            aria-current={s.id === current?.id ? "page" : undefined}
-            className={cn(
-              "group flex items-center gap-2 rounded-lg px-2 py-1 text-[14px] transition max-md:py-2",
-              s.id === current?.id
-                ? "bg-paper-2 font-medium text-ink"
-                : "text-ink-2 hover:bg-accent hover:text-ink",
-            )}
-          >
-            <span className="grid size-7 shrink-0 place-items-center">
-              <s.icon className="size-4 transition-transform duration-200 ease-out group-hover:scale-110" />
-            </span>
-            <span className="min-w-0 flex-1 truncate">{s.label}</span>
-            {/* On a phone every row goes one step deeper. */}
-            <ChevronRight className="size-4 text-ink-4 md:hidden" />
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /**
  * Settings at /settings/<section>. One container on the left shows one level at a time: the
@@ -265,6 +190,8 @@ export function SettingsPage() {
   const [upAt, setUpAt] = useState<string | null>(null);
   const sections = settingsSections(me.data, plugins);
   const current = sections.find((s) => s.id === section);
+  const entries = sections.map((s) => ({ ...s, to: `/settings/${s.id}` }));
+  const entry = entries.find((e) => e.id === section);
   const hasMenu = current ? MENUS.has(current.id) : false;
   // A phone: 0 the sections, 1 the section's menu, 2 the page.
   const phone = !current ? 0 : hasMenu && !params.get("show") ? 1 : 2;
@@ -307,15 +234,16 @@ export function SettingsPage() {
               narrow && pageStep === "back" && stepClass("back"),
             )}
           >
-            <MenuHead
-              section={level === 1 ? (current ?? null) : null}
+            <LevelHead
+              title={t("settings.title")}
+              open={level === 1 ? (entry ?? null) : null}
               onBack={() => (narrow ? navigate("/settings") : setUpAt(section ?? null))}
             />
             <div key={level} className={cn(stepClass(levelStep))}>
               {level === 0 ? (
-                <SectionList
-                  sections={sections}
-                  current={narrow ? undefined : current}
+                <LevelList
+                  entries={entries}
+                  current={narrow ? undefined : entry}
                   onPick={() => setUpAt(null)}
                 />
               ) : (

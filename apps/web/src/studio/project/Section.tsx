@@ -46,23 +46,23 @@ export function Section({
           <div className="flex items-center gap-3">
             <h2 className="font-display font-semibold text-lg leading-tight">{title}</h2>
             {save?.state === "saving" ? (
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-3">
+              <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
                 <Spinner className="size-3" /> {t("project.saving")}
               </span>
             ) : save?.state === "saved" ? (
-              <span className="inline-flex items-center gap-1 text-[12px] text-moss">
+              <span className="inline-flex items-center gap-1 text-[0.75rem] text-moss">
                 <Check className="size-3.5" /> {t("settings.saved")}
               </span>
             ) : null}
           </div>
-          {hint ? <p className="mt-1 text-[14px] text-ink-3 leading-snug">{hint}</p> : null}
+          {hint ? <p className="mt-1 text-[0.875rem] text-ink-3 leading-snug">{hint}</p> : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {plain ? (
         children
       ) : (
-        <Card className="p-5">
+        <Card className="p-3.5 sm:p-5">
           {locked ? (
             <fieldset disabled className="min-w-0">
               {children}
@@ -71,7 +71,7 @@ export function Section({
             children
           )}
           {save?.state === "error" && save.error ? (
-            <p className="mt-4 text-[14px] text-rose">{save.error}</p>
+            <p className="mt-4 text-[0.875rem] text-rose">{save.error}</p>
           ) : null}
         </Card>
       )}
@@ -133,7 +133,7 @@ export function SearchField({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
-        className="h-9 w-full rounded-lg border border-input bg-card pr-3 pl-9 text-[14px] text-ink outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow"
+        className="h-9 w-full rounded-lg border border-input bg-card pr-3 pl-9 text-[0.875rem] text-ink outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow"
       />
       {busy ? (
         <Spinner className="-translate-y-1/2 absolute top-1/2 right-3 size-4 text-ink-3" />
@@ -174,7 +174,7 @@ export function DropArea({
         }
       }}
       className={cn(
-        "flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed text-[14px] text-ink-3 transition focus-within:border-focus focus-within:ring-4 focus-within:ring-focus-glow hover:border-ink-4 hover:text-ink data-[over]:border-focus data-[over]:bg-paper-2 data-[over]:text-ink",
+        "flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed text-[0.875rem] text-ink-3 transition focus-within:border-focus focus-within:ring-4 focus-within:ring-focus-glow hover:border-ink-4 hover:text-ink data-[over]:border-focus data-[over]:bg-paper-2 data-[over]:text-ink",
         className,
       )}
     >

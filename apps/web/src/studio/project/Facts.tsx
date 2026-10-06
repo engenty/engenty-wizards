@@ -81,7 +81,7 @@ function TypeMenu({
   const Icon = TYPE_ICONS[type ?? detected];
   const label = `${t("project.factType")}: ${t(`project.type.${type ?? detected}`)}`;
   const item =
-    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.875rem] text-ink-2 hover:bg-accent hover:text-ink";
   const pick = (next: FactType | undefined) => {
     onChange(next);
     setOpen(false);
@@ -123,7 +123,7 @@ function TypeMenu({
           >
             <Wand2 className="size-4 shrink-0" />
             <span className="flex-1">{t("project.factAuto")}</span>
-            <span className="text-[12px] text-ink-4">{t(`project.type.${detected}`)}</span>
+            <span className="text-[0.75rem] text-ink-4">{t(`project.type.${detected}`)}</span>
             <Check className={cn("size-4 shrink-0", type && "invisible")} />
           </button>
           <div className="mx-2 my-1 h-px bg-border-soft" />
@@ -247,7 +247,7 @@ export function Facts({
                       set(row.id, { value: on ? t("project.yes") : t("project.no") })
                     }
                   />
-                  <span className="text-[14px] text-ink-2">
+                  <span className="text-[0.875rem] text-ink-2">
                     {isYes(row.value) ? t("project.yes") : t("project.no")}
                   </span>
                 </div>
@@ -291,7 +291,7 @@ export function Facts({
               key={b.key}
               type="button"
               onClick={() => add({ key: b.key, label: lang === "en" ? b.en : b.de }, "value")}
-              className="inline-flex h-8 items-center gap-1 rounded-full bg-paper-2 px-3 text-[13px] text-ink-2 transition hover:bg-paper-3 hover:text-ink"
+              className="inline-flex h-8 items-center gap-1 rounded-full bg-paper-2 px-3 text-[0.8125rem] text-ink-2 transition hover:bg-paper-3 hover:text-ink"
             >
               <Plus className="size-3.5" /> {lang === "en" ? b.en : b.de}
             </button>

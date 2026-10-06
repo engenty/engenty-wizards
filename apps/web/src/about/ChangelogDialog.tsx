@@ -101,7 +101,7 @@ export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <Dialog open={open} onClose={onClose} title={t("about.changelog")} wide>
-      <p className="-mt-3 mb-4 text-[14px] text-ink-3">{t("about.changelogHint")}</p>
+      <p className="-mt-3 mb-4 text-[0.875rem] text-ink-3">{t("about.changelogHint")}</p>
       {releases === null ? (
         <div className="flex justify-center py-10 text-ink-3">
           <Spinner />
@@ -119,9 +119,9 @@ export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () 
           {visible.length === 0 ? <Empty>{t("about.noMatches")}</Empty> : null}
           {visible.map((release) => (
             <section key={release.version ?? "unreleased"} className="mt-6">
-              <h3 className="flex items-baseline gap-3 border-border-soft border-b pb-2 font-display font-semibold text-[16px]">
+              <h3 className="flex items-baseline gap-3 border-border-soft border-b pb-2 font-display font-semibold text-[1rem]">
                 {releaseLabel(release)}
-                <span className="font-normal font-sans text-[13px] text-ink-3 tabular-nums">
+                <span className="font-normal font-sans text-[0.8125rem] text-ink-3 tabular-nums">
                   {releaseDate(release)}
                 </span>
               </h3>
@@ -129,16 +129,16 @@ export function ChangelogDialog({ open, onClose }: { open: boolean; onClose: () 
                 {release.commits.map((commit) => {
                   const group = groupOf(commit);
                   return (
-                    <li key={commit.id} className="flex items-start gap-2.5 text-[14px]">
+                    <li key={commit.id} className="flex items-start gap-2.5 text-[0.875rem]">
                       <span className={cn("mt-[7px] size-1.5 shrink-0 rounded-full", group.dot)} />
                       <span className="min-w-0 text-ink-2">
-                        <span className="font-semibold text-[12px] text-ink tracking-wide">
+                        <span className="font-semibold text-[0.75rem] text-ink tracking-wide">
                           {group.label}
                           {commit.scope ? ` [${commit.scope}]` : ""}
                         </span>{" "}
                         {upperFirst(commit.message)}
                         {commit.breaking ? (
-                          <span className="ml-1.5 rounded-full bg-rose-tint px-1.5 py-0.5 font-medium text-[12px] text-rose">
+                          <span className="ml-1.5 rounded-full bg-rose-tint px-1.5 py-0.5 font-medium text-[0.75rem] text-rose">
                             {t("about.breaking")}
                           </span>
                         ) : null}

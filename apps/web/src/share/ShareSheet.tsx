@@ -97,7 +97,7 @@ export function ShareResultButton({
             <Spinner />
           </div>
         ) : error ? (
-          <p className="rounded-lg bg-rose-tint px-3 py-2 text-[14px] text-rose">{error}</p>
+          <p className="rounded-lg bg-rose-tint px-3 py-2 text-[0.875rem] text-rose">{error}</p>
         ) : shared ? (
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-2 rounded-xl bg-paper-2 p-1.5 pl-3">
@@ -107,7 +107,7 @@ export function ShareResultButton({
                 value={shared.url}
                 onFocus={(e) => e.target.select()}
                 aria-label={t("share.link")}
-                className="min-w-0 flex-1 bg-transparent text-[14px] outline-none coarse:h-11"
+                className="min-w-0 flex-1 bg-transparent text-[0.875rem] outline-none coarse:h-11"
               />
               <Button size="sm" onClick={copy}>
                 {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -121,9 +121,9 @@ export function ShareResultButton({
                   href={target.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex flex-col items-center gap-1.5 text-[12px] text-ink-2 hover:text-ink"
+                  className="flex flex-col items-center gap-1.5 text-[0.75rem] text-ink-2 hover:text-ink"
                 >
-                  <span className="inline-flex size-12 items-center justify-center rounded-full bg-paper-2 font-semibold text-[15px] transition hover:bg-paper-3">
+                  <span className="inline-flex size-12 items-center justify-center rounded-full bg-paper-2 font-semibold text-[0.9375rem] transition hover:bg-paper-3">
                     {target.id === "mail" ? <Mail className="size-5" /> : MONOGRAM[target.id]}
                   </span>
                   {target.label}
@@ -139,7 +139,7 @@ export function ShareResultButton({
                         : navigator.share({ title, url: shared.url })
                     ).catch(() => undefined)
                   }
-                  className="flex flex-col items-center gap-1.5 text-[12px] text-ink-2 hover:text-ink"
+                  className="flex flex-col items-center gap-1.5 text-[0.75rem] text-ink-2 hover:text-ink"
                 >
                   <span className="inline-flex size-12 items-center justify-center rounded-full bg-paper-2 transition hover:bg-paper-3">
                     <Share2 className="size-5" />
@@ -148,7 +148,7 @@ export function ShareResultButton({
                 </button>
               ) : null}
             </div>
-            <div className="flex items-center justify-between gap-3 text-[13px] text-ink-3">
+            <div className="flex items-center justify-between gap-3 text-[0.8125rem] text-ink-3">
               <span>{until ? t("shareRun.until", { date: until }) : t("shareRun.kept")}</span>
               <button
                 type="button"

@@ -193,7 +193,7 @@ function WebScan({ open, onClose, onResult }: ScanProps) {
         </div>
       </CameraStage>
       <div className="safe-bottom flex flex-col items-center gap-3 px-5 pt-3 text-center">
-        <p className="text-[13px] text-white/75 leading-snug">
+        <p className="text-[0.8125rem] text-white/75 leading-snug">
           {miss ? t("scan.miss") : qrOnly ? t("scan.hintQr") : t("scan.hint")}
         </p>
         {camera.stream ? (

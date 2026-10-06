@@ -59,11 +59,11 @@ export function WizardQr({ url, code, title }: { url: string; code?: string; tit
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className="text-[13px] text-ink-3">{t("share.qrHint")}</p>
+        <p className="text-[0.8125rem] text-ink-3">{t("share.qrHint")}</p>
         {code ? (
-          <p className="text-[13px] text-ink-3">
+          <p className="text-[0.8125rem] text-ink-3">
             {t("share.code")}{" "}
-            <span className="select-all font-mono text-[15px] text-ink tracking-wider">
+            <span className="select-all font-mono text-[0.9375rem] text-ink tracking-wider">
               {spacedCode(code)}
             </span>
           </p>

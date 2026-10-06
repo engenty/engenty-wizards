@@ -106,20 +106,20 @@ export function FilesPanel({
       }}
     >
       {readOnly ? null : (
-        <p className="mb-4 text-[13px] text-ink-3 leading-relaxed">{t("files.explain")}</p>
+        <p className="mb-4 text-[0.8125rem] text-ink-3 leading-relaxed">{t("files.explain")}</p>
       )}
       <div className="flex items-center gap-2">
         {readOnly ? null : (
           <button
             type="button"
             onClick={() => input.current?.click()}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-paper-2 px-3.5 font-medium text-[13px] text-ink-2 hover:bg-paper-3 hover:text-ink"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-paper-2 px-3.5 font-medium text-[0.8125rem] text-ink-2 hover:bg-paper-3 hover:text-ink"
           >
             {busy ? <Spinner className="size-3.5" /> : <Upload className="size-3.5" />}
             {t("files.upload")}
           </button>
         )}
-        <span className="ml-auto text-[12px] text-ink-4">
+        <span className="ml-auto text-[0.75rem] text-ink-4">
           {t("files.count", { n: files.length, size: bytes(total) })}
         </span>
         <input
@@ -131,7 +131,9 @@ export function FilesPanel({
         />
       </div>
       {error ? (
-        <div className="mt-3 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
+          {error}
+        </div>
       ) : null}
       <ul className="mt-4 flex flex-col">
         {files.map((f) => {
@@ -142,8 +144,8 @@ export function FilesPanel({
               className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper-2"
             >
               <Icon className="size-4 shrink-0 text-ink-3" />
-              <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{f.path}</span>
-              <span className="text-[12px] text-ink-4 tabular-nums">{bytes(f.size)}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem]">{f.path}</span>
+              <span className="text-[0.75rem] text-ink-4 tabular-nums">{bytes(f.size)}</span>
               <a
                 href={`${base}/${f.path}`}
                 className="inline-flex size-8 items-center justify-center rounded-full text-ink-3 opacity-0 hover:text-ink group-hover:opacity-100"
@@ -165,7 +167,7 @@ export function FilesPanel({
         })}
       </ul>
       {files.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-border border-dashed px-4 py-8 text-center text-[13px] text-ink-4">
+        <div className="mt-6 rounded-xl border border-border border-dashed px-4 py-8 text-center text-[0.8125rem] text-ink-4">
           {t(readOnly ? "files.none" : "files.empty")}
         </div>
       ) : null}

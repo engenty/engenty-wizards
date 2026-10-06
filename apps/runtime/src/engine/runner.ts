@@ -274,7 +274,7 @@ async function storedLists(
   const scope = scopeOf(run);
   const out: Record<string, { def: ListDef; rows: ListRow[] }> = {};
   for (const def of run.definition.lists ?? []) {
-    out[def.id] = { def, rows: await listRows(scope, def.id) };
+    out[def.id] = { def, rows: await listRows(scope, def) };
   }
   return out;
 }

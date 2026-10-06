@@ -111,7 +111,7 @@ function InstallHint() {
   const mac = /Mac/.test(navigator.platform);
   const hint = PHONE ? t("install.ios") : t(mac ? "install.bookmark.mac" : "install.bookmark.pc");
   return (
-    <div className="mt-6 flex flex-col items-center gap-2 text-[13px] text-ink-3">
+    <div className="mt-6 flex flex-col items-center gap-2 text-[0.8125rem] text-ink-3">
       <button
         type="button"
         onClick={() => {
@@ -144,7 +144,7 @@ export function BrandHeader({ brand, toggle = true }: { brand: BrandView; toggle
             className="h-7 max-w-[160px] object-contain"
           />
         ) : brand.name ? (
-          <span className="max-w-[60%] truncate font-display font-semibold text-[15px] text-ink-2 tracking-tight">
+          <span className="max-w-[60%] truncate font-display font-semibold text-[0.9375rem] text-ink-2 tracking-tight">
             {brand.name}
           </span>
         ) : null}
@@ -206,7 +206,7 @@ function OpenInApp({ token }: { token: string }) {
   return (
     <a
       href={appLink(`${window.location.origin}${BASE}/w/${token}`)}
-      className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+      className="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
     >
       <Smartphone className="size-4" /> {t("install.app")}
     </a>
@@ -274,11 +274,11 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
   return (
     <div className="mx-auto flex max-w-lg animate-rise flex-col items-center px-6 pt-6 pb-12 text-center sm:pt-16 sm:pb-16">
       <Mascot kind={wizard.avatar} size={190} fluffy />
-      <h1 className="mt-2 text-balance font-display font-semibold text-[30px] leading-[1.1] tracking-tight sm:text-[34px]">
+      <h1 className="mt-2 text-balance font-display font-semibold text-[1.875rem] leading-[1.1] tracking-tight sm:text-[2.125rem]">
         {wizard.title}
       </h1>
       {wizard.description ? (
-        <p className="mt-3 text-[16px] text-ink-2 leading-relaxed">{wizard.description}</p>
+        <p className="mt-3 text-[1rem] text-ink-2 leading-relaxed">{wizard.description}</p>
       ) : null}
       {wizard.available ? (
         <>
@@ -298,7 +298,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
             <button
               type="button"
               onClick={() => navigate(`/w/${wizard.token}/${previous}`)}
-              className="mt-4 text-[14px] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+              className="mt-4 text-[0.875rem] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
             >
               {t("run.resume")}
             </button>
@@ -307,11 +307,11 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
           <OpenInApp token={wizard.token} />
         </>
       ) : (
-        <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[15px] text-ink-2">
+        <p className="mt-10 rounded-xl bg-paper-2 px-5 py-4 text-[0.9375rem] text-ink-2">
           {wizard.unavailableReason ?? t("run.unavailable")}
         </p>
       )}
-      {error ? <p className="mt-4 text-[14px] text-rose">{error}</p> : null}
+      {error ? <p className="mt-4 text-[0.875rem] text-rose">{error}</p> : null}
     </div>
   );
 }
@@ -379,7 +379,7 @@ export function PublicRunner() {
       {IN_APP ? (
         <div className="safe-bottom" />
       ) : (
-        <footer className="safe-bottom pt-6 text-center text-[12px] text-ink-4">
+        <footer className="safe-bottom pt-6 text-center text-[0.75rem] text-ink-4">
           <a
             href={`${BASE}/`}
             // In a frame the link would load the studio into the website.

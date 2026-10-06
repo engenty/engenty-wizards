@@ -1,10 +1,49 @@
-import { t } from "../lib/i18n";
+import type { StudioSpaceGroup } from "@engenty-wizards/plugin-sdk/studio";
+import {
+  BookOpen,
+  Database,
+  FileText,
+  Fingerprint,
+  Images,
+  Inbox,
+  ListChecks,
+  type LucideIcon,
+  Palette,
+  Shapes,
+  Type,
+} from "lucide-react";
+import { type Key, t } from "../lib/i18n";
 import type { StudioPlugins } from "../plugins/host";
 
+export type SpaceGroupId = StudioSpaceGroup;
+
+/** A part of the space page: its own address, its entry in the upper level of the menu. */
+export interface SpaceGroup {
+  id: SpaceGroupId;
+  label: string;
+  icon: LucideIcon;
+}
+
+/** The parts of the space page, in the order of the menu. */
+export function spaceGroups(): SpaceGroup[] {
+  return [
+    { id: "info", label: t("space.info"), icon: Fingerprint },
+    { id: "knowledge", label: t("space.knowledge"), icon: BookOpen },
+    { id: "data", label: t("space.data"), icon: Database },
+    { id: "results", label: t("space.results"), icon: Inbox },
+  ];
+}
+
+export function isSpaceGroup(id: string | undefined): id is SpaceGroupId {
+  return id === "info" || id === "knowledge" || id === "data" || id === "results";
+}
+
 export interface ProjectSection {
-  /** Its anchor on the space page: `/space#<id>`, set in `ProjectSettings` or by a plugin. */
+  /** Its anchor on the space page: `/space/<group>#<id>`, set in `ProjectSettings` or by a plugin. */
   id: string;
   label: string;
+  /** The space's own sections have one; a plugin's stand under the plugin's name. */
+  icon?: LucideIcon;
 }
 
 export interface ProjectSectionGroup {
@@ -15,26 +54,47 @@ export interface ProjectSectionGroup {
 }
 
 /** The space's own sections, in the order the page shows them. A plugin cannot take their ids. */
-export const OWN_SPACE_SECTIONS = ["base", "logos", "colors", "assets", "documents", "facts"];
+const OWN: { id: string; group: SpaceGroupId; label: Key; icon: LucideIcon }[] = [
+  { id: "base", group: "info", label: "project.base", icon: Type },
+  { id: "logos", group: "info", label: "project.logos", icon: Shapes },
+  { id: "colors", group: "info", label: "project.colors", icon: Palette },
+  { id: "assets", group: "info", label: "project.assets", icon: Images },
+  { id: "facts", group: "info", label: "project.facts", icon: ListChecks },
+  { id: "documents", group: "knowledge", label: "project.documents", icon: FileText },
+];
 
-/** The sections of the space page, in the order the page shows them: its own, then each plugin's. */
-export function projectSections(plugins: StudioPlugins): ProjectSectionGroup[] {
-  const own: ProjectSection[] = [
-    { id: "base", label: t("project.base") },
-    { id: "logos", label: t("project.logos") },
-    { id: "colors", label: t("project.colors") },
-    { id: "assets", label: t("project.assets") },
-    { id: "documents", label: t("project.documents") },
-    { id: "facts", label: t("project.facts") },
-  ];
+export const OWN_SPACE_SECTIONS = OWN.map((s) => s.id);
+
+/** The part a section of the space page stands in: its own, or the one its plugin chose. */
+export function groupOfSection(id: string, plugins: StudioPlugins): SpaceGroupId | null {
+  const added = plugins.spaceSections.find((s) => s.id === id);
+  return OWN.find((s) => s.id === id)?.group ?? (added ? (added.group ?? "knowledge") : null);
+}
+
+/**
+ * The sections of one part of the space page, in the order the page shows them: its own, then
+ * each plugin's.
+ */
+export function projectSections(
+  group: SpaceGroupId,
+  plugins: StudioPlugins,
+): ProjectSectionGroup[] {
+  const own = OWN.filter((s) => s.group === group).map((s) => ({
+    id: s.id,
+    label: t(s.label),
+    icon: s.icon,
+  }));
   const byPlugin = new Map<string, ProjectSection[]>();
   for (const section of plugins.spaceSections) {
+    if ((section.group ?? "knowledge") !== group) {
+      continue;
+    }
     const list = byPlugin.get(section.plugin) ?? [];
     list.push({ id: section.id, label: section.label() });
     byPlugin.set(section.plugin, list);
   }
   return [
-    { plugin: null, label: null, sections: own },
+    ...(own.length ? [{ plugin: null, label: null, sections: own }] : []),
     ...[...byPlugin].map(([id, sections]) => ({
       plugin: id,
       label: plugins.plugins.find((p) => p.id === id)?.name ?? id,

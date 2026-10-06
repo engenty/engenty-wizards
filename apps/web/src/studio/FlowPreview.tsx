@@ -57,7 +57,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
       >
         <Icon className="size-3.5" />
       </span>
-      <span className="truncate font-medium text-[13px] text-ink">{data.title}</span>
+      <span className="truncate font-medium text-[0.8125rem] text-ink">{data.title}</span>
       <Handle type="source" position={Position.Bottom} />
       <Handle type="source" id="out" position={Position.Right} />
     </div>
@@ -85,7 +85,7 @@ function BranchEdge({ sourceX, sourceY, targetX, targetY, label, markerEnd }: Ed
             width: LABEL_W,
             transform: `translate(${x + 8}px, ${(sourceY + targetY) / 2}px) translateY(-50%)`,
           }}
-          className="absolute text-[11px] text-ink-2 leading-snug"
+          className="absolute text-[0.6875rem] text-ink-2 leading-snug"
         >
           {label}
         </div>

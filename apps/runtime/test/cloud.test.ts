@@ -68,6 +68,10 @@ const cloud: Server = createServer(async (req, res) => {
       problems: [{ code: "sandbox", blocking: false, steps: [{ id: "w", title: "W" }], detail: "" }],
     });
   }
+  if (/^\/api\/v1\/spaces\/[^/]+\/data$/.test(url.pathname) && req.method === "PUT") {
+    const sent = JSON.parse(raw || "{}");
+    return json({ tables: sent.tables?.length ?? 0, pages: sent.pages?.length ?? 0 });
+  }
   if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/rotate-link$/.test(url.pathname)) {
     return json({ shareUrl: `${origin}/w/cloudtoken00002`, code: "K7WM4TQ9" });
   }
@@ -307,6 +311,8 @@ describe("a runtime that runs alone and the cloud of its account", () => {
       // Only the other install's project goes.
       "DELETE /api/v1/spaces/old-space",
       `PUT /api/v1/spaces/${projectId}/wizards/${wizardId}`,
+      // The space's own tables and pages go again: the cloud's copy of the space is new.
+      `PUT /api/v1/spaces/${projectId}/data`,
     ]);
     expect(await sync.cloudState(wizardId)).toMatchObject({ copy: { version: 3 }, error: null });
   });

@@ -13,7 +13,7 @@ import { Section } from "./project/Section";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { hostOf } from "./where";
 
-const hint = "mt-1.5 text-[13px] text-ink-3";
+const hint = "mt-1.5 text-[0.8125rem] text-ink-3";
 
 /**
  * Links this install to an account. The sign-in — or the sign-up, for someone without an
@@ -52,10 +52,10 @@ export function useAccountLink(signedIn: boolean) {
 /** One line under the buttons while the browser has the sign-in, or when it could not be opened. */
 export function LinkStatus({ link, waiting }: ReturnType<typeof useAccountLink>) {
   if (link.isError) {
-    return <p className="text-[13px] text-rose">{t("local.accountFailed")}</p>;
+    return <p className="text-[0.8125rem] text-rose">{t("local.accountFailed")}</p>;
   }
   return waiting ? (
-    <p className="flex items-center gap-2 text-[13px] text-ink-3">
+    <p className="flex items-center gap-2 text-[0.8125rem] text-ink-3">
       <Spinner className="size-3.5" /> {t("local.accountWaiting")}
     </p>
   ) : null;
@@ -76,15 +76,17 @@ function Unlinked() {
           <HardDrive className="size-5" />
         </div>
         <div className="min-w-0">
-          <div className="font-medium text-[15px]">{t("account.local")}</div>
-          <p className="mt-1 text-[14px] text-ink-3 leading-relaxed">{t("account.localText")}</p>
+          <div className="font-medium text-[0.9375rem]">{t("account.local")}</div>
+          <p className="mt-1 text-[0.875rem] text-ink-3 leading-relaxed">
+            {t("account.localText")}
+          </p>
         </div>
       </div>
       {features.account ? (
         <div className="flex flex-col gap-4 py-5 last:pb-0">
           <div>
-            <div className="font-medium text-[15px]">{t("account.with")}</div>
-            <ul className="mt-2 flex flex-col gap-2 text-[14px] text-ink-2 leading-snug">
+            <div className="font-medium text-[0.9375rem]">{t("account.with")}</div>
+            <ul className="mt-2 flex flex-col gap-2 text-[0.875rem] text-ink-2 leading-snug">
               <li className="flex items-start gap-2.5">
                 <Coins className="mt-0.5 size-4 shrink-0 text-amber" />
                 {t("account.withCredits")}
@@ -114,8 +116,10 @@ function Unlinked() {
           }}
         >
           <div>
-            <div className="font-medium text-[15px]">{t("account.new")}</div>
-            <p className="mt-1 text-[14px] text-ink-3 leading-relaxed">{t("account.newHint")}</p>
+            <div className="font-medium text-[0.9375rem]">{t("account.new")}</div>
+            <p className="mt-1 text-[0.875rem] text-ink-3 leading-relaxed">
+              {t("account.newHint")}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Input
@@ -126,7 +130,7 @@ function Unlinked() {
               placeholder={t("account.code")}
               aria-label={t("account.code")}
               onChange={(e) => setCode(e.target.value)}
-              className="w-56 font-mono text-[14px]"
+              className="w-56 font-mono text-[0.875rem]"
             />
             <Button
               type="submit"
@@ -167,12 +171,12 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 py-5 first:pt-0">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-[15px]">
+            <span className="truncate font-medium text-[0.9375rem]">
               {account.name || account.email}
             </span>
             {account.signedIn ? <Chip tone="live">{t("account.linked")}</Chip> : null}
           </div>
-          <div className="truncate text-[14px] text-ink-3">{account.email}</div>
+          <div className="truncate text-[0.875rem] text-ink-3">{account.email}</div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => openExternal(account.url)}>
@@ -186,7 +190,7 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
       {account.signedIn ? null : (
         // The link is still there, its sign-in is not: the same sign-in again brings it back.
         <div className="flex flex-col gap-3 py-5">
-          <p className="text-[14px] text-ink-2">{t("local.accountExpired")}</p>
+          <p className="text-[0.875rem] text-ink-2">{t("local.accountExpired")}</p>
           <div>
             <Button busy={linking.link.isPending} onClick={() => linking.link.mutate({})}>
               {t("account.signInAgain")}
@@ -199,8 +203,8 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
         <div className="py-5">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] text-ink-3">{t("account.credits")}</div>
-              <div className="font-display font-semibold text-[22px] tabular-nums leading-tight">
+              <div className="text-[0.8125rem] text-ink-3">{t("account.credits")}</div>
+              <div className="font-display font-semibold text-[1.375rem] tabular-nums leading-tight">
                 {/* Whole credits, rounded down: never more than there is. */}
                 {t("nav.credits", { n: Math.floor(account.credits).toLocaleString() })}
               </div>
@@ -210,7 +214,7 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
             </Button>
           </div>
           {account.expiring.length ? (
-            <ul className="mt-3 flex flex-col gap-1 text-[13px] text-ink-3 tabular-nums">
+            <ul className="mt-3 flex flex-col gap-1 text-[0.8125rem] text-ink-3 tabular-nums">
               {account.expiring.map((part) => (
                 <li key={`${part.kind}:${part.expiresAt}`}>
                   {t("account.expires", {
@@ -226,7 +230,7 @@ function Linked({ account }: { account: NonNullable<Me["account"]> }) {
           ) : null}
         </div>
       )}
-      <div className="flex items-start gap-2.5 py-5 text-[14px] text-ink-2 leading-snug last:pb-0">
+      <div className="flex items-start gap-2.5 py-5 text-[0.875rem] text-ink-2 leading-snug last:pb-0">
         <Cloud className="mt-0.5 size-4 shrink-0 text-cobalt" />
         <p>{t("account.cloud", { host: hostOf(account.cloudUrl) })}</p>
       </div>
@@ -248,14 +252,16 @@ function Profile({ me, fromAccount }: { me: Me; fromAccount: boolean }) {
     <Section title={t("account.profile")} hint={t("account.hint")} save={status}>
       <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
         <div className="flex shrink-0 flex-col items-center gap-2 sm:w-32">
-          <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[28px] text-ember-strong ring-1 ring-border-soft">
+          <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-ember-tint font-semibold text-[1.75rem] text-ember-strong ring-1 ring-border-soft">
             {me.user.image ? (
               <img src={me.user.image} alt="" className="size-full object-cover" />
             ) : (
               initialsOf(profile.name) || "?"
             )}
           </div>
-          <p className="text-center text-[12px] text-ink-3 leading-snug">{t("account.initials")}</p>
+          <p className="text-center text-[0.75rem] text-ink-3 leading-snug">
+            {t("account.initials")}
+          </p>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           <div>
@@ -321,10 +327,10 @@ export function Account({ me }: { me: Me }) {
           <div className="flex flex-wrap items-center gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate font-medium text-[15px]">{me.user.name}</span>
+                <span className="truncate font-medium text-[0.9375rem]">{me.user.name}</span>
                 <Chip tone="live">{t("account.linked")}</Chip>
               </div>
-              <div className="truncate text-[14px] text-ink-3">{me.user.email}</div>
+              <div className="truncate text-[0.875rem] text-ink-3">{me.user.email}</div>
             </div>
             {me.manageUrl ? (
               <Button variant="secondary" onClick={() => openExternal(`${me.manageUrl}/account`)}>
@@ -346,11 +352,11 @@ export function Account({ me }: { me: Me }) {
       <Section title={t("account.look")} hint={t("account.lookHint")}>
         <div className="flex flex-col divide-y divide-border-soft">
           <div className="flex items-center justify-between gap-4 pb-4">
-            <span className="font-medium text-[14px]">{t("nav.language")}</span>
+            <span className="font-medium text-[0.875rem]">{t("nav.language")}</span>
             <LangSwitch tone="surface" />
           </div>
           <div className="flex items-center justify-between gap-4 pt-4">
-            <span className="font-medium text-[14px]">{t("nav.theme")}</span>
+            <span className="font-medium text-[0.875rem]">{t("nav.theme")}</span>
             <ThemeSwitch />
           </div>
         </div>

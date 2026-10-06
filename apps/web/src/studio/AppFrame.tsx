@@ -55,7 +55,10 @@ function Trail() {
     return null;
   }
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center text-[15px] max-sm:hidden">
+    <nav
+      aria-label="Breadcrumb"
+      className="flex min-w-0 items-center text-[0.9375rem] max-sm:hidden"
+    >
       {trail.map((crumb, i) => (
         <Fragment key={`${i}:${crumb.label}`}>
           <span className="mx-2 text-ink-4">/</span>
@@ -95,7 +98,7 @@ export function CreditsPill({ me }: { me: Me }) {
       target="_blank"
       rel="noreferrer"
       className={cn(
-        "flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium text-[13px] tabular-nums transition",
+        "flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 font-medium text-[0.8125rem] tabular-nums transition",
         credits < 50 ? "bg-amber-tint text-ink" : "bg-paper-2 text-ink-2 hover:text-ink",
       )}
     >
@@ -136,13 +139,13 @@ export function UserMenu({ me }: { me: Me }) {
   const initials = initialsOf(me.user.name);
   const state = accountState(me);
   const item =
-    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[14px] text-ink-2 hover:bg-accent hover:text-ink";
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[0.875rem] text-ink-2 hover:bg-accent hover:text-ink";
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[13px] text-ember-strong ring-1 ring-border-soft"
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[0.8125rem] text-ember-strong ring-1 ring-border-soft"
         aria-label={me.user.name || "Menu"}
       >
         {me.user.image ? (
@@ -170,20 +173,20 @@ export function UserMenu({ me }: { me: Me }) {
       {open ? (
         <div className="absolute top-11 right-0 z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
           <div className="px-3 pt-2 pb-2.5">
-            <div className="truncate font-medium text-[14px]">
+            <div className="truncate font-medium text-[0.875rem]">
               {me.user.name}
               {/* A local install without an account: the person is this computer's. */}
               {state === "alone" ? (
                 <span className="font-normal text-ink-4"> ({t("nav.local")})</span>
               ) : null}
             </div>
-            <div className="truncate text-[12px] text-ink-3">{me.user.email}</div>
+            <div className="truncate text-[0.75rem] text-ink-3">{me.user.email}</div>
           </div>
           {state ? (
             // Whether what is published here runs for others: where it runs, and what to do.
             <button
               type="button"
-              className="mx-1.5 mb-1.5 flex w-[calc(100%-0.75rem)] items-start gap-2.5 rounded-lg bg-paper-2 px-2.5 py-2 text-left text-[13px] text-ink-2 hover:text-ink"
+              className="mx-1.5 mb-1.5 flex w-[calc(100%-0.75rem)] items-start gap-2.5 rounded-lg bg-paper-2 px-2.5 py-2 text-left text-[0.8125rem] text-ink-2 hover:text-ink"
               onClick={() => {
                 setOpen(false);
                 navigate("/settings/account");
@@ -216,7 +219,7 @@ export function UserMenu({ me }: { me: Me }) {
               </span>
             </button>
           ) : null}
-          <div className="px-3 pt-1.5 pb-1 font-medium text-[11px] text-ink-4 uppercase tracking-[0.07em]">
+          <div className="px-3 pt-1.5 pb-1 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.07em]">
             {t("nav.settings")}
           </div>
           {settingsSections(me, plugins)
@@ -240,11 +243,11 @@ export function UserMenu({ me }: { me: Me }) {
               <CreditCard className="size-4" /> {t("nav.account")}
             </a>
           ) : null}
-          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[14px] text-ink-2">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[0.875rem] text-ink-2">
             {t("nav.language")}
             <LangSwitch tone="surface" />
           </div>
-          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[14px] text-ink-2">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 text-[0.875rem] text-ink-2">
             {t("nav.theme")}
             <ThemeSwitch />
           </div>
@@ -263,26 +266,26 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
   const plugins = useStudioPlugins();
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-4 backdrop-blur-md sm:gap-3 sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-3 backdrop-blur-md sm:gap-3 sm:px-6">
       <Logo onClick={() => navigate("/")} />
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />
         {children}
       </div>
       <CreditsPill me={me} />
+      {/* The space: what all wizards share, and what they keep and produce. */}
       <NavLink
         to="/space"
         title={t("nav.project")}
         aria-label={t("nav.project")}
         className={({ isActive }) =>
           cn(
-            "flex h-9 shrink-0 items-center gap-2 rounded-full px-3 font-medium text-[14px] ring-1 ring-border-soft transition coarse:h-11 sm:px-3.5",
-            isActive ? "bg-paper-2 text-ink" : "text-ink-2 hover:bg-accent hover:text-ink",
+            "grid size-9 shrink-0 place-items-center rounded-full ring-1 ring-border-soft transition coarse:size-11",
+            isActive ? "bg-paper-2 text-ink" : "text-ink-3 hover:bg-accent hover:text-ink",
           )
         }
       >
         <Folder className="size-4" />
-        <span className="max-sm:hidden">{t("nav.project")}</span>
       </NavLink>
       {/* The pages plugins added, each behind its icon. */}
       {plugins.nav.map((entry) => (
@@ -323,7 +326,7 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
       ]
     : [];
   return (
-    <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-6 text-[12px] text-ink-4 sm:px-6">
+    <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-6 text-[0.75rem] text-ink-4 sm:px-6">
       <span>© {new Date().getFullYear()} engenty</span>
       {links.map((link) => (
         <a
@@ -350,7 +353,7 @@ export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; child
       <TopBar me={me} />
       <main
         className={cn(
-          "mx-auto w-full flex-1 px-4 pt-6 pb-12 sm:px-6",
+          "mx-auto w-full flex-1 px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
           wide ? "max-w-[88rem]" : "max-w-5xl",
         )}
       >

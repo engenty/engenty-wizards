@@ -58,12 +58,12 @@ function StepHeading({
 }) {
   return (
     <div className="mb-8">
-      {kicker ? <p className="mb-4 text-[15px] text-ink-2 leading-relaxed">{kicker}</p> : null}
-      <h1 className="font-display font-semibold text-[28px] leading-[1.15] tracking-tight sm:text-[32px]">
+      {kicker ? <p className="mb-4 text-[0.9375rem] text-ink-2 leading-relaxed">{kicker}</p> : null}
+      <h1 className="font-display font-semibold text-[1.75rem] leading-[1.15] tracking-tight sm:text-[2rem]">
         {title}
       </h1>
       {description ? (
-        <p className="mt-2 text-[15px] text-ink-3 leading-relaxed">{description}</p>
+        <p className="mt-2 text-[0.9375rem] text-ink-3 leading-relaxed">{description}</p>
       ) : null}
     </div>
   );
@@ -232,7 +232,7 @@ function NotifyToggle() {
           setBusy(false);
         }}
         className={cn(
-          "inline-flex h-11 items-center gap-2 rounded-full px-4 font-medium text-[14px] ring-1 transition",
+          "inline-flex h-11 items-center gap-2 rounded-full px-4 font-medium text-[0.875rem] ring-1 transition",
           on
             ? "bg-ember-tint text-ink ring-ember"
             : "bg-card text-ink-2 ring-input hover:text-ink hover:ring-ink-4",
@@ -241,7 +241,7 @@ function NotifyToggle() {
         {on ? <BellRing className="size-4 text-ember-strong" /> : <Bell className="size-4" />}
         {t(on ? "notify.on" : "notify.ask")}
       </button>
-      <p className="max-w-xs text-[12px] text-ink-4 leading-relaxed">
+      <p className="max-w-xs text-[0.75rem] text-ink-4 leading-relaxed">
         {state === "off"
           ? t("notify.why")
           : state === "on"
@@ -290,8 +290,8 @@ function Working({
   return (
     <div className="flex animate-rise flex-col items-center pt-6 text-center">
       <Mascot kind={view.wizard.avatar} size={compact ? 130 : 170} fluffy />
-      <h2 className="mt-4 font-display font-semibold text-[22px] tracking-tight">{label}</h2>
-      <div className="mt-1 text-[13px] text-ink-4 tabular-nums">
+      <h2 className="mt-4 font-display font-semibold text-[1.375rem] tracking-tight">{label}</h2>
+      <div className="mt-1 text-[0.8125rem] text-ink-4 tabular-nums">
         {t("run.elapsed", { s: Math.max(0, Math.round((now - started) / 1000)) })}
       </div>
       {pictures.length ? (
@@ -314,7 +314,7 @@ function Working({
           <div
             key={ev.id}
             className={cn(
-              "flex items-center justify-center gap-2 text-[13px] transition-opacity",
+              "flex items-center justify-center gap-2 text-[0.8125rem] transition-opacity",
               i === trail.length - 1 ? "text-ink-2" : "text-ink-4",
             )}
           >
@@ -326,7 +326,7 @@ function Working({
         ))}
       </div>
       {compact ? null : <NotifyToggle />}
-      {awake ? <p className="mt-3 text-[12px] text-ink-4">{t("run.awake")}</p> : null}
+      {awake ? <p className="mt-3 text-[0.75rem] text-ink-4">{t("run.awake")}</p> : null}
     </div>
   );
 }
@@ -400,7 +400,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
           return (
             <section key={s.id}>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="font-medium text-[13px] text-ink-3 uppercase tracking-[0.06em]">
+                <h3 className="font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
                   {s.title}
                 </h3>
                 <div className="flex items-center">
@@ -408,7 +408,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                     <button
                       type="button"
                       onClick={() => setEditing((e) => ({ ...e, [s.id]: true }))}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
                     >
                       <Pencil className="size-3.5" /> {t("run.edit")}
                     </button>
@@ -445,7 +445,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
         })}
         {view.lists.map((list) => (
           <section key={list.def.id}>
-            <h3 className="mb-2 font-medium text-[13px] text-ink-3 uppercase tracking-[0.06em]">
+            <h3 className="mb-2 font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
               {list.def.title}
             </h3>
             {list.def.check ? (
@@ -460,7 +460,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
           <Card className="p-3">
             {made.length > 1 ? (
               <div className="flex flex-wrap items-center gap-1.5 px-1 pb-2">
-                <span className="mr-1 text-[13px] text-ink-3">{t("run.feedbackTarget")}</span>
+                <span className="mr-1 text-[0.8125rem] text-ink-3">{t("run.feedbackTarget")}</span>
                 {made.map(({ step: s }) => (
                   <button
                     key={s.id}
@@ -471,7 +471,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                       prompt.current?.focus();
                     }}
                     className={cn(
-                      "inline-flex h-8 items-center rounded-full px-3 text-[13px] ring-1 transition coarse:h-11",
+                      "inline-flex h-8 items-center rounded-full px-3 text-[0.8125rem] ring-1 transition coarse:h-11",
                       target === s.id
                         ? "bg-ember-tint text-ink ring-ember"
                         : "bg-card text-ink-2 ring-input hover:text-ink",
@@ -498,7 +498,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
               className="border-0 bg-transparent shadow-none focus:ring-0"
             />
             <div className="flex items-center justify-between gap-3 px-1 pt-1">
-              <span className="min-w-0 text-[12px] text-ink-3">
+              <span className="min-w-0 text-[0.75rem] text-ink-3">
                 {several
                   ? picked[aim.step.id]?.length
                     ? t("run.regeneratePicked", {
@@ -556,10 +556,10 @@ function Result({
         <Mascot kind={view.wizard.avatar} size={64} />
         {/* On a phone the title keeps the row; the share button goes below it. */}
         <div className="min-w-0 flex-1 basis-[12rem]">
-          <h1 className="text-balance font-display font-semibold text-[28px] leading-tight tracking-tight sm:text-[32px]">
+          <h1 className="text-balance font-display font-semibold text-[1.75rem] leading-tight tracking-tight sm:text-[2rem]">
             {step.title}
           </h1>
-          {step.message ? <p className="mt-1 text-[15px] text-ink-3">{step.message}</p> : null}
+          {step.message ? <p className="mt-1 text-[0.9375rem] text-ink-3">{step.message}</p> : null}
         </div>
         {view.shown.some((x) => x.output) ? (
           <div className="max-sm:basis-full">
@@ -576,7 +576,7 @@ function Result({
         {made.map(({ step: s, output, formats, label }) => (
           <Card key={s.id} className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-display font-semibold text-[17px]">{label ?? s.title}</h3>
+              <h3 className="font-display font-semibold text-[1.0625rem]">{label ?? s.title}</h3>
               <DownloadButtons
                 base={`/api/runs/${view.id}`}
                 stepId={s.id}
@@ -587,14 +587,14 @@ function Result({
             <OutputView base={`/api/runs/${view.id}`} step={s} output={output} />
             {output?.assets?.some((a) => a.ai) ? (
               // Whoever publishes it has to say so too; the file already does, in its metadata.
-              <p className="mt-3 text-[12px] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
+              <p className="mt-3 text-[0.75rem] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
             ) : null}
           </Card>
         ))}
         {view.lists.map((list) => (
           <Card key={list.def.id} className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-display font-semibold text-[17px]">
+              <h3 className="font-display font-semibold text-[1.0625rem]">
                 {list.label ?? list.def.title}
               </h3>
               <ListDownloads runId={view.id} list={list} />
@@ -620,8 +620,8 @@ function Failed({ view, run }: { view: RunView; run: Run }) {
   return (
     <div className="flex animate-rise flex-col items-center pt-8 text-center">
       <Mascot kind={view.wizard.avatar} size={90} />
-      <h2 className="mt-4 font-display font-semibold text-[22px]">{t("run.failed")}</h2>
-      <p className="mt-2 max-w-md text-[15px] text-ink-3">{view.error}</p>
+      <h2 className="mt-4 font-display font-semibold text-[1.375rem]">{t("run.failed")}</h2>
+      <p className="mt-2 max-w-md text-[0.9375rem] text-ink-3">{view.error}</p>
       <div className="mt-8 flex gap-3">
         {view.canBack ? (
           <Button variant="ghost" onClick={() => void run.back()}>
@@ -713,7 +713,7 @@ export function RunnerBody({
       >
         {body}
         {run.error && view.status !== "failed" ? (
-          <div className="mt-4 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">
+          <div className="mt-4 rounded-lg bg-rose-tint px-4 py-3 text-[0.875rem] text-rose">
             {run.error}
           </div>
         ) : null}

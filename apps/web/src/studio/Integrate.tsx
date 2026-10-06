@@ -84,7 +84,7 @@ export function CopyLine({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-start gap-2 rounded-lg bg-paper-2 p-3">
-      <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[12px] leading-relaxed">
+      <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[0.75rem] leading-relaxed">
         {text}
       </code>
       <IconButton
@@ -116,14 +116,14 @@ function isPublicHttps(href: string): boolean {
 }
 
 function Hint({ children }: { children: ReactNode }) {
-  return <p className="text-[14px] text-ink-3">{children}</p>;
+  return <p className="text-[0.875rem] text-ink-3">{children}</p>;
 }
 
 /** A heading of the panel, with its hint below. */
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2.5 border-border-soft border-t pt-5 first:border-t-0 first:pt-0">
-      <h3 className="font-medium text-[15px]">{title}</h3>
+      <h3 className="font-medium text-[0.9375rem]">{title}</h3>
       {children}
     </section>
   );
@@ -254,14 +254,14 @@ function KeyList() {
   return (
     <section>
       <h2 className="font-display font-semibold text-lg">{t("mcp.keys")}</h2>
-      <p className="mt-1 mb-4 text-[14px] text-ink-3">{t("mcp.keysHint")}</p>
+      <p className="mt-1 mb-4 text-[0.875rem] text-ink-3">{t("mcp.keysHint")}</p>
       <Card className="flex flex-col gap-2 p-3">
         {keys.data.map((k) => (
           <div key={k.id} className="flex items-center gap-3 rounded-lg px-3 py-2">
             <KeyRound className="size-4 shrink-0 text-ink-4" />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px]">{k.name}</div>
-              <div className="font-mono text-[11px] text-ink-4">
+              <div className="truncate text-[0.875rem]">{k.name}</div>
+              <div className="font-mono text-[0.6875rem] text-ink-4">
                 {k.start}… ·{" "}
                 {k.lastRequest
                   ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString() })
@@ -309,7 +309,7 @@ function Check3({
         ) : null}
       </span>
       <div className="flex min-w-0 flex-col gap-2 pb-4">
-        <span className={cn("text-[14px]", state === "later" ? "text-ink-3" : "font-medium")}>
+        <span className={cn("text-[0.875rem]", state === "later" ? "text-ink-3" : "font-medium")}>
           {title}
         </span>
         {state === "now" ? children : null}
@@ -321,7 +321,7 @@ function Check3({
 /** The two things an app can get, in one line: the tools (MCP), the wizard itself (MCP App). */
 function Kinds({ widgets }: { widgets: boolean }) {
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-3">
+    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-ink-3">
       <span className="inline-flex items-center gap-1.5" title={t("integrate.kindMcp")}>
         <Wrench className="size-3.5 text-ember-strong" />
         <span className="font-medium text-ink-2">MCP</span> {t("integrate.kindMcpShort")}
@@ -342,7 +342,7 @@ function Kinds({ widgets }: { widgets: boolean }) {
 function Stages({ at, done }: { at: number; done: boolean }) {
   const stages = [t("setup.stage.connect"), t("setup.stage.test"), t("setup.stage.done")];
   return (
-    <ol className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-[11px] uppercase tracking-[0.14em]">
+    <ol className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-[0.6875rem] uppercase tracking-[0.14em]">
       {stages.map((stage, i) => {
         const reached = done || i < at;
         return (
@@ -415,7 +415,7 @@ function ClientPanel({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
-          <h2 className="font-display font-semibold text-[22px] leading-tight tracking-tight">
+          <h2 className="font-display font-semibold text-[1.375rem] leading-tight tracking-tight">
             {client.name}
           </h2>
           <Kinds widgets={client.widgets} />
@@ -423,7 +423,7 @@ function ClientPanel({
         <Stages at={stage} done={works} />
       </div>
 
-      <Card className="flex flex-col gap-6 p-5 sm:p-6">
+      <Card className="flex flex-col gap-6 p-3.5 sm:p-5 sm:p-6">
         {canHere || !client.oauth ? (
           <fieldset aria-label={t("integrate.where")} className="min-w-0">
             <div className="grid gap-2 sm:grid-cols-2">
@@ -450,10 +450,10 @@ function ClientPanel({
                       <Globe className="mt-0.5 size-4 shrink-0 text-ink-3" />
                     )}
                     <span className="min-w-0">
-                      <span className="block font-medium text-[14px]">
+                      <span className="block font-medium text-[0.875rem]">
                         {t(w === "here" ? "integrate.here" : "integrate.address")}
                       </span>
-                      <span className="block text-[12px] text-ink-3">
+                      <span className="block text-[0.75rem] text-ink-3">
                         {w === "here"
                           ? managed
                             ? t("integrate.hereManaged")
@@ -479,7 +479,7 @@ function ClientPanel({
             ) : null}
             {local?.connected ? (
               <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-2 text-[14px] text-ink-2">
+                <span className="flex items-center gap-2 text-[0.875rem] text-ink-2">
                   <Check className="size-4 text-moss" />
                   {t("integrate.connected", { app: client.name })}
                 </span>
@@ -502,10 +502,10 @@ function ClientPanel({
                 </div>
               </>
             )}
-            {said && !said.ok ? <p className="text-[13px] text-rose">{said.message}</p> : null}
+            {said && !said.ok ? <p className="text-[0.8125rem] text-rose">{said.message}</p> : null}
             {said?.snippet ? <CopyLine text={said.snippet} /> : null}
             {local?.where ? (
-              <p className="font-mono text-[11px] text-ink-4">{local.where}</p>
+              <p className="font-mono text-[0.6875rem] text-ink-4">{local.where}</p>
             ) : null}
           </Part>
         ) : (
@@ -513,7 +513,7 @@ function ClientPanel({
             {managed || connector ? null : (
               <Part title={t("mcp.keyTitle")}>
                 {apiKey ? (
-                  <p className="flex items-center gap-2 text-[14px] text-ink-2">
+                  <p className="flex items-center gap-2 text-[0.875rem] text-ink-2">
                     <Check className="size-4 text-moss" /> {t("mcp.keyReady")}
                   </p>
                 ) : (
@@ -539,7 +539,7 @@ function ClientPanel({
                 <Hint>{t("mcp.keyFirst")}</Hint>
               )}
               {managed ? <Hint>{t("mcp.oauth")}</Hint> : null}
-              <p className="text-[12px] text-ink-4">
+              <p className="text-[0.75rem] text-ink-4">
                 {reachable ? t("mcp.addressPublic") : t("mcp.addressLocal")}
               </p>
             </Part>
@@ -577,7 +577,7 @@ function ClientPanel({
               ) : null}
             </ol>
             {works ? (
-              <p className="flex items-center gap-2 font-medium text-[14px] text-moss">
+              <p className="flex items-center gap-2 font-medium text-[0.875rem] text-moss">
                 <Check className="size-4" strokeWidth={3} />
                 {t("integrate.works", { app: client.name })}
               </p>
@@ -661,14 +661,14 @@ export function Integrate() {
           <MenuRow
             icon={Link2}
             label={t("integrate.shareLink")}
-            badge={<span className="text-[11px] text-ink-4">{t("integrate.soon")}</span>}
+            badge={<span className="text-[0.6875rem] text-ink-4">{t("integrate.soon")}</span>}
             selected={false}
             disabled
           />
           <MenuRow
             icon={Globe}
             label={t("integrate.shareSite")}
-            badge={<span className="text-[11px] text-ink-4">{t("integrate.soon")}</span>}
+            badge={<span className="text-[0.6875rem] text-ink-4">{t("integrate.soon")}</span>}
             selected={false}
             disabled
           />
@@ -683,7 +683,7 @@ export function Integrate() {
         url={url}
       />
       {managed ? null : <KeyList />}
-      <p className="flex items-start gap-2 text-[13px] text-ink-3">
+      <p className="flex items-start gap-2 text-[0.8125rem] text-ink-3">
         <Link2 className="mt-0.5 size-3.5 shrink-0" />
         {t("mcp.notReverse")}
       </p>

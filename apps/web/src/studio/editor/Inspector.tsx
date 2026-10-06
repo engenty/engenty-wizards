@@ -99,7 +99,7 @@ function Section({
   return (
     <div className="border-border-soft border-t px-5 py-5 first:border-t-0">
       {title ? (
-        <h4 className="mb-3 font-medium text-[12px] text-ink-3 uppercase tracking-[0.07em]">
+        <h4 className="mb-3 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.07em]">
           {title}
         </h4>
       ) : null}
@@ -147,11 +147,11 @@ function FieldEditor({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
       >
-        <span className="min-w-0 flex-1 truncate text-[14px]">
+        <span className="min-w-0 flex-1 truncate text-[0.875rem]">
           {field.label}
           {field.required ? <span className="ml-1 text-ember">*</span> : null}
         </span>
-        <span className="text-[12px] text-ink-4">{FIELD_KIND_LABEL[field.kind]}</span>
+        <span className="text-[0.75rem] text-ink-4">{FIELD_KIND_LABEL[field.kind]}</span>
         <ChevronDown className={cn("size-4 text-ink-4 transition", open && "rotate-180")} />
       </button>
       {open ? (
@@ -203,7 +203,7 @@ function FieldEditor({
           ) : null}
           {field.kind === "image" || field.kind === "file" ? (
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink-2">Mehrere Dateien</span>
+              <span className="text-[0.8125rem] text-ink-2">Mehrere Dateien</span>
               <Switch
                 checked={Boolean(field.multiple)}
                 onChange={(v) =>
@@ -218,7 +218,7 @@ function FieldEditor({
           ) : null}
           {(field.kind === "image" || field.kind === "file") && field.multiple ? (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] text-ink-2">Wie viele?</span>
+              <span className="text-[0.8125rem] text-ink-2">Wie viele?</span>
               <div className="flex items-center gap-1.5">
                 {(["min", "max"] as const).map((key) => (
                   <Input
@@ -244,7 +244,7 @@ function FieldEditor({
           ) : null}
           {field.kind === "file" ? (
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink-2">Auch mit der Kamera aufnehmen</span>
+              <span className="text-[0.8125rem] text-ink-2">Auch mit der Kamera aufnehmen</span>
               <Switch
                 checked={Boolean(field.camera)}
                 onChange={(v) => onChange({ ...field, camera: v || undefined })}
@@ -253,7 +253,9 @@ function FieldEditor({
           ) : null}
           {field.kind === "file" ? (
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink-2">Kamera nimmt auch kurze Videos auf</span>
+              <span className="text-[0.8125rem] text-ink-2">
+                Kamera nimmt auch kurze Videos auf
+              </span>
               <Switch
                 checked={Boolean(field.video)}
                 onChange={(v) => onChange({ ...field, video: v || undefined })}
@@ -262,7 +264,7 @@ function FieldEditor({
           ) : null}
           {field.kind === "text" ? (
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-ink-2">QR- oder Barcode scannen</span>
+              <span className="text-[0.8125rem] text-ink-2">QR- oder Barcode scannen</span>
               <Switch
                 checked={Boolean(field.scan)}
                 onChange={(v) => onChange({ ...field, scan: v || undefined })}
@@ -282,14 +284,14 @@ function FieldEditor({
             onChange={(e) => onChange({ ...field, help: e.target.value || undefined })}
           />
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-ink-2">{t("run.required")}</span>
+            <span className="text-[0.8125rem] text-ink-2">{t("run.required")}</span>
             <Switch
               checked={Boolean(field.required)}
               onChange={(v) => onChange({ ...field, required: v })}
             />
           </div>
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] text-ink-4">{`{{${field.id}}}`}</span>
+            <span className="font-mono text-[0.6875rem] text-ink-4">{`{{${field.id}}}`}</span>
             <div className="flex">
               <IconButton label={t("editor.moveUp")} onClick={() => onMove(-1)} className="size-8">
                 <ArrowUp className="size-3.5" />
@@ -370,7 +372,7 @@ function WidgetBody({
             fit
           />
         ) : (
-          <p className="text-[13px] text-ink-3">
+          <p className="text-[0.8125rem] text-ink-3">
             Das Widget ist noch nicht gebaut. Bitte im Gespräch darum – oder lade eine HTML-Datei
             unter „Dateien“ hoch.
           </p>
@@ -420,7 +422,7 @@ function WidgetBody({
           <div key={i} className="flex items-center gap-2">
             <Input
               value={key}
-              className="w-28 font-mono text-[12px]"
+              className="w-28 font-mono text-[0.75rem]"
               onChange={(e) =>
                 setData(entries.map((x, j) => (j === i ? [e.target.value, x[1]] : x)))
               }
@@ -429,7 +431,7 @@ function WidgetBody({
             <Input
               value={ref}
               list={`sources-${step.id}`}
-              className="flex-1 font-mono text-[12px]"
+              className="flex-1 font-mono text-[0.75rem]"
               onChange={(e) =>
                 setData(entries.map((x, j) => (j === i ? [x[0], e.target.value] : x)))
               }
@@ -447,7 +449,7 @@ function WidgetBody({
           onClick={() =>
             setData([...entries, [`wert${entries.length + 1}`, sources[0] ?? "today"]])
           }
-          className="inline-flex h-8 items-center gap-1 self-start rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-accent"
+          className="inline-flex h-8 items-center gap-1 self-start rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
         >
           <Plus className="size-3.5" /> Wert
         </button>
@@ -521,7 +523,7 @@ function StepBody({
                   ],
                 })
               }
-              className="inline-flex h-9 items-center gap-1.5 self-start rounded-full px-3 text-[13px] text-ink-2 hover:bg-accent"
+              className="inline-flex h-9 items-center gap-1.5 self-start rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent"
             >
               <Plus className="size-4" /> Frage hinzufügen
             </button>
@@ -537,9 +539,9 @@ function StepBody({
               minRows={6}
               maxRows={20}
               onChange={(e) => set({ ...step, instructions: e.target.value })}
-              className="text-[14px]"
+              className="text-[0.875rem]"
             />
-            <p className="text-[12px] text-ink-4">
+            <p className="text-[0.75rem] text-ink-4">
               Antworten einsetzen mit <code className="font-mono">{"{{feld}}"}</code>, frühere
               Ergebnisse mit <code className="font-mono">{"{{steps.id}}"}</code>.
             </p>
@@ -554,7 +556,7 @@ function StepBody({
               ]}
               onChange={(v: string[]) => set({ ...step, tools: v as typeof step.tools })}
             />
-            <div className="-mt-2 flex flex-wrap gap-x-3 text-[12px] text-ink-4">
+            <div className="-mt-2 flex flex-wrap gap-x-3 text-[0.75rem] text-ink-4">
               {TOOL_IDS.map((id) => (
                 <span key={id}>
                   {id} = {toolLabel(id)}
@@ -630,7 +632,7 @@ function StepBody({
               minRows={5}
               maxRows={18}
               onChange={(e) => set({ ...step, prompt: e.target.value })}
-              className="text-[14px]"
+              className="text-[0.875rem]"
             />
           </Section>
           <Section title="Optionen">
@@ -710,11 +712,11 @@ function StepBody({
             onChange={(v: string[]) => v.length && set({ ...step, show: v })}
           />
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-ink-2">Text direkt bearbeitbar</span>
+            <span className="text-[0.8125rem] text-ink-2">Text direkt bearbeitbar</span>
             <Switch checked={Boolean(step.edit)} onChange={(v) => set({ ...step, edit: v })} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-ink-2">Neue Variante anfordern</span>
+            <span className="text-[0.8125rem] text-ink-2">Neue Variante anfordern</span>
             <Switch
               checked={Boolean(step.regenerate)}
               onChange={(v) => set({ ...step, regenerate: v })}
@@ -740,7 +742,7 @@ function StepBody({
               return (
                 <div key={s.id} className="rounded-lg bg-paper p-3 ring-1 ring-border-soft">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="truncate text-[14px]">{s.title}</span>
+                    <span className="truncate text-[0.875rem]">{s.title}</span>
                     <Switch
                       checked={Boolean(d)}
                       onChange={(on) =>
@@ -826,23 +828,23 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
       </Section>
       {def.lists?.length || def.connections?.length ? (
         <Section title="Merkt sich für jede Person">
-          <p className="text-[13px] text-ink-3">
+          <p className="text-[0.8125rem] text-ink-3">
             Bleibt zwischen den Durchläufen erhalten – getrennt für jede Person, die den Wizard
             nutzt. Ändern kannst du das im Gespräch.
           </p>
           {(def.connections ?? []).map((c) => (
             <div key={c.id} className="rounded-lg bg-paper px-3 py-2.5 ring-1 ring-border-soft">
-              <div className="text-[14px]">{c.title ?? c.id}</div>
-              <div className="text-[12px] text-ink-4">Konto · {c.kind}</div>
+              <div className="text-[0.875rem]">{c.title ?? c.id}</div>
+              <div className="text-[0.75rem] text-ink-4">Konto · {c.kind}</div>
             </div>
           ))}
           {(def.lists ?? []).map((l) => (
             <div key={l.id} className="rounded-lg bg-paper px-3 py-2.5 ring-1 ring-border-soft">
-              <div className="text-[14px]">{l.title}</div>
-              <div className="text-[12px] text-ink-4">
+              <div className="text-[0.875rem]">{l.title}</div>
+              <div className="text-[0.75rem] text-ink-4">
                 Liste · {l.columns.map((c) => c.name).join(", ")}
               </div>
-              <div className="mt-1 font-mono text-[11px] text-ink-4">{`{{lists.${l.id}}}`}</div>
+              <div className="mt-1 font-mono text-[0.6875rem] text-ink-4">{`{{lists.${l.id}}}`}</div>
             </div>
           ))}
         </Section>
@@ -1005,7 +1007,7 @@ function StepNav({
           );
         })}
       </div>
-      <span className="shrink-0 px-1 text-[12px] text-ink-4 tabular-nums">
+      <span className="shrink-0 px-1 text-[0.75rem] text-ink-4 tabular-nums">
         {at > 0 ? `${at} / ${def.steps.length}` : ""}
       </span>
       <IconButton
@@ -1034,7 +1036,7 @@ function StepList({ def, onSelect, issues }: Pick<InspectorProps, "def" | "onSel
             onClick={() => onSelect(step.id)}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-paper-2"
           >
-            <span className="w-4 text-right text-[12px] text-ink-4 tabular-nums">{i + 1}</span>
+            <span className="w-4 text-right text-[0.75rem] text-ink-4 tabular-nums">{i + 1}</span>
             <span
               className={cn(
                 "inline-flex size-7 shrink-0 items-center justify-center rounded-md",
@@ -1044,8 +1046,8 @@ function StepList({ def, onSelect, issues }: Pick<InspectorProps, "def" | "onSel
               <Icon className="size-4" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[14px]">{step.title}</span>
-              <span className="block text-[12px] text-ink-4">{typeLabel(step)}</span>
+              <span className="block truncate text-[0.875rem]">{step.title}</span>
+              <span className="block text-[0.75rem] text-ink-4">{typeLabel(step)}</span>
             </span>
             {broken ? <span className="size-2 shrink-0 rounded-full bg-rose" /> : null}
           </button>
@@ -1133,13 +1135,13 @@ function StepInspector({
         >
           <Icon className="size-4" />
         </span>
-        <span className="font-medium text-[12px] text-ink-3 uppercase tracking-[0.07em]">
+        <span className="font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.07em]">
           {typeLabel(step)}
         </span>
-        <span className="ml-auto font-mono text-[11px] text-ink-4">{step.id}</span>
+        <span className="ml-auto font-mono text-[0.6875rem] text-ink-4">{step.id}</span>
       </div>
       {stepIssues.length ? (
-        <div className="mx-5 mb-4 rounded-lg bg-rose-tint px-3 py-2 text-[13px] text-rose">
+        <div className="mx-5 mb-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
           {stepIssues.map((i, k) => (
             <div key={k}>{i.message}</div>
           ))}
@@ -1149,7 +1151,7 @@ function StepInspector({
         <Input
           value={step.title}
           onChange={(e) => set({ ...step, title: e.target.value })}
-          className="font-display font-semibold text-[16px]"
+          className="font-display font-semibold text-[1rem]"
         />
         {step.type === "page" || step.type === "review" ? (
           <Textarea
@@ -1193,13 +1195,13 @@ function StepInspector({
                 </IconButton>
               </>
             ) : null}
-            <span className="ml-auto text-[12px] text-ink-4">Danach einfügen:</span>
+            <span className="ml-auto text-[0.75rem] text-ink-4">Danach einfügen:</span>
             {(["page", "agent", "generate", "widget"] as const).map((k) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => insertAfter(k)}
-                className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[12px] text-ink-2 hover:bg-accent"
+                className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
               >
                 <Plus className="size-3.5" /> {t(`type.${k}`)}
               </button>

@@ -43,9 +43,9 @@ export const Button = forwardRef<
       disabled={disabled || busy}
       className={cn(
         "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-[background,filter,color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
-        size === "sm" && "h-8 px-3 text-[13px] coarse:h-11 coarse:px-4",
+        size === "sm" && "h-8 px-3 text-[0.8125rem] coarse:h-11 coarse:px-4",
         size === "md" && "h-10 px-4 text-sm coarse:h-11",
-        size === "lg" && "h-12 px-6 text-[15px]",
+        size === "lg" && "h-12 px-6 text-[0.9375rem]",
         VARIANTS[variant],
         className,
       )}
@@ -80,7 +80,7 @@ export function IconButton({
 }
 
 const fieldBase =
-  "rounded-lg border border-input bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
+  "rounded-lg border border-input bg-card px-3.5 text-[0.9375rem] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
 
 /** A field fills its row unless the caller gives it a width. */
 function fieldWidth(className?: string) {
@@ -287,11 +287,11 @@ export function Label({
 }) {
   return (
     <div className="mb-2">
-      <div className="font-medium text-[14px] text-ink">
+      <div className="font-medium text-[0.875rem] text-ink">
         {children}
         {required ? <span className="ml-1 text-ember">*</span> : null}
       </div>
-      {hint ? <div className="mt-0.5 text-[13px] text-ink-3">{hint}</div> : null}
+      {hint ? <div className="mt-0.5 text-[0.8125rem] text-ink-3">{hint}</div> : null}
     </div>
   );
 }
@@ -336,7 +336,7 @@ export function Chip({
     <span
       title={title}
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-medium text-[12px]",
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-medium text-[0.75rem]",
         tone === "neutral" && "bg-paper-2 text-ink-2",
         tone === "live" && "bg-moss-tint text-moss",
         tone === "warn" && "bg-amber-tint text-ink-2",
@@ -378,6 +378,9 @@ export function Dialog({
     }
     if (open && !el.open) {
       el.showModal();
+      // A modal dialog focuses its first control (the close button); a field marked
+      // `data-autofocus` is where typing starts instead.
+      el.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     } else if (!open && el.open) {
       el.close();
     }

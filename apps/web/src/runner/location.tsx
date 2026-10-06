@@ -131,10 +131,10 @@ export function LocationField({
             <MapPin className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium text-[15px] tabular-nums">
+            <div className="truncate font-medium text-[0.9375rem] tabular-nums">
               {place.lat?.toFixed(5)}, {place.lng?.toFixed(5)}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 text-[13px] text-ink-3">
+            <div className="flex flex-wrap items-center gap-x-3 text-[0.8125rem] text-ink-3">
               <span>
                 {locating
                   ? t("location.refining")
@@ -176,11 +176,11 @@ export function LocationField({
             {locating ? t("location.locating") : t("location.use")}
           </Button>
           {error ? (
-            <p className="mt-2 rounded-lg bg-amber-tint px-3 py-2 text-[13px] text-ink-2 leading-relaxed">
+            <p className="mt-2 rounded-lg bg-amber-tint px-3 py-2 text-[0.8125rem] text-ink-2 leading-relaxed">
               {t(`location.${error}` as "location.denied")}
             </p>
           ) : (
-            <p className="mt-2 text-[13px] text-ink-3 leading-relaxed">{t("location.why")}</p>
+            <p className="mt-2 text-[0.8125rem] text-ink-3 leading-relaxed">{t("location.why")}</p>
           )}
         </div>
       ) : null}

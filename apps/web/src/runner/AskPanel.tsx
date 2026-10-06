@@ -60,21 +60,23 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] text-ink-3">{t("ask.wants", { service: ask.service })}</p>
-          <h2 className="font-display font-semibold text-[20px] leading-snug tracking-tight">
+          <p className="text-[0.8125rem] text-ink-3">{t("ask.wants", { service: ask.service })}</p>
+          <h2 className="font-display font-semibold text-[1.25rem] leading-snug tracking-tight">
             {ask.reason}
           </h2>
         </div>
       </div>
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-paper-2 p-4 text-[13px] leading-relaxed ring-1 ring-border-soft">
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-paper-2 p-4 text-[0.8125rem] leading-relaxed ring-1 ring-border-soft">
         {ask.input}
       </pre>
       <div className="mt-5 flex items-center gap-4">
         <Switch checked={remember} onChange={setRemember} label={t("ask.allowRest")} />
-        <span className="flex-1 text-[13px] text-ink-2">{t("ask.allowRest")}</span>
+        <span className="flex-1 text-[0.8125rem] text-ink-2">{t("ask.allowRest")}</span>
       </div>
       {error ? (
-        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[0.875rem] text-rose">
+          {error}
+        </div>
       ) : null}
       <div className="action-bar mt-6 flex items-center justify-between gap-3">
         <Button variant="ghost" disabled={busy} onClick={() => void answer({ type: "skip" })}>
@@ -149,10 +151,10 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
           <LockKeyhole className="size-5" />
         </div>
         <div className="min-w-0">
-          <h2 className="font-display font-semibold text-[20px] leading-snug tracking-tight">
+          <h2 className="font-display font-semibold text-[1.25rem] leading-snug tracking-tight">
             {ask.reason}
           </h2>
-          <p className="mt-0.5 truncate text-[13px] text-ink-3">
+          <p className="mt-0.5 truncate text-[0.8125rem] text-ink-3">
             {ask.site.host}
             {ask.site.title ? ` · ${ask.site.title}` : ""}
           </p>
@@ -184,13 +186,13 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
             autoCorrect="off"
             spellCheck={false}
             enterKeyHint="send"
-            className="h-9 min-w-[9rem] flex-1 basis-full text-[13px] sm:basis-0 coarse:h-11"
+            className="h-9 min-w-[9rem] flex-1 basis-full text-[0.8125rem] sm:basis-0 coarse:h-11"
           />
           <button
             type="button"
             onClick={() => setHidden((h) => !h)}
             className={cn(
-              "h-9 shrink-0 rounded-md px-2.5 text-[12px] coarse:h-11 coarse:px-3.5",
+              "h-9 shrink-0 rounded-md px-2.5 text-[0.75rem] coarse:h-11 coarse:px-3.5",
               hidden ? "bg-ember-veil text-ink" : "text-ink-3 hover:bg-paper-2",
             )}
           >
@@ -207,7 +209,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
           </ToolButton>
         </div>
       </div>
-      <p className="mt-2 text-[12px] text-ink-4">{t("ask.pictureHint")}</p>
+      <p className="mt-2 text-[0.75rem] text-ink-4">{t("ask.pictureHint")}</p>
 
       {ask.fields.length ? (
         <form
@@ -239,13 +241,15 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <Switch checked={remember} onChange={setRemember} label={t("ask.remember")} />
-        <span className="flex-1 text-[13px] text-ink-2">{t("ask.remember")}</span>
+        <span className="flex-1 text-[0.8125rem] text-ink-2">{t("ask.remember")}</span>
       </div>
-      <p className="mt-3 flex items-start gap-2 text-[13px] text-ink-3">
+      <p className="mt-3 flex items-start gap-2 text-[0.8125rem] text-ink-3">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-moss" /> {t("ask.private")}
       </p>
       {error ? (
-        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[14px] text-rose">{error}</div>
+        <div className="mt-3 rounded-lg bg-rose-tint px-4 py-3 text-[0.875rem] text-rose">
+          {error}
+        </div>
       ) : null}
 
       <div className="action-bar mt-6 flex flex-wrap items-center justify-between gap-3">

@@ -181,7 +181,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
         <Mascot kind={entry.avatar} size={68} interactive={false} />
       </span>
       <div className="min-w-0 pr-20">
-        <div className="flex items-center gap-1.5 font-display font-semibold text-[15px]">
+        <div className="flex items-center gap-1.5 font-display font-semibold text-[0.9375rem]">
           {entry.title}
           {entry.starred ? (
             <Star
@@ -190,9 +190,9 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
             />
           ) : null}
         </div>
-        <div className="mt-0.5 text-[13px] text-ink-3 leading-snug">{entry.pitch}</div>
+        <div className="mt-0.5 text-[0.8125rem] text-ink-3 leading-snug">{entry.pitch}</div>
       </div>
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem] text-ink-3">
         {entry.usable && entry.missing.length ? (
           <Chip tone="warn">{t("market.missing", { list: capabilityList(entry.missing) })}</Chip>
         ) : entry.usable ? (
@@ -218,7 +218,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
 function Fact({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <div className="mb-1.5 font-medium text-[12px] text-ink-3 uppercase tracking-[0.06em]">
+      <div className="mb-1.5 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.06em]">
         {title}
       </div>
       {children}
@@ -323,8 +323,8 @@ function Detail({
     <div className="flex gap-2.5">
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div className="min-w-0">
-        <div className="text-[14px] text-ink leading-snug">{children}</div>
-        {more ? <div className="text-[12px] text-ink-3 leading-snug">{more}</div> : null}
+        <div className="text-[0.875rem] text-ink leading-snug">{children}</div>
+        {more ? <div className="text-[0.75rem] text-ink-3 leading-snug">{more}</div> : null}
       </div>
     </div>
   );
@@ -413,7 +413,7 @@ function EntryDialog({
   return (
     <Dialog open={Boolean(id)} onClose={onClose} wide bare>
       {!entry ? (
-        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl bg-card p-8 text-[14px] text-ink-2 shadow-overlay">
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl bg-card p-8 text-[0.875rem] text-ink-2 shadow-overlay">
           {detail.isLoading ? (
             <Spinner className="size-6 text-ink-3" />
           ) : (
@@ -458,15 +458,15 @@ function EntryDialog({
               <Mascot kind={entry.avatar} size={104} />
             </div>
             <div className="relative sm:pr-36">
-              <h2 className="font-display font-semibold text-[22px] leading-tight tracking-tight max-sm:pr-10">
+              <h2 className="font-display font-semibold text-[1.375rem] leading-tight tracking-tight max-sm:pr-10">
                 {entry.title}
               </h2>
-              <p className="mt-1 text-[14px] text-ink-2 leading-snug">
+              <p className="mt-1 text-[0.875rem] text-ink-2 leading-snug">
                 {detail.data?.description || entry.pitch}
               </p>
             </div>
             {entry.usable ? (
-              <div className="-mx-5 sm:-mx-7 relative mt-3.5 flex flex-wrap items-center gap-y-2 border-border-soft border-t px-5 pt-3 font-medium text-[14px] sm:px-7 sm:pr-40">
+              <div className="-mx-5 sm:-mx-7 relative mt-3.5 flex flex-wrap items-center gap-y-2 border-border-soft border-t px-5 pt-3 font-medium text-[0.875rem] sm:px-7 sm:pr-40">
                 <HeaderFact title={t("market.duration")}>
                   <Clock className="size-4 text-ink-3" />
                   {t("market.minutes", { n: entry.effort.minutes })}
@@ -532,7 +532,7 @@ function EntryDialog({
                         <li
                           key={c}
                           className={cn(
-                            "flex items-center gap-2.5 text-[14px]",
+                            "flex items-center gap-2.5 text-[0.875rem]",
                             missing ? "text-ink-3" : "text-ink-2",
                           )}
                         >
@@ -541,7 +541,9 @@ function EntryDialog({
                           />
                           {label(CAPABILITIES, c)}
                           {missing ? (
-                            <span className="text-[12px] text-rose">{t("market.unavailable")}</span>
+                            <span className="text-[0.75rem] text-rose">
+                              {t("market.unavailable")}
+                            </span>
                           ) : null}
                         </li>
                       );
@@ -550,7 +552,7 @@ function EntryDialog({
                 </Fact>
               </div>
               <div className="flex flex-col sm:min-h-0">
-                <div className="mb-1.5 shrink-0 font-medium text-[12px] text-ink-3 uppercase tracking-[0.06em]">
+                <div className="mb-1.5 shrink-0 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.06em]">
                   {t("market.steps")}
                 </div>
                 <FadeScroll className="-mr-2 overscroll-contain pt-1 pr-2 pl-1 sm:min-h-0 sm:flex-1 sm:overflow-y-auto">
@@ -566,7 +568,7 @@ function EntryDialog({
             </div>
           ) : (
             <div className="flex-1 px-5 pt-6 sm:px-7">
-              <p className="rounded-lg bg-amber-tint p-3 text-[14px] text-ink-2">
+              <p className="rounded-lg bg-amber-tint p-3 text-[0.875rem] text-ink-2">
                 {t("market.needsUpdateHint")}
               </p>
             </div>
@@ -664,7 +666,7 @@ function FilterMenu({
     <div ref={ref} className="relative">
       <div
         className={cn(
-          "flex h-8 items-center rounded-full text-[13px] transition",
+          "flex h-8 items-center rounded-full text-[0.8125rem] transition",
           picked ? "bg-ember-tint text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
           open && !picked && "bg-paper-2 text-ink",
         )}
@@ -720,7 +722,7 @@ function FilterMenu({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[14px] transition coarse:py-2.5",
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[0.875rem] transition coarse:py-2.5",
                 o.count && !o.unavailable
                   ? "text-ink-2 hover:bg-paper-2 hover:text-ink"
                   : "text-ink-4",
@@ -732,11 +734,11 @@ function FilterMenu({
               {o.value === value ? (
                 <Check className="size-4 text-ember" />
               ) : o.unavailable ? (
-                <span className="whitespace-nowrap text-[12px] text-ink-4">
+                <span className="whitespace-nowrap text-[0.75rem] text-ink-4">
                   {t("market.unavailable")}
                 </span>
               ) : (
-                <span className="text-[12px] text-ink-4 tabular-nums">{o.count}</span>
+                <span className="text-[0.75rem] text-ink-4 tabular-nums">{o.count}</span>
               )}
             </button>
           ))}
@@ -859,7 +861,7 @@ export function MarketplaceBrowser({
     );
   }
   const offline = first?.offline ? (
-    <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-ink-3">
+    <p className="mt-4 flex items-center justify-center gap-2 text-[0.8125rem] text-ink-3">
       <CloudOff className="size-4 shrink-0" />
       {t("market.offline")}
     </p>
@@ -880,7 +882,7 @@ export function MarketplaceBrowser({
   ) : null;
   const chip = (pressed: boolean) =>
     cn(
-      "inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[12.5px] transition",
+      "inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[0.78125rem] transition",
       pressed
         ? "bg-card font-medium text-ink shadow-soft ring-1 ring-border-soft"
         : "text-ink-3 hover:bg-card/60 hover:text-ink",
@@ -900,13 +902,13 @@ export function MarketplaceBrowser({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("market.search")}
           aria-label={t("market.search")}
-          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+          className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
         />
         {clear}
       </label>
       {offline}
       {/* On a phone the chips are one row to swipe, not four rows to scroll past. */}
-      <div className="max-sm:-mx-4 mt-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
+      <div className="max-sm:-mx-3 mt-4 flex gap-1 max-sm:overflow-x-auto max-sm:px-3 max-sm:[scrollbar-width:none] sm:flex-wrap sm:justify-center max-sm:[&::-webkit-scrollbar]:hidden">
         {[{ value: "", label: t("market.all") }, ...useCases].map((u) => (
           <button
             key={u.value}
@@ -944,7 +946,7 @@ export function MarketplaceBrowser({
               />
             ))}
         {/* Reset stands before the count, so the count never moves. */}
-        <span className="ml-auto flex items-center gap-3 whitespace-nowrap pl-2 text-[13px] text-ink-3">
+        <span className="ml-auto flex items-center gap-3 whitespace-nowrap pl-2 text-[0.8125rem] text-ink-3">
           {narrowed ? (
             <button
               type="button"
@@ -976,7 +978,7 @@ export function MarketplaceBrowser({
           ))}
         </div>
       ) : (
-        <div className="py-10 text-center text-[14px] text-ink-3">
+        <div className="py-10 text-center text-[0.875rem] text-ink-3">
           <p>{t(starred ? "market.noneStarred" : "market.none")}</p>
           <Button variant="ghost" className="mt-2" onClick={reset}>
             {t("market.reset")}

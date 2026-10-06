@@ -110,7 +110,21 @@ import {
   projectPatchSchema,
   updateProject,
 } from "../services/projects.js";
-import { listRuns, startTestRun } from "../services/runs.js";
+import { listResults, listRuns, startTestRun } from "../services/runs.js";
+import {
+  addTableRow,
+  createPage,
+  createTable,
+  deletePage,
+  deleteTable,
+  deleteTableRows,
+  getPage,
+  getTable,
+  listSpaceData,
+  updatePage,
+  updateTable,
+  updateTableRow,
+} from "../services/space-data.js";
 import { draftWidgetPreview } from "../services/widgets.js";
 import {
   createWizard,
@@ -578,6 +592,101 @@ export const studio = new Hono<Vars>()
   .delete("/projects/:id/connectors/:connectorId", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));
     await removeConnector(project.id, c.req.param("connectorId"));
+    return c.json({ ok: true });
+  })
+
+  // The runs of the space's wizards that reached their result: of one wizard, or of all.
+  .get("/projects/:id/results", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const query = z
+      .object({
+        wizard: z.string().optional(),
+        q: z.string().max(200).optional(),
+        mode: z.enum(["live", "test"]).optional(),
+        days: z.coerce.number().int().min(1).max(3650).optional(),
+      })
+      .parse(c.req.query());
+    return c.json(
+      await listResults(project.id, {
+        wizardId: query.wizard || undefined,
+        q: query.q,
+        mode: query.mode,
+        days: query.days,
+      }),
+    );
+  })
+
+  // --- the space's tables and pages --------------------------------------------
+  .get("/projects/:id/data", async (c) =>
+    c.json(await listSpaceData(c.get("user").id, c.req.param("id"))),
+  )
+  .post("/projects/:id/tables", async (c) => {
+    const body = z
+      .object({
+        title: z.string().max(120),
+        wizardId: z.string().nullish(),
+        columns: z.unknown().optional(),
+      })
+      .parse(await c.req.json());
+    return c.json(await createTable(c.get("user").id, c.req.param("id"), body));
+  })
+  .get("/tables/:id", async (c) => c.json(await getTable(c.get("user").id, c.req.param("id"))))
+  .patch("/tables/:id", async (c) => {
+    const body = z
+      .object({
+        title: z.string().max(120).optional(),
+        wizardId: z.string().nullish(),
+        columns: z.unknown().optional(),
+      })
+      .parse(await c.req.json());
+    await updateTable(c.get("user").id, c.req.param("id"), body);
+    return c.json({ ok: true });
+  })
+  .delete("/tables/:id", async (c) => {
+    await deleteTable(c.get("user").id, c.req.param("id"));
+    return c.json({ ok: true });
+  })
+  .post("/tables/:id/rows", async (c) => {
+    const body = z
+      .object({ cells: z.record(z.string(), z.unknown()).optional() })
+      .parse(await c.req.json());
+    return c.json(await addTableRow(c.get("user").id, c.req.param("id"), body.cells));
+  })
+  .patch("/tables/:id/rows/:rowId", async (c) => {
+    const body = z.object({ cells: z.record(z.string(), z.unknown()) }).parse(await c.req.json());
+    return c.json(
+      await updateTableRow(c.get("user").id, c.req.param("id"), c.req.param("rowId"), body.cells),
+    );
+  })
+  .post("/tables/:id/rows/delete", async (c) => {
+    const body = z.object({ ids: z.array(z.string()).max(5000) }).parse(await c.req.json());
+    await deleteTableRows(c.get("user").id, c.req.param("id"), body.ids);
+    return c.json({ ok: true });
+  })
+  .post("/projects/:id/pages", async (c) => {
+    const body = z
+      .object({
+        title: z.string().max(200),
+        wizardId: z.string().nullish(),
+        markdown: z.string().optional(),
+      })
+      .parse(await c.req.json());
+    return c.json(await createPage(c.get("user").id, c.req.param("id"), body));
+  })
+  .get("/pages/:id", async (c) => c.json(await getPage(c.get("user").id, c.req.param("id"))))
+  .patch("/pages/:id", async (c) => {
+    const body = z
+      .object({
+        title: z.string().max(200).optional(),
+        wizardId: z.string().nullish(),
+        markdown: z.string().optional(),
+      })
+      .parse(await c.req.json());
+    await updatePage(c.get("user").id, c.req.param("id"), body);
+    return c.json({ ok: true });
+  })
+  .delete("/pages/:id", async (c) => {
+    await deletePage(c.get("user").id, c.req.param("id"));
     return c.json({ ok: true });
   })
 

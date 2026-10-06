@@ -167,8 +167,8 @@ export function VoiceField({
             <span className="relative size-3.5 animate-pulse-dot rounded-full bg-rose" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-[15px] tabular-nums">{clock(seconds)}</div>
-            <div className="text-[13px] text-ink-3">
+            <div className="font-medium text-[0.9375rem] tabular-nums">{clock(seconds)}</div>
+            <div className="text-[0.8125rem] text-ink-3">
               {seconds > MAX_SECONDS - 30
                 ? t("voice.left", { s: Math.ceil(MAX_SECONDS - seconds) })
                 : t("voice.recording")}
@@ -179,7 +179,7 @@ export function VoiceField({
           </Button>
         </div>
       ) : uploading ? (
-        <div className="flex items-center gap-3 rounded-xl bg-card p-4 text-[14px] text-ink-3 ring-1 ring-input">
+        <div className="flex items-center gap-3 rounded-xl bg-card p-4 text-[0.875rem] text-ink-3 ring-1 ring-input">
           <Spinner className="size-4" /> {t("run.uploading")}
         </div>
       ) : note ? (
@@ -194,12 +194,12 @@ export function VoiceField({
             className="h-11 w-full"
           />
           {note.transcript ? (
-            <p className="mt-2 whitespace-pre-wrap px-1 text-[14px] text-ink-2 leading-relaxed">
+            <p className="mt-2 whitespace-pre-wrap px-1 text-[0.875rem] text-ink-2 leading-relaxed">
               {note.transcript}
             </p>
           ) : null}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="px-1 text-[13px] text-ink-3">
+            <span className="px-1 text-[0.8125rem] text-ink-3">
               {note.seconds ? clock(note.seconds) : null}
             </span>
             <div className="flex gap-1">
@@ -232,11 +232,11 @@ export function VoiceField({
             {canRecord && denied ? fileButton : null}
           </div>
           {denied ? (
-            <p className="mt-2 rounded-lg bg-amber-tint px-3 py-2 text-[13px] text-ink-2 leading-relaxed">
+            <p className="mt-2 rounded-lg bg-amber-tint px-3 py-2 text-[0.8125rem] text-ink-2 leading-relaxed">
               {t("voice.denied")}
             </p>
           ) : (
-            <p className="mt-2 text-[13px] text-ink-3 leading-relaxed">
+            <p className="mt-2 text-[0.8125rem] text-ink-3 leading-relaxed">
               {t(canRecord ? "voice.why" : "voice.noRecorder")}
             </p>
           )}
@@ -256,7 +256,7 @@ export function VoiceField({
           }
         }}
       />
-      {error ? <div className="mt-2 text-[13px] text-rose">{error}</div> : null}
+      {error ? <div className="mt-2 text-[0.8125rem] text-rose">{error}</div> : null}
     </div>
   );
 }

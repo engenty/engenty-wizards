@@ -38,6 +38,14 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* The studio a step smaller on laptops and split screens, as in engenty-pro: type and spacing
+   are in rem and follow. A wizard's own page keeps its size. */
+@media (width > 768px) and (width < 1280px) {
+  html[data-studio] {
+    font-size: 14px;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
