@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.24] - 2026-10-06
+- ADDED A run opened in the drawer (editor test runs and the space's results) can be dragged wider or narrower at its left edge – arrow keys too, a double click resets – and an expand button in its bar makes it fill the browser window; width and expansion are remembered per browser
+
 ## [0.2.23] - 2026-10-06
 - FIXED A wizard's brand colour no longer makes its buttons unreadable: the text on a button is light or dark by the button's own colour, not by the theme (a black accent in dark mode got dark text), and ember as text and marks on the page keeps a lightness the paper can carry; the selected chip of an output follows the same rule instead of always white
 

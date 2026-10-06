@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.24",
+    "timestamp": 1791319756,
+    "commits": [
+      {
+        "id": "762d5f2",
+        "message": "a run opened in the drawer (editor test runs and the space's results) can be dragged wider or narrower at its left edge – arrow keys too, a double click resets – and an expand button in its bar makes it fill the browser window; width and expansion are remembered per browser",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.23",
-    "timestamp": 1791319360,
+    "timestamp": 1791319363,
     "commits": [
       {
         "id": "4db55b6",
