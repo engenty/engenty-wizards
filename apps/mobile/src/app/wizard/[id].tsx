@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getWizardById, listResults, openRunOf, saveWizard, useQuery } from "../../data/db";
 import { hostLabel, wizardUrl } from "../../data/links";
-import { getWizard } from "../../data/runtime";
+import { getWizard, RuntimeError } from "../../data/runtime";
 import { infoOf } from "../../data/wizards";
 import { Engenty } from "../../engenty/Engenty";
 import { formatTime, t, useLang } from "../../i18n";
@@ -35,8 +35,9 @@ export default function WizardScreen() {
   const results = useQuery(() => listResults(wizardId), [wizardId]);
   const theme = wizardTheme(wizard?.avatar);
 
-  // What the runtime says now: a new title, or that the wizard is closed. Keyed on the address:
-  // the saved row is read again after the save, and must not ask again.
+  // What the runtime says now: a new title, that the wizard is closed, or that its link is gone
+  // (a new link, or the wizard deleted). Keyed on the address: the saved row is read again after
+  // the save, and must not ask again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runtime and token name the wizard
   useEffect(() => {
     if (!wizard) {
@@ -44,6 +45,11 @@ export default function WizardScreen() {
     }
     getWizard(wizard.runtime, wizard.token)
       .then((w) => saveWizard(wizard.runtime, wizard.token, infoOf(w)))
+      .catch((err) => {
+        if (err instanceof RuntimeError && err.status === 404) {
+          return saveWizard(wizard.runtime, wizard.token, { ...wizard, available: false });
+        }
+      })
       .catch(() => undefined);
   }, [wizard?.runtime, wizard?.token]);
 
