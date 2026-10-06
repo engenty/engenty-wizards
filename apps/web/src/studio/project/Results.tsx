@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Paperclip, Search, X } from "lucide-react";
+import { Paperclip, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { lang, t } from "../../lib/i18n";
 import { RunnerBody } from "../../runner/RunnerView";
-import { Card, Chip, Empty, IconButton, Input, Select } from "../../ui";
+import { Card, Chip, Empty, Input, Select } from "../../ui";
+import { RunDrawer } from "../RunDrawer";
 import { Section } from "./Section";
 
 export interface SpaceResults {
@@ -183,15 +184,9 @@ export function Results({
         )}
       </Section>
       {open ? (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-[oklch(20%_0.01_60/0.22)] backdrop-blur-[1px]"
-          onClick={() => setOpen(null)}
-        >
-          <div
-            className="flex h-full w-full max-w-[680px] animate-rise flex-col bg-background shadow-overlay"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex h-14 shrink-0 items-center gap-3 px-4">
+        <RunDrawer
+          header={
+            <>
               <span className="min-w-0 flex-1 truncate font-medium text-[0.875rem]">
                 {titleOf(open.wizardId)}
               </span>
@@ -200,15 +195,12 @@ export function Results({
               ) : (
                 <Chip tone="live">Live v{open.version}</Chip>
               )}
-              <IconButton label={t("editor.close")} onClick={() => setOpen(null)}>
-                <X className="size-5" />
-              </IconButton>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <RunnerBody key={open.id} runId={open.id} compact />
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          onClose={() => setOpen(null)}
+        >
+          <RunnerBody key={open.id} runId={open.id} compact />
+        </RunDrawer>
       ) : null}
     </>
   );

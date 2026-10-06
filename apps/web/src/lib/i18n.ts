@@ -462,6 +462,8 @@ const de = {
   "editor.noRuns": "Noch keine Durchläufe.",
   "editor.restart": "Neu starten",
   "editor.close": "Schließen",
+  "runDrawer.expand": "Ganzes Fenster",
+  "runDrawer.shrink": "Zurück an den Rand",
   "editor.chatHello":
     "Beschreibe mir, was dein Wizard tun soll. Ich baue den Ablauf und du siehst ihn links als Diagramm.",
   "shareRun.button": "Teilen",
@@ -1608,6 +1610,8 @@ const en: Record<Key, string> = {
   "editor.noRuns": "No runs yet.",
   "editor.restart": "Restart",
   "editor.close": "Close",
+  "runDrawer.expand": "Fill the window",
+  "runDrawer.shrink": "Back to the side",
   "editor.chatHello":
     "Tell me what your wizard should do. I'll build the flow and you'll see it as a diagram on the left.",
   "shareRun.button": "Share",

@@ -1,7 +1,7 @@
 import { type ModelClass, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, Lock, Play, Share2, X } from "lucide-react";
+import { ArrowLeft, Download, Lock, Play, Share2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
@@ -25,6 +25,7 @@ import { Inspector } from "./editor/Inspector";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
+import { RunDrawer } from "./RunDrawer";
 import { WhereChip, whereItRuns } from "./where";
 
 type Tab = "chat" | "step" | "files" | "runs";
@@ -607,42 +608,29 @@ export function EditorPage() {
       </div>
 
       {drawerRun ? (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-[oklch(20%_0.01_60/0.22)] backdrop-blur-[1px]"
-          onClick={() => setDrawerRun(null)}
+        <RunDrawer
+          header={<Chip>Test</Chip>}
+          actions={
+            <Button
+              variant="ghost"
+              size="sm"
+              busy={testRun.isPending}
+              disabled={hasIssues}
+              onClick={() => testRun.mutate()}
+            >
+              {t("editor.restart")}
+            </Button>
+          }
+          onClose={() => setDrawerRun(null)}
         >
-          <div
-            className="flex h-full w-full max-w-[680px] animate-rise flex-col bg-background shadow-overlay"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex h-14 shrink-0 items-center justify-between px-4">
-              <Chip>Test</Chip>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  busy={testRun.isPending}
-                  disabled={hasIssues}
-                  onClick={() => testRun.mutate()}
-                >
-                  {t("editor.restart")}
-                </Button>
-                <IconButton label={t("editor.close")} onClick={() => setDrawerRun(null)}>
-                  <X className="size-5" />
-                </IconButton>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <RunnerBody
-                key={drawerRun}
-                runId={drawerRun}
-                compact
-                onRestart={() => testRun.mutate()}
-                onView={onRunView}
-              />
-            </div>
-          </div>
-        </div>
+          <RunnerBody
+            key={drawerRun}
+            runId={drawerRun}
+            compact
+            onRestart={() => testRun.mutate()}
+            onView={onRunView}
+          />
+        </RunDrawer>
       ) : null}
 
       <ShareDialog
