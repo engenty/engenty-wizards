@@ -144,14 +144,43 @@ export interface TenantInfo {
   name: string;
   status: "active" | "suspended" | "deleted";
   balanceCredits: number;
+  /** The plan the tenant is on (Free, Pro, Team, …); an older Manage-App names none. */
+  plan?: { id: string; name: string };
   /**
-   * `projects`: how many projects the tenant works with. `build: false`: the tenant makes and
-   * changes nothing here; its studio shows what its local install synced.
+   * `projects`: how many projects the tenant works with, null for as many as it wants.
+   * `build: false`: the tenant makes and changes nothing here; its studio shows what its local
+   * install synced. `members`: the people its plan allows, null for no limit.
    */
-  limits: { concurrentRuns: number; projects?: number; build?: boolean };
+  limits: {
+    concurrentRuns: number;
+    projects?: number | null;
+    build?: boolean;
+    members?: number | null;
+  };
   /** Ids of the plugins switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`. */
   modules?: string[];
+  /** The plan's feature switches; a feature that is not named is off. `ownKeys`: own API keys here. */
+  features?: Record<string, boolean>;
   db: { url: string } | null;
+}
+
+export interface TenantMembers {
+  members: {
+    userId: string;
+    name: string;
+    email: string;
+    image: string | null;
+    role: Role;
+    joinedAt: string;
+  }[];
+  invitations: { id: string; email: string; role: Role; expiresAt: string }[];
+  /** The places the plan gives the tenant (null: no limit), and how many are taken or invited. */
+  seats: { limit: number | null; taken: number };
+}
+
+/** The people of a tenant, as the Manage-App keeps them; they are managed there. */
+export function tenantMembers(id: string): Promise<TenantMembers> {
+  return call<TenantMembers>("GET", `/v1/tenants/${encodeURIComponent(id)}/members`);
 }
 
 const tenants = new Map<string, { at: number; value: TenantInfo }>();

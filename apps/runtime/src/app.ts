@@ -25,6 +25,7 @@ import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
 import { runTicketValid } from "./secrets/signing.js";
+import { asRole } from "./services/access.js";
 import { ServiceError } from "./services/errors.js";
 import { tenantOfLink, tenantStatus } from "./tenants/control.js";
 
@@ -172,7 +173,7 @@ app.use("/api/studio/*", async (c, next) => {
     return c.json({ error: "Dieses Konto ist gesperrt.", code: "suspended" }, 403);
   }
   c.set("user", user);
-  return withTenant(user.tenantId, next);
+  return withTenant(user.tenantId, () => asRole(user.role, next));
 });
 
 const mcp = mcpHandler();

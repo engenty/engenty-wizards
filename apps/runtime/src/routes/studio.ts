@@ -45,7 +45,7 @@ import {
   subscribeTerminal,
   writeTerminal,
 } from "../harness/terminal.js";
-import { managed } from "../manage.js";
+import { managed, tenantInfo, tenantMembers } from "../manage.js";
 import { seenApps } from "../mcp/seen.js";
 import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
 import { transcribeAudio } from "../media/transcribe.js";
@@ -64,7 +64,13 @@ import {
   textModel,
 } from "../models.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
-import { mayBuild, projectWritable, requireWritable } from "../services/access.js";
+import {
+  isAdminRole,
+  mayBuild,
+  mayCreate,
+  projectWritable,
+  requireWritable,
+} from "../services/access.js";
 import { architectTurn } from "../services/architect.js";
 import {
   checkForCloud,
@@ -114,7 +120,7 @@ import {
   listProjects,
   maskedServers,
   ownedProject,
-  projectLimit,
+  projectLimitOrNull,
   projectPatchSchema,
   updateProject,
 } from "../services/projects.js";
@@ -163,6 +169,7 @@ import {
 } from "../services/wizards.js";
 import { readSetting, writeSetting } from "../settings.js";
 import { codeOf } from "../tenants/control.js";
+import { currentTenant } from "../tenants/tenant.js";
 import { applyUpdate, updateStatus } from "../update.js";
 import { byteRange } from "./delivery.js";
 
@@ -335,11 +342,20 @@ export const studio = new Hono<Vars>()
     const linked = managed ? null : await linkedAccount();
     const overview = linked ? await accountOverview() : null;
     const profile = await userProfile(user);
+    // What the Manage-App says of the tenant: its plan and feature switches.
+    const info = managed ? await tenantInfo(user.tenantId).catch(() => null) : null;
     return c.json({
       user: { id: user.id, name: profile.name, email: profile.email, image: user.image ?? null },
       /** What the person says about themselves; name and e-mail are the account's when managed. */
       profile,
-      tenant: { id: user.tenantId, role: user.role },
+      tenant: {
+        id: user.tenantId,
+        role: user.role,
+        /** The plan the team is on; null alone, or where the Manage-App names none. */
+        plan: info?.plan ?? null,
+      },
+      /** The plan's feature switches (`ownKeys`, …); alone, everything is on. */
+      features: managed ? (info?.features ?? {}) : { ownKeys: true },
       mode: managed ? "managed" : "local",
       /** The tenant's balance; null where the runtime resolves models itself. */
       credits: managed ? await balanceCredits() : null,
@@ -369,10 +385,36 @@ export const studio = new Hono<Vars>()
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
       mcpUrl: `${env.appUrl}/api/mcp`,
       /**
-       * One project: the studio shows no project switcher. `build: false`: nothing is made or
-       * changed here; the studio shows what the person's local install synced.
+       * One project: the studio shows no project switcher; null: as many as wanted. `build:
+       * false`: nothing is made or changed here; the studio shows what the person's local
+       * install synced. `create`: the person makes and deletes here (builds, and is no mere
+       * member). `members`: the people the plan allows, null for no limit.
        */
-      limits: { projects: await projectLimit(), build: await mayBuild() },
+      limits: {
+        projects: await projectLimitOrNull(),
+        build: await mayBuild(),
+        create: await mayCreate(),
+        members: info?.limits.members ?? null,
+      },
+    });
+  })
+  // The team as the Manage-App keeps it: its people, who is invited, the places the plan gives.
+  .get("/team", async (c) => {
+    if (!managed) {
+      return c.json({ error: "not_managed" }, 404);
+    }
+    const user = c.get("user");
+    const [info, team] = await Promise.all([
+      tenantInfo(user.tenantId).catch(() => null),
+      tenantMembers(currentTenant()),
+    ]);
+    return c.json({
+      ...team,
+      plan: info?.plan ?? null,
+      /** Where members are invited and roles changed: the account pages of the Manage-App. */
+      manageUrl: env.manage.url,
+      /** Whether this person manages the team there. */
+      canManage: isAdminRole(user.role),
     });
   })
 
@@ -1187,6 +1229,22 @@ export const studio = new Hono<Vars>()
         Object.values(input.bindings ?? {}).some((ref) => ref && !cloudBinding(ref)))
     ) {
       return c.json({ error: "Not available in the cloud." }, 400);
+    }
+    // Own keys and bindings to a provider's model are a feature of the team's plan.
+    if (managed) {
+      const info = await tenantInfo(c.get("user").tenantId).catch(() => null);
+      const own =
+        Object.values(input.keys ?? {}).some((key) => key?.trim()) ||
+        Object.values(input.bindings ?? {}).some((ref) => ref && !isCreditsRef(ref));
+      if (own && info && info.features?.ownKeys === false) {
+        return c.json(
+          {
+            error: `Eigene API Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,
+            code: "plan",
+          },
+          403,
+        );
+      }
     }
     await saveModels(input);
     return c.json(await modelSettings());

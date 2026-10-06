@@ -15,7 +15,7 @@ import { env } from "../env.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
-import { requireBuild, requireWritable, requireWritableProject } from "./access.js";
+import { requireAdmin, requireBuild, requireWritable, requireWritableProject } from "./access.js";
 import { changedSteps, emitDraftChanged } from "./draft-events.js";
 import { notFound, ServiceError } from "./errors.js";
 import { copyFiles, draftFiles, sameFiles, seedFiles } from "./files.js";
@@ -268,6 +268,7 @@ export async function createWizard(
 ) {
   // Asked first: a tenant that builds nothing here has no project of its own to name.
   await requireBuild();
+  await requireAdmin();
   const project = input.projectId
     ? await ownedProject(userId, input.projectId)
     : await defaultProject(userId);
@@ -420,6 +421,7 @@ export async function rotateShareLink(userId: string, wizardId: string) {
 }
 
 export async function duplicateWizard(userId: string, wizardId: string) {
+  await requireAdmin();
   const w = await writableWizard(userId, wizardId);
   const id = nanoid(12);
   const draft = { ...w.draft, title: `${w.draft.title} (Kopie)` };
@@ -440,6 +442,7 @@ export async function duplicateWizard(userId: string, wizardId: string) {
 }
 
 export async function deleteWizard(userId: string, wizardId: string) {
+  await requireAdmin();
   await writableWizard(userId, wizardId);
   await forgetWizardLinks(wizardId);
   await db

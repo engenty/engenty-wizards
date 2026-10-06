@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
-import { managed, tenantInfo } from "../manage.js";
+import { managed, type Role, tenantInfo } from "../manage.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
 
@@ -21,6 +21,40 @@ export function asSync<T>(fn: () => T): T {
 }
 
 const syncing = () => sync.getStore() === true;
+
+// --- roles -----------------------------------------------------------------------------
+// In a team, an owner or admin makes and deletes (wizards, spaces, connectors); a member edits
+// the wizards there are. A runtime that runs alone has one person, who does everything.
+
+const actor = new AsyncLocalStorage<Role>();
+
+/** Runs a request as the person's role in the tenant; set once per entry, like the tenant. */
+export function asRole<T>(role: Role, fn: () => T): T {
+  return actor.run(role, fn);
+}
+
+/** The role of who acts now. A context without one (a job, a sync) acts as the owner. */
+export function currentRole(): Role {
+  return actor.getStore() ?? "owner";
+}
+
+export const isAdminRole = (role: Role): boolean => role === "owner" || role === "admin";
+
+export const MEMBERS_EDIT_ONLY =
+  "Das dürfen nur Admins des Teams. Als Mitglied bearbeitest du die Wizards, die es gibt.";
+
+/** Refuses a member: making and deleting is for the owner and the admins of the team. */
+export async function requireAdmin(): Promise<void> {
+  if (syncing() || !managed || isAdminRole(currentRole())) {
+    return;
+  }
+  throw new ServiceError("forbidden", MEMBERS_EDIT_ONLY);
+}
+
+/** Whether the person makes and deletes here: builds at all, and is no mere member. */
+export async function mayCreate(): Promise<boolean> {
+  return (await mayBuild()) && (!managed || isAdminRole(currentRole()));
+}
 
 /** Whether the tenant builds wizards on this runtime. A runtime that runs alone always does. */
 export async function mayBuild(): Promise<boolean> {

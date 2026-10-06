@@ -6,7 +6,14 @@ import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { features } from "../lib/features";
 import { lang, t } from "../lib/i18n";
-import { type Me, useCurrentProject, useMayBuild, useMe, type WizardSummary } from "../lib/session";
+import {
+  type Me,
+  useCurrentProject,
+  useMayBuild,
+  useMayCreate,
+  useMe,
+  type WizardSummary,
+} from "../lib/session";
 import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
 import { LinkStatus, useAccountLink } from "./Account";
 import { ImportWizard } from "./ImportWizard";
@@ -16,8 +23,9 @@ import { ownLink, sharedLink, WhereChip, whereItRuns } from "./where";
 /** Picks the project the studio looks at. Nothing where the tenant works with one project. */
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
+  // Null: as many as wanted.
   const limit = useMe().data?.limits.projects ?? 1;
-  const build = useMayBuild();
+  const mayCreate = useMayCreate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -30,7 +38,7 @@ export function ProjectSwitcher() {
       setName("");
     },
   });
-  if (!project || limit <= 1) {
+  if (!project || (limit !== null && limit <= 1)) {
     return null;
   }
   return (
@@ -41,10 +49,10 @@ export function ProjectSwitcher() {
         onChange={(v) => (v === "__new" ? setOpen(true) : select(v))}
         options={[
           ...projects.map((p) => ({ value: p.id, label: p.name })),
-          // A tenant that builds nothing here makes no project here either.
-          ...(build
+          // A tenant that builds nothing here makes no project here either; nor does a member.
+          ...(mayCreate
             ? [
-                projects.length < limit
+                limit === null || projects.length < limit
                   ? { value: "__new", label: `+ ${t("home.newProject")}` }
                   : {
                       value: "__new",
@@ -271,6 +279,7 @@ export function HomePage() {
   const { project, projects, loading } = useCurrentProject();
   const me = useMe().data;
   const build = useMayBuild();
+  const create = useMayCreate();
   const wizards = useQuery({
     // Linked or not, the cards ask anew: where each wizard runs changes with it.
     queryKey: ["wizards", project?.id, Boolean(me?.account)],
@@ -278,8 +287,8 @@ export function HomePage() {
     enabled: Boolean(project),
   });
   const total = projects.reduce((n, p) => n + p.wizardCount, 0);
-  /** Wizards are made in this project: the tenant builds here, and the project is its own. */
-  const canCreate = build && !project?.readOnly;
+  /** Wizards are made in this project: the person makes things here, and the project is the team's own. */
+  const canCreate = create && !project?.readOnly;
   if (!loading && canCreate && projects.length && total === 0) {
     return <Navigate to="/new" replace />;
   }

@@ -48,10 +48,19 @@ const manage: Server = createServer(async (req, res) => {
   }
   if (url.pathname === "/token") {
     const form = new URLSearchParams(raw);
-    const who = form.get("code") === "code-b" ? "b" : "a";
+    const code = form.get("code");
+    // code-m: a member of tenant A, who edits but neither makes nor deletes.
+    const who = code === "code-b" ? "b" : code === "code-m" ? "m" : "a";
     return json({
       access_token: await token(
-        { sub: `user-${who}`, tenant: `tenant-${who}`, role: "owner", name: `User ${who.toUpperCase()}`, email: `${who}@test.local`, azp: "wizards-runtime-test" },
+        {
+          sub: `user-${who}`,
+          tenant: who === "m" ? "tenant-a" : `tenant-${who}`,
+          role: who === "m" ? "member" : "owner",
+          name: `User ${who.toUpperCase()}`,
+          email: `${who}@test.local`,
+          azp: "wizards-runtime-test",
+        },
         form.get("resource") ?? RUNTIME,
       ),
       refresh_token: `refresh-${who}`,
@@ -61,6 +70,17 @@ const manage: Server = createServer(async (req, res) => {
   if (req.headers.authorization !== `Bearer ${SERVICE_KEY}`) {
     return json({ error: "unauthorized", code: "unauthorized" }, 401);
   }
+  const members = url.pathname.match(/^\/v1\/tenants\/([^/]+)\/members$/)?.[1];
+  if (members) {
+    return json({
+      members: [
+        { userId: "user-a", name: "User A", email: "a@test.local", image: null, role: "owner", joinedAt: "2026-10-01T00:00:00.000Z" },
+        { userId: "user-m", name: "User M", email: "m@test.local", image: null, role: "member", joinedAt: "2026-10-02T00:00:00.000Z" },
+      ],
+      invitations: [{ id: "inv-1", email: "x@test.local", role: "member", expiresAt: "2026-10-20T00:00:00.000Z" }],
+      seats: { limit: 5, taken: 3 },
+    });
+  }
   const tenant = url.pathname.match(/^\/v1\/tenants\/([^/]+)$/)?.[1];
   if (tenant) {
     return json({
@@ -68,9 +88,12 @@ const manage: Server = createServer(async (req, res) => {
       name: tenant,
       status: "active",
       balanceCredits: balances[tenant] ?? 0,
-      limits: { concurrentRuns: 2 },
+      // Tenant A is on a plan without a limit of spaces and without own keys.
+      plan: tenant === "tenant-a" ? { id: "team", name: "Team" } : { id: "free", name: "Free" },
+      limits: tenant === "tenant-a" ? { concurrentRuns: 2, projects: null, members: 5 } : { concurrentRuns: 2 },
       // The plugins this tenant has switched on, besides the runtime's PLUGINS_DEFAULT.
       ...(tenant === "tenant-a" ? { modules: ["teams", "not-installed"] } : {}),
+      features: tenant === "tenant-a" ? { ownKeys: false } : {},
       db: null,
     });
   }
@@ -182,12 +205,82 @@ describe("a runtime of a Manage-App", () => {
     const me = (await (await get("/api/studio/me", a)).json()) as any;
     expect(me).toMatchObject({
       user: { id: "user-a", name: "User A" },
-      tenant: { id: "tenant-a", role: "owner" },
+      tenant: { id: "tenant-a", role: "owner", plan: { id: "team", name: "Team" } },
+      features: { ownKeys: false },
+      limits: { projects: null, build: true, create: true, members: 5 },
       mode: "managed",
       credits: 500,
       manageUrl: issuer,
     });
     expect((await get("/api/studio/me", "")).status).toBe(401);
+  });
+
+  it("lets a member edit wizards, not make or delete them; shows the team as the Manage-App keeps it", async () => {
+    const m = await signIn("code-m");
+    const me = (await (await get("/api/studio/me", m)).json()) as any;
+    expect(me.tenant).toMatchObject({ id: "tenant-a", role: "member" });
+    expect(me.limits.create).toBe(false);
+    const [project] = (await (await get("/api/studio/projects", m)).json()) as { id: string }[];
+    // Making: refused for a wizard, a space, a copy; by every door.
+    const made = await post("/api/studio/wizards", m, { projectId: project.id });
+    expect(made.status).toBe(403);
+    expect(await made.json()).toMatchObject({ code: "forbidden" });
+    expect((await post("/api/studio/projects", m, { name: "Neu" })).status).toBe(403);
+    // A wizard the owner made: the member edits it, copies and deletes it not.
+    const w = (await (await post("/api/studio/wizards", a, { projectId: project.id })).json()) as { id: string };
+    expect((await post(`/api/studio/wizards/${w.id}/duplicate`, m, {})).status).toBe(403);
+    expect(
+      (await app.fetch(new Request(`${RUNTIME}/api/studio/wizards/${w.id}`, { method: "DELETE", headers: { cookie: m } }))).status,
+    ).toBe(403);
+    // Editing: the draft of a wizard that is there.
+    const state = (await (await get(`/api/studio/wizards/${w.id}`, m)).json()) as { draft: unknown; revision: number };
+    const edited = await app.fetch(
+      new Request(`${RUNTIME}/api/studio/wizards/${w.id}/draft`, {
+        method: "PUT",
+        headers: { cookie: m, "content-type": "application/json" },
+        body: JSON.stringify({ definition: state.draft, baseRevision: state.revision }),
+      }),
+    );
+    expect(edited.status).toBe(200);
+    // The owner still makes.
+    expect((await post("/api/studio/wizards", a, { projectId: project.id })).status).toBe(200);
+    // The team page: people, invitations and places, from the Manage-App.
+    const team = (await (await get("/api/studio/team", m)).json()) as any;
+    expect(team).toMatchObject({
+      members: [{ userId: "user-a", role: "owner" }, { userId: "user-m", role: "member" }],
+      invitations: [{ email: "x@test.local" }],
+      seats: { limit: 5, taken: 3 },
+      plan: { id: "team" },
+      manageUrl: issuer,
+      canManage: false,
+    });
+    expect(((await (await get("/api/studio/team", a)).json()) as any).canManage).toBe(true);
+  });
+
+  it("refuses own API keys where the plan has none, and lists its plugins to the Manage-App", async () => {
+    const put = (body: unknown, cookie: string) =>
+      app.fetch(
+        new Request(`${RUNTIME}/api/studio/models`, {
+          method: "PUT",
+          headers: { cookie, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      );
+    const withKey = await put({ keys: { openai: "sk-test" } }, a);
+    expect(withKey.status).toBe(403);
+    expect(await withKey.json()).toMatchObject({ code: "plan" });
+    // Tenant B's plan says nothing about keys: it keeps them.
+    expect((await put({ keys: { openai: "sk-test" } }, b)).status).toBe(200);
+    const plugins = await app.fetch(
+      new Request(`${RUNTIME}/api/internal/plugins`, { headers: { authorization: `Bearer ${SERVICE_KEY}` } }),
+    );
+    expect(plugins.status).toBe(200);
+    expect(((await plugins.json()) as { plugins: { id: string }[] }).plugins.map((p) => p.id).sort()).toEqual([
+      "basics",
+      "spaces",
+      "teams",
+    ]);
+    expect((await app.fetch(new Request(`${RUNTIME}/api/internal/plugins`))).status).toBe(401);
   });
 
   it("gives each tenant its own studio", async () => {

@@ -1,4 +1,4 @@
-import { Blocks, Cable, Cpu, type LucideIcon, Plug, UserRound } from "lucide-react";
+import { Blocks, Cable, Cpu, type LucideIcon, Plug, UserRound, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
@@ -19,11 +19,15 @@ export interface SettingsSection {
  * plugins added, then the plugins themselves.
  */
 export function settingsSections(
-  _me: Me | null | undefined,
+  me: Me | null | undefined,
   plugins: StudioPlugins,
 ): SettingsSection[] {
   return [
     { id: "account", label: t("account.title"), icon: UserRound, menu: true },
+    // In the cloud the studio is a team's: who is in it, and the plan it is on.
+    ...(me?.mode === "managed"
+      ? [{ id: "team", label: t("team.title"), icon: Users, menu: true }]
+      : []),
     { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },
     // Alone for this machine; in the cloud for the team, on its credits unless it brings keys.
     { id: "models", label: t("local.title"), icon: Cpu, menu: true },

@@ -4,6 +4,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 import { listConnectors } from "../connectors/external.js";
 import { getBlob } from "../files/blobs.js";
+import { requireAdmin } from "./access.js";
 import { ServiceError } from "./errors.js";
 import { draftFiles, writeFile } from "./files.js";
 import { ownedProject } from "./projects.js";
@@ -203,6 +204,7 @@ export async function importWizard(
   data: Uint8Array,
   name?: string,
 ) {
+  await requireAdmin();
   const { manifest, files } = readPackage(data);
   // The shape is checked before anything is written; a wrong one leaves no wizard behind.
   const { draft } = parseDraft(

@@ -54,7 +54,14 @@ export function initialsOf(name: string): string {
 export interface Me {
   user: { id: string; name: string; email: string; image?: string | null };
   profile: UserProfile;
-  tenant: { id: string; role: "owner" | "admin" | "member" };
+  tenant: {
+    id: string;
+    role: "owner" | "admin" | "member";
+    /** The plan the team is on (Free, Pro, Team, …); null alone. */
+    plan: { id: string; name: string } | null;
+  };
+  /** The plan's feature switches; alone, everything is on. `ownKeys`: own API keys here. */
+  features: Record<string, boolean>;
   /** `managed`: signed in at the Manage-App. `local`: this runtime runs alone (desktop app, own machine). */
   mode: "managed" | "local";
   /** The tenant's balance; null where no credits are involved. */
@@ -86,10 +93,12 @@ export interface Me {
   /** Where an admin's own MCP client (Claude Code, Cursor, Codex) connects. */
   mcpUrl: string;
   /**
-   * `projects`: how many projects the tenant works with. `build: false`: nothing is made or
-   * changed on this runtime; the studio shows what the person's local install published.
+   * `projects`: how many projects the tenant works with, null for as many as wanted. `build:
+   * false`: nothing is made or changed on this runtime; the studio shows what the person's
+   * local install published. `create`: this person makes and deletes here (builds, and is no
+   * mere member). `members`: the people the plan allows, null for no limit.
    */
-  limits: { projects: number; build: boolean };
+  limits: { projects: number | null; build: boolean; create: boolean; members: number | null };
 }
 
 /** A part of the account's credits that ends on a date. */
@@ -101,12 +110,24 @@ export interface ExpiringCredits {
 
 /** Whether the studio deals with several projects at all: with one, there is nothing to switch. */
 export function useManyProjects(): boolean {
-  return (useMe().data?.limits.projects ?? 1) > 1;
+  const projects = useMe().data?.limits.projects;
+  return projects === null || (projects ?? 1) > 1;
 }
 
 /** Whether wizards and projects are made and changed on this runtime at all. */
 export function useMayBuild(): boolean {
   return useMe().data?.limits.build ?? true;
+}
+
+/** Whether this person makes and deletes here: builds at all, and is no mere member of the team. */
+export function useMayCreate(): boolean {
+  return useMe().data?.limits.create ?? true;
+}
+
+/** Whether this person manages the team: its owner or an admin, or alone. */
+export function useIsAdmin(): boolean {
+  const me = useMe().data;
+  return !me || me.mode === "local" || me.tenant.role !== "member";
 }
 
 /** The credits a person can spend right now, wherever they come from. */

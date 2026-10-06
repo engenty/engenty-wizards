@@ -7,7 +7,9 @@ export type ServiceErrorCode =
   | "no_credits"
   | "refused"
   /** Nothing is changed here: the project is a local install's, or the tenant builds elsewhere. */
-  | "read_only";
+  | "read_only"
+  /** The person's role in the team does not allow it: a member edits wizards, an admin makes and deletes. */
+  | "forbidden";
 
 const STATUS: Record<ServiceErrorCode, 400 | 402 | 403 | 404 | 409> = {
   not_found: 404,
@@ -17,6 +19,7 @@ const STATUS: Record<ServiceErrorCode, 400 | 402 | 403 | 404 | 409> = {
   no_credits: 402,
   refused: 400,
   read_only: 403,
+  forbidden: 403,
 };
 
 export class ServiceError extends Error {

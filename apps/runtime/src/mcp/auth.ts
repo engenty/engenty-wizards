@@ -2,7 +2,7 @@ import type { AuthInfo } from "@modelcontextprotocol/server";
 import { API_KEY_PREFIX, verifyLocalKey } from "../auth/keys.js";
 import { LOCAL_CLIENT_HEADER, LOCAL_MCP_HEADER, localTicketExpiry } from "../auth/local-ticket.js";
 import { env } from "../env.js";
-import { managed, verifyKey, verifyToken } from "../manage.js";
+import { managed, type Role, verifyKey, verifyToken } from "../manage.js";
 import { LOCAL_TENANT } from "../tenants/tenant.js";
 import { MCP_RESOURCE, SCOPES, type Scope } from "./scopes.js";
 
@@ -10,6 +10,8 @@ import { MCP_RESOURCE, SCOPES, type Scope } from "./scopes.js";
 export interface Principal {
   userId: string;
   tenantId: string;
+  /** The person's role in the tenant; a key or a local caller acts as the owner. */
+  role: Role;
   client: string;
   scopes: Scope[];
 }
@@ -65,6 +67,7 @@ async function apiKeyAuth(key: string): Promise<AuthInfo | Response> {
     const who: Principal = {
       userId: "local",
       tenantId: LOCAL_TENANT,
+      role: "owner",
       client: found.name || "MCP",
       scopes: [...SCOPES],
     };
@@ -82,6 +85,7 @@ async function apiKeyAuth(key: string): Promise<AuthInfo | Response> {
   const who: Principal = {
     userId: result.userId,
     tenantId: result.tenantId,
+    role: result.role ?? "member",
     client: result.name || "MCP",
     scopes: [...SCOPES],
   };
@@ -102,6 +106,7 @@ async function tokenAuth(token: string): Promise<AuthInfo | Response> {
   const who: Principal = {
     userId: claims.userId,
     tenantId: claims.tenantId,
+    role: claims.role,
     client: claims.clientId || "MCP",
     scopes: SCOPES.filter((s) => granted.has(s)),
   };
@@ -125,6 +130,7 @@ function localAuth(request: Request, ticket: string): AuthInfo | Response {
   const who: Principal = {
     userId: "local",
     tenantId: LOCAL_TENANT,
+    role: "owner",
     client,
     scopes: [...SCOPES],
   };

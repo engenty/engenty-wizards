@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import { type Project, useManyProjects } from "../../lib/session";
+import { type Project, useIsAdmin, useManyProjects } from "../../lib/session";
 import { Button, Input, Label, Textarea } from "../../ui";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
 import { Assistant } from "./Assistant";
@@ -81,8 +81,9 @@ export function ProjectSettings({
     mutationFn: () => api.del(`/api/studio/projects/${project.id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
-  // With one project there is nothing to switch, to name apart or to delete.
+  // With one project there is nothing to switch, to name apart or to delete; a member deletes none.
   const many = useManyProjects();
+  const admin = useIsAdmin();
   const data = files.data ?? { files: [], embeddings: true };
   const key = `${project.id}:${rev}`;
   const readOnly = project.readOnly;
@@ -130,7 +131,7 @@ export function ProjectSettings({
         </>
       ) : null}
       {children}
-      {group === "info" && many && !readOnly ? (
+      {group === "info" && many && !readOnly && admin ? (
         <div>
           <Button
             variant="danger"

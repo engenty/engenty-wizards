@@ -111,6 +111,8 @@ interface Place {
   topUp: string | null;
   harnesses: HarnessStatus[];
   canEdit: boolean;
+  /** Own API keys are a feature of the team's plan; alone they always are. */
+  ownKeys: boolean;
 }
 
 type View = "auto" | "local" | "linked" | "cloud";
@@ -140,6 +142,7 @@ function placeOf(me: Me, view: View): Place {
     topUp: billingUrl(me),
     harnesses: cloud ? [] : me.harnesses,
     canEdit: !cloud || me.tenant.role !== "member",
+    ownKeys: !cloud || me.features.ownKeys !== false,
   };
 }
 
@@ -448,6 +451,10 @@ function KeyField({
     setSaid({ ok: true, message: t("models.keyOk") });
   };
   const editing = !stored || replacing;
+  // Own keys are a feature of the team's plan: without it, the credits pay and no key is taken.
+  if (!place.ownKeys) {
+    return <p className="text-[0.8125rem] text-ink-3">{t("models.ownKeysPlan")}</p>;
+  }
   return (
     <div className="flex flex-col gap-2.5">
       {editing ? (

@@ -5,6 +5,7 @@ import { withTenant } from "../db/client.js";
 import { allowed } from "../limits.js";
 import { authenticate, type Principal, principalOf } from "../mcp/auth.js";
 import type { Scope } from "../mcp/scopes.js";
+import { asRole } from "../services/access.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, draftFiles, writeFile } from "../services/files.js";
 import {
@@ -35,6 +36,10 @@ const importSchema = z.object({
     .default([]),
   publish: z.boolean().default(false),
 });
+
+/** Runs a call in the caller's tenant, as the caller's role. */
+const inTenantAs = <T>(who: Principal, fn: () => T | Promise<T>) =>
+  withTenant(who.tenantId, () => asRole(who.role, fn));
 
 const HOUR = 60 * 60 * 1000;
 /** A wizard with its workspace: 25 MB of files as base64, and the definition. */
@@ -85,7 +90,7 @@ export const apiRoutes = new Hono()
     if (who instanceof Response) {
       return who;
     }
-    return withTenant(who.tenantId, async () => c.json({ spaces: await listSyncedSpaces() }));
+    return inTenantAs(who, async () => c.json({ spaces: await listSyncedSpaces() }));
   })
   .post("/spaces/check", async (c) => {
     const who = await caller(c, ["wizards:read"]);
@@ -93,7 +98,7 @@ export const apiRoutes = new Hono()
       return who;
     }
     const body = checkSchema.parse(await c.req.json());
-    return withTenant(who.tenantId, async () => c.json({ problems: await checkOnServer(body) }));
+    return inTenantAs(who, async () => c.json({ problems: await checkOnServer(body) }));
   })
   .put("/spaces/:spaceId/wizards/:wizardId", tooLarge, async (c) => {
     const who = await caller(c, ["wizards:write", "wizards:publish"]);
@@ -105,7 +110,7 @@ export const apiRoutes = new Hono()
       return limited;
     }
     const body = syncWizardSchema.parse(await c.req.json());
-    return withTenant(who.tenantId, async () =>
+    return inTenantAs(who, async () =>
       c.json(await syncWizard(c.req.param("spaceId"), c.req.param("wizardId"), body)),
     );
   })
@@ -120,9 +125,7 @@ export const apiRoutes = new Hono()
       return limited;
     }
     const body = syncDataSchema.parse(await c.req.json());
-    return withTenant(who.tenantId, async () =>
-      c.json(await syncSpaceData(c.req.param("spaceId"), body)),
-    );
+    return inTenantAs(who, async () => c.json(await syncSpaceData(c.req.param("spaceId"), body)));
   })
   .patch("/spaces/:spaceId/wizards/:wizardId", async (c) => {
     const who = await caller(c, ["wizards:publish"]);
@@ -134,7 +137,7 @@ export const apiRoutes = new Hono()
       return limited;
     }
     const body = syncSettingsSchema.parse(await c.req.json());
-    return withTenant(who.tenantId, async () =>
+    return inTenantAs(who, async () =>
       c.json(await patchSyncedWizard(c.req.param("spaceId"), c.req.param("wizardId"), body)),
     );
   })
@@ -147,7 +150,7 @@ export const apiRoutes = new Hono()
     if (limited) {
       return limited;
     }
-    return withTenant(who.tenantId, async () =>
+    return inTenantAs(who, async () =>
       c.json(await rotateSyncedLink(who.userId, c.req.param("spaceId"), c.req.param("wizardId"))),
     );
   })
@@ -156,7 +159,7 @@ export const apiRoutes = new Hono()
     if (who instanceof Response) {
       return who;
     }
-    return withTenant(who.tenantId, async () =>
+    return inTenantAs(who, async () =>
       c.json(await removeSyncedWizard(who.userId, c.req.param("spaceId"), c.req.param("wizardId"))),
     );
   })
@@ -165,9 +168,7 @@ export const apiRoutes = new Hono()
     if (who instanceof Response) {
       return who;
     }
-    return withTenant(who.tenantId, async () =>
-      c.json(await removeSyncedSpace(c.req.param("spaceId"))),
-    );
+    return inTenantAs(who, async () => c.json(await removeSyncedSpace(c.req.param("spaceId"))));
   })
   .post("/wizards/import", tooLarge, async (c) => {
     const authInfo = await authenticate(c.req.raw);
@@ -185,7 +186,7 @@ export const apiRoutes = new Hono()
     if ((await tenantStatus(who.tenantId)) === "suspended") {
       return c.json({ error: "tenant_suspended" }, 403);
     }
-    return withTenant(who.tenantId, async () => {
+    return inTenantAs(who, async () => {
       const writer = { source: "mcp" as const, client: who.client };
       let wizardId = body.wizardId;
       if (wizardId) {

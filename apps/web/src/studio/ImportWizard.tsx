@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
-import { useCurrentProject, useMayBuild } from "../lib/session";
+import { useCurrentProject, useMayCreate } from "../lib/session";
 import { Button, Dialog } from "../ui";
 
 /** Makes a new wizard in the current project of a package (`.wizard`) and opens it. */
@@ -19,7 +19,7 @@ export function ImportWizard({
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { project } = useCurrentProject();
-  const build = useMayBuild();
+  const build = useMayCreate();
   const input = useRef<HTMLInputElement>(null);
   const upload = useMutation({
     mutationFn: (file: File) =>

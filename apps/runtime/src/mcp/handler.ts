@@ -5,6 +5,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { withTenant } from "../db/client.js";
 import { env } from "../env.js";
+import { asRole } from "../services/access.js";
 import { tenantStatus } from "../tenants/control.js";
 import { authenticate, principalOf } from "./auth.js";
 import { registerFlowApp } from "./flow-app.js";
@@ -61,6 +62,8 @@ export function mcpHandler(): (request: Request) => Promise<Response> {
         .catch(() => null);
       noteRequest(who.tenantId, authInfo.clientId, who.client, body);
     }
-    return withTenant(who.tenantId, () => handler.fetch(request, { authInfo }));
+    return withTenant(who.tenantId, () =>
+      asRole(who.role, () => handler.fetch(request, { authInfo })),
+    );
   };
 }

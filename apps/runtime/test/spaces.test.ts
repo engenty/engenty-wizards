@@ -199,7 +199,7 @@ describe("a tenant that builds nothing here (the free tier)", () => {
   it("has an empty studio that makes nothing", async () => {
     free = await signIn("free");
     const me = await studio("GET", "/me", free);
-    expect(me.body.limits).toEqual({ projects: 1, build: false });
+    expect(me.body.limits).toEqual({ projects: 1, build: false, create: false, members: null });
     expect((await studio("GET", "/projects", free)).body).toEqual([]);
     const refused = await studio("POST", "/projects", free, { name: "Neu" });
     expect(refused.status).toBe(403);
@@ -498,7 +498,12 @@ describe("a tenant that builds here", () => {
 
   it("keeps its own project writable beside a synced one, within its number", async () => {
     builder = await signIn("builder");
-    expect((await studio("GET", "/me", builder)).body.limits).toEqual({ projects: 2, build: true });
+    expect((await studio("GET", "/me", builder)).body.limits).toEqual({
+      projects: 2,
+      build: true,
+      create: true,
+      members: null,
+    });
     const [own] = (await studio("GET", "/projects", builder)).body;
     expect(own).toMatchObject({ origin: null, readOnly: false });
 

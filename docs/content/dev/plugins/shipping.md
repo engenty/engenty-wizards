@@ -76,6 +76,8 @@ In a runtime of a Manage-App:
 - The Manage-App switches further ones on per tenant: `modules` in its answer to
   `GET /v1/tenants/:id`
   ([manage-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/manage-contract.md)).
+  It learns which plugins a runtime carries from `GET /api/internal/plugins` (with the
+  runtime's service key), so a plan's modules are picked from what exists.
 - For a tenant without a plugin, that plugin does not exist: no routes, no tools, no listeners,
   no studio half.
 - A plugin's tables are made in every tenant's database, whether the tenant has the plugin or

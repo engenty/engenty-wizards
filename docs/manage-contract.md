@@ -47,7 +47,8 @@ Errors: `{ "error": string, "code": string }`.
 
 | Call | Body → answer |
 |---|---|
-| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, limits: { concurrentRuns, projects?, build? }, modules?: string[], db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one; a project a local install synced counts); left out, the runtime's `LIMIT_PROJECTS` counts · `limits.build: false`: the tenant makes and changes nothing on the runtime, its studio shows what its local install synced; left out, it builds · `modules` (optional, a list of plugin ids): the plugins of the runtime switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`; an id the runtime has no plugin for is ignored ([content/dev/plugins/shipping.md](content/dev/plugins/shipping.md)) |
+| `GET /v1/tenants/:id` | → `{ id, name, status: "active" \| "suspended" \| "deleted", balanceCredits, plan?: { id, name }, limits: { concurrentRuns, projects?, build?, members? }, modules?: string[], features?: { [id]: boolean }, db: { url: string } \| null }` · `db: null` means the runtime keeps the tenant's database as a file · `plan`: the plan the tenant is on (Free, Pro, Team, …), shown in the studio · `limits.projects`: how many projects the tenant works with (the studio shows a project switcher above one; a project a local install synced counts); `null` for as many as it wants; left out, the runtime's `LIMIT_PROJECTS` counts · `limits.build: false`: the tenant makes and changes nothing on the runtime, its studio shows what its local install synced; left out, it builds · `limits.members`: the people the plan allows (`null`: no limit), shown on the studio's team page; the Manage-App enforces it · `modules` (optional, a list of plugin ids): the plugins of the runtime switched on for the tenant, besides the runtime's `PLUGINS_DEFAULT`; an id the runtime has no plugin for is ignored ([content/dev/plugins/shipping.md](content/dev/plugins/shipping.md)) · `features`: the plan's switches the runtime reads; one not named is off. Known: `ownKeys` — the tenant's own API keys and bindings to a provider's model in the cloud studio (`PUT /api/studio/models` refuses them with `403 { code: "plan" }` otherwise) |
+| `GET /v1/tenants/:id/members` | → `{ members: [{ userId, name, email, image, role, joinedAt }], invitations: [{ id, email, role, expiresAt }], seats: { limit: number \| null, taken } }` · the people of the tenant and who is invited, for the studio's team page; they are invited, given roles and removed on the Manage-App's account pages · `seats.taken` counts members and open invitations |
 | `POST /v1/keys/verify` | `{ key }` → `{ valid: false }` or `{ valid: true, keyId, name, userId, userName, tenantId, role }` |
 | `POST /v1/reservations` | `{ tenantId, runId, credits }` → `{ id }` · `402` with code `no_credits` when the free balance is below `credits` · the same `runId` again replaces the earlier reservation |
 | `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |
@@ -63,7 +64,12 @@ With a user's access token instead of the service key:
 
 | Call | Answer |
 |---|---|
-| `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, balanceCredits, expiring: [{ kind: "start" \| "monthly" \| "gift", credits, expiresAt }] }, tenants: [{ id, name, role }] }` · `expiring`: the part of the balance that ends on a date, the nearest first |
+| `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, plan: { id, name }, balanceCredits, expiring: [{ kind: "start" \| "monthly" \| "gift", credits, expiresAt }] }, tenants: [{ id, name, role }] }` · `expiring`: the part of the balance that ends on a date, the nearest first |
+
+Roles on the runtime: `owner` and `admin` make and delete (wizards, spaces, connectors, the space's
+settings); `member` edits the wizards there are, tests and publishes them. A member's attempt
+answers `403 { code: "forbidden" }`, whichever way it came in (studio, API, MCP). A runtime that
+runs alone has one person, who does everything.
 
 ## Manage-App → runtime
 
@@ -72,6 +78,7 @@ With a user's access token instead of the service key:
 | Call | Body |
 |---|---|
 | `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
+| `GET <RUNTIME_URL>/api/internal/plugins` | → `{ plugins: [{ id, name, description, version }] }` · the plugins the runtime carries, so a plan's `modules` are picked from what exists |
 
 ## Spaces of a local install
 
@@ -142,6 +149,9 @@ bound to when that is an evaluation model, else by `typesafe-ai/jev`; booked und
 `classifier`. `501` when no evaluation model is enabled: the runtime then keeps the order its
 index gave.
 
+A model the tenant's plan leaves out — a class not in its list, or a named media model not in
+its list — is refused with `403`, type `forbidden`, whatever the catalog enables.
+
 `GET <GATEWAY_URL>/v1/models` (any valid token or service key) → what an estimate needs:
 
 ```json
@@ -158,9 +168,13 @@ index gave.
   "models": [
     { "id": "fal:fal-ai/flux/schnell", "name": "FLUX.1 [schnell]", "source": "fal", "provider": "fal", "kind": "image", "creditsPerImage": 0.6 },
     { "id": "elevenlabs:eleven_multilingual_v2", "name": "ElevenLabs Multilingual v2", "source": "elevenlabs", "provider": "elevenlabs", "kind": "speech", "creditsPer1kCharacters": 20 }
-  ]
+  ],
+  "plan": { "id": "pro", "classes": null, "models": null }
 }
 ```
+
+`plan`: what of this the caller's tenant may use — `classes` and `models` list what is allowed,
+`null` allows everything above; `plan` itself is `null` for a caller without a tenant.
 
 `audio.transcribes`: the class is bound to a transcription model and is called on
 `/transcription-model` (body `{ audio: <base64>, mediaType }`); otherwise it is a language model

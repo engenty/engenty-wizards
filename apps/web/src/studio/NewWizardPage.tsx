@@ -5,7 +5,7 @@ import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
-import { useCurrentProject, useMayBuild } from "../lib/session";
+import { useCurrentProject, useMayCreate } from "../lib/session";
 import { Button, Textarea } from "../ui";
 import { ImportWizard } from "./ImportWizard";
 import { MarketplaceBrowser } from "./Marketplace";
@@ -29,7 +29,7 @@ export function NewWizardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { project } = useCurrentProject();
-  const build = useMayBuild();
+  const build = useMayCreate();
   const [prompt, setPrompt] = useState("");
   // A link from the gallery names the template to open.
   const [params] = useSearchParams();

@@ -7,7 +7,7 @@ import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
 import { spaceChanged } from "../plugins/events.js";
 import { currentTenant } from "../tenants/tenant.js";
-import { mayBuild, requireBuild, requireWritable } from "./access.js";
+import { mayBuild, requireAdmin, requireBuild, requireWritable } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
 import { forgetWizardLinks } from "./links.js";
 import { removeProjectFiles } from "./project-files.js";
@@ -56,11 +56,21 @@ export const projectPatchSchema = z.object({
 export async function projectLimit(): Promise<number> {
   if (managed) {
     const info = await tenantInfo(currentTenant()).catch(() => null);
+    // Null: the plan sets no limit.
+    if (info && info.limits.projects === null) {
+      return Number.POSITIVE_INFINITY;
+    }
     if (info?.limits.projects) {
       return info.limits.projects;
     }
   }
   return Math.max(1, env.limits.projects);
+}
+
+/** The number for the studio: null where there is no limit (JSON has no infinity). */
+export async function projectLimitOrNull(): Promise<number | null> {
+  const limit = await projectLimit();
+  return Number.isFinite(limit) ? limit : null;
 }
 
 export async function ownedProject(_userId: string, projectId: string): Promise<ProjectRow> {
@@ -125,10 +135,11 @@ export async function listProjects(_userId: string) {
     await ensureProject();
   }
   // The oldest come first: with a limit of one, that is the project everything lands in.
+  const limit = await projectLimit();
   const projects = await db.query.project.findMany({
     where: build ? eq(schema.project.tenantId, currentTenant()) : synced(),
     orderBy: [schema.project.createdAt],
-    limit: await projectLimit(),
+    ...(Number.isFinite(limit) ? { limit } : {}),
   });
   const counts = await db
     .select({ projectId: schema.wizard.projectId, n: count() })
@@ -153,6 +164,7 @@ export function maskedServers(p: ProjectRow) {
 
 export async function createProject(_userId: string, name: string): Promise<{ id: string }> {
   await requireBuild();
+  await requireAdmin();
   const [{ n }] = await db
     .select({ n: count() })
     .from(schema.project)
@@ -179,6 +191,7 @@ export async function updateProject(
 ) {
   const p = await ownedProject(userId, projectId);
   await requireWritable(p);
+  await requireAdmin();
   const mcpServers = patch.mcpServers?.map((s) => {
     const before = p.mcpServers.find((x) => x.id === s.id);
     const headers = s.headers
@@ -226,6 +239,7 @@ export function projectProfile(p: ProjectRow): ProjectProfile {
 
 export async function deleteProject(userId: string, projectId: string) {
   await requireWritable(await ownedProject(userId, projectId));
+  await requireAdmin();
   const all = await db.query.project.findMany({ where: madeHere() });
   if (all.length <= 1) {
     throw new ServiceError("refused", "Das letzte Projekt bleibt.");

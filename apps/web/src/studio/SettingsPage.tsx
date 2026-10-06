@@ -25,6 +25,7 @@ import {
   useStepDirection,
 } from "./settings-menu";
 import { settingsSections } from "./settings-sections";
+import { Team } from "./Team";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
 
@@ -289,6 +290,7 @@ export function SettingsPage() {
               {current.id === "models" ? <Models /> : null}
               {current.id === "integrate" ? <Integrate /> : null}
               {current.id === "account" && me.data ? <Account me={me.data} /> : null}
+              {current.id === "team" && me.data ? <Team me={me.data} /> : null}
               {current.id === "plugins" ? <PluginsSection /> : null}
               {current.plugin ? (
                 <PluginFrame of={current.plugin}>
