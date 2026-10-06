@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.16",
+    "timestamp": 1791307424,
+    "commits": [
+      {
+        "id": "883404e",
+        "message": "a wizard that needs a model not set up here says so before anything is paid for: in the gallery, video, speech output or voice notes that only some answers need no longer block a template (\"Works without: …\"); on its pages, the choices that would lead to such a step are locked with the reason and the default moves to one that works, an optional voice note nothing here can listen to gives way to the reason, and the server refuses those answers",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.15",
-    "timestamp": 1791294675,
+    "timestamp": 1791294678,
     "commits": [
       {
         "id": "2c5ae49",

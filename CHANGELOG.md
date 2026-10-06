@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.16] - 2026-10-06
+- ADDED A wizard that needs a model not set up here says so before anything is paid for: in the gallery, video, speech output or voice notes that only some answers need no longer block a template ("Works without: …"); on its pages, the choices that would lead to such a step are locked with the reason and the default moves to one that works, an optional voice note nothing here can listen to gives way to the reason, and the server refuses those answers
+
 ## [0.2.15] - 2026-10-06
 - ADDED On phones and small tablets the editor's pane is a bottom sheet whose height is dragged at its handle, touch included; a tap on the handle folds it to its tabs and unfolds it to the height it had, a step tapped in the diagram or a tab unfolds it too, and the height is remembered per browser; the sheet and the diagram now fit the screen, so the chat's input is no longer cut off at the bottom
 - FIXED **[mobile]** A saved wizard whose link is gone (a new link, or the wizard deleted) shows as unavailable instead of offering Start into the runner's not-found page
