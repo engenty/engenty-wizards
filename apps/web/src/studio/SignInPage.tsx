@@ -86,7 +86,8 @@ export function SignInPage() {
                 const desktop = (window as { engentyDesktop?: { open(url: string): void } })
                   .engentyDesktop;
                 if (!desktop) {
-                  signIn("/");
+                  // Back to the studio page that asked: the host's root is the landing page.
+                  signIn();
                   return;
                 }
                 // In the desktop app the sign-in runs in the person's own browser and comes
