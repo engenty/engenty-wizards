@@ -32,9 +32,10 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
-  --color-ember: var(--ember);
+  --color-ember: var(--ember-mark);
+  --color-ember-on: var(--ember-on);
   --color-ember-tint: var(--ember-tint);
-  --color-ember-strong: var(--ember-strong);
+  --color-ember-strong: var(--ember-strong-mark);
   --color-ember-veil: var(--ember-veil);
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);

@@ -404,7 +404,7 @@ export function OutputView({
                     onClick={() => onPick(i)}
                     className={cn(
                       "absolute top-2 left-2 inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.75rem] shadow-soft backdrop-blur coarse:h-11",
-                      on ? "bg-ember text-white" : "bg-card/90 text-ink-2 hover:text-ink",
+                      on ? "bg-ember text-ember-on" : "bg-card/90 text-ink-2 hover:text-ink",
                     )}
                   >
                     {on ? <Check className="size-3.5" /> : null}

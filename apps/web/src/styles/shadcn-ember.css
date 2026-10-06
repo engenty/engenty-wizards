@@ -14,7 +14,11 @@
   --popover: oklch(from var(--card) l c h / 0.72);
   --popover-foreground: var(--ink);
   --primary: var(--ember-strong);
-  --primary-foreground: oklch(99% 0 0);
+  /* A wizard's brand accent can be any colour: the text on it is light or dark
+     by the accent's own lightness (the step at l = 0.65), never by the theme. */
+  --primary-foreground: oklch(
+    from var(--primary) calc(0.16 + 0.83 * clamp(0, (0.65 - l) * 1000, 1)) 0.01 h
+  );
   --secondary: var(--paper-2);
   --secondary-foreground: var(--ink);
   /* Plain paper-3 read as a strong “beige band”; blend toward card so bg-muted/* feels quieter */
@@ -48,7 +52,7 @@
     from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
   );
   --sidebar-primary: var(--ember);
-  --sidebar-primary-foreground: oklch(from var(--ember) calc(1 - l) calc(c * 0.1) h);
+  --sidebar-primary-foreground: var(--ember-on);
   --sidebar-accent: oklch(from var(--sidebar) calc(l + 0.05 * (1 - 2 * l)) c h);
   --sidebar-accent-foreground: oklch(
     from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
@@ -93,7 +97,11 @@
   --popover: oklch(from var(--card) l c h / 0.78);
   --popover-foreground: var(--ink);
   --primary: var(--ember-strong);
-  --primary-foreground: oklch(from var(--raw-background) 0.16 0.02 h);
+  /* A wizard's brand accent can be any colour: the text on it is light or dark
+     by the accent's own lightness (the step at l = 0.65), never by the theme. */
+  --primary-foreground: oklch(
+    from var(--primary) calc(0.16 + 0.83 * clamp(0, (0.65 - l) * 1000, 1)) 0.01 h
+  );
   --secondary: var(--paper-2);
   --secondary-foreground: var(--ink-2);
   --muted: color-mix(in oklch, var(--paper-3) 45%, var(--card));
@@ -124,7 +132,7 @@
     from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h
   );
   --sidebar-primary: var(--ember);
-  --sidebar-primary-foreground: oklch(from var(--ember) calc(1 - l) calc(c * 0.1) h);
+  --sidebar-primary-foreground: var(--ember-on);
   --sidebar-accent: oklch(from var(--sidebar) calc(l + 0.05 * (1 - 2 * l)) c h);
   --sidebar-accent-foreground: oklch(
     from var(--sidebar) clamp(0.15, (0.62 - l) * 100, 0.98) calc(c * 0.06) h

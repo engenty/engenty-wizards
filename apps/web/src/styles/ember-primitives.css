@@ -54,6 +54,15 @@
     from var(--raw-primary) calc(0.96 + 0.02 * (1 - var(--contrast))) calc(c * 0.2) h
   );
   --ember-veil: oklch(from var(--raw-primary) l c h / 0.1);
+  /* Ember as text and marks on the page. A wizard's brand accent can be any
+     colour; here it keeps a lightness the paper can carry (the default ember
+     sits inside the bound). `--ember-on` is the text on an ember fill: light
+     or dark by the fill's own lightness. */
+  --ember-mark: oklch(from var(--ember) min(l, 0.65) c h);
+  --ember-strong-mark: oklch(from var(--ember-strong) min(l, 0.65) c h);
+  --ember-on: oklch(
+    from var(--ember-mark) calc(0.16 + 0.83 * clamp(0, (0.65 - l) * 1000, 1)) 0.01 h
+  );
 
   /* Accents */
   --cobalt: var(--info);
@@ -232,6 +241,8 @@
   /* Accents */
   --ember-strong: oklch(from var(--raw-primary) calc(l + (0.08 * var(--contrast))) c h);
   --ember-tint: oklch(from var(--raw-primary) calc(0.18 + 0.02 * var(--contrast)) calc(c * 0.35) h);
+  --ember-mark: oklch(from var(--ember) max(l, 0.6) c h);
+  --ember-strong-mark: oklch(from var(--ember-strong) max(l, 0.6) c h);
 
   --secondary-accent-strong: oklch(
     from var(--raw-secondary) calc(l + (0.08 * var(--contrast))) c h

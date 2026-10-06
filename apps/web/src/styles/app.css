@@ -197,7 +197,7 @@ a,
   list-style: decimal;
 }
 .prose-zen a {
-  color: var(--ember-strong);
+  color: var(--ember-strong-mark);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
