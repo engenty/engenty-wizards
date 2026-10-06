@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.13] - 2026-10-06
+- ADDED The space opens behind the folder in the top bar and has four parts in the settings' sliding menu: Info & Marke (Basis, Logos, Farben, Assets, Fakten), Wissen (Dokumente), Daten and Ergebnisse; Daten holds tables with typed columns, edited cell by cell, and Markdown pages, of the space or of one of its wizards; a wizard's list can be shared, one table for every run that the person running it never sees, and a step with the new Pages tool writes the wizard's pages; the space's own tables and pages go to the cloud with each published wizard and are read-only there, while what runs write stays where they ran; Ergebnisse lists the finished runs of all wizards or of one, the wizard with the latest result first, with search, live or test and the last days; a plugin's section of the space chooses its part; the studio is a step smaller on laptops and nearer the edge on phones; the run-log example no longer adds an icon to the top bar
+
 ## [0.2.12] - 2026-10-06
 - FIXED The documentation deploys like the cloud runtime: its image is built on GitHub's runners beside the checks of a release tag and pushed to GHCR, and the server only pulls it (deploy/Dockerfile.docs, built with --pull); the docs Dockerfile keeps its install cached across releases; a change of the docs image no longer redeploys the runtime
 
