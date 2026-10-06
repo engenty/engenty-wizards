@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.9",
+    "timestamp": 1791284803,
+    "commits": [
+      {
+        "id": "fff4ab3",
+        "message": "plugins add to the space: sections of the space page under the plugin's name in its menu, tools of the space assistant whose results the plugin draws as cards in its chat, a block and tools for every AI step of the space, texts in the space's search index that project_search finds beside its documents, events when a space is made, changed or deleted and when a file is read or removed, jobs that run on a schedule, public routes under an address of their own, and the runtime's web reader and document parser; the run-log example shows a space's last runs on the space page; the plugin docs describe the space",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.8",
-    "timestamp": 1791284264,
+    "timestamp": 1791284267,
     "commits": [
       {
         "id": "040a292",
