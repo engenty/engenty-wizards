@@ -121,6 +121,8 @@ export interface RunView {
   values: Record<string, unknown>;
   /** What fields of the current page start with, from earlier steps (`prefill`). */
   prefill: Record<string, unknown>;
+  /** Choices of the current page that lead to a step without a model here, by field id. */
+  closed: Record<string, ClosedChoice>;
   outputs: Record<string, StepOutput>;
   /** Steps whose outputs the current step shows, with their definitions. */
   shown: { step: Step; output: StepOutput | null; formats: Format[]; label: string | null }[];
@@ -192,6 +194,14 @@ export interface MissingModel {
   steps: { id: string; title: string }[];
   /** A step that needs it lies on every path: the run cannot start. */
   blocking: boolean;
+}
+
+/** A page's choice whose values lead to a step this runtime has no model for. */
+export interface ClosedChoice {
+  /** The options (or a toggle's true / false) that lead there; empty = the field as a whole. */
+  values: (string | boolean)[];
+  /** What is missing on the way. */
+  classes: ModelClass[];
 }
 
 export interface RunEstimate {

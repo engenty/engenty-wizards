@@ -10,7 +10,7 @@ import {
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
+import type { ClosedChoice, RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { eq } from "drizzle-orm";
@@ -40,7 +40,7 @@ import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
-import { blockingMessage, missingModels } from "./requirements.js";
+import { blockingMessage, closedChoices, missingModels, openValue } from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
 import { resolveRef } from "./template.js";
@@ -417,6 +417,17 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     throw new RunConflict("Not a page");
   }
   const { values, errors } = readPageInput(step, input);
+  // An answer that leads to a step without a model here would stop the run there, later.
+  const closed = await closedChoices(run.definition, step, run.state.values);
+  for (const [id, choice] of Object.entries(closed)) {
+    const answer = values[id];
+    if (
+      answer !== undefined &&
+      (choice.values.length === 0 || choice.values.some((v) => String(v) === String(answer)))
+    ) {
+      errors.push({ field: id, message: "Das ist hier gerade nicht verfügbar." });
+    }
+  }
   if (errors.length) {
     throw new RunInputError(errors);
   }
@@ -554,8 +565,15 @@ export async function availableFormats(step: Step, run: RunRow, wanted?: Format[
   return formats;
 }
 
-/** What the page's fields start with, where they name an earlier step's result. */
-function prefillOf(step: PageStep, run: RunRow): Record<string, unknown> {
+/**
+ * What the page's fields start with: an earlier step's result where they name one, and for a
+ * choice whose default leads to a step without a model here, the first value that does not.
+ */
+function prefillOf(
+  step: PageStep,
+  run: RunRow,
+  closed: Record<string, ClosedChoice>,
+): Record<string, unknown> {
   const scope = { def: run.definition, state: run.state, brand: {} };
   const out: Record<string, unknown> = {};
   for (const field of step.fields) {
@@ -567,12 +585,23 @@ function prefillOf(step: PageStep, run: RunRow): Record<string, unknown> {
       out[field.id] = value;
     }
   }
+  for (const [id, choice] of Object.entries(closed)) {
+    const field = step.fields.find((f) => f.id === id);
+    const start = out[id] ?? field?.default ?? (field?.kind === "toggle" ? false : undefined);
+    if (field && start !== undefined && choice.values.some((v) => String(v) === String(start))) {
+      out[id] = openValue(step, id, choice);
+    }
+  }
   return out;
 }
 
 export async function runView(run: RunRow, brand: RunView["brand"]): Promise<RunView> {
   const def = run.definition;
   const step = stepOf(def, run.cursor) ?? null;
+  const closed =
+    step?.type === "page" && run.status === "waiting_input"
+      ? await closedChoices(def, step, run.state.values)
+      : {};
   const index = step ? def.steps.indexOf(step) : def.steps.length;
   const refs =
     step?.type === "review"
@@ -628,7 +657,8 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     },
     step,
     values: run.state.values,
-    prefill: step?.type === "page" ? prefillOf(step, run) : {},
+    prefill: step?.type === "page" ? prefillOf(step, run, closed) : {},
+    closed,
     outputs: Object.fromEntries(
       shownIds.map((id) => [id, run.state.outputs[id]]).filter(([, o]) => o),
     ),

@@ -848,7 +848,7 @@ export function nextStepId(
     return null;
   }
   for (const rule of step.next ?? []) {
-    if (matches(rule, values)) {
+    if (ruleMatches(rule, values)) {
       return rule.goto === "end" ? null : rule.goto;
     }
   }
@@ -859,7 +859,7 @@ function isEmptyValue(v: unknown): boolean {
   return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 }
 
-function matches(rule: NextRule, values: Record<string, unknown>): boolean {
+export function ruleMatches(rule: NextRule, values: Record<string, unknown>): boolean {
   const v = values[rule.when.field];
   switch (rule.when.op) {
     case "empty":

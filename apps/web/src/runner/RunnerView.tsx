@@ -158,6 +158,7 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
             runId={view.id}
             view={view}
             error={run.fieldErrors[f.id]}
+            closed={view.closed?.[f.id]}
             onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
             onBusy={(busy) =>
               setPending((prev) => {

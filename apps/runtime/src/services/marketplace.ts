@@ -21,7 +21,7 @@ import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
 import { control, controlDb, db, schema, withTenant } from "../db/client.js";
-import { missingCapabilities } from "../engine/requirements.js";
+import { missingCapabilities, optionalCapabilities } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
 import {
@@ -131,14 +131,46 @@ function asEntry(
   summary: MarketplaceSummary,
   starred: Set<string>,
   unavailable: Set<Capability>,
+  optional: Set<Capability> = new Set(),
 ): MarketplaceEntry {
+  const lacking = summary.capabilities.filter((c) => unavailable.has(c));
   return {
     ...summary,
     credits: null,
     usable: summary.version <= DEFINITION_VERSION,
     starred: starred.has(summary.id),
-    missing: summary.capabilities.filter((c) => unavailable.has(c)),
+    missing: lacking.filter((c) => !optional.has(c)),
+    optional: lacking.filter((c) => optional.has(c)),
   };
+}
+
+/** What only some paths of a wizard need; nothing where it cannot be read. */
+function optionalOf(definition: unknown): Set<Capability> {
+  return readable(definition)
+    ? optionalCapabilities(wizardSchema.parse(definition))
+    : new Set<Capability>();
+}
+
+/**
+ * Per entry, what only some of its paths need, read from the wizards kept here (the starters
+ * and what is starred); an entry not kept counts everything it needs as needed.
+ */
+async function keptOptional(
+  ids: string[],
+  lang: MarketplaceLang,
+  unavailable: Set<Capability>,
+): Promise<Map<string, Set<Capability>>> {
+  const out = new Map<string, Set<Capability>>();
+  if (!(unavailable.size && ids.length)) {
+    return out;
+  }
+  for (const e of await kept(ids)) {
+    const text = textIn(e, lang);
+    if (text) {
+      out.set(e.id, optionalOf(text.definition));
+    }
+  }
+  return out;
 }
 
 export interface MarketplaceSearch extends MarketplaceFilters {
@@ -181,9 +213,14 @@ export async function searchMarketplace(search: MarketplaceSearch): Promise<Mark
       ? { entries: [], total: 0, all: 0, facets: { useCase: {}, industry: {}, format: {} } }
       : await call<MarketplacePage>(`/entries?${params}`);
   if (remote) {
+    const optional = await keptOptional(
+      remote.entries.map((e) => e.id),
+      lang,
+      unavailable,
+    );
     return {
       ...remote,
-      entries: remote.entries.map((e) => asEntry(e, starred, unavailable)),
+      entries: remote.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
       offline: false,
       unavailable: [...unavailable],
     };
@@ -192,9 +229,14 @@ export async function searchMarketplace(search: MarketplaceSearch): Promise<Mark
   const page = onlyStarred
     ? searchEntries(local, "", {}, { limit, offset })
     : searchEntries(local, q, filters, { limit, offset });
+  const optional = await keptOptional(
+    page.entries.map((e) => e.id),
+    lang,
+    unavailable,
+  );
   return {
     ...page,
-    entries: page.entries.map((e) => asEntry(e, starred, unavailable)),
+    entries: page.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
     offline: true,
     unavailable: [...unavailable],
   };
@@ -271,7 +313,12 @@ export async function marketplaceDetail(
     return null;
   }
   const { definition, files, ...summary } = found;
-  const entry = asEntry(summary, new Set(await starredIds()), await missingCapabilities());
+  const entry = asEntry(
+    summary,
+    new Set(await starredIds()),
+    await missingCapabilities(),
+    optionalOf(definition),
+  );
   const parsed = readable(definition) ? wizardSchema.parse(definition) : null;
   if (!parsed) {
     return {

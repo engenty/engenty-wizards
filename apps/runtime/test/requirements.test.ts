@@ -1,6 +1,12 @@
 import type { ModelClass, WizardDefinition } from "@engenty-wizards/shared/definition";
 import { describe, expect, it, vi } from "vitest";
-import { blockingMessage, missingModels, unavoidableSteps } from "../src/engine/requirements";
+import {
+  blockingMessage,
+  closedChoices,
+  missingModels,
+  optionalCapabilities,
+  unavoidableSteps,
+} from "../src/engine/requirements";
 
 const unavailable = new Set<ModelClass>();
 vi.mock("../src/models", () => ({
@@ -12,7 +18,15 @@ vi.mock("../src/models", () => ({
 const tour = {
   title: "Objektvideo",
   steps: [
-    { id: "object", type: "page", title: "Welches Objekt?", fields: [] },
+    {
+      id: "object",
+      type: "page",
+      title: "Welches Objekt?",
+      fields: [
+        { id: "motion", kind: "select", label: "Bewegung", options: ["Kamerafahrt", "Fotos"] },
+        { id: "voiceOn", kind: "toggle", label: "Mit Sprecher" },
+      ],
+    },
     {
       id: "plan",
       type: "agent",
@@ -72,5 +86,73 @@ describe("what a wizard needs of the models before it starts", () => {
     expect(blockingMessage(missing)).toBe(
       "„Fotos aufbereiten“: Für image ist kein Modell eingerichtet.",
     );
+  });
+});
+
+describe("choices that lead to a step without a model", () => {
+  const page = tour.steps[0] as Extract<WizardDefinition["steps"][number], { type: "page" }>;
+
+  it("closes the values whose path runs through it", async () => {
+    unavailable.clear();
+    unavailable.add("video").add("speech");
+    expect(await closedChoices(tour, page, {})).toEqual({
+      motion: { values: ["Kamerafahrt"], classes: ["video"] },
+      voiceOn: { values: [true], classes: ["speech"] },
+    });
+  });
+
+  it("closes nothing when every model is there", async () => {
+    unavailable.clear();
+    expect(await closedChoices(tour, page, {})).toEqual({});
+  });
+
+  it("leaves a choice open whose every value leads there", async () => {
+    unavailable.clear();
+    unavailable.add("image");
+    expect(await closedChoices(tour, page, {})).toEqual({});
+  });
+
+  it("names what only some paths need", () => {
+    expect([...optionalCapabilities(tour)].sort()).toEqual(["speech", "video"]);
+  });
+});
+
+describe("voice notes without a model to listen to them", () => {
+  const report = (required: boolean) =>
+    ({
+      title: "Schadensmeldung",
+      steps: [
+        {
+          id: "what",
+          type: "page",
+          title: "Was ist passiert?",
+          fields: [
+            { id: "note", kind: "audio", label: "Erzähl es", required },
+            { id: "details", kind: "textarea", label: "Oder schreib es" },
+          ],
+        },
+        { id: "summary", type: "agent", title: "Zusammenfassen", tools: [], output: { format: "text" } },
+        { id: "done", type: "result", title: "Fertig" },
+      ],
+    }) as unknown as WizardDefinition;
+
+  it("only warns about an optional voice note, and closes its field", async () => {
+    unavailable.clear();
+    unavailable.add("audio");
+    const def = report(false);
+    expect((await missingModels(def)).map((m) => [m.cls, m.blocking])).toEqual([["audio", false]]);
+    expect([...optionalCapabilities(def)]).toEqual(["listening"]);
+    const page = def.steps[0] as Extract<WizardDefinition["steps"][number], { type: "page" }>;
+    expect(await closedChoices(def, page, {})).toEqual({
+      note: { values: [], classes: ["audio"] },
+    });
+  });
+
+  it("refuses the start when the voice note is required", async () => {
+    unavailable.clear();
+    unavailable.add("audio");
+    const def = report(true);
+    expect((await missingModels(def)).map((m) => [m.cls, m.blocking])).toEqual([["audio", true]]);
+    expect([...optionalCapabilities(def)]).toEqual([]);
   });
 });

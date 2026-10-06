@@ -329,4 +329,6 @@ export interface MarketplaceEntry extends MarketplaceSummary {
   starred: boolean;
   /** What it needs that this runtime has no model for: a wizard made from it would not start. */
   missing: Capability[];
+  /** What only some of its paths need and this runtime has no model for: it runs the other ways. */
+  optional: Capability[];
 }

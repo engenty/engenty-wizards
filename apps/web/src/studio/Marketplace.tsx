@@ -201,6 +201,11 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
               <Clock className="size-3.5" /> {t("market.minutes", { n: entry.effort.minutes })}
             </span>
             <CostCoins entry={entry} />
+            {entry.optional?.length ? (
+              <Chip title={t("market.optionalHint", { list: capabilityList(entry.optional) })}>
+                {t("market.without", { list: capabilityList(entry.optional) })}
+              </Chip>
+            ) : null}
             <span className="ml-auto inline-flex items-center gap-1.5">
               {entry.formats.map((f) => (
                 <FormatIcon key={f} format={f} className="size-4" />
@@ -528,6 +533,7 @@ function EntryDialog({
                     {entry.capabilities.map((c) => {
                       const Icon = CAPABILITY_ICONS[c];
                       const missing = entry.missing.includes(c);
+                      const optional = entry.optional?.includes(c);
                       return (
                         <li
                           key={c}
@@ -537,12 +543,19 @@ function EntryDialog({
                           )}
                         >
                           <Icon
-                            className={cn("size-4 shrink-0", missing ? "text-rose" : "text-cobalt")}
+                            className={cn(
+                              "size-4 shrink-0",
+                              missing ? "text-rose" : optional ? "text-amber" : "text-cobalt",
+                            )}
                           />
                           {label(CAPABILITIES, c)}
                           {missing ? (
                             <span className="text-[0.75rem] text-rose">
                               {t("market.unavailable")}
+                            </span>
+                          ) : optional ? (
+                            <span className="text-[0.75rem] text-amber">
+                              {t("market.optional")}
                             </span>
                           ) : null}
                         </li>
@@ -601,7 +614,9 @@ function EntryDialog({
                 title={
                   entry.missing.length
                     ? t("market.missingHint", { list: capabilityList(entry.missing) })
-                    : undefined
+                    : entry.optional?.length
+                      ? t("market.optionalHint", { list: capabilityList(entry.optional) })
+                      : undefined
                 }
                 busy={busy}
                 onClick={() => onUse(entry)}

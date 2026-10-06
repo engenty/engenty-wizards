@@ -1,5 +1,10 @@
-import { type Field, itemsTotals, MAX_FILES } from "@engenty-wizards/shared/definition";
-import type { RunView } from "@engenty-wizards/shared/run";
+import {
+  type Field,
+  itemsTotals,
+  MAX_FILES,
+  type ModelClass,
+} from "@engenty-wizards/shared/definition";
+import type { ClosedChoice, RunView } from "@engenty-wizards/shared/run";
 import {
   Camera,
   Film,
@@ -536,11 +541,14 @@ export function FieldInput({
   onChange,
   onBusy,
   error,
+  closed,
 }: {
   field: Field;
   value: unknown;
   values: Values;
   runId: string;
+  /** Answers that lead to a step this app has no model for: shown, not to be picked. */
+  closed?: ClosedChoice;
   /** The run as the server sees it: connections and stored lists come from there. */
   view?: Pick<RunView, "connections" | "lists">;
   onChange: (v: unknown) => void;
@@ -549,6 +557,7 @@ export function FieldInput({
   error?: string;
 }) {
   const str = value === undefined || value === null ? "" : String(value);
+  const shut = new Set(closed?.values.map(String));
   let control: React.ReactNode;
   switch (field.kind) {
     case "textarea":
@@ -577,13 +586,13 @@ export function FieldInput({
       const options = field.options ?? [];
       control =
         options.length <= 5 && options.every((o) => o.length <= 28) ? (
-          <Segmented value={str} options={options} onChange={onChange} />
+          <Segmented value={str} options={options} onChange={onChange} disabled={[...shut]} />
         ) : (
           <Select
             value={str}
             placeholder="—"
             onChange={onChange}
-            options={options.map((o) => ({ value: o, label: o }))}
+            options={options.map((o) => ({ value: o, label: o, disabled: shut.has(o) }))}
           />
         );
       break;
@@ -639,7 +648,14 @@ export function FieldInput({
       );
       break;
     case "toggle":
-      control = <Switch checked={value === true} onChange={onChange} label={field.label} />;
+      control = (
+        <Switch
+          checked={value === true}
+          onChange={onChange}
+          label={field.label}
+          disabled={shut.has(String(value !== true))}
+        />
+      );
       break;
     case "color":
       control = (
@@ -697,7 +713,10 @@ export function FieldInput({
       );
       break;
     case "audio":
-      control = <VoiceField value={value} runId={runId} onChange={onChange} onBusy={onBusy} />;
+      // Nothing here can listen to it: the reason below stands in for the recorder.
+      control = closed ? null : (
+        <VoiceField value={value} runId={runId} onChange={onChange} onBusy={onBusy} />
+      );
       break;
     case "signature":
       control = (
@@ -731,7 +750,26 @@ export function FieldInput({
           {control}
         </>
       )}
+      {closed ? (
+        <div className="mt-1.5 text-[0.8125rem] text-ink-3">
+          {t("run.closed", {
+            list: closed.classes.map((c) => t(`run.cls.${CLASS_GROUP[c]}`)).join(", "),
+          })}
+        </div>
+      ) : null}
       {error ? <div className="mt-1.5 text-[0.8125rem] text-rose">{error}</div> : null}
     </div>
   );
 }
+
+/** What a model class is called where a person reads that it is missing. */
+const CLASS_GROUP: Record<ModelClass, "text" | "image" | "video" | "speech" | "audio"> = {
+  classifier: "text",
+  standard: "text",
+  high: "text",
+  highest: "text",
+  image: "image",
+  video: "video",
+  speech: "speech",
+  audio: "audio",
+};
