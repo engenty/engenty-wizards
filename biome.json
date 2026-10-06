@@ -19,6 +19,7 @@
       "apps/mobile/scripts/**",
       "apps/mobile/plugins/**",
       "!apps/mobile/src/engenty/shapes.ts",
+      "!apps/runtime/src/services/engenty-shapes.ts",
       "modules/**",
       "examples/plugins/**",
       "!apps/runtime/src/db/migrations",

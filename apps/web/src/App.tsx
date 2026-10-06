@@ -23,6 +23,9 @@ const NewWizardPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./studio/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
+const ProjectPage = lazy(() =>
+  import("./studio/ProjectPage").then((m) => ({ default: m.ProjectPage })),
+);
 const SetupPage = lazy(() => import("./studio/SetupPage").then((m) => ({ default: m.SetupPage })));
 
 const EngentyBuilder = import.meta.env.DEV
@@ -132,6 +135,14 @@ export function StudioApp() {
           element={
             <Studio bare>
               <EditorPage />
+            </Studio>
+          }
+        />
+        <Route
+          path="/space"
+          element={
+            <Studio wide>
+              <ProjectPage />
             </Studio>
           }
         />

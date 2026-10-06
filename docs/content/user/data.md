@@ -38,7 +38,7 @@ After an update, your data is brought up to date at the next start.
 - **Steps that use the web** send what they search, open or call.
 - **Connected services** get what a wizard's actions send them.
 - **Published wizards**, with an account signed in: the published version, its files, and the
-  project's name, description and logo go to engenty.ai when you publish
+  space's name, description and logo go to engenty.ai when you publish
   ([Test and share](./test-and-share.md#in-the-cloud)). Drafts, runs and connected accounts stay.
 - **Templates** come from the marketplace at engenty.ai; `MARKETPLACE_URL=off` in the settings
   file turns that off.
@@ -46,7 +46,7 @@ After an update, your data is brought up to date at the next start.
 - **The studio's typefaces** are loaded by your browser from Google Fonts.
 - **A location** is sent to a geocoder only if you set one. Unset, it stays coordinates.
 
-Without an account the app is not connected to an engenty account: wizards, project data and
+Without an account the app is not connected to an engenty account: wizards, the space and its
 files stay on your computer.
 
 ## How long things are kept

@@ -47,6 +47,7 @@ import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
+import { isIconFile, wizardIcon } from "../services/wizard-icon.js";
 import {
   clearStore,
   deleteRows,
@@ -313,9 +314,40 @@ export const publicRoutes = new Hono()
       ),
     });
     const def = version!.definition;
-    return c.body(JSON.stringify(wizardManifest(w.shareToken, def.title, def.description)), 200, {
+    const manifest = wizardManifest(w.shareToken, def.title, def.description, w.publishedVersion);
+    return c.body(JSON.stringify(manifest), 200, {
       "content-type": "application/manifest+json; charset=utf-8",
       "cache-control": "public, max-age=300",
+    });
+  })
+  // Its icon: the wizard's engenty on its hue with its name; the studio's where none can be drawn.
+  .get("/wizards/:token/icons/:file", async (c) => {
+    const file = c.req.param("file");
+    if (!isIconFile(file)) {
+      return c.notFound();
+    }
+    const w = await db.query.wizard.findFirst({
+      where: eq(schema.wizard.shareToken, c.req.param("token")),
+    });
+    if (!w || w.publishedVersion === null) {
+      return c.notFound();
+    }
+    const version = await db.query.wizardVersion.findFirst({
+      where: and(
+        eq(schema.wizardVersion.wizardId, w.id),
+        eq(schema.wizardVersion.version, w.publishedVersion),
+      ),
+    });
+    const def = version!.definition;
+    const png = await wizardIcon(file, def.avatar, def.title);
+    if (!png) {
+      return c.redirect(
+        `${basePath}/studio/${file === "favicon.png" ? "favicon.svg" : `icons/${file}`}`,
+      );
+    }
+    return c.body(png, 200, {
+      "content-type": "image/png",
+      "cache-control": "public, max-age=3600",
     });
   })
   .get("/logos/:id", async (c) => {

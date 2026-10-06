@@ -14,7 +14,6 @@ import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { Integrate } from "./Integrate";
 import { Models } from "./Models";
-import { ProjectSettings } from "./project/ProjectSettings";
 import { projectReadOnlyText, ReadOnlyNote } from "./ReadOnly";
 import {
   BackRow,
@@ -284,14 +283,18 @@ export function SettingsPage() {
     if (section === "build") {
       return <Navigate to="/settings/integrate" replace />;
     }
+    // The space was the settings section "project" before it got a page of its own.
+    if (section === "project") {
+      return <Navigate to="/space" replace />;
+    }
     // A plugin's section is there once the plugin loaded. A phone starts at the sections.
     if (section !== undefined || !narrow) {
       return plugins.status === "ready" || section === undefined ? (
-        <Navigate to="/settings/project" replace />
+        <Navigate to="/settings/account" replace />
       ) : null;
     }
   }
-  // The project page brings its own switcher, next to the project's name.
+  // Connectors belong to a project: with several, the switcher stands above them.
   const scoped = current?.id === "connectors" && many;
   return (
     <SettingsMenuContext.Provider value={menu}>
@@ -324,7 +327,7 @@ export function SettingsPage() {
             <div
               className={cn(
                 "min-w-0",
-                !["project", "integrate", "models"].includes(current.id) && "max-w-2xl",
+                !["integrate", "models"].includes(current.id) && "max-w-2xl",
                 narrow && phone < 2 && "hidden",
                 narrow && pageStep === "deeper" && stepClass("deeper"),
               )}
@@ -342,9 +345,6 @@ export function SettingsPage() {
                   <ProjectSwitcher />
                 </div>
               ) : null}
-              {current.id === "project" && project ? (
-                <ProjectSettings key={key} project={project} />
-              ) : null}
               {current.id === "connectors" && project ? (
                 <div className="flex flex-col gap-6">
                   {project.readOnly ? (
@@ -355,7 +355,7 @@ export function SettingsPage() {
                 </div>
               ) : null}
               {/* No project yet: nothing is built here, and no local install has sent one. */}
-              {(current.id === "project" || current.id === "connectors") && !project && !loading ? (
+              {current.id === "connectors" && !project && !loading ? (
                 <Empty>{t("settings.noProject")}</Empty>
               ) : null}
               {current.id === "models" ? <Models /> : null}
