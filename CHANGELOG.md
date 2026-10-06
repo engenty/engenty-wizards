@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.11] - 2026-10-06
+- FIXED The cloud runtime deploys in minutes: its two images are built on GitHub's runners beside the checks of a release tag, with their layers cached in the registry, and pushed to GHCR; once both are green they become latest and the server pulls them instead of building for up to an hour; the runtime's Dockerfile keeps both dependency installs cached across releases (the root version blanked out, the production install in its own stage) and puts what changes every release last; IMAGE_TAG on the server pins a release
+
 ## [0.2.10] - 2026-10-06
 - FIXED Signing in from the studio returns to the studio page that asked for it, not to the host's root, which is the landing page since the studio moved to /studio
 

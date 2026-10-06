@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.11",
+    "timestamp": 1791287678,
+    "commits": [
+      {
+        "id": "50041f3",
+        "message": "the cloud runtime deploys in minutes: its two images are built on GitHub's runners beside the checks of a release tag, with their layers cached in the registry, and pushed to GHCR; once both are green they become latest and the server pulls them instead of building for up to an hour; the runtime's Dockerfile keeps both dependency installs cached across releases (the root version blanked out, the production install in its own stage) and puts what changes every release last; IMAGE_TAG on the server pins a release",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.10",
-    "timestamp": 1791286324,
+    "timestamp": 1791286327,
     "commits": [
       {
         "id": "c5c99b0",
