@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.8] - 2026-10-06
+- ADDED Settings → Models says what the wizards can do (text, images, videos, voice, voice notes) and who does each: an AI subscription on this computer, an own API key (OpenAI, Anthropic, Google, fal.ai, ElevenLabs, Replicate, AI Gateway), a local model, or the credits, which step in where nothing of one's own is set up (a switch, on with a linked account) and may name a model of the gateway (credits:<model>: fal, ElevenLabs, Veo …); each provider's key is checked with the provider before it is kept, and a try makes a text, an image, a voice or a short clip to look at; in the cloud the page is the team's, its keys sealed per tenant and changed by its admins; voice notes run on transcription models (Scribe, Whisper) where one is bound, also on the credits; the settings show their name in the top bar's trail instead of a heading, and one container on the left slides one level down to the menu of Models and Integrate and back; on a phone the sections, a section's menu and the page take turns with a way back; Integrate puts the app's name, what it gets and its steps on one line
+
 ## [0.2.7] - 2026-10-06
 - ADDED The space is a page of its own: the top bar opens it beside the gear, and a menu at its left jumps to Basis, Logos, Farben, Assets, Dokumente and Fakten and marks the one in view (a picker on a phone); the studio, its assistant and the docs call a project a space (German „Space“), the address is /space and /settings/project leads there; the settings keep Konto, Connectors, Modelle and Einbinden, and the gear opens Konto; the assistant's input is one line until the text needs more, in its card and docked at the bottom
 

@@ -243,14 +243,38 @@
           "homepage": "https://ai-sdk.dev/docs"
         },
         {
+          "name": "@ai-sdk/elevenlabs",
+          "version": "3.0.42",
+          "license": "Apache-2.0",
+          "homepage": "https://ai-sdk.dev/docs"
+        },
+        {
+          "name": "@ai-sdk/fal",
+          "version": "3.0.42",
+          "license": "Apache-2.0",
+          "homepage": "https://ai-sdk.dev/docs"
+        },
+        {
           "name": "@ai-sdk/gateway",
           "version": "4.0.82",
           "license": "Apache-2.0",
           "homepage": "https://ai-sdk.dev/docs"
         },
         {
+          "name": "@ai-sdk/google",
+          "version": "4.0.72",
+          "license": "Apache-2.0",
+          "homepage": "https://ai-sdk.dev/docs"
+        },
+        {
           "name": "@ai-sdk/openai",
           "version": "4.0.67",
+          "license": "Apache-2.0",
+          "homepage": "https://ai-sdk.dev/docs"
+        },
+        {
+          "name": "@ai-sdk/replicate",
+          "version": "3.0.42",
           "license": "Apache-2.0",
           "homepage": "https://ai-sdk.dev/docs"
         },
