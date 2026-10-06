@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.19] - 2026-10-06
+- ADDED The gallery has three more categories (Bilder & Video, Anfragen & Termine, Beratung & Preise) so the category row fills two even rows
+
 ## [0.2.18] - 2026-10-06
 - ADDED Wissen in the space: what the space's wizards look things up in, as pages with sub-pages, tables and files sorted by typed Kategorien (choice, date, number, text, yes/no), filtered by them and searched by words and meaning, with a classifier that keeps only what answers the question; an upload is converted on arrival (a long document becomes a page with sub-pages, a sheet a table, the original stays beside it) and a model fills its Kategorien; every value of a Kategorie has its Übersicht and its entries, numbers in ranges; steps get project_search with a filter, project_list, page_read and table_read by path; the assistant docks at the bottom of an opened item and knows Wissen; plugins write into Wissen through server.spaceData (pages, tables, files, documents with their Kategorien), and what a person edits stays theirs
 

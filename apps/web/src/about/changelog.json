@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.19",
+    "timestamp": 1791313061,
+    "commits": [
+      {
+        "id": "3243a25",
+        "message": "the gallery has three more categories (Bilder & Video, Anfragen & Termine, Beratung & Preise) so the category row fills two even rows",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.18",
-    "timestamp": 1791312076,
+    "timestamp": 1791312078,
     "commits": [
       {
         "id": "661b2c9",
