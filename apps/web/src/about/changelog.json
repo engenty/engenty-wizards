@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.17",
+    "timestamp": 1791310686,
+    "commits": [
+      {
+        "id": "6a0e1ba",
+        "message": "a run's price follows one way through the wizard instead of adding up branches that exclude each other, and leaves out the steps that have no model here (the video ad: about 111 credits with clips, 11 without a video model, was 207 either way); what a step reports while it works shows in the language the person reads, the run's log keeps it in German; English wizards write amounts and today's date the English way (€2,400.00) instead of the German one",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.16",
-    "timestamp": 1791307424,
+    "timestamp": 1791307427,
     "commits": [
       {
         "id": "883404e",

@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.17] - 2026-10-06
+- FIXED A run's price follows one way through the wizard instead of adding up branches that exclude each other, and leaves out the steps that have no model here (the video ad: about 111 credits with clips, 11 without a video model, was 207 either way); what a step reports while it works shows in the language the person reads, the run's log keeps it in German; English wizards write amounts and today's date the English way (€2,400.00) instead of the German one
+
 ## [0.2.16] - 2026-10-06
 - ADDED A wizard that needs a model not set up here says so before anything is paid for: in the gallery, video, speech output or voice notes that only some answers need no longer block a template ("Works without: …"); on its pages, the choices that would lead to such a step are locked with the reason and the default moves to one that works, an optional voice note nothing here can listen to gives way to the reason, and the server refuses those answers
 
