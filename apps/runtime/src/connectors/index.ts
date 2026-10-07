@@ -268,14 +268,25 @@ export async function connectWithCredentials(
 export class ConnectError extends Error {}
 
 function connectFailure(err: unknown): string {
-  const e = err as { authenticationFailed?: boolean; code?: string; message?: string };
+  const e = err as {
+    authenticationFailed?: boolean;
+    code?: string;
+    message?: string;
+    responseText?: string;
+    imapHost?: string;
+  };
+  const host = e.imapHost ? ` (${e.imapHost})` : "";
   if (e.authenticationFailed) {
-    return "Anmeldung abgelehnt. Stimmen Adresse und (App-)Passwort?";
+    const server = e.responseText ? ` Antwort des Servers: ${e.responseText.slice(0, 160)}` : "";
+    return `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Bei Gmail und Google Workspace braucht es ein App-Passwort und aktiviertes IMAP.${server}`;
   }
-  if (e.code === "ENOTFOUND" || e.code === "ECONNREFUSED" || e.code === "ETIMEDOUT") {
-    return "Der Mail-Server ist nicht erreichbar. Bitte den IMAP-Server prüfen.";
+  if (e.code === "ENOTFOUND") {
+    return `Den Mail-Server${host} gibt es nicht. Bitte den IMAP-Server eintragen, bei Gmail und Google Workspace imap.gmail.com.`;
   }
-  return `Verbinden hat nicht geklappt: ${String(e.message ?? err).slice(0, 200)}`;
+  if (e.code === "ETIMEDOUT" || e.code === "ETIMEOUT" || e.code === "ECONNREFUSED") {
+    return `Der Mail-Server${host} antwortet nicht. Bitte IMAP-Server und Port prüfen.`;
+  }
+  return `Verbinden hat nicht geklappt${host}: ${String(e.message ?? err).slice(0, 200)}`;
 }
 
 export function disconnect(scope: StoreScope, connectionId: string) {

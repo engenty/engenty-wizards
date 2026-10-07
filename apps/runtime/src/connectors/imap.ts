@@ -1,3 +1,4 @@
+import { resolveMx } from "node:dns/promises";
 import { ImapFlow, type MessageStructureObject, type SearchObject } from "imapflow";
 import type {
   ConnectorActionContext,
@@ -41,10 +42,37 @@ const KNOWN_HOSTS: Record<string, string> = {
 
 const ALLOW_PRIVATE = process.env.ALLOW_PRIVATE_FETCH === "1";
 
+/** A mail server that does not answer within this long is reported, not waited for. */
+const CONNECT_TIMEOUT_MS = 15_000;
+
+/** Google Workspace on a company domain: the domain's mail is handled by Google. */
+async function usesGoogleMail(domain: string): Promise<boolean> {
+  try {
+    const records = await Promise.race([
+      resolveMx(domain),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("mx")), 4000)),
+    ]);
+    return records.some((r) => /(^|\.)(google|googlemail)\.com\.?$/i.test(r.exchange));
+  } catch {
+    return false;
+  }
+}
+
+async function hostFor(credentials: ImapCredentials, domain: string): Promise<string> {
+  const typed = credentials.host?.trim();
+  if (typed) {
+    return typed;
+  }
+  if (KNOWN_HOSTS[domain]) {
+    return KNOWN_HOSTS[domain];
+  }
+  return (await usesGoogleMail(domain)) ? "imap.gmail.com" : `imap.${domain}`;
+}
+
 async function open(credentials: ImapCredentials): Promise<ImapFlow> {
   const email = credentials.email.trim();
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  const host = credentials.host?.trim() || KNOWN_HOSTS[domain] || `imap.${domain}`;
+  const host = await hostFor(credentials, domain);
   const port = Number(credentials.port) || 993;
   if (!ALLOW_PRIVATE && port !== 993 && port !== 143) {
     throw new Error("IMAP runs on port 993 (or 143).");
@@ -58,10 +86,29 @@ async function open(credentials: ImapCredentials): Promise<ImapFlow> {
     auth: { user: email, pass: credentials.password },
     logger: false,
     socketTimeout: 60_000,
+    connectionTimeout: CONNECT_TIMEOUT_MS,
+    greetingTimeout: CONNECT_TIMEOUT_MS,
   });
   // A dropped connection must not take the process down.
   client.on("error", () => undefined);
-  await client.connect();
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      client.connect(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" })),
+          CONNECT_TIMEOUT_MS + 2000,
+        );
+      }),
+    ]);
+  } catch (err) {
+    client.close();
+    // The message names the server that was tried, so a wrong guess is visible.
+    throw Object.assign(err instanceof Error ? err : new Error(String(err)), { imapHost: host });
+  } finally {
+    clearTimeout(timer);
+  }
   return client;
 }
 
