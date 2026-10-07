@@ -170,7 +170,10 @@ const BRANCH_LABEL = 34;
 const NO_COSTS: RunEstimate["steps"] = {};
 
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
-  return conditionsOf(rule.when).map(conditionText).join(" · ");
+  const label = rule.ask
+    ? t("editor.whenAsk", { text: rule.ask })
+    : conditionsOf(rule.when).map(conditionText).join(" · ");
+  return rule.max ? `${label} (${t("editor.atMost", { count: rule.max })})` : label;
 }
 
 export function conditionText(c: Condition): string {

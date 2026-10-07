@@ -1,3 +1,4 @@
+import { type DecisionQuestion, pOf } from "@engenty-wizards/shared/decision";
 import {
   type AgentStep,
   allFields,
@@ -30,6 +31,7 @@ import { buildStepTools } from "../tools/index.js";
 import { spaceContextOf } from "../tools/plugin.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
+import { decide } from "./decide.js";
 import { prepareInputs } from "./prepare.js";
 import {
   answersAsText,
@@ -80,7 +82,14 @@ async function previousResult(ctx: StepContext, stepId: string): Promise<string>
 async function revisionBlock(ctx: StepContext, stepId: string): Promise<string> {
   const note = ctx.state.notes[stepId];
   if (!note) {
-    return "";
+    // A branch back to this step (a loop) runs it again: it builds on what it made last time.
+    const looped = Object.entries(ctx.state.loops ?? {}).some(
+      ([key, n]) => n > 0 && key.endsWith(`→${stepId}`),
+    );
+    const prev = looped ? await previousResult(ctx, stepId) : "";
+    return prev
+      ? `# EARLIER ATTEMPT\nA later step sent the run back to this step. What it made last time — improve on it with what is known now:\n"""\n${prev}\n"""`
+      : "";
   }
   const prev = await previousResult(ctx, stepId);
   return `# REVISION REQUEST\nThe person reviewed the previous result and asked for this change:\n"""${note}"""\n\n${
@@ -127,6 +136,11 @@ function outputSchema(step: AgentStep) {
         break;
       case "choice":
         shape[f.id] = z.enum(f.options as [string, ...string[]]).describe(d);
+        break;
+      case "score":
+        shape[f.id] = z
+          .enum(f.options as [string, ...string[]])
+          .describe(`${d} (lowest to highest)`);
         break;
       case "table":
         shape[f.id] = f.columns?.length
@@ -208,7 +222,105 @@ async function seenPhotos(
   return out;
 }
 
+/**
+ * A decision step: its yes/no, choice and score fields are the questions, its prompt the state,
+ * answered in one call through decide() — with probabilities where a decision model answers.
+ */
+async function decideStep(step: AgentStep, prompt: string, ctx: StepContext): Promise<StepOutput> {
+  const fields = step.output.fields ?? [];
+  const questions: Record<string, DecisionQuestion> = {};
+  for (const f of fields) {
+    const instructions = f.description ?? f.id;
+    if (f.kind === "yesno") {
+      questions[f.id] = { type: "noul", instructions };
+    } else if (f.kind === "choice") {
+      questions[f.id] = {
+        type: "choice",
+        instructions,
+        criteria: Object.fromEntries((f.options ?? []).map((o) => [o, null])),
+      };
+    } else if (f.kind === "score") {
+      questions[f.id] = { type: "score", instructions, criteria: f.options ?? [] };
+    }
+  }
+  const decision = await decide({
+    state: prompt,
+    questions,
+    call: ctx.call,
+    signal: ctx.signal,
+    charge: ctx.chargeUsd,
+  });
+  const json: Record<string, unknown> = {};
+  const decided: Record<string, number> = {};
+  for (const [id, answer] of Object.entries(decision.answers)) {
+    json[id] =
+      answer.type === "noul"
+        ? answer.noul >= 0.5
+        : answer.type === "choice"
+          ? answer.choice
+          : answer.label;
+    decided[id] = Math.round(pOf(answer) * 1000) / 1000;
+  }
+  const text = fields
+    .map((f) => {
+      const value = json[f.id];
+      return `${f.description ?? f.id}: ${value === true ? "ja" : value === false ? "nein" : String(value)}`;
+    })
+    .join("\n");
+  return { text, json, decided, at: new Date().toISOString() };
+}
+
+/** An agent step runs this many times at most with `each`; more entries are left out. */
+const MAX_AGENT_ENTRIES = 20;
+
+/** The entries an agent step with `each` runs for: rows of a table, entries of a list, list rows. */
+function agentEntries(step: AgentStep, ctx: StepContext): unknown[] {
+  const ref = dataRef(step.each ?? "");
+  const list = ref.match(/^lists\.([a-zA-Z][a-zA-Z0-9_]*)$/)?.[1];
+  const value = list
+    ? (ctx.scope.lists?.[list]?.rows ?? []).map((r) => r.cells)
+    : resolveRef(ref, ctx.scope);
+  return (Array.isArray(value) ? value : []).slice(0, MAX_AGENT_ENTRIES);
+}
+
+/**
+ * An agent step with `each`: the step once per entry, one after the other, each reading its
+ * entry as {{item}}. The results become one table — the entry's columns and the step's output
+ * fields — and one text with a heading per entry.
+ */
+async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
+  const entries = agentEntries(step, ctx);
+  if (!entries.length) {
+    throw new StepError("Es gibt keine Einträge, für die dieser Schritt arbeiten könnte.");
+  }
+  const single: AgentStep = { ...step, each: undefined };
+  const rows: Record<string, unknown>[] = [];
+  const texts: string[] = [];
+  const assets: AssetRef[] = [];
+  for (const [index, item] of entries.entries()) {
+    await ctx.emit("info", { code: "entry", params: { n: index + 1, total: entries.length } });
+    const scope: TemplateScope = { ...ctx.scope, entry: { item, index, count: entries.length } };
+    const out = await runAgentStep(single, { ...ctx, scope });
+    const own = item && typeof item === "object" ? (item as Record<string, unknown>) : { item };
+    const json =
+      out.json && typeof out.json === "object" ? (out.json as Record<string, unknown>) : {};
+    rows.push({ ...own, ...json });
+    const title = Object.values(own).find((v) => typeof v === "string") ?? `${index + 1}`;
+    texts.push(`## ${String(title)}\n\n${out.text ?? ""}`.trim());
+    assets.push(...(out.assets ?? []));
+  }
+  return {
+    text: texts.join("\n\n"),
+    json: { rows },
+    assets: assets.length ? assets : undefined,
+    at: new Date().toISOString(),
+  };
+}
+
 export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
+  if (step.each) {
+    return runAgentEach(step, ctx);
+  }
   const resolved = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const uploads = await personUploads(ctx);
   const { tools, assets, close } = await buildStepTools(step, ctx, resolved, uploads);
@@ -254,22 +366,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
 
     // A decision needs no agent: its questions go to the classifier class in one call.
     if (isDecisionStep(step) && uploads.length === 0) {
-      const { schema, fields } = outputSchema(step);
-      const decision = await generateText({
-        model: resolved.model,
-        abortSignal: ctx.signal,
-        output: Output.object({ schema }),
-        prompt,
-      });
-      await ctx.chargeUsd(costOf(resolved, decision.usage));
-      const json = decision.output as Record<string, unknown>;
-      const text = fields
-        .map((f) => {
-          const value = json[f.id];
-          return `${f.description ?? f.id}: ${value === true ? "ja" : value === false ? "nein" : String(value)}`;
-        })
-        .join("\n");
-      return { text, json, at: new Date().toISOString() };
+      return decideStep(step, prompt, ctx);
     }
 
     const agent = new Agent({

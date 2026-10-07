@@ -1,4 +1,5 @@
 import {
+  isDecidedField,
   isDecisionStep,
   type Step,
   type TextClass,
@@ -40,7 +41,15 @@ function textCredits(price: ClassPrice | null | undefined, [input, output]: read
   );
 }
 
+/** A step's own work, and one decision where `ask` branches or a page's fields are decided. */
 function formula(step: Step, catalog: GatewayCatalog): number {
+  const decides =
+    step.next?.some((r) => r.ask) || (step.type === "page" && step.fields.some(isDecidedField));
+  const decision = decides ? textCredits(catalog.classes.classifier, TOKENS.decision) : 0;
+  return decision + stepFormula(step, catalog);
+}
+
+function stepFormula(step: Step, catalog: GatewayCatalog): number {
   const cls = (c: TextClass) => catalog.classes[c];
   if (step.type === "agent") {
     // A decision is one small call to the classifier class.
@@ -52,7 +61,8 @@ function formula(step: Step, catalog: GatewayCatalog): number {
       : step.tools.length || step.mcp?.length || step.connections?.length
         ? TOKENS.tools
         : TOKENS.plain;
-    let credits = textCredits(cls(step.model ?? "high"), shape);
+    // A step with `each` runs once per entry; until it has run, three stand in.
+    let credits = textCredits(cls(step.model ?? "high"), shape) * (step.each ? 3 : 1);
     if (step.tools.includes("web_search")) {
       credits += 4 * catalog.webSearchCredits;
     }

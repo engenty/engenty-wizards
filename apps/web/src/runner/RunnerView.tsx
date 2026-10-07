@@ -1,4 +1,5 @@
 import {
+  isDecidedField,
   type PageStep,
   type ResultStep,
   type ReviewStep,
@@ -106,10 +107,10 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
   // hold is not shown, decided again as the person types.
   const fields = useMemo(
     () =>
-      step.fields.map((f) =>
-        view.options?.[f.id]?.length ? { ...f, options: view.options[f.id] } : f,
-      ),
-    [step.fields, view.options],
+      step.fields
+        .filter((f) => !isDecidedField(f) || view.decidedFields?.includes(f.id))
+        .map((f) => (view.options?.[f.id]?.length ? { ...f, options: view.options[f.id] } : f)),
+    [step.fields, view.options, view.decidedFields],
   );
   const shown = shownFields(fields, view.known ?? {}, values);
   const submit = () => void run.submitPage(step.id, values);

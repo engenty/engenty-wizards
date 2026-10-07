@@ -1,16 +1,26 @@
 import {
+  type ChoiceAnswer,
+  type DecisionQuestion,
+  marginOf,
+} from "@engenty-wizards/shared/decision";
+import {
   branchValues,
+  conditionsOf,
   dataRef,
   type Format,
+  followRules,
   formatsFor,
+  isDecidedField,
   LIST_FORMATS,
   listRef,
-  nextStepId,
+  loopKey,
+  MAX_SHOWN_FIELDS,
   optionsFromData,
   type PageStep,
   pageNeeds,
   type Step,
   type WizardDefinition,
+  whenHolds,
 } from "@engenty-wizards/shared/definition";
 import type { ClosedChoice, RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
@@ -44,6 +54,7 @@ import { listRows, scopeOf } from "../store/index.js";
 import { activeRuns, indexRun, markRunActive } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
+import { decide } from "./decide.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { type PageContext, readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
@@ -56,7 +67,7 @@ import {
 } from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
 import { runAutomaticStep } from "./steps.js";
-import { resolveRef } from "./template.js";
+import { answersAsText, resolveRef } from "./template.js";
 import type { ProjectRow, RunRow, StepContext } from "./types.js";
 import { StepError } from "./types.js";
 
@@ -309,8 +320,9 @@ async function flowValues(run: RunRow, state: RunState): Promise<Record<string, 
 async function pageContext(run: RunRow, step: PageStep): Promise<Required<PageContext>> {
   const needs = pageNeeds(step.fields);
   const sourced = step.fields.filter((f) => f.optionsFrom);
+  const decided = step.fields.some(isDecidedField) ? (run.state.pages?.[step.id]?.shown ?? []) : [];
   if (!needs.length && !sourced.length) {
-    return { known: {}, options: {} };
+    return { known: {}, options: {}, decided };
   }
   const all = await flowValues(run, run.state);
   const known = Object.fromEntries(needs.map((ref) => [ref, all[ref]]));
@@ -324,7 +336,13 @@ async function pageContext(run: RunRow, step: PageStep): Promise<Required<PageCo
       options[field.id] = found;
     }
   }
-  return { known, options };
+  return { known, options, decided };
+}
+
+function viewContext(
+  ctx: Required<PageContext>,
+): Pick<RunView, "known" | "options" | "decidedFields"> {
+  return { known: ctx.known, options: ctx.options, decidedFields: ctx.decided };
 }
 
 /** The wizard's lists with the person's rows, by list id. */
@@ -383,6 +401,175 @@ async function makeContext(
   };
 }
 
+/** A decided branch is taken only when its pick leads the runner-up by this much. */
+const BRANCH_MARGIN = 0.1;
+
+/**
+ * Where the run goes after `stepId`: a `when` rule or the next step at once — counted, so a loop
+ * stops at its rule's max — or, for `ask` rules, a decision the drive loop makes (`deciding`).
+ */
+async function advance(run: RunRow, stepId: string, state: RunState): Promise<string | null> {
+  const outcome = followRules(run.definition, stepId, await flowValues(run, state), state.loops);
+  if (outcome.kind === "decide") {
+    state.deciding = stepId;
+    return stepId;
+  }
+  return taken(run.definition, stepId, outcome.rule, outcome.cursor, state);
+}
+
+function taken(
+  def: WizardDefinition,
+  stepId: string,
+  rule: number | null,
+  cursor: string | null,
+  state: RunState,
+): string | null {
+  const goto = rule === null ? null : stepOf(def, stepId)?.next?.[rule]?.goto;
+  if (goto) {
+    const key = loopKey(stepId, goto);
+    state.loops = { ...state.loops, [key]: (state.loops?.[key] ?? 0) + 1 };
+  }
+  return cursor;
+}
+
+/** What a decision about the run reads: the person's answers and what the steps made so far. */
+function runSummary(run: RunRow, state: RunState): Record<string, unknown> {
+  const results: Record<string, string> = {};
+  for (const step of run.definition.steps) {
+    const out = state.outputs[step.id];
+    const text = out?.text ?? (out?.json === undefined ? "" : JSON.stringify(out.json));
+    if (text) {
+      results[step.title] = text.slice(0, 6000);
+    }
+  }
+  return {
+    answers: answersAsText({ def: run.definition, state, brand: {} }),
+    results,
+  };
+}
+
+/**
+ * The decision over a step's open `ask` rules: one choice among their statements and "none".
+ * Kept in the run; a pick that does not lead clearly (where there are probabilities) is none.
+ */
+async function decideBranch(
+  run: RunRow,
+  step: Step,
+  state: RunState,
+  signal: AbortSignal,
+): Promise<string | null> {
+  const outcome = followRules(run.definition, step.id, {}, state.loops);
+  const rules = outcome.kind === "decide" ? outcome.rules : [];
+  const criteria: Record<string, string> = {};
+  for (const i of rules) {
+    criteria[`r${i}`] = step.next?.[i]?.ask ?? "";
+  }
+  criteria.none = "None of these clearly holds: go on with the next step.";
+  await emitEvent(run.id, step.id, "info", { code: "deciding" });
+  const decision = await decide({
+    state: runSummary(run, state),
+    questions: {
+      next: {
+        type: "choice",
+        instructions: "Which statement is true of this run? Answer none unless one clearly holds.",
+        criteria,
+      } satisfies DecisionQuestion,
+    },
+    call: { runId: run.id, stepId: step.id },
+    signal,
+    charge: (usd) => addLocalCost(run.id, step.id, usd),
+  });
+  const answer = decision.answers.next as ChoiceAnswer;
+  const margin = marginOf(answer);
+  const pick = margin !== null && margin < BRANCH_MARGIN ? "none" : answer.choice;
+  const rule = pick === "none" ? null : Number(pick.slice(1));
+  state.decisions = {
+    ...state.decisions,
+    [step.id]: {
+      rule,
+      source: decision.source,
+      ...(answer.probabilities ? { probabilities: answer.probabilities } : {}),
+      at: new Date().toISOString(),
+    },
+  };
+  delete state.deciding;
+  if (rule === null) {
+    const index = run.definition.steps.indexOf(step);
+    return run.definition.steps[index + 1]?.id ?? null;
+  }
+  const goto = step.next?.[rule]?.goto ?? "end";
+  return taken(run.definition, step.id, rule, goto === "end" ? null : goto, state);
+}
+
+/**
+ * The decided fields (`ask`, `group`) of a page a decision keeps, in one call as the run reaches
+ * the page. A field whose condition on earlier data already fails is not asked about. With the
+ * fields always shown, at most MAX_SHOWN_FIELDS appear.
+ */
+async function decidePageFields(
+  run: RunRow,
+  page: PageStep,
+  state: RunState,
+  signal: AbortSignal,
+): Promise<string[]> {
+  const values = await flowValues(run, state);
+  const own = new Set(page.fields.map((f) => f.id));
+  const possible = page.fields.filter(
+    (f) =>
+      isDecidedField(f) &&
+      whenHolds(
+        conditionsOf(f.when).filter((c) => !own.has(c.field)),
+        values,
+      ),
+  );
+  const questions: Record<string, DecisionQuestion> = {};
+  for (const f of possible.filter((f) => f.ask)) {
+    questions[`f_${f.id}`] = {
+      type: "noul",
+      instructions: `Should the page ask "${f.label}"? It is asked when this holds: ${f.ask}`,
+    };
+  }
+  for (const g of page.groups ?? []) {
+    const members = possible.filter((f) => f.group === g.id);
+    if (members.length) {
+      questions[`g_${g.id}`] = {
+        type: "choice",
+        instructions: g.instructions,
+        criteria: {
+          ...Object.fromEntries(
+            members.map((f) => [f.id, f.help ? `${f.label} — ${f.help}` : f.label]),
+          ),
+          ...(g.optional ? { none: "None of these." } : {}),
+        },
+      };
+    }
+  }
+  if (!Object.keys(questions).length) {
+    return [];
+  }
+  await emitEvent(run.id, page.id, "info", { code: "choosingFields" });
+  const decision = await decide({
+    state: runSummary(run, state),
+    questions,
+    call: { runId: run.id, stepId: page.id },
+    signal,
+    charge: (usd) => addLocalCost(run.id, page.id, usd),
+  });
+  const kept = new Set<string>();
+  for (const [name, answer] of Object.entries(decision.answers)) {
+    if (answer.type === "noul" && answer.noul >= 0.5) {
+      kept.add(name.slice(2));
+    } else if (answer.type === "choice" && answer.choice !== "none") {
+      kept.add(answer.choice);
+    }
+  }
+  const room = MAX_SHOWN_FIELDS - page.fields.filter((f) => !isDecidedField(f)).length;
+  return page.fields
+    .filter((f) => isDecidedField(f) && kept.has(f.id))
+    .slice(0, Math.max(0, room))
+    .map((f) => f.id);
+}
+
 async function drive(runId: string, signal: AbortSignal) {
   await clearStaleAsk(runId);
   while (!signal.aborted) {
@@ -391,10 +578,56 @@ async function drive(runId: string, signal: AbortSignal) {
       return;
     }
     const def = run.definition;
+    // A step's `ask` branches wait on a decision before the run goes on.
+    const deciding = run.state.deciding ? stepOf(def, run.state.deciding) : undefined;
+    if (deciding) {
+      const state = structuredClone(run.state);
+      try {
+        const cursor = await decideBranch(run, deciding, state, signal);
+        if (signal.aborted) {
+          return;
+        }
+        await syncRunCost(runId);
+        await updateRun(runId, { state, cursor, status: cursor ? "running" : "done", error: null });
+      } catch (err) {
+        if (signal.aborted) {
+          return;
+        }
+        console.error(`[run ${runId} deciding ${deciding.id}]`, err);
+        const message = friendly(err);
+        await emitEvent(runId, deciding.id, "error", message);
+        await updateRun(runId, { status: "failed", error: message });
+        return;
+      }
+      continue;
+    }
     const step = stepOf(def, run.cursor);
     if (!step) {
       await updateRun(runId, { status: "done" });
       return;
+    }
+    // A page whose fields a decision picks: picked once, as the run reaches it.
+    if (step.type === "page" && step.fields.some(isDecidedField) && !run.state.pages?.[step.id]) {
+      const state = structuredClone(run.state);
+      try {
+        const shown = await decidePageFields(run, step, state, signal);
+        if (signal.aborted) {
+          return;
+        }
+        state.pages = { ...state.pages, [step.id]: { shown } };
+        await syncRunCost(runId);
+        await updateRun(runId, { state, error: null });
+      } catch (err) {
+        if (signal.aborted) {
+          return;
+        }
+        console.error(`[run ${runId} fields of ${step.id}]`, err);
+        const message = friendly(err);
+        await emitEvent(runId, step.id, "error", message);
+        await updateRun(runId, { status: "failed", error: message });
+        return;
+      }
+      continue;
     }
     if (step.type === "result") {
       await updateRun(runId, { status: "done" });
@@ -424,7 +657,7 @@ async function drive(runId: string, signal: AbortSignal) {
       state.outputs[step.id] = output;
       delete state.notes[step.id];
       delete state.redo?.[step.id];
-      const cursor = nextStepId(def, step.id, await flowValues(run, state));
+      const cursor = await advance(run, step.id, state);
       await updateRun(runId, { state, cursor, status: cursor ? "running" : "done", error: null });
       await emitEvent(runId, step.id, "step_done", step.title);
     } catch (err) {
@@ -523,8 +756,13 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       delete state.values[field.id];
     }
   }
+  // Later pages decide their fields again on what is answered now.
+  const at = run.definition.steps.indexOf(step);
+  for (const later of run.definition.steps.slice(at + 1)) {
+    delete state.pages?.[later.id];
+  }
   state.history.push(stepId);
-  const cursor = nextStepId(run.definition, stepId, await flowValues(run, state));
+  const cursor = await advance(run, stepId, state);
   await updateRun(runId, { state, cursor, status: "running", error: null });
   kick(runId);
 }
@@ -547,7 +785,7 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
       }
     }
     state.history.push(stepId);
-    const cursor = nextStepId(run.definition, stepId, await flowValues(run, state));
+    const cursor = await advance(run, stepId, state);
     await updateRun(runId, { state, cursor, status: "running", error: null });
     kick(runId);
     return;
@@ -580,6 +818,8 @@ export async function goBack(runId: string) {
   if (!previous) {
     throw new RunConflict("Kein vorheriger Schritt.");
   }
+  // A decision that failed belongs to the step left behind.
+  delete state.deciding;
   await updateRun(runId, { state, cursor: previous, status: "waiting_input", error: null });
 }
 
@@ -719,7 +959,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     step,
     values: run.state.values,
     prefill: step?.type === "page" ? prefillOf(step, run, closed) : {},
-    ...(step?.type === "page" ? await pageContext(run, step) : {}),
+    ...(step?.type === "page" ? viewContext(await pageContext(run, step)) : {}),
     closed,
     outputs: Object.fromEntries(
       shownIds.map((id) => [id, run.state.outputs[id]]).filter(([, o]) => o),

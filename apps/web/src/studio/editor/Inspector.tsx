@@ -442,6 +442,14 @@ function FieldEditor({
             sources={conditionSources(def, page, field)}
             onChange={(when) => onChange({ ...field, when })}
           />
+          {field.group ? null : (
+            <Input
+              aria-label={t("editor.fieldAsk")}
+              placeholder={t("editor.fieldAsk")}
+              value={field.ask ?? ""}
+              onChange={(e) => onChange({ ...field, ask: e.target.value || undefined })}
+            />
+          )}
           <div className="flex items-center justify-between">
             <span className="text-[0.8125rem] text-ink-2">{t("run.required")}</span>
             <Switch

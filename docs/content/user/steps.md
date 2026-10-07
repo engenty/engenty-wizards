@@ -45,6 +45,11 @@ The choices of a select can come from earlier data instead of a fixed list: the 
 research step found, one column of a table it made, or a column of a list the wizard keeps. The
 fixed choices stand in while that data is empty.
 
+A field can also be left to the AI: it is shown when the AI, reading what was answered and found
+so far, finds a statement true ("The complaint is about a damaged article"). Fields that are
+alternatives of each other form a group, and the AI shows the one that fits ("How should we reach
+the person?"). The AI decides once, when the run reaches the page.
+
 ## AI steps
 
 An AI step has instructions and the tools you allow it:
@@ -87,7 +92,7 @@ think; leave it on "Automatic" unless a step is clearly trivial or clearly hard.
 ### What a step hands on
 
 A step's output is text, Markdown or structured data with named fields: a text, a number, a
-list, a table, a yes/no answer or a choice. Later steps use these, and branches decide on them.
+list, a table, a yes/no answer, a choice or a score on a scale ("low, medium, high"). Later steps use these, and branches decide on them.
 
 ## Generate
 
@@ -139,6 +144,19 @@ several, is filled in or empty, is greater or less than a number, or contains a 
 condition can also read what an AI step found, or how many rows a list the wizard keeps has.
 Several conditions on one branch must all hold. The first branch that matches wins; otherwise
 the next step follows. The diagram draws the branches with their conditions.
+
+A branch can also be decided by the AI: instead of a condition it has a statement ("The person
+wants a refund, not an exchange"). When no condition matched, the AI reads what was answered and
+found so far and takes the branch whose statement is true; if none clearly is, the next step
+follows. All such branches of a step cost one small decision together.
+
+A branch back to an earlier step makes a loop, for example "write, check, write again until the
+check passes". A loop stops after the number of times you allow, at most ten if you set nothing.
+The step that runs again sees what it made the last time.
+
+An AI step can also work through a list: once per row of a table an earlier step made, or per
+row of a list the wizard keeps. Its results come together in one table.
+
 
 ## What a wizard keeps
 

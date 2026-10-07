@@ -1,6 +1,7 @@
 import {
   type AudioValue,
   type Field,
+  isDecidedField,
   isLocationValue,
   type LocationValue,
   MAX_FILES,
@@ -141,6 +142,8 @@ export interface PageContext {
   known?: Record<string, unknown>;
   /** Choices from earlier data (`optionsFrom`), by field id. */
   options?: Record<string, string[]>;
+  /** The decided fields (`ask`, `group`) a decision kept; the others are not asked. */
+  decided?: string[];
 }
 
 /**
@@ -154,9 +157,9 @@ export function readPageInput(
 ): { values: Record<string, unknown>; errors: InputError[] } {
   const values: Record<string, unknown> = {};
   const errors: InputError[] = [];
-  const fields = step.fields.map((f) =>
-    context.options?.[f.id]?.length ? { ...f, options: context.options[f.id] } : f,
-  );
+  const fields = step.fields
+    .filter((f) => !isDecidedField(f) || context.decided?.includes(f.id))
+    .map((f) => (context.options?.[f.id]?.length ? { ...f, options: context.options[f.id] } : f));
   const typed = Object.fromEntries(fields.map((f) => [f.id, coerce(f, input[f.id])]));
   for (const field of shownFields(fields, context.known ?? {}, typed)) {
     const v = typed[field.id];

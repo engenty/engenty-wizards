@@ -19,6 +19,8 @@ export interface AssetRef {
 export interface StepOutput {
   text?: string;
   json?: unknown;
+  /** A decision step: how probable each answer is (1 or 0 where a language model answered). */
+  decided?: Record<string, number>;
   assets?: AssetRef[];
   /** Widgets: what loading it with this run's data showed. */
   widget?: {
@@ -38,8 +40,25 @@ export interface RunState {
   notes: Record<string, string>;
   /** Steps that make several results: the entries (from 0) to make again; the others stay. */
   redo?: Record<string, number[]>;
+  /** The step whose `ask` branches are being decided; the run waits on that decision. */
+  deciding?: string;
+  /** What decided `ask` branches answered, by step. */
+  decisions?: Record<string, BranchDecision>;
+  /** Pages whose fields a decision chose: the field ids kept, by page. */
+  pages?: Record<string, { shown: string[] }>;
+  /** How often each branch was taken, by "<step>→<goto>": loops stop at the rule's max. */
+  loops?: Record<string, number>;
   /** File fields with `listen`: what is said in the recording, piece by piece with its times. */
   heard?: Record<string, { start: number; end: number; text: string }[]>;
+}
+
+/** What a decision over a step's `ask` branches found. */
+export interface BranchDecision {
+  /** The index of the rule in the step's `next`, or null: none of them, go on. */
+  rule: number | null;
+  source: "systemone" | "llm";
+  probabilities?: Record<string, number>;
+  at: string;
 }
 
 interface AskBase {
@@ -108,6 +127,9 @@ export interface ShownList {
  * line into the run's log, a runner shows it in the language the person reads.
  */
 export const RUN_NOTES = {
+  entry: { de: "Eintrag {n} von {total}", en: "Entry {n} of {total}" },
+  deciding: { de: "Entscheidet, wie es weitergeht …", en: "Deciding how to go on …" },
+  choosingFields: { de: "Wählt die passenden Fragen …", en: "Choosing the right questions …" },
   batchDone: { de: "{done} von {total} fertig", en: "{done} of {total} done" },
   editing: { de: "Bearbeitet {n} von {total}", en: "Editing {n} of {total}" },
   filming: { de: "Dreht {n} von {total}", en: "Filming {n} of {total}" },
@@ -236,6 +258,8 @@ export interface RunView {
   known?: Record<string, unknown>;
   /** Choices of the current page's fields that come from earlier data (`optionsFrom`). */
   options?: Record<string, string[]>;
+  /** The decided fields (`ask`, `group`) of the current page that a decision kept. */
+  decidedFields?: string[];
   /** Choices of the current page that lead to a step without a model here, by field id. */
   closed: Record<string, ClosedChoice>;
   outputs: Record<string, StepOutput>;

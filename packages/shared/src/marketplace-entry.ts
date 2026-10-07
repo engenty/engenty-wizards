@@ -42,6 +42,9 @@ export interface WizardOutline {
 
 /** When a branch is taken, in words: the field's label stands for its id. */
 function condition(definition: WizardDefinition, rule: NextRule, lang: MarketplaceLang): string {
+  if (rule.ask) {
+    return rule.ask;
+  }
   return conditionsOf(rule.when)
     .map((c) => conditionText(definition, c, lang))
     .join(lang === "de" ? " und " : " and ");

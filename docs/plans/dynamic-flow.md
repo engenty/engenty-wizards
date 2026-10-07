@@ -1,6 +1,18 @@
 # Plan: dynamic flow, fields and surfaces
 
-Status: release 1 built (rules, conditional fields, choices from data). From the review of 2026-10-06.
+Status: releases 1 and 2 built (rules, conditional fields, choices from data; decide(), decided
+branches and fields, loops, `each` on agent steps, score). From the review of 2026-10-06.
+
+Built differently from the text below:
+
+- A backward `goto` without `max` is not a validator issue (old wizards would stop publishing):
+  it is taken at most ten times (`DEFAULT_LOOP_MAX`).
+- `each` on agent steps hands on its table as `steps.<id>.rows`. `each` on document and voice
+  steps is not built.
+- The studio has no branch editor (branches are edited in the conversation), so there is no
+  "decide" row; a field gets an "ask" input next to its condition. Groups are edited in the
+  conversation.
+- While a branch is decided the runner shows the page it came from as working.
 
 Scope: branches and loops a run decides at run time, fields and choices that depend on what came
 before, and views composed from a catalog the way engenty-pro's `show_ui` composes A2UI surfaces.

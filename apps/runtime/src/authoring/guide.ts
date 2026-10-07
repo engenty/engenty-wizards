@@ -51,7 +51,15 @@ type Connection =
       //           "write" that in truth only looks something up (MCP servers often leave the mark out).
 
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
-// Branch = { when: Condition | Condition[], goto: stepId | "end" }
+// Branch = { when: Condition | Condition[], goto: stepId | "end", max? }
+//        | { ask: "a statement about the run", goto: stepId | "end", max? }
+//   ask: a decision reads the person's answers and what the steps made so far and takes the branch when the
+//   statement is true ("The person wants a refund, not an exchange"). All ask branches of a step are decided
+//   together in one cheap call, after no "when" branch matched; if none clearly holds the next step follows.
+//   Use ask where a rule on one field cannot say it; never one decision step per branch.
+//   max: how often the branch may be taken in one run. A branch BACK to an earlier step is a loop ("improve until
+//   the check passes": a decision step branches back to the writing step) — give it max (at most 10 without);
+//   the step that runs again sees what it made last time.
 // Condition = { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty"|"gt"|"lt"|"contains", value? }
 //   field is a page field id, an output field of this or an earlier agent step as "steps.<stepId>.<fieldId>",
 //   or how many rows a stored list has as "lists.<listId>.count"
@@ -59,7 +67,12 @@ type Connection =
 //   in takes a list of values. A list of conditions holds when every one holds.
 //   first matching branch wins, otherwise the next step in the list.
 
-type PageStep = { type: "page", fields: Field[] (1–5 per page), cta?: string }
+type PageStep = { type: "page", fields: Field[] (1–5 per page), groups?: { id, instructions, optional? }[], cta?: string }
+// Decided fields: a field with ask: "statement" is shown when a decision finds the statement true of the run;
+//   fields with group: groupId are alternatives of which the decision shows one ("How should we reach the person?"),
+//   or none when the group is optional. Decided once as the run reaches the page. Such a page has up to 12 fields
+//   and shows at most 5. Use them where the earlier answers decide which question makes sense and no single field
+//   rule can say it; "when" stays the first choice.
 type Field = {
   id (camelCase, unique across the WHOLE wizard), label, kind, required?, placeholder?, help?,
   options?: string[]            // select / multiselect
@@ -103,7 +116,12 @@ type AgentStep = {
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice", description, columns?: string[], options?: string[] }[] }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[] }
+                                // "score" answers its description on the scale in options, lowest first ("low", "medium", "high")
+  each?: "steps.<id>.<key>" | "lists.<id>"
+                                // ONE RUN PER ENTRY (at most 20): the rows of a table output, the entries of a list output, or the
+                                //   rows of a stored list; the instructions read {{item.<column>}}, {{index}}, {{count}}. The output is
+                                //   one table, steps.<id>.rows: the entry's columns plus the step's output fields, a row per entry.
                                 // a table with columns gives rows as objects with exactly those keys — what widgets read
                                 // "yesno" answers the question in its description with true/false; "choice" picks one of its options
   model?: "classifier"|"standard"|"high"|"highest"  // the kind of model, see "Models"; default "high"
@@ -326,7 +344,7 @@ ${connectorsLine(connectors)}${pluginToolsLine(pluginTools)}
 
 Models: a step names the KIND of model it needs, never a model. Pick the cheapest class that does the job:
 - "classifier": routing, yes/no, picking from options, pulling a few values out of text.
-  A DECISION is a "classifier" step with no tools whose json output has only "yesno" and "choice" fields: it is answered in one fast, very cheap call. Write the question into each field's description, give the step everything it must judge in its instructions via {{templates}}, and branch on the answer with "next" (e.g. { when: { field: "steps.check.refund", op: "equals", value: true }, goto: "refund" }).
+  A DECISION is a "classifier" step with no tools whose json output has only "yesno", "choice" and "score" fields: it is answered in one fast, very cheap call. A branch can also read how sure it is: "steps.<id>.<field>.p" is the probability of its answer (a number 0–1; 1 or 0 where no decision model is set up), e.g. { field: "steps.check.urgent.p", op: "gt", value: 0.8 }. Write the question into each field's description, give the step everything it must judge in its instructions via {{templates}}, and branch on the answer with "next" (e.g. { when: { field: "steps.check.refund", op: "equals", value: true }, goto: "refund" }).
 - "standard": short copy, calling an API, reformatting, simple summaries.
 - "high": research with tools, long documents, reasoning over many sources (the default).
 - "highest": hard reasoning or writing code; rare in a run, several times the cost of "high".

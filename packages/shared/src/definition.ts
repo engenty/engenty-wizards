@@ -247,14 +247,44 @@ export const fieldSchema = z.object({
    * of a stored list ("lists.<id>.<column>"). `options` stand in while that data is empty.
    */
   optionsFrom: z.string().optional(),
+  /**
+   * The field is shown when a decision, made as the run reaches the page, finds this statement
+   * true of the run ("The complaint is about a damaged article").
+   */
+  ask: z.string().min(1).optional(),
+  /** The id of one of the page's `groups`: of a group's fields a decision shows one (or none). */
+  group: z.string().optional(),
 });
 export type Field = z.infer<typeof fieldSchema>;
 
-export const nextRuleSchema = z.object({
-  when: whenSchema,
-  /** A step id, or "end". */
-  goto: z.string(),
+export const fieldGroupSchema = z.object({
+  id,
+  /** What the decision picks: "How should we reach the person?" */
+  instructions: z.string().min(1),
+  /** True when showing none of the group's fields is a valid answer. */
+  optional: z.boolean().optional(),
 });
+
+export const nextRuleSchema = z
+  .object({
+    /** The rule holds when this holds … */
+    when: whenSchema.optional(),
+    /**
+     * … or, instead, when a decision finds this statement true of the run ("The person wants a
+     * refund"). All `ask` rules of a step are decided together, after no `when` rule matched.
+     */
+    ask: z.string().min(1).optional(),
+    /** A step id, or "end". */
+    goto: z.string(),
+    /**
+     * How often this rule may send the run on in one run; afterwards it is skipped. Meant for a
+     * branch back to an earlier step (a loop), which without it is taken at most ten times.
+     */
+    max: z.number().int().min(1).max(50).optional(),
+  })
+  .refine((rule) => (rule.when === undefined) !== (rule.ask === undefined), {
+    message: 'A branch has either "when" or "ask".',
+  });
 export type NextRule = z.infer<typeof nextRuleSchema>;
 
 const stepBase = {
@@ -267,16 +297,21 @@ const stepBase = {
 export const outputFieldSchema = z
   .object({
     id,
-    kind: z.enum(["text", "number", "list", "table", "yesno", "choice"]),
-    /** What the field holds; for `yesno` and `choice` the question it answers. */
+    kind: z.enum(["text", "number", "list", "table", "yesno", "choice", "score"]),
+    /** What the field holds; for `yesno`, `choice` and `score` the question it answers. */
     description: z.string().optional(),
     /** Table only: the exact column keys every row has — what a widget reads. */
     columns: z.array(z.string().min(1)).optional(),
-    /** Choice only: the options, one of which is the answer. */
+    /** Choice: the options, one of which is the answer. Score: the levels, lowest first. */
     options: z.array(z.string().min(1)).min(2).max(40).optional(),
   })
-  .refine((field) => field.kind !== "choice" || Boolean(field.options?.length), {
-    message: "A choice field lists its options.",
+  .refine(
+    (field) =>
+      (field.kind !== "choice" && field.kind !== "score") || Boolean(field.options?.length),
+    { message: "A choice or score field lists its options.", path: ["options"] },
+  )
+  .refine((field) => field.kind !== "score" || (field.options?.length ?? 0) <= 10, {
+    message: "A score has at most ten levels.",
     path: ["options"],
   });
 
@@ -284,6 +319,8 @@ export const pageStepSchema = z.object({
   ...stepBase,
   type: z.literal("page"),
   fields: z.array(fieldSchema).min(1),
+  /** Fields of which a decision shows one: see `group` on a field. */
+  groups: z.array(fieldGroupSchema).max(6).optional(),
   cta: z.string().optional(),
 });
 
@@ -314,6 +351,13 @@ export const agentStepSchema = z.object({
   model: z.enum(TEXT_CLASSES).optional(),
   effort: z.enum(EFFORTS).optional(),
   /** Shown to the person while it works. */
+  /**
+   * One run of the step per entry, at most twenty: the rows of a table output
+   * ("steps.<id>.<key>"), the entries of a list output, or the rows of a stored list
+   * ("lists.<id>"). The instructions read the entry as {{item.<column>}}, {{index}}, {{count}}.
+   * The output is a table: the entry's columns and the step's output fields, one row per entry.
+   */
+  each: z.string().optional(),
   working: z.string().optional(),
 });
 
@@ -467,7 +511,8 @@ export function isDecisionStep(step: AgentStep): boolean {
     step.model === "classifier" &&
     step.output.format === "json" &&
     fields.length > 0 &&
-    fields.every((f) => f.kind === "yesno" || f.kind === "choice") &&
+    fields.every((f) => f.kind === "yesno" || f.kind === "choice" || f.kind === "score") &&
+    !step.each &&
     step.tools.length === 0 &&
     !step.mcp?.length &&
     !step.connections?.length
@@ -758,10 +803,10 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       } else if (head === "brand" || head === "facts" || head === "today" || head === "notes") {
         // provided by the runner
       } else if (head === "item" || head === "index" || head === "count") {
-        if (step.type !== "generate" || !step.each) {
+        if ((step.type !== "generate" && step.type !== "agent") || !step.each) {
           issues.push({
             stepId: step.id,
-            message: `"{{${ref}}}" only exists in a generate step with "each".`,
+            message: `"{{${ref}}}" only exists in a generate or agent step with "each".`,
           });
         }
       } else if (head === "lists") {
@@ -790,14 +835,21 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     if (head === "lists") {
       return key === "count" && more.length === 0 && listIds.has(from ?? "");
     }
-    if (head !== "steps" || !key || more.length > 0) {
+    // `steps.<step>.<field>.p`: how probable the decision's answer is.
+    const probability = more.length === 1 && more[0] === "p";
+    if (head !== "steps" || !key || (more.length > 0 && !probability)) {
       return false;
     }
     if (!(seenSteps.has(from) || (self && from === step.id))) {
       return false;
     }
     const source = def.steps.find((s) => s.id === from);
-    return source?.type === "agent" && (source.output.fields ?? []).some((f) => f.id === key);
+    return (
+      source?.type === "agent" &&
+      (!probability || isDecisionStep(source)) &&
+      ((source.output.fields ?? []).some((f) => f.id === key) ||
+        (Boolean(source.each) && key === "rows" && !probability))
+    );
   };
 
   const conditionIssues = (stepId: string, c: Condition): ValidationIssue[] => {
@@ -830,6 +882,10 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     }
     if (head === "steps" && from && key && more.length === 0) {
       const source = seenSteps.has(from) ? def.steps.find((s) => s.id === from) : undefined;
+      // An agent step with `each` hands on one table, `rows`: the entry's columns and its fields.
+      if (source?.type === "agent" && source.each && key === "rows") {
+        return column ? null : `"optionsFrom": "${from}.rows" is a table; name one of its columns.`;
+      }
       const out =
         source?.type === "agent"
           ? (source.output.fields ?? []).find((f) => f.id === key)
@@ -849,7 +905,38 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
 
   for (const step of def.steps) {
     switch (step.type) {
-      case "page":
+      case "page": {
+        const groups = new Set<string>();
+        for (const g of step.groups ?? []) {
+          if (groups.has(g.id)) {
+            issues.push({ stepId: step.id, message: `Duplicate field group "${g.id}".` });
+          }
+          groups.add(g.id);
+          if (!step.fields.some((f) => f.group === g.id)) {
+            issues.push({ stepId: step.id, message: `Field group "${g.id}" has no fields.` });
+          }
+        }
+        const decided = step.fields.some((f) => f.ask || f.group);
+        if (decided && step.fields.length > MAX_DECIDED_FIELDS) {
+          issues.push({
+            stepId: step.id,
+            message: `A page whose fields are decided has at most ${MAX_DECIDED_FIELDS} fields.`,
+          });
+        }
+        for (const field of step.fields) {
+          if (field.ask && field.group) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}" has "ask" or "group", not both.`,
+            });
+          }
+          if (field.group && !groups.has(field.group)) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}" names an unknown group "${field.group}".`,
+            });
+          }
+        }
         for (const field of step.fields) {
           for (const c of conditionsOf(field.when)) {
             const own = step.fields.some((f) => f.id === c.field && f.id !== field.id);
@@ -884,11 +971,28 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           seenFields.add(field.id);
         }
         break;
+      }
       case "agent":
         checkTemplate(step, step.instructions);
         for (const c of step.connections ?? []) {
           if (!connectionIds.has(c)) {
             issues.push({ stepId: step.id, message: `Step uses unknown connection "${c}".` });
+          }
+        }
+        if (step.each) {
+          const ref = dataRef(step.each);
+          const list = ref.match(/^lists\.([a-zA-Z][a-zA-Z0-9_]*)$/)?.[1];
+          if (list) {
+            if (!listIds.has(list)) {
+              issues.push({ stepId: step.id, message: `each names an unknown list "${list}".` });
+            }
+          } else if (ref.startsWith("steps.") && ref.split(".").length === 3) {
+            checkTemplate(step, `{{${ref}}}`);
+          } else {
+            issues.push({
+              stepId: step.id,
+              message: `each "${step.each}" is "steps.<id>.<key>" (a table or list output) or "lists.<id>".`,
+            });
           }
         }
         break;
@@ -1047,7 +1151,7 @@ export function parseWizard(
  */
 export function branchValues(
   values: Record<string, unknown>,
-  outputs: Record<string, { json?: unknown }>,
+  outputs: Record<string, { json?: unknown; decided?: Record<string, number> }>,
   /** Rows per stored list, read as `lists.<list>.count`. */
   listCounts: Record<string, number> = {},
 ): Record<string, unknown> {
@@ -1061,26 +1165,81 @@ export function branchValues(
         out[`steps.${stepId}.${key}`] = value;
       }
     }
+    for (const [key, p] of Object.entries(output.decided ?? {})) {
+      out[`steps.${stepId}.${key}.p`] = p;
+    }
   }
   return out;
 }
 
-/** The step after `step`, honouring its branch rules. `null` = the end. */
+/** A branch back to an earlier step without `max` is taken at most this often in one run. */
+export const DEFAULT_LOOP_MAX = 10;
+
+/** How a run counts the times it took a branch: "<step>→<goto>". */
+export function loopKey(stepId: string, goto: string): string {
+  return `${stepId}→${goto}`;
+}
+
+/** Whether a rule may still send the run on: one with `max`, or one back, stops after so many. */
+export function ruleOpen(
+  def: WizardDefinition,
+  stepId: string,
+  rule: NextRule,
+  loops: Record<string, number> = {},
+): boolean {
+  const from = def.steps.findIndex((s) => s.id === stepId);
+  const to =
+    rule.goto === "end" ? def.steps.length : def.steps.findIndex((s) => s.id === rule.goto);
+  const max = rule.max ?? (to >= 0 && to <= from ? DEFAULT_LOOP_MAX : Number.POSITIVE_INFINITY);
+  return (loops[loopKey(stepId, rule.goto)] ?? 0) < max;
+}
+
+/**
+ * Where a run goes after a step: the first open `when` rule that holds (`rule` is its index in
+ * `next`), else a decision over the open `ask` rules, else the next step in the list. `cursor`
+ * null = the end.
+ */
+export type RuleOutcome =
+  | { kind: "go"; cursor: string | null; rule: number | null }
+  | { kind: "decide"; rules: number[] };
+
+export function followRules(
+  def: WizardDefinition,
+  stepId: string,
+  values: Record<string, unknown>,
+  loops: Record<string, number> = {},
+): RuleOutcome {
+  const index = def.steps.findIndex((s) => s.id === stepId);
+  const step = def.steps[index];
+  if (!step) {
+    return { kind: "go", cursor: null, rule: null };
+  }
+  const rules = step.next ?? [];
+  for (const [i, rule] of rules.entries()) {
+    if (ruleOpen(def, stepId, rule, loops) && ruleMatches(rule, values)) {
+      return { kind: "go", cursor: rule.goto === "end" ? null : rule.goto, rule: i };
+    }
+  }
+  const asks = rules.flatMap((rule, i) =>
+    rule.ask && ruleOpen(def, stepId, rule, loops) ? [i] : [],
+  );
+  if (asks.length) {
+    return { kind: "decide", rules: asks };
+  }
+  return { kind: "go", cursor: def.steps[index + 1]?.id ?? null, rule: null };
+}
+
+/** The step after `step` by its `when` rules alone. `null` = the end. */
 export function nextStepId(
   def: WizardDefinition,
   stepId: string,
   values: Record<string, unknown>,
 ): string | null {
+  const outcome = followRules(def, stepId, values);
+  if (outcome.kind === "go") {
+    return outcome.cursor;
+  }
   const index = def.steps.findIndex((s) => s.id === stepId);
-  const step = def.steps[index];
-  if (!step) {
-    return null;
-  }
-  for (const rule of step.next ?? []) {
-    if (ruleMatches(rule, values)) {
-      return rule.goto === "end" ? null : rule.goto;
-    }
-  }
   return def.steps[index + 1]?.id ?? null;
 }
 
@@ -1141,8 +1300,18 @@ export function whenHolds(when: When | undefined, values: Record<string, unknown
   return conditionsOf(when).every((c) => conditionMatches(c, values));
 }
 
+/** Whether a `when` rule holds. An `ask` rule never holds here: a decision takes it (see decide). */
 export function ruleMatches(rule: NextRule, values: Record<string, unknown>): boolean {
-  return whenHolds(rule.when, values);
+  return rule.when !== undefined && whenHolds(rule.when, values);
+}
+
+/** A page with decided fields has at most this many; it shows at most MAX_SHOWN_FIELDS of them. */
+export const MAX_DECIDED_FIELDS = 12;
+export const MAX_SHOWN_FIELDS = 5;
+
+/** Whether a field is shown only when a decision keeps it. */
+export function isDecidedField(field: Field): boolean {
+  return Boolean(field.ask || field.group);
 }
 
 /**

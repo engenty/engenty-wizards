@@ -2,6 +2,7 @@ import {
   type Condition,
   conditionMatches,
   conditionsOf,
+  isDecidedField,
   isDecisionStep,
   MODEL_CLASSES,
   type ModelClass,
@@ -21,8 +22,18 @@ import { classProblem, filmClient } from "../models.js";
  * missing; a step behind a branch only warns, since the person may choose around it.
  */
 
-/** The classes a step calls, as ../engine/steps.ts and ../media/generate.ts call them. */
+/**
+ * The classes a step calls, as ../engine/steps.ts and ../media/generate.ts call them — and the
+ * classifier where a decision picks its next step or a page's fields.
+ */
 export function stepClasses(step: Step): ModelClass[] {
+  const own = ownClasses(step);
+  const decides =
+    step.next?.some((r) => r.ask) || (step.type === "page" && step.fields.some(isDecidedField));
+  return decides && !own.includes("classifier") ? [...own, "classifier"] : own;
+}
+
+function ownClasses(step: Step): ModelClass[] {
   switch (step.type) {
     case "agent": {
       if (isDecisionStep(step)) {
@@ -88,7 +99,7 @@ export function unavoidableFrom(
     const out: number[] = [];
     for (const rule of def.steps[i].next ?? []) {
       const target = rule.goto === "end" ? def.steps.length : (index.get(rule.goto) ?? -1);
-      if (!conditionsOf(rule.when).every((c) => c.field in known)) {
+      if (rule.ask || !conditionsOf(rule.when).every((c) => c.field in known)) {
         if (target >= 0) {
           out.push(target);
         }
@@ -136,6 +147,10 @@ type Facts = Record<string, Known>;
 
 /** Whether a rule matches given what is known: true, false, or null = it may go either way. */
 function ruleHolds(rule: NextRule, facts: Facts): boolean | null {
+  // A decision may go either way.
+  if (rule.ask) {
+    return null;
+  }
   let all: boolean | null = true;
   for (const c of conditionsOf(rule.when)) {
     const holds = conditionHolds(c, facts);
@@ -191,6 +206,9 @@ function conditionHolds(c: Condition, facts: Facts): boolean | null {
  * did not match says nothing about any one of them.
  */
 function learn(rule: NextRule, held: boolean, facts: Facts): Facts {
+  if (rule.ask) {
+    return facts;
+  }
   const conditions = conditionsOf(rule.when);
   if (held) {
     return conditions.reduce((known, c) => learnCondition(c, true, known), facts);
