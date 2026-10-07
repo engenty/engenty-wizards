@@ -624,14 +624,21 @@ export const runRoutes = new Hono()
     if (!run || !connection) {
       return c.json({ error: "not found" }, 404);
     }
-    const url = await startOAuth(
-      scopeOf(run),
-      await projectIdOf(run),
-      run.id,
-      connection,
-      c.req.param("connectorId"),
-    );
-    return c.json({ url });
+    try {
+      const url = await startOAuth(
+        scopeOf(run),
+        await projectIdOf(run),
+        run.id,
+        connection,
+        c.req.param("connectorId"),
+      );
+      return c.json({ url });
+    } catch (err) {
+      if (err instanceof ConnectError) {
+        return c.json({ error: err.message }, 422);
+      }
+      throw err;
+    }
   })
   .post("/:id/connections/:connectionId/credentials/:connectorId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
@@ -876,13 +883,19 @@ function sendDownload(
  */
 export const connectCallback = new Hono().get("/callback", async (c) => {
   const code = c.req.query("code");
+  // Connected through the account's Manage-App: a ticket instead of a code.
+  const ticket = c.req.query("ticket");
   const state = c.req.query("state");
   let ok = false;
-  let message = "Verbinden wurde abgebrochen.";
+  let message =
+    c.req.query("error") === "exchange_failed"
+      ? "Verbinden hat nicht geklappt. Bitte noch einmal versuchen."
+      : "Verbinden wurde abgebrochen.";
   const tenant = state ? await tenantOfRun(oauthStateRun(state) ?? "") : null;
-  if (code && state && tenant) {
+  const answer = ticket ? { ticket } : code ? { code } : null;
+  if (answer && state && tenant) {
     try {
-      const done = await withTenant(tenant, () => finishOAuth(code, state));
+      const done = await withTenant(tenant, () => finishOAuth(answer, state));
       signalChanged(done.runId);
       ok = true;
       message = "Verbunden. Du kannst dieses Fenster schließen.";

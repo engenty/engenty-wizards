@@ -1,6 +1,7 @@
 import { createGuardedFetch } from "../engenty/connections-external/net/guarded-fetch.js";
 import { githubConnector } from "../engenty/connections-github/connector.js";
 import { googleConnectors } from "../engenty/connections-google/definitions.js";
+import { GOOGLE_OAUTH2 } from "../engenty/connections-google/shared.js";
 import { hubspotConnector } from "../engenty/connections-hubspot/connector.js";
 import { microsoftOneDriveConnector } from "../engenty/connections-microsoft/onedrive.js";
 import { microsoftOutlookConnector } from "../engenty/connections-microsoft/outlook.js";
@@ -12,9 +13,11 @@ import {
 import { registerConnectorDefinition } from "../engenty/connections-sdk/registry.js";
 import type { ConnectorDefinition } from "../engenty/connections-sdk/types.js";
 import { slackConnector } from "../engenty/connections-slack/connector.js";
+import { managed } from "../manage.js";
 import { gmailConnector as mailGmail } from "./gmail.js";
 import { imapConnector } from "./imap.js";
 import { outlookConnector as mailOutlook } from "./outlook.js";
+import { googleThroughAccount } from "./via-account.js";
 
 /**
  * engenty's own connectors, as engenty ships them: Gmail, Drive, Calendar, Contacts, Outlook,
@@ -64,7 +67,23 @@ export async function usable(connector: ConnectorDefinition): Promise<boolean> {
   // A connector that registers its own OAuth client needs none configured.
   return (
     connector.auth.oauth2.dynamicClientRegistration === true ||
-    hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)
+    (await hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)) ||
+    viaAccount(connector)
+  );
+}
+
+/**
+ * A Google connector on a local install without a Google client of its own: it connects through
+ * the Manage-App of the linked account, when that one offers it. Offered before an account is
+ * linked too; connecting then asks to link it first.
+ */
+export async function viaAccount(connector: ConnectorDefinition): Promise<boolean> {
+  return (
+    !managed &&
+    connector.auth.kind === "oauth2" &&
+    connector.auth.oauth2 === GOOGLE_OAUTH2 &&
+    !(await hasOAuth2ClientCredentials(connector.auth.oauth2, resolveEnv)) &&
+    (await googleThroughAccount())
   );
 }
 

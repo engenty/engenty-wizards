@@ -80,6 +80,26 @@ runs alone has one person, who does everything.
 | `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
 | `GET <RUNTIME_URL>/api/internal/plugins` | → `{ plugins: [{ id, name, description, version }] }` · the plugins the runtime carries, so a plan's `modules` are picked from what exists |
 
+## Google accounts through the Manage-App
+
+A local install has no Google OAuth client of its own (a secret cannot ship in it). Its Google
+connectors (Gmail, Drive, Calendar, Contacts) connect through the Manage-App of the linked
+account, which holds the client (`GOOGLE_CONNECT_CLIENT_ID`/`_SECRET` there, redirect
+`<MANAGE_URL>/connect/google/callback`). The Manage-App keeps no token. An install with
+`GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` of its own, and the cloud runtime, connect directly.
+
+| Call | Body → answer |
+|---|---|
+| `GET /v1/connect` (no token) | → `{ google: boolean }` · whether the Manage-App connects Google; the install offers Google only then |
+| `POST /v1/connect/google/start` | `{ scopes, returnUrl, state }` → `{ url }` · Google's consent page. `scopes`: only those the runtime's Google connectors use, else `400 invalid_scope`; `returnUrl`: an address on the person's machine (`127.0.0.1`, `[::1]`, `localhost`, `*.localhost`), else `400`; `state`: the install's own, handed back untouched |
+| `GET <MANAGE_URL>/connect/google/callback` | Google comes back; the Manage-App swaps the code (PKCE, its secret) and sends the browser to `returnUrl?state=…&ticket=…`, or `returnUrl?state=…&error=access_denied \| exchange_failed` |
+| `POST /v1/connect/google/redeem` | `{ ticket }` → `{ access_token, refresh_token?, expires_in?, scope?, token_type? }` (Google's answer) · once, within a minute, by the person who started; else `404 invalid_ticket` |
+| `POST /v1/connect/google/refresh` | `{ refreshToken }` → the same shape, with a fresh `access_token` · `400 invalid_grant` when Google dropped the connection (connect again), `429` beyond 240 an hour per person |
+
+Every call but `GET /v1/connect` carries the linked account's access token. The install stores
+the tokens like its own and marks the connection `via: "account"`, so its refreshes keep going
+through the Manage-App.
+
 ## Spaces of a local install
 
 A runtime that runs alone, linked to an account, sends what it publishes to the account's cloud

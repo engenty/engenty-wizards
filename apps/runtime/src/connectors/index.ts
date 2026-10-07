@@ -20,8 +20,14 @@ import {
 import { env } from "../env.js";
 import { seal, unseal } from "../secrets/crypto.js";
 import { deleteSecret, getSecret, putSecret, type StoreScope } from "../store/index.js";
-import { connectorFetch, MAIL_CONNECTORS, resolveEnv, usable } from "./builtin.js";
+import { connectorFetch, MAIL_CONNECTORS, resolveEnv, usable, viaAccount } from "./builtin.js";
 import { resolveConnector } from "./external.js";
+import {
+  AccountConnectError,
+  redeemTicket,
+  refreshThroughAccount,
+  startThroughAccount,
+} from "./via-account.js";
 
 /** The connectors a person can pick for each kind of connection. */
 const CONNECTORS: Record<ConnectionKind, ConnectorDefinition[]> = { mail: MAIL_CONNECTORS };
@@ -59,6 +65,8 @@ interface StoredConnection {
   refreshToken: string | null;
   expiresAt: string | null;
   scopes: string[];
+  /** Connected through the account's Manage-App, which also refreshes the token. */
+  via?: "account";
 }
 
 /** A connector that needs no credential: there is nothing for the person to connect. */
@@ -164,6 +172,27 @@ export async function startOAuth(
   if (connector.auth.kind !== "oauth2") {
     throw new Error(`${connector.name} is not connected by signing in.`);
   }
+  if (await viaAccount(connector)) {
+    // The Manage-App keeps the PKCE verifier; ours stays empty.
+    const state: OAuthState = {
+      scope,
+      projectId,
+      runId,
+      connectionId: connection.id,
+      connectorId,
+      verifier: "",
+      exp: Date.now() + 15 * 60_000,
+    };
+    try {
+      return await startThroughAccount(
+        scopesFor(connection, connector),
+        seal(state),
+        connectRedirectUri(),
+      );
+    } catch (err) {
+      throw err instanceof AccountConnectError ? new ConnectError(err.message) : err;
+    }
+  }
   // Servers that hand out OAuth clients on request (most MCP servers): get one on first use.
   await connector.auth.oauth2.registerClient?.();
   const pkce = createOAuth2Pkce();
@@ -191,7 +220,14 @@ export function oauthStateRun(rawState: string): string | null {
   return unseal<OAuthState>(rawState)?.runId ?? null;
 }
 
-export async function finishOAuth(code: string, rawState: string): Promise<OAuthState> {
+/**
+ * Google came back: with a code, or — connected through the account's Manage-App — with a
+ * ticket that holds the tokens.
+ */
+export async function finishOAuth(
+  answer: { code: string } | { ticket: string },
+  rawState: string,
+): Promise<OAuthState> {
   const state = unseal<OAuthState>(rawState);
   if (!state || state.exp < Date.now()) {
     throw new Error("Die Anmeldung ist abgelaufen. Bitte noch einmal verbinden.");
@@ -205,13 +241,16 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
   if (connector.auth.kind !== "oauth2") {
     throw new Error("not an oauth connector");
   }
-  const tokens = await exchangeAuthorizationCode({
-    code,
-    codeVerifier: state.verifier,
-    config: connector.auth.oauth2,
-    redirectUri: connectRedirectUri(),
-    resolveEnv,
-  });
+  const tokens =
+    "ticket" in answer
+      ? await redeemTicket(answer.ticket)
+      : await exchangeAuthorizationCode({
+          code: answer.code,
+          codeVerifier: state.verifier,
+          config: connector.auth.oauth2,
+          redirectUri: connectRedirectUri(),
+          resolveEnv,
+        });
   // A provider that will not name the account still connected it.
   const account = (await connector.auth.oauth2
     .resolveAccount?.(tokens.accessToken, fetch)
@@ -221,6 +260,7 @@ export async function finishOAuth(code: string, rawState: string): Promise<OAuth
     refreshToken: tokens.refreshToken,
     expiresAt: tokens.expiresAt?.toISOString() ?? null,
     scopes: tokens.grantedScopes,
+    ...("ticket" in answer ? { via: "account" as const } : {}),
   };
   await putSecret(state.scope, slot(connection.id), connector.id, account.label, stored);
   return state;
@@ -320,12 +360,16 @@ export async function connectionContext(
     expires !== null &&
     expires - Date.now() < 5 * 60_000
   ) {
-    const tokens = await refreshAccessToken({
-      config: connector.auth.oauth2,
-      refreshToken: data.refreshToken,
-      resolveEnv,
-    });
+    const tokens =
+      data.via === "account"
+        ? await refreshThroughAccount(data.refreshToken)
+        : await refreshAccessToken({
+            config: connector.auth.oauth2,
+            refreshToken: data.refreshToken,
+            resolveEnv,
+          });
     data = {
+      ...(data.via ? { via: data.via } : {}),
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken ?? data.refreshToken,
       expiresAt: tokens.expiresAt?.toISOString() ?? null,
