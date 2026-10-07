@@ -36,6 +36,15 @@ A text field can have a "Scan" button that fills it from a QR code or barcode.
 A field can start with a value an earlier step proposed. A line-items field, for example, shows
 the positions an AI step looked up, for the person to correct.
 
+A field can be shown only under a condition: "Street and town" only when the person chose
+delivery, "Which allergy?" only when they ticked "Allergies". The condition can read another
+field of the same page, and the field then appears as the person answers, or anything known
+before the page. A hidden field is not required and is not kept.
+
+The choices of a select can come from earlier data instead of a fixed list: the suppliers a
+research step found, one column of a table it made, or a column of a list the wizard keeps. The
+fixed choices stand in while that data is empty.
+
 ## AI steps
 
 An AI step has instructions and the tools you allow it:
@@ -126,8 +135,10 @@ Each entry of the result page names a step and the formats the person can downlo
 ## Branches
 
 A step can send the run somewhere else when a condition holds: a field equals a value, is one of
-several, is filled in or empty. The first branch that matches wins; otherwise the next step
-follows. The diagram draws the branches with their conditions.
+several, is filled in or empty, is greater or less than a number, or contains a value. A
+condition can also read what an AI step found, or how many rows a list the wizard keeps has.
+Several conditions on one branch must all hold. The first branch that matches wins; otherwise
+the next step follows. The diagram draws the branches with their conditions.
 
 ## What a wizard keeps
 

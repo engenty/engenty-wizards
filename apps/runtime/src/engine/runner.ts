@@ -6,7 +6,9 @@ import {
   LIST_FORMATS,
   listRef,
   nextStepId,
+  optionsFromData,
   type PageStep,
+  pageNeeds,
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
@@ -43,7 +45,7 @@ import { activeRuns, indexRun, markRunActive } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { askPerson, clearStaleAsk, unattended } from "./asks.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
-import { readPageInput } from "./input.js";
+import { type PageContext, readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
 import {
   blockingMessage,
@@ -288,6 +290,43 @@ export function kick(runId: string) {
     });
 }
 
+/** What conditions read in this run: answers, outputs, and how many rows each stored list has. */
+async function flowValues(run: RunRow, state: RunState): Promise<Record<string, unknown>> {
+  const counts: Record<string, number> = {};
+  if (run.definition.lists?.length) {
+    for (const [id, list] of Object.entries(await storedLists(run))) {
+      counts[id] = list.rows.length;
+    }
+  }
+  return branchValues(state.values, state.outputs, counts);
+}
+
+/**
+ * What a page knows besides the person's input: what its fields' `when` read from before the
+ * page (its own earlier answers left out, so a revisit decides on what is typed now) and the
+ * choices its `optionsFrom` fields find in the run.
+ */
+async function pageContext(run: RunRow, step: PageStep): Promise<Required<PageContext>> {
+  const needs = pageNeeds(step.fields);
+  const sourced = step.fields.filter((f) => f.optionsFrom);
+  if (!needs.length && !sourced.length) {
+    return { known: {}, options: {} };
+  }
+  const all = await flowValues(run, run.state);
+  const known = Object.fromEntries(needs.map((ref) => [ref, all[ref]]));
+  const lists = sourced.some((f) => f.optionsFrom?.startsWith("lists."))
+    ? await storedLists(run)
+    : {};
+  const options: Record<string, string[]> = {};
+  for (const field of sourced) {
+    const found = optionsFromData(field.optionsFrom ?? "", run.state.outputs, lists);
+    if (found.length) {
+      options[field.id] = found;
+    }
+  }
+  return { known, options };
+}
+
 /** The wizard's lists with the person's rows, by list id. */
 async function storedLists(
   run: RunRow,
@@ -385,7 +424,7 @@ async function drive(runId: string, signal: AbortSignal) {
       state.outputs[step.id] = output;
       delete state.notes[step.id];
       delete state.redo?.[step.id];
-      const cursor = nextStepId(def, step.id, branchValues(state.values, state.outputs));
+      const cursor = nextStepId(def, step.id, await flowValues(run, state));
       await updateRun(runId, { state, cursor, status: cursor ? "running" : "done", error: null });
       await emitEvent(runId, step.id, "step_done", step.title);
     } catch (err) {
@@ -438,7 +477,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
   if (step?.type !== "page") {
     throw new RunConflict("Not a page");
   }
-  const { values, errors } = readPageInput(step, input);
+  const { values, errors } = readPageInput(step, input, await pageContext(run, step));
   // An answer that leads to a step without a model here would stop the run there, later.
   const closed = await closedChoices(run.definition, step, run.state.values);
   for (const [id, choice] of Object.entries(closed)) {
@@ -485,7 +524,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     }
   }
   state.history.push(stepId);
-  const cursor = nextStepId(run.definition, stepId, branchValues(state.values, state.outputs));
+  const cursor = nextStepId(run.definition, stepId, await flowValues(run, state));
   await updateRun(runId, { state, cursor, status: "running", error: null });
   kick(runId);
 }
@@ -508,7 +547,7 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
       }
     }
     state.history.push(stepId);
-    const cursor = nextStepId(run.definition, stepId, branchValues(state.values, state.outputs));
+    const cursor = nextStepId(run.definition, stepId, await flowValues(run, state));
     await updateRun(runId, { state, cursor, status: "running", error: null });
     kick(runId);
     return;
@@ -680,6 +719,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     step,
     values: run.state.values,
     prefill: step?.type === "page" ? prefillOf(step, run, closed) : {},
+    ...(step?.type === "page" ? await pageContext(run, step) : {}),
     closed,
     outputs: Object.fromEntries(
       shownIds.map((id) => [id, run.state.outputs[id]]).filter(([, o]) => o),

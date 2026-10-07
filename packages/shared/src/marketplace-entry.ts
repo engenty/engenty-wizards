@@ -1,4 +1,11 @@
-import { allFields, listRef, type NextRule, type WizardDefinition } from "./definition.js";
+import {
+  allFields,
+  type Condition,
+  conditionsOf,
+  listRef,
+  type NextRule,
+  type WizardDefinition,
+} from "./definition.js";
 import type { ItemFormat, MarketplaceLang } from "./marketplace.js";
 
 // What a marketplace entry shows of its wizard: the flow in steps, and what a person takes along
@@ -35,7 +42,13 @@ export interface WizardOutline {
 
 /** When a branch is taken, in words: the field's label stands for its id. */
 function condition(definition: WizardDefinition, rule: NextRule, lang: MarketplaceLang): string {
-  const { field, op, value } = rule.when;
+  return conditionsOf(rule.when)
+    .map((c) => conditionText(definition, c, lang))
+    .join(lang === "de" ? " und " : " and ");
+}
+
+function conditionText(definition: WizardDefinition, c: Condition, lang: MarketplaceLang): string {
+  const { field, op, value } = c;
   const name =
     allFields(definition).find((f) => f.id === field)?.label ?? field.split(".").pop() ?? field;
   const de = lang === "de";
@@ -59,6 +72,12 @@ function condition(definition: WizardDefinition, rule: NextRule, lang: Marketpla
       return withIt;
     case "empty":
       return without;
+    case "gt":
+      return `${name} > ${shown}`;
+    case "lt":
+      return `${name} < ${shown}`;
+    case "contains":
+      return de ? `${name} enthält ${shown}` : `${name} contains ${shown}`;
   }
 }
 

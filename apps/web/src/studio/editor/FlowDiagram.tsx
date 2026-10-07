@@ -1,5 +1,10 @@
 import dagre from "@dagrejs/dagre";
-import type { Step, WizardDefinition } from "@engenty-wizards/shared/definition";
+import {
+  type Condition,
+  conditionsOf,
+  type Step,
+  type WizardDefinition,
+} from "@engenty-wizards/shared/definition";
 import type { RunEstimate } from "@engenty-wizards/shared/run";
 import {
   BaseEdge,
@@ -165,20 +170,28 @@ const BRANCH_LABEL = 34;
 const NO_COSTS: RunEstimate["steps"] = {};
 
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
-  const v = Array.isArray(rule.when.value)
-    ? rule.when.value.join(" / ")
-    : String(rule.when.value ?? "");
-  switch (rule.when.op) {
+  return conditionsOf(rule.when).map(conditionText).join(" · ");
+}
+
+export function conditionText(c: Condition): string {
+  const v = Array.isArray(c.value) ? c.value.join(" / ") : String(c.value ?? "");
+  switch (c.op) {
     case "equals":
-      return `${rule.when.field} = ${v}`;
+      return `${c.field} = ${v}`;
     case "notEquals":
-      return `${rule.when.field} ≠ ${v}`;
+      return `${c.field} ≠ ${v}`;
     case "in":
-      return `${rule.when.field} ∈ ${v}`;
+      return `${c.field} ∈ ${v}`;
     case "notEmpty":
-      return t("editor.whenFilled", { field: rule.when.field });
+      return t("editor.whenFilled", { field: c.field });
     case "empty":
-      return t("editor.whenEmpty", { field: rule.when.field });
+      return t("editor.whenEmpty", { field: c.field });
+    case "gt":
+      return `${c.field} > ${v}`;
+    case "lt":
+      return `${c.field} < ${v}`;
+    case "contains":
+      return t("editor.whenContains", { field: c.field, value: v });
   }
 }
 

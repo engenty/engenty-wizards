@@ -232,6 +232,10 @@ export interface RunView {
   values: Record<string, unknown>;
   /** What fields of the current page start with, from earlier steps (`prefill`). */
   prefill: Record<string, unknown>;
+  /** What the `when` of the current page's fields read from before the page, by reference. */
+  known?: Record<string, unknown>;
+  /** Choices of the current page's fields that come from earlier data (`optionsFrom`). */
+  options?: Record<string, string[]>;
   /** Choices of the current page that lead to a step without a model here, by field id. */
   closed: Record<string, ClosedChoice>;
   outputs: Record<string, StepOutput>;

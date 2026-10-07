@@ -5,6 +5,7 @@ import {
   type LocationValue,
   MAX_FILES,
   type PageStep,
+  shownFields,
 } from "@engenty-wizards/shared/definition";
 
 export interface InputError {
@@ -134,15 +135,31 @@ function readAudio(raw: unknown): AudioValue | undefined {
   return out;
 }
 
-/** Keep only this page's fields, typed; report what is missing or wrong. */
+/** What a page knows beyond the person's input: earlier answers and outputs, data-driven choices. */
+export interface PageContext {
+  /** Values the fields' `when` read from before the page. */
+  known?: Record<string, unknown>;
+  /** Choices from earlier data (`optionsFrom`), by field id. */
+  options?: Record<string, string[]>;
+}
+
+/**
+ * Keep only this page's fields that are shown, typed; report what is missing or wrong. A field
+ * whose `when` does not hold is not asked: it is neither required nor kept.
+ */
 export function readPageInput(
   step: PageStep,
   input: Record<string, unknown>,
+  context: PageContext = {},
 ): { values: Record<string, unknown>; errors: InputError[] } {
   const values: Record<string, unknown> = {};
   const errors: InputError[] = [];
-  for (const field of step.fields) {
-    const v = coerce(field, input[field.id]);
+  const fields = step.fields.map((f) =>
+    context.options?.[f.id]?.length ? { ...f, options: context.options[f.id] } : f,
+  );
+  const typed = Object.fromEntries(fields.map((f) => [f.id, coerce(f, input[f.id])]));
+  for (const field of shownFields(fields, context.known ?? {}, typed)) {
+    const v = typed[field.id];
     if (field.kind === "connection" || field.kind === "list") {
       continue;
     }

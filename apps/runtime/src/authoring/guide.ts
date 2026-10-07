@@ -51,8 +51,12 @@ type Connection =
       //           "write" that in truth only looks something up (MCP servers often leave the mark out).
 
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
-// Branch = { when: { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty", value? }, goto: stepId | "end" }
-//   field is a page field id, or an output field of this or an earlier agent step as "steps.<stepId>.<fieldId>"
+// Branch = { when: Condition | Condition[], goto: stepId | "end" }
+// Condition = { field, op: "equals"|"notEquals"|"in"|"notEmpty"|"empty"|"gt"|"lt"|"contains", value? }
+//   field is a page field id, an output field of this or an earlier agent step as "steps.<stepId>.<fieldId>",
+//   or how many rows a stored list has as "lists.<listId>.count"
+//   gt / lt compare numbers (value is a number); contains looks into a multiselect, a list output or a text;
+//   in takes a list of values. A list of conditions holds when every one holds.
 //   first matching branch wins, otherwise the next step in the list.
 
 type PageStep = { type: "page", fields: Field[] (1–5 per page), cta?: string }
@@ -75,6 +79,12 @@ type Field = {
   list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
   prefill?: "steps.<id>.<key>"  // what the field starts with, from an earlier step. An "items" field takes a table whose
                                 //   columns are exactly its column ids — the step proposes the positions, the person corrects them
+  when?: Condition | Condition[] // the field is shown only while this holds: it reads another field of the SAME page (decided as
+                                //   the person types) or anything known before the page (an earlier answer, steps.<id>.<field>).
+                                //   A hidden field is not required and not kept; its {{template}} is empty.
+  optionsFrom?: "steps.<id>.<key>" | "steps.<id>.<key>.<column>" | "lists.<id>.<column>"
+                                // select / multiselect: the choices come from earlier data — a "list" output, one column of a
+                                //   "table" output, or a column of a stored list. "options" stand in while that data is empty.
 }
 // kinds: text textarea number select multiselect date email url toggle color image file items connection list
 //        location audio signature
@@ -188,6 +198,7 @@ A template may only use fields asked and steps run EARLIER.`;
 export const PRINCIPLES = `
 How good wizards look:
 - For non-technical end users. Plain words, friendly titles phrased as questions ("Wofür ist der Post?").
+- A page whose fields depend on an earlier answer uses "when" on its fields, never one copy of the page per answer and a branch to each copy. Choices that depend on what an earlier step found use "optionsFrom", never one page per possible result.
 - Few pages, 1–5 fields each, one theme per page. Only ask what the result really needs; prefer selects with sensible defaults.
 - Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.
 - Money/totals: use an "items" field with vat — the runner computes totals; documents must use {{items}} verbatim. Never let a model compute totals.

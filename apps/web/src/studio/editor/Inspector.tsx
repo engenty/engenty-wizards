@@ -1,10 +1,14 @@
 import {
   ASPECT_RATIOS,
+  CONDITION_OPS,
+  type Condition,
+  conditionsOf,
   ENGENTY_KINDS,
   FIELD_KINDS,
   type Field,
   type Format,
   formatsFor,
+  type PageStep,
   type Step,
   TOOL_IDS,
   VIDEO_RESOLUTIONS,
@@ -126,14 +130,149 @@ function uniqueId(def: WizardDefinition, base: string): string {
   return id;
 }
 
+/** What a field's condition can read: the page's other fields and what is known before it. */
+function conditionSources(def: WizardDefinition, page: PageStep, field: Field): string[] {
+  const index = def.steps.indexOf(page);
+  const out: string[] = [];
+  for (const s of def.steps.slice(0, index)) {
+    if (s.type === "page") {
+      out.push(...s.fields.map((f) => f.id));
+    } else if (s.type === "agent") {
+      out.push(...(s.output.fields ?? []).map((f) => `steps.${s.id}.${f.id}`));
+    }
+  }
+  out.push(...page.fields.filter((f) => f.id !== field.id).map((f) => f.id));
+  out.push(...(def.lists ?? []).map((l) => `lists.${l.id}.count`));
+  return out;
+}
+
+/** Where a choice field's options can come from: lists and table columns made before the page. */
+function optionSources(def: WizardDefinition, page: PageStep): string[] {
+  const index = def.steps.indexOf(page);
+  const out: string[] = [];
+  for (const s of def.steps.slice(0, index)) {
+    if (s.type !== "agent") {
+      continue;
+    }
+    for (const f of s.output.fields ?? []) {
+      if (f.kind === "list") {
+        out.push(`steps.${s.id}.${f.id}`);
+      } else if (f.kind === "table") {
+        out.push(...(f.columns ?? []).map((c) => `steps.${s.id}.${f.id}.${c}`));
+      }
+    }
+  }
+  for (const l of def.lists ?? []) {
+    if (!l.shared) {
+      out.push(...l.columns.map((c) => `lists.${l.id}.${c.id}`));
+    }
+  }
+  return out;
+}
+
+/** The label of a field id, or the reference itself. */
+function sourceLabel(def: WizardDefinition, ref: string): string {
+  const field = def.steps
+    .flatMap((s) => (s.type === "page" ? s.fields : []))
+    .find((f) => f.id === ref);
+  return field ? field.label : ref;
+}
+
+/** One condition: what it reads, how it compares, against what. Further ones are kept as they are. */
+function ConditionEditor({
+  def,
+  when,
+  sources,
+  onChange,
+}: {
+  def: WizardDefinition;
+  when: Field["when"];
+  sources: string[];
+  onChange: (when: Field["when"]) => void;
+}) {
+  const [first, ...rest] = conditionsOf(when);
+  const set = (c: Condition | null) =>
+    onChange(c ? (rest.length ? [c, ...rest] : c) : rest.length ? rest : undefined);
+  const needsValue = first && first.op !== "empty" && first.op !== "notEmpty";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[0.8125rem] text-ink-2">{t("editor.shownWhen")}</span>
+      <Select
+        value={first?.field ?? ""}
+        placeholder={t("editor.shownAlways")}
+        onChange={(v) =>
+          set(v ? { field: v, op: first?.op ?? "equals", value: first?.value ?? "" } : null)
+        }
+        options={[
+          { value: "", label: t("editor.shownAlways") },
+          ...sources.map((ref) => ({ value: ref, label: sourceLabel(def, ref) })),
+        ]}
+      />
+      {first ? (
+        <div className="flex gap-1.5">
+          <Select
+            value={first.op}
+            onChange={(v) => {
+              const op = v as Condition["op"];
+              const value =
+                op === "empty" || op === "notEmpty"
+                  ? undefined
+                  : op === "in"
+                    ? String(first.value ?? "")
+                        .split(",")
+                        .map((x) => x.trim())
+                        .filter(Boolean)
+                    : op === "gt" || op === "lt"
+                      ? Number(first.value) || 0
+                      : Array.isArray(first.value)
+                        ? first.value.join(", ")
+                        : (first.value ?? "");
+              set({ field: first.field, op, ...(value === undefined ? {} : { value }) });
+            }}
+            options={CONDITION_OPS.map((op) => ({ value: op, label: t(`editor.op.${op}`) }))}
+          />
+          {needsValue ? (
+            <Input
+              aria-label={t("editor.conditionValue")}
+              placeholder={t("editor.conditionValue")}
+              value={
+                Array.isArray(first.value) ? first.value.join(", ") : String(first.value ?? "")
+              }
+              onChange={(e) => {
+                const raw = e.target.value;
+                const value =
+                  first.op === "in"
+                    ? raw.split(",").map((x) => x.trim())
+                    : first.op === "gt" || first.op === "lt"
+                      ? Number(raw.replace(",", ".")) || 0
+                      : raw === "true" || raw === "false"
+                        ? raw === "true"
+                        : raw;
+                set({ ...first, value });
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      {rest.length ? (
+        <span className="text-[0.75rem] text-ink-4">
+          {t("editor.conditionsMore", { count: rest.length })}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function FieldEditor({
   def,
+  page,
   field,
   onChange,
   onRemove,
   onMove,
 }: {
   def: WizardDefinition;
+  page: PageStep;
   field: Field;
   onChange: (f: Field) => void;
   onRemove: () => void;
@@ -167,6 +306,20 @@ function FieldEditor({
               (k) => ({ value: k, label: FIELD_KIND_LABEL[k] }),
             )}
           />
+          {(field.kind === "select" || field.kind === "multiselect") &&
+          (field.optionsFrom || optionSources(def, page).length) ? (
+            <Select
+              value={field.optionsFrom ?? ""}
+              onChange={(v) => onChange({ ...field, optionsFrom: v || undefined })}
+              options={[
+                { value: "", label: t("editor.optionsFixed") },
+                ...optionSources(def, page).map((ref) => ({
+                  value: ref,
+                  label: `${t("editor.optionsFrom")}: ${ref}`,
+                })),
+              ]}
+            />
+          ) : null}
           {field.kind === "select" || field.kind === "multiselect" ? (
             <Input
               placeholder="Option A, Option B, Option C"
@@ -282,6 +435,12 @@ function FieldEditor({
             placeholder="Hilfetext"
             value={field.help ?? ""}
             onChange={(e) => onChange({ ...field, help: e.target.value || undefined })}
+          />
+          <ConditionEditor
+            def={def}
+            when={field.when}
+            sources={conditionSources(def, page, field)}
+            onChange={(when) => onChange({ ...field, when })}
           />
           <div className="flex items-center justify-between">
             <span className="text-[0.8125rem] text-ink-2">{t("run.required")}</span>
@@ -491,6 +650,7 @@ function StepBody({
               <FieldEditor
                 key={f.id}
                 def={def}
+                page={step}
                 field={f}
                 onChange={(nf) =>
                   set({ ...step, fields: step.fields.map((x, j) => (j === i ? nf : x)) })

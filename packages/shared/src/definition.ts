@@ -169,6 +169,33 @@ export const itemColumnSchema = z.object({
   kind: z.enum(["text", "number", "money"]),
 });
 
+export const CONDITION_OPS = [
+  "equals",
+  "notEquals",
+  "in",
+  "notEmpty",
+  "empty",
+  "gt",
+  "lt",
+  "contains",
+] as const;
+export type ConditionOp = (typeof CONDITION_OPS)[number];
+
+/**
+ * One test on what the run knows: an answer by field id, an output of an agent step as
+ * "steps.<step>.<field>", or how many rows a stored list has as "lists.<list>.count".
+ */
+export const conditionSchema = z.object({
+  field: z.string(),
+  op: z.enum(CONDITION_OPS),
+  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
+});
+export type Condition = z.infer<typeof conditionSchema>;
+
+/** One condition, or several that must all hold. */
+export const whenSchema = z.union([conditionSchema, z.array(conditionSchema).min(1)]);
+export type When = z.infer<typeof whenSchema>;
+
 export const fieldSchema = z.object({
   id,
   label: z.string().min(1),
@@ -209,15 +236,22 @@ export const fieldSchema = z.object({
    * `items` field takes a table whose columns are its column ids; the person corrects it.
    */
   prefill: z.string().optional(),
+  /**
+   * The field is shown only while this holds. It reads an answer of this page (decided as the
+   * person types) or anything known before the page. A hidden field is not asked and not kept.
+   */
+  when: whenSchema.optional(),
+  /**
+   * select / multiselect: the choices come from earlier data — a list output
+   * ("steps.<id>.<key>"), a column of a table output ("steps.<id>.<key>.<column>") or a column
+   * of a stored list ("lists.<id>.<column>"). `options` stand in while that data is empty.
+   */
+  optionsFrom: z.string().optional(),
 });
 export type Field = z.infer<typeof fieldSchema>;
 
 export const nextRuleSchema = z.object({
-  when: z.object({
-    field: z.string(),
-    op: z.enum(["equals", "notEquals", "in", "notEmpty", "empty"]),
-    value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
-  }),
+  when: whenSchema,
   /** A step id, or "end". */
   goto: z.string(),
 });
@@ -644,7 +678,11 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           issues.push({ stepId: step.id, message: `Duplicate field id "${field.id}".` });
         }
         fieldIds.add(field.id);
-        if ((field.kind === "select" || field.kind === "multiselect") && !field.options?.length) {
+        if (
+          (field.kind === "select" || field.kind === "multiselect") &&
+          !field.options?.length &&
+          !field.optionsFrom
+        ) {
           issues.push({ stepId: step.id, message: `Field "${field.id}" needs options.` });
         }
         if (field.kind === "items" && !field.columns?.length) {
@@ -739,10 +777,99 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     }
   };
 
+  /**
+   * What a condition may read before `step`: an answer asked earlier, an output field of an
+   * earlier agent step ("steps.<step>.<field>", the step itself for a branch), or how many rows
+   * a stored list has ("lists.<list>.count").
+   */
+  const knownBefore = (step: Step, ref: string, self = false): boolean => {
+    if (seenFields.has(ref)) {
+      return true;
+    }
+    const [head, from, key, ...more] = ref.split(".");
+    if (head === "lists") {
+      return key === "count" && more.length === 0 && listIds.has(from ?? "");
+    }
+    if (head !== "steps" || !key || more.length > 0) {
+      return false;
+    }
+    if (!(seenSteps.has(from) || (self && from === step.id))) {
+      return false;
+    }
+    const source = def.steps.find((s) => s.id === from);
+    return source?.type === "agent" && (source.output.fields ?? []).some((f) => f.id === key);
+  };
+
+  const conditionIssues = (stepId: string, c: Condition): ValidationIssue[] => {
+    if ((c.op === "gt" || c.op === "lt") && typeof c.value !== "number") {
+      return [{ stepId, message: `"${c.op}" on "${c.field}" compares with a number value.` }];
+    }
+    if (c.op === "in" && !Array.isArray(c.value)) {
+      return [{ stepId, message: `"in" on "${c.field}" needs a list of values.` }];
+    }
+    if (c.op !== "empty" && c.op !== "notEmpty" && c.value === undefined) {
+      return [{ stepId, message: `"${c.op}" on "${c.field}" needs a value.` }];
+    }
+    return [];
+  };
+
+  /** Why an `optionsFrom` reference finds nothing, or null when it is fine. */
+  const optionsFromProblem = (raw: string): string | null => {
+    const [head, from, key, column, ...more] = dataRef(raw).split(".");
+    if (head === "lists" && from && key && !column) {
+      const list = def.lists?.find((l) => l.id === from);
+      if (!list) {
+        return `"optionsFrom" names an unknown list "${from}".`;
+      }
+      if (sharedLists.has(from)) {
+        return notShown(from);
+      }
+      return list.columns.some((c) => c.id === key)
+        ? null
+        : `"optionsFrom": list "${from}" has no column "${key}".`;
+    }
+    if (head === "steps" && from && key && more.length === 0) {
+      const source = seenSteps.has(from) ? def.steps.find((s) => s.id === from) : undefined;
+      const out =
+        source?.type === "agent"
+          ? (source.output.fields ?? []).find((f) => f.id === key)
+          : undefined;
+      if (!out) {
+        return `"optionsFrom" names "${from}.${key}", which is not an output of an earlier agent step.`;
+      }
+      if (column) {
+        return out.kind === "table" && (!out.columns?.length || out.columns.includes(column))
+          ? null
+          : `"optionsFrom": "${from}.${key}" is not a table with the column "${column}".`;
+      }
+      return out.kind === "list" ? null : `"optionsFrom": "${from}.${key}" is not a list.`;
+    }
+    return `"optionsFrom" is "steps.<id>.<key>", "steps.<id>.<key>.<column>" or "lists.<id>.<column>".`;
+  };
+
   for (const step of def.steps) {
     switch (step.type) {
       case "page":
         for (const field of step.fields) {
+          for (const c of conditionsOf(field.when)) {
+            const own = step.fields.some((f) => f.id === c.field && f.id !== field.id);
+            if (!own && !knownBefore(step, c.field)) {
+              issues.push({
+                stepId: step.id,
+                message: `Field "${field.id}": "when" reads "${c.field}", which is neither on this page nor known before it.`,
+              });
+            }
+            issues.push(...conditionIssues(step.id, c));
+          }
+          if (field.optionsFrom) {
+            const problem =
+              field.kind !== "select" && field.kind !== "multiselect"
+                ? `"optionsFrom" fills the choices of a select or multiselect; kind is "${field.kind}".`
+                : optionsFromProblem(field.optionsFrom);
+            if (problem) {
+              issues.push({ stepId: step.id, message: `Field "${field.id}": ${problem}` });
+            }
+          }
           if (field.prefill) {
             const ref = dataRef(field.prefill);
             if (ref.split(".")[0] !== "steps") {
@@ -882,21 +1009,13 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       if (rule.goto !== "end" && !stepIds.has(rule.goto)) {
         issues.push({ stepId: step.id, message: `Branch goes to unknown step "${rule.goto}".` });
       }
-      // A branch reads what the person answered, or an output field of this or an earlier
-      // agent step as `steps.<step>.<field>`.
-      const [head, from, key, ...more] = rule.when.field.split(".");
-      const source =
-        head === "steps" && key && more.length === 0 && (from === step.id || seenSteps.has(from))
-          ? def.steps.find((s) => s.id === from)
-          : undefined;
-      const known =
-        fieldIds.has(rule.when.field) ||
-        (source?.type === "agent" && (source.output.fields ?? []).some((f) => f.id === key));
-      if (!known) {
-        issues.push({
-          stepId: step.id,
-          message: `Branch reads unknown field "${rule.when.field}".`,
-        });
+      // A branch reads what the person answered (on any page), an output field of this or an
+      // earlier agent step, or the row count of a stored list.
+      for (const c of conditionsOf(rule.when)) {
+        if (!fieldIds.has(c.field) && !knownBefore(step, c.field, true)) {
+          issues.push({ stepId: step.id, message: `Branch reads unknown field "${c.field}".` });
+        }
+        issues.push(...conditionIssues(step.id, c));
       }
     }
     seenSteps.add(step.id);
@@ -929,8 +1048,13 @@ export function parseWizard(
 export function branchValues(
   values: Record<string, unknown>,
   outputs: Record<string, { json?: unknown }>,
+  /** Rows per stored list, read as `lists.<list>.count`. */
+  listCounts: Record<string, number> = {},
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...values };
+  for (const [list, count] of Object.entries(listCounts)) {
+    out[`lists.${list}.count`] = count;
+  }
   for (const [stepId, output] of Object.entries(outputs)) {
     if (output.json && typeof output.json === "object" && !Array.isArray(output.json)) {
       for (const [key, value] of Object.entries(output.json)) {
@@ -964,20 +1088,137 @@ function isEmptyValue(v: unknown): boolean {
   return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 }
 
-export function ruleMatches(rule: NextRule, values: Record<string, unknown>): boolean {
-  const v = values[rule.when.field];
-  switch (rule.when.op) {
+/** The conditions of a rule or a field, as a list: one, several, or none. */
+export function conditionsOf(when: When | undefined): Condition[] {
+  return when === undefined ? [] : Array.isArray(when) ? when : [when];
+}
+
+/** A typed number as a number: "89,90" from a German number pad counts as 89.9. */
+function numberOf(v: unknown): number | null {
+  if (typeof v === "number") {
+    return Number.isFinite(v) ? v : null;
+  }
+  if (typeof v !== "string" || !v.trim()) {
+    return null;
+  }
+  const n = Number(v.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+export function conditionMatches(c: Condition, values: Record<string, unknown>): boolean {
+  const v = values[c.field];
+  switch (c.op) {
     case "empty":
       return isEmptyValue(v);
     case "notEmpty":
       return !isEmptyValue(v);
     case "equals":
-      return String(v) === String(rule.when.value);
+      return String(v) === String(c.value);
     case "notEquals":
-      return String(v) !== String(rule.when.value);
+      return String(v) !== String(c.value);
     case "in":
-      return Array.isArray(rule.when.value) && rule.when.value.map(String).includes(String(v));
+      return Array.isArray(c.value) && c.value.map(String).includes(String(v));
+    case "gt":
+    case "lt": {
+      const a = numberOf(v);
+      const b = numberOf(c.value);
+      return a !== null && b !== null && (c.op === "gt" ? a > b : a < b);
+    }
+    case "contains":
+      if (Array.isArray(v)) {
+        return v.map(String).includes(String(c.value));
+      }
+      return (
+        typeof v === "string" &&
+        c.value !== undefined &&
+        v.toLowerCase().includes(String(c.value).toLowerCase())
+      );
   }
+}
+
+/** Whether every condition holds; no conditions hold trivially. */
+export function whenHolds(when: When | undefined, values: Record<string, unknown>): boolean {
+  return conditionsOf(when).every((c) => conditionMatches(c, values));
+}
+
+export function ruleMatches(rule: NextRule, values: Record<string, unknown>): boolean {
+  return whenHolds(rule.when, values);
+}
+
+/**
+ * The fields of a page that are shown: those whose `when` holds on what was known before the
+ * page (`known`) and what the page holds so far (`page`). A hidden field's value does not count
+ * for the fields after it.
+ */
+export function shownFields(
+  fields: Field[],
+  known: Record<string, unknown>,
+  page: Record<string, unknown>,
+): Field[] {
+  const values = { ...known, ...page };
+  const out: Field[] = [];
+  for (const field of fields) {
+    if (whenHolds(field.when, values)) {
+      out.push(field);
+    } else {
+      delete values[field.id];
+    }
+  }
+  return out;
+}
+
+/** The references the `when` of a page's fields read outside the page: what the page must know. */
+export function pageNeeds(fields: Field[]): string[] {
+  const own = new Set(fields.map((f) => f.id));
+  return [
+    ...new Set(
+      fields.flatMap((f) => conditionsOf(f.when).map((c) => c.field)).filter((r) => !own.has(r)),
+    ),
+  ];
+}
+
+/** At most this many choices come from data. */
+export const MAX_DATA_OPTIONS = 100;
+
+/**
+ * The choices an `optionsFrom` reference finds in a run: the entries of a list output, one
+ * column of a table output, or one column of a stored list — as text, without duplicates and
+ * empties. Empty when the data is not there (yet).
+ */
+export function optionsFromData(
+  ref: string,
+  outputs: Record<string, { json?: unknown }>,
+  lists: Record<string, { rows: { cells: Record<string, unknown> }[] }> = {},
+): string[] {
+  const [head, id, key, column, ...more] = dataRef(ref).split(".");
+  let raw: unknown[] = [];
+  if (head === "lists" && id && key && !column) {
+    raw = (lists[id]?.rows ?? []).map((r) => r.cells[key]);
+  } else if (head === "steps" && id && key && more.length === 0) {
+    const json = outputs[id]?.json as Record<string, unknown> | undefined;
+    const value = json && typeof json === "object" ? json[key] : undefined;
+    if (Array.isArray(value)) {
+      raw = column
+        ? value.map((row) =>
+            row && typeof row === "object" ? (row as Record<string, unknown>)[column] : undefined,
+          )
+        : value;
+    }
+  }
+  const seen = new Set<string>();
+  for (const v of raw) {
+    if (v === null || v === undefined || typeof v === "object") {
+      continue;
+    }
+    const text = String(v).trim().slice(0, 200);
+    if (text) {
+      seen.add(text);
+    }
+    if (seen.size >= MAX_DATA_OPTIONS) {
+      break;
+    }
+  }
+  return [...seen];
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,9 @@
-import type { PageStep, ResultStep, ReviewStep } from "@engenty-wizards/shared/definition";
+import {
+  type PageStep,
+  type ResultStep,
+  type ReviewStep,
+  shownFields,
+} from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowLeft,
@@ -97,6 +102,16 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const form = useRef<HTMLFormElement>(null);
   const first = view.progress.done === 0;
+  // Choices from earlier data stand in for the fixed ones; a field whose condition does not
+  // hold is not shown, decided again as the person types.
+  const fields = useMemo(
+    () =>
+      step.fields.map((f) =>
+        view.options?.[f.id]?.length ? { ...f, options: view.options[f.id] } : f,
+      ),
+    [step.fields, view.options],
+  );
+  const shown = shownFields(fields, view.known ?? {}, values);
   const submit = () => void run.submitPage(step.id, values);
 
   // The keyboard's action key says what it does: "next" between fields, "go" on the last one.
@@ -149,7 +164,7 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
         kicker={first ? view.wizard.intro : null}
       />
       <div className="flex flex-col gap-7">
-        {step.fields.map((f) => (
+        {shown.map((f) => (
           <FieldInput
             key={f.id}
             field={f}

@@ -1,4 +1,7 @@
 import {
+  type Condition,
+  conditionMatches,
+  conditionsOf,
   isDecisionStep,
   MODEL_CLASSES,
   type ModelClass,
@@ -85,7 +88,7 @@ export function unavoidableFrom(
     const out: number[] = [];
     for (const rule of def.steps[i].next ?? []) {
       const target = rule.goto === "end" ? def.steps.length : (index.get(rule.goto) ?? -1);
-      if (!(rule.when.field in known)) {
+      if (!conditionsOf(rule.when).every((c) => c.field in known)) {
         if (target >= 0) {
           out.push(target);
         }
@@ -133,9 +136,23 @@ type Facts = Record<string, Known>;
 
 /** Whether a rule matches given what is known: true, false, or null = it may go either way. */
 function ruleHolds(rule: NextRule, facts: Facts): boolean | null {
-  const k = facts[rule.when.field];
-  const value = rule.when.value;
-  switch (rule.when.op) {
+  let all: boolean | null = true;
+  for (const c of conditionsOf(rule.when)) {
+    const holds = conditionHolds(c, facts);
+    if (holds === false) {
+      return false;
+    }
+    if (holds === null) {
+      all = null;
+    }
+  }
+  return all;
+}
+
+function conditionHolds(c: Condition, facts: Facts): boolean | null {
+  const k = facts[c.field];
+  const value = c.value;
+  switch (c.op) {
     case "empty":
       return k?.filled === undefined ? (k?.is !== undefined ? false : null) : !k.filled;
     case "notEmpty":
@@ -159,25 +176,45 @@ function ruleHolds(rule: NextRule, facts: Facts): boolean | null {
       }
       return list.every((v) => k?.not.includes(v)) ? false : null;
     }
+    case "gt":
+    case "lt":
+    case "contains":
+      if (k?.is !== undefined) {
+        return conditionMatches(c, { [c.field]: k.is });
+      }
+      return k?.filled === false ? false : null;
   }
 }
 
-/** What is known once a rule did (`held`) or did not match. */
+/**
+ * What is known once a rule did (`held`) or did not match. A rule of several conditions that
+ * did not match says nothing about any one of them.
+ */
 function learn(rule: NextRule, held: boolean, facts: Facts): Facts {
-  const field = rule.when.field;
+  const conditions = conditionsOf(rule.when);
+  if (held) {
+    return conditions.reduce((known, c) => learnCondition(c, true, known), facts);
+  }
+  return conditions.length === 1 ? learnCondition(conditions[0], false, facts) : facts;
+}
+
+function learnCondition(c: Condition, held: boolean, facts: Facts): Facts {
+  const field = c.field;
   const k: Known = { ...(facts[field] ?? { not: [] }) };
   k.not = [...k.not];
-  const value = String(rule.when.value);
-  const op = rule.when.op;
+  const value = String(c.value);
+  const op = c.op;
   if ((op === "equals" && held) || (op === "notEquals" && !held)) {
     k.is = value;
     k.filled = true;
   } else if ((op === "equals" && !held) || (op === "notEquals" && held)) {
     k.not.push(value);
-  } else if (op === "in" && !held && Array.isArray(rule.when.value)) {
-    k.not.push(...rule.when.value.map(String));
+  } else if (op === "in" && !held && Array.isArray(c.value)) {
+    k.not.push(...c.value.map(String));
   } else if (op === "empty" || op === "notEmpty") {
     k.filled = (op === "notEmpty") === held;
+  } else if ((op === "gt" || op === "lt" || op === "contains") && held) {
+    k.filled = true;
   }
   return { ...facts, [field]: k };
 }
