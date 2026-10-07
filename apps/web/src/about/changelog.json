@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.25",
+    "timestamp": 1791351203,
+    "commits": [
+      {
+        "id": "d144800",
+        "message": "connecting a mailbox over IMAP finds Google Workspace on a company domain through its MX record, gives up after 15 seconds instead of spinning, and a failed connect names the server it tried and says what to check",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.24",
-    "timestamp": 1791319756,
+    "timestamp": 1791319759,
     "commits": [
       {
         "id": "762d5f2",

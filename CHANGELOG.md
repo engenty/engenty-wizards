@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.25] - 2026-10-07
+- FIXED Connecting a mailbox over IMAP finds Google Workspace on a company domain through its MX record, gives up after 15 seconds instead of spinning, and a failed connect names the server it tried and says what to check
+
 ## [0.2.24] - 2026-10-06
 - ADDED A run opened in the drawer (editor test runs and the space's results) can be dragged wider or narrower at its left edge – arrow keys too, a double click resets – and an expand button in its bar makes it fill the browser window; width and expansion are remembered per browser
 
