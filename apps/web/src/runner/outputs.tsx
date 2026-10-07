@@ -9,6 +9,7 @@ import { appCall, appCan, appDownload } from "../lib/app";
 import { t } from "../lib/i18n";
 import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
+import { type SurfaceAction, SurfaceView } from "./surface";
 
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const html = useMemo(
@@ -309,6 +310,7 @@ export function OutputView({
   onDraft,
   picked,
   onPick,
+  onSurfaceAction,
 }: {
   /** `/api/runs/<id>` or `/api/shares/<token>` — where the output's files are served. */
   base: string;
@@ -320,11 +322,17 @@ export function OutputView({
   /** Several results: the ones picked to be made again (from 0), and the tap that picks one. */
   picked?: number[];
   onPick?: (index: number) => void;
+  /** A surface's buttons: "regenerate" where the review allows it. */
+  onSurfaceAction?: (a: SurfaceAction) => void;
 }) {
   if (!output) {
     return null;
   }
   const assetUrl = (id: string) => withBase(`${base}/assets/${id}`);
+  // A view from the catalog stands for the step's data.
+  if (output.surface) {
+    return <SurfaceView surface={output.surface} assetUrl={assetUrl} onAction={onSurfaceAction} />;
+  }
   if (step.type === "widget" || step.type === "film") {
     const film = output.assets?.find((a) => a.kind === "video");
     if (film) {

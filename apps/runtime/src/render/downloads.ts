@@ -106,6 +106,14 @@ export async function renderDownload(
       : null;
   }
 
+  if (step.type === "surface") {
+    return {
+      data: JSON.stringify(output.surface ?? {}, null, 2),
+      mime: MIME.json,
+      filename: file("json"),
+    };
+  }
+
   if (step.type === "widget") {
     const source = output.assets?.find((a) => a.mime === "text/html");
     if (format === "json") {

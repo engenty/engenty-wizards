@@ -1,3 +1,4 @@
+import { SURFACE_GUIDE } from "@engenty-wizards/shared/surface";
 import { sandboxGuideLine } from "../sandbox/index.js";
 import { EXAMPLE_WIZARD } from "./example.js";
 
@@ -116,7 +117,7 @@ type AgentStep = {
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[] }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[], surface?: boolean }
                                 // "score" answers its description on the scale in options, lowest first ("low", "medium", "high")
   each?: "steps.<id>.<key>" | "lists.<id>"
                                 // ONE RUN PER ENTRY (at most 20): the rows of a table output, the entries of a list output, or the
@@ -139,6 +140,19 @@ type AgentStep = {
 //   browser_request_user (the person solves a captcha or "continue with Google" in a picture of the page),
 //   browser_download (keeps a file from a signed-in site).
 
+type SurfaceStep = {
+  type: "surface"
+  components: SurfaceComponent[]  // a view from the surface catalog (below), written once; every run brings new data
+  data: { [key]: "fieldId" | "steps.<id>" | "steps.<id>.<key>" | "lists.<id>" | "brand.name" | "today" }
+                                // what the components read by path: {"path": "/<key>/..."}
+  // or instead of components — pieces a decision picks per run (no chart when there is nothing to chart):
+  candidates?: { id, description, components: SurfaceComponent[] (the first has the piece's id), group?, required? }[]
+  groups?: { id, instructions, optional? }[]
+}
+// A SURFACE is a native view in the runner — facts, a list of results, key figures, a chart — themed, on phones, free per run.
+//   Prefer it to a widget for such views; a widget is for what the catalog cannot show (a map, an animation).
+//   An agent step with output.format "json" can also set output.surface: true: it composes such a view of its own result.
+//   Reviews and the result show a step's view instead of its plain table.
 type GenerateStep = {
   type: "generate"
   asset: "image"|"video"|"voice"|"document"|"dashboard"
@@ -337,6 +351,9 @@ export function authoringGuide(
 ${SCHEMA_DOC}
 ${PRINCIPLES}
 ${WIDGET_GUIDE}
+
+Surface catalog (for surface steps and output.surface):
+${SURFACE_GUIDE}
 
 ${mcpServersLine(mcp)}
 

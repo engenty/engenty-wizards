@@ -11,6 +11,12 @@ import {
   wizardLang,
 } from "@engenty-wizards/shared/definition";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
+import {
+  SURFACE_GUIDE,
+  type Surface,
+  type SurfaceComponent,
+  validateSurface,
+} from "@engenty-wizards/shared/surface";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
 import { generateText, Output } from "ai";
@@ -33,6 +39,7 @@ import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { decide } from "./decide.js";
 import { prepareInputs } from "./prepare.js";
+import { runSurfaceStep } from "./surface.js";
 import {
   answersAsText,
   colorLine,
@@ -270,6 +277,75 @@ async function decideStep(step: AgentStep, prompt: string, ctx: StepContext): Pr
   return { text, json, decided, at: new Date().toISOString() };
 }
 
+/** The JSON array in a model's answer, fenced or not. */
+function jsonArrayIn(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1] ?? text;
+  const start = fenced.indexOf("[");
+  const end = fenced.lastIndexOf("]");
+  if (start < 0 || end <= start) {
+    return null;
+  }
+  try {
+    return JSON.parse(fenced.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The view an agent step composes of its result: the standard class writes components from the
+ * surface catalog bound to the step's fields, the catalog's validator checks them, and one try
+ * with the issues follows. Without a valid view the plain result shows: the step never fails
+ * for its view.
+ */
+async function composeSurface(
+  step: AgentStep,
+  json: Record<string, unknown>,
+  ctx: StepContext,
+): Promise<Surface | undefined> {
+  const keys = Object.keys(json);
+  const fields = (step.output.fields ?? [])
+    .map(
+      (f) =>
+        `- /${f.id} (${f.kind}${f.columns ? `: ${f.columns.join(", ")}` : ""}): ${f.description ?? ""}`,
+    )
+    .join("\n");
+  const sample = JSON.stringify(json).slice(0, 4000);
+  try {
+    const writer = await textModel("standard", ctx.call);
+    let issues: string[] = [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await generateText({
+        model: writer.model,
+        abortSignal: ctx.signal,
+        prompt: [
+          `Compose a view of this result for the person who ran "${ctx.def.title}". Answer with the JSON array of components only.`,
+          SURFACE_GUIDE,
+          `# THE DATA (bind by path, never copy values)\n${fields}\n\nSample: ${sample}`,
+          issues.length
+            ? `# YOUR LAST ANSWER HAD THESE PROBLEMS — fix them\n${issues.join("\n")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      });
+      await ctx.chargeUsd(costOf(writer, result.usage));
+      const components = jsonArrayIn(result.text);
+      issues = validateSurface(components, keys).map((i) => i.message);
+      if (!issues.length) {
+        return { components: components as SurfaceComponent[], data: json };
+      }
+    }
+    console.warn(`[step ${step.id}] no valid view:`, issues.join("; "));
+  } catch (err) {
+    if (ctx.signal.aborted) {
+      throw err;
+    }
+    console.warn(`[step ${step.id}] view not composed:`, (err as Error).message);
+  }
+  return undefined;
+}
+
 /** An agent step runs this many times at most with `each`; more entries are left out. */
 const MAX_AGENT_ENTRIES = 20;
 
@@ -293,7 +369,12 @@ async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutp
   if (!entries.length) {
     throw new StepError("Es gibt keine Einträge, für die dieser Schritt arbeiten könnte.");
   }
-  const single: AgentStep = { ...step, each: undefined };
+  // The view, if any, is composed once over the table of all entries.
+  const single: AgentStep = {
+    ...step,
+    each: undefined,
+    output: { ...step.output, surface: false },
+  };
   const rows: Record<string, unknown>[] = [];
   const texts: string[] = [];
   const assets: AssetRef[] = [];
@@ -309,9 +390,30 @@ async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutp
     texts.push(`## ${String(title)}\n\n${out.text ?? ""}`.trim());
     assets.push(...(out.assets ?? []));
   }
+  const json = { rows };
+  const surface = step.output.surface
+    ? await composeSurface(
+        {
+          ...step,
+          output: {
+            ...step.output,
+            fields: [
+              {
+                id: "rows",
+                kind: "table",
+                description: "One row per entry: its columns and the step's fields",
+              },
+            ],
+          },
+        },
+        json,
+        ctx,
+      )
+    : undefined;
   return {
     text: texts.join("\n\n"),
-    json: { rows },
+    json,
+    ...(surface ? { surface } : {}),
     assets: assets.length ? assets : undefined,
     at: new Date().toISOString(),
   };
@@ -426,7 +528,14 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     });
     await ctx.chargeUsd(costOf(structurer, structured.usage));
     const json = tablesToRecords(structured.output as Record<string, unknown>, fields);
-    return { text, json, assets: assets.length ? assets : undefined, at: new Date().toISOString() };
+    const surface = step.output.surface ? await composeSurface(step, json, ctx) : undefined;
+    return {
+      text,
+      json,
+      ...(surface ? { surface } : {}),
+      assets: assets.length ? assets : undefined,
+      at: new Date().toISOString(),
+    };
   } finally {
     await close();
   }
@@ -829,6 +938,9 @@ export async function runAutomaticStep(step: Step, ctx: StepContext): Promise<St
   }
   if (step.type === "film") {
     return runFilmStep(step, ctx);
+  }
+  if (step.type === "surface") {
+    return runSurfaceStep(step, ctx);
   }
   throw new StepError(`Step ${step.id} is not automatic.`);
 }

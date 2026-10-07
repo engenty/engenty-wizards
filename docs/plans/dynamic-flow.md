@@ -1,7 +1,8 @@
 # Plan: dynamic flow, fields and surfaces
 
-Status: releases 1 and 2 built (rules, conditional fields, choices from data; decide(), decided
-branches and fields, loops, `each` on agent steps, score). From the review of 2026-10-06.
+Status: releases 1–4 built (rules, conditional fields, choices from data; decide(), decided
+branches and fields, loops, `each` on agent steps, score; the surface catalog, surface steps
+authored or decided, views agent steps compose of their result). From the review of 2026-10-06.
 
 Built differently from the text below:
 
@@ -13,6 +14,11 @@ Built differently from the text below:
   "decide" row; a field gets an "ask" input next to its condition. Groups are edited in the
   conversation.
 - While a branch is decided the runner shows the page it came from as working.
+- Releases 3 and 4 are one commit. A surface exports as JSON only; HTML, PNG and PDF need the
+  runner's components rendered on the server and are not built.
+- Charts take `labelKey` / `valueKey` to read the columns of bound rows. A surface's buttons:
+  `regenerate` aims a review's note at the step, `open` opens an asset; `choose` is not built.
+- The studio edits a surface step as JSON.
 
 Scope: branches and loops a run decides at run time, fields and choices that depend on what came
 before, and views composed from a catalog the way engenty-pro's `show_ui` composes A2UI surfaces.

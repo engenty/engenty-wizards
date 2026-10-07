@@ -484,6 +484,47 @@ const WIDGET_SIZES = [
   { label: "9:16", width: 1080, height: 1920 },
 ];
 
+/**
+ * A surface step as the JSON it is: its components (or the pieces a decision picks from) and its
+ * data. Written by the assistant; edited here by hand, kept only when it is valid JSON.
+ */
+function SurfaceBody({
+  step,
+  set,
+}: {
+  step: Extract<Step, { type: "surface" }>;
+  set: (s: Step) => void;
+}) {
+  const shown = {
+    ...(step.components ? { components: step.components } : {}),
+    ...(step.candidates ? { candidates: step.candidates, groups: step.groups } : {}),
+    data: step.data,
+  };
+  const [draft, setDraft] = useState(() => JSON.stringify(shown, null, 2));
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Section title={t("editor.surfaceJson")}>
+      <Textarea
+        minRows={8}
+        maxRows={30}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          try {
+            const next = JSON.parse(draft) as Partial<typeof shown>;
+            setError(null);
+            set({ ...step, ...next } as Step);
+          } catch (err) {
+            setError((err as Error).message);
+          }
+        }}
+        className="font-mono text-[0.75rem]"
+      />
+      {error ? <p className="text-[0.75rem] text-rose">{error}</p> : null}
+    </Section>
+  );
+}
+
 /** Where a widget's data can come from: earlier fields and steps. */
 function dataSources(def: WizardDefinition, index: number): string[] {
   const out: string[] = [];
@@ -492,7 +533,7 @@ function dataSources(def: WizardDefinition, index: number): string[] {
       out.push(...s.fields.map((f) => f.id));
     } else if (s.type === "agent") {
       out.push(`steps.${s.id}`, ...(s.output.fields ?? []).map((f) => `steps.${s.id}.${f.id}`));
-    } else if (s.type === "generate" || s.type === "widget") {
+    } else if (s.type === "generate" || s.type === "widget" || s.type === "surface") {
       out.push(`steps.${s.id}`);
     }
   }
@@ -646,10 +687,15 @@ function StepBody({
   const pluginTools = useStudioPlugins().plugins.flatMap((plugin) => plugin.tools);
   const earlierProducers = def.steps
     .slice(0, index)
-    .filter((s) => s.type === "agent" || s.type === "generate" || s.type === "widget");
+    .filter(
+      (s) =>
+        s.type === "agent" || s.type === "generate" || s.type === "widget" || s.type === "surface",
+    );
   switch (step.type) {
     case "widget":
       return <WidgetBody def={def} step={step} set={set} files={files} wizardId={wizardId} />;
+    case "surface":
+      return <SurfaceBody step={step} set={set} />;
     case "page":
       return (
         <Section title="Fragen" loose>

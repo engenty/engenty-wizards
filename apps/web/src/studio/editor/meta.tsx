@@ -8,6 +8,7 @@ import {
   Flag,
   Image,
   LayoutDashboard,
+  LayoutTemplate,
   ListChecks,
   Video,
   Wand2,
@@ -30,6 +31,8 @@ export function stepIcon(step: Step) {
             : FileText;
     case "widget":
       return AppWindow;
+    case "surface":
+      return LayoutTemplate;
     case "film":
       return Clapperboard;
     case "review":
@@ -45,6 +48,7 @@ export const TYPE_TONE: Record<Step["type"], string> = {
   agent: "bg-ember-tint text-ember-strong",
   generate: "bg-amber-tint text-ink-2",
   widget: "bg-ember-veil text-ember-strong",
+  surface: "bg-ember-veil text-ember-strong",
   film: "bg-amber-tint text-ink-2",
   review: "bg-moss-tint text-moss",
   result: "bg-paper-2 text-ink-2",
@@ -88,6 +92,10 @@ export function stepSummary(step: Step): string {
     }
     case "widget":
       return [step.entry, Object.keys(step.data).join(", ")].filter(Boolean).join(" · ");
+    case "surface":
+      return step.candidates
+        ? step.candidates.map((c) => c.id).join(" · ")
+        : Object.keys(step.data).join(", ");
     case "film":
       return [step.format, step.seconds ? `${step.seconds}s` : null, step.skills.join(", ")]
         .filter(Boolean)

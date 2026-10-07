@@ -46,6 +46,9 @@ function ownClasses(step: Step): ModelClass[] {
       if (step.output.format === "json") {
         classes.push("classifier");
       }
+      if (step.output.surface && !classes.includes("standard")) {
+        classes.push("standard");
+      }
       return classes;
     }
     case "generate":

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tableColumnsSchema } from "./engenty/data-tables/index.js";
 import { CONNECTION_KINDS } from "./store.js";
+import { type SurfaceComponent, surfaceComponentsSchema, validateSurface } from "./surface.js";
 
 /** The engenty avatars a wizard can wear. Same cast as engenty's ui-core. */
 export const ENGENTY_KINDS = [
@@ -345,6 +346,11 @@ export const agentStepSchema = z.object({
     .object({
       format: z.enum(["text", "markdown", "json"]),
       fields: z.array(outputFieldSchema).optional(),
+      /**
+       * json only: the step also composes a view of its result from the surface catalog, bound
+       * to its own fields; reviews and the result show that view instead of a plain table.
+       */
+      surface: z.boolean().optional(),
     })
     .default({ format: "markdown" }),
   /** The kind of model the step needs; default `high`. The model itself is bound elsewhere. */
@@ -465,6 +471,54 @@ export const filmStepSchema = z.object({
   working: z.string().optional(),
 });
 
+/** A piece a decided surface may show: its components (the first has the piece's id) and what it shows. */
+export const surfaceCandidateSchema = z.object({
+  id,
+  /** What this piece shows, for the decision: "A chart of prices per supplier". */
+  description: z.string().min(1),
+  components: surfaceComponentsSchema,
+  /** Pieces of a group exclude each other: the decision shows one (or none, if optional). */
+  group: z.string().optional(),
+  /** Always shown: a title, the main list. */
+  required: z.boolean().optional(),
+});
+
+export const surfaceStepSchema = z
+  .object({
+    ...stepBase,
+    type: z.literal("surface"),
+    /** A view from the surface catalog, written once like a widget; every run brings new data. */
+    components: surfaceComponentsSchema.optional(),
+    /**
+     * Instead of `components`: pieces a decision picks from per run (no chart when there is
+     * nothing to chart), drawn in this order under one column.
+     */
+    candidates: z.array(surfaceCandidateSchema).max(16).optional(),
+    groups: z.array(fieldGroupSchema).max(6).optional(),
+    /** What the surface reads as data: key → a field id, steps.id, steps.id.key, lists.id, brand.name or today. */
+    data: z.record(z.string(), z.string()).default({}),
+    working: z.string().optional(),
+  })
+  .refine((step) => Boolean(step.components) !== Boolean(step.candidates), {
+    message: 'A surface step has either "components" or "candidates".',
+  });
+
+/**
+ * The components of a decided surface for the pieces kept: one root column holding them in
+ * their order. Every piece kept is the same as all of them for the validator.
+ */
+export function assembleSurface(
+  candidates: { id: string; components: SurfaceComponent[] }[],
+  kept: Iterable<string>,
+): SurfaceComponent[] {
+  const keep = new Set(kept);
+  const chosen = candidates.filter((c) => keep.has(c.id));
+  return [
+    { id: "root", component: "Column", children: chosen.map((c) => c.components[0]?.id ?? c.id) },
+    ...chosen.flatMap((c) => c.components),
+  ];
+}
+
 export const reviewStepSchema = z.object({
   ...stepBase,
   type: z.literal("review"),
@@ -492,12 +546,14 @@ export const stepSchema = z.discriminatedUnion("type", [
   agentStepSchema,
   generateStepSchema,
   widgetStepSchema,
+  surfaceStepSchema,
   filmStepSchema,
   reviewStepSchema,
   resultStepSchema,
 ]);
 export type Step = z.infer<typeof stepSchema>;
 export type PageStep = z.infer<typeof pageStepSchema>;
+export type SurfaceStep = z.infer<typeof surfaceStepSchema>;
 export type AgentStep = z.infer<typeof agentStepSchema>;
 
 /**
@@ -614,6 +670,9 @@ export function formatsFor(step: Step): Format[] {
   }
   if (step.type === "widget") {
     return step.video ? ["mp4", "png"] : ["html", "png", "pdf", "mp4", "json"];
+  }
+  if (step.type === "surface") {
+    return ["json"];
   }
   if (step.type === "agent") {
     if (step.output.format === "json") {
@@ -979,6 +1038,12 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             issues.push({ stepId: step.id, message: `Step uses unknown connection "${c}".` });
           }
         }
+        if (step.output.surface && step.output.format !== "json") {
+          issues.push({
+            stepId: step.id,
+            message: 'A step composes a view ("surface") of json output only.',
+          });
+        }
         if (step.each) {
           const ref = dataRef(step.each);
           const list = ref.match(/^lists\.([a-zA-Z][a-zA-Z0-9_]*)$/)?.[1];
@@ -1046,6 +1111,52 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           });
         }
         break;
+      case "surface": {
+        for (const [key, ref] of Object.entries(step.data)) {
+          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+            issues.push({
+              stepId: step.id,
+              message: `Surface data key "${key}" is not an identifier.`,
+            });
+          }
+          const list = listRef(dataRef(ref));
+          if (list) {
+            if (!listIds.has(list)) {
+              issues.push({
+                stepId: step.id,
+                message: `Surface data reads an unknown list "${list}".`,
+              });
+            }
+          } else {
+            checkTemplate(step, `{{${dataRef(ref)}}}`);
+          }
+        }
+        const groups = new Set((step.groups ?? []).map((g) => g.id));
+        for (const c of step.candidates ?? []) {
+          if (c.components[0]?.id !== c.id) {
+            issues.push({
+              stepId: step.id,
+              message: `Surface piece "${c.id}": its first component carries the piece's id.`,
+            });
+          }
+          if (c.group && !groups.has(c.group)) {
+            issues.push({
+              stepId: step.id,
+              message: `Surface piece "${c.id}" names an unknown group "${c.group}".`,
+            });
+          }
+        }
+        const components =
+          step.components ??
+          assembleSurface(
+            step.candidates ?? [],
+            (step.candidates ?? []).map((c) => c.id),
+          );
+        for (const issue of validateSurface(components, Object.keys(step.data))) {
+          issues.push({ stepId: step.id, message: `Surface: ${issue.message}` });
+        }
+        break;
+      }
       case "film":
         checkTemplate(step, step.brief);
         for (const [name, ref] of Object.entries(step.inputs)) {

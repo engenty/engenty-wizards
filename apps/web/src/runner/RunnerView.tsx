@@ -459,6 +459,14 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                         }
                       : undefined
                   }
+                  onSurfaceAction={
+                    step.regenerate
+                      ? () => {
+                          setTarget(s.id);
+                          prompt.current?.focus();
+                        }
+                      : undefined
+                  }
                 />
               </section>
             );

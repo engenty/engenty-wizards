@@ -1,5 +1,6 @@
 import type { Format, ModelClass, Step, WizardDefinition } from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
+import type { Surface } from "./surface.js";
 
 export type RunStatus = "waiting_input" | "running" | "done" | "failed" | "cancelled";
 
@@ -21,6 +22,8 @@ export interface StepOutput {
   json?: unknown;
   /** A decision step: how probable each answer is (1 or 0 where a language model answered). */
   decided?: Record<string, number>;
+  /** A view from the surface catalog and the data it is bound to. */
+  surface?: Surface;
   assets?: AssetRef[];
   /** Widgets: what loading it with this run's data showed. */
   widget?: {

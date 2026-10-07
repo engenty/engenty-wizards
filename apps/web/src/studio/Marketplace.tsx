@@ -268,6 +268,8 @@ function stepIcon(step: OutlineStep): LucideIcon {
               : FileText;
     case "widget":
       return step.video ? Clapperboard : AppWindow;
+    case "surface":
+      return AppWindow;
     case "film":
       return Clapperboard;
     case "review":

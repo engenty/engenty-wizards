@@ -11,6 +11,7 @@ A wizard runs its steps from top to bottom. The last step is always the result.
 | AI step | Does a task with tools: research, read documents, call an API, work in a connected service |
 | Generate | Makes one thing: an image, a video, a voice-over, a document or a dashboard |
 | Widget | Shows an interactive view built once for this wizard: a map, a timeline, a calculator, a film |
+| View | Shows the results in the wizard's own look: key figures, facts, a list, a chart |
 | Review | Shows what earlier steps made. The person accepts it, edits it or asks for a new version |
 | Result | The last page: what the person can download or share |
 
@@ -108,6 +109,19 @@ An image or video step can make one result per entry, at most eight: per uploade
 image of an earlier step, or per row of a table. In a review the person can have single results
 made again.
 
+## Views
+
+A view shows what the run found in the wizard's own look, on any screen: key figures, a list of
+facts, a list of results with pictures, a table or a simple chart (bars, a line, a ring). It is
+built from a fixed set of parts, written once by the assistant, and every run brings new data;
+it costs nothing to show.
+
+A view can also leave some of its parts to the AI, for example a chart only when there is
+something to compare. And an AI step can lay out a view of its own result, which reviews and the
+result page then show instead of a plain table.
+
+For anything the parts cannot show, such as a map or an animation, use a widget.
+
 ## Widgets
 
 A widget is an interactive HTML view written once into the wizard's files. Every run only brings
@@ -132,6 +146,7 @@ Each entry of the result page names a step and the formats the person can downlo
 | Document | PDF, Word, HTML, Markdown, PNG |
 | Dashboard | HTML, PDF, PNG |
 | Widget | HTML, PNG, PDF, JSON; MP4 when it animates |
+| View | JSON |
 | AI step, text | Markdown, text, Word, PDF, HTML |
 | AI step, data | JSON, CSV, Excel, Markdown |
 | AI step, collected files | ZIP |

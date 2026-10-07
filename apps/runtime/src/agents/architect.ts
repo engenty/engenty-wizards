@@ -1,4 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic";
+import { SURFACE_GUIDE } from "@engenty-wizards/shared/surface";
 import { isTextMime } from "@engenty-wizards/shared/workspace";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
@@ -78,6 +79,9 @@ You talk to the ADMIN who builds the wizard. Answer in the admin's language, bri
 ${SCHEMA_DOC}
 ${PRINCIPLES}
 ${WIDGET_GUIDE}
+
+Surface catalog (for surface steps and output.surface):
+${SURFACE_GUIDE}
 
 ${mcpServersLine(mcp)}
 
