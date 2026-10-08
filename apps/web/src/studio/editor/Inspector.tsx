@@ -1614,10 +1614,12 @@ function StepOverview({
           {cost === undefined ? null : (
             <span className="tabular-nums">
               ≈{" "}
-              {cost < 10
-                ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
-                : Math.round(cost)}{" "}
-              cr
+              {t("nav.credits", {
+                n:
+                  cost < 10
+                    ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
+                    : Math.round(cost),
+              })}
             </span>
           )}
           <span>

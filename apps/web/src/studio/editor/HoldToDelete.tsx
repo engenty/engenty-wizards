@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "../../lib/i18n";
 import { cn } from "../../ui";
 
-const HOLD_MS = 2000;
+const HOLD_MS = 1200;
 
 /**
- * Deleting by holding: pressed, the button turns into "Löschen" and fills up; held for two
+ * Deleting by holding: pressed, the button turns into "Löschen" and fills up; held for 1.2
  * seconds it deletes, let go earlier nothing happens. A short click says to hold. Space and
  * Enter hold it from the keyboard.
  */

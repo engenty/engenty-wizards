@@ -452,8 +452,51 @@ export function ChatPanel({
   };
   const thread = !compact || open;
   const last = chat.messages.at(-1);
+  // Files dropped anywhere on the conversation are attached to the next message. Entering and
+  // leaving the children is counted, so the drop sign does not flicker.
+  const [drag, setDrag] = useState(false);
+  const depth = useRef(0);
+  const takes = (e: React.DragEvent) => !closed && e.dataTransfer.types.includes("Files");
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className="relative flex h-full min-h-0 flex-col"
+      onDragEnter={(e) => {
+        if (!takes(e)) {
+          return;
+        }
+        e.preventDefault();
+        depth.current += 1;
+        setDrag(true);
+      }}
+      onDragOver={(e) => {
+        if (takes(e)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDragLeave={() => {
+        depth.current = Math.max(0, depth.current - 1);
+        if (depth.current === 0) {
+          setDrag(false);
+        }
+      }}
+      onDrop={(e) => {
+        if (!takes(e)) {
+          return;
+        }
+        e.preventDefault();
+        depth.current = 0;
+        setDrag(false);
+        add(Array.from(e.dataTransfer.files).map(pastedName));
+        area.current?.focus();
+      }}
+    >
+      {drag ? (
+        <div className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-ember border-dashed bg-ember-veil text-[0.875rem] text-ember-strong">
+          <Paperclip className="size-6" />
+          {t("editor.dropToAttach")}
+        </div>
+      ) : null}
       {compact && (last || chat.error) ? (
         <button
           type="button"

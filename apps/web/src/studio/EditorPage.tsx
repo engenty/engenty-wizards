@@ -30,13 +30,14 @@ import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
 import { currentDecisions, FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
+import { MemoryPanel } from "./editor/MemoryPanel";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
 import { RunDrawer } from "./RunDrawer";
 import { WhereChip, whereItRuns } from "./where";
 
-type Tab = "chat" | "step" | "files" | "runs";
+type Tab = "chat" | "step" | "files" | "memory" | "runs";
 
 /** The model classes an account's credits run: text, images, videos. */
 const CREDIT_CLASSES: readonly ModelClass[] = [...TEXT_CLASSES, "image", "video"];
@@ -45,6 +46,7 @@ const TAB_LABEL: Record<Tab, string> = {
   chat: "editor.chat",
   step: "editor.step",
   files: "editor.files",
+  memory: "editor.memory",
   runs: "editor.runs",
 };
 
@@ -656,7 +658,7 @@ export function EditorPage() {
             <span className="-translate-y-1/2 absolute top-1/2 left-[7px] h-12 w-1.5 rounded-full bg-ink-4/40 transition group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:h-16 group-active:bg-ember" />
           </div>
           <nav className="flex shrink-0 gap-1 px-3 lg:pt-3">
-            {(["chat", "step", "files", "runs"] as Tab[]).map((k) => (
+            {(["chat", "step", "files", "memory", "runs"] as Tab[]).map((k) => (
               <button
                 key={k}
                 type="button"
@@ -693,6 +695,13 @@ export function EditorPage() {
               />
             ) : tab === "files" ? (
               <FilesPanel wizardId={w.id} files={w.files} readOnly={w.readOnly} />
+            ) : tab === "memory" ? (
+              <MemoryPanel
+                wizardId={w.id}
+                projectId={w.projectId}
+                def={def}
+                readOnly={w.readOnly}
+              />
             ) : (
               <RunsPanel wizardId={w.id} onOpen={setDrawerRun} />
             )}

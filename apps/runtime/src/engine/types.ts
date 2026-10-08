@@ -16,6 +16,8 @@ export type RunRow = typeof schema.run.$inferSelect;
 export interface StepContext {
   runId: string;
   tenantId: string;
+  /** A test run from the studio: it writes the wizard's memory into a copy of its own. */
+  test: boolean;
   /** The current step's id. */
   stepId: string;
   /** What the wizard keeps for the person running it. */

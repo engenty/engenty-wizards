@@ -442,6 +442,18 @@ const de = {
   "widget.upload": "Eigene HTML hochladen",
   "widget.buildMessage": "Bitte baue das Widget „{title}“. {what}",
   "editor.chat": "Gespräch",
+  "editor.dropToAttach": "Loslassen, um es der Nachricht anzuhängen",
+  "editor.memory": "Gedächtnis",
+  "memory.explain":
+    "Was der Wizard über alle Läufe hinweg weiß: Notizen, die KI-Schritte mit dem Werkzeug „Seiten“ lesen und fortschreiben, und die Tabellen seiner geteilten Listen. Dieselben Daten stehen im Bereich unter Daten.",
+  "memory.unused":
+    "Noch nutzt kein Schritt das Gedächtnis. Bitte den Assistenten, dass sich ein KI-Schritt etwas merken soll.",
+  "memory.none": "Noch nichts gemerkt.",
+  "memory.add": "Notiz",
+  "memory.newNote": "Notiz",
+  "memory.back": "Gedächtnis",
+  "memory.testCopy":
+    "Testläufe lesen das Gedächtnis, schreiben aber in eine eigene Kopie, die mit dem Lauf verschwindet.",
   "editor.step": "Schritte",
   "editor.runs": "Durchläufe",
   "editor.reviewEditable": "bearbeitbar",
@@ -520,6 +532,7 @@ const de = {
   "files.explain":
     "Was dein Wizard bei jedem Durchlauf braucht: Widget-Code, Bibliotheken, Kartenumrisse, Preislisten. Der Assistent legt sie im Gespräch an – du kannst auch eigene hochladen.",
   "files.upload": "Hochladen",
+  "files.drop": "Zum Hochladen loslassen",
   "files.count": "{n} Dateien · {size}",
   "files.empty":
     "Noch keine Dateien. Zieh Dateien hierher oder bitte den Assistenten, ein Widget zu bauen.",
@@ -1674,6 +1687,18 @@ const en: Record<Key, string> = {
   "widget.upload": "Upload your own HTML",
   "widget.buildMessage": "Please build the widget “{title}”. {what}",
   "editor.chat": "Conversation",
+  "editor.dropToAttach": "Drop to attach to your message",
+  "editor.memory": "Memory",
+  "memory.explain":
+    "What the wizard knows across all its runs: notes that AI steps with the “pages” tool read and add to, and the tables of its shared lists. The same data is under Data in your space.",
+  "memory.unused":
+    "No step uses the memory yet. Ask the assistant to have an AI step remember something.",
+  "memory.none": "Nothing remembered yet.",
+  "memory.add": "Note",
+  "memory.newNote": "Note",
+  "memory.back": "Memory",
+  "memory.testCopy":
+    "Test runs read the memory but write into a copy of their own, which goes with the run.",
   "editor.step": "Steps",
   "editor.runs": "Runs",
   "editor.reviewEditable": "editable",
@@ -1752,6 +1777,7 @@ const en: Record<Key, string> = {
   "files.explain":
     "What your wizard needs on every run: widget code, libraries, map outlines, price lists. The assistant creates them in the chat – you can upload your own too.",
   "files.upload": "Upload",
+  "files.drop": "Drop to upload",
   "files.count": "{n} files · {size}",
   "files.empty": "No files yet. Drop files here or ask the assistant to build a widget.",
   "files.download": "Download",

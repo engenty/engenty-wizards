@@ -91,10 +91,12 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
         ) : cost !== null ? (
           <span className="ml-auto text-[0.6875rem] text-ink-3 tabular-nums">
             ≈{" "}
-            {cost < 10
-              ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
-              : Math.round(cost)}{" "}
-            cr
+            {t("nav.credits", {
+              n:
+                cost < 10
+                  ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
+                  : Math.round(cost),
+            })}
           </span>
         ) : null}
       </div>

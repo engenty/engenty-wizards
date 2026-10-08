@@ -4,7 +4,7 @@ import { Download, FileCode2, FileJson, FileText, Image, Trash2, Upload } from "
 import { useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import { cn, IconButton, Spinner } from "../../ui";
+import { IconButton, Spinner } from "../../ui";
 
 function fileIcon(f: WorkspaceFile) {
   if (f.mime.startsWith("image/")) {
@@ -43,6 +43,7 @@ export function FilesPanel({
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const depth = useRef(0);
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const base = `/api/studio/wizards/${wizardId}/files`;
@@ -90,24 +91,45 @@ export function FilesPanel({
 
   const total = files.reduce((n, f) => n + f.size, 0);
   return (
+    // The whole panel takes files dropped on it; entering and leaving its children is counted,
+    // so the drop sign does not flicker while the files pass over the list.
     <div
-      className={cn("flex min-h-full flex-col px-5 py-5", drag && "bg-ember-veil")}
-      onDragOver={(e) => {
+      className="relative flex min-h-full flex-col px-5 py-5"
+      onDragEnter={(e) => {
+        if (readOnly || !e.dataTransfer.types.includes("Files")) {
+          return;
+        }
         e.preventDefault();
-        setDrag(!readOnly);
+        depth.current += 1;
+        setDrag(true);
       }}
-      onDragLeave={() => setDrag(false)}
+      onDragOver={(e) => {
+        if (!readOnly && e.dataTransfer.types.includes("Files")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDragLeave={() => {
+        depth.current = Math.max(0, depth.current - 1);
+        if (depth.current === 0) {
+          setDrag(false);
+        }
+      }}
       onDrop={(e) => {
         e.preventDefault();
+        depth.current = 0;
         setDrag(false);
         if (!readOnly) {
           void upload(e.dataTransfer.files);
         }
       }}
     >
-      {readOnly ? null : (
-        <p className="mb-4 text-[0.8125rem] text-ink-3 leading-relaxed">{t("files.explain")}</p>
-      )}
+      {drag ? (
+        <div className="pointer-events-none absolute inset-3 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-ember border-dashed bg-ember-veil text-[0.875rem] text-ember-strong">
+          <Upload className="size-6" />
+          {t("files.drop")}
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         {readOnly ? null : (
           <button
@@ -171,6 +193,12 @@ export function FilesPanel({
           {t(readOnly ? "files.none" : "files.empty")}
         </div>
       ) : null}
+      {/* What the tab is, at the foot of the pane: there to read once, not in the way. */}
+      {readOnly ? null : (
+        <p className="mt-auto pt-6 text-[0.6875rem] text-ink-4 leading-relaxed">
+          {t("files.explain")}
+        </p>
+      )}
     </div>
   );
 }

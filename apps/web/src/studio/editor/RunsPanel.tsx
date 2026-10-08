@@ -57,7 +57,9 @@ export function RunsPanel({
               {r.stepTitle && r.status !== "done" ? ` · ${r.stepTitle}` : ""}
             </div>
           </div>
-          <span className="text-[0.75rem] text-ink-4 tabular-nums">{r.credits} cr</span>
+          <span className="text-[0.75rem] text-ink-4 tabular-nums">
+            {t("nav.credits", { n: r.credits })}
+          </span>
         </button>
       ))}
     </div>

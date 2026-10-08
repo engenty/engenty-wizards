@@ -371,6 +371,7 @@ async function makeContext(
   return {
     runId: run.id,
     tenantId: run.tenantId,
+    test: run.mode === "test",
     stepId,
     store,
     def: run.definition,

@@ -53,6 +53,11 @@ export interface RunState {
   loops?: Record<string, number>;
   /** File fields with `listen`: what is said in the recording, piece by piece with its times. */
   heard?: Record<string, { start: number; end: number; text: string }[]>;
+  /**
+   * A test run's own copy of the wizard's memory: the pages it wrote, by title. The wizard's
+   * pages stay as they are; the copy goes with the run.
+   */
+  memory?: Record<string, string>;
 }
 
 /** What a decision over a step's `ask` branches found. */
