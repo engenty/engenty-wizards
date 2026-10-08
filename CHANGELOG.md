@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.30] - 2026-10-08
+- ADDED **[plugins]** Pro modules on a local install – the closed plugins the linked account's plan includes come from its Manage-App (/v1/modules) as zips signed for the release, checked against the public key the runtime ships with before anything is unpacked, and installed into <DATA_DIR>/pro-modules apart from the person's plugins; they load only while the entitlement the Manage-App signed lists them, belongs to the linked account and has not ended (a week offline), and only in the release they were built for, are fetched anew for a new release or build, and go off with the plan or the account while their files and tables stay; Settings → Plugins has a Pro modules section (install, update, remove, check the plan) and stays reachable for a linked account without plugins; concurrent refreshes of the account token share one request, so the start-up checks no longer refuse each other
+- DOCS Plan for Pro modules in a local install – signed packages downloaded with the linked account, a signed entitlement that turns them on and off with the plan, what can and cannot be protected on the person's machine
+
 ## [0.2.29] - 2026-10-08
 - ADDED **[engine]** An AI step can call one plugin tool without a model – call { tool, input } with the inputs filled from earlier answers (a whole number or true/false passed as one, an empty one left out), checked against the tool's schema, the answer kept as the step's json output (output.fields name the keys later steps read); it costs no credits, needs no model and answers as fast as the tool; the authoring guide and the plugin docs show it for free appointment times
 
