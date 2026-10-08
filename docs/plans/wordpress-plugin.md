@@ -134,3 +134,101 @@ engenty.ai or an own server, as the share dialog does.
   line is the wizard's own business (see the GDPR note in the roadmap).
 - The chat runner and the bubble need the branch `claude/wizards-vs-bot-ui-1044fe` merged;
   phase 1 does not.
+
+## Implementation
+
+Written on 2026-10-09. Two repositories move: the open runtime (this one) gets the API, the
+plugin gets its own repository.
+
+### Repositories
+
+| Repository | Holds | License | Why apart |
+|---|---|---|---|
+| `engenty/engenty-wordpress` (new, public) | The WordPress plugin: PHP, the block, the admin app, `readme.txt` | GPLv2 or later | WordPress.org takes only GPL-compatible code; the runtime is FSL. A separate repository keeps the licenses apart and gives the plugin its own releases, tags and issues |
+| `engenty/engenty-wizards` (this) | `/api/v1/me`, `/wizards`, `/runs`, `/plugins/:id`, `run.origin`, the bubble in `embed.js`, Einbinden → WordPress, the docs page | FSL | The API the plugin calls |
+| `engenty-wizards-manage` | A key page that says "for WordPress" and the `runs:read` scope if scopes get checkboxes | closed | Keys of an account are issued there |
+
+The plugin's repository copies nothing from the runtime. The shapes it reads (`/api/v1/me`,
+`/wizards`, `/runs`) are documented in `docs/manage-contract.md` here and mirrored as PHP
+arrays there; no shared package.
+
+### The plugin repository
+
+```
+engenty-wordpress/
+├── engenty-wizards.php          header, constants, autoload, activation (capability engenty_results)
+├── readme.txt                   WordPress.org readme
+├── uninstall.php                removes the options and transients
+├── includes/
+│   ├── class-settings.php       option engenty_wizards: address, key (encrypted with AUTH_KEY), defaults, bubble, access
+│   ├── class-client.php         wp_remote_get/post to the runtime with x-api-key; errors as WP_Error with the runtime's code
+│   ├── class-rest.php           engenty/v1: status, wizards, runs, runs/:id, contacts, appointments, settings
+│   ├── class-admin.php          menu "engenty", the pages (one <div id="engenty-app">), enqueues the admin app
+│   ├── class-embed.php          engenty_wizard() and the tag: embed.js of the runtime's address, data-wizard, data-mode, data-label, data-runner, data-source="wordpress", data-page
+│   ├── class-shortcode.php      [engenty_wizard id mode label runner]
+│   ├── class-bubble.php         wp_footer: the bubble tag on the pages the settings name
+│   └── class-elementor.php      loaded on elementor/widgets/register: the widget
+├── blocks/wizard/
+│   ├── block.json               engenty/wizard, attributes token, mode, label, prefill; render.php
+│   ├── edit.js                  InspectorControls: wizard (from engenty/v1/wizards), mode, label, prefill; the preview iframe
+│   └── render.php               calls engenty_wizard()
+├── src/admin/                   the admin app: React through @wordpress/element, @wordpress/components for inputs
+│   ├── index.tsx                router by ?page=engenty-… 
+│   ├── Wizards.tsx  Results.tsx  Contacts.tsx  Appointments.tsx  Settings.tsx  Connect.tsx
+│   └── api.ts                   apiFetch to engenty/v1 with the nonce
+├── package.json                 @wordpress/scripts: build, start, lint; outputs build/
+├── composer.json                PHPCS with WordPress-Coding-Standards, PHPUnit
+├── tests/                       PHPUnit on the embed tag, the shortcode, the REST routes (runtime mocked with pre_http_request)
+└── .github/workflows/           lint, phpunit, build, the zip on a tag
+```
+
+- The admin pages carry the studio's look inside WordPress' chrome (as the mockups): Geist
+  and Space Grotesk from Google Fonts, ember `#e0531b`, the cards. Inputs are
+  `@wordpress/components`, so they behave like WordPress.
+- Capabilities: `manage_options` for Einstellungen, `edit_posts` for Wizards and the block's
+  wizard list, `engenty_results` for Ergebnisse, Kontakte and Termine. The Zugriff section
+  gives or takes `engenty_results` per role.
+- The REST layer never forwards the runtime's address or the key. It forwards the runtime's
+  `code` (`insufficient_scope`, `plugin`, `tenant_suspended`) so the app can say what is wrong.
+- The wizard list is a transient of five minutes; "Neu laden" and a saved connection drop it.
+- The embed tag's `data-page` is the page's permalink; the frame sends it with `embedded`
+  (below) so a run carries where it started.
+
+### Runtime changes, in order
+
+| # | Change | Files | Reuses |
+|---|---|---|---|
+| 1 | `GET /api/v1/me` with a key or token: `{ user: { id, name }, tenant: { id, name, plan }, runtime: { url, kind }, plugins: string[], scopes }` | `routes/api.ts` (`caller`, `inTenantAs`), `manage.ts` for plan, `plugins/registry.ts` `pluginIdsOf` | `principalOf`, `tenantStatus` |
+| 2 | `GET /api/v1/wizards` (`wizards:read`): the tenant's published wizards with `token`, `code`, `title`, `description`, `avatar`, `publishedVersion`, `shareUrl`, `shareEnabled`, `dailyRunLimit`, `plugins` (tool names `<plugin>.<tool>` in the definition, as the marketplace reads them), `runners: ["steps"]` until the branch merges; `unavailableReason` from `wizardUnavailable` | `routes/api.ts`, a `listPublishedWizards(tenant)` in `services/wizards.ts` | what `GET /spaces` and `GET /api/public/wizards/:token` build |
+| 3 | Scope `runs:read` in `mcp/scopes.ts`; `GET /api/v1/runs?wizard=&status=&q=&page=&days=` paged by 50 and `GET /api/v1/runs/:id` → `runReport` plus the answers and the outputs' signed links | `mcp/scopes.ts`, `routes/api.ts`, `services/runs.ts` (`listResults`, `runReport` lifted off the owner's user id onto the tenant) | the studio's `GET /projects/:id/results` |
+| 4 | `run.origin`: `POST /api/public/wizards/:token/runs` takes `origin` (a URL, ≤ 2 KB) beside `embedded`; `embed.js` passes `data-page` or `location.href` of the parent through the frame's query (`?embed=…&page=…`) and the runner sends it; the results page and `/api/v1/runs` show it | `db/schema.ts` + migration, `routes/runs.ts`, `apps/web/public/embed.js`, `runner/useRun.ts`, `studio/project` results | `visitorId`, `embedded` |
+| 5 | `data-mode="bubble"` in `embed.js`: a round launcher bottom right with an optional `data-text`, opens the modal; with `data-runner="chat"` the chat popout once the branch is in. The share dialog's "Website" offers it as the third mode | `embed.js`, `studio/editor/ShareDialog.tsx`, `lib/i18n.ts`, `docs/content/user/test-and-share.md` | the modal's dialog and styles |
+| 6 | `/api/v1/plugins/:id/*` with a key (`wizards:read`): the plugin's `registerHttpRoute`s, the key's user as `request.user`, `role === "admin"` routes need owner or admin; `403 { code: "plugin" }` when the tenant lacks it | `routes/api.ts` mounts `dispatch` of `routes/plugins.ts` with a `Principal` from the key | `dispatch` as it is, given the principal instead of the session user |
+| 7 | Einbinden: "WordPress" under "Teilen": on a local install the key is made in place (`listLocalKeys`, `createLocalKey`), on an account a link to the Manage-App's key page; the plugin's download link and the three steps | `studio/Integrate.tsx`, `lib/i18n.ts` | the API-key rows the page has |
+| 8 | Docs: `docs/content/user/wordpress.md` (install, connect, block, shortcode, bubble, results, privacy), a line in `test-and-share.md` and the plugin's reference of `/api/v1` in `docs/manage-contract.md` | `apps/docs` | — |
+
+Tests: `apps/runtime/test/api.test.ts` for 1, 2, 3, 6 with a key on a runtime that runs alone
+and with a stubbed Manage-App for `/me`; `embed.js` has no tests today, so 4 and 5 are tried
+by hand on the docs site, which already embeds a wizard.
+
+### Order and checkpoints
+
+| Step | Work | Checkpoint |
+|---|---|---|
+| 1 | Runtime 1, 2, 7; release `v0.2.x` | `curl -H "x-api-key: wz_…" https://engenty.ai/api/v1/wizards` lists the wizards; a local install shows the WordPress entry under Einbinden |
+| 2 | Plugin repository: skeleton, settings, client, REST `status` and `wizards`, the connect screen, the Wizards page | On a fresh WordPress (`wp-env`) the plugin connects to engenty.ai and lists the wizards |
+| 3 | `engenty_wizard()`, the shortcode, the block with its preview, the Einbetten panel | The Angebotsanfrage runs inside a page from the block, the shortcode and a template, on Twenty Twenty-Five and on a host with PHP only (a Hostinger plan, through the Hostinger MCP) |
+| 4 | Runtime 3, 4, 5; release | A run started from a WordPress page shows the page in the studio's results |
+| 5 | Plugin: Ergebnisse with the drawer, the bubble, the Elementor widget | An editor opens a run and downloads its PDF in the admin; the bubble shows on every page but Impressum and Datenschutz |
+| 6 | Runtime 6; plugin: Kontakte, Termine, Zugriff | A lead a wizard collected shows under Kontakte for a Shop-Manager, not for an Autor |
+| 7 | Docs 8, `readme.txt`, screenshots from the mockups' data, the zip on a GitHub tag, WordPress.org submission | The plugin installs from a zip, later from the plugin search |
+
+Steps 1 and 2 can run side by side: the plugin's client is written against the shapes in this
+plan and tried against a local runtime (`PLUGINS_DIR` with contacts for step 6).
+
+### Not in this implementation
+
+- A results copy in the WordPress database and a webhook for it.
+- Allowed origins per link.
+- A plugin page for plugins the WordPress plugin does not know.
+- Signing in to engenty.ai from the WordPress admin (OAuth): the key is pasted.
