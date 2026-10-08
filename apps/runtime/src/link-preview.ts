@@ -23,7 +23,8 @@ function tags(p: { title: string; description: string; url: string; image?: stri
 
 /**
  * Open Graph tags for shared links, so X, LinkedIn, WhatsApp and Slack show a card: a shared
- * result (`/s/<token>`) with its picture, a public wizard (`/w/<token>`) with its title.
+ * result (`/s/<token>`) with its picture, a public wizard (`/w/<token>`, as a chat
+ * `/w/<token>/chat`) with its title.
  */
 export async function linkPreview(path: string): Promise<string | null> {
   const share = path.match(/^\/s\/([A-Za-z0-9_-]+)\/?$/);
@@ -40,7 +41,7 @@ export async function linkPreview(path: string): Promise<string | null> {
       image: `${env.appUrl}/api/shares/${share[1]}/image`,
     });
   }
-  const wizard = path.match(/^\/w\/([A-Za-z0-9_-]+)\/?$/);
+  const wizard = path.match(/^\/w\/([A-Za-z0-9_-]+)(\/chat)?\/?$/);
   if (wizard) {
     const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.shareToken, wizard[1]) });
     if (!w || w.publishedVersion === null || !w.shareEnabled) {
@@ -56,7 +57,7 @@ export async function linkPreview(path: string): Promise<string | null> {
       ? tags({
           title: v.definition.title,
           description: v.definition.description,
-          url: `${env.appUrl}/w/${wizard[1]}`,
+          url: `${env.appUrl}/w/${wizard[1]}${wizard[2] ?? ""}`,
         })
       : null;
   }

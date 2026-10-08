@@ -4,7 +4,7 @@
 //     in the page, as tall as its content
 //   <script async src="https://…/embed.js" data-wizard="<token>" data-mode="modal" data-label="Start"></script>
 //     a button that opens it in a window over the page
-//   <script async src="https://…/embed.js" data-wizard="<token>" data-ui="chat"></script>
+//   <script async src="https://…/embed.js" data-wizard="<token>" data-runner="chat"></script>
 //     as a chat in the page, 640 px high (data-height="…" in px)
 //   <script async src="https://…/embed.js" data-wizard="<token>" data-mode="popout"></script>
 //     a chat button with the wizard's engenty in the page's lower right corner that opens the
@@ -22,12 +22,12 @@
   const app = new URL(".", script.src);
   const mode = ["modal", "popout"].includes(script.dataset.mode) ? script.dataset.mode : "inline";
   // A popout is always a chat.
-  const chat = script.dataset.ui === "chat" || mode === "popout";
+  const chat = script.dataset.runner === "chat" || mode === "popout";
   const label = script.dataset.label || (mode === "popout" ? "" : "Start");
 
   const frame = () => {
     const el = document.createElement("iframe");
-    el.src = `${app.href}w/${encodeURIComponent(token)}?embed=${mode}${chat ? "&ui=chat" : ""}`;
+    el.src = `${app.href}w/${encodeURIComponent(token)}${chat ? "/chat" : ""}?embed=${mode}`;
     el.title = label;
     // What a page of the wizard may ask the visitor for: photos, voice notes, the position.
     el.allow = "camera; microphone; geolocation; clipboard-write; fullscreen; screen-wake-lock";

@@ -72,7 +72,7 @@ function Embed({ url, title }: { url: string; title: string }) {
   const extra = chat
     ? button
       ? ' data-mode="popout"'
-      : ' data-ui="chat"'
+      : ' data-runner="chat"'
     : button
       ? ` data-mode="modal" data-label="${attr(title)}"`
       : "";

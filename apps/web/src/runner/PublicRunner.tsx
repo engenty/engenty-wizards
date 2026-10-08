@@ -7,7 +7,7 @@ import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { appLink, appTell, IN_APP } from "../lib/app";
-import { closeEmbed, EMBED, keepUi, UI, useEmbed } from "../lib/embed";
+import { closeEmbed, EMBED, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, cn, IconButton, Spinner } from "../ui";
@@ -222,8 +222,11 @@ const AUTOSTART = IN_APP && new URLSearchParams(window.location.search).get("sta
 /** Inline in another website the wizard is as tall as its content; everywhere else it fills the screen. */
 const PAGE = EMBED === "inline" ? "min-h-80" : "min-h-dvh";
 
-/** Starting a run of the wizard, or going back to the last one this browser had. */
-function useStartRun(wizard: PublicWizard) {
+/**
+ * Starting a run of the wizard, or going back to the last one this browser had. `home` is the
+ * runner's address: `/w/<token>` or `/w/<token>/chat`.
+ */
+function useStartRun(wizard: PublicWizard, home: string) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -251,18 +254,21 @@ function useStartRun(wizard: PublicWizard) {
       } catch {
         // resuming is a convenience
       }
-      navigate(keepUi(`/w/${wizard.token}/${runId}`), { replace: AUTOSTART });
+      navigate(`${home}/${runId}`, { replace: AUTOSTART });
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
     }
   };
-  const resume = previous ? () => navigate(keepUi(`/w/${wizard.token}/${previous}`)) : null;
+  const resume = previous ? () => navigate(`${home}/${previous}`) : null;
   return { busy, error, captcha, setCaptcha, start, resume };
 }
 
 function StartScreen({ wizard }: { wizard: PublicWizard }) {
-  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(wizard);
+  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(
+    wizard,
+    `/w/${wizard.token}`,
+  );
   const auto = AUTOSTART && wizard.available && !wizard.turnstileSiteKey;
   const started = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, on the app's start button
@@ -366,7 +372,10 @@ function ChatStart({
   header: ReactNode;
   footer: ReactNode;
 }) {
-  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(wizard);
+  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(
+    wizard,
+    `/w/${wizard.token}/chat`,
+  );
   const lines: Line[] = [{ key: "hello", who: "bot", node: wizard.description || wizard.title }];
   if (!wizard.available) {
     lines.push({
@@ -423,8 +432,11 @@ function MadeWith({ className }: { className?: string }) {
   );
 }
 
-export function PublicRunner() {
+/** A wizard's public page: page by page at `/w/<token>`, as a chat at `/w/<token>/chat`. */
+export function PublicRunner({ chat: chatPath = false }: { chat?: boolean }) {
   const { token, runId } = useParams();
+  // A popout in a website is always a chat.
+  const chat = chatPath || EMBED === "popout";
   const navigate = useNavigate();
   const wizard = useQuery({
     queryKey: ["public", token],
@@ -435,7 +447,7 @@ export function PublicRunner() {
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
-  useEmbed();
+  useEmbed(chat);
   useEffect(() => {
     if (wizard.data) {
       document.title = wizard.data.title;
@@ -469,7 +481,7 @@ export function PublicRunner() {
       </div>
     );
   }
-  if (UI === "chat") {
+  if (chat) {
     const header = <ChatHeader wizard={wizard.data} />;
     const footer = IN_APP ? (
       <div className="safe-bottom" />
@@ -481,7 +493,7 @@ export function PublicRunner() {
         {runId ? (
           <ChatBody
             runId={runId}
-            onRestart={() => navigate(keepUi(`/w/${token}`))}
+            onRestart={() => navigate(`/w/${token}/chat`)}
             header={header}
             footer={footer}
           />

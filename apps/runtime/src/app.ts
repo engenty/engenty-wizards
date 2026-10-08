@@ -218,9 +218,9 @@ app.get(`/api/claude-plugin/${PLUGIN_NAME}.zip`, async (c) => {
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
-/** Link cards for `/w/<token>` and `/s/<token>`; the token names the tenant. */
+/** Link cards for `/w/<token>`, `/w/<token>/chat` and `/s/<token>`; the token names the tenant. */
 async function previewFor(path: string): Promise<string | null> {
-  const m = path.match(/^\/(w|s)\/([A-Za-z0-9_-]+)\/?$/);
+  const m = path.match(/^\/(w|s)\/([A-Za-z0-9_-]+)(?:\/chat)?\/?$/);
   const tenant = m ? await tenantOfLink(m[2], m[1] === "w" ? "wizard" : "result") : null;
   return tenant ? withTenant(tenant, () => linkPreview(path)) : null;
 }

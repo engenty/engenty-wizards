@@ -18,18 +18,6 @@ function read(): Embed | null {
 /** Read once: the address loses `?embed=` with the first step, the frame stays the same. */
 export const EMBED = read();
 
-/**
- * How the wizard talks to the person: page by page (`steps`, the default) or as a chat
- * (`?ui=chat`). A popout is always a chat.
- */
-export const UI: "steps" | "chat" =
-  EMBED === "popout" || new URLSearchParams(window.location.search).get("ui") === "chat"
-    ? "chat"
-    : "steps";
-
-/** An address of the wizard's own page that stays in the chat when it is opened again. */
-export const keepUi = (path: string) => (UI === "chat" && !EMBED ? `${path}?ui=chat` : path);
-
 const tell = (type: "height" | "close", data: Record<string, unknown> = {}) =>
   window.parent.postMessage({ type: `engenty-wizard:${type}`, ...data }, "*");
 
@@ -40,9 +28,9 @@ export const closeEmbed = () => tell("close");
  * What the embedding page must hear: inline the wizard's height, in a window an Esc. An inline
  * chat keeps the height the website gives it and scrolls inside.
  */
-export function useEmbed() {
+export function useEmbed(chat: boolean) {
   useEffect(() => {
-    if (EMBED === "inline" && UI === "steps") {
+    if (EMBED === "inline" && !chat) {
       const root = document.documentElement;
       // The page is as tall as its content, not as its frame; the website scrolls, the frame never.
       document.getElementById("root")?.style.setProperty("min-height", "0");
@@ -63,5 +51,5 @@ export function useEmbed() {
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
     }
-  }, []);
+  }, [chat]);
 }
