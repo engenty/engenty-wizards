@@ -59,24 +59,28 @@ const shortTime = () => new Intl.DateTimeFormat(lang, { timeStyle: "short" });
 
 /**
  * The tag that shows the wizard behind `url` (…/w/<token>) in a website (`public/embed.js`):
- * in the page, or behind a button that opens it in a window.
+ * in the page, behind a button that opens it in a window, or as a bubble at the bottom right of
+ * every page.
  */
 function Embed({ url, title }: { url: string; title: string }) {
-  const [modal, setModal] = useState(false);
+  const [mode, setMode] = useState<"inline" | "modal" | "bubble">("inline");
   const [copied, setCopied] = useState(false);
   const [, app, token] = url.match(/^(.*)\/w\/([^/]+)$/) ?? [];
   if (!token) {
     return null;
   }
-  const button = modal ? ` data-mode="modal" data-label="${attr(title)}"` : "";
+  const button = mode === "inline" ? "" : ` data-mode="${mode}" data-label="${attr(title)}"`;
   const tag = `<script async src="${app}/embed.js" data-wizard="${token}"${button}></script>`;
-  const modes = [t("embed.inline"), t("embed.modal")];
+  const modes = { inline: t("embed.inline"), modal: t("embed.modal"), bubble: t("embed.bubble") };
+  const hints = {
+    inline: "embed.inlineHint",
+    modal: "embed.modalHint",
+    bubble: "embed.bubbleHint",
+  } as const;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-[0.8125rem] text-ink-3">
-          {t(modal ? "embed.modalHint" : "embed.inlineHint")}
-        </p>
+        <p className="text-[0.8125rem] text-ink-3">{t(hints[mode])}</p>
         <Button
           variant="secondary"
           size="sm"
@@ -91,9 +95,13 @@ function Embed({ url, title }: { url: string; title: string }) {
         </Button>
       </div>
       <Segmented
-        value={modes[modal ? 1 : 0]}
-        onChange={(v) => setModal(v === modes[1])}
-        options={modes}
+        value={modes[mode]}
+        onChange={(v) =>
+          setMode(
+            (Object.keys(modes) as (keyof typeof modes)[]).find((k) => modes[k] === v) ?? "inline",
+          )
+        }
+        options={Object.values(modes)}
       />
       <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[0.75rem] text-ink-2 leading-relaxed">
         {tag}

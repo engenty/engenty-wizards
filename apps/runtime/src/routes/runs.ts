@@ -95,6 +95,23 @@ function clientIp(c: Context): string | null {
  */
 const VISITOR_HEADER = "x-wizards-visitor";
 
+/** An http(s) address without credentials or fragment, or null for anything else. */
+function webAddress(raw: string | undefined): string | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const url = new URL(raw);
+    if (!(url.protocol === "http:" || url.protocol === "https:") || url.username || url.password) {
+      return null;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function visitorId(c: Context, create: boolean, embedded = false): string | null {
   let vid = c.req.header(VISITOR_HEADER) || getCookie(c, VISITOR_COOKIE) || null;
   if (!vid && create) {
@@ -259,7 +276,12 @@ export const publicRoutes = new Hono()
       return c.json({ error: reason }, 403);
     }
     const body = z
-      .object({ turnstileToken: z.string().optional(), embedded: z.boolean().optional() })
+      .object({
+        turnstileToken: z.string().optional(),
+        embedded: z.boolean().optional(),
+        // The website page that embeds the wizard: shown with the result.
+        origin: z.string().max(2000).optional(),
+      })
       .parse(await c.req.json().catch(() => ({})));
     const ip = clientIp(c);
     if (!(await verifyTurnstile(body.turnstileToken, ip))) {
@@ -291,6 +313,7 @@ export const publicRoutes = new Hono()
         mode: "live",
         visitorId: vid,
         ipHash,
+        origin: body.embedded ? webAddress(body.origin) : null,
       });
       return c.json({ runId });
     } catch (err) {

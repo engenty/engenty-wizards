@@ -129,6 +129,52 @@ function Part({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** Where the WordPress plugin is downloaded: the latest release of its own repository. */
+const WORDPRESS_ZIP =
+  "https://github.com/engenty/engenty-wordpress/releases/latest/download/engenty-wizards.zip";
+
+/**
+ * WordPress: the plugin "engenty wizards" puts published wizards on a WordPress site. It connects
+ * to an account on engenty.ai (sign-up or sign-in from the WordPress admin), so a local install
+ * gets there by publishing to its linked account.
+ */
+function WordPressPanel({ managed }: { managed: boolean }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h2 className="font-display font-semibold text-[1.375rem] leading-tight tracking-tight">
+          WordPress
+        </h2>
+        <p className="mt-1 text-[0.9375rem] text-ink-2">{t("integrate.wpIntro")}</p>
+      </div>
+      <Card className="flex flex-col gap-5 p-5">
+        <Part title={t("integrate.wpInstall")}>
+          <Hint>{t("integrate.wpInstallHint")}</Hint>
+          <div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => window.open(WORDPRESS_ZIP, "_blank")}
+            >
+              {t("integrate.wpDownload")}
+            </Button>
+          </div>
+        </Part>
+        <Part title={t("integrate.wpConnect")}>
+          <Hint>{t(managed ? "integrate.wpConnectHint" : "integrate.wpConnectLocal")}</Hint>
+        </Part>
+        <Part title={t("integrate.wpPlace")}>
+          <Hint>{t("integrate.wpPlaceHint")}</Hint>
+          <CopyLine text={'[engenty_wizard id="ID" mode="modal" label="Anfrage starten"]'} />
+        </Part>
+        <Part title={t("integrate.wpPro")}>
+          <Hint>{t("integrate.wpProHint")}</Hint>
+        </Part>
+      </Card>
+    </div>
+  );
+}
+
 /** A JSON file entry with the server at its address. */
 function jsonEntry(at: string, entry: Record<string, unknown>) {
   return JSON.stringify({ [at]: { [NAME]: entry } }, null, 2);
@@ -620,7 +666,7 @@ export function Integrate() {
   };
   const clients = [...CLIENTS].sort((a, b) => rank(a.id) - rank(b.id));
   const current = clients.find((c) => c.id === show) ?? clients[0];
-  useDetail(show || !narrow ? current.name : null);
+  useDetail(show === "wordpress" ? "WordPress" : show || !narrow ? current.name : null);
   if (!me.data || (!managed && !apps.data)) {
     return null;
   }
@@ -667,6 +713,12 @@ export function Integrate() {
           />
           <MenuRow
             icon={Globe}
+            label="WordPress"
+            selected={show === "wordpress"}
+            onPick={() => setParams({ show: "wordpress" }, { replace: !narrow })}
+          />
+          <MenuRow
+            icon={Globe}
             label={t("integrate.shareSite")}
             badge={<span className="text-[0.6875rem] text-ink-4">{t("integrate.soon")}</span>}
             selected={false}
@@ -674,15 +726,19 @@ export function Integrate() {
           />
         </MenuGroup>
       </SubMenu>
-      <ClientPanel
-        key={current.id}
-        client={current}
-        local={localOf(current.id)}
-        seen={seenOf(current.id)}
-        managed={managed}
-        url={url}
-      />
-      {managed ? null : <KeyList />}
+      {show === "wordpress" ? (
+        <WordPressPanel managed={managed} />
+      ) : (
+        <ClientPanel
+          key={current.id}
+          client={current}
+          local={localOf(current.id)}
+          seen={seenOf(current.id)}
+          managed={managed}
+          url={url}
+        />
+      )}
+      {managed || show === "wordpress" ? null : <KeyList />}
       <p className="flex items-start gap-2 text-[0.8125rem] text-ink-3">
         <Link2 className="mt-0.5 size-3.5 shrink-0" />
         {t("mcp.notReverse")}

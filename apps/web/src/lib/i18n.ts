@@ -620,6 +620,9 @@ const de = {
     "Füge das Tag in den HTML-Code deiner Seite ein. Der Wizard erscheint an dieser Stelle.",
   "embed.modalHint":
     "Füge das Tag in den HTML-Code deiner Seite ein. An dieser Stelle erscheint ein Button, der den Wizard in einem Fenster öffnet.",
+  "embed.bubble": "Blase",
+  "embed.bubbleHint":
+    "Füge das Tag in den HTML-Code ein, am besten in die Fußzeile. Unten rechts erscheint eine runde Blase, die den Wizard in einem Fenster öffnet.",
   "type.page": "Seite",
   "type.agent": "KI-Schritt",
   "type.generate": "Erzeugen",
@@ -785,6 +788,23 @@ const de = {
   "integrate.groupShare": "Teilen",
   "integrate.shareLink": "Per Link teilen",
   "integrate.shareSite": "In eine Website einbinden",
+  "integrate.wpIntro":
+    "Das Plugin „engenty wizards“ bringt deine veröffentlichten Wizards auf eine WordPress-Seite: als Block, Shortcode, Elementor-Widget oder Blase unten rechts. Ergebnisse, Kontakte und Termine stehen dann auch im WordPress-Admin.",
+  "integrate.wpInstall": "1 · Plugin installieren",
+  "integrate.wpInstallHint":
+    "In WordPress unter Plugins → Installieren → Plugin hochladen die ZIP-Datei wählen und aktivieren.",
+  "integrate.wpDownload": "engenty-wizards.zip laden",
+  "integrate.wpConnect": "2 · Verbinden",
+  "integrate.wpConnectHint":
+    "Im WordPress-Admin unter „engenty“ auf „Eigene KI erstellen“ (neues Konto) oder „Anmelden“. Die Website liest sich dann selbst ein: Name, Logo, Farben, Kontaktdaten und ihre Seiten als Wissen.",
+  "integrate.wpConnectLocal":
+    "Das Plugin verbindet sich mit einem Konto auf engenty.ai, nicht mit dieser Installation. Verknüpfe hier dein Konto und veröffentliche deine Wizards dorthin; dann wählst du sie in WordPress.",
+  "integrate.wpPlace": "3 · Auf die Seite bringen",
+  "integrate.wpPlaceHint":
+    "Block „engenty Wizard“, das gleichnamige Elementor-Widget, die Blase aus den Einstellungen des Plugins oder dieser Shortcode mit der ID des Wizards:",
+  "integrate.wpPro": "Mit Pro",
+  "integrate.wpProHint":
+    "Kontakte und Termine aus deinen Wizards im WordPress-Admin, Wizards aus Vorlagen direkt in WordPress anlegen.",
   "integrate.soon": "bald",
   "integrate.stateWorks": "funktioniert",
   "integrate.stateConnected": "eingetragen",
@@ -1909,6 +1929,9 @@ const en: Record<Key, string> = {
   "embed.inlineHint": "Paste the tag into your page's HTML. The wizard appears in that place.",
   "embed.modalHint":
     "Paste the tag into your page's HTML. A button appears in that place and opens the wizard in a window.",
+  "embed.bubble": "Bubble",
+  "embed.bubbleHint":
+    "Paste the tag into your site's HTML, best in the footer. A round bubble appears at the bottom right and opens the wizard in a window.",
   "type.page": "Page",
   "type.agent": "AI step",
   "type.generate": "Generate",
@@ -2073,6 +2096,23 @@ const en: Record<Key, string> = {
   "integrate.groupShare": "Share",
   "integrate.shareLink": "Share by link",
   "integrate.shareSite": "Put on a website",
+  "integrate.wpIntro":
+    'The plugin "engenty wizards" puts your published wizards on a WordPress site: as a block, a shortcode, an Elementor widget or a bubble at the bottom right. Results, contacts and bookings show in the WordPress admin too.',
+  "integrate.wpInstall": "1 · Install the plugin",
+  "integrate.wpInstallHint":
+    "In WordPress under Plugins → Add New → Upload Plugin, choose the ZIP file and activate it.",
+  "integrate.wpDownload": "Download engenty-wizards.zip",
+  "integrate.wpConnect": "2 · Connect",
+  "integrate.wpConnectHint":
+    'In the WordPress admin under "engenty", choose "Create your own AI" (new account) or "Sign in". The site then reads itself in: name, logo, colours, contact details and its pages as knowledge.',
+  "integrate.wpConnectLocal":
+    "The plugin connects to an account on engenty.ai, not to this install. Link your account here and publish your wizards there; then you pick them in WordPress.",
+  "integrate.wpPlace": "3 · Put it on a page",
+  "integrate.wpPlaceHint":
+    "The \"engenty Wizard\" block, the Elementor widget of the same name, the bubble from the plugin's settings, or this shortcode with the wizard's ID:",
+  "integrate.wpPro": "With Pro",
+  "integrate.wpProHint":
+    "Contacts and bookings from your wizards in the WordPress admin; wizards made from templates right in WordPress.",
   "integrate.soon": "soon",
   "integrate.stateWorks": "works",
   "integrate.stateConnected": "added",

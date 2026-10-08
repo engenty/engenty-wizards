@@ -14,6 +14,9 @@ export interface Principal {
   role: Role;
   client: string;
   scopes: Scope[];
+  /** As the account names the person; a local caller has none. */
+  name?: string;
+  email?: string;
 }
 
 export function principalOf(info: AuthInfo): Principal {
@@ -88,6 +91,7 @@ async function apiKeyAuth(key: string): Promise<AuthInfo | Response> {
     role: result.role ?? "member",
     client: result.name || "MCP",
     scopes: [...SCOPES],
+    name: result.userName ?? "",
   };
   keyCache.set(key, { at: Date.now(), who, keyId: result.keyId ?? "" });
   return authInfoFor(who, key, result.keyId ?? "");
@@ -109,6 +113,8 @@ async function tokenAuth(token: string): Promise<AuthInfo | Response> {
     role: claims.role,
     client: claims.clientId || "MCP",
     scopes: SCOPES.filter((s) => granted.has(s)),
+    name: claims.name,
+    email: claims.email,
   };
   return authInfoFor(who, token, claims.clientId);
 }

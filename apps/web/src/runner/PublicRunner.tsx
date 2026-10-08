@@ -7,7 +7,7 @@ import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { appLink, appTell, IN_APP } from "../lib/app";
-import { EMBED, useEmbed } from "../lib/embed";
+import { EMBED, EMBED_PAGE, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, cn, Spinner } from "../ui";
@@ -242,6 +242,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
         {
           turnstileToken: captcha ?? undefined,
           embedded: EMBED !== null,
+          origin: EMBED_PAGE ?? undefined,
         },
       );
       try {

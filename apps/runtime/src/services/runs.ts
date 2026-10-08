@@ -126,15 +126,16 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
 
 /**
  * A run the caller may see: any test run of their tenant, or a run they started themselves
- * from an MCP client (run_wizard). `test` narrows it to test runs.
+ * from an MCP client (run_wizard). `test` narrows it to test runs; `live` takes every live run of
+ * the tenant, what visitors started (the results `/api/v1/runs` lists with `runs:read`).
  */
-async function ownedRun(userId: string, runId: string, only?: "test"): Promise<RunRow> {
+async function ownedRun(userId: string, runId: string, only?: "test" | "live"): Promise<RunRow> {
   const run = await db.query.run.findFirst({
     where: and(
       eq(schema.run.id, runId),
       eq(schema.run.tenantId, currentTenant()),
-      only === "test"
-        ? eq(schema.run.mode, "test")
+      only
+        ? eq(schema.run.mode, only)
         : or(eq(schema.run.mode, "test"), eq(schema.run.userId, userId)),
     ),
   });
@@ -153,7 +154,7 @@ async function waitWhileMoving(
   userId: string,
   runId: string,
   seconds: number,
-  only?: "test",
+  only?: "test" | "live",
 ): Promise<RunRow> {
   const deadline = Date.now() + seconds * 1000;
   let run = await ownedRun(userId, runId, only);
@@ -301,7 +302,12 @@ function waitingFor(run: RunRow, current: Step | null) {
 }
 
 /** What a run did so far, for a client without the run page: outputs, links, cost, errors. */
-export async function runReport(userId: string, runId: string, waitSeconds = 0, only?: "test") {
+export async function runReport(
+  userId: string,
+  runId: string,
+  waitSeconds = 0,
+  only?: "test" | "live",
+) {
   const run = await waitWhileMoving(userId, runId, waitSeconds, only);
   const current = run.definition.steps.find((s) => s.id === run.cursor) ?? null;
   const base = `/api/runs/${run.id}`;

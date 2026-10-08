@@ -1,7 +1,9 @@
 # Plan: the WordPress plugin
 
-Status: concept, written on 2026-10-08. Nothing built. Mockups (eight screens, WordPress admin
-with the studio look inside, German UI): https://claude.ai/artifact/8u9iU2ABq2oPo93w1o11Ti
+Status: built on 2026-10-09 (see [Built](#built) at the end; it changes some decisions below:
+cloud only, sign-up and sign-in by OAuth instead of a pasted key, the site reads itself in).
+Mockups (WordPress admin with the studio look inside, German UI):
+https://claude.ai/artifact/8u9iU2ABq2oPo93w1o11Ti
 
 Scope: a WordPress plugin that puts published wizards on a WordPress site (block, shortcode,
 Elementor widget, PHP, a bubble on every page), lists the wizards and their results in the
@@ -232,3 +234,47 @@ plan and tried against a local runtime (`PLUGINS_DIR` with contacts for step 6).
 - Allowed origins per link.
 - A plugin page for plugins the WordPress plugin does not know.
 - Signing in to engenty.ai from the WordPress admin (OAuth): the key is pasted.
+
+## Built
+
+Built on 2026-10-09 in three repositories, committed, not pushed.
+
+| Repository | Branch | What |
+|---|---|---|
+| `engenty-wordpress` (new, `/Users/m/code/engenty/engenty-wordpress`, no remote yet) | `main` | The plugin: OAuth connect with sign-up and sign-in, setup in three steps, Wizards, Ergebnisse, Kontakte, Termine, Einstellungen, block, shortcode, Elementor widget, PHP function, bubble, `readme.txt`, zip, CI with a smoke test in a real WordPress |
+| `engenty-wizards` (this) | `claude/wordpress-plugin-architecture-cf4e26` | `/api/v1/me`, `/wizards` (GET, POST from a template), `/templates`, `/runs`, `/runs/:id`, `/space`, `/space/site`, `/plugins/:id/*`; scope `runs:read`; `run.origin` (migration `0011_run_origin`); `embed.js` bubble and `data-page`; Einbinden → WordPress; share dialog's third mode; docs `user/wordpress.md`, the contract's section "Clients of an account" |
+| `engenty-wizards-manage` | `feat/wordpress` | Scope `runs:read` on the consent page; the sign-in page takes `login_hint` and `prompt=create` ("Kostenloses Konto anlegen"); `/billing?upgrade=pro` opens the Pro plan; plan line "Termine" |
+
+What changed against the plan above:
+
+| Plan | Built | Why |
+|---|---|---|
+| engenty.ai or an own server, key pasted | engenty.ai only (`ENGENTY_WIZARDS_CLOUD` for development); OAuth with PKCE, the site registers itself as a client like an MCP client | Asked for: cloud only, sign-up and sign-in from WordPress. The Manage-App already is the OAuth server of MCP clients |
+| — | "Website einlesen": the plugin reads name, tagline, logo, theme colours, e-mail and phone of imprint and contact, the WooCommerce address and the pages as Markdown inside WordPress; the admin unticks what should not go; `POST /api/v1/space/site` fills the space's empty details, writes the pages into Wissen (origin `wordpress`) and runs the space assistant on the rest | Asked for: a process that reads in the site's base data. Read in WordPress, so a site nobody outside reaches yet works too |
+| — | "Ersten Wizard anlegen" from `/api/v1/templates`, published at once | The setup ends with a wizard on the site |
+| Kontakte, Termine when the runtime has the plugin | Same, and the runtime answers `403 { code: "plugin" }` for a plan without it; the admin shows a Pro page with the upgrade link instead | Asked for: only Pro has contacts and bookings |
+
+Upgrade prompts: the header (plan, credits, "Upgrade" on Free), "Pro" marks on Kontakte and Termine
+in both menus, the Pro pages, locked templates, the reading step on a plan without `build`, a notice
+on the dashboard and the plugin list while the site is not connected, a notice when credits run
+low, "Kostenlos verbinden" beside the plugin's name and in the block and the Elementor widget.
+
+Tried on 2026-10-09 against a local stack (Manage-App, gateway and cloud runtime from source, the
+closed plugins loaded, WordPress 6.8 with SQLite): sign-up from WordPress to consent and back, the
+Free account's gates, Pro after switching the plan, reading the site (4 pages into Wissen), a
+template live, the bubble on every page, a run with its page as origin, Kontakte with a contact,
+Termine, disconnect and sign-in again, token refresh, the block in the editor, the shortcode with
+a wizard's ID, the Elementor widget's registration.
+
+Open:
+
+- **Free builds nothing on the cloud** (`limits.build: false`): on Free the plugin connects, lists
+  and embeds wizards published from the local app and reads results, but reading the site in and
+  making a wizard from a template need Pro. Turning `build` on for Free (the plan's limits in the
+  admin app) makes the whole setup work on Free, with no change to the plugin.
+- Sign-up needs an invitation code while `SIGNUP=code`; the sign-in page offers it.
+- A site on plain `http` cannot connect (the account server takes only https redirects but for
+  loopback); the plugin says so.
+- The repository `engenty/engenty-wordpress` on GitHub, the first release tag, WordPress.org.
+- The chat runner as the bubble's runner once `claude/wizards-vs-bot-ui-1044fe` is merged.
+

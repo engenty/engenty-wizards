@@ -225,6 +225,7 @@ export async function createRun(input: {
   visitorId?: string | null;
   userId?: string | null;
   ipHash?: string | null;
+  origin?: string | null;
 }): Promise<string> {
   const id = nanoid(18);
   const first = input.definition.steps[0];
@@ -255,6 +256,7 @@ export async function createRun(input: {
     visitorId: input.visitorId ?? null,
     userId: input.userId ?? null,
     ipHash: input.ipHash ?? null,
+    origin: input.origin ?? null,
     status: first.type === "page" ? "waiting_input" : "running",
     cursor: first.id,
     state,
