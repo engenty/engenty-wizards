@@ -33,6 +33,11 @@ interface Session {
 /** What the model may hear: fields it can fill by voice, not those of the person's device. */
 const byVoice = (f: Field) => FIELD_WAYS[f.kind] !== "device";
 
+/** A frame of the camera, small enough for the model and for a photo field. */
+const FRAME_WIDTH = 1024;
+/** While the person speaks, the model sees a frame at most this often. */
+const FRAME_EVERY_MS = 4000;
+
 function clip(text: string | undefined, max: number): string {
   if (!text) {
     return "";
@@ -41,8 +46,8 @@ function clip(text: string | undefined, max: number): string {
 }
 
 /** The run as the model reads it: what is waited for, in a few lines. */
-export function stateText(view: RunView, page: PageBinding | null): string {
-  const lines: string[] = [`status: ${view.status}`];
+export function stateText(view: RunView, page: PageBinding | null, camera = false): string {
+  const lines: string[] = [`status: ${view.status}`, `camera: ${camera ? "on" : "off"}`];
   if (view.ask) {
     lines.push(
       view.ask.kind === "confirm"
@@ -77,7 +82,11 @@ export function stateText(view: RunView, page: PageBinding | null): string {
     for (const f of page.fields) {
       const value = page.values[f.id];
       const answered = value !== undefined && value !== null && value !== "";
-      const how = byVoice(f) ? "by voice" : "on the screen only";
+      const how = byVoice(f)
+        ? "by voice"
+        : f.kind === "image"
+          ? "with the camera (take_photo) or on the screen"
+          : "on the screen only";
       const options = f.options?.length ? `; options: ${f.options.join(" | ")}` : "";
       lines.push(
         `- field ${f.id} (${f.kind}${f.required ? ", required" : ""}, ${how}): ${f.label}${f.help ? ` – ${f.help}` : ""}${options}${answered ? ` = ${clip(String(Array.isArray(value) ? value.join(", ") : value), 120)}` : " = (open)"}`,
@@ -113,6 +122,12 @@ export function useLiveVoice(
   const [error, setError] = useState<string | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
+  const [camera, setCamera] = useState(false);
+  const video = useRef<HTMLVideoElement | null>(null);
+  const cameraStream = useRef<MediaStream | null>(null);
+  const lastFrame = useRef(0);
+  const cameraRef = useRef(false);
+  cameraRef.current = camera;
   const pc = useRef<RTCPeerConnection | null>(null);
   const channel = useRef<RTCDataChannel | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -132,7 +147,56 @@ export function useLiveVoice(
     }
   }, []);
 
+  /** A frame of the camera as a JPEG data URL, or null while the camera is off. */
+  const frame = useCallback((): string | null => {
+    const el = video.current;
+    if (!cameraRef.current || !el || el.videoWidth === 0) {
+      return null;
+    }
+    const scale = Math.min(1, FRAME_WIDTH / el.videoWidth);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(el.videoWidth * scale);
+    canvas.height = Math.round(el.videoHeight * scale);
+    canvas.getContext("2d")?.drawImage(el, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.75);
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    for (const track of cameraStream.current?.getTracks() ?? []) {
+      track.stop();
+    }
+    cameraStream.current = null;
+    if (video.current) {
+      video.current.srcObject = null;
+    }
+    setCamera(false);
+  }, []);
+
+  /** The camera the person shows things to: the back one on a phone, the one there is elsewhere. */
+  const startCamera = useCallback(async () => {
+    if (cameraStream.current) {
+      return;
+    }
+    try {
+      const cam = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+        audio: false,
+      });
+      cameraStream.current = cam;
+      if (video.current) {
+        video.current.srcObject = cam;
+        await video.current.play().catch(() => undefined);
+      }
+      setCamera(true);
+    } catch (err) {
+      setError(
+        (err as Error).name === "NotAllowedError" ? t("talk.cameraDenied") : (err as Error).message,
+      );
+    }
+  }, []);
+
   const stop = useCallback(() => {
+    stopCamera();
     channel.current?.close();
     channel.current = null;
     pc.current?.close();
@@ -150,7 +214,7 @@ export function useLiveVoice(
     setSpeaking(false);
     setListening(false);
     setState("off");
-  }, []);
+  }, [stopCamera]);
 
   useEffect(() => () => stop(), [stop]);
 
@@ -162,7 +226,51 @@ export function useLiveVoice(
       const r = runRef.current;
       switch (name) {
         case "get_state":
-          return v ? stateText(v, p) : "no run";
+          return v ? stateText(v, p, cameraRef.current) : "no run";
+        case "look": {
+          const shot = frame();
+          if (!shot) {
+            return "the camera is off; ask the person to switch it on";
+          }
+          send({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [
+                { type: "input_text", text: "[camera] what the person shows right now" },
+                { type: "input_image", image_url: shot },
+              ],
+            },
+          });
+          return "a picture arrived as the next message";
+        }
+        case "take_photo": {
+          if (!p) {
+            return "no page is open";
+          }
+          const target = p.fields.find((f) => f.id === String(args.field ?? ""));
+          if (target?.kind !== "image") {
+            return "no such photo field on this page";
+          }
+          const shot = frame();
+          if (!shot) {
+            return "the camera is off; ask the person to switch it on";
+          }
+          try {
+            const blob = await (await fetch(shot)).blob();
+            const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+            const ref = await api.upload<{ id: string }>(`/api/runs/${runId}/uploads`, file);
+            const had = p.values[target.id];
+            const next = target.multiple
+              ? [...(Array.isArray(had) ? had : had ? [had] : []), ref.id]
+              : ref.id;
+            const problem = p.setField(target.id, next);
+            return problem ? `refused: ${problem}` : "the photo is in the field";
+          } catch (err) {
+            return `failed: ${(err as Error).message}`;
+          }
+        }
         case "set_field": {
           if (!p) {
             return "no page is open";
@@ -217,7 +325,7 @@ export function useLiveVoice(
           return `unknown tool ${name}`;
       }
     },
-    [runId],
+    [runId, frame, send],
   );
 
   const start = useCallback(async () => {
@@ -260,9 +368,26 @@ export function useLiveVoice(
           case "output_audio_buffer.cleared":
             setSpeaking(false);
             break;
-          case "input_audio_buffer.speech_started":
+          case "input_audio_buffer.speech_started": {
             setListening(true);
+            // With the camera on, what the person shows goes with what they say, now and then.
+            const shot = Date.now() - lastFrame.current > FRAME_EVERY_MS ? frame() : null;
+            if (shot) {
+              lastFrame.current = Date.now();
+              send({
+                type: "conversation.item.create",
+                item: {
+                  type: "message",
+                  role: "user",
+                  content: [
+                    { type: "input_text", text: "[camera] what the person shows while speaking" },
+                    { type: "input_image", image_url: shot },
+                  ],
+                },
+              });
+            }
             break;
+          }
           case "input_audio_buffer.speech_stopped":
             setListening(false);
             break;
@@ -294,7 +419,7 @@ export function useLiveVoice(
         // The first thing said: what the run waits for, and a greeting.
         const v = viewRef.current;
         if (v) {
-          lastState.current = stateText(v, pageRef.current);
+          lastState.current = stateText(v, pageRef.current, cameraRef.current);
           send({
             type: "conversation.item.create",
             item: {
@@ -337,14 +462,14 @@ export function useLiveVoice(
       );
       setState("error");
     }
-  }, [runId, call, send, stop]);
+  }, [runId, call, frame, send, stop]);
 
   // The run moved: the model hears the new state, and speaks where there is something to say.
   useEffect(() => {
     if (state !== "live" || !view) {
       return;
     }
-    const text = stateText(view, page);
+    const text = stateText(view, page, camera);
     if (text === lastState.current) {
       return;
     }
@@ -368,7 +493,7 @@ export function useLiveVoice(
     if (!quiet) {
       send({ type: "response.create" });
     }
-  }, [state, view, page, send]);
+  }, [state, view, page, camera, send]);
 
-  return { state, error, speaking, listening, start, stop };
+  return { state, error, speaking, listening, start, stop, camera, startCamera, stopCamera, video };
 }

@@ -20,6 +20,8 @@ import {
   RotateCcw,
   Sparkles,
   Square,
+  Video,
+  VideoOff,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -449,6 +451,16 @@ function Composer({
             )}
           </IconButton>
         ) : null}
+        {voice?.state === "live" ? (
+          <IconButton
+            label={t(voice.camera ? "talk.cameraOff" : "talk.camera")}
+            aria-pressed={voice.camera}
+            onClick={() => (voice.camera ? voice.stopCamera() : void voice.startCamera())}
+            className={cn("size-9", voice.camera && "text-ink")}
+          >
+            {voice.camera ? <Video className="size-4" /> : <VideoOff className="size-4" />}
+          </IconButton>
+        ) : null}
         {canSpeak ? (
           <IconButton
             label={t(speech.readAloud ? "chat.readAloudOff" : "chat.readAloud")}
@@ -489,6 +501,19 @@ function Composer({
         send();
       }}
     >
+      {/* The camera's picture, small, while the wizard can see it; the element stays so a frame can be taken. */}
+      {voice ? (
+        <video
+          ref={voice.video}
+          muted
+          playsInline
+          autoPlay
+          className={cn(
+            "mb-2 ml-auto w-32 rounded-xl bg-black object-cover shadow-soft ring-1 ring-border-soft",
+            voice.camera ? "block" : "hidden",
+          )}
+        />
+      ) : null}
       <div
         className={cn(
           "flex items-end gap-1 rounded-[1.375rem] border border-input bg-card pr-1.5 pl-1 transition focus-within:border-focus focus-within:ring-4 focus-within:ring-focus-glow",

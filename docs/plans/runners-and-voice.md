@@ -8,7 +8,8 @@ with the redirect, `wizards.server.runs` and `registerRunner` with page runners 
 transcribe route as the fallback), and live voice on the web as the built-in runner `talk`: the
 runtime mints the realtime session on the tenant's OpenAI key (`POST /api/runs/:id/talk`), the
 browser talks to the model over WebRTC and runs its tool calls against the run's own routes
-(`apps/web/src/runner/live-voice.ts`); offered at `/w/<token>/talk` where switched on. Not yet a
+(`apps/web/src/runner/live-voice.ts`); offered at `/w/<token>/talk` where switched on. Live video the same way: the camera is a toggle in the conversation, frames go to the model when the
+person speaks and on its `look`, `take_photo` fills a photo field. Not yet a
 model class of its own, not on credits, no per-minute booking. Not yet:
 the editor's one-line notice, `registerShareSection`, `registerChannelAddress`,
 `wizard.published`, the marketplace badges. Written on 2026-10-08, checked against v0.2.26. The

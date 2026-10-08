@@ -93,6 +93,25 @@ export const CONVERSATION_TOOLS = [
   },
   {
     type: "function",
+    name: "look",
+    description:
+      "Takes a look through the person's camera right now: a picture of what they are showing arrives as the next message. Only while the camera is on; otherwise ask them to switch it on.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    type: "function",
+    name: "take_photo",
+    description:
+      "Takes a photo with the person's camera and puts it into a photo field of the current page. Say 'hold it still' first. Only while the camera is on.",
+    parameters: {
+      type: "object",
+      properties: { field: { type: "string", description: "The id of the image field." } },
+      required: ["field"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
     name: "go_back",
     description: "Goes back to the page before, when the person wants to change an earlier answer.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
@@ -120,6 +139,7 @@ export function conversationInstructions(view: RunView): string {
         "Während der Wizard arbeitet, sagst du in einem Satz, was er gerade tut, und wartest. Erfinde nichts.",
         "Bei einer Prüfung liest du den Text kurz zusammengefasst vor und fragst, ob er passt. Dann accept_review, oder regenerate mit dem Wunsch der Person.",
         "Am Ende sagst du, was entstanden ist und dass es auf dem Bildschirm liegt.",
+        "Ist die Kamera an, kannst du mit look sehen, was die Person zeigt, und mit take_photo ein Foto in ein Fotofeld legen; ein Fotofeld fragst du dann so: „Halte es in die Kamera, ich mache das Foto.“ Ist die Kamera aus, bitte die Person, sie einzuschalten, oder lass das Feld dem Bildschirm.",
       ]
     : [
         "You hold a conversation that fills in a wizard step by step. The person also sees the wizard on the screen.",
@@ -131,6 +151,7 @@ export function conversationInstructions(view: RunView): string {
         "While the wizard works, say in one sentence what it is doing and wait. Never make anything up.",
         "At a review, sum the text up in a few words and ask whether it fits. Then accept_review, or regenerate with what the person wants changed.",
         "At the end, say what was made and that it is on the screen.",
+        "With the camera on you can see what the person shows with look, and put a photo into a photo field with take_photo; ask for a photo field like this: 'Hold it to the camera, I will take the picture.' With the camera off, ask the person to switch it on, or leave the field to the screen.",
       ];
   return `${about}\n\n${rules.join("\n")}`;
 }
