@@ -370,6 +370,7 @@ const de = {
   "where.sending": "Wird gesendet",
   "where.missing": "Nicht in der Cloud",
   "home.steps": "{n} Schritte",
+  "home.allChannels": "Alle Kanäle",
   "home.newProject": "Neuer Space",
   "home.projectName": "Name des Space",
   "home.projectLimit": "Höchstens {n} Spaces",
@@ -1741,6 +1742,7 @@ const en: Record<Key, string> = {
   "home.newProject": "New space",
   "home.projectName": "Space name",
   "home.projectLimit": "At most {n} spaces",
+  "home.allChannels": "All channels",
   "team.title": "Team",
   "team.hint":
     "Who is in the team and which plan it is on. Inviting and managing happens in the account.",

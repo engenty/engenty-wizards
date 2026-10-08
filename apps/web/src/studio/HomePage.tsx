@@ -16,6 +16,7 @@ import {
 } from "../lib/session";
 import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
 import { LinkStatus, useAccountLink } from "./Account";
+import { ChannelFilter, ChannelIcons, channelsOf, type Runner, useRunners } from "./channels";
 import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
 import { ownLink, sharedLink, WhereChip, whereItRuns } from "./where";
@@ -183,7 +184,7 @@ function LinkTeaser() {
  * or for a local install its copy's in the cloud. A wizard that runs only on this computer has
  * no link to hand out; it opens here.
  */
-function WizardCard({ w, me }: { w: WizardSummary; me: Me }) {
+function WizardCard({ w, me, runners }: { w: WizardSummary; me: Me; runners: Runner[] }) {
   const navigate = useNavigate();
   const where = whereItRuns(w, me, w.cloud);
   const link = sharedLink(where);
@@ -205,7 +206,11 @@ function WizardCard({ w, me }: { w: WizardSummary; me: Me }) {
         <h3 className="font-display font-semibold text-[1.0625rem] leading-snug">{w.title}</h3>
         <p className="mt-1 line-clamp-2 text-[0.875rem] text-ink-3">{w.description}</p>
         <div className="mt-auto flex min-h-8 items-center justify-between pt-3">
-          <span className="text-[0.75rem] text-ink-4">{t("home.steps", { n: w.stepCount })}</span>
+          <span className="inline-flex items-center gap-2.5 text-[0.75rem] text-ink-4">
+            {t("home.steps", { n: w.stepCount })}
+            {/* The channels it runs through, the link's first. */}
+            <ChannelIcons w={w} runners={runners} />
+          </span>
           <div className="flex items-center">
             {link ? (
               <CopyLink url={link} />
@@ -295,6 +300,12 @@ export function HomePage() {
     queryFn: () => api.get<WizardSummary[]>(`/api/studio/projects/${project!.id}/wizards`),
     enabled: Boolean(project),
   });
+  const runners = useRunners().data ?? [];
+  // One channel to narrow the cards to, or all of them.
+  const [channel, setChannel] = useState<string | null>(null);
+  const shown = (wizards.data ?? []).filter(
+    (w) => !channel || channelsOf(w, runners).includes(channel),
+  );
   const total = projects.reduce((n, p) => n + p.wizardCount, 0);
   /** Wizards are made in this project: the person makes things here, and the project is the team's own. */
   const canCreate = create && !project?.readOnly;
@@ -334,8 +345,16 @@ export function HomePage() {
         </p>
       ) : null}
       {wizards.data && wizards.data.length === 0 ? <Empty>{t("home.empty")}</Empty> : null}
+      {wizards.data?.length ? (
+        <ChannelFilter
+          wizards={wizards.data}
+          runners={runners}
+          value={channel}
+          onChange={setChannel}
+        />
+      ) : null}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {me ? wizards.data?.map((w) => <WizardCard key={w.id} w={w} me={me} />) : null}
+        {me ? shown.map((w) => <WizardCard key={w.id} w={w} me={me} runners={runners} />) : null}
       </div>
     </div>
   );

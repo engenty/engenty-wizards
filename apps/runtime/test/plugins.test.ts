@@ -692,7 +692,23 @@ describe("a plugin's runners", () => {
     });
   });
 
-  it("are registered with what they can do", () => {
+  it("are registered with what they can do, and the studio lists the tenant's runners", async () => {
+    const listed = await json(get("/api/studio/runners"));
+    expect(listed.map((r: { id: string }) => r.id)).toEqual([
+      "steps",
+      "chat",
+      "talk",
+      "call",
+      "sms",
+      "whatsapp",
+      "kiosk",
+      "phone",
+    ]);
+    expect(listed.find((r: { id: string }) => r.id === "kiosk")).toMatchObject({
+      kind: "page",
+      plugin: "kiosk",
+      problem: null,
+    });
     const found = registry.loadedPlugin("kiosk")!.runners;
     expect([...found.keys()]).toEqual(["kiosk", "phone"]);
     expect(found.get("kiosk")!.info).toMatchObject({ kind: "page", plugin: "kiosk" });

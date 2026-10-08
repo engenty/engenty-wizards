@@ -62,6 +62,10 @@ this wizard:
 | Hands off to the page at: … | At those steps the person gets a link to the wizard's page, for a photo, a signature or a sign-in, and comes back after |
 | Not possible: … | A step nobody can hand off, for example one that takes minutes on a channel that cannot wait |
 
+The home's cards show the channels that are on as small icons, the link's door first, and a row
+of pills above the cards narrows them to one channel once channels beyond steps and chat are in
+play.
+
 The link opens the **default**; "Make default" moves it. What else is switched on answers under
 its own address, `/chat` for the chat, and is offered on the wizard's first page: "Or: Chat". A
 switched-off address sends people to the link instead.

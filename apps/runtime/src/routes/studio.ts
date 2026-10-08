@@ -125,7 +125,7 @@ import {
   projectPatchSchema,
   updateProject,
 } from "../services/projects.js";
-import { wizardRunners } from "../services/runners.js";
+import { runnersOf, wizardRunners } from "../services/runners.js";
 import { listResults, listRuns, startTestRun } from "../services/runs.js";
 import {
   addCategoryValue,
@@ -1026,6 +1026,8 @@ export const studio = new Hono<Vars>()
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
     return c.json(await estimateRun(w.id, null, w.draft, await stepsWithoutModel(w.draft)));
   })
+  // The runners this tenant has: the home's channel filter and the icons on its cards.
+  .get("/runners", async (c) => c.json(await runnersOf()))
   // The runners this tenant has, how each fits the draft, and how the wizard is offered.
   .get("/wizards/:id/runners", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
