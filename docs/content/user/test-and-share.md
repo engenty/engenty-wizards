@@ -39,6 +39,7 @@ gives it one, and the arrow opens it here.
 | Link | The address people open. "Copy" puts it on the clipboard, "Open" opens it |
 | Website | The tag for a website (see below) |
 | QR code | The link as a QR code, and the wizard's ID for the mobile app |
+| Channels | The ways the wizard runs: the page, the chat, and what plugins add (see below) |
 | Settings | One line, "on · 50 a day", that folds out: |
 | · Link is active | Switch it off and the link stops answering |
 | · Runs per day | How many runs the link allows a day. 50 unless you change it |
@@ -47,6 +48,21 @@ gives it one, and the arrow opens it here.
 Where the draft is not published as it is, the dialog says so first and publishes from there.
 
 One visitor can start 6 runs an hour.
+
+### Channels
+
+A wizard runs page by page or as a chat; a plugin can add further ways, a kiosk page or a
+messenger. Each channel in the list says how far it gets with this wizard:
+
+| It says | Meaning |
+|---|---|
+| Everything in the channel | Every field, review and result works there |
+| Hands off to the page at: … | At those steps the person gets a link to the wizard's page, for a photo, a signature or a sign-in, and comes back after |
+| Not possible: … | A step nobody can hand off, for example one that takes minutes on a channel that cannot wait |
+
+The link opens the **default**; "Make default" moves it. What else is switched on answers under
+its own address, `/chat` for the chat, and is offered on the wizard's first page: "Or: Chat". A
+switched-off address sends people to the link instead.
 
 ### Who can open the link
 
@@ -96,15 +112,25 @@ Deleting a wizard here removes its copy; switching its link off here switches it
 
 The share dialog gives a tag to paste into a page's HTML:
 
-| Mode | Shows |
+| Looks | Shows |
+|---|---|
+| Steps | The wizard page by page |
+| Chat | The wizard as a chat, 640 px high (`data-height` changes that) |
+
+| Place | Shows |
 |---|---|
 | Inline | The wizard in that place of the page, as tall as its content |
 | Button + modal | A button in that place that opens the wizard in a window over the page |
+| Chat button | The wizard's engenty in the lower right corner; the chat opens above it |
 
 ```html
 <script async src="https://example.com/embed.js" data-wizard="TOKEN"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="modal" data-label="Start"></script>
+<script async src="https://example.com/embed.js" data-wizard="TOKEN" data-runner="chat"></script>
+<script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="popout"></script>
 ```
+
+A chat that is switched off for the wizard shows the page instead.
 
 The button takes your website's own styles through the class `engenty-wizard-button`.
 
