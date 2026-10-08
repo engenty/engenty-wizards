@@ -2,6 +2,7 @@ import {
   branchValues,
   conditionMatches,
   nextStepId,
+  cardsFromData,
   optionsFromData,
   type PageStep,
   pageNeeds,
@@ -245,6 +246,56 @@ describe("choices from earlier data", () => {
       }),
     ).toEqual(["Anna", "Ben"]);
     expect(optionsFromData("steps.research.missing", outputs)).toEqual([]);
+  });
+
+  it("come as cards from a table's rows, the value an id column", () => {
+    const outputs = {
+      search: {
+        json: {
+          products: [
+            { id: "p1", title: "Sunset Glow", price: "89,00 €", image: "https://x.test/s.jpg", url: "https://x.test/p/s" },
+            { id: "p2", title: "Golden Hour", price: 79, image: "nope", url: "ftp://x" },
+            { id: "p2", title: "twice" },
+            { title: "no id, the label counts" },
+            { id: "", title: "" },
+          ],
+        },
+      },
+    };
+    const cards = { label: "title", value: "id", image: "image", meta: "price", link: "url" };
+    expect(cardsFromData("steps.search.products", outputs, cards)).toEqual([
+      { value: "p1", label: "Sunset Glow", image: "https://x.test/s.jpg", meta: "89,00 €", link: "https://x.test/p/s" },
+      { value: "p2", label: "Golden Hour", meta: "79" },
+      { value: "no id, the label counts", label: "no id, the label counts" },
+    ]);
+    expect(optionsFromData("steps.search.products", outputs, {}, cards)).toEqual(["p1", "p2", "no id, the label counts"]);
+    expect(cardsFromData("steps.search.products.id", outputs, cards)).toEqual([]);
+  });
+
+  it("are checked by the validator", () => {
+    const wizard = (field: Record<string, unknown>, columns?: string[]) =>
+      parseWizard({
+        title: "x",
+        steps: [
+          {
+            id: "search",
+            type: "agent",
+            title: "S",
+            instructions: "find",
+            tools: [],
+            output: { format: "json", fields: [{ id: "products", kind: "table", description: "p", ...(columns ? { columns } : {}) }, { id: "names", kind: "list", description: "n" }] },
+          },
+          { id: "pick", type: "page", title: "P", fields: [{ id: "f", label: "F", kind: "multiselect", optionsFrom: "steps.search.products", ...field }] },
+          { id: "r", type: "result", title: "R", deliverables: [] },
+        ],
+      });
+    const issues = (parsed: ReturnType<typeof parseWizard>) =>
+      parsed.ok ? parsed.issues.map((i) => i.message).join("\n") : "invalid";
+    expect(issues(wizard({ cards: { label: "title", value: "id" } }, ["id", "title"]))).toBe("");
+    expect(issues(wizard({ cards: { label: "title", image: "img" } }, ["id", "title"]))).toContain('no column "img"');
+    expect(issues(wizard({}))).toContain("a table takes a column");
+    expect(issues(wizard({ optionsFrom: "steps.search.names", cards: { label: "x" } }))).toContain("is not a table");
+    expect(issues(wizard({ optionsFrom: undefined, cards: { label: "x" } }))).toContain('needs "optionsFrom"');
   });
 
   it("are what the page accepts", () => {

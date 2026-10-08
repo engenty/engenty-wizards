@@ -198,6 +198,27 @@ export type Condition = z.infer<typeof conditionSchema>;
 export const whenSchema = z.union([conditionSchema, z.array(conditionSchema).min(1)]);
 export type When = z.infer<typeof whenSchema>;
 
+/** What a card of a choice shows: the columns of the table the choices come from. */
+export const cardsSchema = z.object({
+  label: z.string().min(1),
+  value: z.string().optional(),
+  image: z.string().optional(),
+  subtitle: z.string().optional(),
+  meta: z.string().optional(),
+  link: z.string().optional(),
+});
+export type CardsDef = z.infer<typeof cardsSchema>;
+
+/** A choice drawn as a card, as the runner gets it. */
+export interface CardOption {
+  value: string;
+  label: string;
+  image?: string;
+  subtitle?: string;
+  meta?: string;
+  link?: string;
+}
+
 export const fieldSchema = z.object({
   id,
   label: z.string().min(1),
@@ -252,6 +273,12 @@ export const fieldSchema = z.object({
    * of a stored list ("lists.<id>.<column>"). `options` stand in while that data is empty.
    */
   optionsFrom: z.string().optional(),
+  /**
+   * select / multiselect with `optionsFrom` naming a table output ("steps.<id>.<key>"): each row
+   * is a choice drawn as a card. The columns that hold what the card shows; `value` (default:
+   * `label`) is what the answer holds, `link` a page the card opens.
+   */
+  cards: cardsSchema.optional(),
   /**
    * The field is shown when a decision, made as the run reaches the page, finds this statement
    * true of the run ("The complaint is about a damaged article").
@@ -954,7 +981,7 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
   };
 
   /** Why an `optionsFrom` reference finds nothing, or null when it is fine. */
-  const optionsFromProblem = (raw: string): string | null => {
+  const optionsFromProblem = (raw: string, cards?: CardsDef): string | null => {
     const [head, from, key, column, ...more] = dataRef(raw).split(".");
     if (head === "lists" && from && key && !column) {
       const list = def.lists?.find((l) => l.id === from);
@@ -986,7 +1013,18 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           ? null
           : `"optionsFrom": "${from}.${key}" is not a table with the column "${column}".`;
       }
-      return out.kind === "list" ? null : `"optionsFrom": "${from}.${key}" is not a list.`;
+      if (cards) {
+        if (out.kind !== "table") {
+          return `"cards": "${from}.${key}" is not a table.`;
+        }
+        const missing = Object.values(cards).find(
+          (c) => out.columns?.length && !out.columns.includes(c),
+        );
+        return missing ? `"cards": table "${from}.${key}" has no column "${missing}".` : null;
+      }
+      return out.kind === "list"
+        ? null
+        : `"optionsFrom": "${from}.${key}" is not a list (a table takes a column, or "cards").`;
     }
     return `"optionsFrom" is "steps.<id>.<key>", "steps.<id>.<key>.<column>" or "lists.<id>.<column>".`;
   };
@@ -1040,10 +1078,17 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             const problem =
               field.kind !== "select" && field.kind !== "multiselect" && field.kind !== "slot"
                 ? `"optionsFrom" fills the choices of a select, multiselect or slot; kind is "${field.kind}".`
-                : optionsFromProblem(field.optionsFrom);
+                : field.cards && field.kind === "slot"
+                  ? '"cards" draws the choices of a select or multiselect, not of a slot.'
+                  : optionsFromProblem(field.optionsFrom, field.cards);
             if (problem) {
               issues.push({ stepId: step.id, message: `Field "${field.id}": ${problem}` });
             }
+          } else if (field.cards) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}": "cards" needs "optionsFrom" naming a table output.`,
+            });
           }
           if (field.prefill) {
             const ref = dataRef(field.prefill);
@@ -1541,7 +1586,11 @@ export function optionsFromData(
   ref: string,
   outputs: Record<string, { json?: unknown }>,
   lists: Record<string, { rows: { cells: Record<string, unknown> }[] }> = {},
+  cards?: CardsDef,
 ): string[] {
+  if (cards) {
+    return cardsFromData(ref, outputs, cards).map((c) => c.value);
+  }
   const [head, id, key, column, ...more] = dataRef(ref).split(".");
   let raw: unknown[] = [];
   if (head === "lists" && id && key && !column) {
@@ -1571,6 +1620,66 @@ export function optionsFromData(
     }
   }
   return [...seen];
+}
+
+/** The rows of a table output as cards: what `optionsFrom` with `cards` finds in the run. */
+export function cardsFromData(
+  ref: string,
+  outputs: Record<string, { json?: unknown }>,
+  cards: CardsDef,
+): CardOption[] {
+  const [head, id, key, ...more] = dataRef(ref).split(".");
+  if (head !== "steps" || !id || !key || more.length) {
+    return [];
+  }
+  const json = outputs[id]?.json as Record<string, unknown> | undefined;
+  const rows = json && typeof json === "object" ? json[key] : undefined;
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  const cell = (row: Record<string, unknown>, column: string | undefined, max = 200) => {
+    const v = column ? row[column] : undefined;
+    if (v === null || v === undefined || typeof v === "object") {
+      return "";
+    }
+    return String(v).trim().slice(0, max);
+  };
+  const out: CardOption[] = [];
+  const seen = new Set<string>();
+  for (const raw of rows) {
+    if (!raw || typeof raw !== "object") {
+      continue;
+    }
+    const row = raw as Record<string, unknown>;
+    const label = cell(row, cards.label);
+    const value = cell(row, cards.value) || label;
+    if (!value || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    const card: CardOption = { value, label: label || value };
+    const image = cell(row, cards.image, 2000);
+    const link = cell(row, cards.link, 2000);
+    const subtitle = cell(row, cards.subtitle, 300);
+    const meta = cell(row, cards.meta, 80);
+    if (/^(https?:|data:|\/)/.test(image) || /^[a-zA-Z0-9_-]{6,64}$/.test(image)) {
+      card.image = image;
+    }
+    if (/^https?:\/\//.test(link)) {
+      card.link = link;
+    }
+    if (subtitle) {
+      card.subtitle = subtitle;
+    }
+    if (meta) {
+      card.meta = meta;
+    }
+    out.push(card);
+    if (out.length >= MAX_DATA_OPTIONS) {
+      break;
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

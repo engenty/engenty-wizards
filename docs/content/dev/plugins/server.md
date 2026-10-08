@@ -128,7 +128,7 @@ server.every("refresh", 60 * 60_000, async ({ tenantId, lastRun, signal }) => {
 
 ```ts
 const page = await server.web.read("https://example.com/preise");
-// { url, status, etag, lastModified, title, description, text, links }
+// { url, status, etag, lastModified, title, description, text, links, jsonld }
 
 const res = await server.web.fetch(`${origin}/sitemap.xml`, {
   headers: { "if-none-match": source.etag ?? "" },
@@ -139,9 +139,23 @@ const res = await server.web.fetch(`${origin}/sitemap.xml`, {
   runtime's own requests do.
 - `read` gives the page's text as Markdown and every link, absolute and each once. A page with
   hardly any text without its scripts is drawn in a browser first. `etag` and
-  `lastModified` are what the server sent, for asking later whether the page changed.
+  `lastModified` are what the server sent, for asking later whether the page changed. `jsonld`
+  is the page's structured data (its `application/ld+json` blocks, parsed): a shop's product
+  page says title, price, availability and image there exactly, without a model.
 - `fetch` is `fetch` behind the guard: for a sitemap, `robots.txt`, a question with
   `if-none-match`.
+
+## Keys of the plugin's own
+
+A plugin that talks to a shop or a service with keys the person typed keeps them sealed, as the
+runtime seals a connection's tokens:
+
+```ts
+await db().update(store).set({ credentials: server.secrets.seal({ token }) });
+const keys = server.secrets.unseal<{ token: string }>(row.credentials);
+```
+
+`unseal` answers null for a value sealed on another install: ask for the keys again.
 
 ## Documents
 

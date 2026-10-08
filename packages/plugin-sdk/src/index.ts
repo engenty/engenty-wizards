@@ -303,6 +303,30 @@ export interface PluginDocumentResult {
   review: string | null;
 }
 
+/** A page of a space, as a plugin reads it. */
+export interface PluginSpacePage {
+  id: string;
+  title: string;
+  /** How a step names it: `pages/…`. */
+  path: string;
+  parentId: string | null;
+  markdown: string;
+  /** The plugin that wrote it, or null for one made in the studio or uploaded. */
+  origin: string | null;
+  originKey: string | null;
+  updatedAt: string;
+}
+
+/** A file of a space, as a plugin reads it. */
+export interface PluginSpaceFile {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  kind: "logo" | "asset" | "document";
+  updatedAt: string;
+}
+
 /** What a plugin wrote into a space. */
 export interface PluginSpaceItem {
   key: string;
@@ -341,6 +365,15 @@ export interface PluginSpaceData {
   putDocument(input: PluginDocumentInput): Promise<PluginDocumentResult>;
   /** Everything the plugin wrote into the space. */
   list(space: string): Promise<PluginSpaceItem[]>;
+  /**
+   * The space's own pages (not a wizard's), whoever wrote them, with their Markdown: for a
+   * plugin that reads what the space knows. `parent`: only the pages under that page.
+   */
+  readPages(space: string, opts?: { parent?: string }): Promise<PluginSpacePage[]>;
+  /** The space's files of a kind (`document` when left out), newest first. */
+  files(space: string, kind?: "logo" | "asset" | "document"): Promise<PluginSpaceFile[]>;
+  /** One file of the space with its bytes: a price list someone dropped into Wissen. */
+  readFile(space: string, fileId: string): Promise<PluginSpaceFile & { data: Uint8Array }>;
   /** Takes out one key, or every item of the plugin in the space; what a person changed stays. */
   remove(space: string, key?: string): Promise<number>;
   /**
@@ -393,6 +426,11 @@ export interface PluginWebPage {
   text: string;
   /** Every link of the page, absolute, each once. */
   links: { url: string; text: string }[];
+  /**
+   * The page's structured data: its `application/ld+json` blocks, parsed, a `@graph` spread
+   * out. A shop's product page says title, price, availability and image here exactly.
+   */
+  jsonld: unknown[];
 }
 
 export interface PluginWeb {
@@ -470,15 +508,45 @@ export interface PluginConnection {
  * the tokens sealed, refreshes them, and on a local install connects Google through the linked
  * account's Manage-App, as it does for wizards.
  */
+/** A connector a plugin may connect: signed in with OAuth, or with keys the person types. */
+export interface PluginConnectorOffer {
+  id: string;
+  name: string;
+  auth: "oauth2" | "api_key";
+  /** `api_key`: what to ask the person for, in this order. */
+  fields?: {
+    key: string;
+    label: string;
+    placeholder?: string;
+    /** Default: true. */
+    required?: boolean;
+    /** A password field: never shown again. */
+    secret?: boolean;
+  }[];
+}
+
 export interface PluginConnections {
   /** Of these connector ids, the ones a person can connect on this runtime now, with their names. */
-  available(connectors: string[]): Promise<{ id: string; name: string }[]>;
+  available(connectors: string[]): Promise<PluginConnectorOffer[]>;
   /**
-   * The provider's sign-in page. Open it in a window: when the person is done, the window posts
-   * `{ type: "wizards:connected", ok }` to the studio and closes. `actions` are the connector's
-   * actions the plugin will call; only the rights they need are asked for.
+   * The provider's sign-in page of an `oauth2` connector. Open it in a window: when the person
+   * is done, the window posts `{ type: "wizards:connected", ok }` to the studio and closes.
+   * `actions` are the connector's actions the plugin will call; only the rights they need are
+   * asked for.
    */
   start(input: { space: string; connector: string; actions: string[] }): Promise<{ url: string }>;
+  /**
+   * Connects an `api_key` connector with the keys the person typed (`fields` of the offer, by
+   * key). The connector tries them once first; keys it refuses throw an error with the status
+   * `400` and the code `credentials`, whose message says what was wrong. The same account
+   * connected again for the space replaces the first connection's keys and actions.
+   */
+  connect(input: {
+    space: string;
+    connector: string;
+    actions: string[];
+    credentials: Record<string, string>;
+  }): Promise<PluginConnection>;
   /** What is connected for the space, the newest first. */
   list(space: string): Promise<PluginConnection[]>;
   /** One connection by its id, or null. */
@@ -523,6 +591,14 @@ export interface PluginStarter {
 export interface PluginAssistantPage {
   /** Text for the assistant: the state of the page, in a few lines. Cut at 8,000 characters. */
   block(space: PluginSpace): string | null | Promise<string | null>;
+}
+
+/** Keys a plugin keeps: sealed with the runtime's own key, as it seals a connection's tokens. */
+export interface PluginSecrets {
+  /** Anything that is JSON, as a sealed string to keep in a table. */
+  seal(value: unknown): string;
+  /** What was sealed, or null when it was sealed on another install. */
+  unseal<T = unknown>(sealed: string): T | null;
 }
 
 export interface PluginServerApi {
@@ -570,6 +646,8 @@ export interface PluginServerApi {
   generate<T = undefined>(request: PluginGenerateRequest<T>): Promise<PluginGenerateResult<T>>;
   /** Accounts the plugin connects for a space, through the runtime's built-in connectors. */
   connections: PluginConnections;
+  /** Keys of the plugin's own (a shop's API tokens), sealed before they go into a table. */
+  secrets: PluginSecrets;
   /** A wizard the plugin brings as a template. */
   registerStarter(starter: PluginStarter): void;
   /** Something to undo when the plugin unloads or reloads: a timer, a socket. */

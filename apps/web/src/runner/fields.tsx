@@ -1,4 +1,5 @@
 import {
+  type CardOption,
   type Field,
   itemsTotals,
   MAX_FILES,
@@ -631,6 +632,105 @@ function SlotField({
   );
 }
 
+/**
+ * Choices drawn as cards: a picture, the title, a line under it, a price, and a page to open.
+ * One or several of them, as the field is a select or a multiselect.
+ */
+function CardChoice({
+  cards,
+  value,
+  multi,
+  runId,
+  onChange,
+  disabled,
+}: {
+  cards: CardOption[];
+  value: unknown;
+  multi: boolean;
+  runId: string;
+  onChange: (v: unknown) => void;
+  disabled: Set<string>;
+}) {
+  const picked = new Set<string>(
+    multi
+      ? Array.isArray(value)
+        ? value.map(String)
+        : []
+      : value === undefined || value === null || value === ""
+        ? []
+        : [String(value)],
+  );
+  const toggle = (v: string) => {
+    if (multi) {
+      onChange(picked.has(v) ? [...picked].filter((x) => x !== v) : [...picked, v]);
+    } else {
+      onChange(picked.has(v) ? "" : v);
+    }
+  };
+  const image = (src: string) =>
+    /^(https?:|data:|\/)/.test(src) ? src : withBase(`/api/runs/${runId}/assets/${src}`);
+  return (
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr))" }}
+    >
+      {cards.map((c) => {
+        const on = picked.has(c.value);
+        const shut = disabled.has(c.value);
+        return (
+          <div
+            key={c.value}
+            className={cn(
+              "flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-border-soft transition",
+              on && "ring-2 ring-ember",
+              shut && "opacity-50",
+            )}
+          >
+            {c.image ? (
+              <img src={image(c.image)} alt="" className="aspect-square w-full object-cover" />
+            ) : null}
+            <div className="flex flex-1 flex-col gap-1 p-3">
+              <div className="font-medium text-[0.9375rem] leading-snug">{c.label}</div>
+              {c.subtitle ? (
+                <div className="text-[0.8125rem] text-ink-3 leading-snug">{c.subtitle}</div>
+              ) : null}
+              {c.meta ? (
+                <div className="mt-auto pt-1 font-display font-semibold text-[0.9375rem] tabular-nums">
+                  {c.meta}
+                </div>
+              ) : null}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  disabled={shut}
+                  onClick={() => toggle(c.value)}
+                  className={cn(
+                    "inline-flex h-9 flex-1 items-center justify-center rounded-full px-3 text-[0.8125rem] transition coarse:h-11",
+                    on ? "bg-ember text-ember-on" : "bg-paper-2 text-ink-2 hover:text-ink",
+                  )}
+                >
+                  {on ? t("cards.picked") : t("cards.pick")}
+                </button>
+                {c.link ? (
+                  <a
+                    href={c.link}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex h-9 items-center rounded-full px-3 text-[0.8125rem] text-ink-2 ring-1 ring-border-soft hover:text-ink coarse:h-11"
+                  >
+                    {t("cards.open")}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function FieldInput({
   field,
   value,
@@ -648,8 +748,8 @@ export function FieldInput({
   runId: string;
   /** Answers that lead to a step this app has no model for: shown, not to be picked. */
   closed?: ClosedChoice;
-  /** The run as the server sees it: connections and stored lists come from there. */
-  view?: Pick<RunView, "connections" | "lists">;
+  /** The run as the server sees it: connections, stored lists and card choices come from there. */
+  view?: Pick<RunView, "connections" | "lists" | "cards">;
   onChange: (v: unknown) => void;
   /** The field is uploading or recording: the page waits with going on. */
   onBusy?: (busy: boolean) => void;
@@ -683,17 +783,26 @@ export function FieldInput({
       break;
     case "select": {
       const options = field.options ?? [];
-      control =
-        options.length <= 5 && options.every((o) => o.length <= 28) ? (
-          <Segmented value={str} options={options} onChange={onChange} disabled={[...shut]} />
-        ) : (
-          <Select
-            value={str}
-            placeholder="—"
-            onChange={onChange}
-            options={options.map((o) => ({ value: o, label: o, disabled: shut.has(o) }))}
-          />
-        );
+      const cards = view?.cards?.[field.id];
+      control = cards?.length ? (
+        <CardChoice
+          cards={cards}
+          value={value}
+          multi={false}
+          runId={runId}
+          onChange={onChange}
+          disabled={shut}
+        />
+      ) : options.length <= 5 && options.every((o) => o.length <= 28) ? (
+        <Segmented value={str} options={options} onChange={onChange} disabled={[...shut]} />
+      ) : (
+        <Select
+          value={str}
+          placeholder="—"
+          onChange={onChange}
+          options={options.map((o) => ({ value: o, label: o, disabled: shut.has(o) }))}
+        />
+      );
       break;
     }
     case "slot":
@@ -708,8 +817,18 @@ export function FieldInput({
         />
       );
       break;
-    case "multiselect":
-      control = (
+    case "multiselect": {
+      const cards = view?.cards?.[field.id];
+      control = cards?.length ? (
+        <CardChoice
+          cards={cards}
+          value={value}
+          multi
+          runId={runId}
+          onChange={onChange}
+          disabled={shut}
+        />
+      ) : (
         <Segmented
           multi
           value={Array.isArray(value) ? (value as string[]) : []}
@@ -718,6 +837,7 @@ export function FieldInput({
         />
       );
       break;
+    }
     case "date":
       control = (
         <Input

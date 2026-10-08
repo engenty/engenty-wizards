@@ -27,8 +27,9 @@ const { events } = await server.connections.call(account.id, "list_events", {
 
 | `server.connections.` | Does |
 |---|---|
-| `available(ids)` | Of these connector ids, the ones a person can connect here now, with their names. An OAuth connector is offered once its client is set up (`GOOGLE_OAUTH_CLIENT_ID` …), and on a local install Google also through the linked account |
-| `start({ space, connector, actions })` | The provider's sign-in page. Only the rights `actions` need are asked for |
+| `available(ids)` | Of these connector ids, the ones a person can connect here now: `{ id, name, auth }`, and for `auth: "api_key"` the `fields` to ask for (`key`, `label`, `placeholder`, `required`, `secret`). An OAuth connector is offered once its client is set up (`GOOGLE_OAUTH_CLIENT_ID` …), and on a local install Google also through the linked account; a connector that takes keys (HubSpot, S3) always |
+| `start({ space, connector, actions })` | An OAuth connector: the provider's sign-in page. Only the rights `actions` need are asked for |
+| `connect({ space, connector, actions, credentials })` | A connector that takes keys: the keys by field key, tried once at the provider, then kept sealed. Keys the provider refuses throw an error with the status `400` and the code `credentials`, whose message says what was wrong. Answers the connection |
 | `list(space)`, `get(id)` | What is connected: `{ id, space, connector, label, actions, createdAt }`, the newest first. `label` is the account as the provider names it |
 | `call(id, action, input)` | Runs one of the connector's actions with the account. A fresh token is fetched first when the old one runs out |
 | `remove(id)` | Forgets the connection and its tokens |

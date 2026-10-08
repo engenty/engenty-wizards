@@ -1,4 +1,4 @@
-import type { Format, ModelClass, Step, WizardDefinition } from "./definition.js";
+import type { CardOption, Format, ModelClass, Step, WizardDefinition } from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
 import type { Surface } from "./surface.js";
 
@@ -271,6 +271,8 @@ export interface RunView {
   known?: Record<string, unknown>;
   /** Choices of the current page's fields that come from earlier data (`optionsFrom`). */
   options?: Record<string, string[]>;
+  /** The same choices as cards, for fields that have `cards`. */
+  cards?: Record<string, CardOption[]>;
   /** The decided fields (`ask`, `group`) of the current page that a decision kept. */
   decidedFields?: string[];
   /**

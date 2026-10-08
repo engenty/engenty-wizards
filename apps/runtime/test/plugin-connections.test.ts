@@ -13,6 +13,43 @@ process.env.APP_URL = "http://localhost:5181";
 process.env.GOOGLE_OAUTH_CLIENT_ID = "client-id";
 process.env.GOOGLE_OAUTH_CLIENT_SECRET = "client-secret";
 
+// A connector that takes keys, played: the guarded fetch of the connectors never sees a stub.
+vi.mock("../src/engenty/connections-hubspot/connector", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../src/engenty/connections-hubspot/connector")>();
+  const real = mod.hubspotConnector;
+  if (real.auth.kind !== "api_key") {
+    throw new Error("hubspot takes keys");
+  }
+  return {
+    ...mod,
+    hubspotConnector: {
+      ...real,
+      auth: {
+        kind: "api_key",
+        apiKey: {
+          fields: real.auth.apiKey.fields,
+          verify: async (credentials: Record<string, string>) => {
+            if (credentials.access_token !== "pat-good") {
+              throw new Error("hubspot_verify_failed (401): no");
+            }
+            return { label: "HubSpot" };
+          },
+        },
+      },
+      actions: real.actions.map((a) =>
+        a.id === "list_contacts"
+          ? {
+              ...a,
+              handler: async (_input: unknown, ctx: { accessToken: string }) => ({
+                contacts: JSON.parse(ctx.accessToken).access_token === "pat-good" ? [{ id: "7" }] : [],
+              }),
+            }
+          : a,
+      ),
+    },
+  };
+});
+
 let client: typeof import("../src/db/client");
 let connections: typeof import("../src/connectors/plugin-connections");
 let app: typeof import("../src/app").default;
@@ -39,9 +76,58 @@ afterEach(() => {
 describe("plugin connections", () => {
   const cal = () => connections.pluginConnections("appointments");
 
-  it("offers the connectors that can be signed in to here", async () => {
-    const offered = await inTenant(() => cal().available(["google-calendar", "nope", "s3"]));
-    expect(offered).toEqual([{ id: "google-calendar", name: "Google Calendar" }]);
+  it("offers the connectors that can be signed in to here, and those that take keys", async () => {
+    const offered = await inTenant(() => cal().available(["google-calendar", "nope", "hubspot"]));
+    expect(offered).toEqual([
+      { id: "google-calendar", name: "Google Calendar", auth: "oauth2" },
+      {
+        id: "hubspot",
+        name: "HubSpot",
+        auth: "api_key",
+        fields: [{ key: "access_token", label: "Private app access token", placeholder: "pat-…", secret: true }],
+      },
+    ]);
+  });
+
+  it("connects with keys the connector accepts, and refuses the ones it does not", async () => {
+    const shop = () => connections.pluginConnections("shop");
+    await expect(
+      inTenant(() =>
+        shop().connect({ space, connector: "hubspot", actions: ["list_contacts"], credentials: {} }),
+      ),
+    ).rejects.toMatchObject({ status: 400, code: "credentials" });
+    await expect(
+      inTenant(() =>
+        shop().connect({
+          space,
+          connector: "hubspot",
+          actions: ["list_contacts"],
+          credentials: { access_token: "pat-bad" },
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 400, code: "credentials" });
+    const made = await inTenant(() =>
+      shop().connect({
+        space,
+        connector: "hubspot",
+        actions: ["list_contacts"],
+        credentials: { access_token: "pat-good" },
+      }),
+    );
+    expect(made).toMatchObject({ connector: "hubspot", label: "HubSpot", actions: ["list_contacts"] });
+    // The keys are handed to the action as the connector expects them.
+    const listed = await inTenant(() => shop().call<{ contacts: unknown[] }>(made.id, "list_contacts", {}));
+    expect(listed.contacts).toHaveLength(1);
+    // Connected again: still one connection for the account.
+    await inTenant(() =>
+      shop().connect({ space, connector: "hubspot", actions: ["list_contacts"], credentials: { access_token: "pat-good" } }),
+    );
+    expect(await inTenant(() => shop().list(space))).toHaveLength(1);
+    await expect(
+      inTenant(() =>
+        shop().connect({ space, connector: "google-calendar", actions: [], credentials: {} }),
+      ),
+    ).rejects.toThrow(/signing in/);
   });
 
   it("asks only for the rights the named actions need", async () => {

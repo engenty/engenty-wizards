@@ -207,7 +207,9 @@ const CHAT_KINDS = new Set([
 
 /** A field's choices in this run: what its `optionsFrom` finds in earlier steps, else the fixed ones. */
 function choicesOf(run: RunRow, field: Field): string[] | undefined {
-  const found = field.optionsFrom ? optionsFromData(field.optionsFrom, run.state.outputs) : [];
+  const found = field.optionsFrom
+    ? optionsFromData(field.optionsFrom, run.state.outputs, {}, field.cards)
+    : [];
   return found.length ? found : field.options;
 }
 

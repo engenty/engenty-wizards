@@ -102,6 +102,11 @@ type Field = {
   optionsFrom?: "steps.<id>.<key>" | "steps.<id>.<key>.<column>" | "lists.<id>.<column>"
                                 // select / multiselect / slot: the choices come from earlier data — a "list" output, one column of a
                                 //   "table" output, or a column of a stored list. "options" stand in while that data is empty.
+  cards?: { label, value?, image?, subtitle?, meta?, link? }
+                                // select / multiselect with optionsFrom "steps.<id>.<key>" naming a TABLE output: every row is a
+                                //   choice drawn as a card. Each entry names a column of that table: label (the title), value (what the
+                                //   answer holds, default the label — an id column when there is one), image (a URL or asset id),
+                                //   subtitle, meta (a price), link (a page "Details" opens). Products, places, candidates to pick.
 }
 // kinds: text textarea number select multiselect date email url toggle color image file items connection list
 //        location audio signature slot

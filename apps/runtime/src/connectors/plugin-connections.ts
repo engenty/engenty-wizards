@@ -1,4 +1,8 @@
-import type { PluginConnection, PluginConnections } from "@engenty-wizards/plugin-sdk";
+import type {
+  PluginConnection,
+  PluginConnections,
+  PluginConnectorOffer,
+} from "@engenty-wizards/plugin-sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
@@ -58,6 +62,75 @@ function oauthConnector(id: string): ConnectorDefinition {
     throw new Error(`"${id}" is not a built-in connector that signs in.`);
   }
   return connector;
+}
+
+/** A built-in connector a plugin may connect: signed in, or with keys. */
+function connectorOf(id: string): ConnectorDefinition {
+  const connector = builtinConnector(id);
+  if (!connector || connector.auth.kind === "browser") {
+    throw new Error(`"${id}" is not a built-in connector a plugin can connect.`);
+  }
+  return connector;
+}
+
+/** The actions a connection is made for exist on the connector. */
+function knownActions(connector: ConnectorDefinition, actions: string[]): string[] {
+  for (const id of actions) {
+    if (!connector.actions.some((a) => a.id === id)) {
+      throw new Error(`${connector.name} has no action "${id}".`);
+    }
+  }
+  return [...new Set(actions)];
+}
+
+async function spaceExists(space: string) {
+  const project = await db.query.project.findFirst({
+    where: eq(schema.project.id, space),
+    columns: { id: true },
+  });
+  if (!project) {
+    throw new Error(`There is no space "${space}".`);
+  }
+}
+
+/** Keeps a connection: the same account for the same space again replaces the first one. */
+async function keep(input: {
+  plugin: string;
+  projectId: string;
+  connector: string;
+  label: string;
+  actions: string[];
+  stored: StoredTokens;
+}): Promise<Row> {
+  const same = await db.query.pluginConnection.findFirst({
+    where: and(
+      eq(schema.pluginConnection.plugin, input.plugin),
+      eq(schema.pluginConnection.projectId, input.projectId),
+      eq(schema.pluginConnection.connector, input.connector),
+      eq(schema.pluginConnection.label, input.label),
+    ),
+  });
+  if (same) {
+    const [row] = await db
+      .update(schema.pluginConnection)
+      .set({ actions: input.actions, data: seal(input.stored), updatedAt: new Date() })
+      .where(eq(schema.pluginConnection.id, same.id))
+      .returning();
+    return row;
+  }
+  const [row] = await db
+    .insert(schema.pluginConnection)
+    .values({
+      id: nanoid(14),
+      plugin: input.plugin,
+      projectId: input.projectId,
+      connector: input.connector,
+      label: input.label,
+      actions: input.actions,
+      data: seal(input.stored),
+    })
+    .returning();
+  return row;
 }
 
 /** The provider rights the named actions need, and the connector's own base rights. */
@@ -126,30 +199,14 @@ export async function finishPluginOAuth(
     scopes: tokens.grantedScopes,
     ...("ticket" in answer ? { via: "account" as const } : {}),
   };
-  const same = await db.query.pluginConnection.findFirst({
-    where: and(
-      eq(schema.pluginConnection.plugin, state.plugin),
-      eq(schema.pluginConnection.projectId, state.projectId),
-      eq(schema.pluginConnection.connector, connector.id),
-      eq(schema.pluginConnection.label, account.label),
-    ),
+  await keep({
+    plugin: state.plugin,
+    projectId: state.projectId,
+    connector: connector.id,
+    label: account.label,
+    actions: state.actions,
+    stored,
   });
-  if (same) {
-    await db
-      .update(schema.pluginConnection)
-      .set({ actions: state.actions, data: seal(stored), updatedAt: new Date() })
-      .where(eq(schema.pluginConnection.id, same.id));
-  } else {
-    await db.insert(schema.pluginConnection).values({
-      id: nanoid(14),
-      plugin: state.plugin,
-      projectId: state.projectId,
-      connector: connector.id,
-      label: account.label,
-      actions: state.actions,
-      data: seal(stored),
-    });
-  }
   return { plugin: state.plugin, projectId: state.projectId };
 }
 
@@ -223,12 +280,28 @@ export function pluginConnections(plugin: string): PluginConnections {
 
   return {
     async available(ids) {
-      const out: { id: string; name: string }[] = [];
+      const out: PluginConnectorOffer[] = [];
       for (const id of ids) {
         const connector = builtinConnector(id);
-        if (connector?.auth.kind === "oauth2" && (await usable(connector))) {
-          out.push({ id, name: connector.name });
+        if (!connector || connector.auth.kind === "browser" || !(await usable(connector))) {
+          continue;
         }
+        out.push(
+          connector.auth.kind === "api_key"
+            ? {
+                id,
+                name: connector.name,
+                auth: "api_key",
+                fields: connector.auth.apiKey.fields.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                  ...(f.placeholder ? { placeholder: f.placeholder } : {}),
+                  ...(f.required === false ? { required: false } : {}),
+                  ...(f.secret ? { secret: true } : {}),
+                })),
+              }
+            : { id, name: connector.name, auth: "oauth2" },
+        );
       }
       return out;
     },
@@ -238,13 +311,7 @@ export function pluginConnections(plugin: string): PluginConnections {
       if (connector.auth.kind !== "oauth2") {
         throw new Error("not an oauth connector");
       }
-      const project = await db.query.project.findFirst({
-        where: eq(schema.project.id, space),
-        columns: { id: true },
-      });
-      if (!project) {
-        throw new Error(`There is no space "${space}".`);
-      }
+      await spaceExists(space);
       const scopes = scopesOf(connector, actions);
       const base = {
         plugin,
@@ -282,6 +349,51 @@ export function pluginConnections(plugin: string): PluginConnections {
       return { url };
     },
 
+    async connect({ space, connector: connectorId, actions, credentials }) {
+      const connector = connectorOf(connectorId);
+      if (connector.auth.kind !== "api_key") {
+        throw new Error(`${connector.name} is connected by signing in: use start.`);
+      }
+      await spaceExists(space);
+      const wanted = knownActions(connector, actions);
+      const keys: Record<string, string> = {};
+      for (const field of connector.auth.apiKey.fields) {
+        const value = String(credentials[field.key] ?? "").trim();
+        if (!value && field.required !== false) {
+          throw Object.assign(new Error(`"${field.label}" is missing.`), {
+            status: 400,
+            code: "credentials",
+          });
+        }
+        if (value) {
+          keys[field.key] = value.slice(0, 500);
+        }
+      }
+      let account: { label: string };
+      try {
+        account = await connector.auth.apiKey.verify(keys, connectorFetch);
+      } catch (err) {
+        throw Object.assign(new Error(String((err as Error)?.message ?? err).slice(0, 300)), {
+          status: 400,
+          code: "credentials",
+        });
+      }
+      const row = await keep({
+        plugin,
+        projectId: space,
+        connector: connector.id,
+        label: account.label,
+        actions: wanted,
+        stored: {
+          accessToken: JSON.stringify(keys),
+          refreshToken: null,
+          expiresAt: null,
+          scopes: [],
+        },
+      });
+      return view(row);
+    },
+
     async list(space) {
       const rows = await db.query.pluginConnection.findMany({
         where: and(
@@ -306,7 +418,7 @@ export function pluginConnections(plugin: string): PluginConnections {
       if (!row.actions.includes(actionId)) {
         throw new Error(`The connection was not made for "${actionId}". Connect it again.`);
       }
-      const connector = oauthConnector(row.connector);
+      const connector = connectorOf(row.connector);
       const action = connector.actions.find((a) => a.id === actionId);
       if (!action) {
         throw new Error(`${connector.name} has no action "${actionId}".`);
