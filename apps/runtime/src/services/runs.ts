@@ -1,4 +1,5 @@
 import {
+  FIELD_WAYS,
   type Field,
   formatsFor,
   optionsFromData,
@@ -188,23 +189,6 @@ function deliverableFormats(run: RunRow, step: Step) {
   return listed ? listed.formats.filter((f) => possible.includes(f)) : [];
 }
 
-/** Field kinds an MCP client can answer with plain values; the others need the run page. */
-const CHAT_KINDS = new Set([
-  "text",
-  "textarea",
-  "number",
-  "select",
-  "multiselect",
-  "date",
-  "email",
-  "url",
-  "toggle",
-  "color",
-  "items",
-  "location",
-  "slot",
-]);
-
 /** A field's choices in this run: what its `optionsFrom` finds in earlier steps, else the fixed ones. */
 function choicesOf(run: RunRow, field: Field): string[] | undefined {
   const found = field.optionsFrom ? optionsFromData(field.optionsFrom, run.state.outputs) : [];
@@ -282,7 +266,7 @@ function waitingFor(run: RunRow, current: Step | null) {
           value: run.state.values[f.id],
           columns: f.columns,
           // A file, a recording or a signature comes from the person's device: the run page.
-          inChat: CHAT_KINDS.has(f.kind),
+          inChat: FIELD_WAYS[f.kind] !== "device",
           ...slotHints(run, f, options),
         };
       }),

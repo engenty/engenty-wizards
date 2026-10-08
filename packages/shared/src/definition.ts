@@ -42,6 +42,36 @@ export const FIELD_KINDS = [
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
 /**
+ * How a field is answered without the page's form: `typed` as text, `tapped` from its choices,
+ * `value` as a plain value (a colour, line items, a place), `device` only with the person's
+ * device or account (a file, a recording, a signature, a connection, a kept list). The chat
+ * types and taps; an AI client over MCP gives every way but `device`.
+ */
+export type FieldWay = "typed" | "tapped" | "value" | "device";
+
+export const FIELD_WAYS: Record<FieldKind, FieldWay> = {
+  text: "typed",
+  textarea: "typed",
+  number: "typed",
+  date: "typed",
+  email: "typed",
+  url: "typed",
+  select: "tapped",
+  multiselect: "tapped",
+  slot: "tapped",
+  toggle: "tapped",
+  color: "value",
+  items: "value",
+  location: "value",
+  image: "device",
+  file: "device",
+  audio: "device",
+  signature: "device",
+  connection: "device",
+  list: "device",
+};
+
+/**
  * What a `location` field holds: where the person stands (from the device), a place they typed,
  * or both — the label is then the address of the position.
  */

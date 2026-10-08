@@ -1,9 +1,12 @@
-import type {
-  Field,
-  LocationValue,
-  PageStep,
-  ResultStep,
-  ReviewStep,
+import {
+  FIELD_WAYS,
+  type Field,
+  isDecidedField,
+  type LocationValue,
+  type PageStep,
+  type ResultStep,
+  type ReviewStep,
+  shownFields,
 } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { ArrowUp, Check, Mic, Paperclip, Pencil, RotateCcw, Sparkles } from "lucide-react";
@@ -292,6 +295,8 @@ export function Reply({
 }
 
 /** The line the person types into. Enter sends; in a long answer Shift+Enter starts a new line. */
+type ComposerInput = HTMLInputElement & HTMLTextAreaElement;
+
 function Composer({
   initial = "",
   placeholder,
@@ -299,6 +304,7 @@ function Composer({
   inputProps,
   busy,
   disabled,
+  inputRef,
   onSend,
 }: {
   initial?: string;
@@ -307,17 +313,20 @@ function Composer({
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
   busy?: boolean;
   disabled?: boolean;
+  /** For the turn to put the cursor here. */
+  inputRef?: React.RefObject<ComposerInput | null>;
   /** False: the text stays to be corrected. */
   onSend: (text: string) => boolean | undefined;
 }) {
   const [text, setText] = useState(initial);
-  const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const own = useRef<ComposerInput>(null);
+  const input = inputRef ?? own;
   // On a desk the next question is answered without reaching for the mouse; a phone keeps its keyboard down.
   useEffect(() => {
     if (!isTouch && !disabled) {
       input.current?.focus();
     }
-  }, [disabled]);
+  }, [disabled, input]);
   const send = () => {
     if (busy || disabled) {
       return;
@@ -395,26 +404,18 @@ export function Idle({ placeholder = t("chat.above") }: { placeholder?: string }
 
 /* ---------- fields as questions and answers ---------- */
 
-/** Typed into the composer. */
-const TYPED: ReadonlySet<Field["kind"]> = new Set([
-  "text",
-  "textarea",
-  "number",
-  "email",
-  "url",
-  "date",
-]);
-/** Answered with a tap. */
-const TAPPED: ReadonlySet<Field["kind"]> = new Set(["select", "multiselect", "toggle"]);
-
 type Way = "typed" | "tapped" | "control";
 
-/** How a field is answered in the chat; anything else brings its own control into the thread. */
+/**
+ * How a field is answered in the chat, from the shared `FIELD_WAYS`: typed into the composer,
+ * tapped from its choices; the others bring their own control into the thread.
+ */
 function wayOf(field: Field): Way {
-  if (TYPED.has(field.kind) && !field.scan) {
+  const way = FIELD_WAYS[field.kind];
+  if (way === "typed" && !field.scan) {
     return "typed";
   }
-  return TAPPED.has(field.kind) ? "tapped" : "control";
+  return way === "tapped" ? "tapped" : "control";
 }
 
 const isEmpty = (v: unknown) =>
@@ -568,17 +569,20 @@ function Answer({ field, value, runId }: { field: Field; value: unknown; runId: 
   }
 }
 
-/** A page's questions and the answers given, as the thread shows them once answered. */
+/**
+ * A page's questions and the answers given to `asked`, as the thread shows them. With one field
+ * (`only`) the page's own title is the question.
+ */
 function pageLines(
   step: PageStep,
   key: string,
   values: Values,
   runId: string,
-  upTo = step.fields.length,
+  asked: Field[],
+  only?: Field,
 ): Line[] {
-  const only = step.fields.length === 1 ? step.fields[0] : undefined;
   const lines: Line[] = [bot(key, <PageAsk step={step} only={only} />)];
-  for (const field of step.fields.slice(0, upTo)) {
+  for (const field of asked) {
     if (!only) {
       lines.push(bot(`${key}:${field.id}`, <FieldAsk field={field} />));
     }
@@ -588,6 +592,15 @@ function pageLines(
   }
   return lines;
 }
+
+/**
+ * The fields of a page answered before: a field under a condition, or one a decision picks, only
+ * where it holds a value — hidden ones are not kept, so an empty one was not asked.
+ */
+const answeredFields = (step: PageStep, values: Values) =>
+  step.fields.filter(
+    (f) => (!f.when && !isDecidedField(f)) || (values[f.id] !== undefined && values[f.id] !== null),
+  );
 
 /** What came before the step the run is on: the greeting, the pages answered, the reviews passed. */
 function historyLines(view: RunView, back?: () => void): Line[] {
@@ -601,7 +614,10 @@ function historyLines(view: RunView, back?: () => void): Line[] {
   for (const [n, step] of view.answered.entries()) {
     const key = `${n}:${step.id}`;
     if (step.type === "page") {
-      lines.push(...pageLines(step, key, view.values, view.id));
+      const only = step.fields.length === 1 ? step.fields[0] : undefined;
+      lines.push(
+        ...pageLines(step, key, view.values, view.id, answeredFields(step, view.values), only),
+      );
     } else if (step.type === "review") {
       lines.push(bot(key, <span className="font-medium">{step.title}</span>));
       lines.push(me(`${key}:a`, t("run.accept")));
@@ -616,6 +632,16 @@ function historyLines(view: RunView, back?: () => void): Line[] {
 
 /* ---------- the step the run is on ---------- */
 
+/**
+ * The fields of the page the run is on that can be asked: those a decision kept, with choices
+ * from earlier data in place of the fixed ones.
+ */
+function pageFields(step: PageStep, view: RunView): Field[] {
+  return step.fields
+    .filter((f) => !isDecidedField(f) || view.decidedFields?.includes(f.id))
+    .map((f) => (view.options?.[f.id]?.length ? { ...f, options: view.options[f.id] } : f));
+}
+
 function PageTurn({
   view,
   run,
@@ -627,32 +653,44 @@ function PageTurn({
   step: PageStep;
   before: Line[];
 }) {
+  const fields = useMemo(() => pageFields(step, view), [step, view]);
+  const known = view.known ?? {};
   // Keyed by the page at the call site, as `PageForm`: a page (or a page revisited) starts afresh.
   const [values, setValues] = useState<Values>(() => initialValues(step, view));
   /**
-   * The field asked now; all of them answered: the page is on its way. A page gone back to
-   * reopens its last answer, as "change" on that answer promised.
+   * The fields answered, by id. A page gone back to reopens its last answer, as "change" on that
+   * answer promised.
    */
-  const [at, setAt] = useState(() =>
-    step.fields.some((f) => view.values[f.id] !== undefined) ? step.fields.length - 1 : 0,
-  );
+  const [done, setDone] = useState<string[]>(() => {
+    if (!step.fields.some((f) => view.values[f.id] !== undefined)) {
+      return [];
+    }
+    const shown = shownFields(pageFields(step, view), view.known ?? {}, initialValues(step, view));
+    return shown.slice(0, -1).map((f) => f.id);
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   // The page went through; the run moves on as soon as the stream says so.
   const [sent, setSent] = useState(false);
-  const fields = step.fields;
-  const field = fields[at] as Field | undefined;
+  // Which fields are asked follows the answers: a field's condition can read an earlier one.
+  const shown = shownFields(fields, known, values);
+  const asked = shown.filter((f) => done.includes(f.id));
+  const field = shown.find((f) => !done.includes(f.id));
   const only = fields.length === 1 ? fields[0] : undefined;
+  const last = asked.at(-1);
+  const reopen = last ? () => setDone((ids) => ids.filter((id) => id !== last.id)) : undefined;
 
   // The runtime turned something down: back to the first field it named.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the runtime answers
   useEffect(() => {
     const ids = Object.keys(run.fieldErrors);
-    const i = fields.findIndex((f) => ids.includes(f.id));
+    const now = shownFields(fields, known, values);
+    const i = now.findIndex((f) => ids.includes(f.id));
     if (i >= 0) {
-      setAt(i);
+      setDone(now.slice(0, i).map((f) => f.id));
       setErrors(run.fieldErrors);
     }
-  }, [run.fieldErrors, fields]);
+  }, [run.fieldErrors]);
 
   const send = (all: Values) => {
     void run.submitPage(step.id, all).then(setSent);
@@ -667,22 +705,22 @@ function PageTurn({
       return false;
     }
     const next = { ...values, [field.id]: value };
+    const nextDone = [...done, field.id];
     setValues(next);
+    setDone(nextDone);
     setErrors({});
-    setAt(at + 1);
-    if (at + 1 >= fields.length) {
+    // A hidden field is neither asked nor required; the runtime does not keep its value.
+    if (!shownFields(fields, known, next).some((f) => !nextDone.includes(f.id))) {
       send(next);
     }
     return true;
   };
 
   const lines = [
-    ...before.map((l) => (at > 0 ? { ...l, onEdit: undefined } : l)),
-    ...pageLines(step, `now:${step.id}`, values, view.id, at).map((l, i, all) =>
+    ...before.map((l) => (done.length ? { ...l, onEdit: undefined } : l)),
+    ...pageLines(step, `now:${step.id}`, values, view.id, asked, only).map((l, i, all) =>
       // The latest answer of this page can be taken back while the page is not yet sent.
-      i === all.length - 1 && l.who === "me" && at < fields.length
-        ? { ...l, onEdit: () => setAt(at - 1) }
-        : l,
+      i === all.length - 1 && l.who === "me" && field ? { ...l, onEdit: reopen } : l,
     ),
   ];
   if (field) {
@@ -717,7 +755,7 @@ function PageTurn({
   }
 
   let dock: ReactNode = <Idle />;
-  if (sent || (!field && fields.length > 0 && run.busy)) {
+  if (sent || (!field && done.length > 0 && run.busy)) {
     dock = <Idle placeholder={t("run.working")} />;
   } else if (!field) {
     // Nothing to ask (a page that only says something), or the page did not go through.
@@ -728,8 +766,8 @@ function PageTurn({
           <Reply primary busy={run.busy} onClick={() => send(values)}>
             {step.cta || t("run.next")}
           </Reply>
-          {at > 0 ? (
-            <Reply onClick={() => setAt(at - 1)} disabled={run.busy}>
+          {reopen ? (
+            <Reply onClick={reopen} disabled={run.busy}>
               {t("run.back")}
             </Reply>
           ) : null}
@@ -770,12 +808,13 @@ function PageTurn({
       );
     } else {
       // The field's control stands in the thread; under it, it is sent.
+      const lastOne = shown.filter((f) => !done.includes(f.id)).length === 1;
       lines.push(
         replies(
           `now:${step.id}:${field.id}:replies`,
           <>
             <Reply primary disabled={pending} onClick={() => answer(values[field.id])}>
-              {at === fields.length - 1 && step.cta ? step.cta : t("chat.send")}
+              {lastOne && step.cta ? step.cta : t("chat.send")}
             </Reply>
             {skip}
           </>,
@@ -965,6 +1004,7 @@ function ReviewTurn({
 }) {
   const made = view.shown.filter((x) => x.output);
   const [target, setTarget] = useState<string | null>(made.length === 1 ? made[0].step.id : null);
+  const prompt = useRef<ComposerInput>(null);
   const lines: Line[] = [
     ...before,
     ...asked.map((text, i) => me(`review:${step.id}:asked:${i}`, text)),
@@ -983,7 +1023,20 @@ function ReviewTurn({
         `review:${step.id}:${s.id}`,
         <>
           <SectionTitle>{s.title}</SectionTitle>
-          <OutputView base={`/api/runs/${view.id}`} step={s} output={output} />
+          <OutputView
+            base={`/api/runs/${view.id}`}
+            step={s}
+            output={output}
+            // A view's "new version" button says what the change is about.
+            onSurfaceAction={
+              step.regenerate
+                ? () => {
+                    setTarget(s.id);
+                    prompt.current?.focus();
+                  }
+                : undefined
+            }
+          />
         </>,
         { wide: true },
       ),
@@ -1031,6 +1084,7 @@ function ReviewTurn({
         <Dock>
           <Composer
             multiline
+            inputRef={prompt}
             busy={run.busy}
             placeholder={
               made.length > 1 && !target ? t("run.feedbackPick") : t("run.feedbackPlaceholder")
