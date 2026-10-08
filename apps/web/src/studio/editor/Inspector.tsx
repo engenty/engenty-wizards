@@ -8,6 +8,7 @@ import {
   type Field,
   type Format,
   formatsFor,
+  type NextRule,
   type PageStep,
   type Step,
   TOOL_IDS,
@@ -15,6 +16,7 @@ import {
   type VideoResolution,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
+import type { BranchDecision } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import {
   ArrowDown,
@@ -23,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Sparkles,
   Trash2,
   Wand2,
 } from "lucide-react";
@@ -34,6 +37,7 @@ import { useStudioPlugins } from "../../plugins/host";
 import { HtmlFrame } from "../../runner/outputs";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
 import { ModelClassControl, StepCost, useEstimate } from "./estimate";
+import { conditionText, percent } from "./FlowDiagram";
 import { stepIcon, TYPE_TONE, toolLabel, typeLabel } from "./meta";
 
 type Update = (next: WizardDefinition) => void;
@@ -1110,6 +1114,10 @@ interface InspectorProps {
   wizardId: string;
   /** The wizard is shown here and changed elsewhere: every setting is there to read. */
   readOnly?: boolean;
+  /** What the last test run's decided branches answered, by step. */
+  decisions?: Record<string, BranchDecision>;
+  /** Changes when a branch line in the diagram is clicked: the branches scroll into view. */
+  branchFocus?: number;
 }
 
 const WIZARD = "__wizard";
@@ -1301,6 +1309,8 @@ function StepInspector({
   mcpServers,
   files,
   wizardId,
+  decisions,
+  branchFocus,
 }: InspectorProps & { step: Step }) {
   const index = def.steps.indexOf(step);
   const Icon = stepIcon(step);
@@ -1385,6 +1395,16 @@ function StepInspector({
         files={files}
         wizardId={wizardId}
       />
+      {step.type !== "result" ? (
+        <BranchSection
+          def={def}
+          step={step}
+          set={set}
+          onSelect={onSelect}
+          decision={decisions?.[step.id]}
+          focus={branchFocus}
+        />
+      ) : null}
       {/* Moving, deleting and adding steps is building: not offered where nothing is changed. */}
       {readOnly ? null : (
         <Section>
@@ -1423,6 +1443,240 @@ function StepInspector({
           </div>
         </Section>
       )}
+    </div>
+  );
+}
+
+/** A statement as it is typed: an empty one is not a branch, the last one written stays. */
+function AskInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <Textarea
+      minRows={1}
+      aria-label={t("editor.branch.statement")}
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        if (e.target.value.trim()) {
+          onChange(e.target.value);
+        }
+      }}
+      onBlur={() => setDraft(value)}
+    />
+  );
+}
+
+/**
+ * A step's branches, whole: the conditions in the order they are checked, then the statements the
+ * AI decides between in one call, where the run goes on when none clearly holds, and — with a test
+ * run open — what the decision answered and how probable it found each statement.
+ */
+function BranchSection({
+  def,
+  step,
+  set,
+  onSelect,
+  decision,
+  focus,
+}: {
+  def: WizardDefinition;
+  step: Step;
+  set: (next: Step) => void;
+  onSelect: (id: string | null) => void;
+  decision?: BranchDecision;
+  focus?: number;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focus) {
+      box.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }, [focus]);
+  const rules = step.next ?? [];
+  const index = def.steps.indexOf(step);
+  const after = def.steps[index + 1];
+  const titleOf = (id: string) => {
+    const s = def.steps.find((x) => x.id === id);
+    return s ? `${def.steps.indexOf(s) + 1}. ${s.title}` : t("editor.branch.end");
+  };
+  const targets = [
+    ...def.steps
+      .filter((s) => s.id !== step.id)
+      .map((s) => ({ value: s.id, label: titleOf(s.id) })),
+    { value: "end", label: t("editor.branch.end") },
+  ];
+  const setRule = (i: number, rule: NextRule | null) =>
+    set({
+      ...step,
+      next: rule
+        ? rules.map((r, k) => (k === i ? rule : r))
+        : rules.length > 1
+          ? rules.filter((_, k) => k !== i)
+          : undefined,
+    } as Step);
+  const loops = (goto: string) => {
+    const to = def.steps.findIndex((s) => s.id === goto);
+    return to >= 0 && to <= index;
+  };
+  const conditions = rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => !rule.ask);
+  const asks = rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.ask);
+  const p = (key: string) => decision?.probabilities?.[key];
+  const target = (rule: NextRule, i: number) => (
+    <div className="flex items-center gap-1.5">
+      <span className="shrink-0 text-[0.8125rem] text-ink-3">→</span>
+      <div className="min-w-0 flex-1">
+        <Select
+          value={rule.goto}
+          onChange={(v) => setRule(i, { ...rule, goto: v })}
+          options={targets}
+        />
+      </div>
+      {loops(rule.goto) ? (
+        <Input
+          type="number"
+          min={1}
+          max={50}
+          className="w-20 shrink-0"
+          aria-label={t("editor.branch.max")}
+          title={t("editor.branch.max")}
+          placeholder="10"
+          value={rule.max ?? ""}
+          onChange={(e) => {
+            const n = Math.round(Number(e.target.value));
+            setRule(i, { ...rule, max: n >= 1 ? Math.min(n, 50) : undefined });
+          }}
+        />
+      ) : null}
+      <IconButton
+        label={t("editor.branch.remove")}
+        className="shrink-0 hover:text-rose"
+        onClick={() => setRule(i, null)}
+      >
+        <Trash2 className="size-4" />
+      </IconButton>
+    </div>
+  );
+  const bar = (value: number | undefined, chosen: boolean) =>
+    value === undefined ? null : (
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-3">
+          <div
+            className={cn("h-full rounded-full", chosen ? "bg-moss" : "bg-ink-4")}
+            style={{ width: `${Math.round(value * 100)}%` }}
+          />
+        </div>
+        <span
+          className={cn(
+            "w-10 text-right text-[0.75rem] tabular-nums",
+            chosen ? "text-moss" : "text-ink-3",
+          )}
+        >
+          {percent(value)}
+        </span>
+      </div>
+    );
+  return (
+    <div ref={box} className="scroll-mt-14">
+      <Section title={t("editor.branches")} loose>
+        <p className="text-[0.8125rem] text-ink-3">
+          {!rules.length
+            ? t("editor.branch.empty")
+            : asks.length && conditions.length
+              ? t("editor.branch.orderBoth")
+              : asks.length
+                ? t("editor.branch.orderAsk")
+                : t("editor.branch.orderWhen")}
+        </p>
+        {conditions.map(({ rule, i }) => (
+          <div key={i} className="flex flex-col gap-2 rounded-lg bg-paper-2 p-3">
+            <span className="text-[0.8125rem] text-ink">
+              {t("editor.branch.if")}{" "}
+              {conditionsOf(rule.when)
+                .map(conditionText)
+                .join(` ${t("editor.branch.and")} `)}
+            </span>
+            {target(rule, i)}
+          </div>
+        ))}
+        {asks.length ? (
+          <div className="flex flex-col gap-3 rounded-lg bg-paper-2 p-3">
+            <div className="flex items-center gap-2 text-[0.8125rem] text-ink">
+              <Sparkles className="size-4 text-ember" />
+              <span className="font-medium">{t("editor.branch.decided")}</span>
+            </div>
+            {asks.map(({ rule, i }) => {
+              const chosen = decision?.rule === i;
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex flex-col gap-2 rounded-md bg-card p-2.5 ring-1",
+                    chosen ? "ring-moss" : "ring-border-soft",
+                  )}
+                >
+                  <AskInput
+                    value={rule.ask ?? ""}
+                    onChange={(ask) => setRule(i, { ...rule, ask })}
+                  />
+                  {target(rule, i)}
+                  {bar(p(`r${i}`), chosen)}
+                </div>
+              );
+            })}
+            <div
+              className={cn(
+                "flex flex-col gap-2 rounded-md p-2.5 ring-1",
+                decision?.rule === null ? "ring-moss" : "ring-border-soft",
+              )}
+            >
+              <span className="text-[0.8125rem] text-ink-2">
+                {t("editor.branch.none")} → {after ? titleOf(after.id) : t("editor.branch.end")}
+              </span>
+              {bar(p("none"), decision?.rule === null)}
+            </div>
+            <p className="text-[0.75rem] text-ink-3">{t("editor.branch.how")}</p>
+            <p className="text-[0.75rem] text-ink-3">
+              {decision
+                ? t("editor.branch.lastRun", {
+                    source:
+                      decision.source === "systemone"
+                        ? t("editor.branch.bySystemOne")
+                        : t("editor.branch.byLlm"),
+                  })
+                : t("editor.branch.notYet")}
+            </p>
+          </div>
+        ) : null}
+        {conditions.length && !asks.length ? (
+          <span className="text-[0.8125rem] text-ink-3">
+            {t("editor.otherwise")} → {after ? titleOf(after.id) : t("editor.branch.end")}
+          </span>
+        ) : null}
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() =>
+              set({
+                ...step,
+                next: [...rules, { ask: t("editor.branch.newAsk"), goto: after?.id ?? "end" }],
+              } as Step)
+            }
+            className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
+          >
+            <Plus className="size-3.5" /> {t("editor.branch.addAsk")}
+          </button>
+        </div>
+        {decision && decision.rule !== null ? (
+          <button
+            type="button"
+            className="self-start text-[0.75rem] text-ink-3 underline underline-offset-2 hover:text-ink"
+            onClick={() => onSelect(rules[decision.rule ?? 0]?.goto ?? null)}
+          >
+            {t("editor.branch.openTaken")}
+          </button>
+        ) : null}
+      </Section>
     </div>
   );
 }

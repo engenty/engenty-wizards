@@ -263,6 +263,8 @@ export interface RunView {
   options?: Record<string, string[]>;
   /** The decided fields (`ask`, `group`) of the current page that a decision kept. */
   decidedFields?: string[];
+  /** What decided branches answered so far, by step (test runs: the studio shows them). */
+  decisions?: Record<string, BranchDecision>;
   /** Choices of the current page that lead to a step without a model here, by field id. */
   closed: Record<string, ClosedChoice>;
   outputs: Record<string, StepOutput>;

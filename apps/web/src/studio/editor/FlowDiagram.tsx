@@ -5,7 +5,7 @@ import {
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { RunEstimate } from "@engenty-wizards/shared/run";
+import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
 import {
   BaseEdge,
   type Edge,
@@ -168,6 +168,12 @@ const edgeTypes = { branch: BranchEdge };
 /** A condition longer than this is cut on the line; the step's settings show it whole. */
 const BRANCH_LABEL = 34;
 const NO_COSTS: RunEstimate["steps"] = {};
+const NO_DECISIONS: Record<string, BranchDecision> = {};
+
+/** How probable a decision found an answer, as on a line: "99 %". */
+export function percent(p: number): string {
+  return `${Math.round(p * 100)} %`;
+}
 
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
   const label = rule.ask
@@ -206,6 +212,7 @@ function layout(
   pulse: string[],
   costs: RunEstimate["steps"],
   passed: ReadonlySet<string>,
+  decisions: Record<string, BranchDecision>,
 ) {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "TB", nodesep: 48, ranksep: 46, marginx: 20, marginy: 20 });
@@ -224,7 +231,11 @@ function layout(
   }
   def.steps.forEach((s, i) => {
     const next = def.steps[i + 1];
-    // One line per step a branch leads to, with all its conditions on it.
+    // One line per step a branch leads to, with all its conditions on it. The branch a test
+    // run's decision took is marked, with how probable the decision found it.
+    const decision = decisions[s.id];
+    const decidedGoto =
+      decision && decision.rule !== null ? s.next?.[decision.rule]?.goto : undefined;
     const branches = new Map<string, string[]>();
     for (const rule of s.next ?? []) {
       if (rule.goto === "end" || !def.steps.some((x) => x.id === rule.goto)) {
@@ -234,7 +245,10 @@ function layout(
     }
     for (const [goto, conditions] of branches) {
       const all = conditions.join(" · ");
-      const label = all.length > BRANCH_LABEL ? `${all.slice(0, BRANCH_LABEL - 1)}…` : all;
+      const cut = all.length > BRANCH_LABEL ? `${all.slice(0, BRANCH_LABEL - 1)}…` : all;
+      const p = decidedGoto === goto ? decision?.probabilities?.[`r${decision.rule}`] : undefined;
+      const taken = decidedGoto === goto;
+      const label = taken ? `✓ ${cut}${p === undefined ? "" : ` · ${percent(p)}`}` : cut;
       // The layout keeps room for the label, so the steps beside the line stand clear of it.
       g.setEdge(s.id, goto, { width: label.length * 6.2 + 16, height: 22, labelpos: "c" });
       edges.push({
@@ -243,11 +257,14 @@ function layout(
         source: s.id,
         target: goto,
         label,
-        labelStyle: { fontSize: 11, fill: "var(--ink-2)" },
+        className: "cursor-pointer",
+        labelStyle: { fontSize: 11, fill: taken ? "var(--moss)" : "var(--ink-2)" },
         labelBgStyle: { fill: "var(--paper-2)" },
         labelBgPadding: [6, 3],
         labelBgBorderRadius: 8,
-        style: { strokeDasharray: "5 4" },
+        style: taken
+          ? { strokeDasharray: "5 4", stroke: "var(--moss)", strokeWidth: 2 }
+          : { strokeDasharray: "5 4" },
         ...edgeStyle,
       });
     }
@@ -255,15 +272,21 @@ function layout(
       if (!g.hasEdge(s.id, next.id)) {
         g.setEdge(s.id, next.id);
       }
+      const none = decision?.rule === null;
+      const p = none ? decision?.probabilities?.none : undefined;
       edges.push({
         id: `n-${s.id}`,
         source: s.id,
         target: next.id,
         ...(s.next?.length
           ? {
-              label: t("editor.otherwise"),
-              labelStyle: { fontSize: 11, fill: "var(--ink-3)" },
+              label: none
+                ? `✓ ${t("editor.otherwise")}${p === undefined ? "" : ` · ${percent(p)}`}`
+                : t("editor.otherwise"),
+              className: "cursor-pointer",
+              labelStyle: { fontSize: 11, fill: none ? "var(--moss)" : "var(--ink-3)" },
               labelBgStyle: { fill: "var(--background)" },
+              ...(none ? { style: { stroke: "var(--moss)", strokeWidth: 2 } } : {}),
             }
           : {}),
         ...edgeStyle,
@@ -355,6 +378,10 @@ interface CanvasProps {
   minFitZoom?: number;
   /** Fit again when this changes (the frame got larger), besides the flow's shape. */
   fitKey?: string;
+  /** What a test run's decided branches answered, by step: the branch taken is marked. */
+  decisions?: Record<string, BranchDecision>;
+  /** A branch line was clicked: the step's branches, from where it leaves. */
+  onBranch?: (stepId: string) => void;
 }
 
 function Inner({
@@ -368,10 +395,12 @@ function Inner({
   passed = NONE,
   minFitZoom = MIN_READABLE_ZOOM,
   fitKey,
+  decisions = NO_DECISIONS,
+  onBranch,
 }: CanvasProps) {
   const { nodes, edges } = useMemo(
-    () => layout(def, selected, issueSteps, activeStep, pulse ?? [], costs, passed),
-    [def, selected, issueSteps, activeStep, pulse, costs, passed],
+    () => layout(def, selected, issueSteps, activeStep, pulse ?? [], costs, passed, decisions),
+    [def, selected, issueSteps, activeStep, pulse, costs, passed, decisions],
   );
   const rf = useReactFlow();
   const wrap = useRef<HTMLDivElement>(null);
@@ -416,6 +445,15 @@ function Inner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={(_, n) => onSelect(n.id === "__start" ? "__wizard" : n.id)}
+        onEdgeClick={(_, e) => {
+          // A line that leaves a step with branches opens them; a plain "next" line, the step.
+          const from = def.steps.find((s) => s.id === e.source);
+          if (from?.next?.length && onBranch) {
+            onBranch(from.id);
+          } else if (from) {
+            onSelect(from.id);
+          }
+        }}
         onPaneClick={() => onSelect(null)}
         nodesConnectable={false}
         nodesDraggable={false}

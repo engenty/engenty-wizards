@@ -228,11 +228,15 @@ export function EditorPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<string | null>(null);
-  const onRunView = useCallback(
-    (view: RunView | null) =>
-      setActiveStep(view && view.status !== "done" ? (view.step?.id ?? null) : null),
-    [],
-  );
+  const [decisions, setDecisions] = useState<RunView["decisions"]>();
+  const [branchFocus, setBranchFocus] = useState(0);
+  const onRunView = useCallback((view: RunView | null) => {
+    setActiveStep(view && view.status !== "done" ? (view.step?.id ?? null) : null);
+    // Kept when the drawer closes: the step panel it covered shows the last test run's decisions.
+    if (view) {
+      setDecisions(view.decisions);
+    }
+  }, []);
   const { save, saving, remote, merged, refused } = useLiveDraft(id);
   const projects = useProjects();
 
@@ -519,6 +523,11 @@ export function EditorPage() {
               activeStep={drawerRun ? activeStep : null}
               pulse={remote?.steps}
               wizardId={w.id}
+              decisions={decisions}
+              onBranch={(sid) => {
+                select(sid);
+                setBranchFocus((n) => n + 1);
+              }}
             />
           )}
         </section>
@@ -597,6 +606,8 @@ export function EditorPage() {
                 files={w.files}
                 wizardId={w.id}
                 readOnly={w.readOnly}
+                decisions={decisions}
+                branchFocus={branchFocus}
               />
             ) : tab === "files" ? (
               <FilesPanel wizardId={w.id} files={w.files} readOnly={w.readOnly} />
