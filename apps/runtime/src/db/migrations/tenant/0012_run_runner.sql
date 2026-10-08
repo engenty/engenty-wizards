@@ -1,1 +1,0 @@
-ALTER TABLE `run` ADD `runner` text;

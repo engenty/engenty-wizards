@@ -1,1 +1,0 @@
-ALTER TABLE `wizard` ADD `runners` text;
