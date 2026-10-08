@@ -275,7 +275,10 @@ export const nextRuleSchema = z
      * refund"). All `ask` rules of a step are decided together, after no `when` rule matched.
      */
     ask: z.string().min(1).optional(),
-    /** A step id, or "end". */
+    /**
+     * A step id, or "end". A rule with neither `when` nor `ask` is the step's "otherwise": where
+     * the run goes when no other rule holds, in place of the next step in the list.
+     */
     goto: z.string(),
     /**
      * How often this rule may send the run on in one run; afterwards it is skipped. Meant for a
@@ -283,8 +286,8 @@ export const nextRuleSchema = z
      */
     max: z.number().int().min(1).max(50).optional(),
   })
-  .refine((rule) => (rule.when === undefined) !== (rule.ask === undefined), {
-    message: 'A branch has either "when" or "ask".',
+  .refine((rule) => rule.when === undefined || rule.ask === undefined, {
+    message: 'A branch has "when" or "ask", not both.',
   });
 export type NextRule = z.infer<typeof nextRuleSchema>;
 
@@ -1220,6 +1223,12 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         }
         break;
     }
+    if ((step.next ?? []).filter(isOtherwise).length > 1) {
+      issues.push({
+        stepId: step.id,
+        message: 'A step has at most one "otherwise" branch (one without "when" and "ask").',
+      });
+    }
     for (const rule of step.next ?? []) {
       if (rule.goto !== "end" && !stepIds.has(rule.goto)) {
         issues.push({ stepId: step.id, message: `Branch goes to unknown step "${rule.goto}".` });
@@ -1337,7 +1346,30 @@ export function followRules(
   if (asks.length) {
     return { kind: "decide", rules: asks };
   }
-  return { kind: "go", cursor: def.steps[index + 1]?.id ?? null, rule: null };
+  return { kind: "go", ...otherwiseOf(def, stepId, loops) };
+}
+
+/** A rule with neither a condition nor a statement: where the run goes when no other rule holds. */
+export function isOtherwise(rule: NextRule): boolean {
+  return rule.when === undefined && rule.ask === undefined;
+}
+
+/**
+ * Where a step goes when none of its rules holds: its "otherwise" rule (`rule` is its index in
+ * `next`), else the next step in the list. `cursor` null = the end.
+ */
+export function otherwiseOf(
+  def: WizardDefinition,
+  stepId: string,
+  loops: Record<string, number> = {},
+): { cursor: string | null; rule: number | null } {
+  const index = def.steps.findIndex((s) => s.id === stepId);
+  const rules = def.steps[index]?.next ?? [];
+  const i = rules.findIndex((r) => isOtherwise(r) && ruleOpen(def, stepId, r, loops));
+  if (i >= 0) {
+    return { cursor: rules[i].goto === "end" ? null : rules[i].goto, rule: i };
+  }
+  return { cursor: def.steps[index + 1]?.id ?? null, rule: null };
 }
 
 /** The step after `step` by its `when` rules alone. `null` = the end. */

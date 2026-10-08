@@ -16,6 +16,7 @@ import {
   loopKey,
   MAX_SHOWN_FIELDS,
   optionsFromData,
+  otherwiseOf,
   type PageStep,
   pageNeeds,
   type Step,
@@ -494,8 +495,8 @@ async function decideBranch(
   };
   delete state.deciding;
   if (rule === null) {
-    const index = run.definition.steps.indexOf(step);
-    return run.definition.steps[index + 1]?.id ?? null;
+    const otherwise = otherwiseOf(run.definition, step.id, state.loops);
+    return taken(run.definition, step.id, otherwise.rule, otherwise.cursor, state);
   }
   const goto = step.next?.[rule]?.goto ?? "end";
   return taken(run.definition, step.id, rule, goto === "end" ? null : goto, state);

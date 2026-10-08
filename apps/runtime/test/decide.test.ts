@@ -255,7 +255,7 @@ describe("decided branches and loops", () => {
         { id: "r", type: "result", title: "R", deliverables: [] },
       ],
     });
-    expect(text).toContain('either "when" or "ask"');
+    expect(text).toContain('"when" or "ask", not both');
   });
 
   it("let a branch read .p only of a decision step", () => {

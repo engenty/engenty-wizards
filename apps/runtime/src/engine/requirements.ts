@@ -4,6 +4,7 @@ import {
   conditionsOf,
   isDecidedField,
   isDecisionStep,
+  isOtherwise,
   MODEL_CLASSES,
   type ModelClass,
   type NextRule,
@@ -101,6 +102,9 @@ export function unavoidableFrom(
   const successors = (i: number): number[] => {
     const out: number[] = [];
     for (const rule of def.steps[i].next ?? []) {
+      if (isOtherwise(rule)) {
+        continue;
+      }
       const target = rule.goto === "end" ? def.steps.length : (index.get(rule.goto) ?? -1);
       if (rule.ask || !conditionsOf(rule.when).every((c) => c.field in known)) {
         if (target >= 0) {
@@ -113,8 +117,8 @@ export function unavoidableFrom(
         return target >= 0 ? [...out, target] : out;
       }
     }
-    // No rule matching goes on to the next step (or ends after the last).
-    out.push(i + 1);
+    // No rule matching goes on to the "otherwise" step, else the next (or ends after the last).
+    out.push(otherwiseIndex(def, i, index));
     return out;
   };
   const reachesEnd = (without: number): boolean => {
@@ -138,6 +142,15 @@ export function unavoidableFrom(
     return false;
   };
   return new Set(def.steps.filter((_, i) => !reachesEnd(i)).map((s) => s.id));
+}
+
+/** Where step `i` goes when none of its rules holds, as an index; the length = the end. */
+function otherwiseIndex(def: WizardDefinition, i: number, index: Map<string, number>): number {
+  const goto = def.steps[i].next?.find(isOtherwise)?.goto;
+  if (goto === undefined) {
+    return i + 1;
+  }
+  return goto === "end" ? def.steps.length : (index.get(goto) ?? i + 1);
 }
 
 /** What the branches taken so far say about an answer. */
@@ -275,6 +288,9 @@ export function mostAlongOnePath(
       let known = facts;
       let decided = false;
       for (const rule of step.next ?? []) {
+        if (isOtherwise(rule)) {
+          continue;
+        }
         const holds = ruleHolds(rule, known);
         if (holds === false) {
           continue;
@@ -290,7 +306,7 @@ export function mostAlongOnePath(
         known = learn(rule, false, known);
       }
       if (!decided) {
-        consider(i + 1, known);
+        consider(otherwiseIndex(def, i, index), known);
       }
       return most === null ? null : most + cost(step);
     };

@@ -9,6 +9,7 @@ import {
   type Format,
   formatsFor,
   isDecisionStep,
+  isOtherwise,
   type NextRule,
   type PageStep,
   type Step,
@@ -55,6 +56,7 @@ import {
   AddingCard,
   type AddKind,
   AddStepPanel,
+  type AddWhen,
   type EmptyKind,
   placeText,
   type StepAssistant,
@@ -1425,8 +1427,8 @@ function StepInspector({
     setAddOpen(false);
     onSelect(added.id);
   };
-  const addWith = (kind: AddKind, prompt: string) => {
-    if (!assistant?.add({ at, kind, prompt })) {
+  const addWith = (kind: AddKind, prompt: string, when?: AddWhen) => {
+    if (!assistant?.add({ at, kind, prompt, when })) {
       return false;
     }
     setAddOpen(false);
@@ -1524,8 +1526,7 @@ function StepInspector({
               aria-expanded={addOpen}
               onClick={() => setAddOpen((o) => !o)}
             >
-              <Plus className="size-3.5" />{" "}
-              {t(step.type === "result" ? "addStep.before" : "addStep.next")}
+              <Plus className="size-3.5" /> {t("addStep.add")}
             </Button>
           </div>
           {assistant?.adding && assistant.adding.at === at ? (
@@ -1538,6 +1539,7 @@ function StepInspector({
           ) : addOpen ? (
             <AddStepPanel
               place={placeText(def, at)}
+              branchable={at > 0}
               onAdd={addWith}
               onEmpty={insertEmpty}
               onCancel={() => setAddOpen(false)}
@@ -1735,7 +1737,7 @@ function NextSection({
   };
   const add = (rule: NextRule) => {
     // Conditions are checked before any statement: a new one goes after the last condition.
-    const at = rule.ask ? rules.length : rules.filter((r) => !r.ask).length;
+    const at = rule.ask ? rules.length : rules.filter((r) => r.when !== undefined).length;
     set({ ...step, next: [...rules.slice(0, at), rule, ...rules.slice(at)] } as Step);
     setOpen(at);
   };
@@ -1746,9 +1748,19 @@ function NextSection({
   const p = (key: string) => decision?.probabilities?.[key];
   const hasAsk = rules.some((r) => r.ask);
   const ways = [
-    ...rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => !rule.ask),
+    ...rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.when !== undefined),
     ...rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.ask),
   ];
+  // Where every other run goes: the "otherwise" branch, else the next step in the list.
+  const otherwiseAt = rules.findIndex(isOtherwise);
+  const otherwiseGoto = otherwiseAt >= 0 ? rules[otherwiseAt].goto : (after?.id ?? "end");
+  const otherwiseTarget = def.steps.find((s) => s.id === otherwiseGoto);
+  const setOtherwise = (goto: string) => {
+    const rest = rules.filter((r) => !isOtherwise(r));
+    // The next step in the list needs no branch of its own.
+    const next = goto === (after?.id ?? "end") ? rest : [...rest, { goto }];
+    set({ ...step, next: next.length ? next : undefined } as Step);
+  };
   const how = `${t("editor.branch.how")} ${
     decision
       ? t("editor.branch.lastRun", {
@@ -1909,7 +1921,7 @@ function NextSection({
     <div ref={box} className="scroll-mt-14">
       <Section
         title={
-          rules.length ? t("editor.next.ways", { count: rules.length + 1 }) : t("editor.next.title")
+          ways.length ? t("editor.next.ways", { count: ways.length + 1 }) : t("editor.next.title")
         }
         loose
       >
@@ -1938,14 +1950,25 @@ function NextSection({
               <span className="min-w-0 flex-1 text-[0.8125rem] text-ink-3">
                 {hasAsk ? t("editor.branch.none") : t("editor.otherwise")}
               </span>,
-              after?.id ?? "end",
+              otherwiseGoto,
               decision?.rule === null,
               p("none"),
-              after ? (
-                <StepOverview def={def} target={after} estimate={estimate} onSelect={onSelect} />
-              ) : (
-                <span className="text-[0.75rem] text-ink-3">{t("editor.branch.end")}</span>
-              ),
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="shrink-0 text-[0.8125rem] text-ink-3">→</span>
+                  <div className="min-w-0 flex-1">
+                    <Select value={otherwiseGoto} onChange={setOtherwise} options={targets} />
+                  </div>
+                </div>
+                {otherwiseTarget ? (
+                  <StepOverview
+                    def={def}
+                    target={otherwiseTarget}
+                    estimate={estimate}
+                    onSelect={onSelect}
+                  />
+                ) : null}
+              </>,
             )}
           </>
         ) : after ? (

@@ -329,3 +329,66 @@ describe("requirements with condition lists", () => {
     expect([...unavoidableSteps(def)].sort()).toEqual(["p", "r"]);
   });
 });
+
+describe("an otherwise branch", () => {
+  // A step only some runs take sits after the page that branches to it; every other run goes
+  // past it through the page's otherwise branch, and the step goes on to the same place.
+  const def = () =>
+    valid({
+      title: "x",
+      steps: [
+        {
+          id: "p",
+          type: "page",
+          title: "P",
+          fields: [{ id: "n", label: "N", kind: "number" }],
+          next: [{ when: { field: "n", op: "lt", value: 100 }, goto: "small" }, { goto: "after" }],
+        },
+        { id: "small", type: "page", title: "S", fields: [{ id: "s", label: "S", kind: "text" }] },
+        { id: "after", type: "page", title: "A", fields: [{ id: "a", label: "A", kind: "text" }] },
+        result,
+      ],
+    });
+
+  it("leads every other run past the branch step", () => {
+    expect(nextStepId(def(), "p", { n: 50 })).toBe("small");
+    expect(nextStepId(def(), "p", { n: 500 })).toBe("after");
+    expect(nextStepId(def(), "small", {})).toBe("after");
+  });
+
+  it("makes the branch step avoidable", () => {
+    expect([...unavoidableSteps(def())].sort()).toEqual(["after", "p", "r"]);
+  });
+
+  it("is one per step and never carries a condition and a statement", () => {
+    const twice = issuesOf({
+      title: "x",
+      steps: [
+        {
+          id: "p",
+          type: "page",
+          title: "P",
+          fields: [{ id: "n", label: "N", kind: "number" }],
+          next: [{ goto: "r" }, { goto: "r" }],
+        },
+        result,
+      ],
+    });
+    expect(twice).toContain("at most one");
+    expect(
+      parseWizard({
+        title: "x",
+        steps: [
+          {
+            id: "p",
+            type: "page",
+            title: "P",
+            fields: [{ id: "n", label: "N", kind: "number" }],
+            next: [{ when: { field: "n", op: "notEmpty" }, ask: "Yes", goto: "r" }],
+          },
+          result,
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+});

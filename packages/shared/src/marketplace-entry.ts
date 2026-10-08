@@ -45,6 +45,9 @@ function condition(definition: WizardDefinition, rule: NextRule, lang: Marketpla
   if (rule.ask) {
     return rule.ask;
   }
+  if (rule.when === undefined) {
+    return lang === "de" ? "sonst" : "otherwise";
+  }
   return conditionsOf(rule.when)
     .map((c) => conditionText(definition, c, lang))
     .join(lang === "de" ? " und " : " and ");

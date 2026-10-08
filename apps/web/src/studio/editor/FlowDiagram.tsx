@@ -2,6 +2,7 @@ import dagre from "@dagrejs/dagre";
 import {
   type Condition,
   conditionsOf,
+  isOtherwise,
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
@@ -9,7 +10,6 @@ import type { BranchDecision, RunEstimate, ShownDecision } from "@engenty-wizard
 import {
   BaseEdge,
   type Edge,
-  EdgeLabelRenderer,
   type EdgeProps,
   getBezierPath,
   Handle,
@@ -21,7 +21,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from "@xyflow/react";
-import { AlertCircle, Check, Minus, Plus, Scan } from "lucide-react";
+import { AlertCircle, Check, Minus, Plus, Scan, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
@@ -45,16 +45,18 @@ type StepData = {
   cost: number | null;
   /** A run went through it already. */
   passed: boolean;
+  /** Asks for a step after this one; shown under the step while it is selected or hovered. */
+  onAddAfter?: () => void;
 };
 type StartData = { title: string; avatar: string; selected: boolean };
 
 function StepNode({ data }: NodeProps<Node<StepData>>) {
-  const { step, selected, issue, active, pulse, cost, passed } = data;
+  const { step, selected, issue, active, pulse, cost, passed, onAddAfter } = data;
   const Icon = stepIcon(step);
   return (
     <div
       className={cn(
-        "relative w-[280px] cursor-pointer rounded-xl bg-card px-4 py-3 text-left shadow-soft ring-1 transition",
+        "group relative w-[280px] cursor-pointer rounded-xl bg-card px-4 py-3 text-left shadow-soft ring-1 transition",
         selected
           ? "shadow-elevated ring-2 ring-ember"
           : active
@@ -101,6 +103,23 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
       </div>
       <div className="truncate text-[0.75rem] text-ink-3">{stepSummary(step) || " "}</div>
       <Handle type="source" position={Position.Bottom} />
+      {onAddAfter ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddAfter();
+          }}
+          className={cn(
+            "nodrag nopan -translate-x-1/2 -translate-y-1/2 absolute top-full left-1/2 z-10 inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full bg-card px-3 text-[0.75rem] text-ember-strong shadow-soft ring-1 ring-ember/40 transition hover:bg-ember-tint focus-visible:opacity-100",
+            selected
+              ? "opacity-100"
+              : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100",
+          )}
+        >
+          <Sparkles className="size-3.5" /> {t("addStep.add")}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -131,66 +150,6 @@ function AddingNode({ data }: NodeProps<Node<{ prompt: string }>>) {
       <div className="mt-1.5 line-clamp-2 text-[0.8125rem] text-ink-2">{data.prompt}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
-  );
-}
-
-type NextData = {
-  /** A step added on this line goes before the step at this index. */
-  at: number;
-  onInsert?: (at: number) => void;
-};
-
-/**
- * The line to the next step. Where steps can be added, a "+" on it asks for one in that place;
- * a line with a label ("otherwise") carries the "+" beside it.
- */
-function NextEdge(props: EdgeProps<Edge<NextData>>) {
-  const { data, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } = props;
-  const [path, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
-  const label = typeof props.label === "string" ? props.label : "";
-  const offset = label ? label.length * 3.1 + 22 : 0;
-  return (
-    <>
-      <BaseEdge
-        path={path}
-        labelX={labelX}
-        labelY={labelY}
-        label={props.label}
-        labelStyle={props.labelStyle}
-        labelBgStyle={props.labelBgStyle}
-        labelBgPadding={props.labelBgPadding}
-        labelBgBorderRadius={props.labelBgBorderRadius}
-        style={props.style}
-        markerEnd={props.markerEnd}
-      />
-      {data?.onInsert ? (
-        <EdgeLabelRenderer>
-          <button
-            type="button"
-            aria-label={t("addStep.here")}
-            title={t("addStep.here")}
-            onClick={(e) => {
-              e.stopPropagation();
-              data.onInsert?.(data.at);
-            }}
-            style={{
-              transform: `translate(-50%, -50%) translate(${labelX + offset}px, ${labelY}px)`,
-              pointerEvents: "all",
-            }}
-            className="nodrag nopan absolute inline-flex size-6 items-center justify-center rounded-full bg-card text-ink-3 opacity-60 shadow-soft ring-1 ring-border transition hover:bg-ember hover:text-white hover:opacity-100 hover:ring-ember focus-visible:opacity-100"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        </EdgeLabelRenderer>
-      ) : null}
-    </>
   );
 }
 
@@ -240,7 +199,7 @@ function BranchEdge(props: EdgeProps<Edge<BranchData>>) {
 }
 
 const nodeTypes = { step: StepNode, start: StartNode, adding: AddingNode };
-const edgeTypes = { branch: BranchEdge, next: NextEdge };
+const edgeTypes = { branch: BranchEdge };
 const ADDING = "__adding";
 /** A condition longer than this is cut on the line; the step's settings show it whole. */
 const BRANCH_LABEL = 34;
@@ -274,7 +233,9 @@ export function percent(p: number): string {
 function conditionLabel(rule: NonNullable<Step["next"]>[number]): string {
   const label = rule.ask
     ? t("editor.whenAsk", { text: rule.ask })
-    : conditionsOf(rule.when).map(conditionText).join(" · ");
+    : isOtherwise(rule)
+      ? t("editor.otherwise")
+      : conditionsOf(rule.when).map(conditionText).join(" · ");
   return rule.max ? `${label} (${t("editor.atMost", { count: rule.max })})` : label;
 }
 
@@ -345,15 +306,7 @@ function layout(
     if (!g.hasEdge(source, target)) {
       g.setEdge(source, target);
     }
-    edges.push({
-      id,
-      source,
-      target,
-      type: "next",
-      data: { at, onInsert } satisfies NextData,
-      ...extra,
-      ...edgeStyle,
-    });
+    edges.push({ id, source, target, ...extra, ...edgeStyle });
   };
   if (def.steps[0] || adding) {
     nextLine("e-start", "__start", 0);
@@ -397,7 +350,8 @@ function layout(
         ...edgeStyle,
       });
     }
-    if ((next || adding?.at === i + 1) && s.type !== "result") {
+    // A step with an "otherwise" branch never just goes on to the next step in the list.
+    if ((next || adding?.at === i + 1) && s.type !== "result" && !s.next?.some(isOtherwise)) {
       const none = decision?.rule === null;
       const p = none ? decision?.probabilities?.none : undefined;
       nextLine(`n-${s.id}`, s.id, i + 1, {
@@ -451,6 +405,7 @@ function layout(
           pulse: pulse.includes(s.id),
           cost: costs[s.id]?.credits ?? null,
           passed: passed.has(s.id),
+          onAddAfter: onInsert && s.type !== "result" ? () => onInsert(index + 1) : undefined,
         },
         draggable: false,
       } satisfies Node<StepData>;
@@ -518,7 +473,7 @@ interface CanvasProps {
   onBranch?: (stepId: string) => void;
   /** The step the assistant is building, shown in its place. */
   adding?: Adding | null;
-  /** A "+" on a line asks for a step in that place: before the step at `at`. */
+  /** A step's "step after" asks for a step in that place: before the step at `at`. */
   onInsert?: (at: number) => void;
 }
 

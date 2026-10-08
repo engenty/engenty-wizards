@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type Key, t } from "../../lib/i18n";
-import { Button, cn, Textarea } from "../../ui";
+import { Button, cn, Input, Textarea } from "../../ui";
 
 /** What a new step is to be: the assistant picks with "auto". */
 export const ADD_KINDS = ["auto", "page", "agent", "generate", "surface", "widget"] as const;
@@ -32,12 +32,20 @@ const KIND_ICON: Record<AddKind, typeof Bot> = {
 
 const kindLabel = (k: AddKind) => (k === "auto" ? t("addStep.auto") : t(`type.${k}` as Key));
 
+/**
+ * When the new step comes: on every run, or only on a branch from the step before it – under a
+ * condition the admin writes in their own words, or when the AI finds a statement true.
+ */
+export type AddWhen = { mode: "if" | "ask"; text: string };
+
 /** A step being added through the conversation: where, as what, and what was asked. */
 export interface Adding {
   /** The new step goes before the step at this index. */
   at: number;
   kind: AddKind;
   prompt: string;
+  /** Absent: every run goes through the new step. */
+  when?: AddWhen;
 }
 
 /** Where a new step goes, in words: "after „Suche“, before „Ergebnis“". */
@@ -56,13 +64,19 @@ export function placeText(def: WizardDefinition, at: number): string {
  * What the conversation shows and the assistant reads for a step asked for in the step panel or
  * the diagram: where it goes, what it is to be, and the admin's own words.
  */
-export function addStepMessage(def: WizardDefinition, { at, kind, prompt }: Adding): string {
+export function addStepMessage(def: WizardDefinition, { at, kind, prompt, when }: Adding): string {
   const place = placeText(def, at);
   const head =
     kind === "auto"
       ? t("addStep.message", { place })
       : t("addStep.messageAs", { place, kind: kindLabel(kind) });
-  return `${head}\n${prompt.trim()}`;
+  const branch = when
+    ? `\n${t(when.mode === "if" ? "addStep.messageIf" : "addStep.messageAsk", {
+        text: when.text.trim(),
+        from: def.steps[at - 1]?.title ?? "",
+      })}`
+    : "";
+  return `${head}${branch}\n${prompt.trim()}`;
 }
 
 /**
@@ -71,14 +85,17 @@ export function addStepMessage(def: WizardDefinition, { at, kind, prompt }: Addi
  */
 export function AddStepPanel({
   place,
+  branchable,
   onAdd,
   onEmpty,
   onCancel,
 }: {
   /** Where the step goes, in words. */
   place: string;
+  /** A step comes before it: the new step can be a branch from there. */
+  branchable: boolean;
   /** False when the conversation took nothing: it is still busy with an earlier turn. */
-  onAdd: (kind: AddKind, prompt: string) => boolean;
+  onAdd: (kind: AddKind, prompt: string, when?: AddWhen) => boolean;
   onEmpty?: (kind: EmptyKind) => void;
   onCancel: () => void;
 }) {
@@ -86,6 +103,8 @@ export function AddStepPanel({
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [emptyOpen, setEmptyOpen] = useState(false);
+  const [whenMode, setWhenMode] = useState<"always" | AddWhen["mode"]>("always");
+  const [whenText, setWhenText] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   useEffect(() => area.current?.focus(), []);
   const submit = () => {
@@ -93,7 +112,12 @@ export function AddStepPanel({
       setError(t("addStep.empty"));
       return;
     }
-    if (!onAdd(kind, prompt)) {
+    if (whenMode !== "always" && !whenText.trim()) {
+      setError(t("addStep.whenEmpty"));
+      return;
+    }
+    const when = whenMode === "always" ? undefined : { mode: whenMode, text: whenText };
+    if (!onAdd(kind, prompt, when)) {
       setError(t("addStep.busy"));
     }
   };
@@ -145,6 +169,51 @@ export function AddStepPanel({
           );
         })}
       </fieldset>
+      {branchable ? (
+        <div className="flex flex-col gap-2">
+          <fieldset className="flex flex-wrap items-center gap-1.5" aria-label={t("addStep.when")}>
+            <span className="mr-1 text-[0.75rem] text-ink-3">{t("addStep.when")}</span>
+            {(["always", "if", "ask"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={whenMode === m}
+                onClick={() => {
+                  setWhenMode(m);
+                  setError(null);
+                }}
+                className={cn(
+                  "inline-flex h-7 items-center whitespace-nowrap rounded-full px-3 text-[0.75rem] ring-1 transition",
+                  whenMode === m
+                    ? "bg-ember-tint text-ember-strong ring-ember/40"
+                    : "text-ink-2 ring-border hover:bg-accent",
+                )}
+              >
+                {t(
+                  m === "always"
+                    ? "addStep.always"
+                    : m === "if"
+                      ? "addStep.onlyIf"
+                      : "addStep.aiDecides",
+                )}
+              </button>
+            ))}
+          </fieldset>
+          {whenMode === "always" ? null : (
+            <Input
+              aria-label={t(whenMode === "if" ? "addStep.onlyIf" : "addStep.aiDecides")}
+              placeholder={t(
+                whenMode === "if" ? "addStep.ifPlaceholder" : "addStep.askPlaceholder",
+              )}
+              value={whenText}
+              onChange={(e) => {
+                setWhenText(e.target.value);
+                setError(null);
+              }}
+            />
+          )}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {onEmpty ? (
           <div className="relative">
@@ -210,6 +279,11 @@ export function AddingCard({
         <span className="font-medium text-[0.8125rem]">{t("addStep.building")}</span>
       </div>
       <p className="text-[0.75rem] text-ink-3">{place}</p>
+      {adding.when ? (
+        <p className="text-[0.75rem] text-ember-strong">
+          {t(adding.when.mode === "if" ? "addStep.onlyIf" : "addStep.aiDecides")} {adding.when.text}
+        </p>
+      ) : null}
       <p className="line-clamp-3 whitespace-pre-wrap text-[0.8125rem] text-ink-2">
         {adding.prompt}
       </p>

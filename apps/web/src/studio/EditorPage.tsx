@@ -570,8 +570,9 @@ export function EditorPage() {
             <div className="absolute top-3 right-3 left-3 z-20 mx-auto max-w-xl animate-rise rounded-xl shadow-elevated">
               <AddStepPanel
                 place={placeText(def, insertAt)}
-                onAdd={(kind, prompt) => {
-                  if (!addStep({ at: insertAt, kind, prompt })) {
+                branchable={insertAt > 0}
+                onAdd={(kind, prompt, when) => {
+                  if (!addStep({ at: insertAt, kind, prompt, when })) {
                     return false;
                   }
                   setInsertAt(null);

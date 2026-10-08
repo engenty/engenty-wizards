@@ -54,6 +54,7 @@ type Connection =
 // Every step: { id (camelCase, unique), title, description?, next?: Branch[] }
 // Branch = { when: Condition | Condition[], goto: stepId | "end", max? }
 //        | { ask: "a statement about the run", goto: stepId | "end", max? }
+//        | { goto: stepId | "end" }   // otherwise: where the run goes when no other branch holds (one per step)
 //   ask: a decision reads the person's answers and what the steps made so far and takes the branch when the
 //   statement is true ("The person wants a refund, not an exchange"). All ask branches of a step are decided
 //   together in one cheap call, after no "when" branch matched; if none clearly holds the next step follows.
@@ -66,7 +67,9 @@ type Connection =
 //   or how many rows a stored list has as "lists.<listId>.count"
 //   gt / lt compare numbers (value is a number); contains looks into a multiselect, a list output or a text;
 //   in takes a list of values. A list of conditions holds when every one holds.
-//   first matching branch wins, otherwise the next step in the list.
+//   first matching branch wins, otherwise the step's "otherwise" branch, else the next step in the list.
+//   A step only some runs take sits right after the step that branches to it; that step's otherwise branch
+//   leads every other run past it, and the step itself goes on as the next in the list.
 
 type PageStep = { type: "page", fields: Field[] (1–5 per page), groups?: { id, instructions, optional? }[], cta?: string }
 // Decided fields: a field with ask: "statement" is shown when a decision finds the statement true of the run;
