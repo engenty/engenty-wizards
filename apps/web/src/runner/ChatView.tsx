@@ -241,7 +241,8 @@ function Dots() {
 
 export function QuickReplies({ children }: { children: ReactNode }) {
   return (
-    <div className="flex max-h-[40dvh] flex-wrap justify-end gap-2 overflow-y-auto pb-3">
+    // The row scrolls when there are many; the inset keeps the buttons' outlines inside it.
+    <div className="-mx-1 -mt-1 flex max-h-[40dvh] flex-wrap justify-end gap-2 overflow-y-auto px-1 pt-1 pb-3">
       {children}
     </div>
   );
