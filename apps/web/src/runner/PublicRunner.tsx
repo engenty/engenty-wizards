@@ -414,8 +414,12 @@ function ChatStart({
     `/w/${wizard.token}/${door}`,
   );
   const lines: Line[] = [{ key: "hello", who: "bot", node: wizard.description || wizard.title }];
-  if (door === "video") {
-    lines.push({ key: "video", who: "bot", node: t("video.hint") });
+  if (door !== "chat") {
+    lines.push({
+      key: door,
+      who: "bot",
+      node: t(door === "video" ? "video.hint" : "talk.joinHint"),
+    });
   }
   if (!wizard.available) {
     lines.push({
@@ -573,10 +577,10 @@ export function PublicRunner({
           <ChatBody
             runId={runId}
             talk={talking}
-            call={calling}
+            call={calling ? "video" : talking ? "audio" : false}
             onRestart={() => navigate(`/w/${token}/${door}`)}
-            // The call's stage names the wizard itself.
-            header={calling ? undefined : header}
+            // A call's stage names the wizard itself.
+            header={calling || talking ? undefined : header}
             footer={footer}
           />
         ) : (

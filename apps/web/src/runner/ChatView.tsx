@@ -45,10 +45,10 @@ import { useDictation } from "../lib/speech";
 import { ShareResultButton } from "../share/ShareSheet";
 import { cn, IconButton, LinkedText, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
+import { CallStage } from "./CallStage";
 import { isTouch, useWakeLock } from "./device";
 import { FieldInput, textHints, type Values } from "./fields";
 import { type PageBinding, useLiveVoice } from "./live-voice";
-import { CallStage } from "./CallStage";
 import { DownloadButtons, OutputView } from "./outputs";
 import { initialValues, useDoneSignal } from "./RunnerView";
 import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
@@ -107,6 +107,8 @@ const SpeechContext = createContext<{
   voice: ReturnType<typeof useLiveVoice> | null;
   /** The conversation was asked for first: its button leads. */
   talk: boolean;
+  /** The chat is the screen beside a call: the call's own controls take the voice buttons. */
+  call: boolean;
   /** The page the run is on lends the conversation its draft. */
   bindPage: (binding: PageBinding | null) => void;
 } | null>(null);
@@ -114,8 +116,6 @@ const SpeechContext = createContext<{
 /** The conversation's state, for a header that shows the wizard speaking. */
 export function useVoiceState() {
   const speech = useContext(SpeechContext);
-  /** The chat is the screen beside a call: the call's own controls take the voice buttons. */
-  call: boolean;
   return speech?.voice ?? null;
 }
 
@@ -422,6 +422,8 @@ function Composer({
       ? t("chat.transcribing")
       : placeholder;
   const voice = speech?.voice ?? null;
+  // Beside a call the stage holds the voice controls; the composer is only for typing.
+  const inCall = Boolean(speech?.call);
   const tools =
     speech && !inCall && (canSpeak || canDictate || voice) ? (
       <div className="mb-1 flex shrink-0 items-center">
@@ -432,8 +434,6 @@ function Composer({
                 ? "talk.stop"
                 : voice.state === "connecting"
                   ? "talk.connecting"
-  // Beside a call the stage holds the voice controls; the composer is only for typing.
-  const inCall = Boolean(speech?.call);
                   : "talk.start",
             )}
             aria-pressed={voice.state === "live"}
@@ -1444,6 +1444,7 @@ export function ChatBody({
   header,
   footer,
   talk = false,
+  call = false,
 }: {
   runId: string;
   onRestart?: () => void;
@@ -1452,6 +1453,8 @@ export function ChatBody({
   footer?: ReactNode;
   /** The live conversation leads: its button is the first thing offered. */
   talk?: boolean;
+  /** A call: the stage with the engenty (and the camera, as a video call), the chat as the screen beside it. */
+  call?: false | "audio" | "video";
 }) {
   const run = useRun(runId);
   const { view } = run;
@@ -1469,6 +1472,7 @@ export function ChatBody({
       setReadAloud,
       voice: view?.talk ? voice : null,
       talk,
+      call: Boolean(call),
       bindPage,
     }),
     [runId, view?.lang, view?.talk, readAloud, setReadAloud, voice, talk, call],
@@ -1560,7 +1564,6 @@ export function ChatBody({
                       {t("run.back")}
                     </Reply>
                   ) : null}
-  call = false,
                 </>,
               ),
             ]}
@@ -1569,8 +1572,6 @@ export function ChatBody({
         </>
       );
     } else if (view.status === "cancelled") {
-  /** A call: the stage with the camera and the engenty, the chat as the screen beside it. */
-  call?: boolean;
       body = (
         <Thread
           avatar={view.wizard.avatar}
@@ -1588,7 +1589,6 @@ export function ChatBody({
                 ]
               : []),
           ]}
-      call,
         />
       );
     } else if (step?.type === "page") {
@@ -1615,14 +1615,6 @@ export function ChatBody({
       body = <Thread avatar={view.wizard.avatar} lines={before} />;
     }
   }
-  return (
-    <SpeechContext.Provider value={speech}>
-      <ChatShell header={header} footer={footer}>
-        {body}
-      </ChatShell>
-    </SpeechContext.Provider>
-  );
-}
   if (call) {
     // The stage above on a phone, on the left on a desk; the chat is the screen beside it.
     return (
@@ -1631,7 +1623,7 @@ export function ChatBody({
           <CallStage
             voice={voice}
             view={view}
-            video
+            video={call === "video"}
             className="h-[46dvh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1"
           />
           <aside className="flex min-h-0 flex-1 flex-col border-border-soft border-t lg:w-[420px] lg:flex-none lg:border-t-0 lg:border-l">
@@ -1641,3 +1633,11 @@ export function ChatBody({
       </SpeechContext.Provider>
     );
   }
+  return (
+    <SpeechContext.Provider value={speech}>
+      <ChatShell header={header} footer={footer}>
+        {body}
+      </ChatShell>
+    </SpeechContext.Provider>
+  );
+}

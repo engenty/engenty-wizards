@@ -26,8 +26,16 @@ question, and every answer stays in the thread. Two buttons sit in the composer:
 |---|---|
 | Speaker | Reads what the wizard says aloud, with the browser's own voice in the wizard's language. Costs nothing, stays on in this browser |
 | Microphone (⌘⇧M, Ctrl⇧M on Windows) | Dictates into the composer. The browser writes along where it can recognise speech; elsewhere the recording is written down by the wizard's own model when you stop, like a voice note |
-| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. At `…/talk` the conversation is offered first. Only where the owner switched it on |
+| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. Only where the owner switched it on |
 | Camera, in a conversation | The wizard sees what you show it ("is the dent on the left?") and takes photos into a photo field when you hold something still. The small picture shows what it sees |
+
+## As a live conversation
+
+At `…/talk`, or straight on its link, the wizard opens as a live audio screen: its engenty
+alone in the middle, breathing while it speaks and glowing while it listens, the whole
+transcript of what either of you said under it, and mute, camera and leave underneath. The chat
+sits beside it as the screen the wizard draws on. Switch the camera on and it becomes the video
+call below.
 
 ## As a video call
 

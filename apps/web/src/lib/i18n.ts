@@ -682,6 +682,8 @@ const de = {
   "video.flip": "Kamera wechseln",
   "video.ended": "Anruf beendet",
   "video.chat": "Chat",
+  "talk.joinHint":
+    "Das Mikrofon wird beim Start gefragt, die Kamera erst, wenn du sie einschaltest. Der Chat daneben zeigt mit und nimmt, was eine Stimme nicht kann.",
   "chat.skip": "Überspringen",
   "chat.skipped": "Übersprungen",
   "chat.change": "Ändern",
@@ -2060,6 +2062,8 @@ const en: Record<Key, string> = {
   "video.flip": "Switch camera",
   "video.ended": "Call ended",
   "video.chat": "Chat",
+  "talk.joinHint":
+    "The microphone is asked for when you start, the camera only when you switch it on. The chat beside it follows along and takes what a voice cannot.",
   "chat.placeholder": "Your answer …",
   "chat.above": "Answer above in the chat",
   "chat.required": "I need an answer for this one.",

@@ -432,7 +432,7 @@ export function useLiveVoice(
             const text = String(event.transcript ?? "").trim();
             if (text) {
               const who = event.type === "response.output_audio_transcript.done" ? "bot" : "me";
-              setCaptions((all) => [...all.slice(-11), { id: `${Date.now()}:${who}`, who, text }]);
+              setCaptions((all) => [...all.slice(-199), { id: `${Date.now()}:${who}`, who, text }]);
             }
             break;
           }
