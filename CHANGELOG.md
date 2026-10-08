@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.29] - 2026-10-08
+- ADDED **[engine]** An AI step can call one plugin tool without a model – call { tool, input } with the inputs filled from earlier answers (a whole number or true/false passed as one, an empty one left out), checked against the tool's schema, the answer kept as the step's json output (output.fields name the keys later steps read); it costs no credits, needs no model and answers as fast as the tool; the authoring guide and the plugin docs show it for free appointment times
+
 ## [0.2.28] - 2026-10-08
 - ADDED **[marketplace]** The catalog knows which plugins a wizard needs and the plan that has them – an entry carries plugins (read from its tools named <plugin>.<tool>), plan (free, or pro as soon as it uses a plugin) and the plugin starter it stands for; searching filters by plan with its counts; a runtime with the plugin lists the plugin's own starter and leaves out the entry for it, one without marks the entry with what it needs and refuses to start it; the studio shows Pro on such templates, a Paket filter beside the others and what is missing, list_starters says needsPro
 

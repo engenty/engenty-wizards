@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.29",
+    "timestamp": 1791489396,
+    "commits": [
+      {
+        "id": "ff33bd7",
+        "message": "an AI step can call one plugin tool without a model – call { tool, input } with the inputs filled from earlier answers (a whole number or true/false passed as one, an empty one left out), checked against the tool's schema, the answer kept as the step's json output (output.fields name the keys later steps read); it costs no credits, needs no model and answers as fast as the tool; the authoring guide and the plugin docs show it for free appointment times",
+        "group": "Added",
+        "scope": "engine",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.28",
-    "timestamp": 1791485778,
+    "timestamp": 1791485787,
     "commits": [
       {
         "id": "adfb75b",
