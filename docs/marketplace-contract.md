@@ -15,7 +15,7 @@ verifying and voting will take a token of the Manage-App (scope `wizards:publish
 
 | Call | Answers |
 |---|---|
-| `GET /api/v1/entries?q=&lang=&useCase=&industry=&format=&limit=&offset=` | `MarketplacePage`: the published entries the words find, best first, narrowed by the filters; `total` of them, `all` published entries, and per filter option the entries it would leave (`facets`). Without `q` in the marketplace's own order. `limit` at most 100, default 60. |
+| `GET /api/v1/entries?q=&lang=&useCase=&industry=&format=&capability=&plan=&limit=&offset=` | `MarketplacePage`: the published entries the words find, best first, narrowed by the filters; `total` of them, `all` published entries, and per filter option the entries it would leave (`facets`). Without `q` in the marketplace's own order. `limit` at most 100, default 60. |
 | `GET /api/v1/entries?ids=a,b&lang=` | The same page, of exactly these entries (no words, no filters) |
 | `GET /api/v1/entries/:id?lang=` | `MarketplaceItem`: the summary, the wizard in that language (else in its own) and its workspace files (base64). 404 for an entry that is not published. |
 | `GET /api/v1/entries/:id/export` | `MarketplaceExport`: the entry in every language it has, with its files: what a client keeps offline |
@@ -32,6 +32,13 @@ verifying and voting will take a token of the Manage-App (scope `wizards:publish
   `DEFINITION_VERSION` is lower shows the entry as needing a newer app. The schema drops what it
   does not know, so a client also reads the wizard before it starts one and refuses it when
   anything would be lost.
+- **Plugins and plans**: `plugins` names the plugins an entry's wizard uses (its tools named
+  `<plugin>.<tool>`, `pluginsOf`), `plan` the plan that has them (`free`, or `pro` as soon as it
+  uses a plugin: plugins come with Pro and Team), and `pluginStarter` the plugin's own starter
+  the entry shows in the catalog (`<plugin>.<starter>`). `plan=free|pro` filters by it, with its
+  counts in `facets.plan`. A runtime that has the plugin lists the plugin's starter and leaves
+  out the entry that stands for it; one without it marks the entry with `needs` and refuses to
+  start it. A marketplace older than these fields leaves them out: no plugins, free.
 - **Errors**: `400` with `{ "error": "…" }` for a request that does not parse, `404` for an id
   that is not published.
 - **Caching**: lists and sync `cache-control: public, max-age=60`; an item and an export carry

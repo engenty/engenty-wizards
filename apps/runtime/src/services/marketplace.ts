@@ -22,6 +22,7 @@ import {
   type MarketplacePage,
   type MarketplaceSummary,
   type MarketplaceSyncItem,
+  pluginsOf,
 } from "@engenty-wizards/shared/marketplace";
 import { type WizardOutline, wizardOutline } from "@engenty-wizards/shared/marketplace-entry";
 import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
@@ -43,7 +44,7 @@ import {
   videoCostUsd,
   WEB_SEARCH_COST_USD,
 } from "../models.js";
-import { type PluginStarterEntry, pluginStartersOf } from "../plugins/registry.js";
+import { type PluginStarterEntry, pluginIdsOf, pluginStartersOf } from "../plugins/registry.js";
 import { readSetting, writeSetting } from "../settings.js";
 import { currentTenant, LOCAL_TENANT } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
@@ -179,6 +180,8 @@ function pluginSummary({ id, plugin, starter }: PluginStarterEntry): Marketplace
     costTier: costTierOf(capabilities),
     steps: definition.steps.length,
     version: definition.version,
+    plugins: [plugin.source.id],
+    plan: "pro",
   };
 }
 
@@ -208,7 +211,31 @@ function addFacets(a: MarketplaceFacets, b: MarketplaceFacets): MarketplaceFacet
     industry: add(a.industry, b.industry),
     format: add(a.format, b.format),
     capability: add(a.capability, b.capability),
+    plan: add(a.plan, b.plan),
   };
+}
+
+/**
+ * The marketplace's entries as this tenant sees them: an entry that stands for a starter of a
+ * plugin it has is left out (the plugin's own is listed), and the others say which plugins they
+ * need that it does not have.
+ */
+async function withPlugins(entries: MarketplaceEntry[]): Promise<MarketplaceEntry[]> {
+  if (!entries.some((e) => e.plugins?.length || e.pluginStarter)) {
+    return entries;
+  }
+  const tenant = currentTenant();
+  const [have, starters] = await Promise.all([
+    pluginIdsOf(tenant),
+    pluginStartersOf(tenant).then((list) => new Set(list.map((s) => s.id))),
+  ]);
+  return entries.flatMap((e) => {
+    if (e.pluginStarter && starters.has(e.pluginStarter)) {
+      return [];
+    }
+    const needs = (e.plugins ?? []).filter((id) => !have.has(id));
+    return [needs.length ? { ...e, needs } : e];
+  });
 }
 
 // --- searching -----------------------------------------------------------------------------
@@ -343,7 +370,9 @@ async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResul
     );
     return {
       ...remote,
-      entries: remote.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
+      entries: await withPlugins(
+        remote.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
+      ),
       offline: false,
       unavailable: [...unavailable],
     };
@@ -359,7 +388,9 @@ async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResul
   );
   return {
     ...page,
-    entries: page.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
+    entries: await withPlugins(
+      page.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
+    ),
     offline: true,
     unavailable: [...unavailable],
   };
@@ -517,6 +548,15 @@ export async function marketplaceWizard(
     throw new ServiceError(
       "refused",
       "Diese Vorlage braucht eine neuere Version der App. Bitte aktualisiere die App.",
+    );
+  }
+  // A wizard whose plugins are not here would stop at its first step that uses them.
+  const have = await pluginIdsOf(currentTenant());
+  const needs = pluginsOf(wizardSchema.parse(found.definition)).filter((p) => !have.has(p));
+  if (needs.length) {
+    throw new ServiceError(
+      "refused",
+      `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: mit Pro auf engenty.ai dabei.`,
     );
   }
   return {

@@ -237,6 +237,8 @@ export function registerTools(server: McpServer, who: Principal) {
           useCases: s.useCases,
           capabilities: s.capabilities,
           ...(s.plugin ? { plugin: s.plugin.name } : {}),
+          // Not startable here: its plugins come with the Pro plan.
+          ...(s.needs?.length ? { needsPro: s.needs } : {}),
         })),
   );
 

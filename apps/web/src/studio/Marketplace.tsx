@@ -7,8 +7,10 @@ import {
   type Industry,
   ITEM_FORMATS,
   type ItemFormat,
+  MARKETPLACE_PLANS,
   type MarketplaceEntry,
   type MarketplacePage,
+  type MarketplacePlan,
   USE_CASES,
   type UseCase,
 } from "@engenty-wizards/shared/marketplace";
@@ -93,8 +95,9 @@ interface Filters {
   industry: Industry | "";
   format: ItemFormat | "";
   capability: Capability | "";
+  plan: MarketplacePlan | "";
 }
-const NO_FILTERS: Filters = { useCase: "", industry: "", format: "", capability: "" };
+const NO_FILTERS: Filters = { useCase: "", industry: "", format: "", capability: "", plan: "" };
 
 type Labels = Record<string, { de: string; en: string }>;
 const label = (labels: Labels, id: string) => labels[id]?.[lang] ?? id;
@@ -160,6 +163,15 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
   );
 }
 
+/** An entry that needs the Pro plan: its wizard uses plugins that come with Pro. */
+function ProChip() {
+  return (
+    <Chip tone="ember" title={t("market.proHint")}>
+      {t("market.pro")}
+    </Chip>
+  );
+}
+
 /** The plugin an entry comes with, by its name. */
 function PluginChip({ plugin }: { plugin: { name: string } }) {
   return (
@@ -186,7 +198,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
       }}
       className={cn(
         "relative flex min-h-[124px] cursor-pointer flex-col gap-5 p-4 text-left transition sm:min-h-[136px] sm:p-5 hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-        (!entry.usable || entry.missing.length > 0) && "opacity-60",
+        (!entry.usable || entry.missing.length > 0 || Boolean(entry.needs?.length)) && "opacity-60",
       )}
     >
       {/* engenty sits on the card's corner, a little over its edge. */}
@@ -196,6 +208,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
       <div className="min-w-0 pr-20">
         <div className="flex items-center gap-1.5 font-display font-semibold text-[0.9375rem]">
           {entry.title}
+          {entry.plan === "pro" ? <ProChip /> : null}
           {entry.starred ? (
             <Star
               className="size-3.5 shrink-0 fill-amber text-amber"
@@ -207,7 +220,9 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem] text-ink-3">
         {entry.plugin ? <PluginChip plugin={entry.plugin} /> : null}
-        {entry.usable && entry.missing.length ? (
+        {entry.needs?.length ? (
+          <Chip tone="warn">{t("market.needsPro", { list: entry.needs.join(", ") })}</Chip>
+        ) : entry.usable && entry.missing.length ? (
           <Chip tone="warn">{t("market.missing", { list: capabilityList(entry.missing) })}</Chip>
         ) : entry.usable ? (
           <>
@@ -636,13 +651,15 @@ function EntryDialog({
             ) : null}
             {onUse ? (
               <Button
-                disabled={!entry.usable || entry.missing.length > 0}
+                disabled={!entry.usable || entry.missing.length > 0 || Boolean(entry.needs?.length)}
                 title={
-                  entry.missing.length
-                    ? t("market.missingHint", { list: capabilityList(entry.missing) })
-                    : entry.optional?.length
-                      ? t("market.optionalHint", { list: capabilityList(entry.optional) })
-                      : undefined
+                  entry.needs?.length
+                    ? t("market.needsProHint", { list: entry.needs.join(", ") })
+                    : entry.missing.length
+                      ? t("market.missingHint", { list: capabilityList(entry.missing) })
+                      : entry.optional?.length
+                        ? t("market.optionalHint", { list: capabilityList(entry.optional) })
+                        : undefined
                 }
                 busy={busy}
                 onClick={() => onUse(entry)}
@@ -877,6 +894,11 @@ export function MarketplaceBrowser({
       options: options("format", ITEM_FORMATS, (id) => (
         <FormatIcon format={id as ItemFormat} className="size-4 text-ink-3" />
       )),
+    },
+    {
+      key: "plan",
+      name: t("market.plan"),
+      options: options("plan", MARKETPLACE_PLANS),
     },
     {
       key: "capability",

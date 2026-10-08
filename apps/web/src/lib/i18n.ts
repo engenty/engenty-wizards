@@ -665,6 +665,12 @@ const de = {
   "market.optionalHint":
     "Läuft hier ohne {list}: Antworten, die das bräuchten, sind im Wizard gesperrt. Einrichten unter Modelle.",
   "market.missing": "Hier nicht eingerichtet: {list}",
+  "market.plan": "Paket",
+  "market.pro": "Pro",
+  "market.proHint": "Braucht Plugins, die mit Pro auf engenty.ai dabei sind",
+  "market.needsPro": "Mit Pro: braucht {list}",
+  "market.needsProHint":
+    "Diese Vorlage braucht {list}. Die Plugins sind mit Pro und Team auf engenty.ai dabei.",
   "market.missingHint": "Dafür fehlt hier ein Modell: {list}. Richte es unter Modelle ein.",
   "market.none": "Keine Vorlage passt zu dieser Auswahl.",
   "market.notFound": "Diese Vorlage gibt es nicht (mehr).",
@@ -1928,6 +1934,12 @@ const en: Record<Key, string> = {
   "market.optionalHint":
     "Runs here without {list}: answers that would need it are locked in the wizard. Set it up under Models.",
   "market.missing": "Not set up here: {list}",
+  "market.plan": "Plan",
+  "market.pro": "Pro",
+  "market.proHint": "Needs plugins that come with Pro on engenty.ai",
+  "market.needsPro": "With Pro: needs {list}",
+  "market.needsProHint":
+    "This template needs {list}. The plugins come with Pro and Team on engenty.ai.",
   "market.missingHint":
     "This needs a model that isn't set up here: {list}. Set it up under Models.",
   "market.none": "No template matches this selection.",

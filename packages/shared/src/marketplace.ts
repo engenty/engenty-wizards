@@ -1,4 +1,4 @@
-import type { Format, WizardDefinition } from "./definition.js";
+import { type Format, pluginToolOf, type WizardDefinition } from "./definition.js";
 
 /**
  * The marketplace: wizards anyone can start from. What an entry is sorted by — formats, industry,
@@ -80,11 +80,22 @@ export const COST_TIERS = {
 } satisfies Record<string, Labels>;
 export type CostTier = keyof typeof COST_TIERS;
 
+/**
+ * The plan a wizard needs. Free runs on what every runtime has; Pro needs plugins, which come
+ * with the Pro and Team plans of engenty.ai.
+ */
+export const MARKETPLACE_PLANS = {
+  free: { de: "Kostenlos", en: "Free" },
+  pro: { de: "Pro", en: "Pro" },
+} satisfies Record<string, Labels>;
+export type MarketplacePlan = keyof typeof MARKETPLACE_PLANS;
+
 const keys = <T extends object>(o: T) => Object.keys(o) as (keyof T)[];
 export const ITEM_FORMAT_IDS = keys(ITEM_FORMATS);
 export const INDUSTRY_IDS = keys(INDUSTRIES);
 export const USE_CASE_IDS = keys(USE_CASES);
 export const CAPABILITY_IDS = keys(CAPABILITIES);
+export const MARKETPLACE_PLAN_IDS = keys(MARKETPLACE_PLANS);
 
 const FORMAT_OF: Partial<Record<Format, ItemFormat>> = {
   pdf: "document",
@@ -174,6 +185,26 @@ export function capabilitiesOf(def: WizardDefinition): Capability[] {
   }
   return CAPABILITY_IDS.filter((c) => found.has(c));
 }
+
+/** The plugins a definition's steps use, by id: a runtime without one of them cannot run it. */
+export function pluginsOf(def: WizardDefinition): string[] {
+  const found = new Set<string>();
+  for (const step of def.steps) {
+    if (step.type === "agent") {
+      for (const tool of step.tools) {
+        const of = pluginToolOf(tool);
+        if (of) {
+          found.add(of.plugin);
+        }
+      }
+    }
+  }
+  return [...found].sort();
+}
+
+/** The plan a wizard needs: Pro as soon as it uses a plugin. */
+export const planOf = (plugins: readonly string[]): MarketplacePlan =>
+  plugins.length ? "pro" : "free";
 
 /** What a person does in a run, and about how long the whole run takes. */
 export interface Effort {
@@ -275,6 +306,18 @@ export interface MarketplaceSummary {
   steps: number;
   /** The definition version the entry's wizard is written in (`DEFINITION_VERSION`). */
   version: number;
+  /**
+   * The plugins its wizard uses, by id (`pluginsOf`). A marketplace older than this field leaves
+   * it out: read it as none.
+   */
+  plugins?: string[];
+  /** The plan it needs (`planOf`); left out by an older marketplace: free. */
+  plan?: MarketplacePlan;
+  /**
+   * The plugin's own starter this entry shows in the catalog, `<plugin id>.<starter id>`: a
+   * runtime with that plugin lists the plugin's starter instead.
+   */
+  pluginStarter?: string;
 }
 
 /** What a search narrows by, besides its words. */
@@ -283,6 +326,7 @@ export interface MarketplaceFilters {
   industry?: Industry;
   format?: ItemFormat;
   capability?: Capability;
+  plan?: MarketplacePlan;
 }
 
 /** Per option of a filter: the entries it would leave, with the other filters as they are. */
@@ -292,6 +336,8 @@ export interface MarketplaceFacets {
   format: Partial<Record<ItemFormat, number>>;
   /** Optional: a marketplace older than this filter leaves it out. */
   capability?: Partial<Record<Capability, number>>;
+  /** Optional: a marketplace older than this filter leaves it out. */
+  plan?: Partial<Record<MarketplacePlan, number>>;
 }
 
 /** A page of a search: the entries, best first, how many there are, and the filters' counts. */
@@ -346,4 +392,6 @@ export interface MarketplaceEntry extends MarketplaceSummary {
   optional: Capability[];
   /** It comes with a plugin of this app, not from the marketplace: the plugin's id and name. */
   plugin?: { id: string; name: string };
+  /** The plugins it needs that this app does not have: a wizard made from it would not run. */
+  needs?: string[];
 }

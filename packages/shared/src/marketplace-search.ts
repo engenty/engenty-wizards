@@ -13,6 +13,7 @@ import {
   type MarketplaceFacets,
   type MarketplaceFilters,
   type MarketplacePage,
+  type MarketplacePlan,
   type MarketplaceSummary,
   USE_CASES,
   type UseCase,
@@ -122,7 +123,8 @@ export function matchesFilters(e: MarketplaceSummary, f: MarketplaceFilters): bo
       e.industries.includes(f.industry) ||
       (f.industry !== "any" && e.industries.includes("any"))) &&
     (!f.format || e.formats.includes(f.format)) &&
-    (!f.capability || e.capabilities.includes(f.capability))
+    (!f.capability || e.capabilities.includes(f.capability)) &&
+    (!f.plan || (e.plan ?? "free") === f.plan)
   );
 }
 
@@ -131,6 +133,7 @@ const FACETS = {
   industry: (e: MarketplaceSummary) => e.industries as string[],
   format: (e: MarketplaceSummary) => e.formats as string[],
   capability: (e: MarketplaceSummary) => e.capabilities as string[],
+  plan: (e: MarketplaceSummary) => [e.plan ?? "free"],
 } satisfies Record<keyof MarketplaceFacets, (e: MarketplaceSummary) => string[]>;
 
 /**
@@ -147,6 +150,7 @@ function facetsOf(
     industry: {},
     format: {},
     capability: {},
+    plan: {},
   };
   for (const key of Object.keys(FACETS) as (keyof MarketplaceFacets)[]) {
     const options = new Set(all.flatMap(FACETS[key]));
@@ -155,7 +159,7 @@ function facetsOf(
       counts[option] = found.filter((e) =>
         matchesFilters(e, {
           ...filters,
-          [key]: option as UseCase & Industry & ItemFormat & Capability,
+          [key]: option as UseCase & Industry & ItemFormat & Capability & MarketplacePlan,
         }),
       ).length;
     }

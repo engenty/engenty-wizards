@@ -288,3 +288,53 @@ describe("an entry", () => {
     );
   });
 });
+
+describe("an entry that needs plugins", () => {
+  const booking = {
+    ...definition,
+    title: "Termin",
+    steps: [
+      {
+        id: "book",
+        type: "agent",
+        title: "Buchen",
+        instructions: "Buche den Termin.",
+        tools: ["appointments.book"],
+        output: { format: "markdown" },
+      },
+      { id: "done", type: "result", title: "Fertig", deliverables: [{ from: "book", formats: ["md"] }] },
+    ],
+  };
+  const entry = () =>
+    exportOf("booking", {
+      starter: false,
+      plugins: ["appointments"],
+      plan: "pro",
+      pluginStarter: "appointments.link",
+      texts: [{ language: "de", title: "Termin", pitch: "Bucht.", definition: booking, machine: false }],
+    });
+
+  it("says which plugins this app lacks, and the Pro filter finds it", async () => {
+    remote.entries.set("booking", entry());
+    const found = await inTenant(() => market.searchMarketplace({ lang: "de" }));
+    expect(found.entries.find((e) => e.id === "booking")).toMatchObject({
+      plan: "pro",
+      needs: ["appointments"],
+    });
+    expect(found.entries.find((e) => e.id === "card")?.needs).toBeUndefined();
+    const pro = searchEntries(
+      [...remote.entries.values()].map((e) => summaryOf(e, "de")),
+      "",
+      { plan: "pro" },
+    );
+    expect(pro.entries.map((e) => e.id)).toEqual(["booking"]);
+    expect(pro.facets.plan).toEqual({ free: 2, pro: 1 });
+  });
+
+  it("cannot be started without them", async () => {
+    remote.entries.set("booking", entry());
+    await expect(inTenant(() => market.marketplaceWizard("booking", "de"))).rejects.toThrow(
+      /appointments/,
+    );
+  });
+});

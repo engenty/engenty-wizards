@@ -2,6 +2,7 @@ import {
   CAPABILITY_IDS,
   INDUSTRY_IDS,
   ITEM_FORMAT_IDS,
+  MARKETPLACE_PLAN_IDS,
   USE_CASE_IDS,
 } from "@engenty-wizards/shared/marketplace";
 import { Hono } from "hono";
@@ -21,6 +22,7 @@ const searchSchema = z.object({
   industry: z.enum(INDUSTRY_IDS).optional(),
   format: z.enum(ITEM_FORMAT_IDS).optional(),
   capability: z.enum(CAPABILITY_IDS).optional(),
+  plan: z.enum(MARKETPLACE_PLAN_IDS).optional(),
   starred: z
     .enum(["1", "0"])
     .optional()
