@@ -65,7 +65,9 @@ import {
 } from "./AddStep";
 import { ModelClassControl, StepCost, useEstimate } from "./estimate";
 import { conditionText, percent } from "./FlowDiagram";
+import { HoldToDelete } from "./HoldToDelete";
 import { stepIcon, stepSummary, TYPE_TONE, toolLabel, typeLabel } from "./meta";
+import { SurfaceBody } from "./SurfaceEditor";
 
 type Update = (next: WizardDefinition) => void;
 
@@ -508,47 +510,6 @@ const WIDGET_SIZES = [
   { label: "9:16", width: 1080, height: 1920 },
 ];
 
-/**
- * A surface step as the JSON it is: its components (or the pieces a decision picks from) and its
- * data. Written by the assistant; edited here by hand, kept only when it is valid JSON.
- */
-function SurfaceBody({
-  step,
-  set,
-}: {
-  step: Extract<Step, { type: "surface" }>;
-  set: (s: Step) => void;
-}) {
-  const shown = {
-    ...(step.components ? { components: step.components } : {}),
-    ...(step.candidates ? { candidates: step.candidates, groups: step.groups } : {}),
-    data: step.data,
-  };
-  const [draft, setDraft] = useState(() => JSON.stringify(shown, null, 2));
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <Section title={t("editor.surfaceJson")}>
-      <Textarea
-        minRows={8}
-        maxRows={30}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          try {
-            const next = JSON.parse(draft) as Partial<typeof shown>;
-            setError(null);
-            set({ ...step, ...next } as Step);
-          } catch (err) {
-            setError((err as Error).message);
-          }
-        }}
-        className="font-mono text-[0.75rem]"
-      />
-      {error ? <p className="text-[0.75rem] text-rose">{error}</p> : null}
-    </Section>
-  );
-}
-
 /** Where a widget's data can come from: earlier fields and steps. */
 function dataSources(def: WizardDefinition, index: number): string[] {
   const out: string[] = [];
@@ -812,7 +773,14 @@ function StepBody({
     case "widget":
       return <WidgetBody def={def} step={step} set={set} files={files} wizardId={wizardId} />;
     case "surface":
-      return <SurfaceBody step={step} set={set} />;
+      return (
+        <SurfaceBody
+          def={def}
+          step={step}
+          set={set}
+          section={(title, children) => <Section title={title}>{children}</Section>}
+        />
+      );
     case "page":
       return (
         <Section title="Fragen" loose>
@@ -1507,16 +1475,13 @@ function StepInspector({
                 <IconButton label={t("editor.moveDown")} onClick={() => move(1)}>
                   <ArrowDown className="size-4" />
                 </IconButton>
-                <IconButton
+                <HoldToDelete
                   label={t("editor.deleteStep")}
-                  className="hover:text-rose"
-                  onClick={() => {
+                  onDelete={() => {
                     update({ ...def, steps: def.steps.filter((s) => s.id !== step.id) });
                     onSelect(null);
                   }}
-                >
-                  <Trash2 className="size-4" />
-                </IconButton>
+                />
               </>
             ) : null}
             <Button
