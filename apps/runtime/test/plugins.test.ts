@@ -698,6 +698,7 @@ describe("a plugin's runners", () => {
       "steps",
       "chat",
       "talk",
+      "video",
       "call",
       "sms",
       "whatsapp",

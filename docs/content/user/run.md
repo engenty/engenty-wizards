@@ -29,6 +29,19 @@ question, and every answer stays in the thread. Two buttons sit in the composer:
 | Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. At `…/talk` the conversation is offered first. Only where the owner switched it on |
 | Camera, in a conversation | The wizard sees what you show it ("is the dent on the left?") and takes photos into a photo field when you hold something still. The small picture shows what it sees |
 
+## As a video call
+
+Where the owner switched it on, the wizard runs as a call, at `…/video` or straight on its
+link: a stage with your camera and the wizard's engenty as the two on the call, what either of
+you said as captions, and the call's controls underneath, mute, camera, switch camera on a phone,
+leave. The chat sits beside the stage, under it on a phone, and is the screen the wizard draws
+on: the questions and answers as they go, a photo field filled from the camera, a signature or a
+file where only the screen can take it, the result at the end.
+
+"Let's go" starts the run, "Join" starts the call: the browser asks for the microphone and the
+camera then. The conversation is the same as the chat's live voice, with the camera on from the
+start. Needs an OpenAI API key under Models for now.
+
 ## On a phone
 
 | The wizard asks for | The phone gives |

@@ -170,7 +170,11 @@ export async function mintConversation(view: RunView): Promise<ConversationSessi
         instructions: conversationInstructions(view),
         tools: CONVERSATION_TOOLS,
         tool_choice: "auto",
-        audio: { output: { voice: VOICES[view.lang] } },
+        audio: {
+          // What the person said, written down: the call screen shows it as captions.
+          input: { transcription: { model: "gpt-4o-mini-transcribe" } },
+          output: { voice: VOICES[view.lang] },
+        },
       },
     }),
     signal: AbortSignal.timeout(15_000),

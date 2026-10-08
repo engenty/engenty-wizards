@@ -193,9 +193,11 @@ describe("how a wizard is offered", () => {
       ["steps", "full"],
       ["chat", "full"],
       ["talk", "full"],
+      ["video", "full"],
     ]);
     // A live conversation needs a model the test runtime has no key for: offered to nobody yet.
     expect(seen.runners[2].problem).toMatch(/OpenAI/);
+    expect(seen.runners[3].problem).toMatch(/OpenAI/);
     await client.withTenant("tenant-a", () =>
       wizards.updateWizardSettings("user-a", wizardId, {
         runners: { default: "steps", enabled: ["steps", "talk"] },

@@ -48,6 +48,7 @@ import { AskPanel } from "./AskPanel";
 import { isTouch, useWakeLock } from "./device";
 import { FieldInput, textHints, type Values } from "./fields";
 import { type PageBinding, useLiveVoice } from "./live-voice";
+import { CallStage } from "./CallStage";
 import { DownloadButtons, OutputView } from "./outputs";
 import { initialValues, useDoneSignal } from "./RunnerView";
 import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
@@ -113,6 +114,8 @@ const SpeechContext = createContext<{
 /** The conversation's state, for a header that shows the wizard speaking. */
 export function useVoiceState() {
   const speech = useContext(SpeechContext);
+  /** The chat is the screen beside a call: the call's own controls take the voice buttons. */
+  call: boolean;
   return speech?.voice ?? null;
 }
 
@@ -420,7 +423,7 @@ function Composer({
       : placeholder;
   const voice = speech?.voice ?? null;
   const tools =
-    speech && (canSpeak || canDictate || voice) ? (
+    speech && !inCall && (canSpeak || canDictate || voice) ? (
       <div className="mb-1 flex shrink-0 items-center">
         {voice ? (
           <IconButton
@@ -429,6 +432,8 @@ function Composer({
                 ? "talk.stop"
                 : voice.state === "connecting"
                   ? "talk.connecting"
+  // Beside a call the stage holds the voice controls; the composer is only for typing.
+  const inCall = Boolean(speech?.call);
                   : "talk.start",
             )}
             aria-pressed={voice.state === "live"}
@@ -502,7 +507,7 @@ function Composer({
       }}
     >
       {/* The camera's picture, small, while the wizard can see it; the element stays so a frame can be taken. */}
-      {voice ? (
+      {voice && !inCall ? (
         <video
           ref={voice.video}
           muted
@@ -565,7 +570,7 @@ function Composer({
         <p className="mt-1.5 px-3 text-[0.75rem] text-rose">
           {dictation.error === "denied" ? t("chat.micDenied") : dictation.error}
         </p>
-      ) : voice?.error ? (
+      ) : inCall ? null : voice?.error ? (
         <p className="mt-1.5 px-3 text-[0.75rem] text-rose">{voice.error}</p>
       ) : voice?.state === "live" ? (
         <p className="mt-1.5 px-3 text-[0.75rem] text-ink-3">
@@ -1466,7 +1471,7 @@ export function ChatBody({
       talk,
       bindPage,
     }),
-    [runId, view?.lang, view?.talk, readAloud, setReadAloud, voice, talk],
+    [runId, view?.lang, view?.talk, readAloud, setReadAloud, voice, talk, call],
   );
   useWakeLock(view?.status === "running" && !view.ask);
   useDoneSignal(view);
@@ -1555,6 +1560,7 @@ export function ChatBody({
                       {t("run.back")}
                     </Reply>
                   ) : null}
+  call = false,
                 </>,
               ),
             ]}
@@ -1563,6 +1569,8 @@ export function ChatBody({
         </>
       );
     } else if (view.status === "cancelled") {
+  /** A call: the stage with the camera and the engenty, the chat as the screen beside it. */
+  call?: boolean;
       body = (
         <Thread
           avatar={view.wizard.avatar}
@@ -1580,6 +1588,7 @@ export function ChatBody({
                 ]
               : []),
           ]}
+      call,
         />
       );
     } else if (step?.type === "page") {
@@ -1614,3 +1623,21 @@ export function ChatBody({
     </SpeechContext.Provider>
   );
 }
+  if (call) {
+    // The stage above on a phone, on the left on a desk; the chat is the screen beside it.
+    return (
+      <SpeechContext.Provider value={speech}>
+        <div className="flex h-full min-h-0 flex-col lg:flex-row">
+          <CallStage
+            voice={voice}
+            view={view}
+            video
+            className="h-[46dvh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1"
+          />
+          <aside className="flex min-h-0 flex-1 flex-col border-border-soft border-t lg:w-[420px] lg:flex-none lg:border-t-0 lg:border-l">
+            <ChatShell footer={footer}>{body}</ChatShell>
+          </aside>
+        </div>
+      </SpeechContext.Provider>
+    );
+  }

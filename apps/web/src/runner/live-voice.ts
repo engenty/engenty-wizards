@@ -16,6 +16,13 @@ type Run = ReturnType<typeof useRun>;
 export type VoiceState = "off" | "connecting" | "live" | "error";
 
 /** What the page the run is on lends the conversation: its draft and its send. */
+/** A line of what was said, as the model wrote it down. */
+export interface Caption {
+  id: string;
+  who: "bot" | "me";
+  text: string;
+}
+
 export interface PageBinding {
   step: PageStep;
   fields: Field[];
@@ -123,6 +130,11 @@ export function useLiveVoice(
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const [camera, setCamera] = useState(false);
+  /** Which camera: the back one to show things, the front one to be seen. */
+  const [facing, setFacing] = useState<"user" | "environment">("environment");
+  const [muted, setMuted] = useState(false);
+  /** What was said, written down by the model, newest last. */
+  const [captions, setCaptions] = useState<Caption[]>([]);
   const video = useRef<HTMLVideoElement | null>(null);
   const cameraStream = useRef<MediaStream | null>(null);
   const lastFrame = useRef(0);
@@ -173,16 +185,20 @@ export function useLiveVoice(
   }, []);
 
   /** The camera the person shows things to: the back one on a phone, the one there is elsewhere. */
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (which?: "user" | "environment") => {
     if (cameraStream.current) {
       return;
     }
+    const wanted = which ?? "environment";
     try {
       const cam = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+        video: { facingMode: { ideal: wanted }, width: { ideal: 1280 } },
         audio: false,
       });
       cameraStream.current = cam;
+      // Which way the camera got looks: a laptop has only the front one, whatever was asked.
+      const got = cam.getVideoTracks()[0]?.getSettings().facingMode;
+      setFacing(got === "user" || got === "environment" ? got : wanted);
       if (video.current) {
         video.current.srcObject = cam;
         await video.current.play().catch(() => undefined);
@@ -193,6 +209,23 @@ export function useLiveVoice(
         (err as Error).name === "NotAllowedError" ? t("talk.cameraDenied") : (err as Error).message,
       );
     }
+  }, []);
+
+  /** The other camera of a phone. */
+  const flipCamera = useCallback(async () => {
+    const next = facing === "user" ? "environment" : "user";
+    stopCamera();
+    await startCamera(next);
+  }, [facing, stopCamera, startCamera]);
+
+  /** The microphone stays open but silent. */
+  const toggleMute = useCallback(() => {
+    setMuted((was) => {
+      for (const track of stream.current?.getAudioTracks() ?? []) {
+        track.enabled = was;
+      }
+      return !was;
+    });
   }, []);
 
   const stop = useCallback(() => {
@@ -213,6 +246,7 @@ export function useLiveVoice(
     lastState.current = "";
     setSpeaking(false);
     setListening(false);
+    setMuted(false);
     setState("off");
   }, [stopCamera]);
 
@@ -333,6 +367,7 @@ export function useLiveVoice(
       return;
     }
     setError(null);
+    setCaptions([]);
     setState("connecting");
     try {
       const session = await api.post<Session>(`/api/runs/${runId}/talk`);
@@ -391,6 +426,16 @@ export function useLiveVoice(
           case "input_audio_buffer.speech_stopped":
             setListening(false);
             break;
+          // What either side said, as text: the call screen's captions.
+          case "response.output_audio_transcript.done":
+          case "conversation.item.input_audio_transcription.completed": {
+            const text = String(event.transcript ?? "").trim();
+            if (text) {
+              const who = event.type === "response.output_audio_transcript.done" ? "bot" : "me";
+              setCaptions((all) => [...all.slice(-11), { id: `${Date.now()}:${who}`, who, text }]);
+            }
+            break;
+          }
           case "response.function_call_arguments.done": {
             const name = String(event.name ?? "");
             const callId = String(event.call_id ?? "");
@@ -495,5 +540,21 @@ export function useLiveVoice(
     }
   }, [state, view, page, camera, send]);
 
-  return { state, error, speaking, listening, start, stop, camera, startCamera, stopCamera, video };
+  return {
+    state,
+    error,
+    speaking,
+    listening,
+    start,
+    stop,
+    camera,
+    facing,
+    startCamera,
+    stopCamera,
+    flipCamera,
+    muted,
+    toggleMute,
+    captions,
+    video,
+  };
 }

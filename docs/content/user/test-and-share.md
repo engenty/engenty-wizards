@@ -51,10 +51,10 @@ One visitor can start 6 runs an hour.
 
 ### Channels
 
-A wizard runs page by page, as a chat, or as a live conversation on top of the chat (the
-person talks, the wizard talks back; needs an OpenAI API key under Models for now); a plugin can
-add further ways, a kiosk page or a messenger. Each channel in the list says how far it gets with
-this wizard:
+A wizard runs page by page, as a chat, as a live conversation on top of the chat, or as a video
+call on a stage with the chat beside it (the person talks, the wizard talks back and sees the
+camera; both need an OpenAI API key under Models for now); a plugin can add further ways, a
+kiosk page or a messenger. Each channel in the list says how far it gets with this wizard:
 
 | It says | Meaning |
 |---|---|

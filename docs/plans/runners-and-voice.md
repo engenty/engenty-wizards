@@ -9,7 +9,10 @@ transcribe route as the fallback), and live voice on the web as the built-in run
 runtime mints the realtime session on the tenant's OpenAI key (`POST /api/runs/:id/talk`), the
 browser talks to the model over WebRTC and runs its tool calls against the run's own routes
 (`apps/web/src/runner/live-voice.ts`); offered at `/w/<token>/talk` where switched on. Live video the same way: the camera is a toggle in the conversation, frames go to the model when the
-person speaks and on its `look`, `take_photo` fills a photo field. Not yet a
+person speaks and on its `look`, `take_photo` fills a photo field; and, after it turned out a
+camera toggle in a chat does not read as a video call, the call screen as its own built-in door
+`video` at `/w/<token>/video`: a stage with the camera and the engenty, captions from the
+model's transcripts, mute/camera/leave, the chat beside it as the screen. Not yet a
 model class of its own, not on credits, no per-minute booking. WhatsApp built the same day as
 the module `modules/whatsapp` (chat mode): Meta's Cloud API with the tenant's own number, the
 webhook on a public route, a keyword per wizard, one field per message with buttons, lists,

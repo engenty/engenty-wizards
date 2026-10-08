@@ -93,6 +93,8 @@ export function PublicApp() {
         <Route path="/w/:token/chat/:runId" element={<PublicRunner chat />} />
         <Route path="/w/:token/talk" element={<PublicRunner chat talk />} />
         <Route path="/w/:token/talk/:runId" element={<PublicRunner chat talk />} />
+        <Route path="/w/:token/video" element={<PublicRunner chat video />} />
+        <Route path="/w/:token/video/:runId" element={<PublicRunner chat video />} />
         <Route path="/w/:token/:runId" element={<PublicRunner />} />
         <Route path="/s/:token" element={<SharePage />} />
         <Route path="*" element={<ToStudio />} />

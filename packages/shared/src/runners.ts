@@ -99,7 +99,18 @@ export const BUILT_IN_RUNNERS: RunnerInfo[] = [
     capabilities: EVERYTHING,
     builtIn: true,
   },
+  // The call screen: the camera and the conversation on a stage, the chat as the screen beside it.
+  {
+    id: "video",
+    label: { de: "Videoanruf", en: "Video call" },
+    kind: "page",
+    capabilities: EVERYTHING,
+    builtIn: true,
+  },
 ];
+
+/** The built-in runners that hold a live conversation: offered only where a speech model is set up. */
+export const CONVERSATION_RUNNERS = ["talk", "video"];
 
 /** The runners every wizard offers until the owner says otherwise. */
 export const DEFAULT_ENABLED = ["steps", "chat"];

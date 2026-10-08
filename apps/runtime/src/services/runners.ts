@@ -3,6 +3,7 @@ import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/defin
 import type { PublicWizard } from "@engenty-wizards/shared/run";
 import {
   BUILT_IN_RUNNERS,
+  CONVERSATION_RUNNERS,
   DEFAULT_RUNNER,
   DEFAULT_RUNNER_SETTINGS,
   type RunnerFit,
@@ -45,7 +46,9 @@ export async function runnersOf(tenantId = currentTenant()): Promise<RunnerInfo[
     ),
   );
   return [
-    ...BUILT_IN_RUNNERS.map((r) => (r.id === "talk" ? { ...r, problem: talk } : r)),
+    ...BUILT_IN_RUNNERS.map((r) =>
+      CONVERSATION_RUNNERS.includes(r.id) ? { ...r, problem: talk } : r,
+    ),
     ...ofPlugins,
   ];
 }

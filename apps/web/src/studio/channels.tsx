@@ -8,6 +8,7 @@ import {
   PhoneCall,
   Puzzle,
   Rows3,
+  Video,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
@@ -36,6 +37,7 @@ const ICONS: Record<string, LucideIcon> = {
   whatsapp: MessageCircleMore,
   sms: MessageSquareText,
   call: PhoneCall,
+  video: Video,
 };
 
 export const runnerIcon = (id: string): LucideIcon => ICONS[id] ?? Puzzle;

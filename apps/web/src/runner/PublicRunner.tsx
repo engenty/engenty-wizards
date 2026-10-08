@@ -398,21 +398,25 @@ function ChatHeader({ wizard }: { wizard: PublicWizard }) {
 
 /** Before a run: the wizard says what it does, the person starts with a tap. */
 function ChatStart({
-  talk = false,
+  door,
   wizard,
   header,
   footer,
 }: {
-  talk?: boolean;
+  /** The address a run opens at: the chat, the conversation first, or the call screen. */
+  door: "chat" | "talk" | "video";
   wizard: PublicWizard;
   header: ReactNode;
   footer: ReactNode;
 }) {
   const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(
     wizard,
-    `/w/${wizard.token}/${talk ? "talk" : "chat"}`,
+    `/w/${wizard.token}/${door}`,
   );
   const lines: Line[] = [{ key: "hello", who: "bot", node: wizard.description || wizard.title }];
+  if (door === "video") {
+    lines.push({ key: "video", who: "bot", node: t("video.hint") });
+  }
   if (!wizard.available) {
     lines.push({
       key: "unavailable",
@@ -476,11 +480,14 @@ export function PublicRunner({
   chat: chatPath = false,
   steps: stepsPath = false,
   talk = false,
+  video = false,
 }: {
   chat?: boolean;
   steps?: boolean;
   /** The chat with a live conversation offered first: `/w/<token>/talk`. */
   talk?: boolean;
+  /** The call screen, the chat beside it: `/w/<token>/video`. */
+  video?: boolean;
 }) {
   const { token, runId } = useParams();
   const navigate = useNavigate();
@@ -492,14 +499,20 @@ export function PublicRunner({
   });
   const runners = wizard.data?.runners ?? [];
   const talkOn = !wizard.data || runners.some((r) => r.id === "talk");
-  const chatOn = !wizard.data || runners.some((r) => r.id === "chat") || (talk && talkOn);
+  const videoOn = !wizard.data || runners.some((r) => r.id === "video");
+  const chatOn =
+    !wizard.data || runners.some((r) => r.id === "chat") || (talk && talkOn) || (video && videoOn);
+  const first = runners[0]?.id;
   // A popout in a website is always a chat; the bare link opens the default runner.
   const chat =
     chatPath ||
     EMBED === "popout" ||
-    (!stepsPath && !runId && chatOn && (runners[0]?.id === "chat" || runners[0]?.id === "talk"));
+    (!stepsPath && !runId && chatOn && (first === "chat" || first === "talk" || first === "video"));
+  // The call screen at /video, and on the link when it is the default.
+  const calling = (video && videoOn) || (!stepsPath && !chatPath && !talk && first === "video");
   // The conversation is offered first at /talk, and on the link when it is the default.
-  const talking = (talk && talkOn) || (!stepsPath && !chatPath && runners[0]?.id === "talk");
+  const talking = !calling && ((talk && talkOn) || (!stepsPath && !chatPath && first === "talk"));
+  const door = calling ? "video" : talking ? "talk" : "chat";
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
@@ -530,6 +543,9 @@ export function PublicRunner({
   if (talk && wizard.data && !talkOn) {
     return <Navigate to={`/w/${token}`} replace />;
   }
+  if (video && wizard.data && !videoOn) {
+    return <Navigate to={`/w/${token}`} replace />;
+  }
   if (!wizard.data) {
     const offline = isOffline(wizard.error);
     return (
@@ -557,12 +573,14 @@ export function PublicRunner({
           <ChatBody
             runId={runId}
             talk={talking}
-            onRestart={() => navigate(`/w/${token}/${talking ? "talk" : "chat"}`)}
-            header={header}
+            call={calling}
+            onRestart={() => navigate(`/w/${token}/${door}`)}
+            // The call's stage names the wizard itself.
+            header={calling ? undefined : header}
             footer={footer}
           />
         ) : (
-          <ChatStart wizard={wizard.data} header={header} footer={footer} talk={talking} />
+          <ChatStart wizard={wizard.data} header={header} footer={footer} door={door} />
         )}
       </div>
     );
