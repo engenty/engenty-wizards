@@ -37,6 +37,10 @@ export function stepClasses(step: Step): ModelClass[] {
 function ownClasses(step: Step): ModelClass[] {
   switch (step.type) {
     case "agent": {
+      // A call runs one tool and no model.
+      if (step.call) {
+        return [];
+      }
       if (isDecisionStep(step)) {
         return ["classifier"];
       }

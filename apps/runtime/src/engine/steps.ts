@@ -34,7 +34,7 @@ import { type AiOrigin, markMedia } from "../media/marking.js";
 import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
 import { knowledgeBlock } from "../services/knowledge.js";
 import { buildStepTools } from "../tools/index.js";
-import { spaceContextOf } from "../tools/plugin.js";
+import { callPluginTool, spaceContextOf } from "../tools/plugin.js";
 import { personUploads, type UploadRef } from "../tools/store.js";
 import { runWidgetStep } from "../widgets/step.js";
 import { decide } from "./decide.js";
@@ -419,7 +419,58 @@ async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutp
   };
 }
 
+/**
+ * A call's input as the step's answers fill it: string values are templates; a filled-in whole
+ * number or true/false becomes one, an empty value is left out.
+ */
+function callInput(value: unknown, ctx: StepContext): unknown {
+  if (typeof value === "string") {
+    const text = renderTemplate(value, ctx.scope).trim();
+    if (!text) {
+      return undefined;
+    }
+    if (/^-?\d+(\.\d+)?$/.test(text)) {
+      return Number(text);
+    }
+    return text === "true" ? true : text === "false" ? false : text;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => callInput(v, ctx)).filter((v) => v !== undefined);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([k, v]) => [k, callInput(v, ctx)] as const)
+        .filter(([, v]) => v !== undefined),
+    );
+  }
+  return value;
+}
+
+/** A step's `call`: one plugin tool, no model; its answer is the step's json output as it is. */
+async function runCallStep(
+  step: AgentStep & { call: NonNullable<AgentStep["call"]> },
+  ctx: StepContext,
+): Promise<StepOutput> {
+  // What it is doing is the step's `working` line, shown as it starts, and what the tool says.
+  const answer = await callPluginTool(step.call.tool, callInput(step.call.input, ctx), ctx);
+  if (
+    answer &&
+    typeof answer === "object" &&
+    "error" in answer &&
+    Object.keys(answer).length === 1
+  ) {
+    throw new StepError(String((answer as { error: unknown }).error));
+  }
+  const json =
+    answer && typeof answer === "object" && !Array.isArray(answer) ? answer : { result: answer };
+  return { json, at: new Date().toISOString() };
+}
+
 export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
+  if (step.call) {
+    return runCallStep({ ...step, call: step.call }, ctx);
+  }
   if (step.each) {
     return runAgentEach(step, ctx);
   }

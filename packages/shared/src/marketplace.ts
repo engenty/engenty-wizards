@@ -149,6 +149,10 @@ export function capabilitiesOf(def: WizardDefinition): Capability[] {
         }
       }
     } else if (step.type === "agent") {
+      // A call runs no model: it needs nothing but its plugin.
+      if (step.call) {
+        continue;
+      }
       found.add("text");
       for (const tool of step.tools) {
         if (tool === "web_search" || tool === "web_fetch") {
@@ -191,7 +195,7 @@ export function pluginsOf(def: WizardDefinition): string[] {
   const found = new Set<string>();
   for (const step of def.steps) {
     if (step.type === "agent") {
-      for (const tool of step.tools) {
+      for (const tool of step.call ? [...step.tools, step.call.tool] : step.tools) {
         const of = pluginToolOf(tool);
         if (of) {
           found.add(of.plugin);
@@ -232,6 +236,8 @@ export function effortOf(def: WizardDefinition): Effort {
     } else if (step.type === "review") {
       reviews += 1;
       seconds += 30;
+    } else if (step.type === "agent" && step.call) {
+      seconds += 1;
     } else if (step.type === "agent") {
       seconds += step.tools.includes("browser")
         ? WORK_SECONDS.browser

@@ -83,6 +83,35 @@ A step lists the tool beside the built-in ones:
 - A run fails at the step that names one. A wizard that uses a plugin's tool runs only where
   that plugin is installed: think of that before you publish a wizard to the cloud or export it.
 
+### Called without a model
+
+Where a step only fetches data and hands it on unchanged, it calls the tool itself: no model
+picks the tool, and none copies its answer.
+
+```json
+{
+  "id": "free",
+  "type": "agent",
+  "title": "Freie Termine",
+  "call": {
+    "tool": "appointments.availability",
+    "input": { "duration_minutes": "{{steps.assess.dauer}}", "days": 21 }
+  },
+  "output": {
+    "format": "json",
+    "fields": [{ "id": "slots", "kind": "table", "columns": ["start", "end", "label"] }]
+  }
+}
+```
+
+- The tool's answer is the step's json output, as it is. `output.fields` name the keys later
+  steps read, so the editor and the checks know them.
+- String inputs are templates. A filled-in whole number or `true`/`false` is passed as one; an
+  empty one is left out. The input is checked against the tool's schema.
+- What the tool throws is the step's error.
+- It costs no credits and answers as fast as the tool: the free times of a calendar in under a
+  second instead of half a minute.
+
 ## While a step runs
 
 A step that is running keeps the tools it started with. A plugin that loads again changes the

@@ -332,19 +332,31 @@ export const pageStepSchema = z.object({
   cta: z.string().optional(),
 });
 
+/** A plugin's tool as a step names it: `<plugin>.<tool>`. */
+const pluginToolIdSchema = z.templateLiteral([
+  z.string().regex(PLUGIN_ID),
+  ".",
+  z.string().regex(PLUGIN_TOOL_NAME),
+]);
+
 export const agentStepSchema = z.object({
   ...stepBase,
   type: z.literal("agent"),
-  /** What the agent does. A template: {{field}}, {{steps.id}}, {{brand.name}}. */
-  instructions: z.string().min(1),
-  tools: z
-    .array(
-      z.union([
-        z.enum(TOOL_IDS),
-        z.templateLiteral([z.string().regex(PLUGIN_ID), ".", z.string().regex(PLUGIN_TOOL_NAME)]),
-      ]),
-    )
-    .default([]),
+  /** What the agent does. A template: {{field}}, {{steps.id}}, {{brand.name}}. Empty with `call`. */
+  instructions: z.string().default(""),
+  /**
+   * One tool of a plugin, called once with these inputs and no model: its answer is the step's
+   * json output, as it is. For data a later page shows unchanged (free appointment times), where
+   * a model would only copy it. String inputs are templates; a filled-in whole number or
+   * true/false is passed as one, an empty one is left out.
+   */
+  call: z
+    .object({
+      tool: pluginToolIdSchema,
+      input: z.record(z.string(), z.unknown()).default({}),
+    })
+    .optional(),
+  tools: z.array(z.union([z.enum(TOOL_IDS), pluginToolIdSchema])).default([]),
   /** Ids of project MCP servers this step may use. */
   mcp: z.array(z.string()).optional(),
   /** Ids of wizard connections (the person's accounts) this step may use. */
@@ -571,6 +583,7 @@ export type AgentStep = z.infer<typeof agentStepSchema>;
 export function isDecisionStep(step: AgentStep): boolean {
   const fields = step.output.fields ?? [];
   return (
+    !step.call &&
     step.model === "classifier" &&
     step.output.format === "json" &&
     fields.length > 0 &&
@@ -1049,6 +1062,20 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       }
       case "agent":
         checkTemplate(step, step.instructions);
+        if (step.call) {
+          checkTemplate(step, JSON.stringify(step.call.input));
+          if (step.each) {
+            issues.push({ stepId: step.id, message: 'A step with "call" runs once: no "each".' });
+          }
+          if (step.output.format !== "json") {
+            issues.push({
+              stepId: step.id,
+              message: 'A step with "call" keeps the tool\'s answer: output format "json".',
+            });
+          }
+        } else if (!step.instructions.trim()) {
+          issues.push({ stepId: step.id, message: "An AI step needs instructions." });
+        }
         for (const c of step.connections ?? []) {
           if (!connectionIds.has(c)) {
             issues.push({ stepId: step.id, message: `Step uses unknown connection "${c}".` });

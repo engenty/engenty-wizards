@@ -52,6 +52,10 @@ function formula(step: Step, catalog: GatewayCatalog): number {
 function stepFormula(step: Step, catalog: GatewayCatalog): number {
   const cls = (c: TextClass) => catalog.classes[c];
   if (step.type === "agent") {
+    // A call runs one tool and no model: nothing to pay for.
+    if (step.call) {
+      return 0;
+    }
     // A decision is one small call to the classifier class.
     if (isDecisionStep(step)) {
       return textCredits(cls("classifier"), TOKENS.decision);

@@ -115,12 +115,18 @@ type Field = {
 //              {{field}} → asset://ID, used as <img src="asset://ID">.
 //   slot:      the person picks one appointment time, shown by day. Options are ISO 8601 date-times with their offset
 //              ("2026-10-12T09:00:00+02:00"), nearly always from optionsFrom; {{field}} is the chosen one, as offered.
-//              Booking: agent step "free" with tools ["appointments.availability"] outputs a table "slots" with a "start" column;
+//              Booking: agent step "free" with call { tool: "appointments.availability", input: { duration_minutes: 30, days: 14 } }
+//              and output { format: "json", fields: [{ id: "slots", kind: "table", columns: ["start","end","label"] }] };
 //              then a page { kind: "slot", optionsFrom: "steps.free.slots.start" }; then an agent step with appointments.book.
 
 type AgentStep = {
   type: "agent"
-  instructions: string          // the task, with {{templates}}
+  instructions: string          // the task, with {{templates}} ("" with call)
+  call?: { tool: "<plugin>.<tool>", input: { … } }
+                                // NO MODEL: one plugin tool called once with this input; its answer IS the json output
+                                //   (fields name the keys later steps read). Use it where a model would only fetch and copy
+                                //   data (free appointment times) — it answers in a second instead of half a minute.
+                                //   String inputs are templates; a filled-in whole number or true/false is passed as one.
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)

@@ -10,29 +10,65 @@ export function pluginToolName(plugin: string, tool: string): string {
   return `${plugin.replaceAll("-", "_")}_${tool}`;
 }
 
+/** What a plugin's tool learns of the step that calls it. */
+function toolContext(ctx: StepContext) {
+  const space = { id: ctx.project.id, name: ctx.project.name };
+  return {
+    runId: ctx.runId,
+    stepId: ctx.stepId,
+    tenantId: ctx.tenantId,
+    space,
+    project: space,
+    wizard: { id: ctx.store.wizardId, title: ctx.def.title },
+    mode: ctx.test ? ("test" as const) : ("live" as const),
+    signal: ctx.signal,
+    emit: (message: string) => ctx.emit("tool", message),
+  };
+}
+
 /** A plugin's tool as an agent step calls it. */
 function stepTool(plugin: string, tool: PluginTool, ctx: StepContext) {
-  const id = pluginToolName(plugin, tool.name);
-  const space = { id: ctx.project.id, name: ctx.project.name };
   return createTool({
-    id,
+    id: pluginToolName(plugin, tool.name),
     description: tool.description,
     inputSchema: tool.inputSchema,
-    execute: (input) =>
-      attempt(async () =>
-        tool.execute(input, {
-          runId: ctx.runId,
-          stepId: ctx.stepId,
-          tenantId: ctx.tenantId,
-          space,
-          project: space,
-          wizard: { id: ctx.store.wizardId, title: ctx.def.title },
-          mode: ctx.test ? "test" : "live",
-          signal: ctx.signal,
-          emit: (message) => ctx.emit("tool", message),
-        }),
-      ),
+    execute: (input) => attempt(async () => tool.execute(input, toolContext(ctx))),
   });
+}
+
+/** A plugin's tool by its `<plugin>.<tool>` id, as this tenant has it; a StepError where it does not. */
+async function toolOf(id: string, ctx: StepContext): Promise<{ plugin: string; tool: PluginTool }> {
+  const named = pluginToolOf(id);
+  const has = named ? await pluginIdsOf(ctx.tenantId) : new Set<string>();
+  const found =
+    named && has.has(named.plugin) ? loadedPlugin(named.plugin)?.tools.get(named.tool) : undefined;
+  if (!(named && found)) {
+    const plugin = named?.plugin ?? id;
+    throw new StepError(
+      `Dieser Schritt braucht das Werkzeug „${id}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
+    );
+  }
+  return { plugin: named.plugin, tool: found };
+}
+
+/**
+ * Calls one plugin tool with its input as it is, no model between: a step's `call`. The input
+ * is checked against the tool's schema; what the tool throws is the step's error.
+ */
+export async function callPluginTool(id: string, input: unknown, ctx: StepContext) {
+  const { tool } = await toolOf(id, ctx);
+  const parsed = tool.inputSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new StepError(
+      `„${id}“ bekam ungültige Angaben: ${issue?.path.join(".") || "input"} – ${issue?.message}`,
+    );
+  }
+  try {
+    return await tool.execute(parsed.data, toolContext(ctx));
+  } catch (err) {
+    throw new StepError(String((err as Error)?.message ?? err).slice(0, 400));
+  }
 }
 
 /**
@@ -40,20 +76,10 @@ function stepTool(plugin: string, tool: PluginTool, ctx: StepContext) {
  * tenant does not have fails: the wizard was written for a runtime with that plugin.
  */
 export async function pluginTools(step: AgentStep, ctx: StepContext): Promise<Record<string, any>> {
-  const wanted = step.tools.map(pluginToolOf).filter((named) => named !== null);
-  if (!wanted.length) {
-    return {};
-  }
   const tools: Record<string, any> = {};
-  const has = await pluginIdsOf(ctx.tenantId);
-  for (const { plugin, tool } of wanted) {
-    const found = has.has(plugin) ? loadedPlugin(plugin)?.tools.get(tool) : undefined;
-    if (!found) {
-      throw new StepError(
-        `Dieser Schritt braucht das Werkzeug „${plugin}.${tool}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
-      );
-    }
-    tools[pluginToolName(plugin, tool)] = stepTool(plugin, found, ctx);
+  for (const id of step.tools.filter((t) => pluginToolOf(t) !== null)) {
+    const { plugin, tool } = await toolOf(id, ctx);
+    tools[pluginToolName(plugin, tool.name)] = stepTool(plugin, tool, ctx);
   }
   return tools;
 }
