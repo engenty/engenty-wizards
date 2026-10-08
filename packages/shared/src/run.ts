@@ -264,6 +264,8 @@ export interface RunView {
   wizard: Pick<WizardDefinition, "title" | "description" | "avatar" | "intro">;
   /** The language the wizard speaks: what is read aloud, and in which voice. */
   lang: "de" | "en";
+  /** A live conversation can be started on this run: the runtime has a model for it. */
+  talk: boolean;
   /** The step the person is on (interactive) or the one running. */
   step: Step | null;
   /** Pages and reviews answered before it, oldest first: what a chat shows above the current step. */

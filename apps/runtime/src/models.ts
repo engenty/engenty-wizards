@@ -919,6 +919,28 @@ async function gatewayRefuses(key: string, id: string, cls: ModelClass): Promise
   return refused;
 }
 
+/** The realtime speech model a live conversation runs on; a setting of the install may name another. */
+const CONVERSATION_MODEL = env.conversationModel || "gpt-realtime";
+
+/**
+ * What a live conversation with a wizard runs on: the tenant's own OpenAI key, until a class of
+ * its own exists on the Models page and on the account's credits.
+ */
+export async function conversationAccess(): Promise<{ apiKey: string; model: string }> {
+  const cfg = await config();
+  if (!cfg.keys.openai) {
+    throw new ModelUnavailableError(
+      "Für Sprachgespräche ist kein OpenAI API Key hinterlegt (Einstellungen → Modelle).",
+    );
+  }
+  return { apiKey: cfg.keys.openai, model: CONVERSATION_MODEL };
+}
+
+/** Whether a live conversation can be started here. */
+export async function conversationAvailable(): Promise<boolean> {
+  return Boolean((await config()).keys.openai);
+}
+
 /** Why the own AI Gateway key cannot reach what a class runs on, or null. */
 async function gatewayProblem(cls: ModelClass, ref: string): Promise<string | null> {
   const { provider, id } = parse(ref);

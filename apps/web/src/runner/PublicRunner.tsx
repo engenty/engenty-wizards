@@ -11,7 +11,16 @@ import { closeEmbed, EMBED, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, cn, IconButton, Spinner } from "../ui";
-import { ChatBody, ChatShell, Idle, type Line, Reply, replies, Thread } from "./ChatView";
+import {
+  ChatBody,
+  ChatShell,
+  Idle,
+  type Line,
+  Reply,
+  replies,
+  Thread,
+  useVoiceState,
+} from "./ChatView";
 import { RunnerBody } from "./RunnerView";
 
 /** The wizard owner's accent recolours the whole palette: every Ember token derives from --raw-primary. */
@@ -354,10 +363,13 @@ function OtherRunners({ wizard, current }: { wizard: PublicWizard; current: stri
 
 /** The chat's top: the wizard that talks, and in a popout the way to fold it away. */
 function ChatHeader({ wizard }: { wizard: PublicWizard }) {
+  const voice = useVoiceState();
   return (
     <header className="safe-top shrink-0 border-border-soft border-b">
       <div className="mx-auto flex h-16 w-full max-w-[760px] items-center gap-3 pr-2 pl-4 sm:pr-4 sm:pl-6">
-        <Mascot kind={wizard.avatar} size={38} />
+        <span className={cn(voice?.speaking && "animate-breathe")}>
+          <Mascot kind={wizard.avatar} size={38} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="truncate font-display font-semibold text-[1rem] leading-tight tracking-tight">
             {wizard.title}
@@ -386,17 +398,19 @@ function ChatHeader({ wizard }: { wizard: PublicWizard }) {
 
 /** Before a run: the wizard says what it does, the person starts with a tap. */
 function ChatStart({
+  talk = false,
   wizard,
   header,
   footer,
 }: {
+  talk?: boolean;
   wizard: PublicWizard;
   header: ReactNode;
   footer: ReactNode;
 }) {
   const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(
     wizard,
-    `/w/${wizard.token}/chat`,
+    `/w/${wizard.token}/${talk ? "talk" : "chat"}`,
   );
   const lines: Line[] = [{ key: "hello", who: "bot", node: wizard.description || wizard.title }];
   if (!wizard.available) {
@@ -461,9 +475,12 @@ function MadeWith({ className }: { className?: string }) {
 export function PublicRunner({
   chat: chatPath = false,
   steps: stepsPath = false,
+  talk = false,
 }: {
   chat?: boolean;
   steps?: boolean;
+  /** The chat with a live conversation offered first: `/w/<token>/talk`. */
+  talk?: boolean;
 }) {
   const { token, runId } = useParams();
   const navigate = useNavigate();
@@ -474,10 +491,15 @@ export function PublicRunner({
     retry: (count, err) => isOffline(err) && count < 3,
   });
   const runners = wizard.data?.runners ?? [];
-  const chatOn = !wizard.data || runners.some((r) => r.id === "chat");
+  const talkOn = !wizard.data || runners.some((r) => r.id === "talk");
+  const chatOn = !wizard.data || runners.some((r) => r.id === "chat") || (talk && talkOn);
   // A popout in a website is always a chat; the bare link opens the default runner.
   const chat =
-    chatPath || EMBED === "popout" || (!stepsPath && !runId && chatOn && runners[0]?.id === "chat");
+    chatPath ||
+    EMBED === "popout" ||
+    (!stepsPath && !runId && chatOn && (runners[0]?.id === "chat" || runners[0]?.id === "talk"));
+  // The conversation is offered first at /talk, and on the link when it is the default.
+  const talking = (talk && talkOn) || (!stepsPath && !chatPath && runners[0]?.id === "talk");
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
@@ -503,6 +525,9 @@ export function PublicRunner({
   }
   // The chat's address for a wizard that does not offer the chat: the link itself answers.
   if (chatPath && wizard.data && !chatOn) {
+    return <Navigate to={`/w/${token}`} replace />;
+  }
+  if (talk && wizard.data && !talkOn) {
     return <Navigate to={`/w/${token}`} replace />;
   }
   if (!wizard.data) {
@@ -531,12 +556,13 @@ export function PublicRunner({
         {runId ? (
           <ChatBody
             runId={runId}
-            onRestart={() => navigate(`/w/${token}/chat`)}
+            talk={talking}
+            onRestart={() => navigate(`/w/${token}/${talking ? "talk" : "chat"}`)}
             header={header}
             footer={footer}
           />
         ) : (
-          <ChatStart wizard={wizard.data} header={header} footer={footer} />
+          <ChatStart wizard={wizard.data} header={header} footer={footer} talk={talking} />
         )}
       </div>
     );

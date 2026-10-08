@@ -5,7 +5,11 @@ Status: phase 1 is on the branch; phase 2 built on 2026-10-08 (branch
 runner registry with capabilities and `runnersFor`, the share dialog's Channels list, sub-paths
 with the redirect, `wizards.server.runs` and `registerRunner` with page runners served at
 `/w/<token>/<runner>`, the run's `runner` column, tests, the plugin docs' Runners page. Dictate and read aloud on the chat built the same day (browser voices and recognition, a run-scoped
-transcribe route as the fallback). Not yet:
+transcribe route as the fallback), and live voice on the web as the built-in runner `talk`: the
+runtime mints the realtime session on the tenant's OpenAI key (`POST /api/runs/:id/talk`), the
+browser talks to the model over WebRTC and runs its tool calls against the run's own routes
+(`apps/web/src/runner/live-voice.ts`); offered at `/w/<token>/talk` where switched on. Not yet a
+model class of its own, not on credits, no per-minute booking. Not yet:
 the editor's one-line notice, `registerShareSection`, `registerChannelAddress`,
 `wizard.published`, the marketplace badges. Written on 2026-10-08, checked against v0.2.26. The
 concept behind it (the six channel patterns, the three people's view) is `wizard-channels.md`;

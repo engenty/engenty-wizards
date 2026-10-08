@@ -11,6 +11,7 @@ import {
   runnerFit,
 } from "@engenty-wizards/shared/runners";
 import { env } from "../env.js";
+import { conversationAccess, conversationAvailable } from "../models.js";
 import { pluginsOf, type RegisteredRunner } from "../plugins/registry.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
@@ -25,8 +26,13 @@ import { shareUrl, type WizardRow } from "./wizards.js";
 /** The runners this tenant has, built-ins first. */
 export async function runnersOf(tenantId = currentTenant()): Promise<RunnerInfo[]> {
   const plugins = await pluginsOf(tenantId);
+  const talk = (await conversationAvailable())
+    ? null
+    : await conversationAccess()
+        .then(() => null)
+        .catch((err: Error) => err.message);
   return [
-    ...BUILT_IN_RUNNERS,
+    ...BUILT_IN_RUNNERS.map((r) => (r.id === "talk" ? { ...r, problem: talk } : r)),
     ...plugins.flatMap((p) => [...p.runners.values()].map((r) => r.info)),
   ];
 }
@@ -149,7 +155,7 @@ export async function publicRunners(
   const lang = wizardLang(def);
   return settings.enabled
     .map((id) => available.find((r) => r.id === id))
-    .filter((r): r is RunnerInfo => Boolean(r))
+    .filter((r): r is RunnerInfo => Boolean(r) && !r?.problem)
     .sort((a, b) => Number(b.id === settings.default) - Number(a.id === settings.default))
     .map((r) => ({
       id: r.id,

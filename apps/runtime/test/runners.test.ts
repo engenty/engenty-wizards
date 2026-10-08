@@ -192,6 +192,16 @@ describe("how a wizard is offered", () => {
     expect(seen.runners.map((r) => [r.id, r.fit.outcome])).toEqual([
       ["steps", "full"],
       ["chat", "full"],
+      ["talk", "full"],
     ]);
+    // A live conversation needs a model the test runtime has no key for: offered to nobody yet.
+    expect(seen.runners[2].problem).toMatch(/OpenAI/);
+    await client.withTenant("tenant-a", () =>
+      wizards.updateWizardSettings("user-a", wizardId, {
+        runners: { default: "steps", enabled: ["steps", "talk"] },
+      }),
+    );
+    const offered = await (await get(`/api/public/wizards/${token}`)).json();
+    expect(offered.runners.map((r: { id: string }) => r.id)).toEqual(["steps"]);
   });
 });

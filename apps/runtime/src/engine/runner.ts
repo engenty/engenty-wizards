@@ -44,6 +44,7 @@ import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
 import {
+  conversationAvailable,
   freeTierRefusal,
   freeTierText,
   ModelUnavailableError,
@@ -963,6 +964,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       intro: def.intro,
     },
     lang: wizardLang(def),
+    talk: await conversationAvailable(),
     step,
     answered: run.state.history.map((id) => stepOf(def, id)).filter((s): s is Step => Boolean(s)),
     values: run.state.values,

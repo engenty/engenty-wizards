@@ -440,6 +440,7 @@ interface RunnersAnswer {
     id: string;
     label: { de: string; en: string };
     kind: "page" | "channel";
+    problem?: string | null;
     fit: { outcome: "full" | "handoff" | "no"; steps: { title: string; why: string }[] };
   }[];
   settings: { default: string; enabled: string[] };
@@ -480,8 +481,9 @@ function Channels({ wizard }: { wizard: WizardDetail }) {
           const on = settings.enabled.includes(r.id);
           const isDefault = settings.default === r.id;
           const steps = r.fit.steps.map((s) => s.title).join(", ");
-          const fit =
-            r.fit.outcome === "full"
+          const fit = r.problem
+            ? t("share.notSetUp", { problem: r.problem })
+            : r.fit.outcome === "full"
               ? t("share.fit.full")
               : t(r.fit.outcome === "handoff" ? "share.fit.handoff" : "share.fit.no", { steps });
           return (
@@ -493,7 +495,7 @@ function Channels({ wizard }: { wizard: WizardDetail }) {
                     <span className="rounded-full bg-paper-2 px-2 py-px text-[0.6875rem] text-ink-3">
                       {t("share.default")}
                     </span>
-                  ) : on && r.kind === "page" && r.fit.outcome !== "no" && !locked ? (
+                  ) : on && r.kind === "page" && r.fit.outcome !== "no" && !r.problem && !locked ? (
                     <button
                       type="button"
                       className="text-[0.75rem] text-ink-4 hover:text-ink"
@@ -509,7 +511,7 @@ function Channels({ wizard }: { wizard: WizardDetail }) {
               </div>
               <Switch
                 checked={on}
-                disabled={locked || isDefault || r.fit.outcome === "no"}
+                disabled={locked || isDefault || r.fit.outcome === "no" || Boolean(r.problem)}
                 onChange={(v) =>
                   patch.mutate({
                     default: settings.default,

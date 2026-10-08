@@ -164,6 +164,8 @@ export const env = {
 
   aiGatewayKey: str("AI_GATEWAY_API_KEY"),
   openaiKey: str("OPENAI_API_KEY"),
+  /** The realtime speech model of live conversations; empty: the runtime's default. */
+  conversationModel: str("CONVERSATION_MODEL"),
   anthropicKey: str("ANTHROPIC_API_KEY"),
   googleKey: str("GOOGLE_GENERATIVE_AI_API_KEY"),
   falKey: str("FAL_KEY"),

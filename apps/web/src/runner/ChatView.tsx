@@ -15,6 +15,8 @@ import {
   Mic,
   Paperclip,
   Pencil,
+  Phone,
+  PhoneOff,
   RotateCcw,
   Sparkles,
   Square,
@@ -43,6 +45,7 @@ import { cn, IconButton, LinkedText, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
 import { isTouch, useWakeLock } from "./device";
 import { FieldInput, textHints, type Values } from "./fields";
+import { type PageBinding, useLiveVoice } from "./live-voice";
 import { DownloadButtons, OutputView } from "./outputs";
 import { initialValues, useDoneSignal } from "./RunnerView";
 import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
@@ -97,7 +100,19 @@ const SpeechContext = createContext<{
   lang: "de" | "en";
   readAloud: boolean;
   setReadAloud: (on: boolean) => void;
+  /** The live conversation on the run, where the runtime has a model for it. */
+  voice: ReturnType<typeof useLiveVoice> | null;
+  /** The conversation was asked for first: its button leads. */
+  talk: boolean;
+  /** The page the run is on lends the conversation its draft. */
+  bindPage: (binding: PageBinding | null) => void;
 } | null>(null);
+
+/** The conversation's state, for a header that shows the wizard speaking. */
+export function useVoiceState() {
+  const speech = useContext(SpeechContext);
+  return speech?.voice ?? null;
+}
 
 /** What the person types into, under the thread: the composer. */
 export function Dock({ children }: { children: ReactNode }) {
@@ -401,9 +416,39 @@ function Composer({
     : dictation.processing
       ? t("chat.transcribing")
       : placeholder;
+  const voice = speech?.voice ?? null;
   const tools =
-    speech && (canSpeak || canDictate) ? (
+    speech && (canSpeak || canDictate || voice) ? (
       <div className="mb-1 flex shrink-0 items-center">
+        {voice ? (
+          <IconButton
+            label={t(
+              voice.state === "live"
+                ? "talk.stop"
+                : voice.state === "connecting"
+                  ? "talk.connecting"
+                  : "talk.start",
+            )}
+            aria-pressed={voice.state === "live"}
+            disabled={voice.state === "connecting"}
+            onClick={() => (voice.state === "live" ? voice.stop() : void voice.start())}
+            className={cn(
+              "size-9",
+              voice.state === "live" && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
+              voice.state === "off" &&
+                speech.talk &&
+                "bg-primary text-primary-foreground hover:bg-primary",
+            )}
+          >
+            {voice.state === "connecting" ? (
+              <Spinner className="size-4" />
+            ) : voice.state === "live" ? (
+              <PhoneOff className="size-4" />
+            ) : (
+              <Phone className="size-4" />
+            )}
+          </IconButton>
+        ) : null}
         {canSpeak ? (
           <IconButton
             label={t(speech.readAloud ? "chat.readAloudOff" : "chat.readAloud")}
@@ -495,6 +540,18 @@ function Composer({
         <p className="mt-1.5 px-3 text-[0.75rem] text-rose">
           {dictation.error === "denied" ? t("chat.micDenied") : dictation.error}
         </p>
+      ) : voice?.error ? (
+        <p className="mt-1.5 px-3 text-[0.75rem] text-rose">{voice.error}</p>
+      ) : voice?.state === "live" ? (
+        <p className="mt-1.5 px-3 text-[0.75rem] text-ink-3">
+          {voice.speaking
+            ? t("talk.speaking")
+            : voice.listening
+              ? t("talk.listening")
+              : t("talk.live")}
+        </p>
+      ) : speech?.talk && voice?.state === "off" ? (
+        <p className="mt-1.5 px-3 text-[0.75rem] text-ink-3">{t("talk.hint")}</p>
       ) : null}
     </form>
   );
@@ -802,6 +859,40 @@ function PageTurn({
   const send = (all: Values) => {
     void run.submitPage(step.id, all).then(setSent);
   };
+  // The live conversation sets fields and sends the page through the same draft.
+  const speech = useContext(SpeechContext);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const bindPage = speech?.bindPage;
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  useEffect(() => {
+    if (!bindPage) {
+      return;
+    }
+    const current = shownFields(fields, known, values);
+    bindPage({
+      step,
+      fields: current,
+      values,
+      setField: (id, value) => {
+        const target = current.find((f) => f.id === id);
+        if (!target) {
+          return "no such field on this page";
+        }
+        const error = problem(target, value);
+        if (error) {
+          return error;
+        }
+        setValues((prev) => ({ ...prev, [id]: value }));
+        setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
+        setErrors({});
+        return null;
+      },
+      submit: () => sendRef.current(valuesRef.current),
+    });
+    return () => bindPage(null);
+  }, [bindPage, step, fields, known, values]);
   const answer = (value: unknown) => {
     if (!field) {
       return false;
@@ -1322,22 +1413,35 @@ export function ChatBody({
   onView,
   header,
   footer,
+  talk = false,
 }: {
   runId: string;
   onRestart?: () => void;
   onView?: (view: RunView | null) => void;
   header?: ReactNode;
   footer?: ReactNode;
+  /** The live conversation leads: its button is the first thing offered. */
+  talk?: boolean;
 }) {
   const run = useRun(runId);
   const { view } = run;
+  const [page, bindPage] = useState<PageBinding | null>(null);
+  const voice = useLiveVoice(runId, view, run, page);
   useEffect(() => {
     onView?.(view);
   }, [view, onView]);
   const [readAloud, setReadAloud] = useReadAloud();
   const speech = useMemo(
-    () => ({ runId, lang: view?.lang ?? lang, readAloud, setReadAloud }),
-    [runId, view?.lang, readAloud, setReadAloud],
+    () => ({
+      runId,
+      lang: view?.lang ?? lang,
+      readAloud,
+      setReadAloud,
+      voice: view?.talk ? voice : null,
+      talk,
+      bindPage,
+    }),
+    [runId, view?.lang, view?.talk, readAloud, setReadAloud, voice, talk],
   );
   useWakeLock(view?.status === "running" && !view.ask);
   useDoneSignal(view);

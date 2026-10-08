@@ -41,6 +41,7 @@ import { basePath, env } from "../env.js";
 import { loadAsset, saveAsset } from "../files/storage.js";
 import { reverseGeocode } from "../geocode.js";
 import { allowed, hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
+import { mintConversation } from "../media/conversation.js";
 import { transcribeAudio } from "../media/transcribe.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { listDownload, renderDownload, stepHtml } from "../render/downloads.js";
@@ -533,6 +534,29 @@ export const runRoutes = new Hono()
     }
     await cancel(run.id);
     return c.json({ ok: true });
+  })
+  // A live conversation on the run: the secret the browser opens the session with.
+  .post("/:id/talk", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
+      return c.json({ error: "Der Durchlauf ist beendet." }, 409);
+    }
+    if (!allowed(`talk:${run.id}`, 20, 3600_000)) {
+      return c.json({ error: "Bitte später noch einmal." }, 429);
+    }
+    try {
+      const view = await viewOf(run);
+      return c.json(await mintConversation(view));
+    } catch (err) {
+      if (err instanceof ModelUnavailableError) {
+        return c.json({ error: err.message }, 403);
+      }
+      console.error("[talk]", err);
+      return c.json({ error: (err as Error).message }, 502);
+    }
   })
   // What the person says into the chat's composer, written down — where the browser cannot do it itself.
   .post("/:id/transcribe", async (c) => {

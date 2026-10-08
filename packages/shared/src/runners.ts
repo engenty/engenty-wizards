@@ -57,6 +57,8 @@ export interface RunnerInfo {
   builtIn?: boolean;
   /** The plugin that registered it. */
   plugin?: string;
+  /** Why the runner cannot be used here right now (a model not set up); null when it can. */
+  problem?: string | null;
 }
 
 export const RUNNER_ID = /^[a-z][a-z0-9-]{0,23}$/;
@@ -89,7 +91,18 @@ export const BUILT_IN_RUNNERS: RunnerInfo[] = [
     capabilities: EVERYTHING,
     builtIn: true,
   },
+  // The chat with a live conversation on top: the screen beside it takes what a voice cannot.
+  {
+    id: "talk",
+    label: { de: "Sprachgespräch", en: "Live voice" },
+    kind: "page",
+    capabilities: EVERYTHING,
+    builtIn: true,
+  },
 ];
+
+/** The runners every wizard offers until the owner says otherwise. */
+export const DEFAULT_ENABLED = ["steps", "chat"];
 
 export const DEFAULT_RUNNER = "steps";
 
@@ -101,7 +114,7 @@ export interface RunnerSettings {
 
 export const DEFAULT_RUNNER_SETTINGS: RunnerSettings = {
   default: DEFAULT_RUNNER,
-  enabled: BUILT_IN_RUNNERS.map((r) => r.id),
+  enabled: DEFAULT_ENABLED,
 };
 
 /** A step a runner cannot take itself, and why. */
