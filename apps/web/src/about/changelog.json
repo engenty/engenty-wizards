@@ -1,7 +1,83 @@
 [
   {
+    "version": "v0.2.26",
+    "timestamp": 1791464985,
+    "commits": [
+      {
+        "id": "0b3552e",
+        "message": "the wizard editor has a Memory tab – the wizard's part of the space data, the notes its AI steps keep with the pages tool and the tables of its shared lists, a short list that opens each in the space's own editor, with a new note at hand; a test run reads the memory but writes into a copy of its own in the run, which goes with it; files dropped on the Files tab are uploaded and files dropped on the conversation are attached to the next message, each with a drop sign over the pane; the Files and Memory explanations sit small at the foot of their pane; holding to delete takes 1.2 seconds; costs say credits instead of cr",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "0073896",
+        "message": "a view step shows a preview of itself with sample data in the shape of what it reads (a kept list's rows by its columns, an AI step's table and fields by their kind), and a small button in its corner turns it into its JSON with highlighting, edited in place and kept when it is valid; deleting a step takes holding its button for two seconds while it fills up, a short press says to hold; the step panel's resize grip sits outside the panel beside its edge, clear of its scrollbar",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "dab5525",
+        "message": "a step can be added that only some runs take – the add-step prompt asks when the step comes (always, only if a condition the admin writes in their own words holds, or when the AI finds a statement true) and the assistant builds it as a side path; a branch with only a target is now the step's \"otherwise\", where every run goes that no other branch takes, so a side step rejoins the flow – the engine, decided branches and the required-steps checks follow it, the step panel shows and edits its target, the diagram labels it and draws no plain line beside it; the diagram's add action is now \"Add step\" on the selected step's lower edge instead of a + on every line, and the step panel's button says the same",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e8a548e",
+        "message": "a step is added by saying what it should do – the step panel's one-line footer opens a prompt (and a + on a line in the diagram does too) where the admin describes the step and picks its kind or leaves it to the AI; the request goes to the conversation as the admin's message, the new step is shown in its place as being built and selected once the assistant has built it completely (a widget with its HTML and sample data); an empty step can still be inserted; a widget without its HTML offers to let the assistant build it or to upload an HTML file instead of a dead end",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "55b5517",
+        "message": "the step panel shows where the run goes next – a step without branches shows the step that follows, folded to its title and unfolding to what it asks or makes, its cost and where it leads; a step with branches lists one row per way (conditions, the statements the AI decides, otherwise) with its target, each unfolding to edit it, and conditions can now be added and edited there too; how a decision is made moved into the AI chip's hint; a test run's decision is shown only while the step's branches are still the ones it decided over",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "a325060",
+        "message": "a wizard's branches can be inspected in the studio – a click on a branch line in the diagram opens the step's branches: its conditions in the order they are checked, the statements the AI decides together in one call with their target steps, where the run goes when none clearly holds, how it is decided and how often a loop may run; statements can be edited, added and removed there; after a test run the diagram marks the branch the decision took with how probable it found it, and the step shows the probability of each statement and whether a decision model or the language model decided",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "3963759",
+        "message": "a wizard can show what a run found in its own look – a new step type \"surface\" (a view) is built from a fixed set of native parts (text, facts, key figures, lists with pictures, tables, bar, line and ring charts, buttons) bound to the run's answers, results and kept lists, written once by the assistant and free on every run; a view can leave some of its parts to the AI, which shows a chart only when there is something to compare; an AI step with json output can lay out a view of its own result, checked against the parts before it is kept; reviews and the result page show a step's view instead of a plain table, a view's button can ask for a new version in a review or open a file, and a view downloads as JSON",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "04fe9e7",
+        "message": "the AI can decide how a wizard goes on and which questions it asks – a branch can carry a statement instead of a condition (\"the person wants a refund\") and all such branches of a step are decided together in one small call, a field can be shown when the AI finds a statement true and fields of a group are alternatives of which it shows the one that fits, decided once as the run reaches the page; every decision goes to a decision model where there is a way to one (Jev through the credits, an AI Gateway key or a TypeSafe key) and otherwise to the classifier class's language model, so decision steps now carry how probable their answers are (branches read it as steps.<id>.<field>.p) and Wissen's relevance check works without Jev; decision steps answer scores on a scale; a branch back to an earlier step is a loop that stops after its max (ten without one) and the step that runs again sees what it made last time; an AI step can run once per row of a table or a kept list and hands on one table of the results",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "0d1fe8d",
+        "message": "a field can be shown only under a condition – it appears as the person answers another field of the same page, or depends on anything known before the page – and a hidden field is neither required nor kept; the choices of a select can come from earlier data (a list an AI step found, a column of its table, or a column of a list the wizard keeps), with the fixed choices standing in while that data is empty; branches compare numbers (greater, less), look into multiselects, lists and texts (contains), read how many rows a kept list has, and take several conditions that must all hold; the studio edits a field's condition and the source of its choices, the diagram labels the new conditions, and the assistant is told to use conditions instead of one copy of a page per answer",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "edd24e9",
+        "message": "Gmail, Drive, Calendar and Contacts connect on a local install without a Google client of its own: through the linked engenty account, which holds the client and refreshes the tokens; before an account is linked, connecting asks to link it first",
+        "group": "Added",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.25",
-    "timestamp": 1791351203,
+    "timestamp": 1791351205,
     "commits": [
       {
         "id": "d144800",
