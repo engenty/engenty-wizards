@@ -5,7 +5,7 @@ import {
   type Step,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
+import type { BranchDecision, RunEstimate, ShownDecision } from "@engenty-wizards/shared/run";
 import {
   BaseEdge,
   type Edge,
@@ -169,6 +169,25 @@ const edgeTypes = { branch: BranchEdge };
 const BRANCH_LABEL = 34;
 const NO_COSTS: RunEstimate["steps"] = {};
 const NO_DECISIONS: Record<string, BranchDecision> = {};
+
+/**
+ * A test run's decisions for the steps whose branches are still the ones it decided over: after a
+ * branch is added, removed or changed, the decision's rule numbers would point at others.
+ */
+export function currentDecisions(
+  def: WizardDefinition,
+  decisions: Record<string, ShownDecision> | undefined,
+): Record<string, BranchDecision> | undefined {
+  if (!decisions) {
+    return undefined;
+  }
+  return Object.fromEntries(
+    Object.entries(decisions).filter(
+      ([id, d]) =>
+        JSON.stringify(def.steps.find((s) => s.id === id)?.next ?? []) === JSON.stringify(d.over),
+    ),
+  );
+}
 
 /** How probable a decision found an answer, as on a line: "99 %". */
 export function percent(p: number): string {

@@ -960,7 +960,16 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     values: run.state.values,
     prefill: step?.type === "page" ? prefillOf(step, run, closed) : {},
     ...(step?.type === "page" ? viewContext(await pageContext(run, step)) : {}),
-    ...(run.mode === "test" && run.state.decisions ? { decisions: run.state.decisions } : {}),
+    ...(run.mode === "test" && run.state.decisions
+      ? {
+          decisions: Object.fromEntries(
+            Object.entries(run.state.decisions).map(([id, d]) => [
+              id,
+              { ...d, over: def.steps.find((s) => s.id === id)?.next ?? [] },
+            ]),
+          ),
+        }
+      : {}),
     closed,
     outputs: Object.fromEntries(
       shownIds.map((id) => [id, run.state.outputs[id]]).filter(([, o]) => o),

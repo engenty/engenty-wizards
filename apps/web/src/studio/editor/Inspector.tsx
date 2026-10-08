@@ -8,6 +8,7 @@ import {
   type Field,
   type Format,
   formatsFor,
+  isDecisionStep,
   type NextRule,
   type PageStep,
   type Step,
@@ -16,7 +17,7 @@ import {
   type VideoResolution,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { BranchDecision } from "@engenty-wizards/shared/run";
+import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import {
   ArrowDown,
@@ -24,6 +25,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  Info,
   Plus,
   Sparkles,
   Trash2,
@@ -38,7 +41,7 @@ import { HtmlFrame } from "../../runner/outputs";
 import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
 import { ModelClassControl, StepCost, useEstimate } from "./estimate";
 import { conditionText, percent } from "./FlowDiagram";
-import { stepIcon, TYPE_TONE, toolLabel, typeLabel } from "./meta";
+import { stepIcon, stepSummary, TYPE_TONE, toolLabel, typeLabel } from "./meta";
 
 type Update = (next: WizardDefinition) => void;
 
@@ -188,11 +191,15 @@ function ConditionEditor({
   when,
   sources,
   onChange,
+  label = t("editor.shownWhen"),
+  noneLabel = t("editor.shownAlways"),
 }: {
   def: WizardDefinition;
   when: Field["when"];
   sources: string[];
   onChange: (when: Field["when"]) => void;
+  label?: string;
+  noneLabel?: string;
 }) {
   const [first, ...rest] = conditionsOf(when);
   const set = (c: Condition | null) =>
@@ -200,15 +207,15 @@ function ConditionEditor({
   const needsValue = first && first.op !== "empty" && first.op !== "notEmpty";
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[0.8125rem] text-ink-2">{t("editor.shownWhen")}</span>
+      <span className="text-[0.8125rem] text-ink-2">{label}</span>
       <Select
         value={first?.field ?? ""}
-        placeholder={t("editor.shownAlways")}
+        placeholder={noneLabel}
         onChange={(v) =>
           set(v ? { field: v, op: first?.op ?? "equals", value: first?.value ?? "" } : null)
         }
         options={[
-          { value: "", label: t("editor.shownAlways") },
+          { value: "", label: noneLabel },
           ...sources.map((ref) => ({ value: ref, label: sourceLabel(def, ref) })),
         ]}
       />
@@ -1396,13 +1403,14 @@ function StepInspector({
         wizardId={wizardId}
       />
       {step.type !== "result" ? (
-        <BranchSection
+        <NextSection
           def={def}
           step={step}
           set={set}
           onSelect={onSelect}
           decision={decisions?.[step.id]}
           focus={branchFocus}
+          estimate={estimate.data}
         />
       ) : null}
       {/* Moving, deleting and adding steps is building: not offered where nothing is changed. */}
@@ -1467,18 +1475,127 @@ function AskInput({ value, onChange }: { value: string; onChange: (v: string) =>
   );
 }
 
+/** What a branch after a step can read: answers and AI results up to it, how many rows a list has. */
+function branchSources(def: WizardDefinition, step: Step): string[] {
+  const index = def.steps.indexOf(step);
+  const out: string[] = [];
+  for (const s of def.steps.slice(0, index + 1)) {
+    if (s.type === "page") {
+      out.push(...s.fields.map((f) => f.id));
+    } else if (s.type === "agent") {
+      for (const f of s.output.fields ?? []) {
+        out.push(`steps.${s.id}.${f.id}`);
+        if (isDecisionStep(s)) {
+          out.push(`steps.${s.id}.${f.id}.p`);
+        }
+      }
+    }
+  }
+  out.push(...(def.lists ?? []).map((l) => `lists.${l.id}.count`));
+  return out;
+}
+
+/** "3 / 6 · Seite": where a step is and what it is. */
+function stepPlace(def: WizardDefinition, step: Step): string {
+  return `${typeLabel(step)} · ${def.steps.indexOf(step) + 1} / ${def.steps.length}`;
+}
+
+/** A step in brief, folded to its title; unfolded: what it asks or makes, its cost, where it leads. */
+function StepOverview({
+  def,
+  target,
+  estimate,
+  onSelect,
+}: {
+  def: WizardDefinition;
+  target: Step;
+  estimate?: RunEstimate;
+  onSelect: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const Icon = stepIcon(target);
+  const cost = estimate?.available ? estimate.steps[target.id]?.credits : undefined;
+  const at = def.steps.indexOf(target);
+  const then = def.steps[at + 1];
+  return (
+    <div className="rounded-lg bg-paper-2">
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        <span
+          className={cn(
+            "inline-flex size-7 shrink-0 items-center justify-center rounded-md",
+            TYPE_TONE[target.type],
+          )}
+        >
+          <Icon className="size-4" />
+        </span>
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={() => onSelect(target.id)}
+          title={t("editor.next.open")}
+        >
+          <span className="block text-[0.6875rem] text-ink-4">{stepPlace(def, target)}</span>
+          <span className="block truncate font-medium text-[0.875rem] text-ink hover:underline">
+            {target.title}
+          </span>
+        </button>
+        <IconButton
+          label={open ? t("editor.next.fold") : t("editor.next.unfold")}
+          className="size-8 shrink-0"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </IconButton>
+      </div>
+      {open ? (
+        <div className="flex flex-col gap-1 border-border-soft border-t px-3 py-2.5 text-[0.75rem] text-ink-3">
+          {stepSummary(target) ? <span className="text-ink-2">{stepSummary(target)}</span> : null}
+          {cost === undefined ? null : (
+            <span className="tabular-nums">
+              ≈{" "}
+              {cost < 10
+                ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
+                : Math.round(cost)}{" "}
+              cr
+            </span>
+          )}
+          <span>
+            {t("editor.next.then")} →{" "}
+            {target.type === "result"
+              ? t("editor.branch.end")
+              : target.next?.length
+                ? t("editor.next.ways", { count: target.next.length + 1 })
+                : then
+                  ? then.title
+                  : t("editor.branch.end")}
+          </span>
+          <button
+            type="button"
+            className="mt-1 self-start font-medium text-ember hover:underline"
+            onClick={() => onSelect(target.id)}
+          >
+            {t("editor.next.open")} →
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * A step's branches, whole: the conditions in the order they are checked, then the statements the
- * AI decides between in one call, where the run goes on when none clearly holds, and — with a test
- * run open — what the decision answered and how probable it found each statement.
+ * Where the run goes after a step. Without branches: the step that follows, in brief. With them:
+ * one row per way — the conditions in the order they are checked, the statements the AI decides
+ * between in one call, and "otherwise" — each unfolding to edit it; after a test run each row
+ * shows how probable the decision found it and the way it took is marked.
  */
-function BranchSection({
+function NextSection({
   def,
   step,
   set,
   onSelect,
   decision,
   focus,
+  estimate,
 }: {
   def: WizardDefinition;
   step: Step;
@@ -1486,6 +1603,7 @@ function BranchSection({
   onSelect: (id: string | null) => void;
   decision?: BranchDecision;
   focus?: number;
+  estimate?: RunEstimate;
 }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1493,20 +1611,22 @@ function BranchSection({
       box.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
   }, [focus]);
+  const [open, setOpen] = useState<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another step folds every row
+  useEffect(() => setOpen(null), [step.id]);
   const rules = step.next ?? [];
   const index = def.steps.indexOf(step);
   const after = def.steps[index + 1];
-  const titleOf = (id: string) => {
-    const s = def.steps.find((x) => x.id === id);
-    return s ? `${def.steps.indexOf(s) + 1}. ${s.title}` : t("editor.branch.end");
-  };
+  const titleOf = (id: string) =>
+    def.steps.find((x) => x.id === id)?.title ?? t("editor.branch.end");
   const targets = [
     ...def.steps
       .filter((s) => s.id !== step.id)
-      .map((s) => ({ value: s.id, label: titleOf(s.id) })),
+      .map((s) => ({ value: s.id, label: `${def.steps.indexOf(s) + 1}. ${s.title}` })),
     { value: "end", label: t("editor.branch.end") },
   ];
-  const setRule = (i: number, rule: NextRule | null) =>
+  const sources = branchSources(def, step);
+  const setRule = (i: number, rule: NextRule | null) => {
     set({
       ...step,
       next: rule
@@ -1515,167 +1635,231 @@ function BranchSection({
           ? rules.filter((_, k) => k !== i)
           : undefined,
     } as Step);
+    if (!rule) {
+      setOpen(null);
+    }
+  };
+  const add = (rule: NextRule) => {
+    // Conditions are checked before any statement: a new one goes after the last condition.
+    const at = rule.ask ? rules.length : rules.filter((r) => !r.ask).length;
+    set({ ...step, next: [...rules.slice(0, at), rule, ...rules.slice(at)] } as Step);
+    setOpen(at);
+  };
   const loops = (goto: string) => {
     const to = def.steps.findIndex((s) => s.id === goto);
     return to >= 0 && to <= index;
   };
-  const conditions = rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => !rule.ask);
-  const asks = rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.ask);
   const p = (key: string) => decision?.probabilities?.[key];
-  const target = (rule: NextRule, i: number) => (
-    <div className="flex items-center gap-1.5">
-      <span className="shrink-0 text-[0.8125rem] text-ink-3">→</span>
-      <div className="min-w-0 flex-1">
-        <Select
-          value={rule.goto}
-          onChange={(v) => setRule(i, { ...rule, goto: v })}
-          options={targets}
-        />
-      </div>
-      {loops(rule.goto) ? (
-        <Input
-          type="number"
-          min={1}
-          max={50}
-          className="w-20 shrink-0"
-          aria-label={t("editor.branch.max")}
-          title={t("editor.branch.max")}
-          placeholder="10"
-          value={rule.max ?? ""}
-          onChange={(e) => {
-            const n = Math.round(Number(e.target.value));
-            setRule(i, { ...rule, max: n >= 1 ? Math.min(n, 50) : undefined });
-          }}
-        />
-      ) : null}
-      <IconButton
-        label={t("editor.branch.remove")}
-        className="shrink-0 hover:text-rose"
-        onClick={() => setRule(i, null)}
+  const hasAsk = rules.some((r) => r.ask);
+  const ways = [
+    ...rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => !rule.ask),
+    ...rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rule.ask),
+  ];
+  const how = `${t("editor.branch.how")} ${
+    decision
+      ? t("editor.branch.lastRun", {
+          source:
+            decision.source === "systemone"
+              ? t("editor.branch.bySystemOne")
+              : t("editor.branch.byLlm"),
+        })
+      : t("editor.branch.notYet")
+  }`;
+  const chip = (ai: boolean) =>
+    ai ? (
+      <span
+        className="inline-flex shrink-0 cursor-help items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 font-medium text-[0.6875rem] text-ink-2"
+        title={how}
       >
-        <Trash2 className="size-4" />
-      </IconButton>
-    </div>
-  );
-  const bar = (value: number | undefined, chosen: boolean) =>
+        <Sparkles className="size-3 text-ember" /> {t("editor.branch.ai")}
+        <Info className="size-3 text-ink-4" />
+      </span>
+    ) : null;
+  const percentOf = (value: number | undefined, taken: boolean) =>
     value === undefined ? null : (
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-3">
-          <div
-            className={cn("h-full rounded-full", chosen ? "bg-moss" : "bg-ink-4")}
-            style={{ width: `${Math.round(value * 100)}%` }}
-          />
-        </div>
-        <span
-          className={cn(
-            "w-10 text-right text-[0.75rem] tabular-nums",
-            chosen ? "text-moss" : "text-ink-3",
-          )}
+      <span
+        className={cn(
+          "shrink-0 text-[0.75rem] tabular-nums",
+          taken ? "font-medium text-moss" : "text-ink-3",
+        )}
+      >
+        {percent(value)}
+      </span>
+    );
+  const row = (
+    key: number | "otherwise",
+    head: React.ReactNode,
+    goto: string,
+    taken: boolean,
+    probability: number | undefined,
+    body: React.ReactNode,
+  ) => {
+    const unfolded = open === key || (key === "otherwise" && open === -1);
+    return (
+      <div
+        key={key}
+        className={cn("rounded-lg bg-paper-2 ring-1", taken ? "ring-moss" : "ring-transparent")}
+      >
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-3 pt-2.5 text-left"
+          onClick={() => setOpen(unfolded ? null : key === "otherwise" ? -1 : key)}
         >
-          {percent(value)}
-        </span>
+          {head}
+          {percentOf(probability, taken)}
+          {unfolded ? (
+            <ChevronUp className="size-4 shrink-0 text-ink-4" />
+          ) : (
+            <ChevronDown className="size-4 shrink-0 text-ink-4" />
+          )}
+        </button>
+        <div className="px-3 pt-1 pb-2.5 text-[0.75rem] text-ink-3">
+          →{" "}
+          {goto === "end" ? (
+            t("editor.branch.end")
+          ) : (
+            <button
+              type="button"
+              className="text-ink-2 hover:text-ink hover:underline"
+              onClick={() => onSelect(goto)}
+            >
+              {titleOf(goto)}
+            </button>
+          )}
+          {taken ? <span className="ml-1.5 text-moss">✓</span> : null}
+        </div>
+        {unfolded ? (
+          <div className="flex flex-col gap-2 border-border-soft border-t px-3 py-3">{body}</div>
+        ) : null}
       </div>
     );
+  };
+  const edit = (rule: NextRule, i: number) => (
+    <>
+      {rule.ask ? (
+        <AskInput value={rule.ask} onChange={(ask) => setRule(i, { ...rule, ask })} />
+      ) : (
+        <ConditionEditor
+          def={def}
+          when={rule.when}
+          sources={sources}
+          label={t("editor.branch.when")}
+          noneLabel={t("editor.branch.pick")}
+          onChange={(when) => {
+            if (when) {
+              setRule(i, { ...rule, when });
+            }
+          }}
+        />
+      )}
+      <div className="flex items-center gap-1.5">
+        <span className="shrink-0 text-[0.8125rem] text-ink-3">→</span>
+        <div className="min-w-0 flex-1">
+          <Select
+            value={rule.goto}
+            onChange={(v) => setRule(i, { ...rule, goto: v })}
+            options={targets}
+          />
+        </div>
+        {loops(rule.goto) ? (
+          <Input
+            type="number"
+            min={1}
+            max={50}
+            className="w-20 shrink-0"
+            aria-label={t("editor.branch.max")}
+            title={t("editor.branch.max")}
+            placeholder="10"
+            value={rule.max ?? ""}
+            onChange={(e) => {
+              const n = Math.round(Number(e.target.value));
+              setRule(i, { ...rule, max: n >= 1 ? Math.min(n, 50) : undefined });
+            }}
+          />
+        ) : null}
+        <IconButton
+          label={t("editor.branch.remove")}
+          className="shrink-0 hover:text-rose"
+          onClick={() => setRule(i, null)}
+        >
+          <Trash2 className="size-4" />
+        </IconButton>
+      </div>
+    </>
+  );
+  const adders = (
+    <div className="flex flex-wrap gap-1">
+      <button
+        type="button"
+        disabled={!sources.length}
+        onClick={() =>
+          add({
+            when: { field: sources[0] ?? "", op: "notEmpty" },
+            goto: after?.id ?? "end",
+          })
+        }
+        className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent disabled:opacity-50"
+      >
+        <Plus className="size-3.5" /> {t("editor.branch.addWhen")}
+      </button>
+      <button
+        type="button"
+        onClick={() => add({ ask: t("editor.branch.newAsk"), goto: after?.id ?? "end" })}
+        className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
+      >
+        <Sparkles className="size-3.5" /> {t("editor.branch.addAsk")}
+      </button>
+    </div>
+  );
   return (
     <div ref={box} className="scroll-mt-14">
-      <Section title={t("editor.branches")} loose>
-        <p className="text-[0.8125rem] text-ink-3">
-          {!rules.length
-            ? t("editor.branch.empty")
-            : asks.length && conditions.length
-              ? t("editor.branch.orderBoth")
-              : asks.length
-                ? t("editor.branch.orderAsk")
-                : t("editor.branch.orderWhen")}
-        </p>
-        {conditions.map(({ rule, i }) => (
-          <div key={i} className="flex flex-col gap-2 rounded-lg bg-paper-2 p-3">
-            <span className="text-[0.8125rem] text-ink">
-              {t("editor.branch.if")}{" "}
-              {conditionsOf(rule.when)
-                .map(conditionText)
-                .join(` ${t("editor.branch.and")} `)}
-            </span>
-            {target(rule, i)}
-          </div>
-        ))}
-        {asks.length ? (
-          <div className="flex flex-col gap-3 rounded-lg bg-paper-2 p-3">
-            <div className="flex items-center gap-2 text-[0.8125rem] text-ink">
-              <Sparkles className="size-4 text-ember" />
-              <span className="font-medium">{t("editor.branch.decided")}</span>
-            </div>
-            {asks.map(({ rule, i }) => {
-              const chosen = decision?.rule === i;
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex flex-col gap-2 rounded-md bg-card p-2.5 ring-1",
-                    chosen ? "ring-moss" : "ring-border-soft",
-                  )}
-                >
-                  <AskInput
-                    value={rule.ask ?? ""}
-                    onChange={(ask) => setRule(i, { ...rule, ask })}
-                  />
-                  {target(rule, i)}
-                  {bar(p(`r${i}`), chosen)}
-                </div>
-              );
-            })}
-            <div
-              className={cn(
-                "flex flex-col gap-2 rounded-md p-2.5 ring-1",
-                decision?.rule === null ? "ring-moss" : "ring-border-soft",
-              )}
-            >
-              <span className="text-[0.8125rem] text-ink-2">
-                {t("editor.branch.none")} → {after ? titleOf(after.id) : t("editor.branch.end")}
-              </span>
-              {bar(p("none"), decision?.rule === null)}
-            </div>
-            <p className="text-[0.75rem] text-ink-3">{t("editor.branch.how")}</p>
-            <p className="text-[0.75rem] text-ink-3">
-              {decision
-                ? t("editor.branch.lastRun", {
-                    source:
-                      decision.source === "systemone"
-                        ? t("editor.branch.bySystemOne")
-                        : t("editor.branch.byLlm"),
-                  })
-                : t("editor.branch.notYet")}
-            </p>
-          </div>
-        ) : null}
-        {conditions.length && !asks.length ? (
-          <span className="text-[0.8125rem] text-ink-3">
-            {t("editor.otherwise")} → {after ? titleOf(after.id) : t("editor.branch.end")}
-          </span>
-        ) : null}
-        <div className="flex flex-wrap gap-1">
-          <button
-            type="button"
-            onClick={() =>
-              set({
-                ...step,
-                next: [...rules, { ask: t("editor.branch.newAsk"), goto: after?.id ?? "end" }],
-              } as Step)
-            }
-            className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
-          >
-            <Plus className="size-3.5" /> {t("editor.branch.addAsk")}
-          </button>
-        </div>
-        {decision && decision.rule !== null ? (
-          <button
-            type="button"
-            className="self-start text-[0.75rem] text-ink-3 underline underline-offset-2 hover:text-ink"
-            onClick={() => onSelect(rules[decision.rule ?? 0]?.goto ?? null)}
-          >
-            {t("editor.branch.openTaken")}
-          </button>
-        ) : null}
+      <Section
+        title={
+          rules.length ? t("editor.next.ways", { count: rules.length + 1 }) : t("editor.next.title")
+        }
+        loose
+      >
+        {rules.length ? (
+          <>
+            {ways.map(({ rule, i }) =>
+              row(
+                i,
+                <>
+                  {chip(Boolean(rule.ask))}
+                  <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink">
+                    {rule.ask ??
+                      conditionsOf(rule.when)
+                        .map(conditionText)
+                        .join(` ${t("editor.branch.and")} `)}
+                  </span>
+                </>,
+                rule.goto,
+                decision?.rule === i,
+                p(`r${i}`),
+                edit(rule, i),
+              ),
+            )}
+            {row(
+              "otherwise",
+              <span className="min-w-0 flex-1 text-[0.8125rem] text-ink-3">
+                {hasAsk ? t("editor.branch.none") : t("editor.otherwise")}
+              </span>,
+              after?.id ?? "end",
+              decision?.rule === null,
+              p("none"),
+              after ? (
+                <StepOverview def={def} target={after} estimate={estimate} onSelect={onSelect} />
+              ) : (
+                <span className="text-[0.75rem] text-ink-3">{t("editor.branch.end")}</span>
+              ),
+            )}
+          </>
+        ) : after ? (
+          <StepOverview def={def} target={after} estimate={estimate} onSelect={onSelect} />
+        ) : (
+          <span className="text-[0.8125rem] text-ink-3">{t("editor.branch.end")}</span>
+        )}
+        {adders}
       </Section>
     </div>
   );

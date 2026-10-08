@@ -64,6 +64,11 @@ export interface BranchDecision {
   at: string;
 }
 
+/** A branch decision as the studio sees it: with the step's branches it was made over. */
+export interface ShownDecision extends BranchDecision {
+  over: NonNullable<Step["next"]>;
+}
+
 interface AskBase {
   id: string;
   stepId: string;
@@ -263,8 +268,11 @@ export interface RunView {
   options?: Record<string, string[]>;
   /** The decided fields (`ask`, `group`) of the current page that a decision kept. */
   decidedFields?: string[];
-  /** What decided branches answered so far, by step (test runs: the studio shows them). */
-  decisions?: Record<string, BranchDecision>;
+  /**
+   * What decided branches answered so far, by step, with the branches decided over (test runs:
+   * the studio shows them while the draft's branches are still those).
+   */
+  decisions?: Record<string, ShownDecision>;
   /** Choices of the current page that lead to a step without a model here, by field id. */
   closed: Record<string, ClosedChoice>;
   outputs: Record<string, StepOutput>;

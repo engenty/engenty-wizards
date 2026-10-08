@@ -20,7 +20,7 @@ import { Button, Chip, cn, IconButton, LinkedText, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
 import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
-import { FlowDiagram } from "./editor/FlowDiagram";
+import { currentDecisions, FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
@@ -306,6 +306,7 @@ export function EditorPage() {
   }
   const w = wizard.data;
   const def = w.draft;
+  const shownDecisions = currentDecisions(def, decisions);
   const building = chat.phase !== "idle" && w.blank;
   const hasIssues = w.issues.length > 0;
   // Read-only for one of two reasons: the wizard is a local install's, or nothing is built here.
@@ -523,7 +524,7 @@ export function EditorPage() {
               activeStep={drawerRun ? activeStep : null}
               pulse={remote?.steps}
               wizardId={w.id}
-              decisions={decisions}
+              decisions={shownDecisions}
               onBranch={(sid) => {
                 select(sid);
                 setBranchFocus((n) => n + 1);
@@ -606,7 +607,7 @@ export function EditorPage() {
                 files={w.files}
                 wizardId={w.id}
                 readOnly={w.readOnly}
-                decisions={decisions}
+                decisions={shownDecisions}
                 branchFocus={branchFocus}
               />
             ) : tab === "files" ? (
