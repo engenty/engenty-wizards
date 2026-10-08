@@ -9,10 +9,22 @@ import {
   shownFields,
 } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
-import { ArrowUp, Check, Mic, Paperclip, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Mic,
+  Paperclip,
+  Pencil,
+  RotateCcw,
+  Sparkles,
+  Square,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -24,8 +36,10 @@ import { createPortal } from "react-dom";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
 import { eventText, lang, t } from "../lib/i18n";
+import { canSpeak, useReadAloud, useReadLines } from "../lib/read-aloud";
+import { useDictation } from "../lib/speech";
 import { ShareResultButton } from "../share/ShareSheet";
-import { cn, LinkedText, Spinner, Textarea } from "../ui";
+import { cn, IconButton, LinkedText, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
 import { isTouch, useWakeLock } from "./device";
 import { FieldInput, textHints, type Values } from "./fields";
@@ -73,6 +87,17 @@ const me = (key: string, node: ReactNode, more?: Partial<Line>): Line => ({
 /* ---------- the frame: header, thread, dock ---------- */
 
 const DockSlot = createContext<HTMLElement | null>(null);
+
+/**
+ * Speaking and listening around a run's chat: the run whose route writes a recording down, and
+ * whether the wizard's bubbles are read aloud. An accessibility feature, switched on per browser.
+ */
+const SpeechContext = createContext<{
+  runId: string;
+  lang: "de" | "en";
+  readAloud: boolean;
+  setReadAloud: (on: boolean) => void;
+} | null>(null);
 
 /** What the person types into, under the thread: the composer. */
 export function Dock({ children }: { children: ReactNode }) {
@@ -168,6 +193,19 @@ export function ChatShell({
 
 /** The thread: the wizard's messages on the left beside its engenty, the person's on the right. */
 export function Thread({ avatar, lines }: { avatar: string; lines: Line[] }) {
+  const speech = useContext(SpeechContext);
+  // What is read: the wizard's bubbles that are words, not the answers to tap or an output.
+  const spoken = useMemo(
+    () => lines.map((l) => ({ key: l.key, who: l.who, spoken: !l.bare && !l.wide })),
+    [lines],
+  );
+  const textOf = useCallback((key: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-say="${CSS.escape(key)}"]`);
+    return (
+      el?.querySelector("[data-say-text]")?.getAttribute("data-say-text") ?? el?.innerText ?? null
+    );
+  }, []);
+  useReadLines(Boolean(speech?.readAloud), speech?.lang ?? lang, spoken, textOf);
   const groups: { who: Line["who"]; lines: Line[] }[] = [];
   for (const line of lines) {
     const last = groups.at(-1);
@@ -189,6 +227,7 @@ export function Thread({ avatar, lines }: { avatar: string; lines: Line[] }) {
             <div
               key={line.key}
               data-anchor={line.anchor ? "" : undefined}
+              data-say={line.key}
               className={cn(
                 "animate-rise",
                 line.bare
@@ -321,6 +360,25 @@ function Composer({
   const [text, setText] = useState(initial);
   const own = useRef<ComposerInput>(null);
   const input = inputRef ?? own;
+  const speech = useContext(SpeechContext);
+  const dictation = useDictation(text, setText, {
+    endpoint: speech ? `/api/runs/${speech.runId}/transcribe` : undefined,
+  });
+  const canDictate = Boolean(speech) && dictation.supported && !disabled;
+  // ⌘⇧M (Ctrl on Windows) starts and stops dictating, from anywhere on the page.
+  useEffect(() => {
+    if (!canDictate) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        dictation.toggle();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canDictate, dictation.toggle]);
   // On a desk the next question is answered without reaching for the mouse; a phone keeps its keyboard down.
   useEffect(() => {
     if (!isTouch && !disabled) {
@@ -331,10 +389,53 @@ function Composer({
     if (busy || disabled) {
       return;
     }
+    if (dictation.listening) {
+      dictation.toggle();
+    }
     if (onSend(text) !== false) {
       setText("");
     }
   };
+  const heard = dictation.listening
+    ? t("chat.listening")
+    : dictation.processing
+      ? t("chat.transcribing")
+      : placeholder;
+  const tools =
+    speech && (canSpeak || canDictate) ? (
+      <div className="mb-1 flex shrink-0 items-center">
+        {canSpeak ? (
+          <IconButton
+            label={t(speech.readAloud ? "chat.readAloudOff" : "chat.readAloud")}
+            aria-pressed={speech.readAloud}
+            onClick={() => speech.setReadAloud(!speech.readAloud)}
+            className={cn("size-9", speech.readAloud && "text-ink")}
+          >
+            {speech.readAloud ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+          </IconButton>
+        ) : null}
+        {canDictate ? (
+          <IconButton
+            label={t(dictation.listening ? "chat.dictateStop" : "chat.dictate")}
+            aria-pressed={dictation.listening}
+            disabled={dictation.processing}
+            onClick={dictation.toggle}
+            className={cn(
+              "size-9",
+              dictation.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
+            )}
+          >
+            {dictation.processing ? (
+              <Spinner className="size-4" />
+            ) : dictation.listening ? (
+              <Square className="size-3.5 animate-pulse-dot fill-current" />
+            ) : (
+              <Mic className="size-4" />
+            )}
+          </IconButton>
+        ) : null}
+      </div>
+    ) : null;
   return (
     <form
       className="pb-3"
@@ -349,6 +450,7 @@ function Composer({
           disabled && "opacity-60",
         )}
       >
+        {tools}
         {multiline ? (
           <Textarea
             ref={input}
@@ -356,7 +458,7 @@ function Composer({
             maxRows={6}
             value={text}
             disabled={disabled}
-            placeholder={placeholder}
+            placeholder={heard}
             autoCapitalize="sentences"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -373,7 +475,7 @@ function Composer({
             {...inputProps}
             value={text}
             disabled={disabled}
-            placeholder={placeholder}
+            placeholder={heard}
             enterKeyHint="send"
             onChange={(e) => setText(e.target.value)}
             className="h-11 min-w-0 flex-1 bg-transparent px-3 text-[0.9375rem] text-ink outline-none placeholder:text-ink-4"
@@ -389,6 +491,11 @@ function Composer({
           {busy ? <Spinner className="size-4" /> : <ArrowUp className="size-4" />}
         </button>
       </div>
+      {dictation.error ? (
+        <p className="mt-1.5 px-3 text-[0.75rem] text-rose">
+          {dictation.error === "denied" ? t("chat.micDenied") : dictation.error}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -945,7 +1052,10 @@ function Working({ view }: { view: RunView }) {
   const pictures = [...new Set(recent.map((ev) => ev.asset).filter((id): id is string => !!id))];
   return (
     // As wide as the line of what it does needs, so that line does not jump with every tool.
-    <div className="flex w-96 max-w-full flex-col gap-1">
+    <div
+      className="flex w-96 max-w-full flex-col gap-1"
+      data-say-text={begun?.message ?? view.step?.title ?? t("run.working")}
+    >
       <div className="flex items-center gap-3">
         <Dots />
         <span className="font-medium">
@@ -1224,6 +1334,11 @@ export function ChatBody({
   useEffect(() => {
     onView?.(view);
   }, [view, onView]);
+  const [readAloud, setReadAloud] = useReadAloud();
+  const speech = useMemo(
+    () => ({ runId, lang: view?.lang ?? lang, readAloud, setReadAloud }),
+    [runId, view?.lang, readAloud, setReadAloud],
+  );
   useWakeLock(view?.status === "running" && !view.ask);
   useDoneSignal(view);
   // What the person asked reviews to change, by review: the runtime keeps only the latest.
@@ -1363,8 +1478,10 @@ export function ChatBody({
     }
   }
   return (
-    <ChatShell header={header} footer={footer}>
-      {body}
-    </ChatShell>
+    <SpeechContext.Provider value={speech}>
+      <ChatShell header={header} footer={footer}>
+        {body}
+      </ChatShell>
+    </SpeechContext.Provider>
   );
 }

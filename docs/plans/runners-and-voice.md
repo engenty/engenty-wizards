@@ -4,7 +4,8 @@ Status: phase 1 is on the branch; phase 2 built on 2026-10-08 (branch
 `claude/wizards-vs-bot-ui-1044fe`, off main): the run report lists a page's shown fields, the
 runner registry with capabilities and `runnersFor`, the share dialog's Channels list, sub-paths
 with the redirect, `wizards.server.runs` and `registerRunner` with page runners served at
-`/w/<token>/<runner>`, the run's `runner` column, tests, the plugin docs' Runners page. Not yet:
+`/w/<token>/<runner>`, the run's `runner` column, tests, the plugin docs' Runners page. Dictate and read aloud on the chat built the same day (browser voices and recognition, a run-scoped
+transcribe route as the fallback). Not yet:
 the editor's one-line notice, `registerShareSection`, `registerChannelAddress`,
 `wizard.published`, the marketplace badges. Written on 2026-10-08, checked against v0.2.26. The
 concept behind it (the six channel patterns, the three people's view) is `wizard-channels.md`;

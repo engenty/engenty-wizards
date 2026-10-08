@@ -739,6 +739,17 @@ describe("a plugin's runners", () => {
     const ticket = new URL(body.handoff).searchParams.get("rt")!;
     expect((await get(`/api/runs/${body.runId}?rt=${encodeURIComponent(ticket)}`, "")).status).toBe(200);
     expect((await get(`/api/runs/${body.runId}?rt=1.forged`, "")).status).toBe(404);
+    // The chat's dictation writes a recording down on the run's own route: with the ticket,
+    // and only while the run is not over.
+    const dictate = (rt: string) =>
+      app.fetch(
+        new Request(url(`/api/runs/${body.runId}/transcribe?rt=${encodeURIComponent(rt)}`), {
+          method: "POST",
+          body: new FormData(),
+        }),
+      );
+    expect((await dictate("1.forged")).status).toBe(404);
+    expect((await dictate(ticket)).status).toBe(409);
   });
 
   it("refuses answers that do not fit and says which", async () => {

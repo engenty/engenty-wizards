@@ -73,7 +73,7 @@ export function Composer({
   const area = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const [prefs] = useDictationSettings();
-  const speech = useDictation(text, setText, prefs.deviceId);
+  const speech = useDictation(text, setText, { deviceId: prefs.deviceId });
   const add = (picked: File[]) =>
     setFiles((all) => [...all.filter((f) => !picked.some((p) => p.name === f.name)), ...picked]);
   useImperativeHandle(ref, () => ({ add, focus: () => area.current?.focus() }));

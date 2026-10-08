@@ -148,9 +148,15 @@ function join(before: string, spoken: string): string {
 export function useDictation(
   draft: string,
   onDraft: (value: string) => void,
-  /** A microphone of its own; the browser's recognition only hears the default one. */
-  deviceId = "",
+  options: {
+    /** Where a recording is written down: the studio's route, or a run's own. */
+    endpoint?: string;
+    /** A microphone of its own; the browser's recognition only hears the default one. */
+    deviceId?: string;
+  } = {},
 ) {
+  const endpoint = options.endpoint ?? "/api/studio/transcribe";
+  const deviceId = options.deviceId ?? "";
   const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +203,7 @@ export function useDictation(
       }
       setProcessing(true);
       try {
-        const { text } = await api.upload<{ text: string }>("/api/studio/transcribe", file);
+        const { text } = await api.upload<{ text: string }>(endpoint, file);
         if (text.trim()) {
           onDraftRef.current(join(before, text));
         }

@@ -22,6 +22,7 @@ import {
   type Step,
   type WizardDefinition,
   whenHolds,
+  wizardLang,
 } from "@engenty-wizards/shared/definition";
 import type { ClosedChoice, RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
@@ -961,6 +962,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       avatar: def.avatar,
       intro: def.intro,
     },
+    lang: wizardLang(def),
     step,
     answered: run.state.history.map((id) => stepOf(def, id)).filter((s): s is Step => Boolean(s)),
     values: run.state.values,

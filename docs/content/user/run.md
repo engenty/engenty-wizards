@@ -16,6 +16,17 @@ description: What a person sees who opens a wizard's link, on a computer or a ph
 
 A run that was left can be picked up again: "Continue your last run".
 
+## As a chat
+
+Where the owner switched it on, the wizard also runs as a chat, at `…/chat` or straight on its
+link: it asks one question at a time, answers come from the composer or the replies under the
+question, and every answer stays in the thread. Two buttons sit in the composer:
+
+| Button | Does |
+|---|---|
+| Speaker | Reads what the wizard says aloud, with the browser's own voice in the wizard's language. Costs nothing, stays on in this browser |
+| Microphone (⌘⇧M, Ctrl⇧M on Windows) | Dictates into the composer. The browser writes along where it can recognise speech; elsewhere the recording is written down by the wizard's own model when you stop, like a voice note |
+
 ## On a phone
 
 | The wizard asks for | The phone gives |

@@ -40,7 +40,8 @@ import {
 import { basePath, env } from "../env.js";
 import { loadAsset, saveAsset } from "../files/storage.js";
 import { reverseGeocode } from "../geocode.js";
-import { hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
+import { allowed, hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
+import { transcribeAudio } from "../media/transcribe.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { listDownload, renderDownload, stepHtml } from "../render/downloads.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
@@ -532,6 +533,36 @@ export const runRoutes = new Hono()
     }
     await cancel(run.id);
     return c.json({ ok: true });
+  })
+  // What the person says into the chat's composer, written down — where the browser cannot do it itself.
+  .post("/:id/transcribe", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
+      return c.json({ error: "Der Durchlauf ist beendet." }, 409);
+    }
+    if (!allowed(`transcribe:${run.id}`, 60, 3600_000)) {
+      return c.json({ error: "Bitte später noch einmal." }, 429);
+    }
+    const file = (await c.req.formData()).get("file");
+    if (!(file instanceof File) || !file.size || file.size > 10_000_000) {
+      return c.json({ error: "Bitte eine Aufnahme bis 10 MB." }, 400);
+    }
+    try {
+      const { text } = await transcribeAudio({
+        bytes: new Uint8Array(await file.arrayBuffer()),
+        mediaType: file.type.split(";")[0].trim() || "audio/webm",
+        call: { runId: run.id },
+      });
+      return c.json({ text });
+    } catch (err) {
+      if (err instanceof ModelUnavailableError) {
+        return c.json({ error: err.message }, 403);
+      }
+      throw err;
+    }
   })
   .post("/:id/uploads", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
