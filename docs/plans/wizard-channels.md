@@ -3,7 +3,9 @@
 Status: concept, written on 2026-10-08. Built on the branch the same day: the chat runner,
 dictate and read aloud, live voice and live video on the web, WhatsApp in chat mode as the
 module `modules/whatsapp`, SMS as `modules/sms` (text only; both are surfaces of the SDK's
-thread door). The companion plan with the hooks, the order and what each phase
+thread door), live voice on a WhatsApp call and on the phone as `modules/calls` (Twilio
+between Meta and OpenAI's SIP endpoint). The companion plan with the hooks, the order and
+what each phase
 built is `runners-and-voice.md`; the decision steps and views it builds on are
 `dynamic-flow.md` (on main since v0.2.26).
 
@@ -271,9 +273,15 @@ the person's hands are busy and the camera is the best input.
   already on the roadmap.
 - **How long is "long" for a live door without a screen.** The matcher needs a number per step
   kind to say "cannot"; the step estimates that exist for credits can carry a time too.
-- **WhatsApp voice.** Meta's calling API is new and gated per business; check availability in the
-  EU and whether the realtime speech model can sit on its WebRTC leg directly or needs a relay in
-  the runtime. That relay would be the WebSocket on public routes the plan left out.
+- **WhatsApp voice.** Answered on 2026-10-08: Meta's calling API has a SIP mode that sends a
+  user's call as a SIP INVITE to a server of the business's choosing, with the business number
+  as the SIP user; OpenAI's SIP endpoint routes by project id, so the two cannot meet directly.
+  A Twilio SIP domain in between takes Meta's INVITE, asks the runtime for TwiML, and dials
+  OpenAI's project with a header that names the call; the runtime accepts the call and drives
+  the run over OpenAI's WebSocket. No media relay, no WebSocket on public routes. Built as
+  `modules/calls`, the phone with it. Meta's SIP needs the app in Live mode and TLS on 5061;
+  still to check against a real number: whether Meta's digest challenge and Twilio's domain
+  auth meet (Meta's IP allowlist in the domain's access list), and the EU SIP endpoint.
 - **Which messenger first.** WhatsApp has the richest native forms, the clearest demand, and voice
   on the same account; Slack is the easiest to build. Telegram is nearly free because it opens
   our page.

@@ -19,10 +19,14 @@ results as pictures, documents and a link; with it the hooks `registerShareSecti
 report's `lang` and `picture`. `registerChannelAddress` turned out unnecessary: the plugin keeps
 the keyword table itself and asks `runs.wizards` which wizards are on. SMS followed the same
 day (`modules/sms`, Twilio, text only), and the conversation both share is now the SDK's
-`ThreadDoor` (`@engenty-wizards/plugin-sdk/thread`), each messenger a `ThreadSurface`. Not
-yet: Flow mode and `wizard.published`, the editor's one-line notice, the marketplace badges;
-neither module was exercised against a real number. Written on 2026-10-08, checked against
-v0.2.26. The
+`ThreadDoor` (`@engenty-wizards/plugin-sdk/thread`), each messenger a `ThreadSurface`. The
+WhatsApp call and the phone followed as `modules/calls`: Meta's SIP mode → a Twilio SIP domain
+→ TwiML → OpenAI's SIP endpoint, the plugin drives the run over the WebSocket to the call
+(`server.speech.conversation()`), links by SMS; the open question "relay or direct" is
+answered with "neither: Twilio in between", since Meta's INVITE names the business number as
+its SIP user and OpenAI routes by project id. Not yet: Flow mode and `wizard.published`, the
+editor's one-line notice, the marketplace badges; none of the three modules was exercised
+against a real number or call. Written on 2026-10-08, checked against v0.2.26. The
 concept behind it (the six channel patterns, the three people's view) is `wizard-channels.md`;
 read that first. The chat runner it merges in phase 1 is on branch
 `claude/wizard-chatbot-ui-variants-de6db6`.
@@ -278,7 +282,7 @@ for every door at once.
 | 3 · Live voice, web | Dictate and read aloud first. Then the conversation model class and its credit price, the mic, the engenty face, tool calls into the run, the live-voice capability set, `/w/<token>/talk` | A wizard in the voice set runs by voice start to result; a photo field is taken on the screen without leaving the page |
 | 4 · Live video, web | Camera track, frames to the model, `take_frame` into image fields | A receipt held to the camera lands in the image field |
 | 5 · WhatsApp | Chat mode built (`modules/whatsapp`): webhook on a public route with the signature check, the keyword table and `runs.wizards`, media in with `runs.upload`, voice messages with `runs.transcribe`, pictures out with the report's `picture`, `registerShareSection` for the keyword and the QR code, a utility template for reach-back after a day. Still open: Flow mode on `wizard.published` | Done in the test runtime against a stand-in for Meta: a wizard with a photo and a location field runs in the thread start to result, a page with a signature hands off and comes back. Not yet run against a real number |
-| 6 · SMS, WhatsApp call | SMS built (`modules/sms`, Twilio, text only): numbered choices, addresses typed, every picture and file a link, the gist of long text; with it the conversation moved out of the WhatsApp module into the SDK as `@engenty-wizards/plugin-sdk/thread` (`ThreadDoor` + a `ThreadSurface` per messenger), so Slack or Telegram are a surface each. Still open: live voice on a WhatsApp call with `speech.session`, SMS as the phone's hand-off carrier | SMS done in the test runtime against a stand-in for Twilio: a wizard with a choice, a multiple choice and a toggle runs by text; its photo page hands off and comes back. Not yet run against a real number |
+| 6 · SMS, WhatsApp call | SMS built (`modules/sms`, Twilio, text only): numbered choices, addresses typed, every picture and file a link, the gist of long text; with it the conversation moved out of the WhatsApp module into the SDK as `@engenty-wizards/plugin-sdk/thread` (`ThreadDoor` + a `ThreadSurface` per messenger), so Slack or Telegram are a surface each. The WhatsApp call built as `modules/calls`, and the phone with it: Meta's SIP mode sends the call to a Twilio SIP domain, Twilio asks the plugin for TwiML, the TwiML hands the call to the tenant's OpenAI project over SIP with a token in a header, OpenAI posts `realtime.call.incoming`, the plugin accepts with the wizard's rules and tools (`server.speech.conversation()` gives the key and model) and drives the run over the WebSocket to the call; hand-off links and the result go by SMS from a Twilio number. No media in the runtime, no WebSocket on public routes | SMS and the call done in the test runtime against stand-ins for Twilio and OpenAI: a wizard with a choice and a toggle runs by text and by voice tools; its photo page hands off and comes back. Not yet run against a real number or a real call |
 | Later | Phone (TwiML or a media-stream relay), Slack, Teams, RCS, e-mail; marketplace badges from `runnersFor`; channel starters; the SDK runner bundle; WebSocket public routes | |
 
 ## Open decisions

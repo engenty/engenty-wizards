@@ -105,6 +105,25 @@ was filled there. Long texts come as their gist; every picture, document and the
 are links. Each text costs what Twilio charges; there is no window, a wizard that finishes
 later still texts.
 
+### Calls
+
+With the calls module a wizard runs as a conversation on the phone: a WhatsApp call to your
+business number, or a phone call to a Twilio number. Twilio carries the call and the speech
+model of your OpenAI account (Settings → Models) speaks, as the chat's live voice does, so the
+same rules apply: one field at a time, choices read out, e-mail addresses and numbers read back.
+
+Settings → Calls takes the Twilio account, a Twilio number that can text, the OpenAI project ID
+and the webhook secret of a webhook you add in the OpenAI dashboard for incoming calls, and
+shows what to enter where: the voice webhook for Twilio's SIP domain and phone number, the
+OpenAI webhook, and for WhatsApp the SIP server to set on the number in Meta's calling settings
+(the Twilio SIP domain, port 5061). Switch "Call" on for a wizard; with several on, the wizard
+asks which one at the start of the call. A WhatsApp call button or deep link whose payload is a
+wizard's link token picks that wizard.
+
+What a voice cannot take (a photo, a file, a signature) is texted as a link to the wizard's page,
+and the call goes on once it was filled there. At the end the result is texted as a link too.
+Each minute costs what OpenAI and Twilio charge.
+
 ### Who can open the link
 
 An install on your computer only answers on `localhost`: the link works on that computer, not

@@ -284,7 +284,7 @@ describe("finding and loading plugins", () => {
       .loadedPlugins()
       .map((p) => p.source.id)
       .sort();
-    expect(ids).toEqual(["broken", "guestbook", "kiosk", "notify", "sms", "whatsapp"]);
+    expect(ids).toEqual(["broken", "calls", "guestbook", "kiosk", "notify", "sms", "whatsapp"]);
     expect(registry.loadedPlugin("guestbook")?.source.manifest).toMatchObject({
       name: "Guestbook",
       version: "1.2.3",
@@ -380,6 +380,7 @@ describe("a plugin's tables", () => {
       expect(Number(rows.rows[0].n)).toBe(0);
       const ran = await client.db.run("SELECT plugin, name FROM plugin_migration");
       expect(ran.rows.map((r) => `${r.plugin}/${r.name}`)).toEqual([
+        "calls/0001_init.sql",
         "guestbook/0001_init.sql",
         "sms/0001_init.sql",
         "whatsapp/0001_init.sql",
@@ -576,7 +577,7 @@ describe("while the runtime runs", () => {
     );
     rmSync(join(pluginsDir, "notify.ts"));
     const { plugins } = await json(send("POST", "/api/studio/plugins/-/reload"));
-    expect(plugins.map((p: any) => p.id).sort()).toEqual(["broken", "guestbook", "hello", "kiosk", "sms", "whatsapp"]);
+    expect(plugins.map((p: any) => p.id).sort()).toEqual(["broken", "calls", "guestbook", "hello", "kiosk", "sms", "whatsapp"]);
     expect(await json(get("/api/studio/plugins/hello/"))).toEqual({ hello: "hello" });
   });
 
@@ -594,7 +595,7 @@ describe("while the runtime runs", () => {
         .loadedPlugins()
         .map((p) => p.source.id)
         .sort(),
-    ).toEqual(["broken", "guestbook", "kiosk", "later", "sms", "whatsapp"]);
+    ).toEqual(["broken", "calls", "guestbook", "kiosk", "later", "sms", "whatsapp"]);
     expect(registry.loadedPlugin("guestbook")!.generation).toBe(before);
     // Told once: the second look found nothing new.
     expect(seen).toEqual([{ id: null }]);

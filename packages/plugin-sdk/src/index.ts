@@ -728,6 +728,14 @@ export interface PluginServerApi {
   registerRunner(runner: PluginRunner): void;
   /** Runs the plugin's door drives. */
   runs: PluginRuns;
+  /**
+   * The tenant's realtime speech model, for a live conversation a plugin drives itself (a call):
+   * the key and the model the chat's live voice runs on. Throws with the status `503` and the
+   * code `no_model` while none is set up.
+   */
+  speech: {
+    conversation(): Promise<{ provider: "openai"; apiKey: string; model: string }>;
+  };
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
   /** A block and tools for every agent step of a space's wizards. */
   registerSpaceContext(context: PluginSpaceContext): void;

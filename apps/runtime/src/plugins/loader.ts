@@ -31,7 +31,7 @@ import { db, onTenantOpen } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
-import { ModelUnavailableError, textModel } from "../models.js";
+import { conversationAccess, ModelUnavailableError, textModel } from "../models.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
 import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
@@ -179,6 +179,16 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
       },
       publicUrl: (path) => publicUrlOf(source.id, path),
       runs: runsApiFor(source.id),
+      speech: {
+        async conversation() {
+          const access = await conversationAccess().catch((err: unknown) => {
+            throw err instanceof ModelUnavailableError
+              ? Object.assign(err, { name: "ModelUnavailableError", status: 503, code: "no_model" })
+              : err;
+          });
+          return { provider: "openai" as const, ...access };
+        },
+      },
       every(name, everyMs, handler) {
         named("Job", name);
         if (record.jobs.has(name)) {

@@ -160,6 +160,25 @@ of this door: the webhook on a public route, the keyword table, the number in th
 the keyword in the share dialog are theirs; buttons and lists, the location request and files
 through the Cloud API are WhatsApp's surface, numbered lines and links are SMS's.
 
+## A call
+
+A call has no thread and no screen: the person and a realtime speech model talk, and the
+model fills the run through tools, as the chat's live voice does in the browser. The runtime
+hands a plugin the tenant's speech model for it:
+
+```ts
+const { apiKey, model } = await server.speech.conversation();
+// Throws with the status 503 and the code `no_model` while no OpenAI key is set under Models.
+```
+
+The calls module in `modules/calls` is the whole of it: Twilio carries the call (a WhatsApp
+call arrives over Meta's SIP on a Twilio SIP domain, a phone call on a Twilio number) and asks
+the plugin for TwiML, which hands the call to the tenant's OpenAI project over SIP with a token
+in a header; OpenAI posts the incoming call to the plugin's public route, the plugin accepts it
+with the wizard's rules and tools and answers the model's tool calls over a WebSocket, driving
+the run with `server.runs`. The audio never touches the runtime. What a voice cannot take is
+texted as a link.
+
 ## Not there yet
 
 - An event when a wizard is published, for a runner that prepares something per wizard.
