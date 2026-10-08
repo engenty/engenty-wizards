@@ -636,7 +636,7 @@ const de = {
   "embed.chatInlineHint":
     "Füge das Tag in den HTML-Code deiner Seite ein. Der Chat erscheint an dieser Stelle, 640 px hoch – mit data-height änderst du das.",
   "embed.popoutHint":
-    "Füge das Tag in den HTML-Code deiner Seite ein. Unten rechts erscheint ein Chat-Button, der den Chat darüber öffnet. data-color färbt den Button.",
+    "Füge das Tag in den HTML-Code deiner Seite ein. Unten rechts erscheint der engenty des Wizards als Chat-Button und öffnet den Chat darüber. data-label setzt Text daneben.",
   "chat.view": "Ansicht",
   "chat.steps": "Schritte",
   "chat.chat": "Chat",
@@ -1970,7 +1970,7 @@ const en: Record<Key, string> = {
   "embed.chatInlineHint":
     "Paste the tag into your page's HTML. The chat appears in that place, 640 px high – data-height changes that.",
   "embed.popoutHint":
-    "Paste the tag into your page's HTML. A chat button appears in the lower right corner and opens the chat above it. data-color colours the button.",
+    "Paste the tag into your page's HTML. The wizard's engenty appears as a chat button in the lower right corner and opens the chat above it. data-label puts words beside it.",
   "chat.view": "View",
   "chat.steps": "Steps",
   "chat.chat": "Chat",

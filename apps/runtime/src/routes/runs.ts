@@ -48,7 +48,7 @@ import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
-import { isIconFile, wizardIcon } from "../services/wizard-icon.js";
+import { isIconFile, wizardAvatarSvg, wizardIcon } from "../services/wizard-icon.js";
 import {
   clearStore,
   deleteRows,
@@ -319,6 +319,25 @@ export const publicRoutes = new Hono()
     return c.body(JSON.stringify(manifest), 200, {
       "content-type": "application/manifest+json; charset=utf-8",
       "cache-control": "public, max-age=300",
+    });
+  })
+  // Its engenty as the chat button a website shows it behind (`embed.js`).
+  .get("/wizards/:token/avatar.svg", async (c) => {
+    const w = await db.query.wizard.findFirst({
+      where: eq(schema.wizard.shareToken, c.req.param("token")),
+    });
+    if (!w || w.publishedVersion === null) {
+      return c.notFound();
+    }
+    const version = await db.query.wizardVersion.findFirst({
+      where: and(
+        eq(schema.wizardVersion.wizardId, w.id),
+        eq(schema.wizardVersion.version, w.publishedVersion),
+      ),
+    });
+    return c.body(wizardAvatarSvg(version!.definition.avatar), 200, {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=3600",
     });
   })
   // Its icon: the wizard's engenty on its hue with its name; the studio's where none can be drawn.

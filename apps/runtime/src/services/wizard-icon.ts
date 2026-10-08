@@ -83,6 +83,19 @@ function engentySvg(kind: EngentyKind, labelled: boolean, safe: number, size: nu
   return `${open}<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs><rect width="120" height="120" fill="url(#bg)"/><g transform="translate(${x} ${y}) scale(${scale})"><ellipse cx="60" cy="${shadow.cy}" rx="${shadow.rx}" ry="4.5" fill="#000" opacity="0.14"/>${inner}</g></svg>`;
 }
 
+/**
+ * The engenty filling the circle a round button cuts from the square, on the pale ground of its
+ * hue: the chat button a website shows the wizard behind (`embed.js`). Its body (y 16–100 of the
+ * shapes) sits in the middle.
+ */
+export function wizardAvatarSvg(avatar: string): string {
+  const kind: EngentyKind = Object.hasOwn(ENGENTY_SVG, avatar) ? (avatar as EngentyKind) : "round";
+  const inner = ENGENTY_SVG[kind].replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  const { top, bottom } = palette(kind);
+  const scale = 1.1;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs><rect width="120" height="120" fill="url(#bg)"/><g transform="translate(${60 - 60 * scale} ${60 - 58 * scale}) scale(${scale})">${inner}</g></svg>`;
+}
+
 interface TextMeasure {
   font: string;
   measureText(text: string): { width: number };
