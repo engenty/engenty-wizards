@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.2.27",
+    "timestamp": 1791481633,
+    "commits": [
+      {
+        "id": "c8fe868",
+        "message": "a time picker in the studio's look – a field that opens an hour and a minute column below it, arrow keys move the time by its step, compact without the clock for narrow rows; the plugin docs list it with the page menu and the composer",
+        "group": "Added",
+        "scope": "ui",
+        "breaking": false
+      },
+      {
+        "id": "57339da",
+        "message": "what a booking plugin needs from the runtime – a plugin connects accounts of the space itself (server.connections: start, list, call, remove, with the shared sign-in callback and token refresh), brings starters to the marketplace (registerStarter), learns whether a step runs as a test (step.mode) and in which wizard, and tells the space assistant what its own page holds (registerAssistantContext), where the assistant now stands docked (studio.Assistant) and the page names its place in the top bar's trail (studio.useCrumbs); a page field of kind slot offers free times as chips by day; the studio has a date picker and a date range picker, a composer shared by every chat (a pill on one line, the buttons level with the text, a menu beside the mic to choose the microphone and to hold to record) that floats docked over a blurred band clear of a phone's home bar, and a page menu that slides one level down at the side and becomes tabs on a phone; Google Calendar and Outlook events take a location, Google's an invitation to send and Outlook lists every event with its free/busy; the first slash of the trail stands as close to the wordmark as the others",
+        "group": "Added",
+        "scope": "plugins",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.26",
-    "timestamp": 1791464985,
+    "timestamp": 1791464989,
     "commits": [
       {
         "id": "0b3552e",
