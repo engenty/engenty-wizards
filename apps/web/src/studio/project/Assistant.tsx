@@ -1,7 +1,7 @@
 import type { ProjectFileKind } from "@engenty-wizards/shared/projects";
 import { useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Mascot } from "../../brand";
 import { api, postStream } from "../../lib/api";
 import { t } from "../../lib/i18n";
@@ -23,9 +23,54 @@ function kindOf(file: File): ProjectFileKind {
   return /^(image|video|audio)\//.test(file.type) ? "asset" : "document";
 }
 
+/** A thread with the assistant: the messages, what runs, what it says it does right now. */
+interface Thread {
+  messages: ChatMessage[];
+  phase: Chat["phase"];
+  activity: string | null;
+  startedAt: number | null;
+  error: string | null;
+}
+
 /**
- * The chat with the project assistant. The thread lives on this page only; what the assistant
- * finds is written into the project, and `onChanged` shows it in the sections below.
+ * One thread per space, part and plugin page, kept outside the page: a running turn goes on when
+ * the person moves to another page of the studio and is found again, still running, on the way
+ * back. A reload starts afresh.
+ */
+interface Entry {
+  state: Thread;
+  listeners: Set<() => void>;
+  /** The page that shows the thread now: told when the assistant changed the space. */
+  onChanged: () => void;
+  refreshing: Promise<void> | null;
+}
+
+const threads = new Map<string, Entry>();
+
+function threadOf(key: string): Entry {
+  let entry = threads.get(key);
+  if (!entry) {
+    entry = {
+      state: { messages: [], phase: "idle", activity: null, startedAt: null, error: null },
+      listeners: new Set(),
+      onChanged: () => {},
+      refreshing: null,
+    };
+    threads.set(key, entry);
+  }
+  return entry;
+}
+
+function update(entry: Entry, patch: Partial<Thread> | ((prev: Thread) => Partial<Thread>)) {
+  entry.state = { ...entry.state, ...(typeof patch === "function" ? patch(entry.state) : patch) };
+  for (const listener of entry.listeners) {
+    listener();
+  }
+}
+
+/**
+ * The chat with the project assistant. What the assistant finds is written into the project,
+ * and `onChanged` shows it in the sections below.
  */
 function useProjectAssistant(
   projectId: string,
@@ -34,43 +79,52 @@ function useProjectAssistant(
   plugin?: string,
 ): Chat {
   const qc = useQueryClient();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [phase, setPhase] = useState<Chat["phase"]>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [activity, setActivity] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const refreshing = useRef<Promise<void> | null>(null);
+  const entry = threadOf(`${projectId}:${part}:${plugin ?? ""}`);
+  const state = useSyncExternalStore(
+    useCallback(
+      (listener: () => void) => {
+        entry.listeners.add(listener);
+        return () => entry.listeners.delete(listener);
+      },
+      [entry],
+    ),
+    () => entry.state,
+  );
+  useEffect(() => {
+    entry.onChanged = onChanged;
+    return () => {
+      if (entry.onChanged === onChanged) {
+        entry.onChanged = () => {};
+      }
+    };
+  }, [entry, onChanged]);
 
   /** Fetches the project again and shows it; changes that arrive meanwhile wait for the next one. */
   const refresh = () => {
-    refreshing.current ??= (async () => {
+    entry.refreshing ??= (async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["projects"] }),
         qc.invalidateQueries({ queryKey: ["project-files", projectId] }),
         qc.invalidateQueries({ queryKey: ["knowledge", projectId] }),
       ]);
-      onChanged();
-      refreshing.current = null;
+      entry.onChanged();
+      entry.refreshing = null;
     })();
-    return refreshing.current;
+    return entry.refreshing;
   };
 
   const send = async (text: string, files: File[] = []): Promise<boolean> => {
-    if (!(text.trim() || files.length) || phase !== "idle") {
+    if (!(text.trim() || files.length) || entry.state.phase !== "idle") {
       return false;
     }
-    setError(null);
-    setPhase("thinking");
-    setStartedAt(Date.now());
+    update(entry, { error: null, phase: "thinking", startedAt: Date.now() });
     if (files.length) {
       try {
         for (const file of files) {
           await api.upload(`/api/studio/projects/${projectId}/files?kind=${kindOf(file)}`, file);
         }
       } catch (err) {
-        setError((err as Error).message);
-        setPhase("idle");
-        setStartedAt(null);
+        update(entry, { error: (err as Error).message, phase: "idle", startedAt: null });
         await refresh();
         return false;
       }
@@ -78,14 +132,20 @@ function useProjectAssistant(
       const named = `${t("editor.attached")}: ${files.map((f) => f.name).join(", ")}`;
       text = text.trim() ? `${text}\n\n${named}` : named;
     }
-    const history = messages.map(({ role, content }) => ({ role, content })).slice(-12);
+    const history = entry.state.messages.map(({ role, content }) => ({ role, content })).slice(-12);
     const pendingId = `p-${Date.now()}`;
-    setMessages((m) => [
-      ...m,
-      { id: `u-${Date.now()}`, role: "user", content: text, previews: previewsOf(files) },
-      { id: pendingId, role: "assistant", content: "", pending: true },
-    ]);
-    setActivity(null);
+    update(entry, (prev) => ({
+      messages: [
+        ...prev.messages,
+        { id: `u-${Date.now()}`, role: "user", content: text, previews: previewsOf(files) },
+        { id: pendingId, role: "assistant", content: "", pending: true },
+      ],
+      activity: null,
+    }));
+    const patchPending = (fn: (x: ChatMessage) => ChatMessage) =>
+      update(entry, (prev) => ({
+        messages: prev.messages.map((x) => (x.id === pendingId ? fn(x) : x)),
+      }));
     let answered = false;
     try {
       await postStream(
@@ -94,67 +154,55 @@ function useProjectAssistant(
         (event, data) => {
           if (event === "text") {
             const delta = JSON.parse(data) as string;
-            setMessages((m) =>
-              m.map((x) => (x.id === pendingId ? { ...x, content: x.content + delta } : x)),
-            );
+            patchPending((x) => ({ ...x, content: x.content + delta }));
           } else if (event === "activity") {
-            setActivity(JSON.parse(data) as string);
+            update(entry, { activity: JSON.parse(data) as string });
           } else if (event === "card") {
             const card = JSON.parse(data) as Omit<ChatCard, "id">;
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === pendingId
-                  ? {
-                      ...x,
-                      cards: [
-                        ...(x.cards ?? []),
-                        { ...card, id: `${pendingId}-${x.cards?.length ?? 0}` },
-                      ],
-                    }
-                  : x,
-              ),
-            );
+            patchPending((x) => ({
+              ...x,
+              cards: [...(x.cards ?? []), { ...card, id: `${pendingId}-${x.cards?.length ?? 0}` }],
+            }));
           } else if (event === "changed") {
-            setPhase("building");
+            update(entry, { phase: "building" });
             void refresh();
           } else if (event === "done") {
             answered = true;
             const done = JSON.parse(data) as { reply: string; changed: boolean };
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === pendingId
-                  ? { ...x, content: done.reply, changed: done.changed, pending: false }
-                  : x,
-              ),
-            );
+            patchPending((x) => ({
+              ...x,
+              content: done.reply,
+              changed: done.changed,
+              pending: false,
+            }));
           } else if (event === "error") {
             answered = true;
-            setError(JSON.parse(data).message);
+            update(entry, { error: JSON.parse(data).message });
           }
         },
       );
       if (!answered) {
-        setError(t("editor.chatBroken"));
+        update(entry, { error: t("editor.chatBroken") });
       }
     } catch (err) {
-      setError((err as Error).message);
+      update(entry, { error: (err as Error).message });
     } finally {
-      setActivity(null);
-      setStartedAt(null);
-      setMessages((m) =>
-        m
+      update(entry, (prev) => ({
+        activity: null,
+        startedAt: null,
+        phase: "idle",
+        messages: prev.messages
           .filter((x) => !(x.id === pendingId && !x.content && !x.cards?.length))
           .map((x) => ({ ...x, pending: false })),
-      );
-      setPhase("idle");
-      await refreshing.current;
+      }));
+      await entry.refreshing;
       await refresh();
       await qc.invalidateQueries({ queryKey: ["me"] });
     }
     return true;
   };
 
-  return { messages, phase, activity, startedAt, error, send };
+  return { ...state, send };
 }
 
 /** A plugin's card for what its tool returned, drawn by the plugin's studio half. */
