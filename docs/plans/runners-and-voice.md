@@ -17,9 +17,12 @@ the location request and media in the thread, hand-off links for what the thread
 results as pictures, documents and a link; with it the hooks `registerShareSection`,
 `PluginRunner.problem`, `runs.report({ draft })`, `runs.wizards`, `runs.transcribe` and the
 report's `lang` and `picture`. `registerChannelAddress` turned out unnecessary: the plugin keeps
-the keyword table itself and asks `runs.wizards` which wizards are on. Not yet: Flow mode and
-`wizard.published`, the editor's one-line notice, the marketplace badges; the module was not
-exercised against a real Meta number. Written on 2026-10-08, checked against v0.2.26. The
+the keyword table itself and asks `runs.wizards` which wizards are on. SMS followed the same
+day (`modules/sms`, Twilio, text only), and the conversation both share is now the SDK's
+`ThreadDoor` (`@engenty-wizards/plugin-sdk/thread`), each messenger a `ThreadSurface`. Not
+yet: Flow mode and `wizard.published`, the editor's one-line notice, the marketplace badges;
+neither module was exercised against a real number. Written on 2026-10-08, checked against
+v0.2.26. The
 concept behind it (the six channel patterns, the three people's view) is `wizard-channels.md`;
 read that first. The chat runner it merges in phase 1 is on branch
 `claude/wizard-chatbot-ui-variants-de6db6`.
@@ -275,7 +278,7 @@ for every door at once.
 | 3 · Live voice, web | Dictate and read aloud first. Then the conversation model class and its credit price, the mic, the engenty face, tool calls into the run, the live-voice capability set, `/w/<token>/talk` | A wizard in the voice set runs by voice start to result; a photo field is taken on the screen without leaving the page |
 | 4 · Live video, web | Camera track, frames to the model, `take_frame` into image fields | A receipt held to the camera lands in the image field |
 | 5 · WhatsApp | Chat mode built (`modules/whatsapp`): webhook on a public route with the signature check, the keyword table and `runs.wizards`, media in with `runs.upload`, voice messages with `runs.transcribe`, pictures out with the report's `picture`, `registerShareSection` for the keyword and the QR code, a utility template for reach-back after a day. Still open: Flow mode on `wizard.published` | Done in the test runtime against a stand-in for Meta: a wizard with a photo and a location field runs in the thread start to result, a page with a signature hands off and comes back. Not yet run against a real number |
-| 6 · SMS, WhatsApp call | SMS as the hand-off carrier; live voice on a WhatsApp call with `speech.session` | A WhatsApp call runs a wizard; its signature step arrives in the thread |
+| 6 · SMS, WhatsApp call | SMS built (`modules/sms`, Twilio, text only): numbered choices, addresses typed, every picture and file a link, the gist of long text; with it the conversation moved out of the WhatsApp module into the SDK as `@engenty-wizards/plugin-sdk/thread` (`ThreadDoor` + a `ThreadSurface` per messenger), so Slack or Telegram are a surface each. Still open: live voice on a WhatsApp call with `speech.session`, SMS as the phone's hand-off carrier | SMS done in the test runtime against a stand-in for Twilio: a wizard with a choice, a multiple choice and a toggle runs by text; its photo page hands off and comes back. Not yet run against a real number |
 | Later | Phone (TwiML or a media-stream relay), Slack, Teams, RCS, e-mail; marketplace badges from `runnersFor`; channel starters; the SDK runner bundle; WebSocket public routes | |
 
 ## Open decisions

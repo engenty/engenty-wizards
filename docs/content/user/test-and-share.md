@@ -91,6 +91,20 @@ finishes later can only reach back with an approved utility template with one pl
 name goes into the settings, the link into the placeholder. Without one, the result waits for
 the person's next message.
 
+### SMS
+
+With the SMS module a wizard runs by text message, through a Twilio account and number of your
+own. Settings → SMS takes the Account SID, the auth token and the number; the webhook address
+the page shows goes into the number's "A message comes in" field in Twilio. Switch SMS on for a
+wizard and its row folds out the keyword, an `sms:` link that types it and the QR code.
+
+Text only: one field per text, choices as numbered lines answered with the number (several
+numbers with commas for a multiple choice), yes or no, a place as a typed address. A page with
+a photo, a file or a signature arrives as a link to the wizard's page and the texts go on once it
+was filled there. Long texts come as their gist; every picture, document and the whole result
+are links. Each text costs what Twilio charges; there is no window, a wizard that finishes
+later still texts.
+
 ### Who can open the link
 
 An install on your computer only answers on `localhost`: the link works on that computer, not

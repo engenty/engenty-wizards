@@ -1,56 +1,40 @@
-import { randomBytes } from "node:crypto";
 import type { PluginDb } from "@engenty-wizards/plugin-sdk";
 import type { Thread, ThreadState } from "@engenty-wizards/plugin-sdk/thread";
 import { eq } from "drizzle-orm";
-import type { Account } from "./graph";
 import { account, binding, thread } from "./schema";
+import { type Account, e164 } from "./twilio";
 
-/** The plugin's rows: the number, the keywords, the threads. */
+/** The plugin's rows: the account, the keywords, the threads. */
 
 export async function getAccount(db: PluginDb): Promise<Account | null> {
   const [row] = await db.select().from(account).where(eq(account.id, 1));
-  return row
-    ? {
-        phoneNumberId: row.phoneNumberId,
-        number: row.number,
-        accessToken: row.accessToken,
-        appSecret: row.appSecret,
-        verifyToken: row.verifyToken,
-        template: row.template,
-      }
-    : null;
+  return row ? { accountSid: row.accountSid, authToken: row.authToken, number: row.number } : null;
 }
 
 export interface AccountInput {
-  phoneNumberId: string;
+  accountSid: string;
   number: string;
   /** Left out: the token stays as it is. */
-  accessToken?: string;
-  appSecret?: string | null;
-  template?: string | null;
+  authToken?: string;
 }
 
 export async function putAccount(db: PluginDb, input: AccountInput): Promise<Account> {
   const before = await getAccount(db);
-  const accessToken = input.accessToken || before?.accessToken;
-  if (!accessToken) {
-    throw Object.assign(new Error("An access token is needed."), { status: 400, code: "no_token" });
+  const authToken = input.authToken || before?.authToken;
+  if (!authToken) {
+    throw Object.assign(new Error("An auth token is needed."), { status: 400, code: "no_token" });
   }
   const next = {
-    phoneNumberId: input.phoneNumberId,
-    number: input.number.replace(/\D/g, ""),
-    accessToken,
-    appSecret:
-      input.appSecret === undefined ? (before?.appSecret ?? null) : input.appSecret || null,
-    verifyToken: before?.verifyToken ?? randomBytes(18).toString("base64url"),
-    template: input.template === undefined ? (before?.template ?? null) : input.template || null,
+    accountSid: input.accountSid,
+    authToken,
+    number: e164(input.number),
     updatedAt: new Date(),
   };
   await db
     .insert(account)
     .values({ id: 1, ...next })
     .onConflictDoUpdate({ target: account.id, set: next });
-  return { ...next };
+  return { accountSid: next.accountSid, authToken, number: next.number };
 }
 
 export async function dropAccount(db: PluginDb): Promise<void> {
@@ -114,15 +98,16 @@ export async function setKeyword(db: PluginDb, wizardId: string, keyword: string
   return clean;
 }
 
-export const waLink = (number: string, keyword: string) =>
-  `https://wa.me/${number}?text=${encodeURIComponent(keyword)}`;
+/** The link that opens the phone's messages with the keyword typed (RFC 5724). */
+export const smsLink = (number: string, keyword: string) =>
+  `sms:${number}?body=${encodeURIComponent(keyword)}`;
 
 // ── Threads ─────────────────────────────────────────────────────────────────
 
 function rowToThread(row: typeof thread.$inferSelect): Thread {
   return {
-    id: row.waId,
-    name: row.name,
+    id: row.number,
+    name: null,
     runId: row.runId,
     state: JSON.parse(row.state) as ThreadState,
     lastInboundAt: row.lastInboundAt.getTime(),
@@ -130,8 +115,8 @@ function rowToThread(row: typeof thread.$inferSelect): Thread {
   };
 }
 
-export async function loadThread(db: PluginDb, waId: string): Promise<Thread | null> {
-  const [row] = await db.select().from(thread).where(eq(thread.waId, waId));
+export async function loadThread(db: PluginDb, number: string): Promise<Thread | null> {
+  const [row] = await db.select().from(thread).where(eq(thread.number, number));
   return row ? rowToThread(row) : null;
 }
 
@@ -142,7 +127,6 @@ export async function threadByRun(db: PluginDb, runId: string): Promise<Thread |
 
 export async function saveThread(db: PluginDb, t: Thread): Promise<void> {
   const next = {
-    name: t.name,
     runId: t.runId,
     state: JSON.stringify(t.state),
     lastInboundAt: new Date(t.lastInboundAt),
@@ -151,6 +135,6 @@ export async function saveThread(db: PluginDb, t: Thread): Promise<void> {
   };
   await db
     .insert(thread)
-    .values({ waId: t.id, ...next })
-    .onConflictDoUpdate({ target: thread.waId, set: next });
+    .values({ number: t.id, ...next })
+    .onConflictDoUpdate({ target: thread.number, set: next });
 }

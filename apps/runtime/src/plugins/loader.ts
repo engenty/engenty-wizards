@@ -68,6 +68,7 @@ const own = (specifier: string) => fileURLToPath(import.meta.resolve(specifier))
 /** The longer name first: an alias also matches what begins with it. */
 function aliases(): Record<string, string> {
   return {
+    "@engenty-wizards/plugin-sdk/thread": own("@engenty-wizards/plugin-sdk/thread"),
     "@engenty-wizards/plugin-sdk": own("@engenty-wizards/plugin-sdk"),
     "drizzle-orm/sqlite-core": own("drizzle-orm/sqlite-core"),
     "drizzle-orm": own("drizzle-orm"),

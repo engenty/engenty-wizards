@@ -122,9 +122,43 @@ function ShareSection({ wizard }: StudioShareSectionProps) {
 One section per runner. The settings a channel needs once per tenant (the number, the token)
 go into a [settings section](./studio.md).
 
-The WhatsApp module in `modules/whatsapp` is a channel runner as a whole: the webhook on a public
-route, the thread that asks a page one field at a time with `draft`, files in with `runs.upload`,
-pictures out with `picture`, the keyword in the share dialog, the number in the settings.
+## A thread door from the SDK
+
+A messenger runs a wizard one message at a time: a field per question, options to tap or to
+number, a link to the screen for what the thread cannot take, the result as pictures and links.
+That conversation is the same on every messenger; the SDK holds it, and a plugin brings the
+surface: how a question is drawn there, how a file is fetched.
+
+```ts
+import { ThreadDoor, type ThreadSurface } from "@engenty-wizards/plugin-sdk/thread";
+
+const surface: ThreadSurface = {
+  runner: "sms",
+  asks: ["text", "number", "select", "multiselect", "toggle", "date", "email", "url", "location"],
+  async send(thread, prompt) {
+    // prompt.kind: "text" | "choice" | "location" | "link" | "media" — draw it as the channel allows.
+    await twilio.send(thread.id, toText(prompt, thread.state.lang));
+  },
+};
+
+const door = new ThreadDoor({ runs: server.runs, surface, offered, watch, unwatch, log });
+// A webhook: door.inbound(thread, message). A run that changed: door.resume(thread).
+```
+
+| | |
+|---|---|
+| `ThreadSurface.asks` | The field kinds the thread asks itself; a page with any other field goes to the screen as a link |
+| `send(thread, prompt)` | A `choice` is drawn as buttons, a list or numbered lines; a typed number or title counts as a tap, the door works that out. `link` and `media` carry a URL |
+| `media(ref)` | A file the person sent, by what the webhook named; without it files hand off |
+| `mayDeliver`, `reach` | A messenger with a window (WhatsApp's 24 hours): whether a free message may go out now, and the link by other means when not |
+| `offered()` | The wizards switched on for the runner (`runs.wizards`) with their keywords; a keyword in the thread starts its wizard, else the door offers the menu |
+| `watch(thread)`, `unwatch(runId)` | Hear the run (`runs.subscribe`) and call `door.resume` when it moves; the plugin keeps the subscriptions |
+| `Thread` | `{ id, name, runId, state, lastInboundAt, lastMessageId }`: the plugin keeps it in a table per person and hands it to the door before and after |
+
+The WhatsApp module in `modules/whatsapp` and the SMS module in `modules/sms` are two surfaces
+of this door: the webhook on a public route, the keyword table, the number in the settings and
+the keyword in the share dialog are theirs; buttons and lists, the location request and files
+through the Cloud API are WhatsApp's surface, numbered lines and links are SMS's.
 
 ## Not there yet
 

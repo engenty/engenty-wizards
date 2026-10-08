@@ -3,11 +3,10 @@ import {
   freshThreadState,
   type Thread,
   ThreadDoor,
+  type ThreadInbound,
   type ThreadWizard,
 } from "@engenty-wizards/plugin-sdk/thread";
 import { z } from "zod";
-import { Graph, GraphError } from "./graph";
-import { type Inbound, parseWebhook, signatureOk } from "./inbound";
 import {
   dropAccount,
   getAccount,
@@ -17,29 +16,33 @@ import {
   putAccount,
   saveThread,
   setKeyword,
+  smsLink,
   threadByRun,
-  waLink,
 } from "./store";
-import { ASKS, RUNNER, whatsappSurface } from "./surface";
+import { ASKS, RUNNER, smsSurface } from "./surface";
+import { e164, parseInbound, signatureOk, Twilio, TwilioError } from "./twilio";
 
 /**
- * WhatsApp as a door: the tenant connects its business number (Meta's Cloud API), the owner
- * switches the runner on per wizard and gets a keyword; a person writes the keyword to the
- * number and runs the wizard in the thread. The conversation itself is the SDK's thread door
- * (surface.ts says how it looks on WhatsApp); this file is the webhook, the rows and the
- * studio's routes. The studio half is ui/plugin.tsx.
+ * SMS as a door: the tenant connects its Twilio account and number, the owner switches the
+ * runner on per wizard and gets a keyword; a person texts the keyword to the number and runs
+ * the wizard in texts. The conversation itself is the SDK's thread door (surface.ts says how
+ * it reads as text); this file is the webhook, the rows and the studio's routes. The studio
+ * half is ui/plugin.tsx.
  */
 
 const fail = (status: number, code: string, message: string): never => {
   throw Object.assign(new Error(message), { status, code });
 };
 
+/** An empty TwiML answer: Twilio expects one, and sends nothing of its own. */
+const TWIML = new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+  headers: { "content-type": "text/xml" },
+});
+
 const accountInput = z.object({
-  phoneNumberId: z.string().trim().min(1).max(40),
+  accountSid: z.string().trim().min(1).max(60),
   number: z.string().trim().min(5).max(20),
-  accessToken: z.string().trim().max(1000).optional(),
-  appSecret: z.string().trim().max(200).nullable().optional(),
-  template: z.string().trim().max(512).nullable().optional(),
+  authToken: z.string().trim().max(200).optional(),
 });
 
 export default definePlugin((wizards) => {
@@ -64,11 +67,10 @@ export default definePlugin((wizards) => {
     return next;
   }
 
-  // The runs the threads listen to, with what stops the listening.
   const watching = new Map<string, () => void>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  /** The wizards switched on for WhatsApp, each with its keyword. */
+  /** The wizards switched on for SMS, each with its keyword. */
   async function offered(): Promise<ThreadWizard[]> {
     const on = await server.runs.wizards(RUNNER);
     const words = await keywords(db());
@@ -82,7 +84,7 @@ export default definePlugin((wizards) => {
 
   const door = new ThreadDoor({
     runs: server.runs,
-    surface: whatsappSurface({ account: () => getAccount(db()), log }),
+    surface: smsSurface({ account: () => getAccount(db()) }),
     offered,
     watch(thread) {
       const runId = thread.runId;
@@ -91,7 +93,6 @@ export default definePlugin((wizards) => {
       }
       const { id } = thread;
       const stop = server.runs.subscribe(runId, (signal) => {
-        // Only a step that ended or a change of status moves the thread; a burst is one look.
         if (signal.event && signal.event.type !== "step_done" && signal.event.type !== "error") {
           return;
         }
@@ -124,28 +125,21 @@ export default definePlugin((wizards) => {
     }
   });
 
-  async function handle(msg: Inbound): Promise<void> {
+  async function handle(msg: ThreadInbound): Promise<void> {
     const thread: Thread = (await loadThread(db(), msg.from)) ?? {
       id: msg.from,
-      name: msg.name,
+      name: null,
       runId: null,
       state: freshThreadState(),
       lastInboundAt: msg.at,
       lastMessageId: null,
     };
     if (thread.lastMessageId === msg.id) {
-      // Meta posts a webhook again when the answer was slow: the message was dealt with.
+      // Twilio posts again when the answer was slow: the message was dealt with.
       return;
     }
     thread.lastMessageId = msg.id;
     thread.lastInboundAt = Math.max(thread.lastInboundAt, msg.at);
-    if (msg.name) {
-      thread.name = msg.name;
-    }
-    // The two ticks turn blue while the answer is worked out.
-    void getAccount(db())
-      .then((account) => (account ? new Graph(account).markRead(msg.id) : undefined))
-      .catch(() => undefined);
     try {
       await door.inbound(thread, msg);
     } finally {
@@ -169,72 +163,39 @@ export default definePlugin((wizards) => {
 
   server.registerRunner({
     id: RUNNER,
-    label: { de: "WhatsApp", en: "WhatsApp" },
+    label: { de: "SMS", en: "SMS" },
     kind: "channel",
     capabilities: {
       input: ASKS,
-      output: {
-        shows: ["text", "data", "image", "video", "voice", "document", "film"],
-        pictures: ["dashboard", "widget"],
-      },
+      output: { shows: ["text", "data"], pictures: [] },
       asks: ["confirm"],
       review: ["accept", "regenerate"],
       waits: true,
-      handoff: ["thread"],
+      handoff: ["sms"],
     },
     problem: async () =>
-      (await getAccount(db())) ? null : "Keine Nummer verbunden (Einstellungen → WhatsApp)",
+      (await getAccount(db())) ? null : "Keine Nummer verbunden (Einstellungen → SMS)",
   });
 
-  // Meta checks the address once, with the verify token the settings show.
-  server.registerPublicRoute({
-    method: "GET",
-    path: "/webhook",
-    handler: async ({ query }) => {
-      const account = await getAccount(db());
-      if (
-        account &&
-        query.get("hub.mode") === "subscribe" &&
-        query.get("hub.verify_token") === account.verifyToken
-      ) {
-        return new Response(query.get("hub.challenge") ?? "", {
-          status: 200,
-          headers: { "content-type": "text/plain" },
-        });
-      }
-      return fail(403, "forbidden", "The verify token does not match.");
-    },
-  });
-
-  // What people write: answered at once, dealt with in the thread's own turn.
+  // What people text: Twilio posts a form; answered with empty TwiML, dealt with in the thread's turn.
   server.registerPublicRoute({
     method: "POST",
     path: "/webhook",
     handler: async ({ request }) => {
       const account = await getAccount(db());
       if (!account) {
-        return { ok: true };
+        return TWIML.clone();
       }
-      const raw = await request.text();
-      if (
-        account.appSecret &&
-        !signatureOk(account.appSecret, raw, request.headers.get("x-hub-signature-256"))
-      ) {
+      const form = new URLSearchParams(await request.text());
+      const urls = [await server.publicUrl("/webhook"), request.url];
+      if (!signatureOk(account.authToken, urls, form, request.headers.get("x-twilio-signature"))) {
         return fail(403, "bad_signature", "The signature does not match.");
       }
-      let body: unknown;
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        return fail(400, "bad_body", "Not JSON.");
-      }
-      for (const msg of parseWebhook(body)) {
-        if (msg.phoneNumberId && msg.phoneNumberId !== account.phoneNumberId) {
-          continue;
-        }
+      const msg = parseInbound(form);
+      if (msg) {
         void turn(msg.from, () => handle(msg));
       }
-      return { ok: true };
+      return TWIML.clone();
     },
   });
 
@@ -263,12 +224,9 @@ export default definePlugin((wizards) => {
     const account = await getAccount(db());
     return {
       connected: Boolean(account),
-      phoneNumberId: account?.phoneNumberId ?? "",
+      accountSid: account?.accountSid ?? "",
       number: account?.number ?? "",
-      hasToken: Boolean(account?.accessToken),
-      hasSecret: Boolean(account?.appSecret),
-      template: account?.template ?? "",
-      verifyToken: account?.verifyToken ?? null,
+      hasToken: Boolean(account?.authToken),
       webhook: await server.publicUrl("/webhook"),
     };
   }
@@ -306,7 +264,7 @@ export default definePlugin((wizards) => {
     },
   });
 
-  // A word to a number of one's own: the token and the number id are right when it arrives.
+  // A text to a number of one's own: the account and the number are right when it arrives.
   server.registerHttpRoute({
     method: "POST",
     path: "/account/test",
@@ -318,27 +276,24 @@ export default definePlugin((wizards) => {
         return fail(409, "not_connected", "No number is connected.");
       }
       const { to } = (await request.json()) as { to?: string };
-      const number = String(to ?? "").replace(/\D/g, "");
-      if (number.length < 5) {
+      const number = e164(String(to ?? ""));
+      if (number.length < 6) {
         return fail(400, "invalid", "A number with its country code.");
       }
       try {
-        const id = await new Graph(account).send(number, {
-          type: "text",
-          text: "✓ engenty wizards",
-        });
+        const id = await new Twilio(account).send(number, "✓ engenty wizards");
         return { ok: true, id };
       } catch (err) {
         return fail(
           502,
           "provider",
-          err instanceof GraphError ? err.message : "The message was not sent.",
+          err instanceof TwilioError ? err.message : "The text was not sent.",
         );
       }
     },
   });
 
-  // The keyword a wizard answers to, and the link that writes it.
+  // The keyword a wizard answers to, and the link that types it.
   async function bindingView(wizardId: string) {
     const account = await getAccount(db());
     const on = await server.runs.wizards(RUNNER);
@@ -346,7 +301,7 @@ export default definePlugin((wizards) => {
     const keyword = await keywordOf(db(), wizardId, title);
     return {
       keyword,
-      link: account ? waLink(account.number, keyword) : null,
+      link: account ? smsLink(account.number, keyword) : null,
       number: account?.number ?? null,
     };
   }

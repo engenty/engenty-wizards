@@ -7,6 +7,10 @@ description: Every call, type, address and setting of the plugin framework on on
 
 `import { definePlugin } from "@engenty-wizards/plugin-sdk"`
 
+`import { ThreadDoor } from "@engenty-wizards/plugin-sdk/thread"` — a wizard run in a
+messenger's thread, one message at a time; a plugin brings the surface. See
+[Runners](./runners.md#a-thread-door-from-the-sdk).
+
 The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => void | Promise<void>`.
 
 ### `wizards`

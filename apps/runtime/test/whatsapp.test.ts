@@ -303,13 +303,12 @@ describe("connecting the number", () => {
 
 describe("a wizard in the thread", () => {
   it("the keyword starts it and the first field is asked", async () => {
-    // "hallo" above: no run yet, two wizards on → the menu.
+    // "hallo" above: no run yet, two wizards on → the menu, two short titles as buttons.
     const menu = await replies();
-    expect(menu[0].interactive.type).toBe("list");
-    expect(menu[0].interactive.action.sections[0].rows.map((r: { title: string }) => r.title)).toEqual([
-      "Schadensmeldung",
-      "Vertrag",
-    ]);
+    expect(menu[0].interactive.type).toBe("button");
+    expect(
+      menu[0].interactive.action.buttons.map((b: { reply: { title: string } }) => b.reply.title),
+    ).toEqual(["Schadensmeldung", "Vertrag"]);
     await text("SCHADEN");
     const [name] = await replies();
     expect(name.type).toBe("text");

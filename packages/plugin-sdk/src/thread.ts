@@ -1,52 +1,63 @@
-import type {
-  PluginRunField,
-  PluginRunReport,
-  PluginRuns,
-  PluginRunWaiting,
-} from "@engenty-wizards/plugin-sdk";
-import { type Account, clip, Graph, GraphError, type Outgoing, RE_ENGAGEMENT } from "./graph";
-import type { Inbound } from "./inbound";
-import {
-  DONE_WORDS,
-  type Key,
-  type Lang,
-  NO_WORDS,
-  SKIP_WORDS,
-  STOP_WORDS,
-  say,
-  YES_WORDS,
-} from "./say";
+import type { PluginRunField, PluginRunReport, PluginRuns, PluginRunWaiting } from "./index.js";
 
 /**
- * The conversation: one thread per number, one run at a time. A page is asked one field per
- * message (buttons for a few choices, a list for more, a location request, a photo in the
- * chat); a page with a field the thread cannot take goes to the screen as a link, and the
- * thread goes on when it was filled there. Reviews and questions are two buttons; what the
- * wizard makes arrives as pictures, documents and a link to the run page.
+ * A thread door: a wizard run in a messenger's thread, one message at a time. The door holds
+ * the conversation (which field is asked, what a reply means, when a page is sent, when the
+ * screen takes over, what is sent at the end); a channel plugin brings the surface (how a
+ * question is drawn there, how a file is fetched) and the plumbing (the webhook, the thread
+ * rows, the keywords). WhatsApp and SMS are two surfaces of the same door.
  */
 
-export const RUNNER = "whatsapp";
+export type ThreadLang = "de" | "en";
 
-/** The field kinds the thread asks itself; any other on a page hands the page to the screen. */
-export const ASKS = new Set([
-  "text",
-  "textarea",
-  "number",
-  "select",
-  "multiselect",
-  "date",
-  "email",
-  "url",
-  "toggle",
-  "image",
-  "file",
-  "location",
-  "audio",
-]);
+/** What the person sent, as every channel can say it. */
+export interface ThreadInbound {
+  id: string;
+  /** The person's address on the channel: a number, an account. */
+  from: string;
+  name?: string | null;
+  at: number;
+  kind: "text" | "reply" | "image" | "document" | "video" | "audio" | "location" | "other";
+  text?: string;
+  /** The id of the option the person tapped, where the channel has buttons. */
+  replyId?: string;
+  replyTitle?: string;
+  media?: { id: string; mime: string; filename?: string; caption?: string };
+  location?: { lat: number; lng: number; name?: string; address?: string };
+}
 
-const DAY = 24 * 3600_000;
+export interface ThreadOption {
+  id: string;
+  title: string;
+  /** Of a multiple choice: picked already. */
+  picked?: boolean;
+}
 
-export interface PageDraft {
+/** What the door says; the surface draws it as the channel allows. */
+export type ThreadPrompt =
+  | { kind: "text"; text: string }
+  /** A question with options: buttons, a list, or numbered lines — the surface decides. A typed number or title counts as a tap. */
+  | { kind: "choice"; text: string; options: ThreadOption[]; multiple?: boolean; button: string }
+  | { kind: "location"; text: string }
+  | { kind: "link"; text: string; url: string; label: string }
+  | {
+      kind: "media";
+      media: "image" | "document" | "video" | "audio";
+      url: string;
+      caption?: string;
+      filename?: string;
+    };
+
+export interface ThreadWizard {
+  wizardId: string;
+  token: string;
+  title: string;
+  lang: ThreadLang;
+  /** The word that starts it in the thread. */
+  keyword: string;
+}
+
+export interface ThreadPageDraft {
   step: string;
   values: Record<string, unknown>;
   /** The field the last question was about. */
@@ -57,19 +68,22 @@ export interface PageDraft {
 }
 
 export interface ThreadState {
-  lang: Lang;
+  lang: ThreadLang;
   wizardId: string | null;
-  page: PageDraft | null;
+  page: ThreadPageDraft | null;
   /** At a review: which output to make again, then what should change. */
   awaiting: "target" | "note" | null;
   target: string | null;
   /** What was said once already: "working on X", the review, the question, the link to the screen. */
   said: string | null;
   delivered: boolean;
+  /** The options of the last question, so a typed number or title counts as a tap. */
+  choices: ThreadOption[] | null;
 }
 
 export interface Thread {
-  waId: string;
+  /** The person's address on the channel. */
+  id: string;
   name: string | null;
   runId: string | null;
   state: ThreadState;
@@ -77,7 +91,7 @@ export interface Thread {
   lastMessageId: string | null;
 }
 
-export const freshState = (lang: Lang = "de"): ThreadState => ({
+export const freshThreadState = (lang: ThreadLang = "de"): ThreadState => ({
   lang,
   wizardId: null,
   page: null,
@@ -85,27 +99,126 @@ export const freshState = (lang: Lang = "de"): ThreadState => ({
   target: null,
   said: null,
   delivered: false,
+  choices: null,
 });
 
-export interface Offered {
-  wizardId: string;
-  token: string;
-  title: string;
-  lang: Lang;
+export interface ThreadSurface {
+  /** The runner's id: kept on the run, and the person's channel. */
+  runner: string;
+  /** The field kinds the surface asks itself; any other on a page hands the page to the screen. */
+  asks: Iterable<string>;
+  send(thread: Thread, prompt: ThreadPrompt): Promise<void>;
+  /** A file the person sent, by what the inbound named. Without it, files hand off. */
+  media?(ref: NonNullable<ThreadInbound["media"]>): Promise<{ data: Uint8Array; mime: string }>;
+  /** Whether something may be sent now with nobody having written (a messenger's window). Default: yes. */
+  mayDeliver?(thread: Thread): boolean;
+  /** When it may not: the link by other means (a template). True when something went out. */
+  reach?(thread: Thread, url: string): Promise<boolean>;
 }
 
-export interface DoorDeps {
+export interface ThreadDoorOptions {
   runs: PluginRuns;
-  /** The tenant's number; null while none is connected. */
-  account: () => Promise<Account | null>;
-  offered: () => Promise<Offered[]>;
-  /** The keyword of every wizard, by wizard id. */
-  keywords: () => Promise<Map<string, string>>;
-  /** Keep hearing the run, and go on in the thread when it changes. */
-  watch: (thread: Thread) => void;
-  unwatch: (runId: string) => void;
-  log: { warn: (...args: unknown[]) => void };
+  surface: ThreadSurface;
+  /** The wizards the door may start: the ones switched on, with their keywords. */
+  offered(): Promise<ThreadWizard[]>;
+  /** Keep hearing the run, and call `resume` for the thread when it changes. */
+  watch(thread: Thread): void;
+  unwatch(runId: string): void;
+  log: { warn(...args: unknown[]): void };
 }
+
+// ── Words ─────────────────────────────────────────────────────────────────────
+
+const texts = {
+  de: {
+    nothing: "Hier ist noch kein Wizard verbunden.",
+    which: "Welcher Wizard soll es sein?",
+    choose: "Auswählen",
+    over: "Dieser Durchlauf ist beendet. Mit dem Stichwort beginnt ein neuer.",
+    stopped: "Abgebrochen. Mit dem Stichwort beginnt ein neuer Durchlauf.",
+    optional: "(freiwillig – „weiter“ überspringt)",
+    pickOne: "Bitte eine der Möglichkeiten wählen.",
+    picked: "Gewählt: {list}",
+    more: "Noch etwas?",
+    done: "Fertig",
+    yes: "Ja",
+    no: "Nein",
+    yesOrNo: "Bitte mit Ja oder Nein antworten.",
+    asText: "Bitte als Text antworten.",
+    asDate: "Bitte ein Datum, zum Beispiel 24.12.2026.",
+    sendPhoto: "Bitte ein Foto schicken.",
+    sendFile: "Bitte eine Datei schicken.",
+    sendVoice: "Bitte eine Sprachnachricht schicken.",
+    another: "Noch eins",
+    whereAre: "Bitte den Standort teilen, oder die Adresse schreiben.",
+    needed: "Dieses Feld braucht es.",
+    screen: "Dafür braucht es den Bildschirm – danach geht es hier weiter.",
+    open: "Öffnen",
+    working: "{step} … das dauert einen Moment.",
+    reviewAsk: "Passt das so?",
+    reviewOk: "Passt",
+    reviewRedo: "Neue Version",
+    reviewWhich: "Was soll neu gemacht werden?",
+    reviewNote: "Was soll anders sein?",
+    allow: "Erlauben",
+    skip: "Überspringen",
+    finished: "Fertig! Alles liegt hier:",
+    failed: "Der Wizard ist stehengeblieben. Hier geht es weiter:",
+  },
+  en: {
+    nothing: "No wizard is connected here yet.",
+    which: "Which wizard?",
+    choose: "Choose",
+    over: "This run is over. The keyword starts a new one.",
+    stopped: "Stopped. The keyword starts a new run.",
+    optional: "(optional – “skip” leaves it out)",
+    pickOne: "Please pick one of the options.",
+    picked: "Picked: {list}",
+    more: "Anything else?",
+    done: "Done",
+    yes: "Yes",
+    no: "No",
+    yesOrNo: "Please answer yes or no.",
+    asText: "Please answer as text.",
+    asDate: "Please send a date, for example 2026-12-24.",
+    sendPhoto: "Please send a photo.",
+    sendFile: "Please send a file.",
+    sendVoice: "Please send a voice message.",
+    another: "One more",
+    whereAre: "Please share your location, or write the address.",
+    needed: "This field is needed.",
+    screen: "This needs the screen – it goes on here afterwards.",
+    open: "Open",
+    working: "{step} … this takes a moment.",
+    reviewAsk: "Is this right?",
+    reviewOk: "Looks good",
+    reviewRedo: "New version",
+    reviewWhich: "What should be made again?",
+    reviewNote: "What should be different?",
+    allow: "Allow",
+    skip: "Skip",
+    finished: "Done! Everything is here:",
+    failed: "The wizard stopped. It goes on here:",
+  },
+} as const;
+
+type Key = keyof (typeof texts)["de"];
+
+function say(lang: ThreadLang, key: Key, vars: Record<string, string | number> = {}): string {
+  let text: string = texts[lang][key];
+  for (const [name, value] of Object.entries(vars)) {
+    text = text.replaceAll(`{${name}}`, String(value));
+  }
+  return text;
+}
+
+const SKIP_WORDS = new Set(["weiter", "skip", "-", "überspringen", "keine", "none"]);
+const DONE_WORDS = new Set(["fertig", "done", "ok", "passt", "das wars", "that's it"]);
+const STOP_WORDS = new Set(["stop", "stopp", "abbrechen", "cancel", "abbruch", "ende"]);
+const YES_WORDS = new Set(["ja", "yes", "y", "j", "jo", "klar", "yep", "true", "✓"]);
+const NO_WORDS = new Set(["nein", "no", "n", "nö", "nope", "false"]);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 type PageWaiting = Extract<PluginRunWaiting, { page: string }>;
 type ReviewWaiting = Extract<PluginRunWaiting, { review: string }>;
@@ -117,8 +230,7 @@ const shownOf = (w: PageWaiting) => w.fields.filter((f) => f.shown !== false);
 
 /** `24.12.2026`, `24/12/26` or an ISO date, as the page's date input gives it. */
 export function toIso(text: string): string | null {
-  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
     return text;
   }
   const dmy = text.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
@@ -134,6 +246,12 @@ export function toIso(text: string): string | null {
   return `${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
 }
 
+/** Cut to a length, with an ellipsis where something was cut. */
+export function clipText(text: string, max: number): string {
+  const t = text.trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
 const extOf = (mime: string) =>
   ({
     "image/jpeg": "jpg",
@@ -146,7 +264,7 @@ const extOf = (mime: string) =>
   })[mime] ?? "bin";
 
 /** Which option a reply means: a tap on `o:<i>`, a number, or the option's own words. */
-function optionIndex(msg: Inbound, options: string[]): number {
+function optionIndex(msg: ThreadInbound, options: string[]): number {
   if (msg.replyId?.startsWith("o:")) {
     const i = Number(msg.replyId.slice(2));
     return Number.isInteger(i) && options[i] !== undefined ? i : -1;
@@ -160,28 +278,38 @@ function optionIndex(msg: Inbound, options: string[]): number {
   return options.findIndex((o) => o.toLowerCase() === lower);
 }
 
-export class Door {
-  constructor(private readonly deps: DoorDeps) {}
+const mediaOf = (mime: string): "image" | "document" | "video" | "audio" | null =>
+  mime.startsWith("image/")
+    ? "image"
+    : mime === "application/pdf"
+      ? "document"
+      : mime.startsWith("video/")
+        ? "video"
+        : mime.startsWith("audio/")
+          ? "audio"
+          : null;
 
-  // ── What comes in ────────────────────────────────────────────────────────
+// ── The door ──────────────────────────────────────────────────────────────────
 
-  /** A message of the person arrived. */
-  async inbound(thread: Thread, msg: Inbound): Promise<void> {
+export class ThreadDoor {
+  private readonly asks: Set<string>;
+
+  constructor(private readonly o: ThreadDoorOptions) {
+    this.asks = new Set(o.surface.asks);
+  }
+
+  /** A message of the person arrived. The caller keeps the thread before and after. */
+  async inbound(thread: Thread, given: ThreadInbound): Promise<void> {
+    const msg = this.asTap(thread, given);
     const text = (msg.text ?? "").trim();
     const lower = text.toLowerCase();
-    void this.graph()
-      .then((g) => g.markRead(msg.id))
-      .catch(() => undefined);
+    const offered = await this.o.offered();
     // A keyword starts its wizard, from anywhere in the thread; so does a pick from the menu.
-    const offered = await this.deps.offered();
-    const keywords = await this.deps.keywords();
-    const byKeyword = lower
-      ? offered.find((w) => (keywords.get(w.wizardId) ?? "").toLowerCase() === lower)
-      : undefined;
-    const byMenu = msg.replyId?.startsWith("w:")
-      ? offered.find((w) => `w:${w.wizardId}` === msg.replyId)
-      : undefined;
-    const picked = byKeyword ?? byMenu;
+    const picked =
+      (lower ? offered.find((w) => w.keyword.toLowerCase() === lower) : undefined) ??
+      (msg.replyId?.startsWith("w:")
+        ? offered.find((w) => `w:${w.wizardId}` === msg.replyId)
+        : undefined);
     if (picked) {
       await this.start(thread, picked);
       return;
@@ -214,14 +342,27 @@ export class Door {
     }
   }
 
-  // ── Runs ─────────────────────────────────────────────────────────────────
+  /** A typed number or the words of an option of the last question count as a tap on it. */
+  private asTap(thread: Thread, msg: ThreadInbound): ThreadInbound {
+    const choices = thread.state.choices;
+    if (msg.replyId || msg.kind !== "text" || !choices?.length) {
+      return msg;
+    }
+    const text = (msg.text ?? "").trim();
+    const hit = /^\d+$/.test(text)
+      ? choices[Number(text) - 1]
+      : choices.find((c) => c.title.replace(/^✓ /, "").toLowerCase() === text.toLowerCase());
+    return hit ? { ...msg, kind: "reply", replyId: hit.id, replyTitle: hit.title } : msg;
+  }
+
+  // ── Runs ───────────────────────────────────────────────────────────────────
 
   private async report(thread: Thread, waitSeconds = 0): Promise<PluginRunReport | null> {
     if (!thread.runId) {
       return null;
     }
     try {
-      return await this.deps.runs.report(thread.runId, {
+      return await this.o.runs.report(thread.runId, {
         waitSeconds,
         draft: thread.state.page?.values,
       });
@@ -233,21 +374,21 @@ export class Door {
     }
   }
 
-  private async start(thread: Thread, wizard: Offered): Promise<void> {
+  private async start(thread: Thread, wizard: ThreadWizard): Promise<void> {
     if (thread.runId) {
-      this.deps.unwatch(thread.runId);
+      this.o.unwatch(thread.runId);
     }
-    thread.state = { ...freshState(wizard.lang), wizardId: wizard.wizardId };
+    thread.state = { ...freshThreadState(wizard.lang), wizardId: wizard.wizardId };
     try {
-      const { runId } = await this.deps.runs.start({
+      const { runId } = await this.o.runs.start({
         token: wizard.token,
-        person: { channel: RUNNER, id: thread.waId },
-        runner: RUNNER,
+        person: { channel: this.o.surface.runner, id: thread.id },
+        runner: this.o.surface.runner,
       });
       thread.runId = runId;
     } catch (err) {
       thread.runId = null;
-      await this.send(thread, { type: "text", text: (err as Error).message });
+      await this.send(thread, { kind: "text", text: (err as Error).message });
       return;
     }
     const report = await this.report(thread, 10);
@@ -258,18 +399,18 @@ export class Door {
 
   private async stop(thread: Thread): Promise<void> {
     if (thread.runId) {
-      this.deps.unwatch(thread.runId);
-      await this.deps.runs.control(thread.runId, "cancel").catch(() => undefined);
+      this.o.unwatch(thread.runId);
+      await this.o.runs.control(thread.runId, "cancel").catch(() => undefined);
       thread.runId = null;
     }
-    thread.state = freshState(thread.state.lang);
-    await this.send(thread, { type: "text", text: say(thread.state.lang, "stopped") });
+    thread.state = freshThreadState(thread.state.lang);
+    await this.send(thread, { kind: "text", text: say(thread.state.lang, "stopped") });
   }
 
-  private async menu(thread: Thread, offered: Offered[]): Promise<void> {
+  private async menu(thread: Thread, offered: ThreadWizard[]): Promise<void> {
     const lang = thread.state.lang;
     if (!offered.length) {
-      await this.send(thread, { type: "text", text: say(lang, "nothing") });
+      await this.send(thread, { kind: "text", text: say(lang, "nothing") });
       return;
     }
     if (offered.length === 1) {
@@ -277,21 +418,25 @@ export class Door {
       return;
     }
     await this.send(thread, {
-      type: "list",
+      kind: "choice",
       text: say(lang, "which"),
       button: say(lang, "choose"),
-      rows: offered.map((w) => ({ id: `w:${w.wizardId}`, title: w.title })),
+      options: offered.slice(0, 10).map((w) => ({ id: `w:${w.wizardId}`, title: w.title })),
     });
   }
 
   /** Where the run stands, and what to do about it. `msg`: what the person just sent, if anything. */
-  private async step(thread: Thread, report: PluginRunReport, msg: Inbound | null): Promise<void> {
+  private async step(
+    thread: Thread,
+    report: PluginRunReport,
+    msg: ThreadInbound | null,
+  ): Promise<void> {
     const s = thread.state;
     const runId = thread.runId!;
     if (report.status === "done") {
       if (s.delivered) {
         if (msg) {
-          await this.send(thread, { type: "text", text: say(s.lang, "over") });
+          await this.send(thread, { kind: "text", text: say(s.lang, "over") });
         }
         return;
       }
@@ -299,18 +444,18 @@ export class Door {
       return;
     }
     if (report.status === "failed" || report.status === "cancelled") {
-      this.deps.unwatch(runId);
+      this.o.unwatch(runId);
       thread.runId = null;
       if (report.status === "failed") {
-        const url = await this.deps.runs.handoffUrl(runId).catch(() => report.browserUrl);
+        const url = await this.o.runs.handoffUrl(runId).catch(() => report.browserUrl);
         await this.send(
           thread,
           url
-            ? { type: "link", text: say(s.lang, "failed"), url, label: say(s.lang, "open") }
-            : { type: "text", text: say(s.lang, "failed") },
+            ? { kind: "link", text: say(s.lang, "failed"), url, label: say(s.lang, "open") }
+            : { kind: "text", text: say(s.lang, "failed") },
         );
       } else {
-        await this.send(thread, { type: "text", text: say(s.lang, "stopped") });
+        await this.send(thread, { kind: "text", text: say(s.lang, "stopped") });
       }
       return;
     }
@@ -321,11 +466,11 @@ export class Door {
       if (s.said !== key) {
         s.said = key;
         await this.send(thread, {
-          type: "text",
+          kind: "text",
           text: say(s.lang, "working", { step: report.step?.title ?? "…" }),
         });
       }
-      this.deps.watch(thread);
+      this.o.watch(thread);
       return;
     }
     if ("page" in w) {
@@ -345,9 +490,9 @@ export class Door {
     }
   }
 
-  // ── A page ───────────────────────────────────────────────────────────────
+  // ── A page ─────────────────────────────────────────────────────────────────
 
-  private async page(thread: Thread, waiting: PageWaiting, msg: Inbound | null): Promise<void> {
+  private async page(thread: Thread, waiting: PageWaiting, msg: ThreadInbound | null) {
     const s = thread.state;
     let w = waiting;
     if (!s.page || s.page.step !== w.page) {
@@ -356,13 +501,13 @@ export class Door {
     const page = s.page;
     let fields = shownOf(w);
     // A field only the screen can take (a signature, a sign-in): the whole page goes there.
-    if (fields.some((f) => !ASKS.has(f.kind))) {
+    if (fields.some((f) => !this.asks.has(f.kind))) {
       const key = `screen:${w.page}`;
       if (s.said !== key || msg) {
         s.said = key;
-        await this.handoff(thread, "screen");
+        await this.handoff(thread);
       }
-      this.deps.watch(thread);
+      this.o.watch(thread);
       return;
     }
     if (msg && page.asking) {
@@ -380,6 +525,7 @@ export class Door {
         page.asking = null;
         page.picks = [];
         page.files = [];
+        s.choices = null;
         // A later field's condition may read this answer: the page is read again with it.
         const again = await this.report(thread);
         if (!again) {
@@ -405,7 +551,7 @@ export class Door {
     }
     // Every field has its answer: the page is sent.
     try {
-      await this.deps.runs.answerPage(thread.runId!, w.page, page.values);
+      await this.o.runs.answerPage(thread.runId!, w.page, page.values);
     } catch (err) {
       const wrong = (
         (err as { data?: { fields?: { field: string; message: string }[] } }).data?.fields ?? []
@@ -417,7 +563,7 @@ export class Door {
         await this.askField(thread, field, wrong.message);
         return;
       }
-      await this.send(thread, { type: "text", text: (err as Error).message });
+      await this.send(thread, { kind: "text", text: (err as Error).message });
       return;
     }
     s.page = null;
@@ -425,7 +571,7 @@ export class Door {
     await this.after(thread);
   }
 
-  /** The question for a field, with the buttons or the list it takes. `hint` first: what was wrong. */
+  /** The question for a field, with the options it takes. `hint` first: what was wrong. */
   private async askField(thread: Thread, field: PluginRunField, hint?: string): Promise<void> {
     const { lang } = thread.state;
     const page = thread.state.page!;
@@ -438,57 +584,35 @@ export class Door {
     }
     const text = [hint, lines.join("\n")].filter(Boolean).join("\n\n");
     const options = field.options ?? [];
-    const numbered = (list: string[]) => list.map((o, i) => `${i + 1}. ${o}`).join("\n");
     switch (field.kind) {
-      case "select": {
-        if (options.length <= 3 && options.every((o) => o.length <= 20)) {
-          return this.send(thread, {
-            type: "buttons",
-            text,
-            buttons: options.map((o, i) => ({ id: `o:${i}`, title: o })),
-          });
-        }
-        if (options.length <= 10) {
-          return this.send(thread, {
-            type: "list",
-            text,
-            button: say(lang, "choose"),
-            rows: options.map((o, i) => ({ id: `o:${i}`, title: o })),
-          });
-        }
+      case "select":
         return this.send(thread, {
-          type: "text",
-          text: `${text}\n\n${numbered(options)}\n\n${say(lang, "pickNumber")}`,
+          kind: "choice",
+          text,
+          button: say(lang, "choose"),
+          options: options.map((o, i) => ({ id: `o:${i}`, title: o })),
         });
-      }
       case "multiselect": {
         const picked = page.picks.length
           ? `\n\n${say(lang, "picked", { list: page.picks.join(", ") })}`
           : "";
-        if (options.length <= 9) {
-          const rows = options
-            .map((o, i) => ({ id: `o:${i}`, title: o }))
-            .filter((r) => !page.picks.includes(r.title));
-          if (page.picks.length) {
-            rows.push({ id: "done", title: `✓ ${say(lang, "done")}` });
-          }
-          return this.send(thread, {
-            type: "list",
-            text: `${page.picks.length ? say(lang, "more") : text}${picked}`,
-            button: say(lang, "choose"),
-            rows,
-          });
-        }
         return this.send(thread, {
-          type: "text",
-          text: `${text}\n\n${numbered(options)}\n\n${say(lang, "pickNumber")}${picked}`,
+          kind: "choice",
+          text: `${page.picks.length ? say(lang, "more") : text}${picked}`,
+          button: say(lang, "choose"),
+          multiple: true,
+          options: [
+            ...options.map((o, i) => ({ id: `o:${i}`, title: o, picked: page.picks.includes(o) })),
+            ...(page.picks.length ? [{ id: "done", title: `✓ ${say(lang, "done")}` }] : []),
+          ],
         });
       }
       case "toggle":
         return this.send(thread, {
-          type: "buttons",
+          kind: "choice",
           text,
-          buttons: [
+          button: say(lang, "choose"),
+          options: [
             { id: "t:1", title: say(lang, "yes") },
             { id: "t:0", title: say(lang, "no") },
           ],
@@ -498,30 +622,31 @@ export class Door {
         const ask = say(lang, field.kind === "image" ? "sendPhoto" : "sendFile");
         if (page.files.length) {
           return this.send(thread, {
-            type: "buttons",
+            kind: "choice",
             text: `${say(lang, "more")} (${page.files.length})`,
-            buttons: [
+            button: say(lang, "choose"),
+            options: [
               { id: "f:more", title: say(lang, "another") },
               { id: "f:done", title: say(lang, "done") },
             ],
           });
         }
-        return this.send(thread, { type: "text", text: `${text}\n${ask}` });
+        return this.send(thread, { kind: "text", text: `${text}\n${ask}` });
       }
       case "audio":
-        return this.send(thread, { type: "text", text: `${text}\n${say(lang, "sendVoice")}` });
+        return this.send(thread, { kind: "text", text: `${text}\n${say(lang, "sendVoice")}` });
       case "location":
         return this.send(thread, {
-          type: "location_request",
+          kind: "location",
           text: `${text}\n${say(lang, "whereAre")}`,
         });
       default:
-        return this.send(thread, { type: "text", text });
+        return this.send(thread, { kind: "text", text });
     }
   }
 
   /** What the message means for the field: its value, a second try with a hint, or more to come. */
-  private async take(thread: Thread, field: PluginRunField, msg: Inbound): Promise<Taken> {
+  private async take(thread: Thread, field: PluginRunField, msg: ThreadInbound): Promise<Taken> {
     const { lang } = thread.state;
     const page = thread.state.page!;
     const text = (msg.text ?? "").trim();
@@ -605,7 +730,7 @@ export class Door {
             : again(ask);
         }
         if (msg.replyId === "f:more") {
-          await this.send(thread, { type: "text", text: say(lang, ask) });
+          await this.send(thread, { kind: "text", text: say(lang, ask) });
           return { kind: "wait" };
         }
         const fits =
@@ -615,7 +740,7 @@ export class Door {
               msg.kind === "document" ||
               msg.kind === "video" ||
               msg.kind === "audio";
-        if (fits && msg.media) {
+        if (fits && msg.media && this.o.surface.media) {
           const { assetId } = await this.upload(thread, msg);
           if (!field.multiple) {
             return { kind: "value", value: assetId };
@@ -627,7 +752,7 @@ export class Door {
         return again(ask);
       }
       case "audio": {
-        if (msg.kind === "audio" && msg.media) {
+        if (msg.kind === "audio" && msg.media && this.o.surface.media) {
           const { assetId } = await this.upload(thread, msg);
           return { kind: "value", value: { asset: assetId } };
         }
@@ -648,39 +773,42 @@ export class Door {
     }
   }
 
-  private async upload(thread: Thread, msg: Inbound): Promise<{ assetId: string }> {
-    const media = msg.media!;
-    const file = await (await this.graph()).media(media.id);
-    return this.deps.runs.upload(thread.runId!, {
+  private async upload(thread: Thread, msg: ThreadInbound): Promise<{ assetId: string }> {
+    const ref = msg.media!;
+    const file = await this.o.surface.media!(ref);
+    return this.o.runs.upload(thread.runId!, {
       data: file.data,
       mime: file.mime,
-      name: media.filename ?? `whatsapp-${media.id.slice(-8)}.${extOf(file.mime)}`,
+      name: ref.filename ?? `${this.o.surface.runner}-${ref.id.slice(-8)}.${extOf(file.mime)}`,
     });
   }
 
-  private async transcribe(thread: Thread, msg: Inbound): Promise<string | null> {
+  private async transcribe(thread: Thread, msg: ThreadInbound): Promise<string | null> {
+    if (!this.o.surface.media) {
+      return null;
+    }
     try {
-      const file = await (await this.graph()).media(msg.media!.id);
-      const { text } = await this.deps.runs.transcribe(thread.runId!, file);
+      const file = await this.o.surface.media(msg.media!);
+      const { text } = await this.o.runs.transcribe(thread.runId!, file);
       return text.trim() || null;
     } catch (err) {
-      this.deps.log.warn("a voice message could not be written down:", (err as Error).message);
+      this.o.log.warn("a voice message could not be written down:", (err as Error).message);
       return null;
     }
   }
 
-  // ── A review, a question ─────────────────────────────────────────────────
+  // ── A review, a question ───────────────────────────────────────────────────
 
   private async review(
     thread: Thread,
     report: PluginRunReport,
     w: ReviewWaiting,
-    msg: Inbound | null,
+    msg: ThreadInbound | null,
   ): Promise<void> {
     const s = thread.state;
     const runId = thread.runId!;
     if (msg?.replyId === "r:ok") {
-      await this.deps.runs.review(runId, w.review, { type: "accept" });
+      await this.o.runs.review(runId, w.review, { type: "accept" });
       s.said = null;
       s.awaiting = null;
       await this.after(thread);
@@ -690,10 +818,10 @@ export class Door {
       if (w.show.length > 1) {
         s.awaiting = "target";
         await this.send(thread, {
-          type: "list",
+          kind: "choice",
           text: say(s.lang, "reviewWhich"),
           button: say(s.lang, "choose"),
-          rows: w.show.map((id) => ({
+          options: w.show.map((id) => ({
             id: `r:t:${id}`,
             title: report.outputs.find((o) => o.stepId === id)?.title ?? id,
           })),
@@ -702,17 +830,17 @@ export class Door {
       }
       s.target = w.show[0] ?? null;
       s.awaiting = "note";
-      await this.send(thread, { type: "text", text: say(s.lang, "reviewNote") });
+      await this.send(thread, { kind: "text", text: say(s.lang, "reviewNote") });
       return;
     }
     if (s.awaiting === "target" && msg?.replyId?.startsWith("r:t:")) {
       s.target = msg.replyId.slice("r:t:".length);
       s.awaiting = "note";
-      await this.send(thread, { type: "text", text: say(s.lang, "reviewNote") });
+      await this.send(thread, { kind: "text", text: say(s.lang, "reviewNote") });
       return;
     }
     if (s.awaiting === "note" && msg?.text?.trim() && s.target) {
-      await this.deps.runs.review(runId, w.review, {
+      await this.o.runs.review(runId, w.review, {
         type: "regenerate",
         target: s.target,
         note: msg.text.trim(),
@@ -732,9 +860,10 @@ export class Door {
     }
     if (fresh || msg) {
       await this.send(thread, {
-        type: "buttons",
+        kind: "choice",
         text: say(s.lang, "reviewAsk"),
-        buttons: [
+        button: say(s.lang, "choose"),
+        options: [
           { id: "r:ok", title: say(s.lang, "reviewOk") },
           { id: "r:redo", title: say(s.lang, "reviewRedo") },
         ],
@@ -742,19 +871,19 @@ export class Door {
     }
   }
 
-  private async ask(thread: Thread, w: AskWaiting, msg: Inbound | null): Promise<void> {
+  private async ask(thread: Thread, w: AskWaiting, msg: ThreadInbound | null): Promise<void> {
     const s = thread.state;
     if (w.kind === "login") {
       const key = `login:${w.ask}`;
       if (s.said !== key) {
         s.said = key;
-        await this.handoff(thread, "screen");
+        await this.handoff(thread);
       }
-      this.deps.watch(thread);
+      this.o.watch(thread);
       return;
     }
     if (msg?.replyId === "a:allow" || msg?.replyId === "a:skip") {
-      await this.deps.runs.answerAsk(
+      await this.o.runs.answerAsk(
         thread.runId!,
         w.ask,
         msg.replyId === "a:allow" ? "allow" : "skip",
@@ -767,9 +896,12 @@ export class Door {
     if (s.said !== key || msg) {
       s.said = key;
       await this.send(thread, {
-        type: "buttons",
-        text: [w.reason, w.action, w.input ? clip(w.input, 600) : ""].filter(Boolean).join("\n"),
-        buttons: [
+        kind: "choice",
+        text: [w.reason, w.action, w.input ? clipText(w.input, 600) : ""]
+          .filter(Boolean)
+          .join("\n"),
+        button: say(s.lang, "choose"),
+        options: [
           { id: "a:allow", title: say(s.lang, "allow") },
           { id: "a:skip", title: say(s.lang, "skip") },
         ],
@@ -777,57 +909,53 @@ export class Door {
     }
   }
 
-  // ── What goes out ────────────────────────────────────────────────────────
+  // ── What goes out ──────────────────────────────────────────────────────────
 
   /** The link to the run page, for what the thread cannot do. */
-  private async handoff(thread: Thread, why: "screen" | "notYet"): Promise<void> {
-    const url = await this.deps.runs.handoffUrl(thread.runId!);
+  private async handoff(thread: Thread): Promise<void> {
+    const url = await this.o.runs.handoffUrl(thread.runId!);
     await this.send(thread, {
-      type: "link",
-      text: say(thread.state.lang, why),
+      kind: "link",
+      text: say(thread.state.lang, "screen"),
       url,
       label: say(thread.state.lang, "open"),
     });
   }
 
-  /** One output as the thread can carry it: text, pictures, documents, the picture of a widget. */
+  /** One output as a thread can carry it: text, pictures, documents, the picture of a widget. */
   private async sendOutput(
     thread: Thread,
     output: PluginRunReport["outputs"][number],
   ): Promise<void> {
-    const parts: Outgoing[] = [];
+    const parts: ThreadPrompt[] = [];
     if (output.text) {
-      parts.push({ type: "text", text: `*${output.title}*\n${output.text}` });
+      parts.push({ kind: "text", text: `*${output.title}*\n${output.text}` });
     }
     let picture = false;
     let pdf = false;
     for (const a of output.assets) {
-      if (a.mime.startsWith("image/")) {
-        parts.push({ type: "image", link: a.url, caption: output.title });
-        picture = true;
-      } else if (a.mime === "application/pdf") {
-        parts.push({ type: "document", link: a.url, caption: output.title, filename: a.name });
-        pdf = true;
-      } else if (a.mime.startsWith("video/")) {
-        parts.push({ type: "video", link: a.url, caption: output.title });
-      } else if (a.mime.startsWith("audio/")) {
-        parts.push({ type: "audio", link: a.url });
+      const media = mediaOf(a.mime);
+      if (!media) {
+        continue;
       }
+      parts.push({ kind: "media", media, url: a.url, caption: output.title, filename: a.name });
+      picture ||= media === "image";
+      pdf ||= media === "document";
     }
     if (!picture && output.picture) {
-      parts.push({ type: "image", link: output.picture, caption: output.title });
-      picture = true;
+      parts.push({ kind: "media", media: "image", url: output.picture, caption: output.title });
     }
     if (!pdf && output.downloads.pdf) {
       parts.push({
-        type: "document",
-        link: output.downloads.pdf,
+        kind: "media",
+        media: "document",
+        url: output.downloads.pdf,
         caption: output.title,
         filename: `${output.title}.pdf`,
       });
     }
     if (!parts.length && output.json) {
-      parts.push({ type: "text", text: `*${output.title}*\n${clip(output.json, 3000)}` });
+      parts.push({ kind: "text", text: `*${output.title}*\n${clipText(output.json, 3000)}` });
     }
     for (const part of parts) {
       await this.send(thread, part);
@@ -838,23 +966,14 @@ export class Door {
   private async deliver(thread: Thread, report: PluginRunReport): Promise<void> {
     const s = thread.state;
     const runId = thread.runId!;
-    this.deps.unwatch(runId);
-    const url = await this.deps.runs.handoffUrl(runId);
-    if (Date.now() - thread.lastInboundAt > DAY) {
-      // After a day of silence only an approved template may be sent: the link goes in it.
-      const account = await this.deps.account();
-      if (account?.template) {
-        await this.send(thread, {
-          type: "template",
-          name: account.template,
-          lang: s.lang,
-          params: [url],
-        });
+    this.o.unwatch(runId);
+    const url = await this.o.runs.handoffUrl(runId);
+    if (this.o.surface.mayDeliver && !this.o.surface.mayDeliver(thread)) {
+      // The channel does not take a free message now: the link by other means, or nothing.
+      if (this.o.surface.reach && (await this.o.surface.reach(thread, url))) {
         s.delivered = true;
       } else {
-        this.deps.log.warn(
-          `run ${runId} is done, but the thread is older than a day and no template is set: nothing sent`,
-        );
+        this.o.log.warn(`run ${runId} is done, but the thread takes no message now: nothing sent`);
       }
       return;
     }
@@ -863,7 +982,7 @@ export class Door {
       await this.sendOutput(thread, output);
     }
     await this.send(thread, {
-      type: "link",
+      kind: "link",
       text: say(s.lang, "finished"),
       url,
       label: say(s.lang, "open"),
@@ -871,23 +990,9 @@ export class Door {
     s.delivered = true;
   }
 
-  private async graph(): Promise<Graph> {
-    const account = await this.deps.account();
-    if (!account) {
-      throw new Error("WhatsApp is not connected.");
-    }
-    return new Graph(account);
-  }
-
-  private async send(thread: Thread, message: Outgoing): Promise<void> {
-    try {
-      await (await this.graph()).send(thread.waId, message);
-    } catch (err) {
-      if (err instanceof GraphError && err.code === RE_ENGAGEMENT) {
-        this.deps.log.warn(`thread ${thread.waId}: older than a day, the message was refused`);
-        return;
-      }
-      throw err;
-    }
+  private async send(thread: Thread, prompt: ThreadPrompt): Promise<void> {
+    // The last question's options are what a typed number means next.
+    thread.state.choices = prompt.kind === "choice" ? prompt.options : null;
+    await this.o.surface.send(thread, prompt);
   }
 }

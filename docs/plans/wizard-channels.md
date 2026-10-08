@@ -2,7 +2,8 @@
 
 Status: concept, written on 2026-10-08. Built on the branch the same day: the chat runner,
 dictate and read aloud, live voice and live video on the web, WhatsApp in chat mode as the
-module `modules/whatsapp`. The companion plan with the hooks, the order and what each phase
+module `modules/whatsapp`, SMS as `modules/sms` (text only; both are surfaces of the SDK's
+thread door). The companion plan with the hooks, the order and what each phase
 built is `runners-and-voice.md`; the decision steps and views it builds on are
 `dynamic-flow.md` (on main since v0.2.26).
 
