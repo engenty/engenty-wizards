@@ -11,7 +11,7 @@ import { closeEmbed, EMBED, keepUi, UI, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, cn, IconButton, Spinner } from "../ui";
-import { ChatBody, ChatShell, Dock, type Line, QuickReplies, Reply, Thread } from "./ChatView";
+import { ChatBody, ChatShell, Idle, type Line, Reply, replies, Thread } from "./ChatView";
 import { RunnerBody } from "./RunnerView";
 
 /** The wizard owner's accent recolours the whole palette: every Ember token derives from --raw-primary. */
@@ -378,27 +378,31 @@ function ChatStart({
   if (error) {
     lines.push({ key: "error", who: "bot", node: error, tone: "error" });
   }
-  return (
-    <ChatShell header={header} footer={footer}>
-      <Thread avatar={wizard.avatar} lines={lines} />
-      {wizard.available ? (
-        <Dock>
+  if (wizard.available) {
+    lines.push(
+      replies(
+        "start",
+        <>
+          <Reply
+            primary
+            busy={busy}
+            disabled={Boolean(wizard.turnstileSiteKey) && !captcha}
+            onClick={() => void start()}
+          >
+            {t("run.start")} <ArrowRight className="size-4" />
+          </Reply>
+          {resume ? <Reply onClick={resume}>{t("run.resume")}</Reply> : null}
           {wizard.turnstileSiteKey ? (
             <Turnstile siteKey={wizard.turnstileSiteKey} onToken={setCaptcha} />
           ) : null}
-          <QuickReplies>
-            {resume ? <Reply onClick={resume}>{t("run.resume")}</Reply> : null}
-            <Reply
-              primary
-              busy={busy}
-              disabled={Boolean(wizard.turnstileSiteKey) && !captcha}
-              onClick={() => void start()}
-            >
-              {t("run.start")} <ArrowRight className="size-4" />
-            </Reply>
-          </QuickReplies>
-        </Dock>
-      ) : null}
+        </>,
+      ),
+    );
+  }
+  return (
+    <ChatShell header={header} footer={footer}>
+      <Thread avatar={wizard.avatar} lines={lines} />
+      <Idle />
     </ChatShell>
   );
 }

@@ -50,6 +50,8 @@ export interface Line {
   onEdit?: () => void;
   /** Where a long answer of the wizard starts: the thread shows it from here, not from its end. */
   anchor?: boolean;
+  /** No bubble around it: the answers to tap, under the wizard's question. */
+  bare?: boolean;
 }
 
 const bot = (key: string, node: ReactNode, more?: Partial<Line>): Line => ({
@@ -69,7 +71,7 @@ const me = (key: string, node: ReactNode, more?: Partial<Line>): Line => ({
 
 const DockSlot = createContext<HTMLElement | null>(null);
 
-/** What the person answers with, under the thread: the composer and quick replies. */
+/** What the person types into, under the thread: the composer. */
 export function Dock({ children }: { children: ReactNode }) {
   const el = useContext(DockSlot);
   return el ? createPortal(children, el) : null;
@@ -185,10 +187,14 @@ export function Thread({ avatar, lines }: { avatar: string; lines: Line[] }) {
               key={line.key}
               data-anchor={line.anchor ? "" : undefined}
               className={cn(
-                "animate-rise rounded-2xl rounded-tl-md text-[0.9375rem] text-ink leading-relaxed",
-                line.wide
-                  ? "w-full bg-card p-4 shadow-soft ring-1 ring-border-soft"
-                  : "max-w-[min(36rem,100%)] bg-card px-4 py-2.5 shadow-soft ring-1 ring-border-soft",
+                "animate-rise",
+                line.bare
+                  ? "w-full pt-1"
+                  : "rounded-2xl rounded-tl-md text-[0.9375rem] text-ink leading-relaxed",
+                !line.bare &&
+                  (line.wide
+                    ? "w-full bg-card p-4 shadow-soft ring-1 ring-border-soft"
+                    : "max-w-[min(36rem,100%)] bg-card px-4 py-2.5 shadow-soft ring-1 ring-border-soft"),
                 line.tone === "error" && "bg-rose-tint text-rose shadow-none ring-0",
               )}
             >
@@ -237,16 +243,16 @@ function Dots() {
   );
 }
 
-/* ---------- the dock's controls ---------- */
+/* ---------- what the person answers with ---------- */
 
+/** The answers to tap, in the thread under the wizard's question. */
 export function QuickReplies({ children }: { children: ReactNode }) {
-  return (
-    // The row scrolls when there are many; the inset keeps the buttons' outlines inside it.
-    <div className="-mx-1 -mt-1 flex max-h-[40dvh] flex-wrap justify-end gap-2 overflow-y-auto px-1 pt-1 pb-3">
-      {children}
-    </div>
-  );
+  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
 }
+
+/** The answers to tap as the wizard's last message. */
+export const replies = (key: string, children: ReactNode): Line =>
+  bot(key, <QuickReplies>{children}</QuickReplies>, { bare: true });
 
 export function Reply({
   onClick,
@@ -375,6 +381,15 @@ function Composer({
         </button>
       </div>
     </form>
+  );
+}
+
+/** The composer while there is nothing to type: the answer is tapped above, or the wizard works. */
+export function Idle({ placeholder = t("chat.above") }: { placeholder?: string }) {
+  return (
+    <Dock>
+      <Composer disabled placeholder={placeholder} onSend={() => false} />
+    </Dock>
   );
 }
 
@@ -701,34 +716,39 @@ function PageTurn({
     lines.push(bot("send-error", run.error, { tone: "error" }));
   }
 
-  let dock: ReactNode = null;
+  let dock: ReactNode = <Idle />;
   if (sent || (!field && fields.length > 0 && run.busy)) {
-    dock = null;
+    dock = <Idle placeholder={t("run.working")} />;
   } else if (!field) {
     // Nothing to ask (a page that only says something), or the page did not go through.
-    dock = (
-      <QuickReplies>
-        {at > 0 ? (
-          <Reply onClick={() => setAt(at - 1)} disabled={run.busy}>
-            {t("run.back")}
+    lines.push(
+      replies(
+        `now:${step.id}:go`,
+        <>
+          <Reply primary busy={run.busy} onClick={() => send(values)}>
+            {step.cta || t("run.next")}
           </Reply>
-        ) : null}
-        <Reply primary busy={run.busy} onClick={() => send(values)}>
-          {step.cta || t("run.next")}
-        </Reply>
-      </QuickReplies>
+          {at > 0 ? (
+            <Reply onClick={() => setAt(at - 1)} disabled={run.busy}>
+              {t("run.back")}
+            </Reply>
+          ) : null}
+        </>,
+      ),
     );
   } else {
     const way = wayOf(field);
     const skip =
-      !field.required || field.kind === "connection" || field.kind === "list" ? (
+      !field.required && field.kind !== "connection" && field.kind !== "list" ? (
         <Reply onClick={() => answer(undefined)}>{t("chat.skip")}</Reply>
       ) : null;
     if (way === "typed") {
+      if (skip) {
+        lines.push(replies(`now:${step.id}:${field.id}:replies`, skip));
+      }
       const current = values[field.id];
       dock = (
-        <>
-          {skip ? <QuickReplies>{skip}</QuickReplies> : null}
+        <Dock>
           <Composer
             key={field.id}
             initial={isEmpty(current) ? "" : String(current)}
@@ -738,29 +758,28 @@ function PageTurn({
             busy={run.busy}
             onSend={(text) => answer(typedValue(field, text))}
           />
-        </>
+        </Dock>
       );
     } else if (way === "tapped") {
-      dock = (
-        <Choice
-          key={field.id}
-          field={field}
-          view={view}
-          value={values[field.id]}
-          onAnswer={answer}
-        />
+      lines.push(
+        bot(
+          `now:${step.id}:${field.id}:replies`,
+          <Choice field={field} view={view} value={values[field.id]} onAnswer={answer} />,
+          { bare: true },
+        ),
       );
     } else {
-      // The field's control stands in the thread; here it is sent.
-      dock = (
-        <QuickReplies>
-          {!field.required && field.kind !== "connection" && field.kind !== "list" ? (
-            <Reply onClick={() => answer(undefined)}>{t("chat.skip")}</Reply>
-          ) : null}
-          <Reply primary disabled={pending} onClick={() => answer(values[field.id])}>
-            {at === fields.length - 1 && step.cta ? step.cta : t("chat.send")}
-          </Reply>
-        </QuickReplies>
+      // The field's control stands in the thread; under it, it is sent.
+      lines.push(
+        replies(
+          `now:${step.id}:${field.id}:replies`,
+          <>
+            <Reply primary disabled={pending} onClick={() => answer(values[field.id])}>
+              {at === fields.length - 1 && step.cta ? step.cta : t("chat.send")}
+            </Reply>
+            {skip}
+          </>,
+        ),
       );
     }
   }
@@ -768,7 +787,7 @@ function PageTurn({
   return (
     <>
       <Thread avatar={view.wizard.avatar} lines={lines} />
-      <Dock>{dock}</Dock>
+      {dock}
     </>
   );
 }
@@ -854,12 +873,12 @@ function Choice({
   }
   return (
     <QuickReplies>
-      {field.required ? null : <Reply onClick={() => onAnswer(undefined)}>{t("chat.skip")}</Reply>}
       {options.map((o) => (
         <Reply key={o} on={value === o} disabled={shut.has(o)} onClick={() => onAnswer(o)}>
           {o}
         </Reply>
       ))}
+      {field.required ? null : <Reply onClick={() => onAnswer(undefined)}>{t("chat.skip")}</Reply>}
     </QuickReplies>
   );
 }
@@ -988,23 +1007,28 @@ function ReviewTurn({
     lines.push(bot("review-error", run.error, { tone: "error" }));
   }
   const regenerate = step.regenerate && made.length > 0;
+  lines.push(
+    replies(
+      `review:${step.id}:replies`,
+      <>
+        <Reply primary busy={run.busy} onClick={() => void run.accept(step.id)}>
+          <Check className="size-4" /> {t("run.accept")}
+        </Reply>
+        {regenerate && made.length > 1
+          ? made.map(({ step: s }) => (
+              <Reply key={s.id} on={target === s.id} onClick={() => setTarget(s.id)}>
+                {s.title}
+              </Reply>
+            ))
+          : null}
+      </>,
+    ),
+  );
   return (
     <>
       <Thread avatar={view.wizard.avatar} lines={lines} />
-      <Dock>
-        <QuickReplies>
-          {regenerate && made.length > 1
-            ? made.map(({ step: s }) => (
-                <Reply key={s.id} on={target === s.id} onClick={() => setTarget(s.id)}>
-                  {s.title}
-                </Reply>
-              ))
-            : null}
-          <Reply primary busy={run.busy} onClick={() => void run.accept(step.id)}>
-            <Check className="size-4" /> {t("run.accept")}
-          </Reply>
-        </QuickReplies>
-        {regenerate ? (
+      {regenerate ? (
+        <Dock>
           <Composer
             multiline
             busy={run.busy}
@@ -1022,8 +1046,10 @@ function ReviewTurn({
               return true;
             }}
           />
-        ) : null}
-      </Dock>
+        </Dock>
+      ) : (
+        <Idle />
+      )}
     </>
   );
 }
@@ -1090,42 +1116,36 @@ function ResultTurn({
       ),
     ),
   ];
-  if (made.length) {
-    lines.push(
-      bot(
-        "result:share",
-        <ShareResultButton
-          runId={view.id}
-          title={`${step.title} · ${view.wizard.title}`}
-          initial={view.shareUrl ? { url: view.shareUrl, expiresAt: view.expiresAt } : null}
-        />,
-      ),
-    );
-  }
-  return (
-    <>
-      <Thread avatar={view.wizard.avatar} lines={lines} />
-      <Dock>
-        <QuickReplies>
-          {view.keeps ? (
-            <span className="mr-auto self-center">
-              <StoreButton runId={view.id} />
-            </span>
-          ) : null}
-          {view.canBack ? (
-            <Reply onClick={() => void run.back()} disabled={run.busy}>
-              {t("run.back")}
-            </Reply>
-          ) : null}
-          {onRestart ? (
-            <Reply primary onClick={onRestart}>
-              <RotateCcw className="size-4" /> {t("run.again")}
-            </Reply>
-          ) : null}
-        </QuickReplies>
-      </Dock>
-    </>
+  lines.push(
+    replies(
+      "result:replies",
+      <>
+        {made.length ? (
+          <ShareResultButton
+            runId={view.id}
+            title={`${step.title} · ${view.wizard.title}`}
+            initial={view.shareUrl ? { url: view.shareUrl, expiresAt: view.expiresAt } : null}
+          />
+        ) : null}
+        {onRestart ? (
+          <Reply onClick={onRestart}>
+            <RotateCcw className="size-4" /> {t("run.again")}
+          </Reply>
+        ) : null}
+        {view.canBack ? (
+          <Reply onClick={() => void run.back()} disabled={run.busy}>
+            {t("run.back")}
+          </Reply>
+        ) : null}
+        {view.keeps ? (
+          <span className="ml-1">
+            <StoreButton runId={view.id} />
+          </span>
+        ) : null}
+      </>,
+    ),
   );
+  return <Thread avatar={view.wizard.avatar} lines={lines} />;
 }
 
 /**
@@ -1180,24 +1200,32 @@ export function ChatBody({
     );
     if (view.status === "running" && view.ask) {
       body = (
-        <Thread
-          avatar={view.wizard.avatar}
-          lines={[
-            ...before,
-            bot(`ask:${view.ask.id}`, <AskPanel runId={view.id} ask={view.ask} />, { wide: true }),
-          ]}
-        />
+        <>
+          <Thread
+            avatar={view.wizard.avatar}
+            lines={[
+              ...before,
+              bot(`ask:${view.ask.id}`, <AskPanel runId={view.id} ask={view.ask} />, {
+                wide: true,
+              }),
+            ]}
+          />
+          <Idle />
+        </>
       );
     } else if (view.status === "running") {
       body = (
-        <Thread
-          avatar={view.wizard.avatar}
-          lines={[
-            ...before,
-            ...(note ? [me("note", note)] : []),
-            bot(`working:${step?.id}`, <Working view={view} />),
-          ]}
-        />
+        <>
+          <Thread
+            avatar={view.wizard.avatar}
+            lines={[
+              ...before,
+              ...(note ? [me("note", note)] : []),
+              bot(`working:${step?.id}`, <Working view={view} />),
+            ]}
+          />
+          <Idle placeholder={t("run.working")} />
+        </>
       );
     } else if (view.status === "failed") {
       body = (
@@ -1218,39 +1246,43 @@ export function ChatBody({
                 </>,
                 { tone: "error" },
               ),
+              replies(
+                "failed:replies",
+                <>
+                  <Reply primary busy={run.busy} onClick={() => void run.retry()}>
+                    <RotateCcw className="size-4" /> {t("run.retry")}
+                  </Reply>
+                  {view.canBack ? (
+                    <Reply onClick={() => void run.back()} disabled={run.busy}>
+                      {t("run.back")}
+                    </Reply>
+                  ) : null}
+                </>,
+              ),
             ]}
           />
-          <Dock>
-            <QuickReplies>
-              {view.canBack ? (
-                <Reply onClick={() => void run.back()} disabled={run.busy}>
-                  {t("run.back")}
-                </Reply>
-              ) : null}
-              <Reply primary busy={run.busy} onClick={() => void run.retry()}>
-                <RotateCcw className="size-4" /> {t("run.retry")}
-              </Reply>
-            </QuickReplies>
-          </Dock>
+          <Idle />
         </>
       );
     } else if (view.status === "cancelled") {
       body = (
-        <>
-          <Thread
-            avatar={view.wizard.avatar}
-            lines={[...before, bot("cancelled", t("run.cancelled"))]}
-          />
-          {onRestart ? (
-            <Dock>
-              <QuickReplies>
-                <Reply primary onClick={onRestart}>
-                  <RotateCcw className="size-4" /> {t("run.again")}
-                </Reply>
-              </QuickReplies>
-            </Dock>
-          ) : null}
-        </>
+        <Thread
+          avatar={view.wizard.avatar}
+          lines={[
+            ...before,
+            bot("cancelled", t("run.cancelled")),
+            ...(onRestart
+              ? [
+                  replies(
+                    "cancelled:replies",
+                    <Reply primary onClick={onRestart}>
+                      <RotateCcw className="size-4" /> {t("run.again")}
+                    </Reply>,
+                  ),
+                ]
+              : []),
+          ]}
+        />
       );
     } else if (step?.type === "page") {
       body = <PageTurn key={step.id} view={view} run={run} step={step} before={before} />;
