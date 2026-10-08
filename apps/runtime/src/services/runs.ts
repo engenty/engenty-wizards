@@ -2,8 +2,9 @@ import {
   FIELD_WAYS,
   type Field,
   formatsFor,
-  optionsFromData,
+  isDecidedField,
   type Step,
+  shownFields,
   slotText,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
@@ -17,6 +18,7 @@ import {
   createRun,
   goBack,
   NoCreditsError,
+  pageContext,
   type ReviewAction,
   RunConflict,
   RunInputError,
@@ -189,12 +191,6 @@ function deliverableFormats(run: RunRow, step: Step) {
   return listed ? listed.formats.filter((f) => possible.includes(f)) : [];
 }
 
-/** A field's choices in this run: what its `optionsFrom` finds in earlier steps, else the fixed ones. */
-function choicesOf(run: RunRow, field: Field): string[] | undefined {
-  const found = field.optionsFrom ? optionsFromData(field.optionsFrom, run.state.outputs) : [];
-  return found.length ? found : field.options;
-}
-
 /**
  * What a client needs besides the plain field: a slot's times as the person reads them, and the
  * one value of them to send back.
@@ -224,7 +220,7 @@ async function browserUrl(run: RunRow): Promise<string | null> {
   return w ? `${shareUrl(w.shareToken)}/${run.id}` : null;
 }
 
-function waitingFor(run: RunRow, current: Step | null) {
+async function waitingFor(run: RunRow, current: Step | null) {
   if (run.status === "running" && run.ask) {
     const ask = run.ask;
     return ask.kind === "confirm"
@@ -249,27 +245,40 @@ function waitingFor(run: RunRow, current: Step | null) {
     return undefined;
   }
   if (current.type === "page") {
+    // What the page knows from before it, the choices its fields take from data, the fields a
+    // decision kept: a field left out here is not asked, as the run page leaves it out.
+    const ctx = await pageContext(run, current);
+    const fields = current.fields
+      .filter((f) => !isDecidedField(f) || ctx.decided.includes(f.id))
+      .map((f) => (ctx.options[f.id]?.length ? { ...f, options: ctx.options[f.id] } : f));
+    const page = Object.fromEntries(
+      fields.filter((f) => f.id in run.state.values).map((f) => [f.id, run.state.values[f.id]]),
+    );
+    const shown = new Set(shownFields(fields, ctx.known, page).map((f) => f.id));
     return {
       page: current.id,
       title: current.title,
-      fields: current.fields.map((f) => {
-        const options = choicesOf(run, f);
-        return {
-          id: f.id,
-          label: f.label,
-          kind: f.kind,
-          required: Boolean(f.required),
-          options,
-          placeholder: f.placeholder,
-          help: f.help,
-          default: f.default,
-          value: run.state.values[f.id],
-          columns: f.columns,
-          // A file, a recording or a signature comes from the person's device: the run page.
-          inChat: FIELD_WAYS[f.kind] !== "device",
-          ...slotHints(run, f, options),
-        };
-      }),
+      /** What the fields' conditions read from before the page, by reference. */
+      known: ctx.known,
+      fields: fields.map((f) => ({
+        id: f.id,
+        label: f.label,
+        kind: f.kind,
+        required: Boolean(f.required),
+        options: f.options,
+        placeholder: f.placeholder,
+        help: f.help,
+        default: f.default,
+        value: run.state.values[f.id],
+        columns: f.columns,
+        ...slotHints(run, f, f.options),
+        // A file, a recording or a signature comes from the person's device: the run page.
+        inChat: FIELD_WAYS[f.kind] !== "device",
+        // A field with a condition is asked only while it holds; one on another field of this
+        // page holds or not as the person answers. `shown` says so for what is known now.
+        ...(f.when ? { when: f.when, shown: shown.has(f.id) } : {}),
+      })),
+      hint: "Ask the fields in order; skip a field whose `when` does not hold on the answers so far (a hidden one is not required and not kept).",
     };
   }
   if (current.type === "review") {
@@ -329,7 +338,7 @@ export async function runReport(userId: string, runId: string, waitSeconds = 0, 
           (run.status === "done" && s.id === run.cursor),
       )
       .map((s) => s.id),
-    waitingFor: waitingFor(run, current),
+    waitingFor: await waitingFor(run, current),
     error: run.error,
     credits: Math.ceil(run.costMicros / MICROS_PER_CREDIT),
     events: (await recentEvents(run.id, 0, 15)).map((e) => ({

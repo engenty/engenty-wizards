@@ -318,7 +318,7 @@ async function flowValues(run: RunRow, state: RunState): Promise<Record<string, 
  * page (its own earlier answers left out, so a revisit decides on what is typed now) and the
  * choices its `optionsFrom` fields find in the run.
  */
-async function pageContext(run: RunRow, step: PageStep): Promise<Required<PageContext>> {
+export async function pageContext(run: RunRow, step: PageStep): Promise<Required<PageContext>> {
   const needs = pageNeeds(step.fields);
   const sourced = step.fields.filter((f) => f.optionsFrom);
   const decided = step.fields.some(isDecidedField) ? (run.state.pages?.[step.id]?.shown ?? []) : [];

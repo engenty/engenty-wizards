@@ -546,7 +546,7 @@ Returns the new revision and the issues.`,
       title: "Run wizard",
       description: `Start a run of a published wizard for the person, here in the chat. Spends credits like any run.
 Start it right away — no show_wizard first: the widget shows the wizard's pages and the person can answer there. What the person already said goes to the first page with answer_page, using the field ids in waitingFor. Then follow waitingFor:
-- page: ask the person for the fields with inChat=true, answer_page; fields with inChat=false (files, recordings, signatures) need the run page at browserUrl
+- page: ask the person for the fields with inChat=true, in order, answer_page; fields with inChat=false (files, recordings, signatures) need the run page at browserUrl. A field with a when is asked only while its condition holds on the answers so far (shown says so for what is known now); fields the wizard decided against are not listed
 - review: show the outputs, then review_step
 - ask: answer_ask (allow/skip a change in a connected account) or the run page for a sign-in
 While status is running, get_run with waitSeconds. Hosts with MCP Apps also show the run as a widget the person can answer in.`,

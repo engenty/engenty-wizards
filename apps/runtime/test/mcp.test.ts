@@ -81,6 +81,7 @@ describe("MCP endpoint", () => {
     const client = await connect();
     const created = await call(client, "create_wizard", { note: "Leeren Wizard angelegt." });
     expect(created.isError).toBe(false);
+    expect(created.isError, JSON.stringify(created.body)).toBe(false);
     const { wizardId } = created.body;
     expect(created.body.revision).toBe(0);
 
@@ -186,6 +187,12 @@ describe("MCP endpoint", () => {
             title: "Ton",
             fields: [
               { id: "tone", label: "Ton", kind: "select", options: ["locker", "förmlich"] },
+              {
+                id: "why",
+                label: "Warum locker?",
+                kind: "text",
+                when: { field: "tone", op: "equals", value: "locker" },
+              },
               { id: "logo", label: "Logo", kind: "image" },
             ],
           },
@@ -197,7 +204,8 @@ describe("MCP endpoint", () => {
 
     const unpublished = await call(client, "run_wizard", { wizardId });
     expect(unpublished.isError).toBe(true);
-    await call(client, "publish_wizard", { wizardId });
+    const published = await call(client, "publish_wizard", { wizardId });
+    expect(published.body).not.toHaveProperty("error");
 
     const shown = await client.callTool({ name: "show_wizard", arguments: { wizardId } });
     const view = (shown._meta as any)["engenty/flow"];
@@ -241,6 +249,13 @@ describe("MCP endpoint", () => {
     expect(waiting.body.passed).toContain("first");
     const fields = waiting.body.waitingFor.fields;
     expect(fields.find((f: { id: string }) => f.id === "logo").inChat).toBe(false);
+    // A field with a condition on another field of the page is listed with it, not shown yet.
+    expect(fields.find((f: { id: string }) => f.id === "why")).toMatchObject({
+      when: { field: "tone", op: "equals", value: "locker" },
+      shown: false,
+    });
+    expect(fields.find((f: { id: string }) => f.id === "tone").when).toBeUndefined();
+    expect(waiting.body.waitingFor.known).toEqual({});
     expect(waiting.body.browserUrl).toMatch(new RegExp(`/w/[^/]+/${runId}$`));
 
     const wrong = await call(client, "answer_page", {
