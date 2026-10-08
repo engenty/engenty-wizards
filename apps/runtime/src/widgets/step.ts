@@ -8,7 +8,8 @@ import type { StepOutput } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { resolveRef } from "../engine/template.js";
 import { type ProjectRow, type StepContext, StepError } from "../engine/types.js";
-import { extFor, loadAsset } from "../files/storage.js";
+import { extFor, inlineAssetRefs, loadAsset } from "../files/storage.js";
+import { snapshotDataImages } from "../files/web-images.js";
 import { type AiOrigin, markMedia } from "../media/marking.js";
 import { mainLogoId } from "../services/brand.js";
 import { snapshotFile } from "../services/files.js";
@@ -168,7 +169,10 @@ async function runFilmStep(
 
 /** A widget step makes no model call: it binds this run's data into the widget and keeps the file. */
 export async function runWidgetStep(step: WidgetStep, ctx: StepContext): Promise<StepOutput> {
-  const { data, media, origin } = await widgetData(step, ctx);
+  const { data: raw, media, origin } = await widgetData(step, ctx);
+  // Photos the data points to on the web (a listing, a product) are kept with the run: the
+  // page may load none itself.
+  const data = await snapshotDataImages(raw, ctx.saveAsset, step.id, ctx.signal);
   const html = await bundleWidget({
     entry: step.entry,
     files: ctx.files,
@@ -177,12 +181,14 @@ export async function runWidgetStep(step: WidgetStep, ctx: StepContext): Promise
     media: step.video ? FILM_MEDIA_ORIGIN : undefined,
     ai: origin,
   });
+  // What is shown and rendered carries those pictures inline; the kept page keeps the asset refs.
+  const shown = await inlineAssetRefs(html);
   if (step.video) {
-    return runFilmStep(step, ctx, html, data, media, origin);
+    return runFilmStep(step, ctx, shown, data, media, origin);
   }
   let probe: Awaited<ReturnType<typeof probeWidget>> | null = null;
   try {
-    probe = await probeWidget(html, widgetSize(step));
+    probe = await probeWidget(shown, widgetSize(step));
   } catch (err) {
     console.error(`[widget ${step.id}]`, err);
   }

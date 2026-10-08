@@ -132,13 +132,15 @@ export async function renderDownload(
       format === "html"
         ? html
         : await cachedRender(source, format, async () => {
+            // Pictures the widget took from the web are assets: the renderer gets them inline.
+            const inlined = await inlineAssetRefs(html);
             switch (format) {
               case "png":
-                return widgetPng(html, size);
+                return widgetPng(inlined, size);
               case "pdf":
-                return widgetPdf(html, size);
+                return widgetPdf(inlined, size);
               case "mp4":
-                return output.widget?.duration ? widgetMp4(html, size) : null;
+                return output.widget?.duration ? widgetMp4(inlined, size) : null;
               default:
                 return null;
             }

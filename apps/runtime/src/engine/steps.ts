@@ -22,6 +22,7 @@ import type { MastraModelConfig } from "@mastra/core/llm";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
+import { snapshotHtmlImages } from "../files/web-images.js";
 import { runFilmStep } from "../film/step.js";
 import {
   type GeneratedMedia,
@@ -963,7 +964,13 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
     }
     case "document":
     case "dashboard": {
-      const html = await writeHtml(step, ctx, step.asset);
+      // Pictures the model took from the web stay: the page itself may load none.
+      const html = await snapshotHtmlImages(
+        await writeHtml(step, ctx, step.asset),
+        ctx.saveAsset,
+        step.id,
+        ctx.signal,
+      );
       const ref: AssetRef = await ctx.saveAsset({
         stepId: step.id,
         kind: "html",
