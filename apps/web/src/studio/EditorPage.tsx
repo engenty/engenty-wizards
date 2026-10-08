@@ -18,6 +18,14 @@ import {
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, LinkedText, Spinner } from "../ui";
 import { CreditsPill, UserMenu } from "./AppFrame";
+import {
+  type Adding,
+  AddStepPanel,
+  addStepMessage,
+  placeText,
+  type StepAssistant,
+  withEmptyStep,
+} from "./editor/AddStep";
 import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
 import { currentDecisions, FlowDiagram } from "./editor/FlowDiagram";
@@ -230,6 +238,11 @@ export function EditorPage() {
   const [activeStep, setActiveStep] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<RunView["decisions"]>();
   const [branchFocus, setBranchFocus] = useState(0);
+  /** The step the assistant builds for a request from the step panel or the diagram. */
+  const [adding, setAdding] = useState<Adding | null>(null);
+  /** Where a "+" in the diagram asks for a step: before the step at this index. */
+  const [insertAt, setInsertAt] = useState<number | null>(null);
+  const openInsert = useCallback((at: number) => setInsertAt(at), []);
   const onRunView = useCallback((view: RunView | null) => {
     setActiveStep(view && view.status !== "done" ? (view.step?.id ?? null) : null);
     // Kept when the drawer closes: the step panel it covered shows the last test run's decisions.
@@ -307,7 +320,8 @@ export function EditorPage() {
   const w = wizard.data;
   const def = w.draft;
   const shownDecisions = currentDecisions(def, decisions);
-  const building = chat.phase !== "idle" && w.blank;
+  // A first build covers the diagram; a step asked for in place is shown in its place instead.
+  const building = chat.phase !== "idle" && w.blank && !adding;
   const hasIssues = w.issues.length > 0;
   // Read-only for one of two reasons: the wizard is a local install's, or nothing is built here.
   // Its project says which. A project that is not in the list was made here by a tenant that
@@ -341,6 +355,47 @@ export function EditorPage() {
       sheet.unfold();
     }
   };
+
+  /**
+   * A step asked for in the step panel or the diagram goes to the conversation as the admin's
+   * message, so the thread tells what was asked and built. The step appears in its place while
+   * the assistant builds it, and is selected once it is there.
+   */
+  const addStep = (request: Adding): boolean => {
+    if (chat.phase !== "idle") {
+      return false;
+    }
+    const before = new Set(def.steps.map((s) => s.id));
+    setAdding(request);
+    void chat.send(addStepMessage(def, request)).then(() => {
+      setAdding(null);
+      const latest = qc.getQueryData<WizardDetail>(["wizard", id])?.draft;
+      const added = latest?.steps.find((s) => !before.has(s.id));
+      if (added) {
+        setSelected(added.id);
+        setTab((k) => (k === "chat" ? k : "step"));
+      }
+    });
+    return true;
+  };
+  const assistant: StepAssistant | undefined = w.readOnly
+    ? undefined
+    : {
+        adding,
+        add: addStep,
+        ask: (text) => {
+          if (chat.phase !== "idle") {
+            return false;
+          }
+          void chat.send(text);
+          return true;
+        },
+        working: <Working chat={chat} />,
+        showChat: () => {
+          setTab("chat");
+          sheet.unfold();
+        },
+      };
 
   return (
     <div className="flex h-dvh flex-col">
@@ -511,6 +566,27 @@ export function EditorPage() {
               </div>
             </div>
           ) : null}
+          {insertAt !== null && assistant && !building ? (
+            <div className="absolute top-3 right-3 left-3 z-20 mx-auto max-w-xl animate-rise rounded-xl shadow-elevated">
+              <AddStepPanel
+                place={placeText(def, insertAt)}
+                onAdd={(kind, prompt) => {
+                  if (!addStep({ at: insertAt, kind, prompt })) {
+                    return false;
+                  }
+                  setInsertAt(null);
+                  return true;
+                }}
+                onEmpty={(kind) => {
+                  const added = withEmptyStep(def, insertAt, kind);
+                  save(added.def);
+                  setInsertAt(null);
+                  select(added.id);
+                }}
+                onCancel={() => setInsertAt(null)}
+              />
+            </div>
+          ) : null}
           {building ? (
             <div className="flex h-full items-center justify-center px-6 text-[0.875rem] text-ink-3">
               <Working chat={chat} spinner="size-4 text-ember" />
@@ -529,6 +605,8 @@ export function EditorPage() {
                 select(sid);
                 setBranchFocus((n) => n + 1);
               }}
+              adding={adding}
+              onInsert={w.readOnly || adding ? undefined : openInsert}
             />
           )}
         </section>
@@ -609,6 +687,7 @@ export function EditorPage() {
                 readOnly={w.readOnly}
                 decisions={shownDecisions}
                 branchFocus={branchFocus}
+                assistant={assistant}
               />
             ) : tab === "files" ? (
               <FilesPanel wizardId={w.id} files={w.files} readOnly={w.readOnly} />

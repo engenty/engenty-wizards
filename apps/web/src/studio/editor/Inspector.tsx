@@ -19,6 +19,7 @@ import {
 } from "@engenty-wizards/shared/definition";
 import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
@@ -30,6 +31,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Upload,
   Wand2,
 } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
@@ -38,12 +40,35 @@ import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { useStudioPlugins } from "../../plugins/host";
 import { HtmlFrame } from "../../runner/outputs";
-import { cn, IconButton, Input, Label, Segmented, Select, Switch, Textarea } from "../../ui";
+import {
+  Button,
+  cn,
+  IconButton,
+  Input,
+  Label,
+  Segmented,
+  Select,
+  Switch,
+  Textarea,
+} from "../../ui";
+import {
+  AddingCard,
+  type AddKind,
+  AddStepPanel,
+  type EmptyKind,
+  placeText,
+  type StepAssistant,
+  uniqueId,
+  withEmptyStep,
+} from "./AddStep";
 import { ModelClassControl, StepCost, useEstimate } from "./estimate";
 import { conditionText, percent } from "./FlowDiagram";
 import { stepIcon, stepSummary, TYPE_TONE, toolLabel, typeLabel } from "./meta";
 
 type Update = (next: WizardDefinition) => void;
+
+/** The conversation, for what the step panel asks the assistant to build. */
+const Assistant = createContext<StepAssistant | undefined>(undefined);
 
 const FIELD_KIND_LABEL: Record<string, string> = {
   text: "Kurzer Text",
@@ -121,20 +146,6 @@ function Section({
       )}
     </div>
   );
-}
-
-function uniqueId(def: WizardDefinition, base: string): string {
-  const taken = new Set([
-    ...def.steps.map((s) => s.id),
-    ...def.steps.flatMap((s) => (s.type === "page" ? s.fields.map((f) => f.id) : [])),
-  ]);
-  let i = 1;
-  let id = base;
-  while (taken.has(id)) {
-    i += 1;
-    id = `${base}${i}`;
-  }
-  return id;
 }
 
 /** What a field's condition can read: the page's other fields and what is known before it. */
@@ -591,10 +602,7 @@ function WidgetBody({
             fit
           />
         ) : (
-          <p className="text-[0.8125rem] text-ink-3">
-            Das Widget ist noch nicht gebaut. Bitte im Gespräch darum – oder lade eine HTML-Datei
-            unter „Dateien“ hoch.
-          </p>
+          <WidgetMissing step={step} wizardId={wizardId} />
         )}
       </Section>
       <Section title="Widget">
@@ -674,6 +682,102 @@ function WidgetBody({
         </button>
       </Section>
     </>
+  );
+}
+
+/**
+ * A widget step without its HTML: the assistant builds it from what the admin says it should
+ * show, or the admin uploads an HTML file of their own as the step's entry.
+ */
+function WidgetMissing({
+  step,
+  wizardId,
+}: {
+  step: Extract<Step, { type: "widget" }>;
+  wizardId: string;
+}) {
+  const assistant = useContext(Assistant);
+  const readOnly = useContext(ReadOnly);
+  const qc = useQueryClient();
+  const picker = useRef<HTMLInputElement>(null);
+  const [what, setWhat] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (readOnly) {
+    return <p className="text-[0.8125rem] text-ink-3">{t("widget.missing")}</p>;
+  }
+  const build = () => {
+    if (!assistant) {
+      return;
+    }
+    const text = t("widget.buildMessage", { title: step.title, what: what.trim() }).trim();
+    if (assistant.ask(text)) {
+      setWhat("");
+      setError(null);
+    } else {
+      setError(t("addStep.busy"));
+    }
+  };
+  const upload = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const path = encodeURIComponent(step.entry).replace(/%2F/g, "/");
+      const res = await fetch(withBase(`/api/studio/wizards/${wizardId}/files/${path}`), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "text/html" },
+        body: file,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? res.statusText);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+      await qc.invalidateQueries({ queryKey: ["wizard", wizardId] });
+    }
+  };
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border-strong border-dashed p-4">
+      <p className="text-[0.8125rem] text-ink-2">{t("widget.missing")}</p>
+      {assistant ? (
+        <Textarea
+          minRows={2}
+          aria-label={t("widget.what")}
+          placeholder={t("widget.what")}
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+        />
+      ) : null}
+      {error ? <p className="text-[0.75rem] text-rose">{error}</p> : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {assistant ? (
+          <Button size="sm" onClick={build}>
+            <Sparkles className="size-3.5" /> {t("widget.build")}
+          </Button>
+        ) : null}
+        <Button variant="ghost" size="sm" busy={busy} onClick={() => picker.current?.click()}>
+          <Upload className="size-3.5" /> {t("widget.upload")}
+        </Button>
+        <input
+          ref={picker}
+          type="file"
+          accept="text/html,.html,.htm"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            void upload(file);
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1078,38 +1182,6 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
   );
 }
 
-const NEW_STEP: Record<string, (id: string) => Step> = {
-  page: (id) => ({
-    id,
-    type: "page",
-    title: "Neue Seite",
-    fields: [{ id: `${id}Text`, label: "Neue Frage", kind: "text" }],
-  }),
-  agent: (id) => ({
-    id,
-    type: "agent",
-    title: "KI-Schritt",
-    instructions: "Beschreibe die Aufgabe …",
-    tools: [],
-    output: { format: "markdown" },
-  }),
-  generate: (id) => ({
-    id,
-    type: "generate",
-    title: "Bild erzeugen",
-    asset: "image",
-    prompt: "Beschreibe das Bild …",
-  }),
-  widget: (id) => ({
-    id,
-    type: "widget",
-    title: "Widget",
-    entry: `${id}/index.html`,
-    data: {},
-    sample: `${id}/sample.json`,
-  }),
-};
-
 interface InspectorProps {
   def: WizardDefinition;
   selected: string | null;
@@ -1125,6 +1197,8 @@ interface InspectorProps {
   decisions?: Record<string, BranchDecision>;
   /** Changes when a branch line in the diagram is clicked: the branches scroll into view. */
   branchFocus?: number;
+  /** The conversation: steps are added through it. */
+  assistant?: StepAssistant;
 }
 
 const WIZARD = "__wizard";
@@ -1293,16 +1367,18 @@ export function Inspector(props: InspectorProps) {
   const step = def.steps.find((s) => s.id === selected);
   return (
     <ReadOnly value={readOnly}>
-      <div>
-        <StepNav def={def} selected={selected} onSelect={onSelect} issues={issues} />
-        {selected === WIZARD ? (
-          <WizardSettings def={def} update={update} />
-        ) : step ? (
-          <StepInspector {...props} update={update} step={step} />
-        ) : (
-          <StepList def={def} onSelect={onSelect} issues={issues} />
-        )}
-      </div>
+      <Assistant.Provider value={props.assistant}>
+        <div>
+          <StepNav def={def} selected={selected} onSelect={onSelect} issues={issues} />
+          {selected === WIZARD ? (
+            <WizardSettings def={def} update={update} />
+          ) : step ? (
+            <StepInspector {...props} update={update} step={step} />
+          ) : (
+            <StepList def={def} onSelect={onSelect} issues={issues} />
+          )}
+        </div>
+      </Assistant.Provider>
     </ReadOnly>
   );
 }
@@ -1318,8 +1394,15 @@ function StepInspector({
   wizardId,
   decisions,
   branchFocus,
+  assistant,
 }: InspectorProps & { step: Step }) {
   const index = def.steps.indexOf(step);
+  /** Where a step added here goes: after this one, or before the result. */
+  const at = step.type === "result" ? index : index + 1;
+  const [addOpen, setAddOpen] = useState(false);
+  // Another step, another place: the panel starts closed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset per step
+  useEffect(() => setAddOpen(false), [step.id]);
   const Icon = stepIcon(step);
   const set = (next: Step) =>
     update({ ...def, steps: def.steps.map((s) => (s.id === step.id ? next : s)) });
@@ -1336,21 +1419,18 @@ function StepInspector({
     [steps[index], steps[j]] = [steps[j], steps[index]];
     update({ ...def, steps });
   };
-  const insertAfter = (kind: keyof typeof NEW_STEP) => {
-    const id = uniqueId(
-      def,
-      kind === "page"
-        ? "seite"
-        : kind === "agent"
-          ? "ki"
-          : kind === "widget"
-            ? "widget"
-            : "erzeugen",
-    );
-    const steps = [...def.steps];
-    steps.splice(step.type === "result" ? index : index + 1, 0, NEW_STEP[kind](id));
-    update({ ...def, steps });
-    onSelect(id);
+  const insertEmpty = (kind: EmptyKind) => {
+    const added = withEmptyStep(def, at, kind);
+    update(added.def);
+    setAddOpen(false);
+    onSelect(added.id);
+  };
+  const addWith = (kind: AddKind, prompt: string) => {
+    if (!assistant?.add({ at, kind, prompt })) {
+      return false;
+    }
+    setAddOpen(false);
+    return true;
   };
   const stepIssues = issues.filter((i) => i.stepId === step.id);
   const estimate = useEstimate(wizardId, def);
@@ -1416,7 +1496,7 @@ function StepInspector({
       {/* Moving, deleting and adding steps is building: not offered where nothing is changed. */}
       {readOnly ? null : (
         <Section>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex items-center gap-1">
             {step.type !== "result" ? (
               <>
                 <IconButton label={t("editor.moveUp")} onClick={() => move(-1)}>
@@ -1437,18 +1517,32 @@ function StepInspector({
                 </IconButton>
               </>
             ) : null}
-            <span className="ml-auto text-[0.75rem] text-ink-4">Danach einfügen:</span>
-            {(["page", "agent", "generate", "widget"] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => insertAfter(k)}
-                className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-2 hover:bg-accent"
-              >
-                <Plus className="size-3.5" /> {t(`type.${k}`)}
-              </button>
-            ))}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
+              aria-expanded={addOpen}
+              onClick={() => setAddOpen((o) => !o)}
+            >
+              <Plus className="size-3.5" />{" "}
+              {t(step.type === "result" ? "addStep.before" : "addStep.next")}
+            </Button>
           </div>
+          {assistant?.adding && assistant.adding.at === at ? (
+            <AddingCard
+              adding={assistant.adding}
+              place={placeText(def, at)}
+              working={assistant.working}
+              onShowChat={assistant.showChat}
+            />
+          ) : addOpen ? (
+            <AddStepPanel
+              place={placeText(def, at)}
+              onAdd={addWith}
+              onEmpty={insertEmpty}
+              onCancel={() => setAddOpen(false)}
+            />
+          ) : null}
         </Section>
       )}
     </div>
