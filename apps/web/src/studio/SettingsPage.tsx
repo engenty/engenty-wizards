@@ -7,6 +7,7 @@ import { t } from "../lib/i18n";
 import { type Project, useCurrentProject, useManyProjects, useMe } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { PluginsSection } from "../plugins/PluginsSection";
+import { ProModulesSection } from "../plugins/ProModulesSection";
 import { Button, Card, cn, Empty, IconButton, Input } from "../ui";
 import { Account } from "./Account";
 import { useCrumbs } from "./AppFrame";
@@ -291,7 +292,12 @@ export function SettingsPage() {
               {current.id === "integrate" ? <Integrate /> : null}
               {current.id === "account" && me.data ? <Account me={me.data} /> : null}
               {current.id === "team" && me.data ? <Team me={me.data} /> : null}
-              {current.id === "plugins" ? <PluginsSection /> : null}
+              {current.id === "plugins" ? (
+                <div className="flex flex-col gap-6">
+                  <PluginsSection />
+                  <ProModulesSection />
+                </div>
+              ) : null}
               {current.plugin ? (
                 <PluginFrame of={current.plugin}>
                   <current.plugin.component />

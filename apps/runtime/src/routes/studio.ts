@@ -63,6 +63,7 @@ import {
   storedKey,
   textModel,
 } from "../models.js";
+import { refreshPro } from "../plugins/pro.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import {
   isAdminRole,
@@ -1437,6 +1438,8 @@ export const studio = new Hono<Vars>()
     }
     await unlink();
     await forgetCloud();
+    // Pro modules went with the account's plan; installed ones stay on disk.
+    await refreshPro();
     // Models that ran on the account's credits have nothing to run on now; another source stays.
     if (localModelSettings().source === "account") {
       await saveLocalModels({ source: "own" });

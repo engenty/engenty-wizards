@@ -36,6 +36,9 @@ export function PluginsSection() {
         ) : null
       }
     >
+      {plugins.plugins.length || plugins.problems.length ? null : (
+        <p className="text-[0.875rem] text-ink-3">{t("plugins.none")}</p>
+      )}
       <ul className="divide-y divide-border-soft">
         {plugins.plugins.map((plugin) => {
           const studioError = plugins.failed[plugin.id];

@@ -61,6 +61,9 @@ installed app and in the Docker image. A module there is part of the open produc
 A plugin that is not part of the open product stays out of `modules/` and goes into a folder of
 `PLUGINS_DIR`.
 
+engenty's own closed plugins reach a local install as [Pro modules](./pro-modules): signed
+packages from the linked account, on while its plan includes them.
+
 ## Which tenant has a plugin
 
 | The runtime runs | A tenant has |

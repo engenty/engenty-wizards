@@ -79,6 +79,16 @@ export async function verifyToken(
   audiences: string[] | null,
   base = env.manage.url,
 ): Promise<TokenClaims | null> {
+  const payload = await verifySigned(token, audiences, base);
+  return payload ? toClaims(payload) : null;
+}
+
+/** Any token the Manage-App at `base` signed (its JWKS, its issuer); null when it is not one. */
+export async function verifySigned(
+  token: string,
+  audiences: string[] | null,
+  base = env.manage.url,
+): Promise<JWTPayload | null> {
   try {
     const d = await discovery(base);
     let keys = keySets.get(d.jwks_uri);
@@ -90,7 +100,7 @@ export async function verifyToken(
       issuer: d.issuer,
       ...(audiences ? { audience: audiences } : {}),
     });
-    return toClaims(payload);
+    return payload;
   } catch {
     return null;
   }

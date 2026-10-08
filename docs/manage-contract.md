@@ -100,6 +100,26 @@ Every call but `GET /v1/connect` carries the linked account's access token. The 
 the tokens like its own and marks the connection `via: "account"`, so its refreshes keep going
 through the Manage-App.
 
+## Pro modules of a local install
+
+A runtime that runs alone, linked to an account, gets the closed plugins the account's plan
+includes (`modules` of the plan) from the Manage-App
+([Pro modules](content/dev/plugins/pro-modules.md)). Every call carries the linked account's
+access token; `runtime` is the install's release (`0.2.27` or `v0.2.27`).
+
+| Call | Answer |
+|---|---|
+| `GET /v1/modules?runtime=` | `{ runtime: "v0.2.27", plan: { id, name }, modules: [{ id, name, version, description, size, sha256, signature, included }], entitlement: { token, expiresAt } }` · every module built for that release, `included` where the plan has it (none for a team that is not `active`); `[]` when none is built for it · `400 invalid_request` for a `runtime` that is no release |
+| `GET /v1/modules/:id/package?runtime=` | the module's zip (`application/zip`, header `x-module-sha256`) · `403 plan` when the plan does not include it, `404` when it is not built for the release, `429` beyond 60 an hour per team |
+
+- `entitlement.token`: a JWT the Manage-App signs with its JWKS (as access tokens), issuer its
+  origin, audience `urn:engenty:wizards:modules`, `sub` the tenant, `modules` the plan's module
+  ids, `exp` a few days ahead (`MODULES_ENTITLEMENT_DAYS`, default 7). It carries no `tenant`
+  claim and no runtime's audience, so it is never taken for an access token.
+- `signature`: Ed25519 over `engenty-module:v1\n<id>\n<version>\n<runtime>\n<sha256>`, made where
+  the closed plugins are built, not by the Manage-App. The runtime checks it with the public key
+  it ships with before it unpacks anything.
+
 ## Spaces of a local install
 
 A runtime that runs alone, linked to an account, sends what it publishes to the account's cloud

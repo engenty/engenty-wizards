@@ -39,8 +39,9 @@ export function settingsSections(
       menu: section.menu ?? false,
       plugin: section,
     })),
-    // Nothing to show where the runtime has no plugins.
-    ...(plugins.plugins.length || plugins.problems.length
+    // Nothing to show where the runtime has no plugins, unless a linked account may bring its
+    // plan's Pro modules (ProModulesSection).
+    ...(plugins.plugins.length || plugins.problems.length || (plugins.canReload && me?.account)
       ? [{ id: "plugins", label: t("plugins.title"), icon: Blocks, menu: false }]
       : []),
   ];

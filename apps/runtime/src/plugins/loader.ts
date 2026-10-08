@@ -17,12 +17,14 @@ import { pluginConnections } from "../connectors/plugin-connections.js";
 import { db, onTenantOpen } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
+import { managed } from "../manage.js";
 import { ModelUnavailableError, textModel } from "../models.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
 import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
+import { proModulesDir, proSources } from "./pro-state.js";
 import { publicUrlOf } from "./public.js";
 import {
   announceChange,
@@ -260,11 +262,16 @@ export function pluginProblems(): PluginProblem[] {
 
 function discover(): PluginSource[] {
   const result = discoverPlugins(pluginDirs());
-  problems = result.problems;
+  // Pro modules come last and only while the plan has them (pro-state.ts).
+  const pro = managed ? null : discoverPlugins([proModulesDir()]);
+  const allowed = pro
+    ? proSources(pro.found, new Set(result.found.map((s) => s.id)))
+    : { load: [], problems: [] };
+  problems = [...result.problems, ...(pro?.problems ?? []), ...allowed.problems];
   for (const problem of problems) {
     console.error(`[plugins] ${problem.path}: ${problem.message}`);
   }
-  return result.found;
+  return [...result.found, ...allowed.load];
 }
 
 /** One load at a time: the watcher and a person may ask for a reload at the same moment. */

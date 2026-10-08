@@ -14,6 +14,7 @@ import { managed } from "./manage.js";
 import { checkModelsAtStart, loadCatalog, loadLocalModels } from "./models.js";
 import { startJobs } from "./plugins/jobs.js";
 import { loadPlugins } from "./plugins/loader.js";
+import { loadEntitlement, startProChecks } from "./plugins/pro.js";
 import { closeBrowser } from "./render/chromium.js";
 import { clearRunning, writeRunning } from "./running.js";
 import { syncMarketplace } from "./services/marketplace.js";
@@ -23,6 +24,8 @@ import { LOCAL_TENANT } from "./tenants/tenant.js";
 import { onRestart } from "./update.js";
 
 await migrateControlDb();
+// What the linked account's plan confirmed last: the Pro modules it includes load with the rest.
+await loadEntitlement();
 // Before any tenant database opens: each gets the plugins' own tables as it does.
 await loadPlugins();
 startJobs();
@@ -39,6 +42,7 @@ if (managed) {
   await loadLocalModels();
   void loadCatalog();
   void checkModelsAtStart().catch(() => undefined);
+  startProChecks();
 }
 
 // The marketplace's starters and the starred entries, kept for offline use; checked hourly.

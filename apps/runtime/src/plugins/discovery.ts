@@ -38,6 +38,8 @@ export interface PluginSource {
   styles: string | null;
   /** The plugin is this one file. */
   single: boolean;
+  /** A Pro module installed from the linked account (pro.ts); it loads only while the plan has it. */
+  pro?: boolean;
 }
 
 export interface PluginProblem {

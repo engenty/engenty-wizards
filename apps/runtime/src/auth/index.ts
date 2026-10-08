@@ -14,6 +14,7 @@ import {
   tokenRequest,
   verifyToken,
 } from "../manage.js";
+import { refreshPro } from "../plugins/pro.js";
 import { seal, unseal } from "../secrets/crypto.js";
 import { LOCAL_TENANT } from "../tenants/tenant.js";
 import { finishLink } from "./account.js";
@@ -341,6 +342,8 @@ export const authRoutes = new Hono()
         await finishLink(code, rawState);
         // What is published here goes to the account's cloud, from now on and once for all there is.
         void firstSync();
+        // The Pro modules the account's plan includes.
+        void refreshPro();
         return c.html(closePage("Angemeldet. Du kannst dieses Fenster schließen."));
       } catch (err) {
         console.error("[account]", err);

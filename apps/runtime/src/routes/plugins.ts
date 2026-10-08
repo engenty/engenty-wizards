@@ -5,6 +5,7 @@ import { streamSSE } from "hono/streaming";
 import type { Principal } from "../auth/index.js";
 import { managed } from "../manage.js";
 import { pluginProblems, reloadPlugin, rescanPlugins } from "../plugins/loader.js";
+import { installPro, proState, refreshPro, removePro } from "../plugins/pro.js";
 import {
   type LoadedPlugin,
   loadedPlugin,
@@ -44,6 +45,8 @@ function view(plugin: LoadedPlugin) {
     version,
     description: description ?? "",
     generation: plugin.generation,
+    /** Installed from the linked account's plan (Settings → Plugins → Pro modules). */
+    pro: Boolean(plugin.source.pro),
     /** Why the server half did not load; the plugin then adds nothing on the server. */
     error: plugin.error,
     script: script ? address("client.js", script.rev) : null,
@@ -191,6 +194,54 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
     return plugin
       ? c.json({ plugin: view(plugin) })
       : c.json({ error: "not found", code: "not_found" }, 404);
+  })
+
+  // Pro modules: the closed plugins the linked account's plan includes (plugins/pro.ts).
+  .get("/-/pro", async (c) => {
+    if (!canReload(c.get("user"))) {
+      return c.json({ error: "not found", code: "not_found" }, 404);
+    }
+    return c.json(await proState());
+  })
+
+  .post("/-/pro/refresh", async (c) => {
+    if (!canReload(c.get("user"))) {
+      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+    }
+    await refreshPro();
+    return c.json(await proState());
+  })
+
+  .post("/-/pro/:id", async (c) => {
+    if (!canReload(c.get("user"))) {
+      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+    }
+    try {
+      await installPro(c.req.param("id"));
+    } catch (err) {
+      const answer = answerOf(err);
+      if (answer) {
+        return c.json(answer.body, answer.status as 400);
+      }
+      throw err;
+    }
+    return c.json(await proState());
+  })
+
+  .delete("/-/pro/:id", async (c) => {
+    if (!canReload(c.get("user"))) {
+      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+    }
+    try {
+      await removePro(c.req.param("id"));
+    } catch (err) {
+      const answer = answerOf(err);
+      if (answer) {
+        return c.json(answer.body, answer.status as 400);
+      }
+      throw err;
+    }
+    return c.json(await proState());
   })
 
   .all("/:id", dispatch)

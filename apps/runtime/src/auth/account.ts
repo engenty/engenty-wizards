@@ -118,6 +118,16 @@ export async function accountToken(): Promise<string | null> {
   if (cached && cached.expiresAt - Date.now() > 60_000) {
     return cached.token;
   }
+  // One refresh at a time: a refresh token is used once, a second caller would be refused.
+  refreshing ??= refreshAccount().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+let refreshing: Promise<string | null> | null = null;
+
+async function refreshAccount(): Promise<string | null> {
   const refresh = await vaultGet(REFRESH);
   if (!refresh) {
     return null;

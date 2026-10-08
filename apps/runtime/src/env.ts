@@ -245,6 +245,11 @@ export const env = {
     watch: !manageUrl && str("PLUGINS_WATCH", "1") === "1",
     /** Plugins' jobs (`server.every`) run. Off (`PLUGIN_JOBS=0`) where another process runs them. */
     jobs: str("PLUGIN_JOBS", "1") === "1",
+    /**
+     * Public keys (Ed25519, SPKI DER in base64) whose signature a Pro module may carry, besides
+     * the one this runtime ships with (plugins/pro-keys.ts). For testing packages signed elsewhere.
+     */
+    proKeys: list("PRO_MODULES_KEYS"),
   },
 
   limits: {

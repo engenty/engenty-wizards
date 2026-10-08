@@ -1,6 +1,20 @@
 # Plan: Pro modules in a local install
 
-Status: concept, nothing of it is built. Written on 2026-10-08; not yet decided.
+Status: built on 2026-10-08 (runtime and studio here, packing and `/v1/modules` in the closed
+repository); not released. Reference: [Pro modules](../content/dev/plugins/pro-modules.md).
+
+Built differently from the text below:
+
+- Pro modules are installed into `<DATA_DIR>/pro-modules/<id>/`, not `plugins/pro/`: apart from
+  the person's plugins and not watched.
+- No new OAuth scope: `/v1/modules` takes any access token of the linked account, as
+  `/v1/connect` does, so installs linked before need no new consent.
+- The Manage-App streams the zip itself instead of handing out a short-lived address; it reads
+  the packages from a GitHub release `modules-<tag>` of the closed repository.
+- Team plans: every member's install gets the team's modules (the plan is the team's).
+- Offline grace: 7 days (`MODULES_ENTITLEMENT_DAYS`). A failed check is tried again within the
+  hour.
+- Installed modules update by themselves when the account lists another build for the release.
 
 Scope: a person with a Pro (or Team) plan links their local install to their account and gets
 the closed plugins of their plan (`contacts`, `data-sourcer`, …) there, as the cloud runtime
