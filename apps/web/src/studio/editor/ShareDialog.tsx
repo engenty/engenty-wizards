@@ -26,6 +26,7 @@ import {
   useMe,
   type WizardDetail,
 } from "../../lib/session";
+import { PluginFrame, useStudioPlugins } from "../../plugins/host";
 import { Button, cn, Dialog, Input, Segmented, Spinner, Switch } from "../../ui";
 import { LinkStatus, useAccountLink } from "../Account";
 import { openExternal } from "../LocalRuntime";
@@ -452,6 +453,8 @@ interface RunnersAnswer {
  */
 function Channels({ wizard }: { wizard: WizardDetail }) {
   const qc = useQueryClient();
+  // A plugin's runner may draw its own part under its row: a keyword, a number, a QR code.
+  const { shareSections } = useStudioPlugins();
   const runners = useQuery({
     queryKey: ["wizard-runners", wizard.id, wizard.revision],
     queryFn: () => api.get<RunnersAnswer>(`/api/studio/wizards/${wizard.id}/runners`),
@@ -486,41 +489,55 @@ function Channels({ wizard }: { wizard: WizardDetail }) {
             : r.fit.outcome === "full"
               ? t("share.fit.full")
               : t(r.fit.outcome === "handoff" ? "share.fit.handoff" : "share.fit.no", { steps });
+          const section = on && !r.problem ? shareSections.find((s) => s.runner === r.id) : null;
           return (
-            <li key={r.id} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[0.875rem]">
-                  <span className="font-medium">{r.label[lang]}</span>
-                  {isDefault ? (
-                    <span className="rounded-full bg-paper-2 px-2 py-px text-[0.6875rem] text-ink-3">
-                      {t("share.default")}
-                    </span>
-                  ) : on && r.kind === "page" && r.fit.outcome !== "no" && !r.problem && !locked ? (
-                    <button
-                      type="button"
-                      className="text-[0.75rem] text-ink-4 hover:text-ink"
-                      onClick={() => patch.mutate({ default: r.id, enabled: settings.enabled })}
-                    >
-                      {t("share.makeDefault")}
-                    </button>
-                  ) : null}
+            <li key={r.id} className="flex flex-col py-2">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[0.875rem]">
+                    <span className="font-medium">{r.label[lang]}</span>
+                    {isDefault ? (
+                      <span className="rounded-full bg-paper-2 px-2 py-px text-[0.6875rem] text-ink-3">
+                        {t("share.default")}
+                      </span>
+                    ) : on &&
+                      r.kind === "page" &&
+                      r.fit.outcome !== "no" &&
+                      !r.problem &&
+                      !locked ? (
+                      <button
+                        type="button"
+                        className="text-[0.75rem] text-ink-4 hover:text-ink"
+                        onClick={() => patch.mutate({ default: r.id, enabled: settings.enabled })}
+                      >
+                        {t("share.makeDefault")}
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="truncate text-[0.75rem] text-ink-3" title={fit}>
+                    {fit}
+                  </div>
                 </div>
-                <div className="truncate text-[0.75rem] text-ink-3" title={fit}>
-                  {fit}
-                </div>
+                <Switch
+                  checked={on}
+                  disabled={locked || isDefault || r.fit.outcome === "no" || Boolean(r.problem)}
+                  onChange={(v) =>
+                    patch.mutate({
+                      default: settings.default,
+                      enabled: v
+                        ? [...settings.enabled, r.id]
+                        : settings.enabled.filter((id) => id !== r.id),
+                    })
+                  }
+                />
               </div>
-              <Switch
-                checked={on}
-                disabled={locked || isDefault || r.fit.outcome === "no" || Boolean(r.problem)}
-                onChange={(v) =>
-                  patch.mutate({
-                    default: settings.default,
-                    enabled: v
-                      ? [...settings.enabled, r.id]
-                      : settings.enabled.filter((id) => id !== r.id),
-                  })
-                }
-              />
+              {section ? (
+                <div className="mt-2">
+                  <PluginFrame of={section}>
+                    <section.component wizard={{ id: wizard.id, title: wizard.draft.title }} />
+                  </PluginFrame>
+                </div>
+              ) : null}
             </li>
           );
         })}

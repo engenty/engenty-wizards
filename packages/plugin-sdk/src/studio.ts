@@ -64,6 +64,21 @@ export interface StudioSpaceSection {
   component: ComponentType;
 }
 
+/** What a runner's section of the share dialog is handed: the wizard the dialog is about. */
+export interface StudioShareSectionProps {
+  wizard: { id: string; title: string };
+}
+
+/**
+ * A runner's own part of the share dialog, under the runner's row once it is switched on for
+ * the wizard: the keyword, the number, the link and its QR code. One per runner.
+ */
+export interface StudioShareSection {
+  /** The runner's id, as the server half registered it. */
+  runner: string;
+  component: ComponentType<StudioShareSectionProps>;
+}
+
 /** What a card in the assistant's chat is handed. */
 export interface StudioAssistantCardProps<T = unknown> {
   /** What the assistant tool returned. */
@@ -115,6 +130,7 @@ export interface StudioPluginContext {
   registerNav(entry: StudioNavEntry): void;
   registerSettingsSection(section: StudioSettingsSection): void;
   registerSpaceSection(section: StudioSpaceSection): void;
+  registerShareSection(section: StudioShareSection): void;
   registerAssistantCard(card: StudioAssistantCard): void;
   /**
    * A hook: the space the studio shows, `null` while it has none. A component that calls it draws

@@ -25,7 +25,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 |---|---|
 | `registerTool(tool: PluginTool)` | [Tools](./tools.md) |
 | `registerRunner(runner: PluginRunner)` | [Runners](./runners.md). A door a wizard runs through; `page` runners answer at `/w/<token>/<id>` |
-| `runs` | [Runners](./runners.md#drive-a-run). `start`, `report`, `answerPage`, `review`, `answerAsk`, `control`, `subscribe`, `handoffUrl`, `upload`: the functions behind the MCP tools, for the plugin's door |
+| `runs` | [Runners](./runners.md#drive-a-run). `start`, `report`, `wizards`, `answerPage`, `review`, `answerAsk`, `control`, `subscribe`, `handoffUrl`, `upload`, `transcribe`: the functions behind the MCP tools, for the plugin's door |
 | `registerSpaceContext({ block, tools? })` | [The space](./space.md). `block(space): string \| null` |
 | `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
 | `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
@@ -84,6 +84,7 @@ interface PluginRunner {
     handoff: ("screen" | "thread" | "sms" | "push")[];
   };
   page?(request: PluginRunnerRequest): Response | Promise<Response>;
+  problem?(): string | null | Promise<string | null>;  // why not usable in this tenant right now
 }
 
 interface PluginRunnerRequest {

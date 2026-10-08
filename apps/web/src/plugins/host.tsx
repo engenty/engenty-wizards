@@ -6,6 +6,7 @@ import type {
   StudioPlugin,
   StudioPluginContext,
   StudioSettingsSection,
+  StudioShareSection,
   StudioSpace,
   StudioSpaceSection,
 } from "@engenty-wizards/plugin-sdk/studio";
@@ -91,6 +92,7 @@ export interface StudioPlugins extends Listing {
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
   spaceSections: Of<StudioSpaceSection>[];
+  shareSections: Of<StudioShareSection>[];
   cards: Of<StudioAssistantCard>[];
 }
 
@@ -104,6 +106,7 @@ let state: StudioPlugins = {
   nav: [],
   sections: [],
   spaceSections: [],
+  shareSections: [],
   cards: [],
 };
 const listeners = new Set<() => void>();
@@ -147,6 +150,7 @@ interface Draft {
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
   spaceSections: Of<StudioSpaceSection>[];
+  shareSections: Of<StudioShareSection>[];
   cards: Of<StudioAssistantCard>[];
   disposers: (() => void)[];
 }
@@ -218,6 +222,15 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
         throw new Error(`The space page has a section "${section.id}" already.`);
       }
       draft.spaceSections.push({ ...section, plugin: id, serial: ++serials });
+    },
+    registerShareSection(section) {
+      const taken = [...others(state.shareSections), ...draft.shareSections].some(
+        (s) => s.runner === section.runner,
+      );
+      if (taken) {
+        throw new Error(`The runner "${section.runner}" has a share section already.`);
+      }
+      draft.shareSections.push({ ...section, plugin: id, serial: ++serials });
     },
     registerAssistantCard(card) {
       if (draft.cards.some((c) => c.tool === card.tool)) {
@@ -310,6 +323,7 @@ function unmount(id: string) {
     nav: state.nav.filter((n) => n.plugin !== id),
     sections: state.sections.filter((s) => s.plugin !== id),
     spaceSections: state.spaceSections.filter((s) => s.plugin !== id),
+    shareSections: state.shareSections.filter((s) => s.plugin !== id),
     cards: state.cards.filter((c) => c.plugin !== id),
   });
 }
@@ -325,6 +339,7 @@ async function mount(plugin: PluginInfo) {
     nav: [],
     sections: [],
     spaceSections: [],
+    shareSections: [],
     cards: [],
     disposers: [],
   };
@@ -362,6 +377,7 @@ async function mount(plugin: PluginInfo) {
     nav: [...state.nav.filter((n) => n.plugin !== id), ...draft.nav],
     sections: [...state.sections.filter((s) => s.plugin !== id), ...draft.sections],
     spaceSections: [...state.spaceSections.filter((s) => s.plugin !== id), ...draft.spaceSections],
+    shareSections: [...state.shareSections.filter((s) => s.plugin !== id), ...draft.shareSections],
     cards: [...state.cards.filter((c) => c.plugin !== id), ...draft.cards],
   });
   release(id, was?.disposers ?? [], was?.link ?? null);

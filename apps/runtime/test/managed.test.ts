@@ -279,6 +279,7 @@ describe("a runtime of a Manage-App", () => {
       "basics",
       "spaces",
       "teams",
+      "whatsapp",
     ]);
     expect((await app.fetch(new Request(`${RUNTIME}/api/internal/plugins`))).status).toBe(401);
   });

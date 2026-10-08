@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import type { PluginRunReport, PluginRunSignal, PluginRuns } from "@engenty-wizards/plugin-sdk";
+import { wizardLang } from "@engenty-wizards/shared/definition";
 import { noteText } from "@engenty-wizards/shared/run";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk } from "../engine/asks.js";
 import { subscribe } from "../engine/events.js";
@@ -17,9 +18,11 @@ import {
 } from "../engine/runner.js";
 import { saveAsset } from "../files/storage.js";
 import { wizardUnavailable } from "../limits.js";
+import { transcribeAudio } from "../media/transcribe.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { runTicket } from "../secrets/signing.js";
 import { notFound, ServiceError } from "../services/errors.js";
+import { runnerSettingsOf, runnersOf } from "../services/runners.js";
 import { pluginRun, refusedInput, runReportOf, waitRun } from "../services/runs.js";
 import { shareUrl } from "../services/wizards.js";
 import { visitorOverLimit } from "../tenants/control.js";
@@ -108,7 +111,41 @@ export function runsApiFor(pluginId: string): PluginRuns {
     },
     async report(runId, options) {
       const run = await waitRun(() => pluginRun(runId), options?.waitSeconds ?? 0);
-      return (await runReportOf(run)) as PluginRunReport;
+      return (await runReportOf(run, options?.draft)) as PluginRunReport;
+    },
+    async wizards(runner) {
+      const rows = await db.query.wizard.findMany({
+        where: and(
+          eq(schema.wizard.tenantId, currentTenant()),
+          isNotNull(schema.wizard.publishedVersion),
+        ),
+        orderBy: asc(schema.wizard.createdAt),
+      });
+      const available = await runnersOf();
+      const offered = rows.filter((w) => runnerSettingsOf(w, available).enabled.includes(runner));
+      const versions = offered.length
+        ? await db.query.wizardVersion.findMany({
+            where: inArray(
+              schema.wizardVersion.wizardId,
+              offered.map((w) => w.id),
+            ),
+          })
+        : [];
+      return offered.flatMap((w) => {
+        const version = versions.find(
+          (v) => v.wizardId === w.id && v.version === w.publishedVersion,
+        );
+        return version
+          ? [
+              {
+                wizardId: w.id,
+                token: w.shareToken,
+                title: version.definition.title,
+                lang: wizardLang(version.definition),
+              },
+            ]
+          : [];
+      });
     },
     async answerPage(runId, stepId, values) {
       await pluginRun(runId);
@@ -173,6 +210,27 @@ export function runsApiFor(pluginId: string): PluginRuns {
         data: file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data),
       });
       return { assetId: asset.id };
+    },
+    async transcribe(runId, file) {
+      const run = await pluginRun(runId);
+      if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
+        throw new ServiceError("refused", "The run is over.");
+      }
+      const bytes = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
+      if (!bytes.length || bytes.length > 10_000_000) {
+        throw new ServiceError("invalid", "A recording of up to 10 MB.");
+      }
+      const { text } = await transcribeAudio({
+        bytes,
+        mediaType: file.mime.split(";")[0].trim() || "audio/ogg",
+        call: { runId: run.id },
+      }).catch((err) => {
+        if (err instanceof ModelUnavailableError) {
+          throw new ServiceError("refused", err.message);
+        }
+        throw err;
+      });
+      return { text };
     },
   };
 }

@@ -567,6 +567,12 @@ export interface PluginRunner {
   capabilities: PluginRunnerCapabilities;
   /** A page runner: what its address answers with. */
   page?(request: PluginRunnerRequest): Response | Promise<Response>;
+  /**
+   * Why the runner cannot be used in the current tenant right now, in the owner's words ("Not
+   * connected: Settings → WhatsApp"), or null when it can. Asked inside the tenant whenever the
+   * studio lists the runners; a runner with a problem cannot be switched on.
+   */
+  problem?(): string | null | Promise<string | null>;
 }
 
 /** How a run answers a review: accept it, with edited texts where the review allows, or ask for one of the shown steps again. */
@@ -586,6 +592,8 @@ export interface PluginRunField {
   default?: unknown;
   value?: unknown;
   columns?: unknown;
+  /** An image or file field that takes several: the value is then a list of asset ids. */
+  multiple?: boolean;
   /** Answerable as a value; false for what only the person's device gives (a file, a signature). */
   inChat: boolean;
   /** A condition on earlier answers; the field is asked only while it holds. */
@@ -620,6 +628,8 @@ export interface PluginRunReport {
   runId: string;
   wizardId: string;
   mode: "test" | "live";
+  /** The wizard's language: what to say to the person in. */
+  lang: "de" | "en";
   status: "waiting_input" | "running" | "done" | "failed" | "cancelled";
   step: { id: string; type: string; title: string } | null;
   passed: string[];
@@ -635,6 +645,8 @@ export interface PluginRunReport {
     assets: { name: string; mime: string; url: string }[];
     /** Signed download links by format, valid one hour. */
     downloads: Record<string, string>;
+    /** A signed link to the output as a PNG, for a door that shows a picture with a link; null where it is one already, or has no picture. */
+    picture: string | null;
   }[];
   /** The run page, for what the door cannot do itself. */
   browserUrl: string | null;
@@ -675,8 +687,20 @@ export interface PluginRuns {
     ticket: string;
     refused: { field: string; message: string }[] | null;
   }>;
-  /** The run as it stands, after waiting up to `waitSeconds` (at most 45) while it works. */
-  report(runId: string, options?: { waitSeconds?: number }): Promise<PluginRunReport>;
+  /**
+   * The run as it stands, after waiting up to `waitSeconds` (at most 45) while it works. A door
+   * that asks a page one field at a time passes what it has as `draft`: the fields' `shown` is
+   * then worked out on those answers, so a field whose condition depends on another of the same
+   * page comes and goes as it would on the screen.
+   */
+  report(
+    runId: string,
+    options?: { waitSeconds?: number; draft?: Record<string, unknown> },
+  ): Promise<PluginRunReport>;
+  /** The published wizards of the tenant that switched the given runner on: what the door offers. */
+  wizards(
+    runner: string,
+  ): Promise<{ wizardId: string; token: string; title: string; lang: "de" | "en" }[]>;
   answerPage(runId: string, stepId: string, values: Record<string, unknown>): Promise<void>;
   review(runId: string, stepId: string, action: PluginReviewAction): Promise<void>;
   /** A running step asks before it changes something in a connected account: allow it once, or skip. */
@@ -691,6 +715,11 @@ export interface PluginRuns {
     runId: string,
     file: { data: Uint8Array | ArrayBuffer; mime: string; name: string },
   ): Promise<{ assetId: string }>;
+  /** What is said in a recording of the person (a voice message), written down and charged to the run. */
+  transcribe(
+    runId: string,
+    file: { data: Uint8Array | ArrayBuffer; mime: string },
+  ): Promise<{ text: string }>;
 }
 
 export interface PluginServerApi {

@@ -18,6 +18,7 @@ COPY apps/runtime/package.json apps/runtime/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
 COPY packages/plugin-sdk/package.json packages/plugin-sdk/
+COPY modules/whatsapp/package.json modules/whatsapp/
 RUN sed -i 's/"version": *"[^"]*"/"version": "0.0.0"/' package.json
 
 # Everything the build needs.

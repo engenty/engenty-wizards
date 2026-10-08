@@ -66,6 +66,31 @@ The link opens the **default**; "Make default" moves it. What else is switched o
 its own address, `/chat` for the chat, and is offered on the wizard's first page: "Or: Chat". A
 switched-off address sends people to the link instead.
 
+### WhatsApp
+
+With the WhatsApp module a wizard runs in a WhatsApp thread on your own business number. Set
+the number up once under Settings → WhatsApp: the phone number ID and a permanent access token
+from your Meta app, then the webhook address and the verify token the page shows go into the
+Meta app's WhatsApp configuration. Until a number is connected, the channel shows "not set up"
+in the list.
+
+Switch WhatsApp on for a wizard and its row folds out a **keyword**, the link that writes it
+(`wa.me/<number>?text=<keyword>`) and the link as a QR code. Whoever sends the keyword to the
+number starts the wizard; without a keyword, the number offers the wizards that are on.
+
+In the thread the wizard asks one field per message: buttons for up to three choices, a list
+for more, yes/no as buttons, a photo or a file sent in the chat, "send location" for a place, a
+voice message for a text field where a listener is set up under Models. A page with a field only
+the screen can take (a signature, a sign-in) arrives as a link to the wizard's page; the thread
+goes on by itself once it was filled there. A review is the text with "Looks good" and "New
+version"; the result arrives as text, pictures and documents, a widget or dashboard as a picture,
+and a link to everything. "stop" ends a run, the keyword starts a new one.
+
+What WhatsApp allows: a free message within 24 hours of the person's last one. A wizard that
+finishes later can only reach back with an approved utility template with one placeholder; its
+name goes into the settings, the link into the placeholder. Without one, the result waits for
+the person's next message.
+
 ### Who can open the link
 
 An install on your computer only answers on `localhost`: the link works on that computer, not

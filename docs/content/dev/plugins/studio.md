@@ -87,6 +87,7 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar that opens a page |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
+| `studio.registerShareSection({ runner, component })` | A runner's own part of the share dialog, under its row once the runner is on for the wizard. See [Runners](./runners.md#the-runners-part-of-the-share-dialog) |
 | `studio.registerAssistantCard({ tool, component })` | A card in the space assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
 - The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,

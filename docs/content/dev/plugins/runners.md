@@ -33,6 +33,7 @@ server.registerRunner({
 | `kind` | `page`: the person opens an address. `channel`: the runner has an address of its own (a number, a bot) and drives runs from its webhooks |
 | `capabilities` | What the runner takes in and shows; see below |
 | `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in |
+| `problem` | `() => string \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. With a problem the owner cannot switch it on |
 
 A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. From
 source, where Vite serves the pages, the same handler answers at
@@ -83,7 +84,8 @@ server.registerPublicRoute({
 | Call | |
 |---|---|
 | `runs.start({ token \| wizardId, person, answers?, runner? })` | Starts a live run. `person` names who it is for on the door; the runtime keeps a hash of it as the run's visitor, so what the wizard remembers is theirs on the run page too. `answers` fills the first page; what did not fit comes back as `refused`. Gives the run's ticket |
-| `runs.report(runId, { waitSeconds? })` | The run as it stands: `waitingFor` (a page with the fields shown and what they know, a review, a question), outputs with signed links, cost, `browserUrl`. Waits up to 45 seconds while the run works |
+| `runs.report(runId, { waitSeconds?, draft? })` | The run as it stands: `lang`, `waitingFor` (a page with the fields shown and what they know, a review, a question), outputs with signed links and a `picture` (a PNG of a document, a dashboard or a widget), cost, `browserUrl`. Waits up to 45 seconds while the run works. A door that asks a page one field at a time passes what it has as `draft`: a field's `shown` then follows those answers, as the form on the screen does |
+| `runs.wizards(runner)` | The published wizards of the tenant that switched the runner on: what the door offers, with `token`, `title` and `lang` |
 | `runs.answerPage(runId, stepId, values)` | Fills the page the run waits for |
 | `runs.review(runId, stepId, action)` | Accepts a review, or asks for one of the shown steps again with a note |
 | `runs.answerAsk(runId, askId, "allow" \| "skip")` | Answers a running step's question. A sign-in cannot be answered here: hand off |
@@ -91,6 +93,7 @@ server.registerPublicRoute({
 | `runs.subscribe(runId, listener)` | Hears every change of the run: its events with their note in both languages, or a status change. Returns the function that stops it |
 | `runs.handoffUrl(runId)` | The run page with the run's ticket: the link to send for what the door cannot do. The person who opens it and the door's person are one to the wizard |
 | `runs.upload(runId, { data, mime, name })` | A file of the person; the asset id goes into an image or file field with `answerPage` |
+| `runs.transcribe(runId, { data, mime })` | What is said in a recording of the person (a voice message), written down with the tenant's listener and charged to the run |
 
 A refused command throws an error with `code` (`invalid`, `refused`, `no_credits`) and the
 fields that did not fit, which a route passes on as it is.
@@ -102,8 +105,27 @@ fields that did not fit, which a route passes on as it is.
   door's person through the run, and "What this wizard remembers" is theirs there too.
 - The space's results carry the door a run came through.
 
+## The runner's part of the share dialog
+
+A channel has something to show per wizard: the keyword that starts it, the number, a link with
+its QR code. The studio half registers it, and the share dialog draws it under the runner's row
+once the owner switched the runner on:
+
+```tsx
+studio.registerShareSection({ runner: "whatsapp", component: ShareSection });
+
+function ShareSection({ wizard }: StudioShareSectionProps) {
+  // wizard: { id, title }; the plugin's own routes hold the rest.
+}
+```
+
+One section per runner. The settings a channel needs once per tenant (the number, the token)
+go into a [settings section](./studio.md).
+
+The WhatsApp module in `modules/whatsapp` is a channel runner as a whole: the webhook on a public
+route, the thread that asks a page one field at a time with `draft`, files in with `runs.upload`,
+pictures out with `picture`, the keyword in the share dialog, the number in the settings.
+
 ## Not there yet
 
-- A runner's own binding in the share dialog (a number to connect, a keyword): the studio half
-  draws it on a page of its own for now.
 - An event when a wizard is published, for a runner that prepares something per wizard.

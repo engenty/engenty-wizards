@@ -10,9 +10,16 @@ runtime mints the realtime session on the tenant's OpenAI key (`POST /api/runs/:
 browser talks to the model over WebRTC and runs its tool calls against the run's own routes
 (`apps/web/src/runner/live-voice.ts`); offered at `/w/<token>/talk` where switched on. Live video the same way: the camera is a toggle in the conversation, frames go to the model when the
 person speaks and on its `look`, `take_photo` fills a photo field. Not yet a
-model class of its own, not on credits, no per-minute booking. Not yet:
-the editor's one-line notice, `registerShareSection`, `registerChannelAddress`,
-`wizard.published`, the marketplace badges. Written on 2026-10-08, checked against v0.2.26. The
+model class of its own, not on credits, no per-minute booking. WhatsApp built the same day as
+the module `modules/whatsapp` (chat mode): Meta's Cloud API with the tenant's own number, the
+webhook on a public route, a keyword per wizard, one field per message with buttons, lists,
+the location request and media in the thread, hand-off links for what the thread cannot take,
+results as pictures, documents and a link; with it the hooks `registerShareSection`,
+`PluginRunner.problem`, `runs.report({ draft })`, `runs.wizards`, `runs.transcribe` and the
+report's `lang` and `picture`. `registerChannelAddress` turned out unnecessary: the plugin keeps
+the keyword table itself and asks `runs.wizards` which wizards are on. Not yet: Flow mode and
+`wizard.published`, the editor's one-line notice, the marketplace badges; the module was not
+exercised against a real Meta number. Written on 2026-10-08, checked against v0.2.26. The
 concept behind it (the six channel patterns, the three people's view) is `wizard-channels.md`;
 read that first. The chat runner it merges in phase 1 is on branch
 `claude/wizard-chatbot-ui-variants-de6db6`.
@@ -154,8 +161,9 @@ speech and transcription models for the tenant.
 | Sharing: default and enabled runners | `{ runner: string, runners: string[] }` on the wizard's sharing settings | Beside the fields `set_sharing` already writes; not in the definition | `/w/<token>` picks the default; sub-paths exist for `runners` | 2 |
 | `PublicWizard.runners` | `{ id, label, url }[]`, the enabled ones, default first | `packages/shared/run.ts`; filled in `GET /wizards/:token` | The first screen's "Talk to it instead"; `embed.js`; the mobile app | 2 |
 | Share dialog | Looks as today, then "Channels": one row per door with fit, switch, address | `studio/editor/ShareDialog.tsx` reads the list and the outcomes | Owner | 2 |
-| `studio.registerShareSection` | `({ runner, component })` | The studio half draws its binding inside the share dialog: "Connect to WhatsApp", the keyword, the number | Channel plugins | 3 |
-| `server.registerChannelAddress` | `({ runner, resolve: (address) => Promise<{ wizardId, tenantId } \| null> })` | The plugin keeps the mapping in its tables; the runtime asks it when a webhook arrives on the plugin's public route | WhatsApp, SMS, phone | 3 |
+| `studio.registerShareSection` | `({ runner, component })` | Built: the studio half draws its part under the runner's row of the share dialog once the runner is on: the keyword, the link, the QR code | Channel plugins | 3 |
+| `server.registerChannelAddress` | — | Dropped: a plugin's public route already runs inside the tenant of its address, and `runs.wizards(runner)` lists the wizards that are on; the plugin keeps its keyword table itself | WhatsApp, SMS, phone | 3 |
+| `PluginRunner.problem` | `() => string \| null` | Built: asked per tenant where the runners are listed; a runner that is not set up (no number connected) cannot be switched on | Channel plugins | 3 |
 | `run.runner` column | `"steps" \| "chat" \| <runner id>` | `db/schema.ts`; set by `runs.start` and the public start; shown on the space's results | Results page, call log | 2 |
 | `on("wizard.published")` | `PluginWizardEvent` with the definition and version | `plugins/events.ts` | WhatsApp regenerates its Flows per page | 3 |
 
@@ -266,7 +274,7 @@ for every door at once.
 | 2 · Framework hooks | A (runs API), C (registry, `RunnerCapabilities` for steps and chat, `runnersFor`, sharing default and enabled, share dialog, `run.runner`), D (sub-paths, redirect, `embed.js`); `RunReport` into `packages/shared`; tests in `apps/runtime/test/plugins.test.ts` | A test plugin registers a page runner and runs a wizard end to end through the API; the editor shows "may hand off at …" for a wizard with a signature |
 | 3 · Live voice, web | Dictate and read aloud first. Then the conversation model class and its credit price, the mic, the engenty face, tool calls into the run, the live-voice capability set, `/w/<token>/talk` | A wizard in the voice set runs by voice start to result; a photo field is taken on the screen without leaving the page |
 | 4 · Live video, web | Camera track, frames to the model, `take_frame` into image fields | A receipt held to the camera lands in the image field |
-| 5 · WhatsApp | Chat mode: webhook on a public route, `registerChannelAddress` with the keyword, media in with `runs.upload`, media and PNG renders out with links, `registerShareSection` for the binding, templates for reach-back. Then Flow mode on `wizard.published` | A wizard with a photo field runs on WhatsApp start to result; the dashboard arrives as a picture with a link. Can start after phase 2, beside 3 |
+| 5 · WhatsApp | Chat mode built (`modules/whatsapp`): webhook on a public route with the signature check, the keyword table and `runs.wizards`, media in with `runs.upload`, voice messages with `runs.transcribe`, pictures out with the report's `picture`, `registerShareSection` for the keyword and the QR code, a utility template for reach-back after a day. Still open: Flow mode on `wizard.published` | Done in the test runtime against a stand-in for Meta: a wizard with a photo and a location field runs in the thread start to result, a page with a signature hands off and comes back. Not yet run against a real number |
 | 6 · SMS, WhatsApp call | SMS as the hand-off carrier; live voice on a WhatsApp call with `speech.session` | A WhatsApp call runs a wizard; its signature step arrives in the thread |
 | Later | Phone (TwiML or a media-stream relay), Slack, Teams, RCS, e-mail; marketplace badges from `runnersFor`; channel starters; the SDK runner bundle; WebSocket public routes | |
 
@@ -274,10 +282,10 @@ for every door at once.
 
 | Decision | Options | Lean |
 |---|---|---|
-| Where the plugins live | `modules/` (open, every runtime) or closed in the manage repo like contacts | Closed, Pro and Team: minutes and messages cost money |
+| Where the plugins live | `modules/` (open, every runtime) or closed in the manage repo like contacts | WhatsApp went into `modules/`: the tenant brings its own Meta account, so nothing costs engenty; in a managed runtime the plan still decides who has it (`PLUGINS_DEFAULT`). Minutes on engenty's credits (live voice on a call, the phone) stay a reason for closed |
 | The conversation model class | Credits only, own key only, or both as on the Models page | Both, like speech today; the price per minute is a manage decision |
 | Email, url, colour by voice | The model infers and reads back, or always hands off | Infer and read back; hand off on the second miss |
 | Which speech provider first | OpenAI Realtime (WebRTC native), Gemini Live (WebSocket, needs a relay) | OpenAI Realtime; it fits the no-WebSocket rule |
-| WhatsApp access | Cloud API with the tenant's own Meta business, or through Twilio | Twilio first: one provider for WhatsApp, SMS and the phone |
+| WhatsApp access | Cloud API with the tenant's own Meta business, or through Twilio | Built on the Cloud API: buttons, lists and the location request are native there, Flow mode needs Meta's API anyway, and a Meta test number works at once. Twilio can come as a second provider behind the same `Graph` class when SMS and the phone arrive |
 | Who renders pictures for channels | The runtime's PNG format of widgets, documents and dashboards (exists), extended to views, or the plugin | The runtime; the plugin only asks for `png` |
 | Default runner per wizard | On the sharing settings or in the definition | Sharing settings; it is how the wizard is offered, not what it is |

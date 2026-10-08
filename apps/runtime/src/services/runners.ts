@@ -31,9 +31,22 @@ export async function runnersOf(tenantId = currentTenant()): Promise<RunnerInfo[
     : await conversationAccess()
         .then(() => null)
         .catch((err: Error) => err.message);
+  // A plugin's runner says per tenant whether it is ready (a number connected, a key set).
+  const ofPlugins = await Promise.all(
+    plugins.flatMap((p) =>
+      [...p.runners.values()].map(async (r) => ({
+        ...r.info,
+        problem: r.problem
+          ? await Promise.resolve()
+              .then(() => r.problem?.() ?? null)
+              .catch((err: Error) => err.message || "The runner is not ready.")
+          : null,
+      })),
+    ),
+  );
   return [
     ...BUILT_IN_RUNNERS.map((r) => (r.id === "talk" ? { ...r, problem: talk } : r)),
-    ...plugins.flatMap((p) => [...p.runners.values()].map((r) => r.info)),
+    ...ofPlugins,
   ];
 }
 

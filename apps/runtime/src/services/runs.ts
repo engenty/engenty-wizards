@@ -252,7 +252,11 @@ async function browserUrl(run: RunRow): Promise<string | null> {
   return w ? `${shareUrl(w.shareToken)}/${run.id}` : null;
 }
 
-async function waitingFor(run: RunRow, current: Step | null) {
+/**
+ * What a run waits for. `draft`: what a door that asks one field at a time has so far, so a
+ * field's `shown` follows those answers as it follows the form on the screen.
+ */
+async function waitingFor(run: RunRow, current: Step | null, draft?: Record<string, unknown>) {
   if (run.status === "running" && run.ask) {
     const ask = run.ask;
     return ask.kind === "confirm"
@@ -283,9 +287,12 @@ async function waitingFor(run: RunRow, current: Step | null) {
     const fields = current.fields
       .filter((f) => !isDecidedField(f) || ctx.decided.includes(f.id))
       .map((f) => (ctx.options[f.id]?.length ? { ...f, options: ctx.options[f.id] } : f));
-    const page = Object.fromEntries(
-      fields.filter((f) => f.id in run.state.values).map((f) => [f.id, run.state.values[f.id]]),
-    );
+    const page = {
+      ...Object.fromEntries(
+        fields.filter((f) => f.id in run.state.values).map((f) => [f.id, run.state.values[f.id]]),
+      ),
+      ...draft,
+    };
     const shown = new Set(shownFields(fields, ctx.known, page).map((f) => f.id));
     return {
       page: current.id,
@@ -304,6 +311,7 @@ async function waitingFor(run: RunRow, current: Step | null) {
         value: run.state.values[f.id],
         columns: f.columns,
         ...slotHints(run, f, f.options),
+        ...(f.multiple ? { multiple: true } : {}),
         // A file, a recording or a signature comes from the person's device: the run page.
         inChat: FIELD_WAYS[f.kind] !== "device",
         // A field with a condition is asked only while it holds; one on another field of this
@@ -330,8 +338,8 @@ export async function runReport(userId: string, runId: string, waitSeconds = 0, 
   return runReportOf(await waitWhileMoving(userId, runId, waitSeconds, only));
 }
 
-/** The report of a run as it stands. */
-export async function runReportOf(run: RunRow) {
+/** The report of a run as it stands; `draft` as for `waitingFor`. */
+export async function runReportOf(run: RunRow, draft?: Record<string, unknown>) {
   const current = run.definition.steps.find((s) => s.id === run.cursor) ?? null;
   const base = `/api/runs/${run.id}`;
   const outputs = run.definition.steps.flatMap((step) => {
@@ -339,6 +347,12 @@ export async function runReportOf(run: RunRow) {
     if (!output) {
       return [];
     }
+    // A document, a dashboard or a widget drawn as one picture: for a door that shows pictures
+    // with a link. A generated image is a picture already.
+    const picture =
+      formatsFor(step).includes("png") && !(step.type === "generate" && step.asset === "image")
+        ? signedUrl(`${base}/steps/${step.id}/download?format=png`)
+        : null;
     return [
       {
         stepId: step.id,
@@ -356,6 +370,7 @@ export async function runReportOf(run: RunRow) {
             signedUrl(`${base}/steps/${step.id}/download?format=${f}`),
           ]),
         ),
+        picture,
       },
     ];
   });
@@ -363,6 +378,7 @@ export async function runReportOf(run: RunRow) {
     runId: run.id,
     wizardId: run.wizardId,
     mode: run.mode,
+    lang: wizardLang(run.definition),
     status: moving(run) ? "running" : run.status,
     step: current ? { id: current.id, type: current.type, title: current.title } : null,
     /** Steps behind the run: answered pages and reviews, every step with a result, the end. */
@@ -374,7 +390,7 @@ export async function runReportOf(run: RunRow) {
           (run.status === "done" && s.id === run.cursor),
       )
       .map((s) => s.id),
-    waitingFor: await waitingFor(run, current),
+    waitingFor: await waitingFor(run, current, draft),
     error: run.error,
     credits: Math.ceil(run.costMicros / MICROS_PER_CREDIT),
     events: (await recentEvents(run.id, 0, 15)).map((e) => ({

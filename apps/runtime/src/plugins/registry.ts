@@ -37,6 +37,8 @@ export type PluginRouteEntry = RouteEntry<PluginRoute>;
 export interface RegisteredRunner {
   info: RunnerInfo;
   page?: PluginRunner["page"];
+  /** Why the runner cannot be used in the current tenant right now; asked where it is listed. */
+  problem?: PluginRunner["problem"];
 }
 
 /** A job of `server.every`. */
