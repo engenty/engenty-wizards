@@ -2,13 +2,15 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BUILT_IN_RUNNERS, RUNNER_ID } from "@engenty-wizards/shared/runners";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
+import { and, eq } from "drizzle-orm";
+import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { authRoutes, type Principal, principalOf } from "./auth/index.js";
-import { withTenant } from "./db/client.js";
+import { db, schema, withTenant } from "./db/client.js";
 import { basePath, env } from "./env.js";
 import { linkPreview } from "./link-preview.js";
 import { discovery, managed } from "./manage.js";
@@ -27,6 +29,7 @@ import { wizardStream } from "./routes/wizard-stream.js";
 import { runTicketValid } from "./secrets/signing.js";
 import { asRole } from "./services/access.js";
 import { ServiceError } from "./services/errors.js";
+import { servePageRunner } from "./services/runners.js";
 import { tenantOfLink, tenantStatus } from "./tenants/control.js";
 
 const app = new Hono<{ Variables: { user: Principal } }>();
@@ -218,6 +221,38 @@ app.get(`/api/claude-plugin/${PLUGIN_NAME}.zip`, async (c) => {
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
+/**
+ * `/w/<token>/<runner>`: a plugin's page runner, where the tenant has it and the wizard offers
+ * it; otherwise the next handler (the app's page, which knows `steps`, `chat` and run ids).
+ */
+async function pluginRunnerPage(c: Context, next: () => Promise<void>): Promise<Response | void> {
+  const token = c.req.param("token") ?? "";
+  const runnerId = c.req.param("runner") ?? "";
+  if (!RUNNER_ID.test(runnerId) || BUILT_IN_RUNNERS.some((r) => r.id === runnerId)) {
+    return next();
+  }
+  const tenant = await tenantOfLink(token, "wizard").catch(() => null);
+  if (!tenant) {
+    return next();
+  }
+  const served = await withTenant(tenant, async () => {
+    const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.shareToken, token) });
+    if (!w || w.publishedVersion === null) {
+      return null;
+    }
+    const version = await db.query.wizardVersion.findFirst({
+      where: and(
+        eq(schema.wizardVersion.wizardId, w.id),
+        eq(schema.wizardVersion.version, w.publishedVersion),
+      ),
+    });
+    const head = `/w/${token}/${runnerId}`;
+    const rest = c.req.path.slice(c.req.path.indexOf(head) + head.length);
+    return version ? servePageRunner(w, version.definition, runnerId, rest, c.req.raw) : null;
+  });
+  return served ?? next();
+}
+
 /** Link cards for `/w/<token>`, `/w/<token>/chat` and `/s/<token>`; the token names the tenant. */
 async function previewFor(path: string): Promise<string | null> {
   const m = path.match(/^\/(w|s)\/([A-Za-z0-9_-]+)(?:\/chat)?\/?$/);
@@ -243,6 +278,9 @@ if (existsSync(webDir)) {
     serveStatic({ root: webDir, rewriteRequestPath: (path) => path.slice("/studio".length) }),
   );
   app.get("/", (c) => c.redirect(`${basePath}/studio/`));
+  // A plugin's page runner lives at the wizard's address: `/w/<token>/<runner>`, before the app's page.
+  app.all("/w/:token/:runner/*", (c, next) => pluginRunnerPage(c, next));
+  app.all("/w/:token/:runner", (c, next) => pluginRunnerPage(c, next));
   app.get("*", async (c) => {
     if (!PAGES.test(c.req.path)) {
       return c.text("Not found", 404);

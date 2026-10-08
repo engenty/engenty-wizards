@@ -101,6 +101,8 @@ const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
 
 export const env = {
   production: process.env.NODE_ENV === "production",
+  /** Running from source: Vite serves the pages, this server only `/api`. */
+  fromSource,
   port,
   /** Listen address; a runtime that runs alone stays on the loopback interface. */
   host: str("API_HOST", manageUrl ? "0.0.0.0" : "127.0.0.1"),

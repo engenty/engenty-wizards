@@ -162,6 +162,64 @@ put("guestbook/src/plugin.ts", guestbook());
 put("guestbook/dist/client.js", "var __wizardsPlugin_guestbook = function () {};\n");
 put("guestbook/dist/client.css", "[data-plugin=guestbook] .x{color:red}\n");
 
+put(
+  "kiosk.ts",
+  `import { definePlugin } from "@engenty-wizards/plugin-sdk";
+export default definePlugin(({ server }) => {
+  server.registerRunner({
+    id: "kiosk",
+    label: { de: "Kiosk", en: "Kiosk" },
+    kind: "page",
+    capabilities: {
+      input: ["text", "select"],
+      output: { shows: ["text"], pictures: ["image"] },
+      asks: ["confirm"],
+      review: ["accept"],
+      waits: true,
+      handoff: ["screen"],
+    },
+    page: ({ wizard, path, query }) =>
+      new Response("kiosk for " + wizard.title + " at " + path + (query.get("q") ? "?" + query.get("q") : ""), {
+        headers: { "content-type": "text/plain" },
+      }),
+  });
+  server.registerRunner({
+    id: "phone",
+    label: { de: "Telefon", en: "Phone" },
+    kind: "channel",
+    capabilities: {
+      input: ["text"],
+      output: { shows: ["text"], pictures: [] },
+      asks: ["confirm"],
+      review: ["accept"],
+      waits: true,
+      handoff: ["sms"],
+    },
+  });
+  server.registerPublicRoute({
+    method: "POST",
+    path: "/call/:token",
+    handler: async ({ params, json }) => {
+      const body = await json<{ answers?: Record<string, unknown> }>();
+      const started = await server.runs.start({
+        token: params.token,
+        person: { channel: "phone", id: "+43 660 1234567" },
+        answers: body.answers,
+        runner: "phone",
+      });
+      const seen: string[] = [];
+      const stop = server.runs.subscribe(started.runId, (signal) => {
+        seen.push(signal.event ? signal.event.type : "status");
+      });
+      const report = await server.runs.report(started.runId, { waitSeconds: 5 });
+      stop();
+      return { ...started, report, handoff: await server.runs.handoffUrl(started.runId), seen };
+    },
+  });
+});
+`,
+);
+
 put("broken/index.ts", `export default function plugin(wizards: any) {
   wizards.server.registerHttpRoute({ method: "GET", path: "/", handler: () => ({ ok: true }) });
   throw new Error("cannot start");
@@ -226,7 +284,7 @@ describe("finding and loading plugins", () => {
       .loadedPlugins()
       .map((p) => p.source.id)
       .sort();
-    expect(ids).toEqual(["broken", "guestbook", "notify"]);
+    expect(ids).toEqual(["broken", "guestbook", "kiosk", "notify"]);
     expect(registry.loadedPlugin("guestbook")?.source.manifest).toMatchObject({
       name: "Guestbook",
       version: "1.2.3",
@@ -514,7 +572,7 @@ describe("while the runtime runs", () => {
     );
     rmSync(join(pluginsDir, "notify.ts"));
     const { plugins } = await json(send("POST", "/api/studio/plugins/-/reload"));
-    expect(plugins.map((p: any) => p.id).sort()).toEqual(["broken", "guestbook", "hello"]);
+    expect(plugins.map((p: any) => p.id).sort()).toEqual(["broken", "guestbook", "hello", "kiosk"]);
     expect(await json(get("/api/studio/plugins/hello/"))).toEqual({ hello: "hello" });
   });
 
@@ -532,7 +590,7 @@ describe("while the runtime runs", () => {
         .loadedPlugins()
         .map((p) => p.source.id)
         .sort(),
-    ).toEqual(["broken", "guestbook", "later"]);
+    ).toEqual(["broken", "guestbook", "kiosk", "later"]);
     expect(registry.loadedPlugin("guestbook")!.generation).toBe(before);
     // Told once: the second look found nothing new.
     expect(seen).toEqual([{ id: null }]);
@@ -599,5 +657,103 @@ describe("a plugin's starters", () => {
     put("guestbook/src/plugin.ts", guestbook());
     await loader.reloadPlugin("guestbook");
     expect(registry.loadedPlugin("guestbook")?.starters.has("welcome")).toBe(true);
+  });
+});
+
+describe("a plugin's runners", () => {
+  const definition = {
+    version: 1,
+    title: "Schalter",
+    description: "",
+    avatar: "round",
+    steps: [
+      {
+        id: "start",
+        type: "page",
+        title: "Start",
+        fields: [{ id: "name", kind: "text", label: "Name", required: true }],
+      },
+      { id: "done", type: "result", title: "Fertig", deliverables: [] },
+    ],
+  };
+  let wizardId = "";
+  let token = "";
+
+  beforeAll(async () => {
+    await client.withTenant(LOCAL, async () => {
+      wizardId = (await wizards.createWizard("local", { definition })).id;
+      await wizards.publishWizard("local", wizardId);
+      token = (await wizards.ownedWizard("local", wizardId)).shareToken;
+    });
+  });
+
+  it("are registered with what they can do", () => {
+    const found = registry.loadedPlugin("kiosk")!.runners;
+    expect([...found.keys()]).toEqual(["kiosk", "phone"]);
+    expect(found.get("kiosk")!.info).toMatchObject({ kind: "page", plugin: "kiosk" });
+    expect(found.get("phone")!.page).toBeUndefined();
+  });
+
+  it("a page runner answers at the wizard's address once the owner switched it on", async () => {
+    const path = `/api/public/wizards/${token}/runners/kiosk/hello?q=1`;
+    expect((await get(path, "")).status).toBe(404);
+    await client.withTenant(LOCAL, () =>
+      wizards.updateWizardSettings("local", wizardId, {
+        runners: { default: "steps", enabled: ["steps", "chat", "kiosk"] },
+      }),
+    );
+    const served = await get(path, "");
+    expect(served.status).toBe(200);
+    expect(await served.text()).toBe("kiosk for Schalter at /hello?1");
+    const offered = await json(get(`/api/public/wizards/${token}`, ""));
+    expect(offered.runners.map((r: any) => r.id)).toEqual(["steps", "chat", "kiosk"]);
+    expect(offered.runners[2].url).toBe(`http://localhost:5181/api/public/wizards/${token}/runners/kiosk`);
+    // A channel runner has no page, and the built-in ones are not served by a plugin.
+    expect((await get(`/api/public/wizards/${token}/runners/phone`, "")).status).toBe(404);
+    expect((await get(`/api/public/wizards/${token}/runners/chat`, "")).status).toBe(404);
+  });
+
+  it("a channel runner drives a run through the run API", async () => {
+    const { publicUrlOf } = await import("../src/plugins/public");
+    const address = await client.withTenant(LOCAL, () => publicUrlOf("kiosk", `/call/${token}`));
+    const res = await app.fetch(
+      new Request(address, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ answers: { name: "Ada" } }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.refused).toBeNull();
+    expect(body.report).toMatchObject({ runId: body.runId, mode: "live", status: "done" });
+    expect(body.report.passed).toContain("start");
+    expect(body.handoff).toMatch(new RegExp(`^http://localhost:5181/w/${token}/${body.runId}\\?rt=`));
+    expect(body.seen.length).toBeGreaterThan(0);
+    const run = await client.withTenant(LOCAL, () =>
+      client.db.query.run.findFirst({ where: (r, { eq }) => eq(r.id, body.runId) }),
+    );
+    expect(run).toMatchObject({ runner: "phone", mode: "live", userId: null });
+    expect(run!.visitorId).toMatch(/^p:[0-9a-f]{32}$/);
+    // The ticket in the hand-off link opens the run's own routes.
+    const ticket = new URL(body.handoff).searchParams.get("rt")!;
+    expect((await get(`/api/runs/${body.runId}?rt=${encodeURIComponent(ticket)}`, "")).status).toBe(200);
+    expect((await get(`/api/runs/${body.runId}?rt=1.forged`, "")).status).toBe(404);
+  });
+
+  it("refuses answers that do not fit and says which", async () => {
+    const { publicUrlOf } = await import("../src/plugins/public");
+    const address = await client.withTenant(LOCAL, () => publicUrlOf("kiosk", `/call/${token}`));
+    const body = await json(
+      app.fetch(
+        new Request(address, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ answers: { name: "" } }),
+        }),
+      ),
+    );
+    expect(body.refused).toEqual([{ field: "name", message: "Pflichtfeld" }]);
+    expect(body.report.waitingFor.page).toBe("start");
   });
 });

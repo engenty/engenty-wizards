@@ -152,6 +152,38 @@ function moving(run: RunRow) {
   return run.status === "running" || (run.status === "waiting_input" && autopilots.has(run.id));
 }
 
+/** A run a plugin's door may drive: any run of the current tenant, by id. */
+export async function pluginRun(runId: string): Promise<RunRow> {
+  const run = await db.query.run.findFirst({
+    where: and(eq(schema.run.id, runId), eq(schema.run.tenantId, currentTenant())),
+  });
+  if (!run) {
+    throw notFound();
+  }
+  return run;
+}
+
+/** Loads the run again while it works, up to `seconds` (at most 45), and gives it as it stands. */
+export async function waitRun(load: () => Promise<RunRow>, seconds: number): Promise<RunRow> {
+  const deadline = Date.now() + Math.min(45, Math.max(0, seconds)) * 1000;
+  let run = await load();
+  while (moving(run) && Date.now() < deadline) {
+    await new Promise<void>((resolve) => {
+      const unsubscribe = subscribe(run.id, () => {
+        unsubscribe();
+        clearTimeout(timer);
+        resolve();
+      });
+      const timer = setTimeout(() => {
+        unsubscribe();
+        resolve();
+      }, deadline - Date.now());
+    });
+    run = await load();
+  }
+  return run;
+}
+
 async function waitWhileMoving(
   userId: string,
   runId: string,
@@ -295,7 +327,11 @@ async function waitingFor(run: RunRow, current: Step | null) {
 
 /** What a run did so far, for a client without the run page: outputs, links, cost, errors. */
 export async function runReport(userId: string, runId: string, waitSeconds = 0, only?: "test") {
-  const run = await waitWhileMoving(userId, runId, waitSeconds, only);
+  return runReportOf(await waitWhileMoving(userId, runId, waitSeconds, only));
+}
+
+/** The report of a run as it stands. */
+export async function runReportOf(run: RunRow) {
   const current = run.definition.steps.find((s) => s.id === run.cursor) ?? null;
   const base = `/api/runs/${run.id}`;
   const outputs = run.definition.steps.flatMap((step) => {
@@ -352,13 +388,13 @@ export async function runReport(userId: string, runId: string, waitSeconds = 0, 
   };
 }
 
-export type RunReport = Awaited<ReturnType<typeof runReport>>;
+export type RunReport = Awaited<ReturnType<typeof runReportOf>>;
 
 export const testRunReport = (userId: string, runId: string, waitSeconds = 0) =>
   runReport(userId, runId, waitSeconds, "test");
 
 /** A command the run refused, as a tool error the client can act on. */
-function refusedInput(err: unknown): never {
+export function refusedInput(err: unknown): never {
   if (err instanceof RunInputError) {
     throw new ServiceError("invalid", err.message, { fields: err.errors });
   }

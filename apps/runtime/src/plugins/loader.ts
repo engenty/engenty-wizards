@@ -49,6 +49,7 @@ import {
   loadedPlugins,
   setPlugin,
 } from "./registry.js";
+import { runsApiFor } from "./runs.js";
 
 /**
  * Loading plugins (docs/content/dev/plugins). A plugin's server half is TypeScript or JavaScript read
@@ -176,6 +177,7 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         record.runners.set(info.id, { info, page: runner.page });
       },
       publicUrl: (path) => publicUrlOf(source.id, path),
+      runs: runsApiFor(source.id),
       every(name, everyMs, handler) {
         named("Job", name);
         if (record.jobs.has(name)) {

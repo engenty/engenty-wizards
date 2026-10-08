@@ -1,3 +1,4 @@
+import type { PluginRunnerRequest } from "@engenty-wizards/plugin-sdk";
 import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
 import type { PublicWizard } from "@engenty-wizards/shared/run";
 import {
@@ -9,7 +10,8 @@ import {
   type RunnerSettings,
   runnerFit,
 } from "@engenty-wizards/shared/runners";
-import { pluginsOf } from "../plugins/registry.js";
+import { env } from "../env.js";
+import { pluginsOf, type RegisteredRunner } from "../plugins/registry.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
 import { shareUrl, type WizardRow } from "./wizards.js";
@@ -86,9 +88,55 @@ export function runnerUrl(
   if (runner.kind !== "page") {
     return null;
   }
+  if (runner.plugin && env.fromSource) {
+    // From source Vite serves /w/*: a plugin's page is reached on this server's own address.
+    return `${env.appUrl}/api/public/wizards/${w.shareToken}/runners/${runner.id}`;
+  }
   return runner.id === settings.default
     ? shareUrl(w.shareToken)
     : `${shareUrl(w.shareToken)}/${runner.id}`;
+}
+
+/** A plugin's page runner, where the tenant has it and the wizard switched it on. */
+export async function pageRunnerOf(
+  w: WizardRow,
+  runnerId: string,
+): Promise<RegisteredRunner | null> {
+  for (const plugin of await pluginsOf(currentTenant())) {
+    const found = plugin.runners.get(runnerId);
+    if (found?.info.kind === "page" && found.page) {
+      const settings = runnerSettingsOf(w, await runnersOf());
+      return settings.enabled.includes(runnerId) ? found : null;
+    }
+  }
+  return null;
+}
+
+/** Serves a plugin's page runner for a wizard; null where there is none to serve. */
+export async function servePageRunner(
+  w: WizardRow,
+  def: WizardDefinition,
+  runnerId: string,
+  rest: string,
+  request: Request,
+): Promise<Response | null> {
+  const runner = await pageRunnerOf(w, runnerId);
+  if (!runner?.page) {
+    return null;
+  }
+  const input: PluginRunnerRequest = {
+    request,
+    tenantId: currentTenant(),
+    wizard: { id: w.id, token: w.shareToken, title: def.title },
+    path: rest || "/",
+    query: new URL(request.url).searchParams,
+  };
+  try {
+    return await runner.page(input);
+  } catch (err) {
+    console.error(`[plugin ${runner.info.plugin}] runner ${runnerId}:`, err);
+    return new Response("The plugin failed.", { status: 500 });
+  }
 }
 
 /** What the wizard's public page offers: the runners switched on, the link's first. */

@@ -11,6 +11,7 @@ them from their files and loads one again when its files change.
 | It adds | Where it shows | Page |
 |---|---|---|
 | A tool for AI steps | In a step's tool list, in the assistant's and the MCP authoring guide | [Tools](./tools.md) |
+| A runner: a door a wizard runs through, with the run API that drives runs from it | In the share dialog's channels, at `/w/<token>/<runner>`, on the wizard's first page | [Runners](./runners.md) |
 | A block and tools for every AI step of a space | In the steps' instructions | [The space](./space.md) |
 | Pages, tables and files of a space's Wissen, with Kategorien | In Wissen, and in what `project_search` finds | [The space](./space.md#wissen-a-plugin-writes) |
 | Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
@@ -33,7 +34,7 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the app bar, sections of the settings and of the space page, cards in the assistant's chat |
+| Adds | Tools, runners, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the app bar, sections of the settings and of the space page, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.
@@ -66,5 +67,6 @@ Code (`plugin/` in the repository). These pages are about plugins of the runtime
 
 - Connectors of its own, tools for MCP clients and AI clients from a plugin. A plugin connects
   accounts through the built-in connectors: [Accounts](./connections.md).
-- New kinds of steps or fields: the public pages of a wizard load no plugin.
+- New kinds of steps or fields: the public pages of a wizard load no plugin. A plugin's runner
+  is served whole at its own sub-path; nothing is loaded into the page or the chat.
 - Building a studio half without a checkout of the repository.

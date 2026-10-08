@@ -24,6 +24,8 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | Call | |
 |---|---|
 | `registerTool(tool: PluginTool)` | [Tools](./tools.md) |
+| `registerRunner(runner: PluginRunner)` | [Runners](./runners.md). A door a wizard runs through; `page` runners answer at `/w/<token>/<id>` |
+| `runs` | [Runners](./runners.md#drive-a-run). `start`, `report`, `answerPage`, `review`, `answerAsk`, `control`, `subscribe`, `handoffUrl`, `upload`: the functions behind the MCP tools, for the plugin's door |
 | `registerSpaceContext({ block, tools? })` | [The space](./space.md). `block(space): string \| null` |
 | `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
 | `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
@@ -65,6 +67,57 @@ interface PluginStepContext {
   emit(message: string): Promise<void>;   // tells the person what the step is doing
 }
 ```
+
+### `PluginRunner`
+
+```ts
+interface PluginRunner {
+  id: string;                          // lower case, digits and "-", at most 24 characters
+  label: { de: string; en: string };
+  kind: "page" | "channel";            // an address the person opens, or a channel of its own
+  capabilities: {
+    input: string[];                   // field kinds asked by the runner itself
+    output: { shows: string[]; pictures: string[] };
+    asks: ("confirm" | "login")[];
+    review: ("accept" | "regenerate" | "edit")[];
+    waits: boolean;
+    handoff: ("screen" | "thread" | "sms" | "push")[];
+  };
+  page?(request: PluginRunnerRequest): Response | Promise<Response>;
+}
+
+interface PluginRunnerRequest {
+  request: Request;
+  tenantId: string;
+  wizard: { id: string; token: string; title: string };
+  path: string;                        // below /w/<token>/<id>
+  query: URLSearchParams;
+}
+```
+
+### `PluginRuns`
+
+```ts
+interface PluginRuns {
+  start(input: ({ token: string } | { wizardId: string }) & {
+    person: { channel: string; id: string };
+    answers?: Record<string, unknown>;
+    runner?: string;
+  }): Promise<{ runId: string; ticket: string; refused: { field: string; message: string }[] | null }>;
+  report(runId: string, options?: { waitSeconds?: number }): Promise<PluginRunReport>;
+  answerPage(runId: string, stepId: string, values: Record<string, unknown>): Promise<void>;
+  review(runId: string, stepId: string, action: PluginReviewAction): Promise<void>;
+  answerAsk(runId: string, askId: string, answer: "allow" | "skip"): Promise<void>;
+  control(runId: string, action: "back" | "retry" | "cancel"): Promise<void>;
+  subscribe(runId: string, listener: (signal: PluginRunSignal) => void): () => void;
+  handoffUrl(runId: string): Promise<string>;
+  upload(runId: string, file: { data: Uint8Array | ArrayBuffer; mime: string; name: string }): Promise<{ assetId: string }>;
+}
+```
+
+`PluginRunReport` is what `get_run` gives an MCP client: status, the step, `waitingFor` (a
+page with its fields shown, a review, a question), outputs with signed links, cost,
+`browserUrl`. The types carry the fields.
 
 ### `PluginRoute`
 
@@ -183,6 +236,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | Starter id | Lower case, digits and `-`, starting with a letter, at most 40 characters | `book` |
 | Starter id in a list of templates | `<plugin id>.<starter id>` | `appointments.book` |
 | Table name | Begins with the plugin's id | `run_log_entry` |
+| Runner id | Lower case, digits and `-`, at most 24 characters; not `steps`, `chat` or a sub-path of a wizard's address | `kiosk` |
 | Element around what a plugin draws | `data-plugin="<plugin id>"` | |
 
 ## Addresses
@@ -195,6 +249,9 @@ All below `/api/studio/plugins`, all signed in:
 | `ALL /<id>/…` | The plugin's own routes | Members of a tenant that has the plugin; `role: "admin"` routes owners and admins |
 | `GET /-/assets/<id>/client.js`, `/client.css` | The built studio half | Members of a tenant that has the plugin |
 | `GET /-/events` | A stream that says when a plugin loaded again | A runtime that runs alone |
+
+And public, nobody signed in: `/w/<token>/<runner>` serves a plugin's page runner for a wizard
+that switched it on (built; from source `/api/public/wizards/<token>/runners/<runner>`).
 | `POST /-/reload` | Loads every plugin again | Owners and admins, alone |
 | `POST /-/reload/<id>` | Loads one plugin again | Owners and admins, alone |
 

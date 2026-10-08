@@ -162,6 +162,8 @@ export const run = sqliteTable(
     files: text("files", { mode: "json" }).$type<WorkspaceFile[]>().notNull().default([]),
     version: integer("version"),
     mode: text("mode", { enum: ["test", "live"] }).notNull(),
+    /** The door the run came through: steps, chat, or a plugin's runner. Null: the page. */
+    runner: text("runner"),
     visitorId: text("visitor_id"),
     userId: text("user_id"),
     ipHash: text("ip_hash"),

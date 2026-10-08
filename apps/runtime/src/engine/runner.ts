@@ -225,6 +225,8 @@ export async function createRun(input: {
   visitorId?: string | null;
   userId?: string | null;
   ipHash?: string | null;
+  /** The door the run comes through; null: the page. */
+  runner?: string | null;
 }): Promise<string> {
   const id = nanoid(18);
   const first = input.definition.steps[0];
@@ -252,6 +254,7 @@ export async function createRun(input: {
     files: input.files,
     version: input.version,
     mode: input.mode,
+    runner: input.runner ?? null,
     visitorId: input.visitorId ?? null,
     userId: input.userId ?? null,
     ipHash: input.ipHash ?? null,

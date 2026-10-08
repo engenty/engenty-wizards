@@ -569,10 +569,136 @@ export interface PluginRunner {
   page?(request: PluginRunnerRequest): Response | Promise<Response>;
 }
 
+/** How a run answers a review: accept it, with edited texts where the review allows, or ask for one of the shown steps again. */
+export type PluginReviewAction =
+  | { type: "accept"; edits?: Record<string, string> }
+  | { type: "regenerate"; target: string; note: string; items?: number[] };
+
+/** A field of the page a run waits for, as the report lists it. */
+export interface PluginRunField {
+  id: string;
+  label: string;
+  kind: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  help?: string;
+  default?: unknown;
+  value?: unknown;
+  columns?: unknown;
+  /** Answerable as a value; false for what only the person's device gives (a file, a signature). */
+  inChat: boolean;
+  /** A condition on earlier answers; the field is asked only while it holds. */
+  when?: unknown;
+  /** Whether `when` holds on what is known now. */
+  shown?: boolean;
+}
+
+/** What a run waits for: a page, a review, or a question of a running step. */
+export type PluginRunWaiting =
+  | {
+      page: string;
+      title: string;
+      known: Record<string, unknown>;
+      fields: PluginRunField[];
+      hint: string;
+    }
+  | { review: string; title: string; show: string[]; editable: boolean; hint: string }
+  | {
+      ask: string;
+      kind: "confirm";
+      reason: string;
+      service: string;
+      action: string;
+      input: string;
+      hint: string;
+    }
+  | { ask: string; kind: "login"; reason: string; site: string; hint: string };
+
+/** What a run did so far, as the MCP tools report it: outputs with signed links, cost, errors. */
+export interface PluginRunReport {
+  runId: string;
+  wizardId: string;
+  mode: "test" | "live";
+  status: "waiting_input" | "running" | "done" | "failed" | "cancelled";
+  step: { id: string; type: string; title: string } | null;
+  passed: string[];
+  waitingFor?: PluginRunWaiting;
+  error: string | null;
+  credits: number;
+  events: { step: string | null; type: string; message: string }[];
+  outputs: {
+    stepId: string;
+    title: string;
+    text?: string;
+    json?: string;
+    assets: { name: string; mime: string; url: string }[];
+    /** Signed download links by format, valid one hour. */
+    downloads: Record<string, string>;
+  }[];
+  /** The run page, for what the door cannot do itself. */
+  browserUrl: string | null;
+}
+
+/** Something changed on a run: a new event, or its status (`event` null). */
+export interface PluginRunSignal {
+  runId: string;
+  event: {
+    id: number;
+    at: string;
+    stepId: string | null;
+    type: "step_started" | "step_done" | "tool" | "info" | "error";
+    message: string;
+    /** The same as the run page shows it, in both languages; null for free text. */
+    note: { code: string; text: { de: string; en: string } } | null;
+  } | null;
+}
+
+/**
+ * Runs a plugin's door drives: the functions behind the MCP tools, on the public path. The
+ * plugin keeps who the person is; the runtime keeps only a hash of it as the run's visitor, so
+ * what the wizard remembers is theirs on the run page too.
+ */
+export interface PluginRuns {
+  /** Starts a live run of a published wizard, by its share token or id, for a person of the door. */
+  start(
+    input: ({ token: string } | { wizardId: string }) & {
+      person: { channel: string; id: string };
+      /** Answers for the first page; what did not fit comes back as `refused`. */
+      answers?: Record<string, unknown>;
+      /** Kept on the run; default: the plugin's id. */
+      runner?: string;
+    },
+  ): Promise<{
+    runId: string;
+    /** Opens the run's own routes (`/api/runs/<id>?rt=…`); `handoffUrl` carries it. */
+    ticket: string;
+    refused: { field: string; message: string }[] | null;
+  }>;
+  /** The run as it stands, after waiting up to `waitSeconds` (at most 45) while it works. */
+  report(runId: string, options?: { waitSeconds?: number }): Promise<PluginRunReport>;
+  answerPage(runId: string, stepId: string, values: Record<string, unknown>): Promise<void>;
+  review(runId: string, stepId: string, action: PluginReviewAction): Promise<void>;
+  /** A running step asks before it changes something in a connected account: allow it once, or skip. */
+  answerAsk(runId: string, askId: string, answer: "allow" | "skip"): Promise<void>;
+  control(runId: string, action: "back" | "retry" | "cancel"): Promise<void>;
+  /** Hears every change of the run until the function returned is called. */
+  subscribe(runId: string, listener: (signal: PluginRunSignal) => void): () => void;
+  /** The run page with the run's ticket: the link to send the person for what the door cannot do. */
+  handoffUrl(runId: string): Promise<string>;
+  /** A file of the person (a photo sent in the thread): the asset id goes into a field with `answerPage`. */
+  upload(
+    runId: string,
+    file: { data: Uint8Array | ArrayBuffer; mime: string; name: string },
+  ): Promise<{ assetId: string }>;
+}
+
 export interface PluginServerApi {
   registerHttpRoute(route: PluginRoute): void;
   /** A runner the owner can switch on per wizard. */
   registerRunner(runner: PluginRunner): void;
+  /** Runs the plugin's door drives. */
+  runs: PluginRuns;
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
   /** A block and tools for every agent step of a space's wizards. */
   registerSpaceContext(context: PluginSpaceContext): void;

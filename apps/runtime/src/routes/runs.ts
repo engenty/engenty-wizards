@@ -47,7 +47,7 @@ import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
-import { publicRunners } from "../services/runners.js";
+import { publicRunners, servePageRunner } from "../services/runners.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
 import { isIconFile, wizardAvatarSvg, wizardIcon } from "../services/wizard-icon.js";
 import {
@@ -203,6 +203,26 @@ function codeMissed(ip: string | null) {
   }
 }
 
+/** A plugin's page runner behind a wizard's address, or 404 where the wizard does not offer it. */
+async function pageRunner(c: Context, rest: string): Promise<Response> {
+  const w = await db.query.wizard.findFirst({
+    where: eq(schema.wizard.shareToken, c.req.param("token") ?? ""),
+  });
+  if (!w || w.publishedVersion === null) {
+    return c.json({ error: "not found" }, 404);
+  }
+  const version = await db.query.wizardVersion.findFirst({
+    where: and(
+      eq(schema.wizardVersion.wizardId, w.id),
+      eq(schema.wizardVersion.version, w.publishedVersion),
+    ),
+  });
+  const served = version
+    ? await servePageRunner(w, version.definition, c.req.param("runner") ?? "", rest, c.req.raw)
+    : null;
+  return served ?? c.json({ error: "not found" }, 404);
+}
+
 export const publicRoutes = new Hono()
   // A wizard's ID, typed into the mobile app: answers its share token.
   .get("/codes/:code", async (c) => {
@@ -302,6 +322,17 @@ export const publicRoutes = new Hono()
       throw err;
     }
   })
+  // A plugin's page runner for this wizard: what `/w/<token>/<runner>` serves built, reached here from source.
+  .all("/wizards/:token/runners/:runner", (c) => pageRunner(c, ""))
+  .all("/wizards/:token/runners/:runner/*", (c) =>
+    pageRunner(
+      c,
+      c.req.path.slice(
+        c.req.path.indexOf(`/runners/${c.req.param("runner")}`) +
+          `/runners/${c.req.param("runner")}`.length,
+      ),
+    ),
+  )
   // A published wizard as an app of its own: added to a phone's home screen it opens on its link.
   .get("/wizards/:token/manifest.webmanifest", async (c) => {
     const w = await db.query.wizard.findFirst({
