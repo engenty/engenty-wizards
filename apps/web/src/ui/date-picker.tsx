@@ -64,7 +64,7 @@ function rangeText(from: string, to: string): string {
  * Opens below its field, above when there is no room; it stays inside a dialog (it is drawn in
  * place, fixed to the screen) and follows the field when the page scrolls.
  */
-function usePopover() {
+export function usePopover() {
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);

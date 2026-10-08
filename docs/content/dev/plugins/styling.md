@@ -24,6 +24,9 @@ and its theme.
 | `Chip` | A state in a word | `tone`: `neutral` (default), `live`, `warn`, `ember` |
 | `DatePicker` | A date from a month | `value` ("YYYY-MM-DD" or ""), `onChange`, `min`, `max`, `clearable` |
 | `DateRangePicker` | A day or a period in one month: the first click is the start, the second the end | `from`, `to`, `onChange({ from, to })`, `min`, `max` |
+| `TimePicker` | A time of day from an hour and a minute column; arrow keys on the field move it by `step` | `value` ("HH:MM" or ""), `onChange`, `step` (minutes, default 5), `compact` (narrow, no clock) |
+| `PageMenu` | A page's own menu: a list at the side with one level below that slides in, tabs on a phone | `title`, `entries` ({ id, label, icon, to, entries? }), `current`, `footer` |
+| `Composer` | The field a message is written in: text, dictation, files, send | `onSend(text, files)` (false keeps the draft), `placeholder`, `disabled`, `attach`, `floating` |
 | `Dialog` | A modal | `open`, `onClose`, `title`, `wide` |
 | `Spinner`, `Empty` | Loading, and nothing there yet | |
 | `cn(...)` | Joins class names, skipping what is false | |
