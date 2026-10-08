@@ -42,6 +42,7 @@ export default definePlugin((wizards) => {
 | `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
 | `registerMigrations(folder)` | `.sql` files with the plugin's tables | [Tables](./tables.md) |
 | `on(event, listener)` | Called when a run ends or a space changes | [Events](./events.md) |
+| `connections.start(…)`, `list`, `call`, … | Accounts of a space, through the built-in connectors | [Accounts](./connections.md) |
 | `every(name, everyMs, handler)` | A job, again and again | below |
 | `web.fetch(url, init?)`, `web.read(url)` | Requests to the web, guarded | below |
 | `documents.parse(file)` | A file as Markdown | below |

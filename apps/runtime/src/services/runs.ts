@@ -1,4 +1,11 @@
-import { formatsFor, type Step } from "@engenty-wizards/shared/definition";
+import {
+  type Field,
+  formatsFor,
+  optionsFromData,
+  type Step,
+  slotText,
+  wizardLang,
+} from "@engenty-wizards/shared/definition";
 import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
@@ -195,7 +202,33 @@ const CHAT_KINDS = new Set([
   "color",
   "items",
   "location",
+  "slot",
 ]);
+
+/** A field's choices in this run: what its `optionsFrom` finds in earlier steps, else the fixed ones. */
+function choicesOf(run: RunRow, field: Field): string[] | undefined {
+  const found = field.optionsFrom ? optionsFromData(field.optionsFrom, run.state.outputs) : [];
+  return found.length ? found : field.options;
+}
+
+/**
+ * What a client needs besides the plain field: a slot's times as the person reads them, and the
+ * one value of them to send back.
+ */
+function slotHints(run: RunRow, field: Field, options: string[] | undefined) {
+  if (field.kind !== "slot") {
+    return {};
+  }
+  const lang = wizardLang(run.definition);
+  const value = run.state.values[field.id];
+  return {
+    times: (options ?? []).map((o) => ({ value: o, label: slotText(o, lang) })),
+    ...(typeof value === "string" ? { valueText: slotText(value, lang) } : {}),
+    hint: options?.length
+      ? "One appointment time: show the person the labels, answer with the value of the one they pick, exactly as given."
+      : "No times are free right now: tell the person.",
+  };
+}
 
 /** Where the person can go on in a browser: the run page of a live run, the studio for a test. */
 /** The live run's page — the wizard itself, never the studio. A test run has none. */
@@ -235,20 +268,24 @@ function waitingFor(run: RunRow, current: Step | null) {
     return {
       page: current.id,
       title: current.title,
-      fields: current.fields.map((f) => ({
-        id: f.id,
-        label: f.label,
-        kind: f.kind,
-        required: Boolean(f.required),
-        options: f.options,
-        placeholder: f.placeholder,
-        help: f.help,
-        default: f.default,
-        value: run.state.values[f.id],
-        columns: f.columns,
-        // A file, a recording or a signature comes from the person's device: the run page.
-        inChat: CHAT_KINDS.has(f.kind),
-      })),
+      fields: current.fields.map((f) => {
+        const options = choicesOf(run, f);
+        return {
+          id: f.id,
+          label: f.label,
+          kind: f.kind,
+          required: Boolean(f.required),
+          options,
+          placeholder: f.placeholder,
+          help: f.help,
+          default: f.default,
+          value: run.state.values[f.id],
+          columns: f.columns,
+          // A file, a recording or a signature comes from the person's device: the run page.
+          inChat: CHAT_KINDS.has(f.kind),
+          ...slotHints(run, f, options),
+        };
+      }),
     };
   }
   if (current.type === "review") {

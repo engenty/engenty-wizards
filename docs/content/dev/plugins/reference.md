@@ -37,6 +37,9 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `documents.parse({ data, name, mime }, { signal? })` | [Documents](./server.md#documents). `{ markdown, pages }` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
 | `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`. See [The server half](./server.md#asking-a-model) |
+| `connections.available(ids)`, `.start({ space, connector, actions })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md) |
+| `registerAssistantContext({ block })` | [The space](./space.md#the-assistant-on-the-plugins-own-page). `block(space): string \| null` |
+| `registerStarter(starter: PluginStarter)` | [Starters](./starters.md). Known as `<plugin id>.<starter id>` |
 | `onUnload(fn)` | Runs when the plugin unloads or loads again |
 
 ### `PluginTool`
@@ -56,7 +59,8 @@ interface PluginStepContext {
   tenantId: string;
   space: { id: string; name: string };    // the space of the step's wizard
   project: { id: string; name: string };  // the same, by its older name
-  wizard: { title: string };
+  wizard: { id: string; title: string };
+  mode: "test" | "live";                  // "test": a test run from the studio
   signal: AbortSignal;                    // aborted when the run is cancelled
   emit(message: string): Promise<void>;   // tells the person what the step is doing
 }
@@ -122,6 +126,19 @@ interface PluginPublicRequest {
 }
 ```
 
+### `PluginStarter`
+
+```ts
+interface PluginStarter {
+  id: string;                    // lower case, digits and "-"
+  title: string;
+  description: string;           // what it makes, in one or two sentences
+  language?: "de" | "en";        // the language of its texts; default "de"
+  definition: unknown;           // a complete wizard definition, checked when it is registered
+  files?: Record<string, string | Uint8Array>;  // workspace files by path; a string is UTF-8
+}
+```
+
 ### `PluginRunEvent`
 
 ```ts
@@ -146,6 +163,8 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
+| `studio.useCrumbs(items)` | A hook: the trail in the top bar for the page shown, `{ label, to? }[]`, instead of a heading of the page's own |
+| `studio.Assistant` | The space assistant, docked on a page of the plugin: `title?`, `hello?`, `placeholder?`, `onChanged?` |
 | `studio.useSpace()` | A hook: `{ id, name, readOnly }` of the space the studio shows, or `null` |
 | `studio.i18n.register({ de, en })` | Gives `t(key, vars?)` |
 | `studio.i18n.lang()` | `"de"` or `"en"` |
@@ -161,6 +180,8 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | Tool name | Lower case, digits and `_`, starting with a letter, at most 40 characters | `recent` |
 | Tool id in a wizard | `<plugin id>.<tool name>` | `run-log.recent` |
 | Tool name for the model | The id with `_` for `.` and `-` | `run_log_recent` |
+| Starter id | Lower case, digits and `-`, starting with a letter, at most 40 characters | `book` |
+| Starter id in a list of templates | `<plugin id>.<starter id>` | `appointments.book` |
 | Table name | Begins with the plugin's id | `run_log_entry` |
 | Element around what a plugin draws | `data-plugin="<plugin id>"` | |
 

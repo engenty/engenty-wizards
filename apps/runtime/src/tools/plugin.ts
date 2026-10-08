@@ -26,7 +26,8 @@ function stepTool(plugin: string, tool: PluginTool, ctx: StepContext) {
           tenantId: ctx.tenantId,
           space,
           project: space,
-          wizard: { title: ctx.def.title },
+          wizard: { id: ctx.store.wizardId, title: ctx.def.title },
+          mode: ctx.test ? "test" : "live",
           signal: ctx.signal,
           emit: (message) => ctx.emit("tool", message),
         }),
@@ -150,4 +151,35 @@ export async function assistantToolsOf(turn: AssistantTurn): Promise<Record<stri
     }
   }
   return tools;
+}
+
+/**
+ * The admin talks to the space assistant from a plugin's own page: what the plugin says that page
+ * holds now, and its name. `null` when the tenant has no such plugin.
+ */
+export async function assistantPageOf(
+  tenantId: string,
+  pluginId: string,
+  space: { id: string; name: string },
+): Promise<{ name: string; description: string | null; blocks: string[] } | null> {
+  const plugin = (await pluginsOf(tenantId)).find((p) => p.source.id === pluginId);
+  if (!plugin) {
+    return null;
+  }
+  const blocks: string[] = [];
+  for (const page of plugin.assistantPages) {
+    try {
+      const text = await page.block(space);
+      if (text?.trim()) {
+        blocks.push(text.trim().slice(0, MAX_BLOCK));
+      }
+    } catch (err) {
+      console.error(`[plugins] ${pluginId}: the assistant's page block failed:`, err);
+    }
+  }
+  return {
+    name: plugin.source.manifest.name,
+    description: plugin.source.manifest.description ?? null,
+    blocks,
+  };
 }

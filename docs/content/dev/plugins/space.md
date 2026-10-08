@@ -174,3 +174,30 @@ studio.registerAssistantCard({
 
 `space.created`, `space.updated`, `space.deleted`, `space.file.ready` and `space.file.removed`
 say what changed. See [Events](./events.md).
+
+## The assistant on the plugin's own page
+
+A page of the plugin can carry the space assistant, docked at its lower edge as on the space
+page. It talks from that page: the assistant is told what the page holds and uses the plugin's
+assistant tools first.
+
+```tsx
+const Assistant = studio.Assistant;
+
+<Assistant
+  title="Sag, wann du Zeit hast"
+  hello="Ich trage Bürozeiten, freie Tage und Blocker ein."
+  placeholder="z. B. „Ich bin vom 24.12. bis 6.1. im Urlaub“ …"
+  onChanged={() => queryClient.invalidateQueries({ queryKey: ["appointments"] })}
+/>
+```
+
+```ts
+server.registerAssistantContext({
+  block: async (space) => `THE CALENDAR ON THIS PAGE: office hours ${await hoursText(space.id)} …`,
+});
+```
+
+- `block` is asked once per message, only when the admin writes from the plugin's page. A block
+  is cut at 8,000 characters; one that throws is logged and left out.
+- A read-only space shows no assistant.

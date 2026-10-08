@@ -44,6 +44,7 @@ import {
   MousePointerClick,
   PenLine,
   Plug,
+  Puzzle,
   ScanText,
   Search,
   Star,
@@ -159,6 +160,18 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
   );
 }
 
+/** The plugin an entry comes with, by its name. */
+function PluginChip({ plugin }: { plugin: { name: string } }) {
+  return (
+    <Chip
+      icon={<Puzzle className="size-3.5" />}
+      title={t("market.fromPlugin", { name: plugin.name })}
+    >
+      {plugin.name}
+    </Chip>
+  );
+}
+
 function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => void }) {
   return (
     <Card
@@ -193,6 +206,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
         <div className="mt-0.5 text-[0.8125rem] text-ink-3 leading-snug">{entry.pitch}</div>
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.75rem] text-ink-3">
+        {entry.plugin ? <PluginChip plugin={entry.plugin} /> : null}
         {entry.usable && entry.missing.length ? (
           <Chip tone="warn">{t("market.missing", { list: capabilityList(entry.missing) })}</Chip>
         ) : entry.usable ? (
@@ -592,19 +606,26 @@ function EntryDialog({
             </div>
           )}
           <div className="flex shrink-0 justify-end gap-2 px-5 pt-4 pb-5 max-sm:border-border-soft max-sm:border-t sm:px-7 sm:pb-6">
-            <Button
-              variant="ghost"
-              className="mr-auto"
-              title={t("market.starHint")}
-              aria-pressed={entry.starred}
-              busy={star.isPending}
-              onClick={() => star.mutate(!entry.starred)}
-            >
-              <Star className={cn("size-4", entry.starred && "fill-amber text-amber")} />
-              <span className="max-sm:sr-only">
-                {t(entry.starred ? "market.starred" : "market.star")}
+            {/* A plugin's starter is always here: there is nothing to keep for offline use. */}
+            {entry.plugin ? (
+              <span className="mr-auto flex items-center">
+                <PluginChip plugin={entry.plugin} />
               </span>
-            </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                className="mr-auto"
+                title={t("market.starHint")}
+                aria-pressed={entry.starred}
+                busy={star.isPending}
+                onClick={() => star.mutate(!entry.starred)}
+              >
+                <Star className={cn("size-4", entry.starred && "fill-amber text-amber")} />
+                <span className="max-sm:sr-only">
+                  {t(entry.starred ? "market.starred" : "market.star")}
+                </span>
+              </Button>
+            )}
             <Button variant="secondary" onClick={onClose}>
               {t("common.close")}
             </Button>

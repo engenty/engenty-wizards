@@ -1,26 +1,14 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowUp,
-  ChevronDown,
-  ChevronUp,
-  Mic,
-  Paperclip,
-  Plug,
-  Plus,
-  Sparkles,
-  Square,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Paperclip, Plug, Sparkles } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
 import { withBase } from "../../lib/base";
 import { t } from "../../lib/i18n";
 import type { WizardDetail } from "../../lib/session";
-import { useDictation } from "../../lib/speech";
 import { Markdown } from "../../runner/outputs";
-import { cn, IconButton, Spinner } from "../../ui";
+import { Composer, type ComposerHandle, cn, pastedName, Spinner } from "../../ui";
 
 /** What a plugin's tool returned in a turn, for the plugin's card in the thread. */
 export interface ChatCard {
@@ -64,33 +52,6 @@ function attachmentsOf(content: string): { text: string; names: string[] } {
     text: content.slice(0, match.index).trim(),
     names: match[1].split(", ").filter(Boolean),
   };
-}
-
-/** A clipboard picture is always "image.png"; give each its own name so two pastes both stay. */
-function pastedName(file: File, index: number): File {
-  if (file.name && file.name !== "image.png") {
-    return file;
-  }
-  const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
-  return new File([file], `paste-${stamp}${index ? `-${index + 1}` : ""}.${ext}`, {
-    type: file.type,
-  });
-}
-
-function Thumb({ url, label, children }: { url: string; label: string; children?: ReactNode }) {
-  return (
-    <div className="group relative" title={label}>
-      <img
-        src={url}
-        alt={label}
-        width={64}
-        height={64}
-        className="size-16 rounded-lg bg-paper-2 object-cover ring-1 ring-border"
-      />
-      {children}
-    </div>
-  );
 }
 
 /** The pictures and files a user message carries, above its bubble. */
@@ -386,70 +347,12 @@ export function ChatPanel({
   card?: (card: ChatCard) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
-  const area = useRef<HTMLTextAreaElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
-  const speech = useDictation(text, setText);
+  const composer = useRef<ComposerHandle>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new content
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [chat.messages, chat.phase]);
-  // The height follows the text, typed or spoken, and the field's width: the card's, or the
-  // narrower one docked at the bottom. Empty, the field is one line; a placeholder that wraps
-  // does not make it taller.
-  useEffect(() => {
-    const el = area.current;
-    if (!el) {
-      return;
-    }
-    const fit = () => {
-      el.style.height = "auto";
-      el.style.height = text ? `${Math.min(el.scrollHeight, 200)}px` : "";
-    };
-    fit();
-    let width = el.clientWidth;
-    const observer = new ResizeObserver(() => {
-      // Only a new width: the height this sets would call it again.
-      if (el.clientWidth !== width) {
-        width = el.clientWidth;
-        fit();
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [text]);
-  const ready = (text.trim() || files.length > 0) && chat.phase === "idle";
-  const add = (picked: File[]) =>
-    setFiles((all) => [...all.filter((f) => !picked.some((p) => p.name === f.name)), ...picked]);
-  const [thumbs, setThumbs] = useState<Map<File, string>>(new Map());
-  useEffect(() => {
-    const next = new Map(
-      files.filter((f) => f.type.startsWith("image/")).map((f) => [f, URL.createObjectURL(f)]),
-    );
-    setThumbs(next);
-    return () => {
-      for (const url of next.values()) {
-        URL.revokeObjectURL(url);
-      }
-    };
-  }, [files]);
-  const submit = async () => {
-    if (!ready) {
-      return;
-    }
-    if (speech.listening) {
-      speech.toggle();
-    }
-    const draft = { text, files };
-    setText("");
-    setFiles([]);
-    if (!(await chat.send(draft.text.trim(), draft.files))) {
-      setText(draft.text);
-      setFiles(draft.files);
-    }
-  };
   const thread = !compact || open;
   const last = chat.messages.at(-1);
   // Files dropped anywhere on the conversation are attached to the next message. Entering and
@@ -487,8 +390,8 @@ export function ChatPanel({
         e.preventDefault();
         depth.current = 0;
         setDrag(false);
-        add(Array.from(e.dataTransfer.files).map(pastedName));
-        area.current?.focus();
+        composer.current?.add(Array.from(e.dataTransfer.files).map(pastedName));
+        composer.current?.focus();
       }}
     >
       {drag ? (
@@ -497,213 +400,108 @@ export function ChatPanel({
           {t("editor.dropToAttach")}
         </div>
       ) : null}
-      {compact && (last || chat.error) ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-label={t("editor.thread")}
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[0.8125rem] text-ink-3 transition hover:text-ink"
-        >
-          {!(chat.error || open) && last?.pending ? (
-            <Working chat={chat} className="flex-1" />
-          ) : (
-            <span className={cn("min-w-0 flex-1 truncate", chat.error && "text-rose")}>
-              {chat.error ?? (open ? t("editor.thread") : last?.content)}
-            </span>
-          )}
-          {open ? (
-            <ChevronDown className="size-4 shrink-0" />
-          ) : (
-            <ChevronUp className="size-4 shrink-0" />
-          )}
-        </button>
-      ) : null}
+      {/* Docked, the last turn and the thread are a card of their own above the composer. */}
       <div
-        ref={scroller}
-        className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5", !thread && "hidden")}
+        className={
+          compact
+            ? cn(
+                "mb-2 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-overlay ring-1 ring-border",
+                !(last || chat.error) && "hidden",
+              )
+            : "contents"
+        }
       >
-        {chat.messages.length === 0 && !closed
-          ? (intro ?? (
-              <div className="flex items-start gap-3">
-                <Mascot kind={avatar} size={32} interactive={false} />
-                <p className="pt-1 text-[0.875rem] text-ink-2 leading-relaxed">{hello}</p>
-              </div>
-            ))
-          : null}
-        <div className="flex flex-col gap-4">
-          {chat.messages.map((m) =>
-            m.role === "user" ? (
-              <UserMessage key={m.id} message={m} fileUrl={chat.fileUrl} />
+        {compact && (last || chat.error) ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={t("editor.thread")}
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-left text-[0.8125rem] text-ink-3 transition hover:text-ink"
+          >
+            {!(chat.error || open) && last?.pending ? (
+              <Working chat={chat} className="flex-1" />
             ) : (
-              <div key={m.id} className="flex items-start gap-3">
-                <div className="shrink-0">
-                  <Mascot kind={avatar} size={28} interactive={false} />
-                </div>
-                <div className="min-w-0 pt-0.5 text-[0.875rem]">
-                  {m.source === "mcp" ? (
-                    <div className="mb-1 inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
-                      <Plug className="size-3" />{" "}
-                      {t("editor.viaClient", { client: m.client ?? "MCP" })}
-                    </div>
-                  ) : null}
-                  {m.content ? <Markdown text={m.content} className="text-[0.875rem]" /> : null}
-                  {card && m.cards?.length ? (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {m.cards.map((c) => (
-                        <Fragment key={c.id}>{card(c)}</Fragment>
-                      ))}
-                    </div>
-                  ) : null}
-                  {m.pending ? (
-                    <Working chat={chat} thought className="mt-1 text-[0.8125rem] text-ink-3" />
-                  ) : null}
-                  {m.changed ? (
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[0.75rem] text-ember-strong">
-                      <Sparkles className="size-3" /> {changedLabel}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-        {chat.error ? (
-          <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
-            {chat.error}
-          </div>
+              <span className={cn("min-w-0 flex-1 truncate", chat.error && "text-rose")}>
+                {chat.error ?? (open ? t("editor.thread") : last?.content)}
+              </span>
+            )}
+            {open ? (
+              <ChevronDown className="size-4 shrink-0" />
+            ) : (
+              <ChevronUp className="size-4 shrink-0" />
+            )}
+          </button>
         ) : null}
+        <div
+          ref={scroller}
+          className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5", !thread && "hidden")}
+        >
+          {chat.messages.length === 0 && !closed
+            ? (intro ?? (
+                <div className="flex items-start gap-3">
+                  <Mascot kind={avatar} size={32} interactive={false} />
+                  <p className="pt-1 text-[0.875rem] text-ink-2 leading-relaxed">{hello}</p>
+                </div>
+              ))
+            : null}
+          <div className="flex flex-col gap-4">
+            {chat.messages.map((m) =>
+              m.role === "user" ? (
+                <UserMessage key={m.id} message={m} fileUrl={chat.fileUrl} />
+              ) : (
+                <div key={m.id} className="flex items-start gap-3">
+                  <div className="shrink-0">
+                    <Mascot kind={avatar} size={28} interactive={false} />
+                  </div>
+                  <div className="min-w-0 pt-0.5 text-[0.875rem]">
+                    {m.source === "mcp" ? (
+                      <div className="mb-1 inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
+                        <Plug className="size-3" />{" "}
+                        {t("editor.viaClient", { client: m.client ?? "MCP" })}
+                      </div>
+                    ) : null}
+                    {m.content ? <Markdown text={m.content} className="text-[0.875rem]" /> : null}
+                    {card && m.cards?.length ? (
+                      <div className="mt-2 flex flex-col gap-2">
+                        {m.cards.map((c) => (
+                          <Fragment key={c.id}>{card(c)}</Fragment>
+                        ))}
+                      </div>
+                    ) : null}
+                    {m.pending ? (
+                      <Working chat={chat} thought className="mt-1 text-[0.8125rem] text-ink-3" />
+                    ) : null}
+                    {m.changed ? (
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[0.75rem] text-ember-strong">
+                        <Sparkles className="size-3" /> {changedLabel}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+          {chat.error ? (
+            <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
+              {chat.error}
+            </div>
+          ) : null}
+        </div>
       </div>
       {closed ? (
         <p className="m-3 rounded-xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-2 leading-relaxed">
           {closed}
         </p>
       ) : (
-        <div className={compact ? "p-2" : "p-3"}>
-          <div className="rounded-xl bg-card p-1.5 shadow-soft ring-1 ring-border focus-within:ring-focus">
-            {thumbs.size ? (
-              <div className="flex flex-wrap gap-2 px-1 pt-1 pb-1.5">
-                {files.map((f, i) => {
-                  const url = thumbs.get(f);
-                  return url ? (
-                    <Thumb key={`${f.name}-${i}`} url={url} label={f.name}>
-                      <button
-                        type="button"
-                        aria-label={t("editor.detach")}
-                        onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
-                        className="-top-1.5 -right-1.5 absolute flex size-5 items-center justify-center rounded-full bg-ink text-paper opacity-0 shadow-soft transition focus-visible:opacity-100 group-hover:opacity-100"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </Thumb>
-                  ) : null;
-                })}
-              </div>
-            ) : null}
-            {files.some((f) => !thumbs.has(f)) ? (
-              <ul className="flex flex-wrap gap-1.5 px-1 pt-1 pb-1.5">
-                {files.map((f, i) =>
-                  thumbs.has(f) ? null : (
-                    <li
-                      key={`${f.name}-${i}`}
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-paper-2 py-1 pr-1 pl-2.5 text-[0.75rem] text-ink-2"
-                    >
-                      <Paperclip className="size-3 shrink-0 text-ink-4" />
-                      <span className="truncate">{f.name}</span>
-                      <button
-                        type="button"
-                        aria-label={t("editor.detach")}
-                        onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}
-                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-3 hover:text-ink"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </li>
-                  ),
-                )}
-              </ul>
-            ) : null}
-            <div className="flex items-end gap-1">
-              <IconButton label={t("editor.attach")} onClick={() => picker.current?.click()}>
-                <Plus className="size-4" />
-              </IconButton>
-              <input
-                ref={picker}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => {
-                  const picked = Array.from(e.target.files ?? []);
-                  e.target.value = "";
-                  add(picked);
-                }}
-              />
-              <textarea
-                ref={area}
-                rows={1}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onPaste={(e) => {
-                  const pasted = Array.from(e.clipboardData.files);
-                  if (pasted.length) {
-                    e.preventDefault();
-                    add(pasted.map(pastedName));
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void submit();
-                  }
-                }}
-                placeholder={speech.listening ? t("editor.listening") : placeholder}
-                className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-1.5 py-2 text-[0.875rem] outline-none placeholder:truncate placeholder:text-ink-4"
-              />
-              {speech.supported ? (
-                <IconButton
-                  label={
-                    speech.processing
-                      ? t("editor.transcribing")
-                      : speech.listening
-                        ? t("editor.voiceStop")
-                        : t("editor.voice")
-                  }
-                  aria-pressed={speech.listening}
-                  disabled={speech.processing}
-                  onClick={speech.toggle}
-                  className={cn(
-                    speech.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
-                  )}
-                >
-                  {speech.processing ? (
-                    <Spinner className="size-4" />
-                  ) : speech.listening ? (
-                    <Square className="size-3.5 animate-pulse-dot fill-current" />
-                  ) : (
-                    <Mic className="size-4" />
-                  )}
-                </IconButton>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void submit()}
-                disabled={!ready}
-                className={cn(
-                  "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition",
-                  ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
-                )}
-                aria-label="Send"
-              >
-                <ArrowUp className="size-4" />
-              </button>
-            </div>
-          </div>
-          {speech.error ? (
-            <p className="mt-2 px-1 text-[0.75rem] text-rose">
-              {speech.error === "denied" ? t("editor.micDenied") : speech.error}
-            </p>
-          ) : null}
-        </div>
+        <Composer
+          ref={composer}
+          floating={compact}
+          className={compact ? undefined : "p-3"}
+          placeholder={placeholder}
+          disabled={chat.phase !== "idle"}
+          onSend={(text, files) => chat.send(text, files)}
+        />
       )}
     </div>
   );

@@ -344,4 +344,6 @@ export interface MarketplaceEntry extends MarketplaceSummary {
   missing: Capability[];
   /** What only some of its paths need and this runtime has no model for: it runs the other ways. */
   optional: Capability[];
+  /** It comes with a plugin of this app, not from the marketplace: the plugin's id and name. */
+  plugin?: { id: string; name: string };
 }

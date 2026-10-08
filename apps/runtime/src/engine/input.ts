@@ -5,6 +5,7 @@ import {
   isLocationValue,
   type LocationValue,
   MAX_FILES,
+  offeredSlot,
   type PageStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
@@ -36,6 +37,11 @@ function coerce(field: Field, raw: unknown): unknown {
       return (Array.isArray(raw) ? raw : [raw])
         .map(String)
         .filter((v) => field.options?.includes(v));
+    // The offered time as written, also when the answer names the same moment in another offset.
+    case "slot": {
+      const v = String(raw).trim();
+      return v ? (offeredSlot(v, field.options ?? []) ?? v) : undefined;
+    }
     case "image":
     case "file": {
       const ids = (Array.isArray(raw) ? raw : [raw])
@@ -189,6 +195,10 @@ export function readPageInput(
     }
     if (field.kind === "select" && !empty(v) && !field.options?.includes(String(v))) {
       errors.push({ field: field.id, message: "Ungültige Auswahl" });
+      continue;
+    }
+    if (field.kind === "slot" && !empty(v) && !field.options?.includes(String(v))) {
+      errors.push({ field: field.id, message: "Dieser Termin wird nicht angeboten" });
       continue;
     }
     if (field.kind === "email" && !empty(v) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v))) {

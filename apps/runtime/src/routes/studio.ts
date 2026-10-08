@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import { MODEL_CLASSES, PLUGIN_ID, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
@@ -569,6 +569,7 @@ export const studio = new Hono<Vars>()
           .max(24)
           .default([]),
         part: z.enum(["info", "knowledge"]).default("info"),
+        plugin: z.string().regex(PLUGIN_ID).optional(),
       })
       .parse(await c.req.json());
     if (!(await canSpend())) {
@@ -584,6 +585,7 @@ export const studio = new Hono<Vars>()
           message: body.message,
           history: body.history,
           part: body.part,
+          plugin: body.plugin,
           signal: abort.signal,
           onText: (delta) => {
             void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });

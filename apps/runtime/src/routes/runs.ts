@@ -18,6 +18,7 @@ import {
   oauthStateRun,
   startOAuth,
 } from "../connectors/index.js";
+import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-connections.js";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
 import { signalChanged, subscribe } from "../engine/events.js";
@@ -891,12 +892,18 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
     c.req.query("error") === "exchange_failed"
       ? "Verbinden hat nicht geklappt. Bitte noch einmal versuchen."
       : "Verbinden wurde abgebrochen.";
-  const tenant = state ? await tenantOfRun(oauthStateRun(state) ?? "") : null;
+  // A plugin's sign-in (server.connections) names its tenant; a wizard's names its run.
+  const pluginTenant = state ? pluginStateTenant(state) : null;
+  const tenant = state ? (pluginTenant ?? (await tenantOfRun(oauthStateRun(state) ?? ""))) : null;
   const answer = ticket ? { ticket } : code ? { code } : null;
   if (answer && state && tenant) {
     try {
-      const done = await withTenant(tenant, () => finishOAuth(answer, state));
-      signalChanged(done.runId);
+      if (pluginTenant) {
+        await withTenant(tenant, () => finishPluginOAuth(answer, state));
+      } else {
+        const done = await withTenant(tenant, () => finishOAuth(answer, state));
+        signalChanged(done.runId);
+      }
       ok = true;
       message = "Verbunden. Du kannst dieses Fenster schließen.";
     } catch (err) {

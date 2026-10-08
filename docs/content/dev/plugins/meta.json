@@ -12,6 +12,8 @@
     "tables",
     "events",
     "space",
+    "connections",
+    "starters",
     "---Studio half---",
     "studio",
     "styling",

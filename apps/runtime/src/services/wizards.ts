@@ -258,7 +258,7 @@ export async function createWizard(
   userId: string,
   input: {
     projectId?: string;
-    /** A marketplace entry to start from, in `lang` where it is translated. */
+    /** A marketplace entry or a plugin's starter to start from, in `lang` where it is translated. */
     starterId?: string;
     lang?: string;
     definition?: unknown;
@@ -300,8 +300,10 @@ export async function createWizard(
   await putLink(shareToken, "wizard", id);
   if (fromStarter) {
     await seedFiles(id, fromStarter.files);
-    // Counted at the marketplace, beside the request.
-    void countInstall(fromStarter.id);
+    // Counted at the marketplace, beside the request; a plugin's starter is not the marketplace's.
+    if (!fromStarter.plugin) {
+      void countInstall(fromStarter.id);
+    }
   }
   if (input.note) {
     await addMessage(id, { role: "assistant", content: input.note, changed: true }, writer);

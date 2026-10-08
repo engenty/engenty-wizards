@@ -1,5 +1,6 @@
 import type {
   StudioAssistantCard,
+  StudioAssistantProps,
   StudioNavEntry,
   StudioPage,
   StudioPlugin,
@@ -27,6 +28,8 @@ import { api } from "../lib/api";
 import { withBase } from "../lib/base";
 import { lang, t } from "../lib/i18n";
 import { type Me, useCurrentProject } from "../lib/session";
+import { useCrumbs } from "../studio/AppFrame";
+import { Assistant } from "../studio/project/Assistant";
 import { OWN_SPACE_SECTIONS } from "../studio/project-sections";
 import * as ui from "../ui";
 
@@ -157,6 +160,28 @@ function useSpace(): StudioSpace | null {
   return useMemo(() => (id ? { id, name, readOnly } : null), [id, name, readOnly]);
 }
 
+/** The space assistant on a plugin's page: docked at the lower edge, told it is that page. */
+function PluginAssistant({
+  plugin,
+  onChanged,
+  ...words
+}: StudioAssistantProps & { plugin: string }) {
+  const space = useSpace();
+  if (!space || space.readOnly) {
+    return null;
+  }
+  return (
+    <Assistant
+      projectId={space.id}
+      part="info"
+      docked
+      plugin={plugin}
+      onChanged={() => onChanged?.()}
+      {...words}
+    />
+  );
+}
+
 function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
   const { id } = plugin;
   const own = (path: string) =>
@@ -201,6 +226,8 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
       draft.cards.push({ ...card, plugin: id, serial: ++serials });
     },
     useSpace,
+    useCrumbs,
+    Assistant: (props) => <PluginAssistant plugin={id} {...props} />,
     i18n: {
       register: (messages) => (key, vars) => {
         let text = messages[lang]?.[key] ?? messages.de[key] ?? key;

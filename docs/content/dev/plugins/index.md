@@ -19,6 +19,8 @@ them from their files and loads one again when its files change.
 | Tables | In every tenant's database | [Tables](./tables.md) |
 | A listener on runs that end and spaces that change | Nowhere: it works in the background | [Events](./events.md) |
 | A job, again and again | Nowhere: it works in the background | [The server half](./server.md#jobs) |
+| An account of a space (a calendar, a mailbox), signed in through a built-in connector | Where the plugin's own pages offer it | [Accounts](./connections.md) |
+| A wizard as a template | First among the templates of a new wizard, and in the MCP `list_starters` | [Starters](./starters.md) |
 | A page of the studio | Behind an icon in the top bar, or at its address | [The studio half](./studio.md) |
 | A section of the settings | In the settings' list | [The studio half](./studio.md) |
 | A section of the space page | In one of its parts, below the part's own sections | [The studio half](./studio.md#the-space) |
@@ -31,7 +33,7 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, routes, tables, listeners, jobs, Wissen, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
+| Adds | Tools, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.
@@ -62,6 +64,7 @@ Code (`plugin/` in the repository). These pages are about plugins of the runtime
 
 ## Not there yet
 
-- Connectors, tools for MCP clients, AI clients and templates from a plugin.
+- Connectors of its own, tools for MCP clients and AI clients from a plugin. A plugin connects
+  accounts through the built-in connectors: [Accounts](./connections.md).
 - New kinds of steps or fields: the public pages of a wizard load no plugin.
 - Building a studio half without a checkout of the repository.

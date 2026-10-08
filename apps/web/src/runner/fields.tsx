@@ -3,6 +3,8 @@ import {
   itemsTotals,
   MAX_FILES,
   type ModelClass,
+  slotDayText,
+  slotTime,
 } from "@engenty-wizards/shared/definition";
 import type { ClosedChoice, RunView } from "@engenty-wizards/shared/run";
 import {
@@ -20,7 +22,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
-import { t } from "../lib/i18n";
+import { lang, t } from "../lib/i18n";
 import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "../ui";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
 import { canUseMedia, isTouch } from "./device";
@@ -532,6 +534,103 @@ function ScanInput({
   );
 }
 
+/** How many days of offered times show before "Show later times". */
+const SLOT_DAYS = 4;
+
+/** Offered times by calendar day, in their own offset (the business's clock), earliest first. */
+function slotDays(options: string[]) {
+  const days = new Map<string, { label: string; times: { value: string; time: string }[] }>();
+  const sorted = options
+    .map((value) => ({ value, slot: slotTime(value) }))
+    .filter((o) => o.slot)
+    .sort((a, b) => Date.parse(a.value) - Date.parse(b.value));
+  for (const { value, slot } of sorted) {
+    if (!slot) {
+      continue;
+    }
+    const day = days.get(slot.day) ?? { label: slotDayText(value, lang), times: [] };
+    day.times.push({ value, time: slot.time });
+    days.set(slot.day, day);
+  }
+  return [...days.values()];
+}
+
+/**
+ * One appointment time from those offered: a small heading per day, the times under it as
+ * chips. The chips are one group of radio buttons — the arrow keys move between the times shown.
+ */
+function SlotField({
+  name,
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  name: string;
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled: Set<string>;
+}) {
+  const days = slotDays(options);
+  const chosenDay = days.findIndex((d) => d.times.some((tm) => tm.value === value));
+  const [all, setAll] = useState(chosenDay >= SLOT_DAYS);
+  if (!days.length) {
+    return <p className="text-[0.875rem] text-ink-3">{t("slot.none")}</p>;
+  }
+  const shown = all ? days : days.slice(0, SLOT_DAYS);
+  return (
+    <div className="flex flex-col gap-4">
+      <fieldset className="flex min-w-0 flex-col gap-4">
+        <legend className="sr-only">{label}</legend>
+        {shown.map((day) => (
+          <div key={day.label}>
+            <div className="mb-2 font-medium text-[0.75rem] text-ink-3">{day.label}</div>
+            <div className="flex flex-wrap gap-2">
+              {day.times.map((tm) => (
+                <label key={tm.value} className="relative">
+                  <input
+                    type="radio"
+                    name={`slot-${name}`}
+                    value={tm.value}
+                    checked={tm.value === value}
+                    disabled={disabled.has(tm.value)}
+                    aria-label={`${day.label}, ${tm.time}`}
+                    onChange={() => onChange(tm.value)}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "inline-flex h-10 cursor-pointer items-center rounded-full border px-4 text-sm tabular-nums transition coarse:h-11",
+                      "border-input bg-card text-ink-2 hover:border-ink-4 hover:text-ink",
+                      "peer-checked:border-ember peer-checked:bg-ember-tint peer-checked:text-ink",
+                      "peer-disabled:pointer-events-none peer-disabled:line-through peer-disabled:opacity-60",
+                      "peer-focus-visible:outline-[1.5px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-line) peer-focus-visible:outline-solid",
+                    )}
+                  >
+                    {tm.time}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </fieldset>
+      {days.length > shown.length ? (
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          className="self-start text-[0.8125rem] text-ink-3 underline-offset-4 transition hover:text-ink hover:underline coarse:min-h-11"
+        >
+          {t("slot.later")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function FieldInput({
   field,
   value,
@@ -597,6 +696,18 @@ export function FieldInput({
         );
       break;
     }
+    case "slot":
+      control = (
+        <SlotField
+          name={field.id}
+          label={field.label}
+          options={field.options ?? []}
+          value={str}
+          onChange={onChange}
+          disabled={shut}
+        />
+      );
+      break;
     case "multiselect":
       control = (
         <Segmented

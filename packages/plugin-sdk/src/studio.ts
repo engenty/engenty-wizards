@@ -92,6 +92,16 @@ export interface StudioSpace {
   readOnly: boolean;
 }
 
+/** The space assistant on a plugin's page: what it says before the first message. */
+export interface StudioAssistantProps {
+  title?: string;
+  hello?: string;
+  /** The input's placeholder: an example of what to ask. */
+  placeholder?: string;
+  /** The assistant changed something: read the page's data again. */
+  onChanged?: () => void;
+}
+
 export interface StudioMe {
   user: { id: string; name: string; email: string };
   tenant: { id: string; role: "owner" | "admin" | "member" };
@@ -111,6 +121,17 @@ export interface StudioPluginContext {
    * again when the person picks another space.
    */
   useSpace(): StudioSpace | null;
+  /**
+   * A hook: where the page stands, as the trail after the logo in the top bar ("Termine /
+   * Kalender"), said there instead of a heading of the page's own. Set while the page is shown.
+   */
+  useCrumbs(items: { label: string; to?: string }[]): void;
+  /**
+   * The space assistant, docked at the lower edge of a page of the plugin, as on the space page.
+   * It talks from the plugin's page: it gets what the server half's `registerAssistantContext`
+   * says and uses the plugin's assistant tools first. Place it once, anywhere in the page.
+   */
+  Assistant: ComponentType<StudioAssistantProps>;
   i18n: {
     /** Takes the plugin's words and gives the function that reads them in the language in effect. */
     register<M extends StudioMessages>(

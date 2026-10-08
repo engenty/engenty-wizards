@@ -29,6 +29,7 @@ A page has a title, up to five fields and a button. Each field has a kind:
 | Location | taps "Use my location" or types an address |
 | Voice note | records up to 5 minutes. The wizard writes down what was said before the next step reads it |
 | Signature | signs with a finger |
+| Appointment | picks one of the free times offered, shown by day |
 | Connection | connects their own account of a service, for example their mailbox |
 | List | checks, corrects and extends a list the wizard keeps for them |
 
@@ -45,6 +46,9 @@ before the page. A hidden field is not required and is not kept.
 The choices of a select can come from earlier data instead of a fixed list: the suppliers a
 research step found, one column of a table it made, or a column of a list the wizard keeps. The
 fixed choices stand in while that data is empty.
+
+An appointment field takes its times the same way, usually from an AI step that looked up the
+free times in a calendar. The times show in the calendar's own time zone, grouped by day.
 
 A field can also be left to the AI: it is shown when the AI, reading what was answered and found
 so far, finds a statement true ("The complaint is about a damaged article"). Fields that are

@@ -42,6 +42,8 @@ interface GraphEvent {
   isAllDay?: boolean;
   location?: { displayName?: string | null } | null;
   organizer?: GraphRecipient | null;
+  /** free, tentative, busy, oof, workingElsewhere, unknown. */
+  showAs?: string | null;
   start?: GraphDateTimeTimeZone | null;
   subject?: string | null;
   webLink?: string | null;
@@ -71,6 +73,7 @@ function mapEventSummary(e: GraphEvent) {
     isAllDay: e.isAllDay ?? false,
     location: e.location?.displayName ?? null,
     organizer: mapRecipient(e.organizer),
+    show_as: e.showAs ?? null,
     start: e.start ?? null,
     subject: e.subject ?? null,
   };
@@ -158,7 +161,7 @@ function draftMessagePayload(input: {
   };
 }
 
-const EVENT_SELECT = "id,subject,start,end,location,organizer,isAllDay";
+const EVENT_SELECT = "id,subject,start,end,location,organizer,isAllDay,showAs";
 
 async function fetchEventDetail(ctx: ConnectorActionContext, eventId: string) {
   const e = await graphJson<GraphEvent>(
@@ -342,6 +345,12 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
             "Window start (ISO 8601). Provide both start and end to query a window."
           ),
         top: topField,
+        all: z
+          .boolean()
+          .optional()
+          .describe(
+            "With start and end: every event of the window (up to 1000), not only the first `top`. For free/busy."
+          ),
       }),
       providerScopes: ["Calendars.Read"],
       run: async (input, ctx) => {
@@ -354,6 +363,23 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
         if (input.start && input.end) {
           params.set("startDateTime", input.start);
           params.set("endDateTime", input.end);
+          if (input.all) {
+            // Page through the window, 100 at a time.
+            const events: GraphEvent[] = [];
+            params.set("$top", "100");
+            for (let skip = 0; skip < 1000; skip += 100) {
+              params.set("$skip", String(skip));
+              const page = await graphJson<{ value?: GraphEvent[] }>(
+                ctx,
+                `${calendarViewPath(input.calendar_id)}?${params.toString()}`
+              );
+              events.push(...(page.value ?? []));
+              if ((page.value ?? []).length < 100) {
+                break;
+              }
+            }
+            return { events: events.map(mapEventSummary) };
+          }
           path = `${calendarViewPath(input.calendar_id)}?${params.toString()}`;
         }
         const data = await graphJson<{ value?: GraphEvent[] }>(ctx, path);
@@ -440,6 +466,10 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
           .optional()
           .describe("Plain-text event description."),
         calendar_id: calendarIdField,
+        location: z
+          .string()
+          .optional()
+          .describe("Where the event takes place: an address, a phone number or a meeting link."),
         end: z
           .string()
           .describe(
@@ -470,6 +500,7 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
                 ? { body: { content: input.body_text, contentType: "Text" } }
                 : {}),
               end: { dateTime: input.end, timeZone: input.time_zone },
+              ...(input.location ? { location: { displayName: input.location } } : {}),
               start: { dateTime: input.start, timeZone: input.time_zone },
               subject: input.subject,
             },
@@ -496,6 +527,7 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
           .describe("New plain-text event description."),
         end: z.string().optional().describe("New end, ISO 8601 date-time."),
         event_id: z.string().describe("Graph event id to update."),
+        location: z.string().optional().describe("New location (replaces the existing one)."),
         start: z.string().optional().describe("New start, ISO 8601 date-time."),
         subject: z.string().optional().describe("New event subject/title."),
         time_zone: z
@@ -520,6 +552,9 @@ export const microsoftOutlookConnector: ConnectorDefinition = defineConnector({
         }
         if (input.attendees !== undefined) {
           patch.attendees = toAttendees(input.attendees);
+        }
+        if (input.location !== undefined) {
+          patch.location = { displayName: input.location };
         }
         if (Object.keys(patch).length === 0) {
           throw new Error("update_event: no fields to update");

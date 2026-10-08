@@ -1,4 +1,4 @@
-import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import { slotText, type WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { App, type McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import {
@@ -13,7 +13,7 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mascot } from "../brand";
 import { setRemoteRuntime, withBase } from "../lib/base";
-import { eventText, setLang, t } from "../lib/i18n";
+import { eventText, lang, setLang, t } from "../lib/i18n";
 import { Markdown } from "../runner/outputs";
 import { RunnerBody } from "../runner/RunnerView";
 import { FlowCanvas } from "../studio/editor/FlowDiagram";
@@ -115,6 +115,7 @@ const WIDGET_KINDS = new Set([
   "toggle",
   "color",
   "location",
+  "slot",
 ]);
 /** The diagram's height in the chat: below the greeting, and above a run's panel. */
 const FLOW_CANVAS = 420;
@@ -769,6 +770,18 @@ function FieldControl({
           onChange={onChange}
           options={field.options ?? []}
         />
+      );
+    // An appointment time reads as day and time on the business's clock: "Di 13.10.2026, 10:30".
+    case "slot":
+      return field.options?.length ? (
+        <Select
+          value={text}
+          onChange={onChange}
+          placeholder=""
+          options={field.options.map((o) => ({ value: o, label: slotText(o, lang) }))}
+        />
+      ) : (
+        <p className="text-[0.8125rem] text-ink-3">{t("slot.none")}</p>
       );
     case "toggle":
       return <Switch checked={value === true} onChange={onChange} />;

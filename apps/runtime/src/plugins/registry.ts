@@ -2,11 +2,13 @@ import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import type {
+  PluginAssistantPage,
   PluginAssistantTool,
   PluginEvents,
   PluginPublicRoute,
   PluginRoute,
   PluginSpaceContext,
+  PluginStarter,
   PluginTick,
   PluginTool,
 } from "@engenty-wizards/plugin-sdk";
@@ -47,8 +49,12 @@ export interface LoadedPlugin {
   contexts: PluginSpaceContext[];
   /** Tools of the space assistant, by name. */
   assistantTools: Map<string, PluginAssistantTool>;
+  /** What the space assistant is told on the plugin's own page. */
+  assistantPages: PluginAssistantPage[];
   publicRoutes: RouteEntry<PluginPublicRoute>[];
   jobs: Map<string, PluginJob>;
+  /** Wizards it brings as templates, by their id within the plugin. */
+  starters: Map<string, PluginStarter>;
   listeners: { [E in keyof PluginEvents]?: Listener<E>[] };
   /** Folders of `.sql` files for the tenant databases. */
   migrations: string[];
@@ -73,8 +79,10 @@ export function emptyRecord(source: PluginSource): LoadedPlugin {
     tools: new Map(),
     contexts: [],
     assistantTools: new Map(),
+    assistantPages: [],
     publicRoutes: [],
     jobs: new Map(),
+    starters: new Map(),
     listeners: {},
     migrations: [],
     disposers: [],
@@ -149,6 +157,24 @@ export async function pluginToolsOf(
       id: `${plugin.source.id}.${tool.name}`,
       title: tool.title ?? tool.name,
       description: tool.description,
+    })),
+  );
+}
+
+/** A starter a plugin brings, with the id it is known as: `<plugin id>.<starter id>`. */
+export interface PluginStarterEntry {
+  id: string;
+  plugin: LoadedPlugin;
+  starter: PluginStarter;
+}
+
+/** The starters the tenant's plugins bring, in the order the plugins registered them. */
+export async function pluginStartersOf(tenantId: string): Promise<PluginStarterEntry[]> {
+  return (await pluginsOf(tenantId)).flatMap((plugin) =>
+    [...plugin.starters.values()].map((starter) => ({
+      id: `${plugin.source.id}.${starter.id}`,
+      plugin,
+      starter,
     })),
   );
 }

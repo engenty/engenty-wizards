@@ -7,6 +7,8 @@ import {
   pageNeeds,
   parseWizard,
   shownFields,
+  slotDayText,
+  slotText,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
 import { describe, expect, it } from "vitest";
@@ -296,6 +298,72 @@ describe("choices from earlier data", () => {
     expect(text).toContain('"research.suppliers" is not a list');
     expect(text).toContain('is not a table with the column "zip"');
     expect(text).toContain('"optionsFrom" fills the choices of a select');
+  });
+});
+
+describe("appointment slots", () => {
+  const free = {
+    id: "free",
+    type: "agent",
+    title: "Free times",
+    instructions: "find free times",
+    tools: [],
+    output: {
+      format: "json",
+      fields: [{ id: "slots", kind: "table", columns: ["start", "label"], description: "Free times" }],
+    },
+  };
+  const page: PageStep = {
+    id: "p",
+    type: "page",
+    title: "P",
+    fields: [{ id: "when", label: "When", kind: "slot", required: true, optionsFrom: "steps.free.slots.start" }],
+  };
+  const options = { when: ["2026-10-12T09:00:00+02:00", "2026-10-13T10:30:00+02:00"] };
+
+  it("need options, and fixed ones must be date-times with their offset", () => {
+    valid({ title: "x", steps: [free, page, result] });
+    const text = issuesOf({
+      title: "x",
+      steps: [
+        {
+          id: "p",
+          type: "page",
+          title: "P",
+          fields: [
+            { id: "a", label: "A", kind: "slot" },
+            { id: "b", label: "B", kind: "slot", options: ["2026-10-12T09:00:00+02:00", "Monday 9am"] },
+            { id: "c", label: "C", kind: "slot", options: ["2026-10-12T09:00:00"] },
+          ],
+        },
+        result,
+      ],
+    });
+    expect(text).toContain('Field "a" needs options.');
+    expect(text).toContain('Field "b": "Monday 9am" is not a date and time');
+    expect(text).toContain('Field "c": "2026-10-12T09:00:00" is not a date and time');
+  });
+
+  it("accept an offered time and refuse another", () => {
+    expect(readPageInput(page, { when: "2026-10-13T10:30:00+02:00" }, { options })).toEqual({
+      values: { when: "2026-10-13T10:30:00+02:00" },
+      errors: [],
+    });
+    // The same moment in another offset is the offered time.
+    expect(readPageInput(page, { when: "2026-10-12T07:00:00Z" }, { options }).values).toEqual({
+      when: "2026-10-12T09:00:00+02:00",
+    });
+    expect(readPageInput(page, { when: "2026-10-12T09:30:00+02:00" }, { options }).errors).toHaveLength(1);
+    // Without free times nothing can be picked.
+    expect(readPageInput(page, { when: "2026-10-12T09:00:00+02:00" }).errors).toHaveLength(1);
+  });
+
+  it("read as day and time on their own clock", () => {
+    expect(slotText("2026-10-13T10:30:00+02:00", "de")).toBe("Di 13.10.2026, 10:30");
+    expect(slotText("2026-10-13T10:30:00+02:00", "en")).toBe("Tue 13/10/2026, 10:30");
+    // Late in the evening in New York is already the next day in Europe; it stays that evening.
+    expect(slotDayText("2026-10-12T23:30:00-04:00", "de")).toBe("Montag, 12. Oktober");
+    expect(slotDayText("2026-10-12T23:30:00-04:00", "en")).toBe("Monday, 12 October");
   });
 });
 

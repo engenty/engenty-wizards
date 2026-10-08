@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "./api";
 import { lang } from "./i18n";
 
@@ -47,6 +47,94 @@ const canRecord =
   Boolean(navigator.mediaDevices?.getUserMedia) &&
   typeof MediaRecorder !== "undefined";
 
+/** The person's choices for dictation, kept in this browser and shared by every composer. */
+export interface DictationSettings {
+  /** An input device; empty is the system's default. */
+  deviceId: string;
+  /** The mic button records while it is held, instead of on and off with a click. */
+  hold: boolean;
+}
+
+const SETTINGS_KEY = "wizards.dictation";
+const listeners = new Set<() => void>();
+let settings: DictationSettings = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
+    return { deviceId: String(saved.deviceId ?? ""), hold: saved.hold === true };
+  } catch {
+    return { deviceId: "", hold: false };
+  }
+})();
+
+export function useDictationSettings(): [
+  DictationSettings,
+  (patch: Partial<DictationSettings>) => void,
+] {
+  const value = useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => settings,
+  );
+  const change = useCallback((patch: Partial<DictationSettings>) => {
+    settings = { ...settings, ...patch };
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // kept for this visit only
+    }
+    for (const listener of listeners) {
+      listener();
+    }
+  }, []);
+  return [value, change];
+}
+
+/**
+ * The microphones of this device. Their names come only once the browser may use one: `allow`
+ * asks for that and lists them again.
+ */
+export function useMicrophones() {
+  const [devices, setDevices] = useState<{ deviceId: string; label: string }[]>([]);
+  const list = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      return;
+    }
+    const all = await navigator.mediaDevices.enumerateDevices();
+    setDevices(
+      all
+        .filter(
+          (d) =>
+            // Without leave to use one, the browser lists microphones with no id and no name.
+            d.kind === "audioinput" &&
+            Boolean(d.deviceId) &&
+            d.deviceId !== "default" &&
+            d.deviceId !== "communications",
+        )
+        .map((d) => ({ deviceId: d.deviceId, label: d.label })),
+    );
+  }, []);
+  useEffect(() => {
+    void list();
+    navigator.mediaDevices?.addEventListener?.("devicechange", list);
+    return () => navigator.mediaDevices?.removeEventListener?.("devicechange", list);
+  }, [list]);
+  const allow = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+    } catch {
+      return false;
+    }
+    await list();
+    return true;
+  };
+  return { devices, named: devices.some((d) => d.label), allow, refresh: list };
+}
+
 function join(before: string, spoken: string): string {
   const base = before.trimEnd();
   const next = spoken.trim();
@@ -57,7 +145,12 @@ function join(before: string, spoken: string): string {
  * Speaking into a draft. The browser writes along where it can recognise speech; elsewhere the
  * recording is written down on the server once the person stops.
  */
-export function useDictation(draft: string, onDraft: (value: string) => void) {
+export function useDictation(
+  draft: string,
+  onDraft: (value: string) => void,
+  /** A microphone of its own; the browser's recognition only hears the default one. */
+  deviceId = "",
+) {
   const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,17 +159,27 @@ export function useDictation(draft: string, onDraft: (value: string) => void) {
   const onDraftRef = useRef(onDraft);
   onDraftRef.current = onDraft;
   const active = useRef<{ stop: () => void } | null>(null);
+  // A stop asked for while the microphone is still being opened: done once it is.
+  const starting = useRef(false);
+  const stopWhenStarted = useRef(false);
 
   useEffect(() => () => active.current?.stop(), []);
 
   const record = async () => {
     const before = draftRef.current;
     let stream: MediaStream;
+    starting.current = true;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      });
     } catch {
+      starting.current = false;
+      stopWhenStarted.current = false;
       setError("denied");
       return;
+    } finally {
+      starting.current = false;
     }
     const chunks: Blob[] = [];
     const recorder = new MediaRecorder(stream);
@@ -107,6 +210,10 @@ export function useDictation(draft: string, onDraft: (value: string) => void) {
     active.current = { stop: () => recorder.state !== "inactive" && recorder.stop() };
     recorder.start();
     setListening(true);
+    if (stopWhenStarted.current) {
+      stopWhenStarted.current = false;
+      recorder.stop();
+    }
   };
 
   const recognise = (Recognition: RecognitionConstructor) => {
@@ -157,22 +264,41 @@ export function useDictation(draft: string, onDraft: (value: string) => void) {
     setListening(true);
   };
 
-  const toggle = () => {
-    if (processing) {
-      return;
-    }
-    if (active.current) {
-      active.current.stop();
+  const start = () => {
+    if (processing || active.current || starting.current) {
       return;
     }
     setError(null);
+    stopWhenStarted.current = false;
     const Recognition = recognition();
-    if (Recognition) {
+    if (Recognition && !(deviceId && canRecord)) {
       recognise(Recognition);
     } else {
       void record();
     }
   };
+  const stop = () => {
+    if (active.current) {
+      active.current.stop();
+    } else if (starting.current) {
+      stopWhenStarted.current = true;
+    }
+  };
+  const toggle = () => {
+    if (active.current) {
+      stop();
+    } else {
+      start();
+    }
+  };
 
-  return { supported: Boolean(recognition()) || canRecord, listening, processing, error, toggle };
+  return {
+    supported: Boolean(recognition()) || canRecord,
+    listening,
+    processing,
+    error,
+    toggle,
+    start,
+    stop,
+  };
 }

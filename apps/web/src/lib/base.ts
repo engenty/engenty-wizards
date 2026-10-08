@@ -1,3 +1,6 @@
+// Named here, not only in the app's tsconfig: plugins type the shared ui (and this file) without it.
+/// <reference types="vite/client" />
+
 /**
  * The path the app is served under: `/wizards` on https://example.com/wizards, empty at an origin's root.
  * Vite writes it in at build time (APP_BASE_PATH).

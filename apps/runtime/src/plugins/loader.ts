@@ -8,11 +8,12 @@ import type {
   WizardsPluginApi,
   WizardsPluginFactory,
 } from "@engenty-wizards/plugin-sdk";
-import { PLUGIN_TOOL_NAME } from "@engenty-wizards/shared/definition";
+import { PLUGIN_ID, PLUGIN_TOOL_NAME, wizardSchema } from "@engenty-wizards/shared/definition";
 import { generateText, Output } from "ai";
 import { createJiti } from "jiti";
 import { readPage } from "../agents/website.js";
 import { packageRoot } from "../cli/home.js";
+import { pluginConnections } from "../connectors/plugin-connections.js";
 import { db, onTenantOpen } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
@@ -121,6 +122,9 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         }
         record.assistantTools.set(tool.name, tool as unknown as PluginAssistantTool);
       },
+      registerAssistantContext(context) {
+        record.assistantPages.push(context);
+      },
       registerPublicRoute(route) {
         record.publicRoutes.push(compileRoute(route));
       },
@@ -176,6 +180,23 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
           object: (request.schema ? result.output : undefined) as never,
         };
       },
+      connections: pluginConnections(source.id),
+      registerStarter(starter) {
+        if (!PLUGIN_ID.test(starter.id)) {
+          throw new Error(`Starter "${starter.id}": an id is lower case, digits and "-".`);
+        }
+        if (record.starters.has(starter.id)) {
+          throw new Error(`Starter "${starter.id}" is registered twice.`);
+        }
+        const parsed = wizardSchema.safeParse(starter.definition);
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0];
+          throw new Error(
+            `Starter "${starter.id}": ${issue?.path.join(".") || "definition"}: ${issue?.message}`,
+          );
+        }
+        record.starters.set(starter.id, { ...starter, definition: parsed.data });
+      },
       onUnload(dispose) {
         record.disposers.push(dispose);
       },
@@ -209,8 +230,10 @@ async function load(source: PluginSource): Promise<LoadedPlugin> {
       record.tools.clear();
       record.contexts = [];
       record.assistantTools.clear();
+      record.assistantPages = [];
       record.publicRoutes = [];
       record.jobs.clear();
+      record.starters.clear();
       record.listeners = {};
       record.migrations = [];
       record.error = (err as Error)?.message || String(err);

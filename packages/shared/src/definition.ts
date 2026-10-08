@@ -37,6 +37,7 @@ export const FIELD_KINDS = [
   "location",
   "audio",
   "signature",
+  "slot",
 ] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
@@ -204,7 +205,10 @@ export const fieldSchema = z.object({
   required: z.boolean().optional(),
   placeholder: z.string().optional(),
   help: z.string().optional(),
-  /** Choices for select / multiselect. */
+  /**
+   * Choices for select / multiselect. slot: the appointment times offered, as ISO 8601 date-times
+   * with their offset ("2026-10-12T09:00:00+02:00").
+   */
   options: z.array(z.string()).optional(),
   default: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
   /** Line-item columns for `items`. A row's amount is the product of its number and money columns. */
@@ -243,7 +247,7 @@ export const fieldSchema = z.object({
    */
   when: whenSchema.optional(),
   /**
-   * select / multiselect: the choices come from earlier data — a list output
+   * select / multiselect / slot: the choices come from earlier data — a list output
    * ("steps.<id>.<key>"), a column of a table output ("steps.<id>.<key>.<column>") or a column
    * of a stored list ("lists.<id>.<column>"). `options` stand in while that data is empty.
    */
@@ -786,11 +790,20 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
         }
         fieldIds.add(field.id);
         if (
-          (field.kind === "select" || field.kind === "multiselect") &&
+          (field.kind === "select" || field.kind === "multiselect" || field.kind === "slot") &&
           !field.options?.length &&
           !field.optionsFrom
         ) {
           issues.push({ stepId: step.id, message: `Field "${field.id}" needs options.` });
+        }
+        if (field.kind === "slot") {
+          const wrong = (field.options ?? []).find((o) => !slotTime(o));
+          if (wrong !== undefined) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}": "${wrong}" is not a date and time with its offset, like "2026-10-12T09:00:00+02:00".`,
+            });
+          }
         }
         if (field.kind === "items" && !field.columns?.length) {
           issues.push({ stepId: step.id, message: `Field "${field.id}" needs columns.` });
@@ -1012,8 +1025,8 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           }
           if (field.optionsFrom) {
             const problem =
-              field.kind !== "select" && field.kind !== "multiselect"
-                ? `"optionsFrom" fills the choices of a select or multiselect; kind is "${field.kind}".`
+              field.kind !== "select" && field.kind !== "multiselect" && field.kind !== "slot"
+                ? `"optionsFrom" fills the choices of a select, multiselect or slot; kind is "${field.kind}".`
                 : optionsFromProblem(field.optionsFrom);
             if (problem) {
               issues.push({ stepId: step.id, message: `Field "${field.id}": ${problem}` });
@@ -1531,6 +1544,92 @@ export function optionsFromData(
     }
   }
   return [...seen];
+}
+
+// ---------------------------------------------------------------------------
+// Appointment times
+
+const SLOT_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** An offered appointment time read on its own clock: the offset it was written with. */
+export interface SlotTime {
+  /** The calendar day there: "2026-10-12". */
+  day: string;
+  /** The time of day there: "09:00". */
+  time: string;
+  /** That day and time as if it were UTC — to name the weekday and month without moving it. */
+  wall: Date;
+}
+
+/**
+ * A slot option as day and time in its own offset (the business's time zone, not the reader's).
+ * Null when it is not an ISO 8601 date-time with an offset.
+ */
+export function slotTime(iso: string): SlotTime | null {
+  const m = SLOT_RE.exec(iso.trim());
+  if (!m) {
+    return null;
+  }
+  const [, y, mo, d, h, mi] = m.map(Number);
+  const wall = new Date(Date.UTC(y, mo - 1, d, h, mi));
+  if (
+    wall.getUTCMonth() !== mo - 1 ||
+    wall.getUTCDate() !== d ||
+    h > 23 ||
+    mi > 59 ||
+    !Number.isFinite(Date.parse(iso))
+  ) {
+    return null;
+  }
+  return { day: `${m[1]}-${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}`, wall };
+}
+
+/** The weekday and date of a slot's day: "Montag, 12. Oktober" / "Monday, 12 October". */
+export function slotDayText(iso: string, lang: "de" | "en" = "de"): string {
+  const slot = slotTime(iso);
+  if (!slot) {
+    return iso;
+  }
+  const locale = LOCALES[lang];
+  const weekday = slot.wall.toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });
+  const date = slot.wall.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  return `${weekday}, ${date}`;
+}
+
+/** A chosen slot as a person reads it back: "Di 13.10.2026, 10:30" / "Tue 13/10/2026, 10:30". */
+export function slotText(iso: string, lang: "de" | "en" = "de"): string {
+  const slot = slotTime(iso);
+  if (!slot) {
+    return iso;
+  }
+  const locale = LOCALES[lang];
+  const weekday = slot.wall
+    .toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" })
+    .replace(/\.$/, "");
+  const date = slot.wall.toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return `${weekday} ${date}, ${slot.time}`;
+}
+
+/**
+ * The slot among `options` that is the same moment as `value`, written as offered — so an answer
+ * in another offset ("…T07:00:00Z" for "…T09:00:00+02:00") picks the offered time.
+ */
+export function offeredSlot(value: string, options: string[]): string | undefined {
+  if (options.includes(value)) {
+    return value;
+  }
+  const at = slotTime(value) ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(at) ? options.find((o) => slotTime(o) && Date.parse(o) === at) : undefined;
 }
 
 // ---------------------------------------------------------------------------

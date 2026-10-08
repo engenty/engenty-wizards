@@ -12,6 +12,8 @@ process.env.APP_URL = "http://localhost:5181";
 process.env.LOCAL_ACCESS_KEY = "test-key";
 process.env.PLUGINS_DIR = pluginsDir;
 process.env.PLUGINS_WATCH = "0";
+// The marketplace is not asked: what is listed comes from here.
+process.env.MARKETPLACE_URL = "off";
 // No model is set up: a plugin that asks one is told so.
 process.env.AI_GATEWAY_API_KEY = "";
 process.env.OPENAI_API_KEY = "";
@@ -140,6 +142,19 @@ export default definePlugin((wizards) => {
   });
   server.on("run.done", async ({ values }) => {
     await server.getTenantDb().insert(entry).values({ text: \`run: \${String(values.name)}\` });
+  });
+  server.registerStarter({
+    id: "welcome",
+    title: "Willkommen",
+    description: "Fragt Gäste nach ihrem Namen.",
+    definition: {
+      title: "Willkommen",
+      steps: [
+        { id: "start", type: "page", title: "Start", fields: [{ id: "name", kind: "text", label: "Name" }] },
+        { id: "done", type: "result", title: "Fertig", deliverables: [] },
+      ],
+    },
+    files: { "notes/greeting.txt": "Grüß Gott", "data/bytes.bin": new Uint8Array([1, 2, 3]) },
   });
 ${extra}});
 `;
@@ -319,6 +334,8 @@ describe("a plugin's tools", () => {
       tenantId: LOCAL,
       project: { id: "p1", name: "Projekt" },
       def: { title: "Wizard" },
+      test: false,
+      store: { wizardId: "wizard-1", holder: "u:local" },
       signal: new AbortController().signal,
       emit: async (_type: string, message: string) => {
         emitted.push(message);
@@ -493,5 +510,60 @@ describe("while the runtime runs", () => {
     await loader.reloadPlugin("later");
     stop();
     expect(seen).toEqual([{ id: "later" }]);
+  });
+});
+
+describe("a plugin's starters", () => {
+  it("are listed first for the tenant, marked with the plugin", async () => {
+    const page = await json(get("/api/studio/marketplace?lang=de"));
+    expect(page.entries[0]).toMatchObject({
+      id: "guestbook.welcome",
+      title: "Willkommen",
+      pitch: "Fragt Gäste nach ihrem Namen.",
+      language: "de",
+      starter: true,
+      usable: true,
+      starred: false,
+      plugin: { id: "guestbook", name: "Guestbook" },
+    });
+    expect(page.all).toBeGreaterThanOrEqual(1);
+    expect((await json(get("/api/studio/marketplace?q=Gäste"))).entries[0].id).toBe("guestbook.welcome");
+    const detail = await json(get("/api/studio/marketplace/guestbook.welcome?lang=de"));
+    expect(detail).toMatchObject({ id: "guestbook.welcome", plugin: { name: "Guestbook" } });
+    expect(detail.files.sort()).toEqual(["data/bytes.bin", "notes/greeting.txt"]);
+  });
+
+  it("make a wizard with their definition and files", async () => {
+    const files = await import("../src/services/files");
+    await client.withTenant(LOCAL, async () => {
+      const created = await wizards.createWizard("local", { starterId: "guestbook.welcome" });
+      const w = await wizards.ownedWizard("local", created.id);
+      expect(w).toMatchObject({ title: "Willkommen", starter: "guestbook.welcome", starterRevision: null });
+      expect(w.draft.steps.map((s) => s.id)).toEqual(["start", "done"]);
+      expect((await files.listFiles("local", w.id)).map((f) => [f.path, f.size])).toEqual([
+        ["data/bytes.bin", 3],
+        // UTF-8: "ü" and "ß" are two bytes each.
+        ["notes/greeting.txt", 11],
+      ]);
+      expect((await files.readFileText("local", w.id, "notes/greeting.txt")).text).toBe("Grüß Gott");
+    });
+  });
+
+  it("keep a plugin from loading when one is not a wizard, naming it", async () => {
+    put(
+      "guestbook/src/plugin.ts",
+      guestbook(
+        `  server.registerStarter({ id: "empty", title: "Leer", description: "", definition: { title: "Leer", steps: [] } });\n`,
+      ),
+    );
+    await loader.reloadPlugin("guestbook");
+    const broken = registry.loadedPlugin("guestbook")!;
+    expect(broken.error).toMatch(/^Starter "empty": steps: /);
+    expect(broken.starters.size).toBe(0);
+    const page = await json(get("/api/studio/marketplace"));
+    expect(page.entries.some((e: any) => e.plugin)).toBe(false);
+    put("guestbook/src/plugin.ts", guestbook());
+    await loader.reloadPlugin("guestbook");
+    expect(registry.loadedPlugin("guestbook")?.starters.has("welcome")).toBe(true);
   });
 });

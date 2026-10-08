@@ -170,6 +170,8 @@ const stepOf = (emitted: string[] = []) =>
     project: { id: spaceId, name: "Ahorn" },
     projectFiles: [],
     def: { title: "Wizard" },
+    test: false,
+    store: { wizardId: "wizard-1", holder: "u:local" },
     signal: new AbortController().signal,
     emit: async (_type: string, message: string) => {
       emitted.push(message);

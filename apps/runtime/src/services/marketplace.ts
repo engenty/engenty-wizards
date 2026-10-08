@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
 import {
   DEFINITION_VERSION,
   readable,
@@ -6,9 +8,14 @@ import {
 } from "@engenty-wizards/shared/definition";
 import {
   type Capability,
+  capabilitiesOf,
+  costTierOf,
+  effortOf,
+  formatsOf,
   MARKETPLACE_LANGS,
   type MarketplaceEntry,
   type MarketplaceExport,
+  type MarketplaceFacets,
   type MarketplaceFilters,
   type MarketplaceItem,
   type MarketplaceLang,
@@ -36,8 +43,9 @@ import {
   videoCostUsd,
   WEB_SEARCH_COST_USD,
 } from "../models.js";
+import { type PluginStarterEntry, pluginStartersOf } from "../plugins/registry.js";
 import { readSetting, writeSetting } from "../settings.js";
-import { LOCAL_TENANT } from "../tenants/tenant.js";
+import { currentTenant, LOCAL_TENANT } from "../tenants/tenant.js";
 import { ServiceError } from "./errors.js";
 
 /**
@@ -45,6 +53,10 @@ import { ServiceError } from "./errors.js";
  * (docs/marketplace-contract.md). It searches the marketplace live and starts wizards from its
  * entries. Its starters and what people starred are kept in the control database, so the list
  * and starting a wizard work without a connection too.
+ *
+ * Beside them stand the starters the tenant's plugins bring (docs/content/dev/plugins/starters.md),
+ * listed first and never fetched. They are known as `<plugin id>.<starter id>`; a marketplace
+ * entry's id has no dot, so the two never meet.
  */
 
 export const asLang = (raw: string | undefined | null): MarketplaceLang =>
@@ -128,6 +140,77 @@ function keptItem(e: MarketplaceExport, lang: MarketplaceLang): MarketplaceItem 
   return text ? { ...keptSummary(e, lang), definition: text.definition, files: e.files } : null;
 }
 
+// --- the plugins' starters ------------------------------------------------------------------
+
+/** One of the starters the tenant's plugins bring, by its id; undefined for any other id. */
+async function pluginStarter(id: string): Promise<PluginStarterEntry | undefined> {
+  if (!id.includes(".")) {
+    return undefined;
+  }
+  return (await pluginStartersOf(currentTenant())).find((s) => s.id === id);
+}
+
+/** A plugin's starter as the marketplace lists an entry, read from its definition. */
+function pluginSummary({ id, plugin, starter }: PluginStarterEntry): MarketplaceSummary {
+  const definition = starter.definition as WizardDefinition;
+  const { name, version } = plugin.source.manifest;
+  const capabilities = capabilitiesOf(definition);
+  const changed = statSync(plugin.source.entry ?? plugin.source.root, { throwIfNoEntry: false });
+  return {
+    id,
+    revision: 0,
+    hash: createHash("sha256")
+      .update(`${version}\n${JSON.stringify(definition)}`)
+      .digest("hex")
+      .slice(0, 16),
+    updatedAt: (changed?.mtime ?? new Date()).toISOString(),
+    starter: true,
+    language: starter.language ?? "de",
+    title: starter.title,
+    pitch: starter.description,
+    // Found by the plugin's name as well: "Termine" finds the appointment plugin's starters.
+    terms: [name],
+    avatar: definition.avatar,
+    formats: formatsOf(definition),
+    industries: ["any"],
+    useCases: [],
+    capabilities,
+    effort: effortOf(definition),
+    costTier: costTierOf(capabilities),
+    steps: definition.steps.length,
+    version: definition.version,
+  };
+}
+
+/** A plugin's starter as this app shows it: never starred, and marked with its plugin. */
+function pluginEntry(found: PluginStarterEntry, unavailable: Set<Capability>): MarketplaceEntry {
+  const { id, name } = found.plugin.source.manifest;
+  return {
+    ...asEntry(pluginSummary(found), new Set(), unavailable, optionalOf(found.starter.definition)),
+    plugin: { id, name },
+  };
+}
+
+/** Two searches' counts per option, added up. */
+function addFacets(a: MarketplaceFacets, b: MarketplaceFacets): MarketplaceFacets {
+  const add = <K extends string>(
+    x: Partial<Record<K, number>> = {},
+    y: Partial<Record<K, number>> = {},
+  ) => {
+    const out: Partial<Record<K, number>> = { ...x };
+    for (const [key, n] of Object.entries(y) as [K, number][]) {
+      out[key] = (out[key] ?? 0) + n;
+    }
+    return out;
+  };
+  return {
+    useCase: add(a.useCase, b.useCase),
+    industry: add(a.industry, b.industry),
+    format: add(a.format, b.format),
+    capability: add(a.capability, b.capability),
+  };
+}
+
 // --- searching -----------------------------------------------------------------------------
 
 /** A summary as this app shows it: whether it can read and run it, and whether it is starred. */
@@ -193,8 +276,44 @@ export interface MarketplaceResult extends MarketplacePage<MarketplaceEntry> {
   unavailable: Capability[];
 }
 
-/** Searches the marketplace; without an answer, what is kept here, scored the same way. */
+/**
+ * Searches the tenant's plugins' starters and the marketplace, in that order: a page holds the
+ * plugins' starters the words and filters find, then the marketplace's entries.
+ */
 export async function searchMarketplace(search: MarketplaceSearch): Promise<MarketplaceResult> {
+  const { q = "", starred, limit = 60, offset = 0, lang: _lang, ...filters } = search;
+  const own = starred ? [] : await pluginStartersOf(currentTenant());
+  if (!own.length) {
+    return searchListed(search);
+  }
+  const byId = new Map(own.map((s) => [s.id, s]));
+  const found = searchEntries(own.map(pluginSummary), q, filters, { limit: own.length });
+  const shown = found.entries.slice(offset, offset + limit);
+  // The marketplace fills what is left of the page, and counts from where its entries begin.
+  const room = limit - shown.length;
+  const listed = await searchListed({
+    ...search,
+    limit: Math.max(1, room),
+    offset: Math.max(0, offset - found.total),
+  });
+  const unavailable = new Set(listed.unavailable);
+  return {
+    ...listed,
+    entries: [
+      ...shown.flatMap((e) => {
+        const entry = byId.get(e.id);
+        return entry ? [pluginEntry(entry, unavailable)] : [];
+      }),
+      ...listed.entries.slice(0, room),
+    ],
+    total: found.total + listed.total,
+    all: own.length + listed.all,
+    facets: addFacets(listed.facets, found.facets),
+  };
+}
+
+/** Searches the marketplace; without an answer, what is kept here, scored the same way. */
+async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResult> {
   const { q = "", lang, starred: onlyStarred, limit = 60, offset = 0, ...filters } = search;
   const stars = await starredIds();
   const starred = new Set(stars);
@@ -316,6 +435,15 @@ export async function marketplaceDetail(
   id: string,
   lang: MarketplaceLang,
 ): Promise<MarketplaceDetail | null> {
+  const own = await pluginStarter(id);
+  if (own) {
+    const definition = own.starter.definition as WizardDefinition;
+    return {
+      ...pluginEntry(own, await missingCapabilities()),
+      credits: await priced(definition),
+      ...wizardOutline(definition, Object.keys(own.starter.files ?? {}), lang),
+    };
+  }
   const found = await fetchItem(id, lang);
   if (!found) {
     return null;
@@ -347,7 +475,10 @@ export async function marketplaceDetail(
 
 export interface MarketplaceWizard {
   id: string;
-  revision: number;
+  /** The entry's revision; null for a plugin's starter, which changes with the plugin. */
+  revision: number | null;
+  /** The plugin it comes with, by id: nothing is counted at the marketplace then. */
+  plugin?: string;
   title: string;
   language: MarketplaceLang;
   definition: WizardDefinition;
@@ -359,6 +490,25 @@ export async function marketplaceWizard(
   id: string,
   lang: MarketplaceLang,
 ): Promise<MarketplaceWizard | null> {
+  const own = await pluginStarter(id);
+  if (own) {
+    // A plugin's starter is in its one language, whatever is asked for.
+    const { starter, plugin } = own;
+    return {
+      id,
+      revision: null,
+      plugin: plugin.source.id,
+      title: starter.title,
+      language: starter.language ?? "de",
+      definition: structuredClone(starter.definition as WizardDefinition),
+      files: Object.fromEntries(
+        Object.entries(starter.files ?? {}).map(([path, data]) => [
+          path,
+          typeof data === "string" ? Buffer.from(data, "utf8") : Buffer.from(data),
+        ]),
+      ),
+    };
+  }
   const found = await fetchItem(id, lang);
   if (!found) {
     return null;

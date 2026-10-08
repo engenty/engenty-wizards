@@ -22,6 +22,8 @@ and its theme.
 | `Label` | A field's label | `hint`, `required` |
 | `Card` | A surface | |
 | `Chip` | A state in a word | `tone`: `neutral` (default), `live`, `warn`, `ember` |
+| `DatePicker` | A date from a month | `value` ("YYYY-MM-DD" or ""), `onChange`, `min`, `max`, `clearable` |
+| `DateRangePicker` | A day or a period in one month: the first click is the start, the second the end | `from`, `to`, `onChange({ from, to })`, `min`, `max` |
 | `Dialog` | A modal | `open`, `onClose`, `title`, `wide` |
 | `Spinner`, `Empty` | Loading, and nothing there yet | |
 | `cn(...)` | Joins class names, skipping what is false | |

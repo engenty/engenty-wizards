@@ -27,7 +27,12 @@ function kindOf(file: File): ProjectFileKind {
  * The chat with the project assistant. The thread lives on this page only; what the assistant
  * finds is written into the project, and `onChanged` shows it in the sections below.
  */
-function useProjectAssistant(projectId: string, part: AssistantPart, onChanged: () => void): Chat {
+function useProjectAssistant(
+  projectId: string,
+  part: AssistantPart,
+  onChanged: () => void,
+  plugin?: string,
+): Chat {
   const qc = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<Chat["phase"]>("idle");
@@ -85,7 +90,7 @@ function useProjectAssistant(projectId: string, part: AssistantPart, onChanged: 
     try {
       await postStream(
         `/api/studio/projects/${projectId}/assist`,
-        { message: text, history, part },
+        { message: text, history, part, ...(plugin ? { plugin } : {}) },
         (event, data) => {
           if (event === "text") {
             const delta = JSON.parse(data) as string;
@@ -170,14 +175,20 @@ function PluginCard({ card, send }: { card: ChatCard; send: Chat["send"] }) {
 export type AssistantPart = "info" | "knowledge";
 
 /** What the assistant's card says before the first message; the engenty stands at its right. */
-function Intro({ part }: { part: AssistantPart }) {
+function Intro({ part, own }: { part: AssistantPart; own?: { title?: string; hello?: string } }) {
   return (
     <div className="sm:pr-36">
       <h2 className="font-display font-semibold text-[1.25rem] leading-tight tracking-tight">
-        {part === "knowledge" ? t("project.assistantTitleKnowledge") : t("project.assistantTitle")}
+        {own?.title ??
+          (part === "knowledge"
+            ? t("project.assistantTitleKnowledge")
+            : t("project.assistantTitle"))}
       </h2>
       <p className="mt-1.5 max-w-2xl text-[0.9375rem] text-ink-2 leading-relaxed">
-        {part === "knowledge" ? t("project.assistantHelloKnowledge") : t("project.assistantHello")}
+        {own?.hello ??
+          (part === "knowledge"
+            ? t("project.assistantHelloKnowledge")
+            : t("project.assistantHello"))}
       </p>
     </div>
   );
@@ -196,16 +207,31 @@ export function Assistant({
   part,
   docked = false,
   onChanged,
+  plugin,
+  title,
+  hello,
+  placeholder,
 }: {
   projectId: string;
   part: AssistantPart;
   /** Docked at the lower edge from the start: a page of its own stands where the card would. */
   docked?: boolean;
   onChanged: () => void;
+  /** Talking from a plugin's own page: the assistant is told what that page holds. */
+  plugin?: string;
+  title?: string;
+  hello?: string;
+  placeholder?: string;
 }) {
-  const chat = useProjectAssistant(projectId, part, onChanged);
+  const chat = useProjectAssistant(projectId, part, onChanged, plugin);
   const slot = useRef<HTMLDivElement>(null);
-  const [dock, setDock] = useState<{ left: number; width: number; height: number } | null>(null);
+  const [dock, setDock] = useState<{
+    left: number;
+    width: number;
+    height: number;
+    /** The page column the blurred band below the composer spans. */
+    band: { left: number; width: number };
+  } | null>(null);
   useEffect(() => {
     const place = () => {
       const rect = slot.current?.getBoundingClientRect();
@@ -221,7 +247,12 @@ export function Assistant({
         // The slot keeps the height the card had, so the page does not jump when it docks.
         return prev && prev.left === left && prev.width === width
           ? prev
-          : { left, width, height: prev?.height ?? rect.height };
+          : {
+              left,
+              width,
+              height: prev?.height ?? rect.height,
+              band: { left: rect.left, width: rect.width },
+            };
       });
     };
     place();
@@ -251,28 +282,43 @@ export function Assistant({
             <Mascot kind="round" size={104} />
           </div>
         ) : null}
+        {/* One tree docked or not, so the draft and the open thread stay when it docks. Docked,
+            the composer floats over a blurred band at the window's lower edge, clear of a phone's
+            home bar; only the composer and the thread above it take the pointer. */}
         <div
-          className={cn(
-            "flex flex-col overflow-hidden bg-card",
-            dock
-              ? "fixed bottom-4 z-30 max-h-[70dvh] animate-dock rounded-2xl shadow-overlay ring-1 ring-border"
-              : "max-h-[520px] rounded-xl bg-linear-to-br from-ember-tint via-card to-card shadow-soft ring-1 ring-ember-veil",
-          )}
-          style={dock ? { left: dock.left, width: dock.width } : undefined}
+          className={dock ? "pointer-events-none fixed bottom-0 z-30 animate-dock" : undefined}
+          style={dock ? { left: dock.band.left, width: dock.band.width } : undefined}
         >
-          <ChatPanel
-            chat={chat}
-            avatar="round"
-            compact={Boolean(dock)}
-            intro={<Intro part={part} />}
-            placeholder={
-              part === "knowledge"
-                ? t("project.assistantComposerKnowledge")
-                : t("project.assistantComposer")
-            }
-            changedLabel={t("project.assistantChanged")}
-            card={(card) => <PluginCard card={card} send={chat.send} />}
-          />
+          {dock ? (
+            <div
+              aria-hidden
+              className="absolute inset-x-0 -top-12 bottom-0 bg-linear-to-t from-paper/85 via-paper/55 to-paper/0 backdrop-blur-xl [mask-image:linear-gradient(to_top,black_45%,transparent)]"
+            />
+          ) : null}
+          <div
+            className={cn(
+              "flex flex-col",
+              dock
+                ? "pointer-events-auto relative max-h-[70dvh] px-5 pt-5 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))]"
+                : "max-h-[520px] overflow-hidden rounded-xl bg-card bg-linear-to-br from-ember-tint via-card to-card shadow-soft ring-1 ring-ember-veil",
+            )}
+            style={dock ? { marginLeft: dock.left - dock.band.left, width: dock.width } : undefined}
+          >
+            <ChatPanel
+              chat={chat}
+              avatar="round"
+              compact={Boolean(dock)}
+              intro={<Intro part={part} own={{ title, hello }} />}
+              placeholder={
+                placeholder ??
+                (part === "knowledge"
+                  ? t("project.assistantComposerKnowledge")
+                  : t("project.assistantComposer"))
+              }
+              changedLabel={t("project.assistantChanged")}
+              card={(card) => <PluginCard card={card} send={chat.send} />}
+            />
+          </div>
         </div>
       </div>
     </div>

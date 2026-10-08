@@ -79,7 +79,7 @@ type PageStep = { type: "page", fields: Field[] (1–5 per page), groups?: { id,
 //   rule can say it; "when" stays the first choice.
 type Field = {
   id (camelCase, unique across the WHOLE wizard), label, kind, required?, placeholder?, help?,
-  options?: string[]            // select / multiselect
+  options?: string[]            // select / multiselect / slot
   default?: string|number|boolean|string[]
   columns?: { id, label, kind: "text"|"number"|"money" }[]   // items only; row amount = product of number/money columns
   vat?: { rate?: number, field?: fieldId }                    // items only; VAT % fixed or read from a field
@@ -100,11 +100,11 @@ type Field = {
                                 //   the person types) or anything known before the page (an earlier answer, steps.<id>.<field>).
                                 //   A hidden field is not required and not kept; its {{template}} is empty.
   optionsFrom?: "steps.<id>.<key>" | "steps.<id>.<key>.<column>" | "lists.<id>.<column>"
-                                // select / multiselect: the choices come from earlier data — a "list" output, one column of a
+                                // select / multiselect / slot: the choices come from earlier data — a "list" output, one column of a
                                 //   "table" output, or a column of a stored list. "options" stand in while that data is empty.
 }
 // kinds: text textarea number select multiselect date email url toggle color image file items connection list
-//        location audio signature
+//        location audio signature slot
 //   location:  where the person is — the phone's position on a tap (with its accuracy), or an address they type.
 //              {{field}} → "Herrengasse 16, 8010 Graz (47.07071, 15.43950, ±12 m)" · {{field.lat}} {{field.lng}}
 //              {{field.accuracy}} (metres) · {{field.label}} (the address line) · {{field.map}} (a map link).
@@ -113,6 +113,10 @@ type Field = {
 //              {{field}} is what the person said, as text. {{field.seconds}} is its length.
 //   signature: drawn with the finger — a picture (dark ink, clear ground). A document step can place it:
 //              {{field}} → asset://ID, used as <img src="asset://ID">.
+//   slot:      the person picks one appointment time, shown by day. Options are ISO 8601 date-times with their offset
+//              ("2026-10-12T09:00:00+02:00"), nearly always from optionsFrom; {{field}} is the chosen one, as offered.
+//              Booking: agent step "free" with tools ["appointments.availability"] outputs a table "slots" with a "start" column;
+//              then a page { kind: "slot", optionsFrom: "steps.free.slots.start" }; then an agent step with appointments.book.
 
 type AgentStep = {
   type: "agent"

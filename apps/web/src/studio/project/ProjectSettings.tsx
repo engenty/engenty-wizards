@@ -89,7 +89,7 @@ export function ProjectSettings({
   const readOnly = project.readOnly;
   return (
     // The lower padding leaves room for the assistant's dock under the last section.
-    <div className="flex flex-col gap-9 pb-20">
+    <div className="flex flex-col gap-9 pb-32">
       {readOnly ? (
         <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
       ) : (

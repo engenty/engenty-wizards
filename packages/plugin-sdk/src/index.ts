@@ -82,7 +82,9 @@ export interface PluginStepContext {
   space: PluginSpace;
   /** The same as `space`, by its older name. */
   project: { id: string; name: string };
-  wizard: { title: string };
+  wizard: { id: string; title: string };
+  /** "test": a test run from the studio. Keep what it makes apart from what real runs make. */
+  mode: "test" | "live";
   /** Aborted when the run is cancelled. */
   signal: AbortSignal;
   /** Tells the person what the step is doing right now. */
@@ -448,6 +450,81 @@ export interface PluginPublicRoute {
   handler(request: PluginPublicRequest): unknown | Promise<unknown>;
 }
 
+/** An account a plugin connected for a space: a calendar, a mailbox. */
+export interface PluginConnection {
+  id: string;
+  /** The space it was connected for. */
+  space: string;
+  /** The built-in connector behind it: `google-calendar`, `microsoft-outlook`. */
+  connector: string;
+  /** The account, as the provider names it: an e-mail address. */
+  label: string;
+  /** The actions it was connected for; the provider granted what they need. */
+  actions: string[];
+  createdAt: string;
+}
+
+/**
+ * Accounts a plugin connects on its own, for a space rather than for a wizard's run: the
+ * runtime's built-in connectors (Google, Microsoft, …), signed in with OAuth. The runtime keeps
+ * the tokens sealed, refreshes them, and on a local install connects Google through the linked
+ * account's Manage-App, as it does for wizards.
+ */
+export interface PluginConnections {
+  /** Of these connector ids, the ones a person can connect on this runtime now, with their names. */
+  available(connectors: string[]): Promise<{ id: string; name: string }[]>;
+  /**
+   * The provider's sign-in page. Open it in a window: when the person is done, the window posts
+   * `{ type: "wizards:connected", ok }` to the studio and closes. `actions` are the connector's
+   * actions the plugin will call; only the rights they need are asked for.
+   */
+  start(input: { space: string; connector: string; actions: string[] }): Promise<{ url: string }>;
+  /** What is connected for the space, the newest first. */
+  list(space: string): Promise<PluginConnection[]>;
+  /** One connection by its id, or null. */
+  get(connectionId: string): Promise<PluginConnection | null>;
+  /**
+   * Runs one of the connector's actions with the connection's account. Throws when the action
+   * is not one the connection was made for, or when the provider refuses (the account was
+   * disconnected there: connect again).
+   */
+  call<T = unknown>(
+    connectionId: string,
+    action: string,
+    input: Record<string, unknown>,
+  ): Promise<T>;
+  /** Forgets the connection and its tokens. */
+  remove(connectionId: string): Promise<void>;
+}
+
+/**
+ * A wizard a plugin brings as a template: offered beside the marketplace's starters when a
+ * wizard is made, and to the assistant and AI apps as an example to copy.
+ */
+export interface PluginStarter {
+  /** Lower case, digits and `-`; the starter is known as `<plugin id>.<id>`. */
+  id: string;
+  title: string;
+  /** What it makes, in one or two sentences. */
+  description: string;
+  /** The language its texts are in. Default: German. */
+  language?: "de" | "en";
+  /** A complete wizard definition. Checked when it is registered. */
+  definition: unknown;
+  /** Workspace files it needs (widgets, sample data), by path. */
+  files?: Record<string, string | Uint8Array>;
+}
+
+/**
+ * What the space assistant is told when the admin talks to it from the plugin's own page (the
+ * studio half's `studio.Assistant`): what the page holds now, so it can change it with the
+ * plugin's assistant tools.
+ */
+export interface PluginAssistantPage {
+  /** Text for the assistant: the state of the page, in a few lines. Cut at 8,000 characters. */
+  block(space: PluginSpace): string | null | Promise<string | null>;
+}
+
 export interface PluginServerApi {
   registerHttpRoute(route: PluginRoute): void;
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
@@ -455,6 +532,8 @@ export interface PluginServerApi {
   registerSpaceContext(context: PluginSpaceContext): void;
   /** A tool of the space assistant. */
   registerAssistantTool<S extends z.ZodType>(tool: PluginAssistantTool<S>): void;
+  /** What the space assistant is told when the admin talks to it from the plugin's own page. */
+  registerAssistantContext(context: PluginAssistantPage): void;
   registerPublicRoute(route: PluginPublicRoute): void;
   /** The full address of a public route for the current tenant: what to hand to whoever calls it. */
   publicUrl(path: string): Promise<string>;
@@ -489,6 +568,10 @@ export interface PluginServerApi {
    * status 503 and the code `no_model`, which a route passes on as it is.
    */
   generate<T = undefined>(request: PluginGenerateRequest<T>): Promise<PluginGenerateResult<T>>;
+  /** Accounts the plugin connects for a space, through the runtime's built-in connectors. */
+  connections: PluginConnections;
+  /** A wizard the plugin brings as a template. */
+  registerStarter(starter: PluginStarter): void;
   /** Something to undo when the plugin unloads or reloads: a timer, a socket. */
   onUnload(dispose: () => void | Promise<void>): void;
 }

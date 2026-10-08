@@ -24,7 +24,7 @@ import { brandColorSchema, ownedProject, updateProject } from "../services/proje
 import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { safeFetch } from "../tools/net-guard.js";
-import { assistantToolsOf } from "../tools/plugin.js";
+import { assistantPageOf, assistantToolsOf } from "../tools/plugin.js";
 import { readWebsite } from "./website.js";
 
 export interface AssistantInput {
@@ -34,6 +34,8 @@ export interface AssistantInput {
   history: { role: "user" | "assistant"; content: string }[];
   /** The part of the space page the admin talks from: who they are, or Wissen. */
   part?: "info" | "knowledge";
+  /** The admin talks from this plugin's own page (its studio half's `studio.Assistant`). */
+  plugin?: string;
   signal?: AbortSignal;
   onText?: (delta: string) => void;
   /** A short line about what the assistant is doing right now. */
@@ -404,7 +406,16 @@ export async function runProjectAssistant(input: AssistantInput): Promise<Assist
     model: resolved.model as unknown as MastraModelConfig,
     tools,
   });
+  const page = input.plugin
+    ? await assistantPageOf(currentTenant(), input.plugin, { id: project.id, name: project.name })
+    : null;
   const context = [
+    page
+      ? [
+          `The admin talks to you from the page of "${page.name}" in the studio${page.description ? `: ${page.description}` : "."} They most likely want to change what that page holds: use its tools (their names begin with "${input.plugin?.replace(/-/g, "_")}_"). Space settings stay possible when they ask for them.`,
+          ...page.blocks,
+        ].join("\n\n")
+      : "",
     `The project now:\n\`\`\`json\n${JSON.stringify(await projectState(input.userId, input.projectId))}\n\`\`\``,
     input.part === "knowledge"
       ? "The admin talks to you from Wissen: they want the wizards to know something."

@@ -113,6 +113,17 @@ const attendeesField = z
   .optional()
   .describe("Optional list of attendee email addresses.");
 
+const sendUpdatesField = z
+  .enum(["all", "externalOnly", "none"])
+  .optional()
+  .describe(
+    'Whom Google e-mails about the change: "all" attendees, "externalOnly" (outside the organisation) or "none" (default).'
+  );
+
+/** `?sendUpdates=` for a write, when the caller asked Google to tell the attendees. */
+const updatesQuery = (value: string | undefined) =>
+  value ? `?sendUpdates=${encodeURIComponent(value)}` : "";
+
 export const calendarConnector: ConnectorDefinition = defineConnector({
   actions: [
     connectorAction({
@@ -328,13 +339,14 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
         const calendarId = input.calendar_id ?? "primary";
         const created = await googleJson<CalendarEvent>(
           ctx,
-          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`,
+          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events${updatesQuery(input.send_updates)}`,
           {
             body: JSON.stringify({
               end: toEventDateTime(input.end, input.time_zone),
               start: toEventDateTime(input.start, input.time_zone),
               summary: input.summary,
               ...(input.description ? { description: input.description } : {}),
+              ...(input.location ? { location: input.location } : {}),
               ...(input.attendees?.length
                 ? { attendees: input.attendees.map((email) => ({ email })) }
                 : {}),
@@ -357,7 +369,12 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
           .optional()
           .describe("Optional event description/notes."),
         end: endField,
+        location: z
+          .string()
+          .optional()
+          .describe("Where the event takes place: an address, a phone number or a meeting link."),
         private_properties: privatePropertiesField,
+        send_updates: sendUpdatesField,
         start: startField,
         summary: z.string().describe("Event title."),
         time_zone: timeZoneField,
@@ -378,6 +395,9 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
         if (input.description !== undefined) {
           patch.description = input.description;
         }
+        if (input.location !== undefined) {
+          patch.location = input.location;
+        }
         if (input.start !== undefined) {
           patch.start = toEventDateTime(input.start, input.time_zone);
         }
@@ -392,7 +412,7 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
         }
         const updated = await googleJson<CalendarEvent>(
           ctx,
-          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}`,
+          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}${updatesQuery(input.send_updates)}`,
           {
             body: JSON.stringify(patch),
             headers: { "Content-Type": "application/json" },
@@ -412,7 +432,12 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
             .describe("New event description (replaces the existing one)."),
           end: endField.optional(),
           event_id: z.string().describe("Calendar event id to update."),
+          location: z
+            .string()
+            .optional()
+            .describe("New location (replaces the existing one)."),
           private_properties: privatePropertiesField,
+          send_updates: sendUpdatesField,
           start: startField.optional(),
           summary: z.string().optional().describe("New event title."),
           time_zone: timeZoneField,
@@ -422,6 +447,7 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
             v.attendees !== undefined ||
             v.description !== undefined ||
             v.end !== undefined ||
+            v.location !== undefined ||
             v.private_properties !== undefined ||
             v.start !== undefined ||
             v.summary !== undefined,
@@ -438,7 +464,7 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
         const calendarId = input.calendar_id ?? "primary";
         await googleFetch(
           ctx,
-          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}`,
+          `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.event_id)}${updatesQuery(input.send_updates)}`,
           { method: "DELETE" }
         );
         return {
@@ -451,6 +477,7 @@ export const calendarConnector: ConnectorDefinition = defineConnector({
       inputSchema: z.object({
         calendar_id: calendarIdField,
         event_id: z.string().describe("Calendar event id to delete."),
+        send_updates: sendUpdatesField,
       }),
       providerScopes: [SCOPE_EVENTS],
       summary: "Delete a calendar event",

@@ -455,3 +455,7 @@ export function LinkedText({ text }: { text: string }) {
     ),
   );
 }
+
+export { Composer, type ComposerHandle, pastedName } from "./composer";
+export { DatePicker, DateRangePicker, dateText } from "./date-picker";
+export { PageMenu, type PageMenuEntry } from "./page-menu";

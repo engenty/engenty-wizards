@@ -48,7 +48,8 @@ The second argument is the step that calls the tool:
 | `step.runId`, `step.stepId` | The run and the step |
 | `step.tenantId` | The tenant |
 | `step.project` | `{ id, name }` |
-| `step.wizard` | `{ title }` |
+| `step.wizard` | `{ id, title }` |
+| `step.mode` | `"test"` for a test run from the studio, else `"live"`. Keep what a test makes apart: a booking, a message to someone outside |
 | `step.signal` | Aborted when the run is cancelled. Pass it to `fetch` |
 | `step.emit(message)` | Tells the person what the step is doing right now |
 

@@ -222,7 +222,7 @@ export function registerTools(server: McpServer, who: Principal) {
     {
       title: "List starters",
       description:
-        "The marketplace's ready-made wizards (tweet with image, video ad, research briefing, dashboard, invoice, offer …), with what each makes and needs. Give a query to search them; without one you get the starters.",
+        "Ready-made wizards to start from: first those the space's plugins bring (marked with the plugin), then the marketplace's (tweet with image, video ad, research briefing, dashboard, invoice, offer …), with what each makes and needs. Give a query to search them; without one you get the starters.",
       input: z.object({ query: z.string().max(200).optional() }),
       readOnly: true,
     },
@@ -236,6 +236,7 @@ export function registerTools(server: McpServer, who: Principal) {
           formats: s.formats,
           useCases: s.useCases,
           capabilities: s.capabilities,
+          ...(s.plugin ? { plugin: s.plugin.name } : {}),
         })),
   );
 
@@ -589,7 +590,7 @@ While status is running, get_run with waitSeconds. Hosts with MCP Apps also show
     {
       title: "Answer page",
       description:
-        "Fill the page a run waits for: field id → value (items: an array of row objects; toggle: true/false; multiselect: an array). Returns the run, after waitSeconds.",
+        "Fill the page a run waits for: field id → value (items: an array of row objects; toggle: true/false; multiselect: an array; slot: one of the offered times, as given). Returns the run, after waitSeconds.",
       input: z.object({
         runId: z.string(),
         stepId: z.string().describe("waitingFor.page"),

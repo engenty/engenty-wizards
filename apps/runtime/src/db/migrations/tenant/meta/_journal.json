@@ -71,6 +71,13 @@
       "when": 1791311715390,
       "tag": "0009_knowledge",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791469862548,
+      "tag": "0010_plugin_connection",
+      "breakpoints": true
     }
   ]
 }

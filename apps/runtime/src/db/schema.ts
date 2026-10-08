@@ -651,3 +651,29 @@ export const marketplaceStar = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.entryId] })],
 );
+
+/**
+ * An account a plugin connected for a space (`server.connections`): a calendar, a mailbox. Not
+ * a wizard's: it outlives runs and people. `data` is encrypted.
+ */
+export const pluginConnection = sqliteTable(
+  "plugin_connection",
+  {
+    id: text("id").primaryKey(),
+    plugin: text("plugin").notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    /** The built-in connector: `google-calendar`, `microsoft-outlook`. */
+    connector: text("connector").notNull(),
+    /** Shown to the person: the account's address. */
+    label: text("label").notNull(),
+    /** The connector's actions it was connected for. */
+    actions: text("actions", { mode: "json" }).$type<string[]>().notNull(),
+    data: text("data").notNull(),
+    createdBy: text("created_by"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("plugin_connection_space").on(t.plugin, t.projectId)],
+);

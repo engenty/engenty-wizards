@@ -61,7 +61,9 @@ function Trail() {
     >
       {trail.map((crumb, i) => (
         <Fragment key={`${i}:${crumb.label}`}>
-          <span className="mx-2 text-ink-4">/</span>
+          {/* The first one sits as close to the wordmark as the others to their words: the logo's
+              own padding and the bar's gap are taken back. */}
+          <span className={cn("text-ink-4", i === 0 ? "-ml-3 mr-2" : "mx-2")}>/</span>
           {crumb.to && i < trail.length - 1 ? (
             <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
               {crumb.label}

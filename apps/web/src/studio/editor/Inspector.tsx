@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -93,6 +94,12 @@ const FIELD_KIND_LABEL: Record<string, string> = {
   location: "Standort",
   audio: "Sprachnotiz",
   signature: "Unterschrift",
+  slot: "Termin",
+};
+
+/** Kinds that show an icon beside their name in a field's header. */
+const FIELD_KIND_ICON: Partial<Record<Field["kind"], typeof CalendarClock>> = {
+  slot: CalendarClock,
 };
 
 /** A field that changes kind leaves behind what only the old kind understood. */
@@ -305,6 +312,7 @@ function FieldEditor({
   onMove: (dir: -1 | 1) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const KindIcon = FIELD_KIND_ICON[field.kind];
   return (
     <div className="rounded-lg bg-paper ring-1 ring-border-soft">
       <button
@@ -316,7 +324,10 @@ function FieldEditor({
           {field.label}
           {field.required ? <span className="ml-1 text-ember">*</span> : null}
         </span>
-        <span className="text-[0.75rem] text-ink-4">{FIELD_KIND_LABEL[field.kind]}</span>
+        <span className="inline-flex items-center gap-1 text-[0.75rem] text-ink-4">
+          {KindIcon ? <KindIcon className="size-3.5" /> : null}
+          {FIELD_KIND_LABEL[field.kind]}
+        </span>
         <ChevronDown className={cn("size-4 text-ink-4 transition", open && "rotate-180")} />
       </button>
       {open ? (
@@ -332,7 +343,7 @@ function FieldEditor({
               (k) => ({ value: k, label: FIELD_KIND_LABEL[k] }),
             )}
           />
-          {(field.kind === "select" || field.kind === "multiselect") &&
+          {(field.kind === "select" || field.kind === "multiselect" || field.kind === "slot") &&
           (field.optionsFrom || optionSources(def, page).length) ? (
             <Select
               value={field.optionsFrom ?? ""}
@@ -346,9 +357,13 @@ function FieldEditor({
               ]}
             />
           ) : null}
-          {field.kind === "select" || field.kind === "multiselect" ? (
+          {field.kind === "select" || field.kind === "multiselect" || field.kind === "slot" ? (
             <Input
-              placeholder="Option A, Option B, Option C"
+              placeholder={
+                field.kind === "slot"
+                  ? "2026-10-12T09:00:00+02:00, 2026-10-12T09:30:00+02:00"
+                  : "Option A, Option B, Option C"
+              }
               value={(field.options ?? []).join(", ")}
               onChange={(e) =>
                 onChange({
