@@ -469,7 +469,7 @@ function UploadField({
  * What the keyboard should offer for a short text: a label that asks for a phone number gets the
  * number pad, a name gets the person's own from autofill. Guessed from the field's id and label.
  */
-function textHints(field: Field): React.InputHTMLAttributes<HTMLInputElement> {
+export function textHints(field: Field): React.InputHTMLAttributes<HTMLInputElement> {
   const key = `${field.id} ${field.label}`.toLowerCase();
   if (/telefon|phone|handy|mobil(?!it)|\btel\b|rückruf/.test(key)) {
     return { type: "tel", inputMode: "tel", autoComplete: "tel" };

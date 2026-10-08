@@ -378,6 +378,23 @@ a,
   animation: pulse-dot 1.2s ease-in-out infinite;
 }
 
+/* A chat's wizard about to answer: three dots that rise in turn. */
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: none;
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.animate-typing {
+  animation: typing 1.2s ease-in-out infinite;
+}
+
 /* The camera and the scanner fill a phone's screen; on a desk they are a centred sheet. */
 dialog.media-sheet {
   margin: 0;
@@ -409,7 +426,8 @@ dialog.media-sheet::backdrop {
   .animate-step-deeper,
   .animate-step-back,
   .animate-breathe,
-  .animate-pulse-dot {
+  .animate-pulse-dot,
+  .animate-typing {
     animation: none;
   }
 }

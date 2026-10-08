@@ -264,6 +264,8 @@ export interface RunView {
   wizard: Pick<WizardDefinition, "title" | "description" | "avatar" | "intro">;
   /** The step the person is on (interactive) or the one running. */
   step: Step | null;
+  /** Pages and reviews answered before it, oldest first: what a chat shows above the current step. */
+  answered: Step[];
   values: Record<string, unknown>;
   /** What fields of the current page start with, from earlier steps (`prefill`). */
   prefill: Record<string, unknown>;

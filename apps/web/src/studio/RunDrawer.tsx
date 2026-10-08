@@ -1,10 +1,11 @@
-import { Maximize2, Minimize2, X } from "lucide-react";
+import { ListOrdered, Maximize2, MessagesSquare, Minimize2, X } from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
 import { t } from "../lib/i18n";
 import { cn, IconButton } from "../ui";
 
 const WIDTH_KEY = "wizards.runDrawer.width";
 const WIDE_KEY = "wizards.runDrawer.wide";
+const LOOK_KEY = "wizards.runDrawer.look";
 const WIDTH_DEFAULT = 680;
 const WIDTH_MIN = 400;
 
@@ -77,6 +78,57 @@ function useDrawerWidth() {
     onKeyDown,
     reset: () => set(WIDTH_DEFAULT),
   };
+}
+
+/** How a test run is shown: page by page, or as a chat; remembered per browser. */
+export type RunLook = "steps" | "chat";
+
+export function useRunLook(): [RunLook, (look: RunLook) => void] {
+  const [look, setLook] = useState<RunLook>(() => (stored(LOOK_KEY) === "chat" ? "chat" : "steps"));
+  return [
+    look,
+    (next) => {
+      setLook(next);
+      store(LOOK_KEY, next);
+    },
+  ];
+}
+
+/** The switch between the two, for the drawer's bar. */
+export function LookSwitch({
+  look,
+  onChange,
+}: {
+  look: RunLook;
+  onChange: (look: RunLook) => void;
+}) {
+  const ways = [
+    { id: "steps", label: t("chat.steps"), Icon: ListOrdered },
+    { id: "chat", label: t("chat.chat"), Icon: MessagesSquare },
+  ] as const;
+  return (
+    <fieldset
+      aria-label={t("chat.view")}
+      className="m-0 flex min-w-0 rounded-full border-0 bg-paper-2 p-0.5"
+    >
+      {ways.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={look === id}
+          title={label}
+          onClick={() => onChange(id)}
+          className={cn(
+            "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 font-medium text-[0.75rem] transition coarse:h-9",
+            look === id ? "bg-card text-ink shadow-soft" : "text-ink-3 hover:text-ink",
+          )}
+        >
+          <Icon className="size-3.5" />
+          <span className="max-sm:hidden">{label}</span>
+        </button>
+      ))}
+    </fieldset>
+  );
 }
 
 /**

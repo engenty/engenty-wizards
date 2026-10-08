@@ -959,6 +959,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       intro: def.intro,
     },
     step,
+    answered: run.state.history.map((id) => stepOf(def, id)).filter((s): s is Step => Boolean(s)),
     values: run.state.values,
     prefill: step?.type === "page" ? prefillOf(step, run, closed) : {},
     ...(step?.type === "page" ? viewContext(await pageContext(run, step)) : {}),

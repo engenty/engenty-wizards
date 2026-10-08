@@ -59,24 +59,37 @@ const shortTime = () => new Intl.DateTimeFormat(lang, { timeStyle: "short" });
 
 /**
  * The tag that shows the wizard behind `url` (…/w/<token>) in a website (`public/embed.js`):
- * in the page, or behind a button that opens it in a window.
+ * page by page or as a chat; in the page, or behind a button that opens it.
  */
 function Embed({ url, title }: { url: string; title: string }) {
-  const [modal, setModal] = useState(false);
+  const [chat, setChat] = useState(false);
+  const [button, setButton] = useState(false);
   const [copied, setCopied] = useState(false);
   const [, app, token] = url.match(/^(.*)\/w\/([^/]+)$/) ?? [];
   if (!token) {
     return null;
   }
-  const button = modal ? ` data-mode="modal" data-label="${attr(title)}"` : "";
-  const tag = `<script async src="${app}/embed.js" data-wizard="${token}"${button}></script>`;
-  const modes = [t("embed.inline"), t("embed.modal")];
+  const extra = chat
+    ? button
+      ? ' data-mode="popout"'
+      : ' data-ui="chat"'
+    : button
+      ? ` data-mode="modal" data-label="${attr(title)}"`
+      : "";
+  const tag = `<script async src="${app}/embed.js" data-wizard="${token}"${extra}></script>`;
+  const looks = [t("embed.steps"), t("embed.chat")];
+  const places = [t("embed.inline"), t(chat ? "embed.popout" : "embed.modal")];
+  const hint: Key = chat
+    ? button
+      ? "embed.popoutHint"
+      : "embed.chatInlineHint"
+    : button
+      ? "embed.modalHint"
+      : "embed.inlineHint";
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-[0.8125rem] text-ink-3">
-          {t(modal ? "embed.modalHint" : "embed.inlineHint")}
-        </p>
+        <p className="text-[0.8125rem] text-ink-3">{t(hint)}</p>
         <Button
           variant="secondary"
           size="sm"
@@ -90,11 +103,18 @@ function Embed({ url, title }: { url: string; title: string }) {
           {copied ? t("share.copied") : t("share.copy")}
         </Button>
       </div>
-      <Segmented
-        value={modes[modal ? 1 : 0]}
-        onChange={(v) => setModal(v === modes[1])}
-        options={modes}
-      />
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        <Segmented
+          value={looks[chat ? 1 : 0]}
+          onChange={(v) => setChat(v === looks[1])}
+          options={looks}
+        />
+        <Segmented
+          value={places[button ? 1 : 0]}
+          onChange={(v) => setButton(v === places[1])}
+          options={places}
+        />
+      </div>
       <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[0.75rem] text-ink-2 leading-relaxed">
         {tag}
       </pre>

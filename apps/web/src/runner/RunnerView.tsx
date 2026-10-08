@@ -75,7 +75,7 @@ function StepHeading({
   );
 }
 
-function initialValues(step: PageStep, view: RunView): Values {
+export function initialValues(step: PageStep, view: RunView): Values {
   const out: Values = {};
   for (const f of step.fields) {
     out[f.id] =
@@ -352,7 +352,7 @@ function Working({
  * Tells the person when a step that took a while is done, or when it needs them (a sign-in, a
  * confirmation) — if they asked for it. A page in the background also marks its title.
  */
-function useDoneSignal(view: RunView | null) {
+export function useDoneSignal(view: RunView | null) {
   const last = useRef({ running: false, since: 0, ask: null as string | null });
   useEffect(() => {
     if (!view) {

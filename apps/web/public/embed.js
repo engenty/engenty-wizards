@@ -4,8 +4,13 @@
 //     in the page, as tall as its content
 //   <script async src="https://…/embed.js" data-wizard="<token>" data-mode="modal" data-label="Start"></script>
 //     a button that opens it in a window over the page
+//   <script async src="https://…/embed.js" data-wizard="<token>" data-ui="chat"></script>
+//     as a chat in the page, 640 px high (data-height="…" in px)
+//   <script async src="https://…/embed.js" data-wizard="<token>" data-mode="popout"></script>
+//     a chat button in the page's lower right corner that opens the chat above it
+//     (data-color="#…" colours it, data-label="…" puts words beside the icon)
 //
-// The button takes the website's own styles: `.engenty-wizard-button`.
+// The button takes the website's own styles: `.engenty-wizard-button`, `.engenty-wizard-launcher`.
 (() => {
   const script = document.currentScript;
   const token = script?.dataset.wizard;
@@ -14,12 +19,14 @@
   }
   // The app lives where this file does: https://example.com/wizards/embed.js → …/wizards/w/<token>.
   const app = new URL(".", script.src);
-  const mode = script.dataset.mode === "modal" ? "modal" : "inline";
-  const label = script.dataset.label || "Start";
+  const mode = ["modal", "popout"].includes(script.dataset.mode) ? script.dataset.mode : "inline";
+  // A popout is always a chat.
+  const chat = script.dataset.ui === "chat" || mode === "popout";
+  const label = script.dataset.label || (mode === "popout" ? "" : "Start");
 
   const frame = () => {
     const el = document.createElement("iframe");
-    el.src = `${app.href}w/${encodeURIComponent(token)}?embed=${mode}`;
+    el.src = `${app.href}w/${encodeURIComponent(token)}?embed=${mode}${chat ? "&ui=chat" : ""}`;
     el.title = label;
     // What a page of the wizard may ask the visitor for: photos, voice notes, the position.
     el.allow = "camera; microphone; geolocation; clipboard-write; fullscreen; screen-wake-lock";
@@ -37,6 +44,15 @@
       }
     });
 
+  if (mode === "inline" && chat) {
+    // A chat scrolls inside its own box; the website gives it the height.
+    const el = frame();
+    const height = Number(script.dataset.height) || 640;
+    el.style.cssText = `display:block;width:100%;height:${height}px;border:1px solid rgba(0,0,0,.1);border-radius:16px;overflow:hidden`;
+    script.after(el);
+    return;
+  }
+
   if (mode === "inline") {
     const el = frame();
     el.style.cssText = "display:block;width:100%;height:640px;border:0";
@@ -44,6 +60,16 @@
       el.style.height = `${Number(height) || 640}px`;
     });
     script.after(el);
+    return;
+  }
+
+  if (mode === "popout") {
+    // In the page's <head> the script can run before there is a body to put the button in.
+    if (document.body) {
+      popout();
+    } else {
+      addEventListener("DOMContentLoaded", popout);
+    }
     return;
   }
 
@@ -99,4 +125,79 @@
     document.documentElement.style.overflow = "hidden";
     dialog.showModal();
   });
+
+  /** The chat button in the corner, and the chat it opens above itself. */
+  function popout() {
+    if (!document.getElementById("engenty-wizard-popout-style")) {
+      const style = document.createElement("style");
+      style.id = "engenty-wizard-popout-style";
+      style.textContent = `
+:where(.engenty-wizard-launcher){position:fixed;right:20px;bottom:20px;z-index:2147483000;display:flex;align-items:center;justify-content:center;gap:.5em;min-width:60px;height:60px;padding:0 18px;font:inherit;font-weight:600;line-height:1;color:#fff;background:var(--engenty-wizard-color,#1c1917);border:0;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;transition:transform .2s}
+.engenty-wizard-launcher:hover{transform:scale(1.05)}
+.engenty-wizard-launcher svg{flex:none}
+.engenty-wizard-launcher .engenty-wizard-shut{display:none}
+.engenty-wizard-launcher[aria-expanded="true"] .engenty-wizard-open{display:none}
+.engenty-wizard-launcher[aria-expanded="true"] .engenty-wizard-shut{display:block}
+.engenty-wizard-launcher[aria-expanded="true"] .engenty-wizard-label{display:none}
+.engenty-wizard-panel{position:fixed;right:20px;bottom:92px;z-index:2147483000;width:min(400px,calc(100vw - 40px));height:min(680px,calc(100dvh - 120px));border-radius:16px;overflow:hidden;background:#faf8f5;box-shadow:0 24px 64px rgba(0,0,0,.28);transform-origin:bottom right;opacity:0;transform:translateY(12px) scale(.96);visibility:hidden;transition:opacity .2s,transform .2s,visibility 0s .2s}
+.engenty-wizard-panel[data-open]{opacity:1;transform:none;visibility:visible;transition:opacity .2s,transform .2s}
+.engenty-wizard-panel iframe{display:block;width:100%;height:100%;border:0}
+@media (max-width:640px){.engenty-wizard-panel{inset:0;width:100vw;height:100dvh;border-radius:0}.engenty-wizard-launcher[aria-expanded="true"]{display:none}}
+@media (prefers-reduced-motion:reduce){.engenty-wizard-panel,.engenty-wizard-launcher{transition:none}}`;
+      document.head.append(style);
+    }
+
+    const launcher = document.createElement("button");
+    launcher.type = "button";
+    launcher.className = "engenty-wizard-launcher";
+    launcher.setAttribute("aria-expanded", "false");
+    launcher.setAttribute("aria-label", label || "Chat");
+    if (script.dataset.color) {
+      launcher.style.setProperty("--engenty-wizard-color", script.dataset.color);
+    }
+    launcher.innerHTML =
+      '<svg class="engenty-wizard-open" viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.2 3.6c-.5.4-1.3.1-1.3-.6V16A2.5 2.5 0 0 1 4 13.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>' +
+      '<svg class="engenty-wizard-shut" viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (label) {
+      const words = document.createElement("span");
+      words.className = "engenty-wizard-label";
+      words.textContent = label;
+      launcher.append(words);
+    }
+    document.body.append(launcher);
+
+    let panel = null;
+    const close = () => {
+      panel?.removeAttribute("data-open");
+      launcher.setAttribute("aria-expanded", "false");
+      launcher.focus();
+    };
+    launcher.addEventListener("click", () => {
+      // Built at the first click and kept: closed and opened again, the chat is where it was.
+      if (!panel) {
+        panel = document.createElement("div");
+        panel.className = "engenty-wizard-panel";
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-label", label || "Chat");
+        const el = frame();
+        listen(el, "close", close);
+        panel.append(el);
+        document.body.append(panel);
+        // The panel comes in from below once it is in the page.
+        panel.getBoundingClientRect();
+      }
+      if (panel.hasAttribute("data-open")) {
+        close();
+        return;
+      }
+      panel.setAttribute("data-open", "");
+      launcher.setAttribute("aria-expanded", "true");
+      panel.querySelector("iframe")?.focus();
+    });
+    addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && panel?.hasAttribute("data-open")) {
+        close();
+      }
+    });
+  }
 })();

@@ -1,16 +1,17 @@
 import type { BrandView, PublicWizard } from "@engenty-wizards/shared/run";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Bookmark, Smartphone, SquarePlus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Bookmark, Smartphone, SquarePlus, X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { appLink, appTell, IN_APP } from "../lib/app";
-import { EMBED, useEmbed } from "../lib/embed";
+import { closeEmbed, EMBED, keepUi, UI, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
-import { Button, cn, Spinner } from "../ui";
+import { Button, cn, IconButton, Spinner } from "../ui";
+import { ChatBody, ChatShell, Dock, type Line, QuickReplies, Reply, Thread } from "./ChatView";
 import { RunnerBody } from "./RunnerView";
 
 /** The wizard owner's accent recolours the whole palette: every Ember token derives from --raw-primary. */
@@ -221,7 +222,8 @@ const AUTOSTART = IN_APP && new URLSearchParams(window.location.search).get("sta
 /** Inline in another website the wizard is as tall as its content; everywhere else it fills the screen. */
 const PAGE = EMBED === "inline" ? "min-h-80" : "min-h-dvh";
 
-function StartScreen({ wizard }: { wizard: PublicWizard }) {
+/** Starting a run of the wizard, or going back to the last one this browser had. */
+function useStartRun(wizard: PublicWizard) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,12 +251,18 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
       } catch {
         // resuming is a convenience
       }
-      navigate(`/w/${wizard.token}/${runId}`, { replace: AUTOSTART });
+      navigate(keepUi(`/w/${wizard.token}/${runId}`), { replace: AUTOSTART });
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
     }
   };
+  const resume = previous ? () => navigate(keepUi(`/w/${wizard.token}/${previous}`)) : null;
+  return { busy, error, captcha, setCaptcha, start, resume };
+}
+
+function StartScreen({ wizard }: { wizard: PublicWizard }) {
+  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(wizard);
   const auto = AUTOSTART && wizard.available && !wizard.turnstileSiteKey;
   const started = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, on the app's start button
@@ -294,10 +302,10 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
           {wizard.turnstileSiteKey ? (
             <Turnstile siteKey={wizard.turnstileSiteKey} onToken={setCaptcha} />
           ) : null}
-          {previous ? (
+          {resume ? (
             <button
               type="button"
-              onClick={() => navigate(`/w/${wizard.token}/${previous}`)}
+              onClick={resume}
               className="mt-4 text-[0.875rem] text-ink-3 underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
             >
               {t("run.resume")}
@@ -313,6 +321,101 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
       )}
       {error ? <p className="mt-4 text-[0.875rem] text-rose">{error}</p> : null}
     </div>
+  );
+}
+
+/** The chat's top: the wizard that talks, and in a popout the way to fold it away. */
+function ChatHeader({ wizard }: { wizard: PublicWizard }) {
+  return (
+    <header className="safe-top shrink-0 border-border-soft border-b">
+      <div className="mx-auto flex h-16 w-full max-w-[760px] items-center gap-3 pr-2 pl-4 sm:pr-4 sm:pl-6">
+        <Mascot kind={wizard.avatar} size={38} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-display font-semibold text-[1rem] leading-tight tracking-tight">
+            {wizard.title}
+          </div>
+          {wizard.brand.name ? (
+            <div className="truncate text-[0.75rem] text-ink-3">{wizard.brand.name}</div>
+          ) : null}
+        </div>
+        {wizard.brand.logoUrl && EMBED !== "popout" ? (
+          <img
+            src={withBase(wizard.brand.logoUrl)}
+            alt={wizard.brand.name}
+            className="h-6 max-w-[120px] object-contain max-sm:hidden"
+          />
+        ) : null}
+        {EMBED ? null : <ThemeToggle />}
+        {EMBED === "popout" ? (
+          <IconButton label={t("common.close")} onClick={closeEmbed}>
+            <X className="size-5" />
+          </IconButton>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+/** Before a run: the wizard says what it does, the person starts with a tap. */
+function ChatStart({
+  wizard,
+  header,
+  footer,
+}: {
+  wizard: PublicWizard;
+  header: ReactNode;
+  footer: ReactNode;
+}) {
+  const { busy, error, captcha, setCaptcha, start, resume } = useStartRun(wizard);
+  const lines: Line[] = [{ key: "hello", who: "bot", node: wizard.description || wizard.title }];
+  if (!wizard.available) {
+    lines.push({
+      key: "unavailable",
+      who: "bot",
+      node: wizard.unavailableReason ?? t("run.unavailable"),
+    });
+  }
+  if (error) {
+    lines.push({ key: "error", who: "bot", node: error, tone: "error" });
+  }
+  return (
+    <ChatShell header={header} footer={footer}>
+      <Thread avatar={wizard.avatar} lines={lines} />
+      {wizard.available ? (
+        <Dock>
+          {wizard.turnstileSiteKey ? (
+            <Turnstile siteKey={wizard.turnstileSiteKey} onToken={setCaptcha} />
+          ) : null}
+          <QuickReplies>
+            {resume ? <Reply onClick={resume}>{t("run.resume")}</Reply> : null}
+            <Reply
+              primary
+              busy={busy}
+              disabled={Boolean(wizard.turnstileSiteKey) && !captcha}
+              onClick={() => void start()}
+            >
+              {t("run.start")} <ArrowRight className="size-4" />
+            </Reply>
+          </QuickReplies>
+        </Dock>
+      ) : null}
+    </ChatShell>
+  );
+}
+
+/** Under the chat's composer, small. */
+function MadeWith({ className }: { className?: string }) {
+  return (
+    <footer className={cn("text-center text-ink-4", className)}>
+      <a
+        href={`${BASE}/`}
+        target={EMBED ? "_blank" : undefined}
+        rel="noreferrer"
+        className="inline-block hover:text-ink-2"
+      >
+        {t("run.madeWith").replace("engenty wizards", BRAND.name)}
+      </a>
+    </footer>
   );
 }
 
@@ -359,6 +462,28 @@ export function PublicRunner() {
             {t("common.retry")}
           </Button>
         ) : null}
+      </div>
+    );
+  }
+  if (UI === "chat") {
+    const header = <ChatHeader wizard={wizard.data} />;
+    const footer = IN_APP ? (
+      <div className="safe-bottom" />
+    ) : (
+      <MadeWith className="pb-[max(0.375rem,env(safe-area-inset-bottom))] text-[0.6875rem]" />
+    );
+    return (
+      <div className="flex h-dvh flex-col">
+        {runId ? (
+          <ChatBody
+            runId={runId}
+            onRestart={() => navigate(keepUi(`/w/${token}`))}
+            header={header}
+            footer={footer}
+          />
+        ) : (
+          <ChatStart wizard={wizard.data} header={header} footer={footer} />
+        )}
       </div>
     );
   }

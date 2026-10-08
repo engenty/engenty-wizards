@@ -15,6 +15,7 @@ import {
   useProjects,
   type WizardDetail,
 } from "../lib/session";
+import { ChatBody } from "../runner/ChatView";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, LinkedText, Spinner } from "../ui";
 import { CreditsPill } from "./AppFrame";
@@ -34,7 +35,7 @@ import { MemoryPanel } from "./editor/MemoryPanel";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
-import { RunDrawer } from "./RunDrawer";
+import { LookSwitch, RunDrawer, useRunLook } from "./RunDrawer";
 import { WhereChip, whereItRuns } from "./where";
 
 type Tab = "chat" | "step" | "files" | "memory" | "runs";
@@ -237,6 +238,7 @@ export function EditorPage() {
   const sheet = useSheetHeight();
   const [shareOpen, setShareOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
+  const [look, setLook] = useRunLook();
   const [activeStep, setActiveStep] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<RunView["decisions"]>();
   const [branchFocus, setBranchFocus] = useState(0);
@@ -710,25 +712,37 @@ export function EditorPage() {
         <RunDrawer
           header={<Chip>Test</Chip>}
           actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              busy={testRun.isPending}
-              disabled={hasIssues}
-              onClick={() => testRun.mutate()}
-            >
-              {t("editor.restart")}
-            </Button>
+            <>
+              <LookSwitch look={look} onChange={setLook} />
+              <Button
+                variant="ghost"
+                size="sm"
+                busy={testRun.isPending}
+                disabled={hasIssues}
+                onClick={() => testRun.mutate()}
+              >
+                {t("editor.restart")}
+              </Button>
+            </>
           }
           onClose={() => setDrawerRun(null)}
         >
-          <RunnerBody
-            key={drawerRun}
-            runId={drawerRun}
-            compact
-            onRestart={() => testRun.mutate()}
-            onView={onRunView}
-          />
+          {look === "chat" ? (
+            <ChatBody
+              key={drawerRun}
+              runId={drawerRun}
+              onRestart={() => testRun.mutate()}
+              onView={onRunView}
+            />
+          ) : (
+            <RunnerBody
+              key={drawerRun}
+              runId={drawerRun}
+              compact
+              onRestart={() => testRun.mutate()}
+              onView={onRunView}
+            />
+          )}
         </RunDrawer>
       ) : null}
 
