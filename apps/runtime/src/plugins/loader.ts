@@ -8,9 +8,22 @@ import type {
   WizardsPluginApi,
   WizardsPluginFactory,
 } from "@engenty-wizards/plugin-sdk";
-import { PLUGIN_ID, PLUGIN_TOOL_NAME, wizardSchema } from "@engenty-wizards/shared/definition";
+import {
+  FIELD_KINDS,
+  PLUGIN_ID,
+  PLUGIN_TOOL_NAME,
+  wizardSchema,
+} from "@engenty-wizards/shared/definition";
+import {
+  BUILT_IN_RUNNERS,
+  OUTPUT_KINDS,
+  type OutputKind,
+  RESERVED_PATHS,
+  RUNNER_ID,
+} from "@engenty-wizards/shared/runners";
 import { generateText, Output } from "ai";
 import { createJiti } from "jiti";
+import { z } from "zod";
 import { readPage } from "../agents/website.js";
 import { packageRoot } from "../cli/home.js";
 import { pluginConnections } from "../connectors/plugin-connections.js";
@@ -74,6 +87,28 @@ async function importFactory(entry: string): Promise<WizardsPluginFactory> {
 /** A job runs at most this often. */
 const MIN_EVERY_MS = 60_000;
 
+/** The built-in runners and the sub-paths of a wizard's address that are something else. */
+const RESERVED_RUNNER_IDS = new Set([...BUILT_IN_RUNNERS.map((r) => r.id), ...RESERVED_PATHS]);
+
+/** What a plugin says about a runner, checked: the lists hold known kinds only. */
+const runnerInfoSchema = z.object({
+  id: z.string().regex(RUNNER_ID, 'lower case, digits and "-", at most 24 characters'),
+  label: z.object({ de: z.string().min(1), en: z.string().min(1) }),
+  kind: z.enum(["page", "channel"]),
+  capabilities: z.object({
+    input: z.array(z.enum(FIELD_KINDS)),
+    output: z.object({
+      shows: z.array(z.enum(OUTPUT_KINDS as [OutputKind, ...OutputKind[]])),
+      pictures: z.array(z.enum(OUTPUT_KINDS as [OutputKind, ...OutputKind[]])),
+    }),
+    asks: z.array(z.enum(["confirm", "login"])),
+    review: z.array(z.enum(["accept", "regenerate", "edit"])),
+    waits: z.boolean(),
+    handoff: z.array(z.enum(["screen", "thread", "sms", "push"])),
+  }),
+  plugin: z.string(),
+});
+
 function apiFor(record: LoadedPlugin): WizardsPluginApi {
   const { source } = record;
   const tag = `[plugin ${source.id}]`;
@@ -129,6 +164,16 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
       },
       registerPublicRoute(route) {
         record.publicRoutes.push(compileRoute(route));
+      },
+      registerRunner(runner) {
+        const info = runnerInfoSchema.parse({ ...runner, plugin: source.id });
+        if (record.runners.has(info.id) || RESERVED_RUNNER_IDS.has(info.id)) {
+          throw new Error(`Runner "${info.id}" is taken.`);
+        }
+        if (info.kind === "page" && typeof runner.page !== "function") {
+          throw new Error(`Runner "${info.id}": a page runner needs a page.`);
+        }
+        record.runners.set(info.id, { info, page: runner.page });
       },
       publicUrl: (path) => publicUrlOf(source.id, path),
       every(name, everyMs, handler) {
@@ -234,6 +279,7 @@ async function load(source: PluginSource): Promise<LoadedPlugin> {
       record.assistantTools.clear();
       record.assistantPages = [];
       record.publicRoutes = [];
+      record.runners.clear();
       record.jobs.clear();
       record.starters.clear();
       record.listeners = {};

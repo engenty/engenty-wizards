@@ -382,6 +382,7 @@ export async function pushSharing(userId: string, wizardId: string): Promise<voi
   await call("PATCH", `/spaces/${w.projectId}/wizards/${w.id}`, {
     shareEnabled: w.shareEnabled,
     dailyRunLimit: w.dailyRunLimit,
+    ...(w.runners ? { runners: w.runners } : {}),
   }).catch((err) => console.error("[cloud] sharing not sent:", (err as Error).message));
 }
 

@@ -624,6 +624,15 @@ const de = {
   "share.code": "ID für die App:",
   "share.readOnly":
     "Ob der Link aktiv ist und wie viele Durchläufe er am Tag zulässt, stellst du in deiner lokalen Installation ein.",
+  "share.channels": "Kanäle",
+  "share.channelsHint":
+    "Der Link öffnet den Standard. Was sonst eingeschaltet ist, hat eine eigene Adresse und steht auf der ersten Seite zur Wahl.",
+  "share.default": "Standard",
+  "share.makeDefault": "Als Standard",
+  "share.fit.full": "Alles im Kanal",
+  "share.fit.handoff": "Übergibt an die Seite bei: {steps}",
+  "share.fit.no": "Nicht möglich: {steps}",
+  "run.orAs": "Oder: {label}",
   "embed.inline": "In der Seite",
   "embed.modal": "Button + Fenster",
   "embed.inlineHint":
@@ -1959,6 +1968,15 @@ const en: Record<Key, string> = {
   "share.code": "ID for the app:",
   "share.readOnly":
     "Whether the link is active and how many runs a day it allows is set in your local install.",
+  "share.channels": "Channels",
+  "share.channelsHint":
+    "The link opens the default. Whatever else is on has an address of its own and is offered on the first page.",
+  "share.default": "Default",
+  "share.makeDefault": "Make default",
+  "share.fit.full": "Everything in the channel",
+  "share.fit.handoff": "Hands off to the page at: {steps}",
+  "share.fit.no": "Not possible: {steps}",
+  "run.orAs": "Or: {label}",
   "embed.inline": "Inline",
   "embed.modal": "Button + modal",
   "embed.inlineHint": "Paste the tag into your page's HTML. The wizard appears in that place.",

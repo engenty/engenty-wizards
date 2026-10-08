@@ -434,6 +434,102 @@ function CloudNotes({ wizard, cloud }: { wizard: WizardDetail; cloud: CloudAnswe
   );
 }
 
+/** What the studio asks about a wizard's runners: each with its fit, and how the wizard is offered. */
+interface RunnersAnswer {
+  runners: {
+    id: string;
+    label: { de: string; en: string };
+    kind: "page" | "channel";
+    fit: { outcome: "full" | "handoff" | "no"; steps: { title: string; why: string }[] };
+  }[];
+  settings: { default: string; enabled: string[] };
+}
+
+/**
+ * The channels a wizard runs through: the page, the chat, and what plugins add. The link opens
+ * the default; the rest is switched on beside it. Each says how far it gets with this draft.
+ */
+function Channels({ wizard }: { wizard: WizardDetail }) {
+  const qc = useQueryClient();
+  const runners = useQuery({
+    queryKey: ["wizard-runners", wizard.id, wizard.revision],
+    queryFn: () => api.get<RunnersAnswer>(`/api/studio/wizards/${wizard.id}/runners`),
+  });
+  const patch = useMutation({
+    mutationFn: (settings: RunnersAnswer["settings"]) =>
+      api.patch(`/api/studio/wizards/${wizard.id}`, { runners: settings }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["wizard-runners", wizard.id] }),
+        qc.invalidateQueries({ queryKey: ["wizard", wizard.id] }),
+      ]),
+  });
+  if (!runners.data || runners.data.runners.length < 2) {
+    return null;
+  }
+  const { settings } = runners.data;
+  const locked = wizard.readOnly;
+  return (
+    <div className="flex flex-col gap-2 border-border-soft border-t pt-4">
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="text-[0.875rem]">{t("share.channels")}</span>
+        <span className="text-[0.75rem] text-ink-3">{t("share.channelsHint")}</span>
+      </div>
+      <ul className="flex flex-col">
+        {runners.data.runners.map((r) => {
+          const on = settings.enabled.includes(r.id);
+          const isDefault = settings.default === r.id;
+          const steps = r.fit.steps.map((s) => s.title).join(", ");
+          const fit =
+            r.fit.outcome === "full"
+              ? t("share.fit.full")
+              : t(r.fit.outcome === "handoff" ? "share.fit.handoff" : "share.fit.no", { steps });
+          return (
+            <li key={r.id} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[0.875rem]">
+                  <span className="font-medium">{r.label[lang]}</span>
+                  {isDefault ? (
+                    <span className="rounded-full bg-paper-2 px-2 py-px text-[0.6875rem] text-ink-3">
+                      {t("share.default")}
+                    </span>
+                  ) : on && r.kind === "page" && r.fit.outcome !== "no" && !locked ? (
+                    <button
+                      type="button"
+                      className="text-[0.75rem] text-ink-4 hover:text-ink"
+                      onClick={() => patch.mutate({ default: r.id, enabled: settings.enabled })}
+                    >
+                      {t("share.makeDefault")}
+                    </button>
+                  ) : null}
+                </div>
+                <div className="truncate text-[0.75rem] text-ink-3" title={fit}>
+                  {fit}
+                </div>
+              </div>
+              <Switch
+                checked={on}
+                disabled={locked || isDefault || r.fit.outcome === "no"}
+                onChange={(v) =>
+                  patch.mutate({
+                    default: settings.default,
+                    enabled: v
+                      ? [...settings.enabled, r.id]
+                      : settings.enabled.filter((id) => id !== r.id),
+                  })
+                }
+              />
+            </li>
+          );
+        })}
+      </ul>
+      {patch.error ? (
+        <p className="text-[0.8125rem] text-rose">{(patch.error as Error).message}</p>
+      ) : null}
+    </div>
+  );
+}
+
 /** A local install without an account: its link answers here only; an account shares it. */
 function SignInOffer({ way }: { way: Way | null }) {
   const navigate = useNavigate();
@@ -694,6 +790,7 @@ export function ShareDialog({
         ) : null}
         {linked ? <CloudNotes wizard={wizard} cloud={cloud.data} /> : null}
         {local && !linked && features.account ? <SignInOffer way={teaser} /> : null}
+        {wizard.published ? <Channels wizard={wizard} /> : null}
         <Settings wizard={wizard} cloud={linked ? cloud.data : undefined} />
         {linked && wizard.published ? (
           <button

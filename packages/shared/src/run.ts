@@ -334,6 +334,11 @@ export interface PublicWizard {
   turnstileSiteKey: string | null;
   available: boolean;
   unavailableReason: string | null;
+  /**
+   * The runners switched on for this wizard, the one its link opens first: what the page offers
+   * beside "Let's go". A page runner has an address; a channel (a number, a bot) has none.
+   */
+  runners: { id: string; label: string; kind: "page" | "channel"; url: string | null }[];
 }
 
 /** What a step is expected to cost, in credits. `high` is the 90th percentile once measured. */

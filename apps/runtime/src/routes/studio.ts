@@ -125,6 +125,7 @@ import {
   projectPatchSchema,
   updateProject,
 } from "../services/projects.js";
+import { wizardRunners } from "../services/runners.js";
 import { listResults, listRuns, startTestRun } from "../services/runs.js";
 import {
   addCategoryValue,
@@ -981,11 +982,16 @@ export const studio = new Hono<Vars>()
         shareEnabled: z.boolean().optional(),
         dailyRunLimit: z.number().int().min(1).max(10_000).optional(),
         projectId: z.string().optional(),
+        runners: z.object({ default: z.string(), enabled: z.array(z.string()).max(20) }).optional(),
       })
       .parse(await c.req.json());
     await updateWizardSettings(c.get("user").id, c.req.param("id"), patch);
     // The copy in the cloud of a linked account is shared the same way.
-    if (patch.shareEnabled !== undefined || patch.dailyRunLimit !== undefined) {
+    if (
+      patch.shareEnabled !== undefined ||
+      patch.dailyRunLimit !== undefined ||
+      patch.runners !== undefined
+    ) {
       await pushSharing(c.get("user").id, c.req.param("id"));
     }
     return c.json({ ok: true });
@@ -1019,6 +1025,11 @@ export const studio = new Hono<Vars>()
   .get("/wizards/:id/estimate", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
     return c.json(await estimateRun(w.id, null, w.draft, await stepsWithoutModel(w.draft)));
+  })
+  // The runners this tenant has, how each fits the draft, and how the wizard is offered.
+  .get("/wizards/:id/runners", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    return c.json(await wizardRunners(w));
   })
   // The models the draft needs that this runtime cannot serve, by class, with the steps that call them.
   .get("/wizards/:id/models", async (c) => {

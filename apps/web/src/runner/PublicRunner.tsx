@@ -2,7 +2,7 @@ import type { BrandView, PublicWizard } from "@engenty-wizards/shared/run";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Bookmark, Smartphone, SquarePlus, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Navigate, useNavigate, useParams } from "react-router";
 import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
@@ -317,6 +317,7 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
               {t("run.resume")}
             </button>
           ) : null}
+          <OtherRunners wizard={wizard} current="steps" />
           {EMBED || IN_APP ? null : <InstallHint />}
           <OpenInApp token={wizard.token} />
         </>
@@ -327,6 +328,27 @@ function StartScreen({ wizard }: { wizard: PublicWizard }) {
       )}
       {error ? <p className="mt-4 text-[0.875rem] text-rose">{error}</p> : null}
     </div>
+  );
+}
+
+/** The other ways the wizard is offered, under the start button: a link each. */
+function OtherRunners({ wizard, current }: { wizard: PublicWizard; current: string }) {
+  const others = wizard.runners.filter((r) => r.id !== current && r.kind === "page" && r.url);
+  if (!others.length) {
+    return null;
+  }
+  return (
+    <p className="mt-4 flex flex-wrap justify-center gap-x-4 text-[0.875rem] text-ink-3">
+      {others.map((r) => (
+        <a
+          key={r.id}
+          href={r.url ?? undefined}
+          className="underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+        >
+          {t("run.orAs", { label: r.label })}
+        </a>
+      ))}
+    </p>
   );
 }
 
@@ -432,11 +454,18 @@ function MadeWith({ className }: { className?: string }) {
   );
 }
 
-/** A wizard's public page: page by page at `/w/<token>`, as a chat at `/w/<token>/chat`. */
-export function PublicRunner({ chat: chatPath = false }: { chat?: boolean }) {
+/**
+ * A wizard's public page. Its link opens the runner the owner made the default; beside it,
+ * `/w/<token>/steps` and `/w/<token>/chat` open the one named, where it is switched on.
+ */
+export function PublicRunner({
+  chat: chatPath = false,
+  steps: stepsPath = false,
+}: {
+  chat?: boolean;
+  steps?: boolean;
+}) {
   const { token, runId } = useParams();
-  // A popout in a website is always a chat.
-  const chat = chatPath || EMBED === "popout";
   const navigate = useNavigate();
   const wizard = useQuery({
     queryKey: ["public", token],
@@ -444,6 +473,11 @@ export function PublicRunner({ chat: chatPath = false }: { chat?: boolean }) {
     // A wizard that is gone stays gone; a phone without signal gets a few more tries.
     retry: (count, err) => isOffline(err) && count < 3,
   });
+  const runners = wizard.data?.runners ?? [];
+  const chatOn = !wizard.data || runners.some((r) => r.id === "chat");
+  // A popout in a website is always a chat; the bare link opens the default runner.
+  const chat =
+    chatPath || EMBED === "popout" || (!stepsPath && !runId && chatOn && runners[0]?.id === "chat");
   useBrandAccent(wizard.data?.brand.accent);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
@@ -466,6 +500,10 @@ export function PublicRunner({ chat: chatPath = false }: { chat?: boolean }) {
         <Spinner />
       </div>
     );
+  }
+  // The chat's address for a wizard that does not offer the chat: the link itself answers.
+  if (chatPath && wizard.data && !chatOn) {
+    return <Navigate to={`/w/${token}`} replace />;
   }
   if (!wizard.data) {
     const offline = isOffline(wizard.error);

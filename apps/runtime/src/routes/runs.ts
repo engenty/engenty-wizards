@@ -47,6 +47,7 @@ import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
 import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
+import { publicRunners } from "../services/runners.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
 import { isIconFile, wizardAvatarSvg, wizardIcon } from "../services/wizard-icon.js";
 import {
@@ -244,6 +245,7 @@ export const publicRoutes = new Hono()
       turnstileSiteKey: env.turnstile.siteKey || null,
       available: !reason,
       unavailableReason: reason,
+      runners: await publicRunners(w, def),
     };
     return c.json(body);
   })

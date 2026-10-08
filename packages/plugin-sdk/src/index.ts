@@ -525,8 +525,54 @@ export interface PluginAssistantPage {
   block(space: PluginSpace): string | null | Promise<string | null>;
 }
 
+/** What a runner can take in and show; the runtime works out per wizard how far it gets. */
+export interface PluginRunnerCapabilities {
+  /** The field kinds the runner asks itself (`text`, `select`, `image`, …); the rest hand off. */
+  input: string[];
+  output: {
+    /** What it shows as it is: `text`, `data`, `image`, `video`, `voice`, `document`, `dashboard`, `widget`, `film`, `surface`. */
+    shows: string[];
+    /** What it shows as a picture with a link to the real thing. Anything else is a link. */
+    pictures: string[];
+  };
+  /** A sign-in is typed on a page the model never sees: only a browser can take it. */
+  asks: ("confirm" | "login")[];
+  review: ("accept" | "regenerate" | "edit")[];
+  /** Stays through a step that takes minutes, with a note now and then. */
+  waits: boolean;
+  /** How a link to the run page reaches the person for what the runner cannot do itself. */
+  handoff: ("screen" | "thread" | "sms" | "push")[];
+}
+
+/** What a page runner's handler gets: the wizard behind the address, nobody signed in. */
+export interface PluginRunnerRequest {
+  request: Request;
+  tenantId: string;
+  wizard: { id: string; token: string; title: string };
+  /** The rest of the address below `/w/<token>/<runner>`. */
+  path: string;
+  query: URLSearchParams;
+}
+
+/**
+ * A runner: a door a wizard runs through, beside the built-in page and chat. A `page` runner is
+ * served at `/w/<token>/<id>` for every wizard that switched it on; a `channel` runner has an
+ * address of its own (a number, a bot) and drives runs from its webhooks.
+ */
+export interface PluginRunner {
+  /** Lower case, digits and "-", at most 24 characters; the sub-path of the wizard's address. */
+  id: string;
+  label: { de: string; en: string };
+  kind: "page" | "channel";
+  capabilities: PluginRunnerCapabilities;
+  /** A page runner: what its address answers with. */
+  page?(request: PluginRunnerRequest): Response | Promise<Response>;
+}
+
 export interface PluginServerApi {
   registerHttpRoute(route: PluginRoute): void;
+  /** A runner the owner can switch on per wizard. */
+  registerRunner(runner: PluginRunner): void;
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
   /** A block and tools for every agent step of a space's wizards. */
   registerSpaceContext(context: PluginSpaceContext): void;

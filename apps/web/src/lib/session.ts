@@ -231,6 +231,8 @@ export interface WizardSummary {
   shareToken: string;
   shareEnabled: boolean;
   dailyRunLimit: number;
+  /** How it is offered: the runner its link opens, the ones switched on. Null: steps, chat beside it. */
+  runners: { default: string; enabled: string[] } | null;
   stepCount: number;
   updatedAt: string;
   /**

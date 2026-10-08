@@ -5,6 +5,7 @@ import {
   type WizardDefinition,
   wizardSchema,
 } from "@engenty-wizards/shared/definition";
+import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { z } from "zod";
@@ -22,6 +23,7 @@ import { copyFiles, draftFiles, sameFiles, seedFiles } from "./files.js";
 import { forgetWizardLinks } from "./links.js";
 import { asLang, countInstall, marketplaceWizard } from "./marketplace.js";
 import { defaultProject, ownedProject } from "./projects.js";
+import { checkRunnerSettings } from "./runners.js";
 
 export type WizardRow = typeof schema.wizard.$inferSelect;
 
@@ -78,6 +80,8 @@ export function wizardSummary(w: WizardRow) {
     shareToken: w.shareToken,
     shareEnabled: w.shareEnabled,
     dailyRunLimit: w.dailyRunLimit,
+    /** How it is offered; null: the link opens the page, the chat is on beside it. */
+    runners: w.runners,
     stepCount: w.draft.steps.length,
     updatedAt: w.updatedAt.toISOString(),
   };
@@ -397,15 +401,21 @@ export async function editWizard(
 export async function updateWizardSettings(
   userId: string,
   wizardId: string,
-  patch: { shareEnabled?: boolean; dailyRunLimit?: number; projectId?: string },
+  patch: {
+    shareEnabled?: boolean;
+    dailyRunLimit?: number;
+    projectId?: string;
+    runners?: RunnerSettings;
+  },
 ) {
   const w = await writableWizard(userId, wizardId);
   if (patch.projectId) {
     await requireWritable(await ownedProject(userId, patch.projectId));
   }
+  const runners = patch.runners ? await checkRunnerSettings(patch.runners) : undefined;
   await db
     .update(schema.wizard)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...patch, ...(runners ? { runners } : {}), updatedAt: new Date() })
     .where(eq(schema.wizard.id, w.id));
   return wizardSummary(await ownedWizard(userId, wizardId));
 }

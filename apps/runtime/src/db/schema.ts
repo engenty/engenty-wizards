@@ -2,6 +2,7 @@ import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
+import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
 import {
@@ -83,6 +84,8 @@ export const wizard = sqliteTable(
     starterRevision: integer("starter_revision"),
     /** Bumped on every draft write; a write carrying an older one is refused. */
     revision: integer("revision").notNull().default(0),
+    /** How the wizard is offered: the runner its link opens, the ones switched on. Null: steps and chat. */
+    runners: text("runners", { mode: "json" }).$type<RunnerSettings>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

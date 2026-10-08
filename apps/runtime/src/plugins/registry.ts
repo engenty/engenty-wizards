@@ -7,11 +7,13 @@ import type {
   PluginEvents,
   PluginPublicRoute,
   PluginRoute,
+  PluginRunner,
   PluginSpaceContext,
   PluginStarter,
   PluginTick,
   PluginTool,
 } from "@engenty-wizards/plugin-sdk";
+import type { RunnerInfo } from "@engenty-wizards/shared/runners";
 import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
 import type { PluginSource } from "./discovery.js";
@@ -30,6 +32,12 @@ export interface RouteEntry<R> {
   params: string[];
 }
 export type PluginRouteEntry = RouteEntry<PluginRoute>;
+
+/** A runner a plugin registered: its description for the registry, and its page where it has one. */
+export interface RegisteredRunner {
+  info: RunnerInfo;
+  page?: PluginRunner["page"];
+}
 
 /** A job of `server.every`. */
 export interface PluginJob {
@@ -52,6 +60,8 @@ export interface LoadedPlugin {
   /** What the space assistant is told on the plugin's own page. */
   assistantPages: PluginAssistantPage[];
   publicRoutes: RouteEntry<PluginPublicRoute>[];
+  /** The runners the plugin adds, by id: what `/w/<token>/<id>` serves, and what it can do. */
+  runners: Map<string, RegisteredRunner>;
   jobs: Map<string, PluginJob>;
   /** Wizards it brings as templates, by their id within the plugin. */
   starters: Map<string, PluginStarter>;
@@ -81,6 +91,7 @@ export function emptyRecord(source: PluginSource): LoadedPlugin {
     assistantTools: new Map(),
     assistantPages: [],
     publicRoutes: [],
+    runners: new Map(),
     jobs: new Map(),
     starters: new Map(),
     listeners: {},

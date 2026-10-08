@@ -87,6 +87,8 @@ export function PublicApp() {
       <Routes>
         {EngentyBuilder && <Route path="/dev/engenty-builder" element={<EngentyBuilder />} />}
         <Route path="/w/:token" element={<PublicRunner />} />
+        <Route path="/w/:token/steps" element={<PublicRunner steps />} />
+        <Route path="/w/:token/steps/:runId" element={<PublicRunner steps />} />
         <Route path="/w/:token/chat" element={<PublicRunner chat />} />
         <Route path="/w/:token/chat/:runId" element={<PublicRunner chat />} />
         <Route path="/w/:token/:runId" element={<PublicRunner />} />
