@@ -81,7 +81,8 @@ describe("an installed AI client as a model", () => {
     // The shell has no X_KEY here, so the only way in is none; the client was asked once, bare.
     expect(resolved.auth).toBe("none");
     expect(seen[0]?.X_KEY).toBeUndefined();
-  });
+    // A login shell is spawned for the environment: slow on a loaded machine.
+  }, 20_000);
 
   it("reads what Claude Code prints: text or structured output, and the usage", async () => {
     const { claudeAnswer } = await import("../src/harness/claude");

@@ -88,7 +88,7 @@ offers the account first and, below it, **Lokal, mit eigenem KI-Anbieter**.
 | Knowledge | The share dialog's **Wissen mitnehmen** puts the project's pages into the package as files (up to 2 MB); on the site the wizard reads them as it reads its own files, a snapshot of the day it was packed |
 | From the account | On a connected site with a provider, a published wizard's drawer offers **Hier laufen lassen**: the package comes over with the site's key and runs on the site without credits; **Über engenty.ai laufen lassen** switches back, **Neu laden** fetches the published version again |
 | Results | Kept in WordPress under **Ergebnisse** for as long as the settings say; nothing goes to engenty.ai |
-| Limits | 6 runs an hour per visitor and 50 a day per wizard (**Einstellungen → Eigenständige Wizards**), a honeypot |
+| Limits | 6 runs an hour per visitor and 50 a day per wizard (**Einstellungen → Eigenständige Wizards**), a honeypot; 60 seconds per thinking step, more for a local model |
 
 The browser follows the wizard's flow and draws every page; WordPress keeps the wizard's
 prompts and the run and asks the provider once per thinking step through the AI Client. Both
