@@ -8,6 +8,12 @@ import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
 
+const SIGNED_IN = /(?:^|;\s*)engenty_signed_in=1(?:;|$)/;
+
+function hasDesktop() {
+  return Boolean((window as { engentyDesktop?: unknown }).engentyDesktop);
+}
+
 /**
  * The studio's front door. A runtime of a Manage-App sends the person there to sign in (or to
  * create an account); a runtime that runs alone is entered through the link it printed at start.
@@ -27,16 +33,23 @@ export function SignInPage() {
   const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
   const auto = config.data?.mode === "local" && config.data.devLogin;
   const [autoFailed, setAutoFailed] = useState(false);
+  // Someone signed in at the Manage-App (its cookie for the site, `engenty_signed_in`) but not
+  // yet here: the sign-in goes through without a question, so it starts by itself.
+  const account =
+    config.data?.mode === "managed" && !failed && !hasDesktop() && SIGNED_IN.test(document.cookie);
   // While sign-up is closed, a visitor of the studio's start page goes to the landing page; the
   // sign-in itself stays at /studio/sign-in.
   const start = window.location.pathname === STUDIO || window.location.pathname === `${STUDIO}/`;
-  const away = config.data?.signedOutUrl && start && !failed ? config.data.signedOutUrl : null;
+  const away =
+    config.data?.signedOutUrl && start && !failed && !account ? config.data.signedOutUrl : null;
 
   useEffect(() => {
-    if (away) {
+    if (account) {
+      signIn();
+    } else if (away) {
       window.location.replace(away);
     }
-  }, [away]);
+  }, [account, away]);
 
   useEffect(() => {
     if (!auto || autoFailed) {
@@ -57,7 +70,7 @@ export function SignInPage() {
   }, [auto, autoFailed, qc]);
 
   // Nothing to decide yet, or nothing to decide at all: the engenty alone, until the studio is there.
-  if (config.isLoading || away || (auto && !autoFailed)) {
+  if (config.isLoading || account || away || (auto && !autoFailed)) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Mascot kind="round" size={56} />
