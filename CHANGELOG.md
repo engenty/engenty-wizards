@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.32] - 2026-10-09
+- FIXED **[mcp-app]** The flow widget keeps a usable size and never goes blank – it is at least 360px tall from its first paint (the page root no longer holds the frame at full height, so a host can also shrink it), a runner that breaks leaves the diagram and panel instead of an empty frame, and the whole widget shows a short message if it cannot render at all; the docs say the runner reaches the runtime with the run's ticket and note that Cursor folds the widget into its "Worked for …" group (a known Cursor bug)
+
 ## [0.2.31] - 2026-10-08
 - FIXED **[runtime]** Pictures from the web show in what a step makes – a generated page may load nothing from the network, so an <img src="https://…"> a model wrote or a photo URL in a widget's data (a listing's photos, a product's cover; by key or extension) stayed blank; now each is fetched once when the step runs through the public-only guard (image/* only, 8 MB, 10 s, up to 40 per step), kept as a web-image asset of the run and referred to as asset://ID, inlined wherever the page is shown or rendered to PNG, PDF or film; a picture that cannot be fetched is left as it was; the authoring guide says so
 
