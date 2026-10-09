@@ -6,7 +6,8 @@
     <title>engenty wizards</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The host sizes the frame to the widget: a root as tall as the frame would never let it shrink. -->
+    <div id="root" style="min-height: 0"></div>
     <script type="module" src="/src/mcp-app/main.tsx"></script>
   </body>
 </html>

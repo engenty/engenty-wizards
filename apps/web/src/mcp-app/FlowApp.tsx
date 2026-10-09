@@ -10,7 +10,15 @@ import {
   Undo2,
   Workflow,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Component,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Mascot } from "../brand";
 import { setRemoteRuntime, withBase } from "../lib/base";
 import { eventText, lang, setLang, t } from "../lib/i18n";
@@ -121,6 +129,11 @@ const WIDGET_KINDS = new Set([
 const FLOW_CANVAS = 420;
 /** The widget's most height in the chat; longer pages scroll inside it. */
 const WIDGET_HEIGHT = 600;
+/**
+ * The widget's least height, from its first paint on: a host that sizes the frame once, or keeps
+ * the size it measured first, still shows a page the person can use.
+ */
+const WIDGET_MIN = 360;
 const RUN_CANVAS = 320;
 const NO_ISSUES: ReadonlySet<string> = new Set();
 
@@ -328,7 +341,7 @@ export function FlowApp() {
     return (
       <div
         className="flex items-center justify-center gap-2 text-ink-3 text-sm"
-        style={{ height: 160 }}
+        style={{ height: WIDGET_MIN }}
       >
         <Spinner className="size-4" />
         {t("flowApp.loading")}
@@ -341,9 +354,12 @@ export function FlowApp() {
       <div
         ref={box}
         className="overflow-y-auto overscroll-contain bg-background text-ink"
-        style={{ maxHeight: WIDGET_HEIGHT }}
+        style={{ minHeight: WIDGET_MIN, maxHeight: WIDGET_HEIGHT }}
       >
-        <RunnerBody runId={report.runId} compact stickyProgress onView={onRunView} />
+        {/* A runner that breaks here leaves the panel, not an empty frame the host folds away. */}
+        <Fallback key={report.runId} onError={() => setReach("no")}>
+          <RunnerBody runId={report.runId} compact stickyProgress onView={onRunView} />
+        </Fallback>
       </div>
     );
   }
@@ -425,6 +441,27 @@ export function FlowApp() {
 }
 
 type Call = <T>(name: string, args: Record<string, unknown>) => Promise<T>;
+
+/** Catches what its children throw while they render: the widget shows something else instead of nothing. */
+export class Fallback extends Component<
+  { children: ReactNode; onError?: () => void; fallback?: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[flow widget]", error);
+    this.props.onError?.();
+  }
+
+  render() {
+    return this.state.failed ? (this.props.fallback ?? null) : this.props.children;
+  }
+}
 
 /** The wizard as it greets a person on its own page, its flow one click away. */
 function WizardIntro({ view, onStart }: { view: FlowView; onStart: () => Promise<void> }) {

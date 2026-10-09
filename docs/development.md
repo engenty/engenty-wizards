@@ -413,9 +413,15 @@ it stands on, the page as a form, the review, the downloads. The widget is `apps
 and draws with the studio's `FlowCanvas`; `vite.mcp-app.config.ts` builds it into one HTML file,
 `apps/web/dist/mcp/flow.html` (part of `pnpm build`), which the runtime serves as the resource
 (`apps/runtime/src/mcp/flow-app.ts`). The definition reaches the widget in the result's
-`_meta["engenty/flow"]`, not in `structuredContent`, which hosts hand the model. Every button of
-the widget calls the server's tools through the host; the widget itself has no network. Hosts
-without MCP Apps (Claude Code, Codex, Gemini CLI, Windsurf, OpenClaw) get the same tools as text.
+`_meta["engenty/flow"]`, not in `structuredContent`, which hosts hand the model. A run shows the
+runner itself, which talks to the runtime with the run's ticket (`?rt=`, `apps/runtime/src/app.ts`;
+the resource's CSP allows the runtime's origin). Where the host keeps the widget off the network,
+or the runner breaks, the widget falls back to the diagram and a panel whose buttons call the
+server's tools through the host. The widget is never less than 360px tall from its first paint on,
+so a host that sizes the frame once still shows a usable page. Cursor folds a finished turn's tool
+calls, the widget among them, into its collapsed "Worked for …" group: the widget is still there
+when that group is opened (a known Cursor bug, not the widget). Hosts without MCP Apps (Claude
+Code, Codex, Gemini CLI, Windsurf, OpenClaw) get the same tools as text.
 
 **On the person's computer.** AI apps start MCP servers as commands, so a local install offers
 itself as one: `wizards mcp` (`apps/runtime/src/cli/mcp.ts`) speaks MCP over stdio and
