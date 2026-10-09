@@ -30,6 +30,10 @@ On **engenty → Übersicht**:
 engenty.ai asks you to allow the site access and sends you back. The site is connected as you,
 in the team you picked; **Einstellungen → Trennen** ends it and revokes the access.
 
+**By hand:** for your own engenty server, or where signing in through the browser is not possible,
+enter an address and an API Key under **Einstellungen → Von Hand verbinden**. On engenty.ai the key
+is made under Konto, on your own server in the studio under Einbinden.
+
 ## Set up
 
 After connecting, the overview walks through three steps.
