@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.33] - 2026-10-09
+- ADDED **[cli]** `wizards` on a terminal opens a menu – it shows what runs (address, pid, since when), whether it starts at login and whether a newer version is out, and offers start, start here, open the studio, restart, stop, update, start at login, connect AI apps, status, setup and help; with options or without a terminal it starts as before. New: `wizards restart` (one the command started starts again where it ran, any other is stopped and started as a service) and `wizards start --service` / `-s` (detached from the terminal, the command returns, output in logs/runtime.log); after an update the command says `wizards restart`
+
 ## [0.2.32] - 2026-10-09
 - FIXED **[mcp-app]** The flow widget keeps a usable size and never goes blank – it is at least 360px tall from its first paint (the page root no longer holds the frame at full height, so a host can also shrink it), a runner that breaks leaves the diagram and panel instead of an empty frame, and the whole widget shows a short message if it cannot render at all; the docs say the runner reaches the runtime with the run's ticket and note that Cursor folds the widget into its "Worked for …" group (a known Cursor bug)
 

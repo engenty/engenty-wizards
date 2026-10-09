@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.33",
+    "timestamp": 1791547307,
+    "commits": [
+      {
+        "id": "62b3675",
+        "message": "`wizards` on a terminal opens a menu – it shows what runs (address, pid, since when), whether it starts at login and whether a newer version is out, and offers start, start here, open the studio, restart, stop, update, start at login, connect AI apps, status, setup and help; with options or without a terminal it starts as before. New: `wizards restart` (one the command started starts again where it ran, any other is stopped and started as a service) and `wizards start --service` / `-s` (detached from the terminal, the command returns, output in logs/runtime.log); after an update the command says `wizards restart`",
+        "group": "Added",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.32",
-    "timestamp": 1791510187,
+    "timestamp": 1791510190,
     "commits": [
       {
         "id": "f1f5374",
