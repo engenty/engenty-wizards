@@ -1,40 +1,10 @@
+import { ApiError, createApi, isOffline } from "@engenty-wizards/runner";
 import { withBase } from "./base";
-import { t } from "./i18n";
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly body: any,
-  ) {
-    super(message);
-  }
-}
+export { ApiError, isOffline };
 
-/** The request never reached the server: no network, a tunnel, a phone switching cells. */
-export function isOffline(err: unknown): boolean {
-  return err instanceof ApiError && err.status === 0;
-}
-
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(withBase(path), {
-    method,
-    credentials: "include",
-    headers:
-      body !== undefined && !(body instanceof FormData)
-        ? { "content-type": "application/json" }
-        : undefined,
-    body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
-  }).catch(() => {
-    throw new ApiError(t("common.offline"), 0, null);
-  });
-  const text = await res.text();
-  const data = text ? safeJson(text) : null;
-  if (!res.ok) {
-    throw new ApiError(data?.error ?? res.statusText, res.status, data);
-  }
-  return data as T;
-}
+/** JSON calls to this runtime, under the app's base path (and a remote runtime's ticket). */
+export const api = createApi(withBase);
 
 function safeJson(text: string) {
   try {
@@ -43,19 +13,6 @@ function safeJson(text: string) {
     return { error: text };
   }
 }
-
-export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
-  put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
-  patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
-  del: <T>(path: string) => request<T>("DELETE", path),
-  upload: <T>(path: string, file: File) => {
-    const form = new FormData();
-    form.set("file", file);
-    return request<T>("POST", path, form);
-  },
-};
 
 /** POST that answers with Server-Sent Events. */
 export async function postStream(

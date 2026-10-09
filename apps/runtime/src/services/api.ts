@@ -1,4 +1,5 @@
 import type { Field, WizardDefinition } from "@engenty-wizards/shared/definition";
+import { standaloneEntry } from "@engenty-wizards/shared/fit";
 import { pluginsOf } from "@engenty-wizards/shared/marketplace";
 import { and, count, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { MICROS_PER_CREDIT } from "../credits/credits.js";
@@ -129,6 +130,8 @@ export async function apiWizards(userId: string, spaceId?: string | null) {
         dailyRunLimit: w.dailyRunLimit,
         /** The plugins its steps call: a wizard that books needs `appointments`. */
         plugins: pluginsOf(def),
+        /** Whether it runs on a website by itself, in the gallery's words (packages/shared/src/fit.ts). */
+        standalone: standaloneEntry(def),
         studioUrl: studioUrl(w.id),
         updatedAt: w.updatedAt.toISOString(),
       };

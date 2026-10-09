@@ -1,9 +1,8 @@
 import { Eraser, PenLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
-import { api } from "../lib/api";
-import { t } from "../lib/i18n";
-import { Button, Dialog, IconButton } from "../ui";
+import { api, runBase, withBase } from "./env.js";
+import { t } from "./i18n.js";
+import { Button, Dialog, IconButton } from "./ui.js";
 
 type Point = { x: number; y: number };
 /** Strokes in pad units: x from 0 to 1, y from 0 to 1 — they survive a rotated phone. */
@@ -164,7 +163,7 @@ export function SignatureField({
       if (!file) {
         return;
       }
-      const ref = await api.upload<{ id: string }>(`/api/runs/${runId}/uploads`, file);
+      const ref = await api.upload<{ id: string }>(`${runBase(runId)}/uploads`, file);
       onChange(ref.id);
       setOpen(false);
     } catch (err) {
@@ -188,7 +187,7 @@ export function SignatureField({
             aria-label={t("sign.again")}
           >
             <img
-              src={withBase(`/api/runs/${runId}/assets/${id}`)}
+              src={withBase(`${runBase(runId)}/assets/${id}`)}
               alt={label}
               className="mx-auto h-20 object-contain"
             />

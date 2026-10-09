@@ -354,16 +354,23 @@ model, as stable ids so every app can word them. `standaloneFit(def)` folds them
 | less | hard needs only on avoidable steps, or soft needs anywhere | the choices leading to a hard need are closed as `closedChoices` closes them in the cloud (generalised: it takes the lacking set instead of `missingClasses`); soft needs run with less |
 | no | a hard need on an unavoidable step | not installed; the notes say which steps and what they need |
 
-Notes are `{ stepId, need }` pairs; the apps word them in the person's language: "Angebot als
-PDF: macht eine PDF", "Termin buchen: braucht Termine (Pro)", "Fotos: gehen nicht an das Modell".
+The notes are for the engine (what the standalone runner closes or leaves out). What people
+see is the gallery's: `standaloneFit` answers in the fields a `MarketplaceEntry` already has —
+`missing: Capability[]`, `optional: Capability[]`, `needs: string[]` — so the plugin and the
+studio draw it with the gallery's chips and entry dialog, nothing new. `capabilitiesOf`,
+`pluginsOf` and `formatsOf` in `packages/shared/src/marketplace.ts` read the definition; the
+fit takes what the standalone runtime has (`text`, and `documents` where the provider takes
+images), puts the rest into `missing`, or into `optional` when every step that needs it is
+avoidable or runs without it, and names a result format that falls away (pdf, docx, …) as an
+`optional` note by its name.
 
-| Where it shows | Shows | Filter |
-|---|---|---|
-| Plugin · Wizards, connected | per wizard a label: "Läuft hier ohne Konto" / "Läuft hier mit weniger: …" / "Nur über dein Konto" | — |
-| Plugin · Wizard hinzufügen (mitgeliefert) | nothing: every shipped wizard is `full`; the picker shows title and what it asks | — |
-| Plugin · Importieren | the admin app computes it on the package before PHP stores it: "no" is refused with the notes and the account path; "less" is stored with its notes | — |
-| Studio · share dialog, Einbinden → WordPress | "In WordPress ohne Konto: ja / mit weniger / nein, weil …" and a link that asks the assistant to adapt the wizard | — |
-| Gallery (engenty.ai/wizards), later | a badge from the same function, computed when the entry is built, for account users who want to know what also runs locally | facet `runs=wordpress` |
+| Where it shows | Shows |
+|---|---|
+| Plugin · Wizards | the studio's wizard card: one chip "Live" / "Entwurf"; a warn chip "Geht auch ohne: PDF" (`market.without`) on a wizard with less; nothing on one that runs as is |
+| Plugin · Neuer Wizard | the gallery: the cards and the entry dialog, whose "Braucht" list says "nicht eingerichtet" (rose) or "geht auch ohne" (amber) per capability, and "Mit Konto: braucht Termine" where a plugin is needed (the gallery's `needsPro` line, Konto in place of Pro) |
+| Plugin · Importieren | the studio's import: a button, the file, done; a package that cannot run here is refused with the studio's "Import hat nicht geklappt" dialog listing what it needs, plus "Kostenloses Konto anlegen →"; one with less is imported and carries the warn chip |
+| Studio · share dialog, Einbinden → WordPress | the same "Braucht" list |
+| Gallery (engenty.ai/wizards), later | facet `runs=wordpress` from the same function |
 
 The studio computes it server-side; the plugin trusts those labels for a connected site's
 wizards and computes it itself only for uploads.
@@ -414,16 +421,15 @@ its output, the shown fields or the chosen target. One request, one model call.
 
 | Part | Does | Where |
 |---|---|---|
-| Packages | Table `engenty_wizards`: id, title, token, definition (JSON), fit and notes, source (bundled, studio, upload), overrides, installed at; files under `uploads/engenty-wizards/<id>/` | `includes/class-packages.php` |
+| Packages | Table `engenty_wizards`: id, title, token, definition (JSON), fit and notes, source (bundled, studio, upload), installed at; files under `uploads/engenty-wizards/<id>/` | `includes/class-packages.php` |
 | Import | The admin app unpacks the `.wizard` (fflate), checks it against the shared schema, computes the fit, posts definition, files and fit; PHP checks size and shape and stores it. Only `manage_options` | `src/admin/Import.js`, REST `POST engenty/v1/packages` |
 | Mitgeliefert | `wizards/<id>.wizard` in the plugin's zip, exported at release from the open repository's templates (`fit === "full"` only, `pnpm templates:export` in CI, copied by the plugin's release workflow); listed by `class-packages`, activated in the local setup's step 2 and under "Wizard hinzufügen" | `wizards/`, `includes/class-packages.php`, `.github/workflows/release.yml` |
-| Anpassen | A shipped wizard's texts without the studio: title, description, intro, the fields' labels and options, the result's message — stored as overrides on the row, never the structure or the prompts | `src/admin/Customize.js`, `class-packages.php` |
 | From the studio | Einbinden → WordPress: "Paket herunterladen"; on a connected site a wizard's row offers "Eigenständig auf dieser Website" and pulls the package with the key | runtime change 3 below |
 | Runs | Table `engenty_runs`: id, wizard, state (JSON), status, origin page, visitor hash, started, finished. Routes (public, no nonce): `POST runs`, `POST runs/:id/steps/:step`, `POST runs/:id/back`, `POST runs/:id/done`; `GET runs/:id` for the admin | `includes/class-runs.php` |
 | The call | A PHP port of `renderTemplate` and `answersAsText`; the system prompt from `GROUND_RULES`, today, the site's brand (the site reader's data), the format hint; `wp_ai_client_prompt()` with the system instruction and, for json, the output schema (`outputSchema(step)` ported) as the JSON answer — the structurer's second call collapses into the one. A provider error is the step's error, retried by the visitor | `includes/class-think.php` |
 | Limits | 6 runs an hour per visitor (cookie and IP hash), 50 a day per wizard, a honeypot field, Turnstile keys optional in the settings; 4 MB per request; photos as image parts only where the provider takes them | `class-runs.php` |
 | Runner | `src/runner/`: the runner package plus `useLocalRun`, which makes `RunView`s from the routes above in place of `useRun`. `engenty_wizard()` emits, for a standalone wizard, a div with `data-local="<id>"` and this script instead of `embed.js`; inline, modal and bubble as today | `src/runner/index.js`, `includes/class-embed.php` |
-| Admin | Wizards lists both kinds with the label and the source; Ergebnisse shows local runs in the same drawer (downloads made in the browser: html, md, json, csv); Einstellungen gets "KI-Anbieter": which connector is set, a link to Einstellungen → Connectors, the limits | `src/admin/{Wizards,Results,Settings}.js` |
+| Admin | Wizards lists both kinds with the label and the source; Ergebnisse shows local runs in the same drawer (downloads made in the browser: html, md, json, csv); Einstellungen gets, under "Eigenständige Wizards", one line naming the provider that answers with a link to Einstellungen → Connectors (WordPress sets the provider; the plugin does not copy that screen), a test, the limits | `src/admin/{Wizards,Results,Settings}.js` |
 
 ### Runtime changes (open repository)
 
@@ -442,7 +448,7 @@ its output, the shown fields or the chosen target. One request, one model call.
 |---|---|---|
 | 1 · The check | Runtime 1, 4, 5 | The studio says for every template whether it runs in WordPress without an account; CI exports the templates as packages |
 | 2 · The local way | Runtime 2, 3; plugin: the start flow (choice, local setup), the shipped set, packages, runs, the call, limits, the runner on block, shortcode and bubble, Ergebnisse with local runs | A fresh WordPress 7.0 with an OpenAI key goes from "Eigene KI erstellen" to a live Angebotsanfrage on a page without an account; the same with Ollama; its result shows under Ergebnisse; the prompts are not in the page source |
-| 3 · More ways in | Import of a `.wizard`, "Paket herunterladen" in the studio, "Anpassen", "Hier laufen lassen" on a connected site | An exported wizard imports with its notes; a connected site switches a wizard to local and back |
+| 3 · More ways in | Import of a `.wizard`, "Paket herunterladen" in the studio, "Hier laufen lassen" on a connected site | An exported wizard imports with its notes; a connected site switches a wizard to local and back |
 | 4 · With less | Closed choices in the standalone runner; Wissen snapshot in the package (opt-in, size cap); photos where the provider takes them; `http` and `web_fetch` as a PHP tool loop with `using_abilities()` | A wizard with a PDF branch runs with that choice closed; a step reads the site's own pages |
 
 ### Open decisions
@@ -450,7 +456,7 @@ its output, the shown fields or the chosen target. One request, one model call.
 - Which templates ship: every `full` one, or a hand-picked six (the mockups show six:
   Angebotsanfrage, Störung melden, Rückruf-Wunsch, Welche Küche passt?, Checkliste Aufmaß,
   FAQ-Berater). Hand-picked keeps the plugin small and the set sensible for a website.
-- Updates: a shipped wizard updates with the plugin; its overrides from "Anpassen" stay. An
+- Updates: a shipped wizard updates with the plugin; its results stay. An
   imported package is re-imported by hand.
 - Wissen in the package: which pages, the size cap, and that the author agrees to ship them.
 - Memory and lists: WordPress tables later, or never.
@@ -474,18 +480,17 @@ check and the runner package, the plugin gets the standalone mode, the marketpla
 
 | Where | Settled |
 |---|---|
-| Labels | Chips beside the wizard's title: "Läuft hier ohne Konto" (moss), "Läuft hier mit weniger" (amber, a new chip tone), "Nur über dein Konto" (ember). Under a "mit weniger" or "Konto" chip a short list, one line per step: "Entwurf als PDF: hier als Webseite und Markdown" |
-| Source | A grey chip: Mitgeliefert, Paket, Studio; the small line says when it was activated or imported and how many results it had in 30 days |
+| Labels | The studio's and the gallery's, nothing of our own: "Live" / "Entwurf" on the card, "Lokal" (the studio's Local chip) on a connected site's wizard that runs on the site itself, "Pro" (ember) where the gallery says so; "Geht auch ohne: PDF" (warn) where a wizard runs with less; what a wizard needs in the entry dialog's "Braucht" list. No per-step lists, IDs, dates or warning lines on the card |
 | Header | A local site's header shows "Lokal · OpenAI" (a status dot, paper-2 pill) and a ghost "Mit Konto verbinden"; a connected site the plan, credits and the provider pill side by side |
 | Übersicht | Only the hero, as built: "Eigene KI erstellen →", the three checks, "Schon ein Konto? Anmelden". No explanation cards |
 | The choice | "Eigene KI erstellen" opens a centred card: the drop engenty, "Deine KI bei engenty", one sentence, "Kostenloses Konto anlegen →" and "Anmelden" large; under an "oder" line a small paper card "Lokal, mit eigenem KI-Anbieter" with the chip "OpenAI erkannt" (or "kein Anbieter" with the Connectors link), one sentence, "Lokal einrichten"; "Wechseln geht später jederzeit." |
-| Lokal einrichten | The Übersicht's "Einrichten" card as built, three steps: 1 KI-Anbieter (done when a connector answers; "ändern"), 2 Wizards wählen (the shipped set as template cards with a checkbox each, "2 Wizards aktivieren", "Eigenes Paket importieren"), 3 Auf die Website bringen (the built Place step). Beside it the stat "0 Wizards live · läuft lokal, ohne engenty-Credits", a short "Was läuft lokal" card and a compact "Mit Konto" card with "Mehr erfahren" only; "Doch mit Konto" top right |
-| Wizards | Buttons "Paket importieren" (ghost) and "Wizard hinzufügen" (primary, the shipped set); rows with the chips Live and Mitgeliefert / Paket, "Anpassen", "Einbinden", "Pausieren"; a dashed card "Noch vier mitgelieferte Wizards"; the compact "Mit Konto" card at the end with "Mehr erfahren". Connected: a local wizard shows "Eigenständig · läuft hier" and "über engenty.ai laufen lassen"; a cloud wizard that fits offers "Hier laufen lassen" |
-| Importieren | A drawer: the file line, a "Geprüft" card with the fit chip and the notes, the facts (title, version, steps, files, which provider will think and how many calls a run makes), Installieren / Abbrechen |
+| Lokal einrichten | The Übersicht's "Einrichten" card as built, three steps: 1 KI-Anbieter (done when a connector answers; "ändern"), 2 Wizards wählen is the gallery as the studio's new-wizard page draws it (search, use-case pills, "6 Vorlagen", the cards with the engenty on the corner, minutes, cost tier and format icons; a card opens the entry dialog, "Mit dieser Vorlage starten" makes the wizard live on the site; no checkboxes, no batch button), 3 Auf die Website bringen (the built Place step) |
+| Wizards | The studio's home page: "Importieren" (ghost, upload icon), on a connected site "Galerie", and "Neuer Wizard" (primary; on a local site it opens the shipped set as the gallery); a three-column grid of the studio's wizard cards: the engenty on the top edge, the chips top right, title, two lines of description, "4 Schritte", Link and the open arrow. No rows, no "Mit Konto" card |
+| Importieren | As in the studio: the button opens the file picker and imports; a refusal is the studio's small dialog "Import hat nicht geklappt" with the issues, here with "Kostenloses Konto anlegen →" when the package needs the account; a package with less is imported and its card carries the warn chip |
 | Ergebnisse | The same table; a local run's drawer carries "Auf dieser Website", the number of model calls, the answers, the outputs with HTML / Markdown / JSON buttons made in the browser, and a line that no contact was made |
-| Einstellungen | A card "KI-Anbieter": one row per provider (OpenAI, Ollama, Anthropic, Google, engenty "später") with its state and a link to Connectors, "Bevorzugt für Wizards", a test button; a card "Eigenständige Wizards": runs an hour and a day, how long results are kept, bot protection, photos to the provider; the privacy sentence names the provider |
+| Einstellungen | One column, the sections of today's Settings.js: Verbindung (not connected: the account buttons, "Von Hand verbinden" as a line), then "Eigenständige Wizards" with one status line "Denkt mit OpenAI · gpt-5-mini · eingestellt in WordPress unter Einstellungen → Connectors ↗" and Testen, under it runs an hour and a day, how long results are kept, bot protection, photos to the provider; Darstellung, Blase, Zugriff as built; the privacy sentence names the provider. No provider list and no provider choice of our own: WordPress's Connectors screen does that |
 | The site | The runner card as the studio draws it (3 px ember progress, the wizard's engenty and title, "Schritt 2 von 4", fields in the studio's inputs, pill buttons); under it "Läuft auf dieser Website · Antworten gehen an OpenAI · Datenschutz". While PHP asks the provider: the round engenty, "Schätzt Aufwand und Preis …", three progress lines. The result: text, a JSON output as a small fact strip, save as web page / Markdown / print |
-| Studio | The share dialog gets a fourth tab "WordPress": "Über dein Konto" with the plugin's download, and "Ohne Konto, auf der Website selbst" with the fit chip, the per-step list (✓ and –), "Paket herunterladen · .wizard" and "Wizard anpassen, damit alles läuft" (asks the assistant) |
+| Studio | The share dialog gets a fourth tab "WordPress": "Über dein Konto" with the plugin's download, and "Ohne Konto, auf der Website selbst" with the gallery's "Braucht" list ("Text schreiben", "Dokumente & Fotos lesen – geht auch ohne", "Einschätzung als PDF – geht auch ohne, HTML und MD bleiben"), "Paket herunterladen · .wizard" and "Wizard anpassen, damit alles läuft" (asks the assistant) |
 
 #### Shapes
 
@@ -539,7 +544,7 @@ so there is one copy.
 
 | Table | Columns |
 |---|---|
-| `{prefix}engenty_wizards` | `id` char(12) pk, `title`, `description`, `token` char(22) unique (the public id in tags), `definition` longtext (JSON), `files` text (JSON list of path, mime, size — the bytes under `uploads/engenty-wizards/<id>/`), `fit` enum(full, less), `notes` text (JSON), `source` enum(bundled, studio, upload), `source_ref` (the shipped file's id, the studio wizard id, or the file name), `overrides` text (JSON, from Anpassen), `status` enum(live, paused), `installed_at`, `updated_at` |
+| `{prefix}engenty_wizards` | `id` char(12) pk, `title`, `description`, `token` char(22) unique (the public id in tags), `definition` longtext (JSON), `files` text (JSON list of path, mime, size — the bytes under `uploads/engenty-wizards/<id>/`), `fit` enum(full, less), `notes` text (JSON), `source` enum(bundled, studio, upload), `source_ref` (the shipped file's id, the studio wizard id, or the file name), `status` enum(live, paused), `installed_at`, `updated_at` |
 |  `{prefix}engenty_runs` | `id` char(16) pk, `wizard_id`, `status` (waiting_input, running, done, failed, cancelled), `state` longtext (JSON: `RunState` — values, outputs, history, notes, pages, decisions), `step_id`, `origin` (the page), `visitor` char(40) (hash of cookie and IP), `calls` int, `started_at`, `finished_at` |
 
 **Plugin REST** (`engenty/v1`, public routes without a nonce, the rest with one):
@@ -557,10 +562,9 @@ so there is one copy.
 | `POST packages` | `manage_options` | `{ definition, files: [{ path, data, mime }], fit, notes, source, sourceRef }` → the wizard row; PHP re-checks size (30 MB), that the definition parses and names only step types it knows, and stores |
 | `GET bundled` | `edit_posts` | the shipped set from `wizards/*.wizard`: id, title, description, what it asks, whether it is activated |
 | `POST bundled/:id/activate`, `POST packages/:id/pause`, `DELETE packages/:id` | `manage_options` | activates a shipped wizard as a row (its files copied under uploads/), pauses, removes |
-| `POST packages/:id/customize` | `manage_options` | `{ title?, description?, intro?, labels: { fieldId: { label?, options? } }, message? }` → the row; the public definition applies the overrides |
 | `POST setup` | `manage_options` | `{ mode: "local" \| "account" }` → the Übersicht's state; "local" needs a connector that answers |
 | `GET runs?local=1…`, `GET runs/:id` | `engenty_results` | local runs beside the cloud's in one list; the drawer's shape as today plus `calls` |
-| `GET providers`, `POST providers/test` | `manage_options` | the Connectors' state per provider from the AI Client's registry; one test prompt with `as_json_response` |
+| `GET provider`, `POST provider/test` | `manage_options` | the provider the AI Client would answer with (name, model, whether it takes images) from its registry, or none; one test prompt with `as_json_response` |
 
 **The model call** (`includes/class-think.php`):
 
@@ -575,8 +579,8 @@ $text = $builder->generate_text();   // WP_Error on failure; 30 s default timeou
 
 The WP AI Client proxies snake_case to the SDK's `PromptBuilder` (`usingSystemInstruction`,
 `withFile`, `asJsonResponse`, `generateText`, `usingFunctionDeclarations` for phase 4). The
-provider is the site's choice (Connectors); "Bevorzugt für Wizards" sets `using_provider` when
-the admin picked one. A decision step asks the same way with the classifier's JSON schema
+provider is the site's choice (Connectors); the plugin sets no `using_provider`, the AI Client's
+registry decides. A decision step asks the same way with the classifier's JSON schema
 (yes/no, choice, score fields) and reads the answer as `decide()` does without probabilities.
 
 **PHP ports, line for line from the runtime:** `renderTemplate` and `resolveRef` (template.ts:
@@ -603,8 +607,7 @@ engenty-wizards-wordpress/
 ├── includes/
 │   ├── class-packages.php      the table, import, remove, the files under uploads/, the public definition (prompts stripped)
 │   ├── class-runs.php          the runs table, limits, the public routes, state, followRules, readPageInput
-│   ├── class-think.php         the system prompt, the template renderer, the one call, JSON schema, decisions, decided fields and surfaces
-│   ├── class-providers.php     what the Connectors have, the preferred provider, the test
+│   ├── class-think.php         the system prompt, the template renderer, the one call, JSON schema, decisions, decided fields and surfaces; which provider answers, the test
 │   ├── class-downloads.php     html, md, txt, csv, json of an output
 │   └── class-embed.php         engenty_wizard(): a standalone token renders <div data-engenty-local="…"> and enqueues build/runner.js
 ├── src/runner/
@@ -613,10 +616,11 @@ engenty-wizards-wordpress/
 │   └── runner.css              the studio tokens for the site (paper, ink, ember, the inputs), scoped to .engenty-runner
 ├── src/admin/
 │   ├── Start.js                the choice after "Eigene KI erstellen"; the local setup's three steps on Home.js
-│   ├── Bundled.js  Import.js  Customize.js   the shipped set's picker, the import drawer, Anpassen
+│   ├── Templates.js            as built, now with the gallery's entry dialog; on a local site it lists the shipped set
+│   ├── Import.js               the studio's ImportWizard ported: a button, the file, the error dialog
 │   ├── Wizards.js              both kinds, the labels, Hier laufen lassen / über engenty.ai
 │   ├── Results.js              local runs, the drawer's downloads
-│   ├── Settings.js             KI-Anbieter, Eigenständige Wizards, the privacy sentence with the provider
+│   ├── Settings.js             Eigenständige Wizards (the provider line, the limits), the privacy sentence with the provider
 │   └── fit.js                  the shared check (built from packages/shared through the runner package)
 ├── wizards/                    the shipped .wizard files, copied by the release workflow from the open repository's template export
 └── tests/                      PHPUnit: template rendering against fixtures exported from the TypeScript tests; readPageInput; the limits; the stripped definition; a run through a three-step wizard with the AI Client mocked (pre_http_request)
@@ -638,10 +642,10 @@ Marketplace (closed app), later: `standalone: { fit, notes }` on an entry, compu
 |---|---|---|
 | 1 | `fit.ts` with tests; the share dialog's WordPress tab and Einbinden's line; i18n; `pnpm templates:export` in CI; release `v0.2.x` | The studio names, for every template, whether it runs in WordPress without an account and why not; the release carries the templates as `.wizard` files with their fit |
 | 2 | `packages/runner` extracted, the studio on it; the package route | `pnpm test` green; `curl -H "x-api-key: wz_…" …/api/v1/wizards/<id>/package` saves a `.wizard` that imports in a studio |
-| 3 | Plugin: tables, `class-packages`, the shipped set in `wizards/` and the release workflow that fills it, `class-providers`; the start flow: the choice, the local setup's three steps, "Wizard hinzufügen" | On a fresh WordPress 7.0 with an OpenAI connector, "Eigene KI erstellen" → "Lokal einrichten" → two shipped wizards activated show under Wizards; without a connector the local card says so and links to Connectors |
+| 3 | Plugin: tables, `class-packages`, the shipped set in `wizards/` and the release workflow that fills it, the provider line; the start flow: the choice, the local setup's three steps, the gallery with the entry dialog, the import button | On a fresh WordPress 7.0 with an OpenAI connector, "Eigene KI erstellen" → "Lokal einrichten" → two shipped wizards activated show under Wizards; without a connector the local card says so and links to Connectors |
 | 4 | Plugin: `class-think`, `class-runs`, the runner bundle, `engenty_wizard()` for local tokens, limits | The Angebotsanfrage runs on that WordPress (wp-env, the OpenAI connector with a test key, then the Ollama provider plugin) from the block, the shortcode and the bubble; the prompts are not in the page source; the seventh run in an hour is refused |
-| 5 | Plugin: Ergebnisse with local runs and downloads, Einstellungen (KI-Anbieter, limits, privacy) | A finished run shows under Ergebnisse with its answers and outputs; HTML and Markdown download; the privacy sentence names the provider |
-| 6 | Plugin: the Import drawer with the check in the browser, "Anpassen" | An uploaded `.wizard` shows under Wizards with the right label and notes; a `no` package is refused with its notes; a renamed field label shows on the site |
+| 5 | Plugin: Ergebnisse with local runs and downloads, Einstellungen (the provider line, limits, privacy) | A finished run shows under Ergebnisse with its answers and outputs; HTML and Markdown download; the privacy sentence names the provider |
+| 6 | Plugin: the import button with the check in the browser | An uploaded `.wizard` shows under Wizards with the right label and notes; a `no` package is refused with its notes; a renamed field label shows on the site |
 | 7 | Connected sites: "Hier laufen lassen" pulls the package with the key, "über engenty.ai laufen lassen" switches back | A connected Free site runs one wizard locally and the rest in the cloud |
 | 8 | Phase 4 as listed: closed choices, Wissen snapshot, photos, the PHP tool loop | A wizard with a PDF branch runs with that choice closed |
 
@@ -651,6 +655,7 @@ images path; the plugin's CI smoke test gains a standalone run.
 
 #### Not in this implementation
 
+- Anpassen: a shipped wizard's texts are changed in the studio, not in the plugin; the plugin has no editor of its own.
 - The chat runner, voice, the mobile app for standalone wizards.
 - Streaming (WordPress 7.1).
 - Results sent to engenty.ai from a site that connects later.

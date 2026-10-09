@@ -20,16 +20,15 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
-import { api } from "../lib/api";
-import { lang, t } from "../lib/i18n";
-import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "../ui";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
 import { canUseMedia, isTouch } from "./device";
+import { api, runBase, withBase } from "./env.js";
+import { lang, t } from "./i18n.js";
 import { LocationField } from "./location";
 import { ScanDialog } from "./scan";
 import { SignatureField } from "./signature";
 import { ConnectionField, ListTable } from "./store";
+import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "./ui.js";
 import { VoiceField } from "./voice";
 
 export type Values = Record<string, unknown>;
@@ -210,7 +209,7 @@ function UploadField({
       for (const raw of wanted.slice(0, Math.max(0, free))) {
         const file = await shrinkImage(raw);
         const ref = await api.upload<{ id: string; name: string; mime: string }>(
-          `/api/runs/${runId}/uploads`,
+          `${runBase(runId)}/uploads`,
           file,
         );
         setNames((n) => ({ ...n, [ref.id]: { name: ref.name, mime: ref.mime } }));
@@ -349,7 +348,7 @@ function UploadField({
                 ) : null}
                 {mime.startsWith("image/") ? (
                   <img
-                    src={withBase(`/api/runs/${runId}/assets/${id}`)}
+                    src={withBase(`${runBase(runId)}/assets/${id}`)}
                     alt=""
                     className="size-14 rounded-lg object-cover"
                   />

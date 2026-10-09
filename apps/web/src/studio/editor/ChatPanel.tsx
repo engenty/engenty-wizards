@@ -1,3 +1,4 @@
+import { Markdown } from "@engenty-wizards/runner";
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Paperclip, Plug, Sparkles } from "lucide-react";
@@ -7,7 +8,6 @@ import { postStream } from "../../lib/api";
 import { withBase } from "../../lib/base";
 import { t } from "../../lib/i18n";
 import type { WizardDetail } from "../../lib/session";
-import { Markdown } from "../../runner/outputs";
 import { Composer, type ComposerHandle, cn, pastedName, Spinner } from "../../ui";
 
 /** What a plugin's tool returned in a turn, for the plugin's card in the thread. */

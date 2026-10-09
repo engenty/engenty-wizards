@@ -1,10 +1,10 @@
+import { Markdown } from "@engenty-wizards/runner";
 import type { SpacePage } from "@engenty-wizards/shared/space-data";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, FileText, Plus, Trash2 } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import { Markdown } from "../../runner/outputs";
 import { Button, Card, cn, IconButton, Spinner } from "../../ui";
 import { fileUrl, useAutosave } from "./data";
 import { KnowledgeHeader } from "./Knowledge";

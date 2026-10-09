@@ -4,11 +4,10 @@ import type { ShownList } from "@engenty-wizards/shared/run";
 import type { ConnectionView, ConnectorOption, StoreFile } from "@engenty-wizards/shared/store";
 import { Check, Database, FileText, Link2, Plus, Trash2, Unplug } from "lucide-react";
 import { useEffect, useState } from "react";
-import { withBase } from "@/lib/base";
-import { ApiError, api } from "../lib/api";
-import { appCall, appCan } from "../lib/app";
-import { lang, t } from "../lib/i18n";
-import { Button, cn, Dialog, IconButton, Input, Label, Spinner } from "../ui";
+import { ApiError } from "./api.js";
+import { api, appCall, appCan, runBase, withBase } from "./env.js";
+import { lang, t } from "./i18n.js";
+import { Button, cn, Dialog, IconButton, Input, Label, Spinner } from "./ui.js";
 
 // --- connecting an account -------------------------------------------------------
 
@@ -30,7 +29,7 @@ function CredentialsForm({
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/api/runs/${runId}/connections/${connectionId}/credentials/${connector.id}`, {
+      await api.post(`${runBase(runId)}/connections/${connectionId}/credentials/${connector.id}`, {
         values,
       });
     } catch (err) {
@@ -102,7 +101,7 @@ export function ConnectionField({
         </div>
         <IconButton
           label={t("connect.disconnect")}
-          onClick={() => void api.del(`/api/runs/${runId}/connections/${connection.id}`)}
+          onClick={() => void api.del(`${runBase(runId)}/connections/${connection.id}`)}
         >
           <Unplug className="size-4" />
         </IconButton>
@@ -117,7 +116,7 @@ export function ConnectionField({
       // The run's stream says when the account is connected, as with the popup.
       try {
         const { url } = await api.post<{ url: string }>(
-          `/api/runs/${runId}/connections/${connection.id}/oauth/${connector.id}`,
+          `${runBase(runId)}/connections/${connection.id}/oauth/${connector.id}`,
         );
         await appCall("signIn", { url });
       } catch (err) {
@@ -129,7 +128,7 @@ export function ConnectionField({
     const popup = window.open("about:blank", "wizard-connect", "width=540,height=700");
     try {
       const { url } = await api.post<{ url: string }>(
-        `/api/runs/${runId}/connections/${connection.id}/oauth/${connector.id}`,
+        `${runBase(runId)}/connections/${connection.id}/oauth/${connector.id}`,
       );
       if (popup) {
         popup.location.replace(url);
@@ -298,7 +297,7 @@ export function ListTable({
   const { def, rows } = list;
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
-  const base = `/api/runs/${runId}/lists/${def.id}/rows`;
+  const base = `${runBase(runId)}/lists/${def.id}/rows`;
   const call = async (run: () => Promise<unknown>) => {
     setError(null);
     try {
@@ -469,7 +468,7 @@ export function ListTable({
 /** The path of a kept file as its address: shown in place for PDFs and photos. */
 function storeFileUrl(runId: string, path: string, inline: boolean): string {
   const safe = path.split("/").map(encodeURIComponent).join("/");
-  return withBase(`/api/runs/${runId}/store/files/${safe}${inline ? "?inline=1" : ""}`);
+  return withBase(`${runBase(runId)}/store/files/${safe}${inline ? "?inline=1" : ""}`);
 }
 
 const ANSWER_TONE = [
@@ -498,7 +497,7 @@ export function ListCheck({ runId, list }: { runId: string; list: ShownList }) {
   );
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const base = `/api/runs/${runId}/lists/${def.id}/rows`;
+  const base = `${runBase(runId)}/lists/${def.id}/rows`;
   const current = rows.find((r) => r.id === selected) ?? rows[0];
   const shown = onlyOpen ? rows.filter((r) => isOpen(r) || r.id === current?.id) : rows;
   const done = rows.filter((r) => !isOpen(r)).length;
@@ -736,7 +735,7 @@ export function ListDownloads({ runId, list }: { runId: string; list: ShownList 
       {list.formats.map((f) => (
         <a
           key={f}
-          href={withBase(`/api/runs/${runId}/lists/${list.def.id}/download?format=${f}`)}
+          href={withBase(`${runBase(runId)}/lists/${list.def.id}/download?format=${f}`)}
           className="inline-flex h-9 items-center rounded-full bg-paper-2 px-3.5 font-medium text-[0.8125rem] text-ink-2 transition hover:bg-paper-3 hover:text-ink coarse:h-11 coarse:px-4"
         >
           {LIST_FORMAT_LABEL[f] ?? f}
@@ -769,7 +768,7 @@ export function StoreButton({ runId }: { runId: string }) {
   useEffect(() => {
     if (open) {
       setConfirm(false);
-      void api.get<StoreSummary>(`/api/runs/${runId}/store`).then(setData);
+      void api.get<StoreSummary>(`${runBase(runId)}/store`).then(setData);
     }
   }, [open, runId]);
   const empty =
@@ -832,7 +831,7 @@ export function StoreButton({ runId }: { runId: string }) {
                   {data.files.map((f) => (
                     <li key={f.path} className="border-border-soft border-b last:border-0">
                       <a
-                        href={withBase(`/api/runs/${runId}/store/files/${f.path}`)}
+                        href={withBase(`${runBase(runId)}/store/files/${f.path}`)}
                         className="flex items-center gap-2 px-3 py-2 text-[0.8125rem] hover:bg-paper-2 coarse:min-h-11"
                         title={f.source ?? undefined}
                       >
@@ -852,8 +851,8 @@ export function StoreButton({ runId }: { runId: string }) {
                 <Button
                   variant="secondary"
                   onClick={async () => {
-                    await api.del(`/api/runs/${runId}/store`);
-                    setData(await api.get<StoreSummary>(`/api/runs/${runId}/store`));
+                    await api.del(`${runBase(runId)}/store`);
+                    setData(await api.get<StoreSummary>(`${runBase(runId)}/store`));
                     setConfirm(false);
                   }}
                 >

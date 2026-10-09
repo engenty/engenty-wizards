@@ -14,6 +14,7 @@ import { apiRun, apiRuns, apiSpaceDetails, apiSpaces, apiWizards } from "../serv
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, draftFiles, writeFile } from "../services/files.js";
 import { asLang, searchMarketplace } from "../services/marketplace.js";
+import { exportWizard, PACKAGE_MIME } from "../services/package.js";
 import { siteJob, siteSchema, startSiteJob } from "../services/site.js";
 import {
   checkOnServer,
@@ -191,6 +192,29 @@ export const apiRoutes = new Hono()
     return inTenantAs(who, async () =>
       c.json({ wizards: await apiWizards(who.userId, c.req.query("space")) }),
     );
+  })
+  // The published wizard as a `.wizard` package: what a WordPress site runs on its own.
+  .get("/wizards/:id/package", async (c) => {
+    const who = await caller(c, ["wizards:read"]);
+    if (who instanceof Response) {
+      return who;
+    }
+    return inTenantAs(who, async () => {
+      const found = await exportWizard(who.userId, c.req.param("id"), { published: true });
+      if (!found) {
+        return c.json(
+          { error: "Der Wizard ist noch nicht veröffentlicht.", code: "not_found" },
+          404,
+        );
+      }
+      return new Response(new Uint8Array(found.zip), {
+        headers: {
+          "content-type": PACKAGE_MIME,
+          "content-disposition": `attachment; filename="${found.name}"`,
+          "cache-control": "no-store",
+        },
+      });
+    });
   })
   // A new wizard from a template, published at once: what a website starts with.
   .post("/wizards", async (c) => {

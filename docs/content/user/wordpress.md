@@ -72,7 +72,30 @@ with the page's address: a result says which page it was started on.
 Who sees these pages is set under **Einstellungen → Zugriff** (administrators always, editors at
 the start). Results of runs without an account are kept 7 days.
 
+## Without an account
+
+A WordPress 7.0 site with its own AI provider (WordPress → **Einstellungen → Connectors**: OpenAI,
+Anthropic, Google, or Ollama through a provider plugin) runs wizards by itself: no account, no
+credits, the provider bills the site's key. On **engenty → Übersicht**, "Eigene KI erstellen"
+offers the account first and, below it, **Lokal, mit eigenem KI-Anbieter**.
+
+| | |
+|---|---|
+| Wizards | The templates that ship with the plugin, picked from the gallery on the local setup's second step; or a package (`.wizard`) imported under **Wizards → Importieren**, downloaded from a wizard's share dialog in the studio |
+| What runs | Pages with every field but voice notes, accounts and appointment times; thinking steps without tools; decisions, branches and surfaces; reviews; results as HTML, Markdown, text, CSV or JSON. Photos go to the provider where it takes images |
+| What does not | Tools (web search, browser, code), connected accounts, the Pro plugins, films, images, video, voice and documents made by a model, lists and memory, PDF, Word and Excel downloads |
+| The check | The share dialog's WordPress section and the plugin's import say per wizard whether it runs there as is, with less (a choice that leads to something missing is closed, a format falls away) or only with an account, in the gallery's words ("nicht eingerichtet", "geht auch ohne") |
+| Results | Kept in WordPress under **Ergebnisse** for as long as the settings say; nothing goes to engenty.ai |
+| Limits | 6 runs an hour per visitor and 50 a day per wizard (**Einstellungen → Eigenständige Wizards**), a honeypot |
+
+The browser follows the wizard's flow and draws every page; WordPress keeps the wizard's
+prompts and the run and asks the provider once per thinking step through the AI Client. Both
+kinds can be on one site: a connected site keeps contacts, bookings and files, a site without an
+account still runs the simple ones.
+
 ## Privacy
 
 Visitors talk to engenty.ai directly from the frame the wizard runs in. Name engenty in your
-privacy statement; **Einstellungen → Datenschutz** has a sentence to start from.
+privacy statement; **Einstellungen → Datenschutz** has a sentence to start from. Standalone
+wizards send the visitors' answers to the site's AI provider instead: the settings name it in
+the sentence.

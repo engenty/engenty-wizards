@@ -1,11 +1,11 @@
 import { type AudioValue, isAudioValue } from "@engenty-wizards/shared/definition";
 import { FileAudio, Mic, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../lib/api";
-import { t } from "../lib/i18n";
-import { Button, Spinner } from "../ui";
 import { stamp } from "./camera";
 import { canUseMedia } from "./device";
+import { api, runBase } from "./env.js";
+import { t } from "./i18n.js";
+import { Button, Spinner } from "./ui.js";
 
 const MAX_SECONDS = 300;
 
@@ -75,7 +75,7 @@ export function VoiceField({
     onBusy?.(true);
     setError(null);
     try {
-      const ref = await api.upload<{ id: string }>(`/api/runs/${runId}/uploads`, file);
+      const ref = await api.upload<{ id: string }>(`${runBase(runId)}/uploads`, file);
       setLocal({ asset: ref.id, url: URL.createObjectURL(file) });
       onChange({ asset: ref.id, ...(length !== undefined ? { seconds: length } : {}) });
     } catch (err) {
@@ -188,9 +188,7 @@ export function VoiceField({
           <audio
             controls
             preload="metadata"
-            src={
-              local?.asset === note.asset ? local.url : `/api/runs/${runId}/assets/${note.asset}`
-            }
+            src={local?.asset === note.asset ? local.url : `${runBase(runId)}/assets/${note.asset}`}
             className="h-11 w-full"
           />
           {note.transcript ? (

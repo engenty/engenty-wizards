@@ -1,9 +1,9 @@
 import { isLocationValue, type LocationValue } from "@engenty-wizards/shared/definition";
 import { ExternalLink, LocateFixed, MapPin, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../lib/api";
-import { lang, t } from "../lib/i18n";
-import { Button, IconButton, Input } from "../ui";
+import { api, runBase } from "./env.js";
+import { lang, t } from "./i18n.js";
+import { Button, IconButton, Input } from "./ui.js";
 
 /** Good enough for an address; the device keeps refining until then or until it has tried long enough. */
 const GOOD_METRES = 25;
@@ -66,7 +66,7 @@ export function LocationField({
 
   const name = async (lat: number, lng: number) => {
     try {
-      const { label } = await api.post<{ label: string | null }>(`/api/runs/${runId}/geocode`, {
+      const { label } = await api.post<{ label: string | null }>(`${runBase(runId)}/geocode`, {
         lat,
         lng,
         language: lang,

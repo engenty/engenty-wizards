@@ -1,7 +1,7 @@
 import type { Surface, SurfaceComponent } from "@engenty-wizards/shared/surface";
 import { bound } from "@engenty-wizards/shared/surface";
 import type { ReactNode } from "react";
-import { cn } from "../ui";
+import { cn } from "./ui.js";
 
 /**
  * A surface drawn with the runner's own components: the catalog in shared/surface.ts, nothing

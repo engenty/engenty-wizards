@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { PublicApp, StudioApp } from "./App";
 import { BASE, STUDIO } from "./lib/base";
+import "./lib/runner-env";
 import "./lib/theme";
 import "./styles/app.css";
 

@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../../lib/api";
+import { withBase } from "../../lib/base";
 import { features } from "../../lib/features";
 import { type Key, lang, t } from "../../lib/i18n";
 import {
@@ -29,9 +30,57 @@ import {
 import { Button, cn, Dialog, Input, Segmented, Spinner, Switch } from "../../ui";
 import { LinkStatus, useAccountLink } from "../Account";
 import { openExternal } from "../LocalRuntime";
+import { FitChip, NeedList, useStandalone } from "../StandaloneNeeds";
 import { hostOf, ownLink, sharedLink, type WhereItRuns, whereItRuns } from "../where";
 import { useEstimate } from "./estimate";
 import { WizardQr } from "./WizardQr";
+
+/** Where the WordPress plugin is downloaded: the latest release of its own repository. */
+const WORDPRESS_ZIP =
+  "https://github.com/engenty/engenty-wizards-wordpress/releases/latest/download/engenty-wizards.zip";
+
+/**
+ * The wizard on a WordPress site: through the account with the plugin, or without one as a
+ * package the site runs by itself — with what it needs there, in the gallery's words.
+ */
+function WordPress({ wizard }: { wizard: WizardDetail }) {
+  const fit = useStandalone(wizard.draft);
+  const href = `/api/studio/wizards/${wizard.id}/export${wizard.published ? "?published=1" : ""}`;
+  return (
+    <div className="flex flex-col gap-3 border-border-soft border-t pt-4">
+      <h3 className="font-medium text-[0.9375rem]">{t("share.wp")}</h3>
+      <div className="flex items-start gap-3 rounded-lg bg-paper-2 px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-[0.875rem]">{t("share.wpAccount")}</div>
+          <p className="text-[0.8125rem] text-ink-3">{t("share.wpAccountHint")}</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => window.open(WORDPRESS_ZIP, "_blank")}>
+          {t("share.wpPlugin")}
+        </Button>
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg px-3 py-2.5 ring-1 ring-border-soft">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-[0.875rem]">{t("share.wpLocal")}</span>
+          <FitChip fit={fit.fit} />
+        </div>
+        <p className="text-[0.8125rem] text-ink-3">{t("share.wpLocalHint")}</p>
+        <NeedList def={wizard.draft} fit={fit} />
+        {fit.fit === "no" ? null : (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant={wizard.published ? "primary" : "secondary"}
+              onClick={() => window.open(withBase(href), "_blank")}
+            >
+              {t(wizard.published ? "share.wpPackage" : "share.wpPackageDraft")}
+            </Button>
+          </div>
+        )}
+      </div>
+      <p className="text-[0.75rem] text-ink-3">{t("share.wpHelp")}</p>
+    </div>
+  );
+}
 
 /** What the cloud would lack for the draft; `documents`: the project's documents are not sent. */
 interface CloudCheck {
@@ -683,6 +732,7 @@ export function ShareDialog({
         {linked ? <CloudNotes wizard={wizard} cloud={cloud.data} /> : null}
         {local && !linked && features.account ? <SignInOffer way={teaser} /> : null}
         <Settings wizard={wizard} cloud={linked ? cloud.data : undefined} />
+        {features.account ? <WordPress wizard={wizard} /> : null}
         {linked && wizard.published ? (
           <button
             type="button"

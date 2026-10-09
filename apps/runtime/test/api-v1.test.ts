@@ -211,10 +211,26 @@ describe("the API a website's plugin calls", () => {
       publishedVersion: 1,
       available: true,
       plugins: [],
+      standalone: { fit: "full", missing: [], optional: [], needs: [], without: [] },
     });
     expect(wizards[0].code).toMatch(/^[A-Z0-9]+$/);
     token = wizards[0].token;
     expect(wizards[0].shareUrl).toBe(`${RUNTIME}/w/${token}`);
+  });
+
+  it("hands the published wizard over as a package a website runs on its own", async () => {
+    const { wizards } = (await (await call("wz_pro", "/api/v1/wizards")).json()) as any;
+    const res = await call("wz_pro", `/api/v1/wizards/${wizards[0].id}/package`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/vnd.engenty.wizard+zip");
+    expect(res.headers.get("content-disposition")).toContain('filename="angebotsanfrage.wizard"');
+    const { unzipSync, strFromU8 } = await import("fflate");
+    const entries = unzipSync(new Uint8Array(await res.arrayBuffer()));
+    const manifest = JSON.parse(strFromU8(entries["wizard.json"]));
+    expect(manifest).toMatchObject({ format: "engenty-wizard", version: 1 });
+    expect(manifest.definition.title).toBe("Angebotsanfrage");
+    // Another tenant has no such wizard; a draft is not handed over.
+    expect((await call("wz_free", `/api/v1/wizards/${wizards[0].id}/package`)).status).toBe(404);
   });
 
   it("lists what visitors left, with the page they started on and their answers", async () => {

@@ -16,7 +16,7 @@ import { useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useMe } from "../lib/session";
-import { Button, Card, Chip, cn, IconButton, Spinner } from "../ui";
+import { Button, Card, cn, IconButton, Spinner } from "../ui";
 import {
   MenuGroup,
   MenuRow,
@@ -169,6 +169,9 @@ function WordPressPanel({ managed }: { managed: boolean }) {
         </Part>
         <Part title={t("integrate.wpPro")}>
           <Hint>{t("integrate.wpProHint")}</Hint>
+        </Part>
+        <Part title={t("integrate.wpLocal")}>
+          <Hint>{t("integrate.wpLocalHint")}</Hint>
         </Part>
       </Card>
     </div>

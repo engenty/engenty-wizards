@@ -1,8 +1,10 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { cleanPath, WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
+import { and, eq } from "drizzle-orm";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { z } from "zod";
 import { listConnectors } from "../connectors/external.js";
+import { db, schema } from "../db/client.js";
 import { getBlob } from "../files/blobs.js";
 import { requireAdmin } from "./access.js";
 import { ServiceError } from "./errors.js";
@@ -62,16 +64,39 @@ function fileName(title: string): string {
   return `${slug || "wizard"}${PACKAGE_EXTENSION}`;
 }
 
-export async function exportWizard(userId: string, wizardId: string) {
+/**
+ * The wizard as a file: its draft, or with `published` the version that is live (what a website
+ * runs on its own). Null with `published` while the wizard is a draft only.
+ */
+export async function exportWizard(
+  userId: string,
+  wizardId: string,
+  options: { published?: boolean } = {},
+) {
   const w = await ownedWizard(userId, wizardId);
+  const live =
+    options.published && w.publishedVersion !== null
+      ? await db.query.wizardVersion.findFirst({
+          where: and(
+            eq(schema.wizardVersion.wizardId, w.id),
+            eq(schema.wizardVersion.version, w.publishedVersion),
+          ),
+        })
+      : null;
+  if (options.published && !live) {
+    return null;
+  }
+  const definition = live ? live.definition : w.draft;
   const project = await ownedProject(userId, w.projectId);
-  const named = new Set((w.draft.connections ?? []).map((c) => c.connector));
-  const servers = new Set(w.draft.steps.flatMap((s) => (s.type === "agent" ? (s.mcp ?? []) : [])));
+  const named = new Set((definition.connections ?? []).map((c) => c.connector));
+  const servers = new Set(
+    definition.steps.flatMap((s) => (s.type === "agent" ? (s.mcp ?? []) : [])),
+  );
   const manifest: Manifest = {
     format: FORMAT,
     version: 1,
     exportedAt: new Date().toISOString(),
-    definition: w.draft,
+    definition,
     connectors: (await listConnectors(project.id))
       .filter((c) => c.sourceKind !== "builtin" && named.has(c.id))
       .map((c) => ({
@@ -87,10 +112,10 @@ export async function exportWizard(userId: string, wizardId: string) {
   const entries: Record<string, Uint8Array> = {
     [MANIFEST]: strToU8(JSON.stringify(manifest, null, 2)),
   };
-  for (const f of await draftFiles(w.id)) {
+  for (const f of live ? live.files : await draftFiles(w.id)) {
     entries[FILES + f.path] = new Uint8Array(await getBlob(f.hash));
   }
-  return { name: fileName(w.draft.title), zip: zipSync(entries, { level: 6 }) };
+  return { name: fileName(definition.title), zip: zipSync(entries, { level: 6 }) };
 }
 
 const invalid = (message: string) => new ServiceError("invalid", message);

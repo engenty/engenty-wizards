@@ -4,12 +4,11 @@ import DOMPurify from "dompurify";
 import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { asset, withBase } from "@/lib/base";
-import { appCall, appCan, appDownload } from "../lib/app";
-import { t } from "../lib/i18n";
-import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
+import { appCall, appCan, appDownload, asset, withBase } from "./env.js";
+import { t } from "./i18n.js";
 import { type SurfaceAction, SurfaceView } from "./surface";
+import { cn, Spinner, Textarea } from "./ui.js";
 
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const html = useMemo(
@@ -528,7 +527,8 @@ export function OutputView({
   return null;
 }
 
-const FORMAT_LABEL: Record<Format, string> = {
+/** A download format as a person reads it. */
+export const FORMAT_LABEL: Record<Format, string> = {
   png: "PNG",
   mp4: "MP4",
   mp3: "MP3",

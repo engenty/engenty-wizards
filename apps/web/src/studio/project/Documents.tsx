@@ -1,10 +1,10 @@
+import { Markdown } from "@engenty-wizards/runner";
 import type { ProjectFileView } from "@engenty-wizards/shared/projects";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import { Markdown } from "../../runner/outputs";
 import { Card, cn, IconButton, Spinner } from "../../ui";
 import { fileSize, fileUrl, useFileActions, useProjectFiles } from "./data";
 import { Description } from "./Files";
