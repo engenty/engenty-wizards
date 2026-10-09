@@ -55,14 +55,13 @@ export interface StepNeed {
 const BASE_FORMATS: ReadonlySet<Format> = new Set(["html", "md", "txt", "csv", "json"]);
 
 /** Tools the standalone runner has no way to run; `pages` only reads the space's pages, which it lacks. */
-const HARD_TOOLS: ReadonlySet<ToolId> = new Set([
-  "web_search",
-  "web_fetch",
-  "browser",
-  "sandbox",
-  "image",
-  "http",
-]);
+const HARD_TOOLS: ReadonlySet<ToolId> = new Set(["web_search", "browser", "sandbox", "image"]);
+
+/**
+ * Tools the standalone runner runs itself: a WordPress site reads a public page and calls a
+ * public API through its own abilities (the plugin's `Engenty_Abilities`). No need at all.
+ */
+const RUNNER_TOOLS: ReadonlySet<ToolId> = new Set(["web_fetch", "http"]);
 
 const MEMORY_RE = /\{\{\s*memory\b/;
 
@@ -156,6 +155,8 @@ export function needs(step: Step, def: WizardDefinition): StepNeed[] {
         const plugin = pluginToolOf(tool);
         if (plugin) {
           add(`plugin:${plugin.plugin}`, true);
+        } else if (RUNNER_TOOLS.has(tool as ToolId)) {
+          // The site runs it.
         } else if (HARD_TOOLS.has(tool as ToolId)) {
           add(`tool:${tool as ToolId}`, true);
         } else {

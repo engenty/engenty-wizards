@@ -45,7 +45,11 @@ const WORDPRESS_ZIP =
  */
 function WordPress({ wizard }: { wizard: WizardDetail }) {
   const fit = useStandalone(wizard.draft);
-  const href = `/api/studio/wizards/${wizard.id}/export${wizard.published ? "?published=1" : ""}`;
+  const [knowledge, setKnowledge] = useState(false);
+  const query = [wizard.published ? "published=1" : "", knowledge ? "knowledge=1" : ""]
+    .filter(Boolean)
+    .join("&");
+  const href = `/api/studio/wizards/${wizard.id}/export${query ? `?${query}` : ""}`;
   return (
     <div className="flex flex-col gap-3 border-border-soft border-t pt-4">
       <h3 className="font-medium text-[0.9375rem]">{t("share.wp")}</h3>
@@ -65,6 +69,15 @@ function WordPress({ wizard }: { wizard: WizardDetail }) {
         </div>
         <p className="text-[0.8125rem] text-ink-3">{t("share.wpLocalHint")}</p>
         <NeedList def={wizard.draft} fit={fit} />
+        {fit.fit === "no" ? null : (
+          <div className="flex items-start justify-between gap-4 pt-1">
+            <div className="min-w-0">
+              <div className="text-[0.875rem]">{t("share.wpKnowledge")}</div>
+              <p className="text-[0.75rem] text-ink-3">{t("share.wpKnowledgeHint")}</p>
+            </div>
+            <Switch checked={knowledge} onChange={setKnowledge} label={t("share.wpKnowledge")} />
+          </div>
+        )}
         {fit.fit === "no" ? null : (
           <div className="pt-1">
             <Button

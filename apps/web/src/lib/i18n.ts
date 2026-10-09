@@ -766,6 +766,9 @@ const de = {
     "Als Paket in ein WordPress 7 importiert, denkt der Wizard mit dem KI-Anbieter der Website und braucht kein Konto. Was er braucht, wie die Galerie es sagt:",
   "share.wpPackage": "Paket herunterladen",
   "share.wpPackageDraft": "Entwurf als Paket",
+  "share.wpKnowledge": "Wissen mitnehmen",
+  "share.wpKnowledgeHint":
+    "Die Seiten dieses Projekts kommen als Dateien ins Paket (bis 2 MB) – was der Wizard sonst im Space nachliest.",
   "share.wpFull": "Läuft dort ganz",
   "share.wpLess": "Läuft mit weniger",
   "share.wpNo": "Braucht ein Konto",
@@ -1935,6 +1938,9 @@ const en: Record<Key, string> = {
     "Imported as a package into a WordPress 7, the wizard thinks with the site's own AI provider and needs no account. What it needs, as the gallery puts it:",
   "share.wpPackage": "Download the package",
   "share.wpPackageDraft": "Draft as a package",
+  "share.wpKnowledge": "Take the knowledge along",
+  "share.wpKnowledgeHint":
+    "This project's pages go into the package as files (up to 2 MB): what the wizard otherwise looks up in the space.",
   "share.wpFull": "Runs there as is",
   "share.wpLess": "Runs with less",
   "share.wpNo": "Needs an account",

@@ -137,12 +137,12 @@ describe("what a step needs beyond a text model", () => {
       "field:slot",
       "field:file-read",
     ]);
+    // Reading a page and calling an API the site does itself (its abilities): no need.
     expect(by("think")).toEqual([
       "memory",
       "lists",
       "tool:web_search",
       "tool:pages?",
-      "tool:http",
       "plugin:crm",
       "mcp",
       "connections",

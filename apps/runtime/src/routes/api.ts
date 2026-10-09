@@ -193,14 +193,18 @@ export const apiRoutes = new Hono()
       c.json({ wizards: await apiWizards(who.userId, c.req.query("space")) }),
     );
   })
-  // The published wizard as a `.wizard` package: what a WordPress site runs on its own.
+  // The published wizard as a `.wizard` package: what a WordPress site runs on its own; with
+  // `knowledge=1` the project's pages come along as files (up to the snapshot's cap).
   .get("/wizards/:id/package", async (c) => {
     const who = await caller(c, ["wizards:read"]);
     if (who instanceof Response) {
       return who;
     }
     return inTenantAs(who, async () => {
-      const found = await exportWizard(who.userId, c.req.param("id"), { published: true });
+      const found = await exportWizard(who.userId, c.req.param("id"), {
+        published: true,
+        knowledge: c.req.query("knowledge") === "1",
+      });
       if (!found) {
         return c.json(
           { error: "Der Wizard ist noch nicht veröffentlicht.", code: "not_found" },

@@ -82,9 +82,11 @@ offers the account first and, below it, **Lokal, mit eigenem KI-Anbieter**.
 | | |
 |---|---|
 | Wizards | The templates that ship with the plugin, picked from the gallery on the local setup's second step; or a package (`.wizard`) imported under **Wizards → Importieren**, downloaded from a wizard's share dialog in the studio |
-| What runs | Pages with every field but voice notes, accounts and appointment times; thinking steps without tools; decisions, branches and surfaces; reviews; results as HTML, Markdown, text, CSV or JSON. Photos go to the provider where it takes images |
-| What does not | Tools (web search, browser, code), connected accounts, the Pro plugins, films, images, video, voice and documents made by a model, lists and memory, PDF, Word and Excel downloads |
-| The check | The share dialog's WordPress section and the plugin's import say per wizard whether it runs there as is, with less (a choice that leads to something missing is closed, a format falls away) or only with an account, in the gallery's words ("nicht eingerichtet", "geht auch ohne") |
+| What runs | Pages with every field but voice notes, accounts and appointment times; thinking steps, with a web page or a public API as their tools where the step names `web_fetch` or `http` (WordPress abilities the site runs itself; off under **Einstellungen → Eigenständige Wizards**); decisions, branches and surfaces; reviews; documents and dashboards as HTML; results as HTML, Markdown, text, CSV or JSON, a PDF as the browser's print. Photos go to the provider where it takes images |
+| What does not | Web search, the browser and code tools, connected accounts, the Pro plugins, films, images, video and voice made by a model, lists and memory, Word and Excel downloads |
+| The check | The share dialog's WordPress section and the plugin's import say per wizard whether it runs there as is, with less or only with an account, in the gallery's words ("nicht eingerichtet", "geht auch ohne"). With less: a choice on a page that leads to something the site lacks is closed there ("Hier gerade nicht verfügbar"), a format falls away |
+| Knowledge | The share dialog's **Wissen mitnehmen** puts the project's pages into the package as files (up to 2 MB); on the site the wizard reads them as it reads its own files, a snapshot of the day it was packed |
+| From the account | On a connected site with a provider, a published wizard's drawer offers **Hier laufen lassen**: the package comes over with the site's key and runs on the site without credits; **Über engenty.ai laufen lassen** switches back, **Neu laden** fetches the published version again |
 | Results | Kept in WordPress under **Ergebnisse** for as long as the settings say; nothing goes to engenty.ai |
 | Limits | 6 runs an hour per visitor and 50 a day per wizard (**Einstellungen → Eigenständige Wizards**), a honeypot |
 

@@ -78,6 +78,46 @@ describe("wizard packages", () => {
     expect(told.definition.title).toBe("Wetter für Köche");
   });
 
+  it("takes the project's pages along as Markdown files when asked, within the cap", async () => {
+    await inTenant(async () => {
+      const projectId = (await wizards.ownedWizard(USER, sourceId)).projectId;
+      const page = (id: string, title: string, markdown: string, parentId: string | null = null) => ({
+        id,
+        tenantId: TENANT,
+        projectId,
+        parentId,
+        title,
+        markdown,
+      });
+      await client.db
+        .insert(client.schema.spacePage)
+        .values([
+          page("pg-1", "Öffnungszeiten: Sommer", "Mo–Fr 9–18 Uhr."),
+          page("pg-2", "Preise", "x".repeat(pkg.KNOWLEDGE_PAGE_CHARS + 5)),
+          page("pg-3", "Leer", "   "),
+          page("pg-4", "Kinder", "Ab 6 Jahren.", "pg-2"),
+        ]);
+      const plain = unzipSync((await pkg.exportWizard(USER, sourceId)).zip);
+      expect(Object.keys(plain).some((k) => k.startsWith("files/wissen/"))).toBe(false);
+      const { zip } = await pkg.exportWizard(USER, sourceId, { knowledge: true });
+      const entries = unzipSync(zip);
+      const told = JSON.parse(strFromU8(entries["wizard.json"]));
+      // The empty page stays out; the long one is cut at its limit, and the manifest says so.
+      expect(told.knowledge).toEqual({ pages: 3, truncated: true });
+      const paths = Object.keys(entries).filter((k) => k.startsWith("files/wissen/")).sort();
+      expect(paths).toEqual([
+        "files/wissen/oeffnungszeiten-sommer.md",
+        "files/wissen/preise.md",
+        "files/wissen/preise/kinder.md",
+      ]);
+      const hours = strFromU8(entries["files/wissen/oeffnungszeiten-sommer.md"]);
+      expect(hours).toContain('title: "Öffnungszeiten: Sommer"');
+      expect(hours).toContain("path: pages/oeffnungszeiten-sommer");
+      expect(hours).toContain("Mo–Fr 9–18 Uhr.");
+      expect(strFromU8(entries["files/wissen/preise.md"]).length).toBeLessThan(pkg.KNOWLEDGE_PAGE_CHARS + 200);
+    });
+  });
+
   it("imports a package as a new, unpublished wizard of another project", async () => {
     await inTenant(async () => {
       const { zip } = await pkg.exportWizard(USER, sourceId);
