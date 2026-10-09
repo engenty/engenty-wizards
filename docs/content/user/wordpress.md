@@ -16,7 +16,7 @@ its settings and the connection, no answers.
 ## Install
 
 Download `engenty-wizards.zip` (Settings → Integrate → WordPress, or the
-[releases](https://github.com/engenty/engenty-wordpress/releases/latest)) and upload it in
+[releases](https://github.com/engenty/engenty-wizards-wordpress/releases/latest)) and upload it in
 WordPress under **Plugins → Add New → Upload Plugin**. After activating it the menu **engenty**
 opens.
 

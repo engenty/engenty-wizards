@@ -146,7 +146,7 @@ plugin gets its own repository.
 
 | Repository | Holds | License | Why apart |
 |---|---|---|---|
-| `engenty/engenty-wordpress` (new, public) | The WordPress plugin: PHP, the block, the admin app, `readme.txt` | GPLv2 or later | WordPress.org takes only GPL-compatible code; the runtime is FSL. A separate repository keeps the licenses apart and gives the plugin its own releases, tags and issues |
+| `engenty/engenty-wizards-wordpress` (new, public) | The WordPress plugin: PHP, the block, the admin app, `readme.txt` | GPLv2 or later | WordPress.org takes only GPL-compatible code; the runtime is FSL. A separate repository keeps the licenses apart and gives the plugin its own releases, tags and issues |
 | `engenty/engenty-wizards` (this) | `/api/v1/me`, `/wizards`, `/runs`, `/plugins/:id`, `run.origin`, the bubble in `embed.js`, Einbinden → WordPress, the docs page | FSL | The API the plugin calls |
 | `engenty-wizards-manage` | A key page that says "for WordPress" and the `runs:read` scope if scopes get checkboxes | closed | Keys of an account are issued there |
 
@@ -157,7 +157,7 @@ arrays there; no shared package.
 ### The plugin repository
 
 ```
-engenty-wordpress/
+engenty-wizards-wordpress/
 ├── engenty-wizards.php          header, constants, autoload, activation (capability engenty_results)
 ├── readme.txt                   WordPress.org readme
 ├── uninstall.php                removes the options and transients
@@ -241,7 +241,7 @@ Built on 2026-10-09 in three repositories, committed, not pushed.
 
 | Repository | Branch | What |
 |---|---|---|
-| `engenty-wordpress` (new, `/Users/m/code/engenty/engenty-wordpress`, no remote yet) | `main` | The plugin: OAuth connect with sign-up and sign-in, setup in three steps, Wizards, Ergebnisse, Kontakte, Termine, Einstellungen, block, shortcode, Elementor widget, PHP function, bubble, `readme.txt`, zip, CI with a smoke test in a real WordPress |
+| `engenty-wizards-wordpress` (new, `/Users/m/code/engenty/engenty-wizards-wordpress`, no remote yet) | `main` | The plugin: OAuth connect with sign-up and sign-in, setup in three steps, Wizards, Ergebnisse, Kontakte, Termine, Einstellungen, block, shortcode, Elementor widget, PHP function, bubble, `readme.txt`, zip, CI with a smoke test in a real WordPress |
 | `engenty-wizards` (this) | `claude/wordpress-plugin-architecture-cf4e26` | `/api/v1/me`, `/wizards` (GET, POST from a template), `/templates`, `/runs`, `/runs/:id`, `/space`, `/space/site`, `/plugins/:id/*`; scope `runs:read`; `run.origin` (migration `0011_run_origin`); `embed.js` bubble and `data-page`; Einbinden → WordPress; share dialog's third mode; docs `user/wordpress.md`, the contract's section "Clients of an account" |
 | `engenty-wizards-manage` | `feat/wordpress` | Scope `runs:read` on the consent page; the sign-in page takes `login_hint` and `prompt=create` ("Kostenloses Konto anlegen"); `/billing?upgrade=pro` opens the Pro plan; plan line "Termine" |
 
@@ -275,6 +275,6 @@ Open:
 - Sign-up needs an invitation code while `SIGNUP=code`; the sign-in page offers it.
 - A site on plain `http` cannot connect (the account server takes only https redirects but for
   loopback); the plugin says so.
-- The repository `engenty/engenty-wordpress` on GitHub, the first release tag, WordPress.org.
+- The repository `engenty/engenty-wizards-wordpress` on GitHub, the first release tag, WordPress.org.
 - The chat runner as the bubble's runner once `claude/wizards-vs-bot-ui-1044fe` is merged.
 

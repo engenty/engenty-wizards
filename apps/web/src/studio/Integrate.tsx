@@ -131,7 +131,7 @@ function Part({ title, children }: { title: string; children: ReactNode }) {
 
 /** Where the WordPress plugin is downloaded: the latest release of its own repository. */
 const WORDPRESS_ZIP =
-  "https://github.com/engenty/engenty-wordpress/releases/latest/download/engenty-wizards.zip";
+  "https://github.com/engenty/engenty-wizards-wordpress/releases/latest/download/engenty-wizards.zip";
 
 /**
  * WordPress: the plugin "engenty wizards" puts published wizards on a WordPress site. It connects
