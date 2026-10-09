@@ -69,6 +69,17 @@ export function setTheme(theme: Theme) {
   apply();
 }
 
+/** The visitor's pick, else the OS setting — also while a page on its own ground shows dark. */
+export function usePreferredTheme(): Theme {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => stored() ?? (system.matches ? "dark" : "light"),
+  );
+}
+
 export function useTheme(): Theme {
   return useSyncExternalStore(
     (listener) => {
@@ -89,10 +100,14 @@ export const stageFill = (kind: EngentyKind) =>
 
 /**
  * A page that stands on one vivid colour, like the landing page: while it is shown, the root
- * takes that colour as its stage and the dark tokens derived from it, in either theme.
+ * takes that colour as its stage and the dark tokens derived from it, in either theme. `null`:
+ * the page stands on the theme's own paper for now.
  */
-export function useGround(color: string) {
+export function useGround(color: string | null) {
   useEffect(() => {
+    if (!color) {
+      return;
+    }
     const root = document.documentElement;
     grounded += 1;
     root.style.setProperty("--stage", color);

@@ -8,11 +8,12 @@ import { api } from "../lib/api";
 import { features } from "../lib/features";
 import { t } from "../lib/i18n";
 import { type HarnessStatus, type LocalModels, useMe } from "../lib/session";
-import { useGround } from "../lib/theme";
+import { useGround, usePreferredTheme } from "../lib/theme";
 import { Button, cn } from "../ui";
 import { HarnessPanel, ModelTest } from "./Harness";
 import { LangSwitch } from "./LangSwitch";
 import { OwnModels, openExternal } from "./LocalRuntime";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 type Source = LocalModels["source"];
 
@@ -22,17 +23,49 @@ const GROUND_INK = "oklch(32% 0.15 262)";
 const CREAM = "oklch(90% 0.1 80)";
 
 /** A step of the setup by its state: reached, the one to do now, still ahead. */
-const STEP_DONE = "oklch(88% 0.17 150)";
-const STEP_NOW = "oklch(88% 0.14 80)";
-const STEP_LATER = "rgb(255 255 255 / 0.38)";
+const STEP_DONE = "var(--step-done)";
+const STEP_NOW = "var(--step-now)";
+const STEP_LATER = "color-mix(in oklab, var(--on) 38%, transparent)";
 
-/** Secondary text, checks and errors a step brighter than the dark theme's: the ground is vivid. */
-const LEGIBLE = {
+/**
+ * The page's own colours. Dark: on the vivid ground, white on it, and secondary text, checks and
+ * errors a step brighter than the dark theme's. Light: on the theme's paper, the ground's blue
+ * marks the pick.
+ */
+const ON_GROUND = {
+  "--on": "white",
+  "--tile": "rgb(255 255 255 / 0.1)",
+  "--tile-hover": "rgb(255 255 255 / 0.15)",
+  "--tile-ring": "rgb(255 255 255 / 0.15)",
+  "--panel": "rgb(255 255 255 / 0.07)",
+  "--panel-ring": "rgb(255 255 255 / 0.12)",
+  "--pick": "white",
+  "--pick-ink": GROUND_INK,
+  "--pick-mark": GROUND_INK,
+  "--dot": CREAM,
+  "--step-done": "oklch(88% 0.17 150)",
+  "--step-now": "oklch(88% 0.14 80)",
+  "--ready-ink": "oklch(27% 0.09 150)",
   "--ink-2": "oklch(96% 0.02 262)",
   "--ink-3": "oklch(90% 0.035 262)",
   "--ink-4": "oklch(82% 0.05 262)",
   "--moss": "oklch(90% 0.14 150)",
   "--rose": "oklch(89% 0.09 45)",
+} as CSSProperties;
+const ON_PAPER = {
+  "--on": "var(--ink)",
+  "--tile": "var(--card)",
+  "--tile-hover": "var(--paper-2)",
+  "--tile-ring": "var(--border-soft)",
+  "--panel": "var(--card)",
+  "--panel-ring": "var(--border-soft)",
+  "--pick": GROUND,
+  "--pick-ink": "white",
+  "--pick-mark": "white",
+  "--dot": GROUND,
+  "--step-done": "oklch(52% 0.15 150)",
+  "--step-now": "oklch(60% 0.15 65)",
+  "--ready-ink": "white",
 } as CSSProperties;
 
 const EASE = "ease-[cubic-bezier(0.3,0.7,0.2,1)]";
@@ -49,9 +82,6 @@ const HOSTS: Record<Source, string> = {
   own: "bean",
   account: "drop",
 };
-
-/** The text on a button in the colour of a reached step. */
-const READY_INK = "oklch(27% 0.09 150)";
 
 /**
  * A line of the list's heading: as wide as its text and shifted, not laid out, to the middle —
@@ -100,10 +130,8 @@ function Wordmark() {
       <EngentyLogoMark size={28} />
       <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
         engenty
-        <span className="mr-[0.09em] ml-[0.06em]" style={{ color: CREAM }}>
-          .
-        </span>
-        <span className="font-normal text-white/70">wizards</span>
+        <span className="mr-[0.09em] ml-[0.06em] text-(color:--dot)">.</span>
+        <span className="font-normal text-(color:--on)/70">wizards</span>
       </span>
     </span>
   );
@@ -134,10 +162,9 @@ function Choice({
       className={cn(
         "group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-[background-color,color,box-shadow] duration-300",
         selected
-          ? "bg-white shadow-elevated"
-          : "bg-white/10 ring-1 ring-white/15 hover:bg-white/15",
+          ? "bg-(color:--pick) text-(color:--pick-ink) shadow-elevated"
+          : "bg-(color:--tile) ring-(color:--tile-ring) ring-1 hover:bg-(color:--tile-hover)",
       )}
-      style={selected ? { color: GROUND_INK } : undefined}
     >
       {badge ? (
         <span
@@ -150,25 +177,29 @@ function Choice({
       <span
         className={cn(
           "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-300",
-          selected ? "border-transparent" : "border-white/40",
+          selected ? "border-transparent bg-(color:--pick-mark)" : "border-(color:--on)/40",
         )}
-        style={selected ? { background: GROUND_INK } : undefined}
       >
-        {selected ? <Check className="size-3.5 text-white" /> : null}
+        {selected ? <Check className="size-3.5 text-(color:--pick)" /> : null}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-medium text-[0.9375rem]">{title}</span>
         <span
           className={cn(
             "mt-0.5 block truncate text-[0.8125rem]",
-            selected ? "opacity-70" : "text-white/65",
+            selected ? "opacity-70" : "text-(color:--on)/65",
           )}
         >
           {description}
         </span>
       </span>
       {note ? (
-        <span className={cn("shrink-0 text-[0.75rem]", selected ? "opacity-70" : "text-white/65")}>
+        <span
+          className={cn(
+            "shrink-0 text-[0.75rem]",
+            selected ? "opacity-70" : "text-(color:--on)/65",
+          )}
+        >
           {note}
         </span>
       ) : null}
@@ -177,7 +208,7 @@ function Choice({
           "size-4 shrink-0 transition",
           selected
             ? "opacity-70"
-            : "text-white/40 group-hover:translate-x-0.5 group-hover:text-white/80",
+            : "text-(color:--on)/40 group-hover:translate-x-0.5 group-hover:text-(color:--on)/80",
         )}
       />
     </button>
@@ -195,7 +226,7 @@ function Stages({ name, at, done }: { name: string; at: number; done: boolean })
   const level = done ? stages.length : at + 1;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-medium text-[0.75rem] uppercase tracking-[0.14em]">
-      <span className="text-white/70">{name}</span>
+      <span className="text-(color:--on)/70">{name}</span>
       <ol className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {stages.map((stage, i) => {
           const reached = done || i < at;
@@ -218,7 +249,12 @@ function Stages({ name, at, done }: { name: string; at: number; done: boolean })
             key={stage}
             className="h-[3px] w-5 rounded-full transition-colors duration-500"
             style={{
-              background: i < level ? (done ? STEP_DONE : STEP_NOW) : "rgb(255 255 255 / 0.22)",
+              background:
+                i < level
+                  ? done
+                    ? STEP_DONE
+                    : STEP_NOW
+                  : "color-mix(in oklab, var(--on) 22%, transparent)",
             }}
           />
         ))}
@@ -233,7 +269,7 @@ function FooterLink({ href, children }: { href: string; children: string }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="transition hover:text-white"
+      className="transition hover:text-(color:--on)"
       onClick={(e) => {
         // In the desktop app a page opens in the person's own browser.
         e.preventDefault();
@@ -252,7 +288,9 @@ function FooterLink({ href, children }: { href: string; children: string }) {
  * in front until a test has worked; everything here is in the settings too.
  */
 export function SetupPage() {
-  useGround(GROUND);
+  // Dark stands on the vivid ground, light on the theme's paper.
+  const onGround = usePreferredTheme() === "dark";
+  useGround(onGround ? GROUND : null);
   const me = useMe();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -316,10 +354,16 @@ export function SetupPage() {
   /** The row that is lit: the one just clicked, at once; else the one in effect. */
   const marked = choose.isPending ? (choose.variables ?? selected) : selected;
   return (
-    <div className="flex min-h-dvh flex-col px-6 text-white sm:px-10" style={LEGIBLE}>
+    <div
+      className="flex min-h-dvh flex-col px-6 text-(color:--on) sm:px-10"
+      style={onGround ? ON_GROUND : ON_PAPER}
+    >
       <header className="flex items-center justify-between pt-6 sm:pt-8">
         <Wordmark />
-        <LangSwitch ink={GROUND_INK} />
+        <span className="flex items-center gap-2">
+          <ThemeSwitch tone={onGround ? "ground" : "surface"} />
+          <LangSwitch tone={onGround ? "ground" : "surface"} ink={GROUND_INK} />
+        </span>
       </header>
       <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col pt-6 pb-10 lg:pt-[6vh]">
         {/* The host of the start takes no row of its own on a wide page: it stands large beside
@@ -365,7 +409,7 @@ export function SetupPage() {
               <p
                 className={cn(
                   LINE,
-                  "font-medium text-[0.75rem] text-white/70 uppercase tracking-[0.16em]",
+                  "font-medium text-(color:--on)/70 text-[0.75rem] uppercase tracking-[0.16em]",
                   selected ? LINE_LEFT : LINE_MIDDLE,
                 )}
               >
@@ -383,7 +427,7 @@ export function SetupPage() {
               <p
                 className={cn(
                   LINE,
-                  "mt-2.5 text-[0.9375rem] text-white/75 leading-relaxed",
+                  "mt-2.5 text-(color:--on)/75 text-[0.9375rem] leading-relaxed",
                   selected ? LINE_LEFT : LINE_MIDDLE,
                 )}
               >
@@ -415,7 +459,7 @@ export function SetupPage() {
                 onPick={() => choose.mutate("own")}
               />
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[0.8125rem] text-white/60">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-(color:--on)/60 text-[0.8125rem]">
               <span>{installed.length ? null : t("setup.noHarness")}</span>
               <Button
                 variant="ghost"
@@ -439,7 +483,7 @@ export function SetupPage() {
                   setListOpen(true);
                   toTop();
                 }}
-                className="-ml-1.5 mb-5 inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-[0.875rem] text-white/80 transition hover:text-white lg:hidden"
+                className="-ml-1.5 mb-5 inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-(color:--on)/80 text-[0.875rem] transition hover:text-(color:--on) lg:hidden"
               >
                 <ArrowLeft className="size-4" /> {t("run.back")}
               </button>
@@ -458,7 +502,7 @@ export function SetupPage() {
                     {heading}
                   </h2>
                 </div>
-                <div className="mt-5 rounded-2xl bg-white/[0.07] p-5 ring-1 ring-white/12 sm:p-6">
+                <div className="mt-5 rounded-2xl bg-(color:--panel) p-5 ring-(color:--panel-ring) ring-1 sm:p-6">
                   {client ? (
                     <HarnessPanel me={me.data} id={client.id} autoTest={!works} />
                   ) : (
@@ -488,9 +532,11 @@ export function SetupPage() {
                         "group inline-flex h-12 items-center gap-2.5 rounded-full px-6 font-semibold text-[1rem] transition-[background-color,color,box-shadow,filter] duration-300",
                         works
                           ? "shadow-[0_6px_24px_oklch(88%_0.17_150/0.35)] hover:brightness-105"
-                          : "cursor-not-allowed bg-white/20 text-white/65",
+                          : "cursor-not-allowed bg-(color:--on)/20 text-(color:--on)/65",
                       )}
-                      style={works ? { background: STEP_DONE, color: READY_INK } : undefined}
+                      style={
+                        works ? { background: STEP_DONE, color: "var(--ready-ink)" } : undefined
+                      }
                     >
                       {t("setup.done")}
                       <span
@@ -501,7 +547,7 @@ export function SetupPage() {
                       </span>
                     </button>
                     {works ? null : (
-                      <span className="text-[0.8125rem] text-white/65">
+                      <span className="text-(color:--on)/65 text-[0.8125rem]">
                         {t("setup.untilWorks")}
                       </span>
                     )}
@@ -514,13 +560,13 @@ export function SetupPage() {
       </main>
       {/* One quiet line at the foot: whose app this is and where it runs. Its other end holds
           a place, marked with the wordmark's dot at its own size, for what belongs there later. */}
-      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-[0.75rem] text-white/55 sm:pb-8">
+      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-(color:--on)/55 text-[0.75rem] sm:pb-8">
         <span>
           © {new Date().getFullYear()} engenty · {t("setup.local")}
         </span>
         <span className="flex items-center gap-5">
           {site ? <FooterLink href={site}>{new URL(site).host}</FooterLink> : null}
-          <span aria-hidden="true" className="size-[3px]" style={{ background: CREAM }} />
+          <span aria-hidden="true" className="size-[3px] bg-(color:--dot)" />
         </span>
       </footer>
     </div>
