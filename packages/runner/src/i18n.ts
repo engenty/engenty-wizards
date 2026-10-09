@@ -174,6 +174,9 @@ const de = {
   "common.offline": "Keine Verbindung. Prüfe dein Netz und versuch es noch einmal.",
   "common.retry": "Erneut versuchen",
   "common.cancel": "Abbrechen",
+  "run.start": "Los geht's",
+  "run.unavailable": "Dieser Wizard ist gerade nicht verfügbar.",
+  "run.resume": "Letzten Durchlauf fortsetzen",
 };
 
 export type RunnerKey = keyof typeof de;
@@ -345,6 +348,9 @@ const en: Record<RunnerKey, string> = {
   "common.offline": "No connection. Check your network and try again.",
   "common.retry": "Try again",
   "common.cancel": "Cancel",
+  "run.start": "Let's go",
+  "run.unavailable": "This wizard is not available right now.",
+  "run.resume": "Continue your last run",
 };
 
 export const RUNNER_TEXTS = { de, en } as const;

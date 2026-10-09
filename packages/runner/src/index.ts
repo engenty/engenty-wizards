@@ -18,6 +18,7 @@ export {
 export {
   type AppAbility,
   type AppBridge,
+  api,
   configureRunner,
   type MascotProps,
   type RunnerEnv,

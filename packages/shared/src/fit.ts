@@ -33,6 +33,8 @@ export type Need =
   | `plugin:${string}`
   | `asset:${AssetKind}`
   | "film"
+  /** A widget runs in the runtime's widget host; the standalone runner has none yet. */
+  | "widget"
   | "widget:video"
   | `field:${Extract<FieldKind, "audio" | "connection" | "slot" | "location" | "image" | "file">}`
   /** A file the person gives that a later thinking step reads: reading documents is the runtime's. */
@@ -186,9 +188,7 @@ export function needs(step: Step, def: WizardDefinition): StepNeed[] {
       add("film", true);
       break;
     case "widget":
-      if (step.video) {
-        add("widget:video", true);
-      }
+      add(step.video ? "widget:video" : "widget", true);
       break;
     case "surface":
       if (Object.values(step.data).some((ref) => listRef(dataRef(ref)))) {

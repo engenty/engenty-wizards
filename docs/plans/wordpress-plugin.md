@@ -281,7 +281,7 @@ Open:
 
 ## Standalone: wizards that run without an account
 
-Planned on 2026-10-09 after the build above; not built. Asked for: wizards installed from the
+Planned on 2026-10-09 after the build above; built the same day (see [Built](#built-1) under Implementation). Asked for: wizards installed from the
 studio, shipped with the plugin or from an uploaded package run on the site by themselves — no live
 connection to the studio, which needs an account and stays on engenty.ai. Decided then: the
 plugin checks what every wizard needs and labels the ones that need an account instead of hiding
@@ -652,6 +652,33 @@ Marketplace (closed app), later: `standalone: { fit, notes }` on an entry, compu
 Test stack: WordPress 7.0 through `wp-env` (`bin/wp-env.json`), the sqlite drop-in as today,
 the Ollama provider plugin against a local Ollama for the no-key path, an OpenAI test key for the
 images path; the plugin's CI smoke test gains a standalone run.
+
+#### Built
+
+Built on 2026-10-09 (steps 1 to 6 of the order above), committed, not pushed:
+
+| Repository | What |
+|---|---|
+| `engenty-wizards` (this branch) | `packages/shared/src/fit.ts`: `needs`, `standaloneFit`, `standaloneEntry` (the gallery's fields), `unavoidableSteps`/`unavoidableFrom` and `closedChoicesFor` lifted out of `requirements.ts`; tests in `apps/runtime/test/fit.test.ts`. `packages/runner` (MIT): the runner's components, the UI primitives, the runner's texts and an env the host configures (`configureRunner`), `RunnerBody` on a `RunSource`; the studio uses the package (one copy), `useRun` stays in `apps/web`; `vite build` writes ES modules with React external and a `runner.css` scoped to `.engenty-runner` for hosts without Tailwind; `@engenty-wizards/runner/check` reads a `.wizard` and runs the check. `GET /api/v1/wizards/:id/package` (the published version), `standalone` on every wizard of `GET /api/v1/wizards`, `?published=1` on the studio's export. The share dialog's WordPress section with the gallery's "Braucht" list and the package download; Einbinden's "Ohne Konto". `pnpm templates:export` writes every marketplace template as a `.wizard` with its fit; the release attaches `templates.tgz` and `runner.tgz` |
+| `engenty-wizards-wordpress` v0.2.0 | `class-packages` (tables, the shipped set from `wizards/`, imports, the definition without prompts), `class-runs` (the public routes, state, limits, `followRules` and `readPageInput` ported), `class-think` (the one call through the AI Client, templates, the system prompt, JSON schemas, decisions, decided fields and surfaces, documents and dashboards as HTML, the wizard's text files inline since there are no tools), `class-downloads`; `src/runner` mounts the vendored package with `useLocalRun` on every standalone tag (inline, modal, bubble); the admin's Start (the choice, the local setup), the gallery with the entry dialog, Import with the check in the browser, the studio's wizard grid, Ergebnisse with local runs, Einstellungen with the provider line and the limits; `bin/sync-runner.sh`, `vendor-runner/`, `wizards/` (10 templates: 1 as is, 9 with less), the smoke test's standalone run with `bin/fake-provider.php` |
+
+What changed against the plan above:
+
+| Plan | Built | Why |
+|---|---|---|
+| Documents and dashboards: connected only | They run standalone: the HTML a text model writes in one call, kept as the step's asset; a PDF or Word file asked of it is the browser's print of that HTML | Without them 1 of 27 marketplace templates ran on a site; with them 10 |
+| Widgets run standalone | A widget needs the runtime's widget host: `widget` is a hard need | None of the templates that fit uses one |
+| `GET local/runs/:id/download?step=&format=` | `GET local/runs/:id/steps/:step/download?format=`, the runtime's shape, so the runner package's `DownloadButtons` needs no change | One copy |
+| The provider from the AI Client's registry | `getRegisteredProviderIds`, `isProviderConfigured`, the connector's name; WordPress 7.1 core registers the OpenAI, Anthropic and Google *connectors*, the providers themselves are plugins from WordPress.org (`ai-provider-for-openai`) | What 7.1.3 has |
+
+Tried on 2026-10-09 on WordPress 7.1.3 (SQLite) with a provider that answers canned (`bin/fake-provider.php`): the local setup, two shipped wizards live, the FAQ wizard and the price wizard (page → JSON step → prefilled line items → document → result) through the routes and in the browser (start, page, working, result with Markdown and Text, the modal, the bubble), the seventh run in an hour refused, the honeypot, downloads, Ergebnisse with the drawer, the settings. No prompt in the page source.
+
+Open after this round:
+
+- A real provider: no OpenAI key on the machine; the Ollama provider plugin on WordPress.org (Fueled, 2026-10) is incompatible with 7.1.3's php-ai-client (fatal on load). The OpenAI provider plugin and a key test the `with_file`, `as_json_response` and timeout paths for real.
+- Steps 7 and 8: "Hier laufen lassen" on a connected site; closed choices on the site, photos to a provider that takes images (the setting exists, `with_file` untested), the PHP tool loop.
+- The runner bundle pulls `packages/shared` (FSL-1.1-MIT) into the plugin's `vendor-runner/`: relicense the shared helpers the runner needs (definition, surface, run, data-tables) or move them into the MIT package.
+- The repository on GitHub and the first release; the marketplace's `runs=wordpress` facet.
 
 #### Not in this implementation
 

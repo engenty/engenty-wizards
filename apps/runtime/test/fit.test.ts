@@ -207,16 +207,16 @@ describe("whether a wizard runs on its own", () => {
     const entry = standaloneEntry(tour);
     expect(entry.missing).toEqual(["image"]);
     expect(entry.optional).toEqual(["speech", "video"]);
-    // Without the stills, the voice and the clips both sit behind a choice.
+    // Without the stills and the widget, the voice and the clips both sit behind a choice.
     const avoidable = {
       ...tour,
       steps: tour.steps
-        .filter((s) => s.id !== "staged")
+        .filter((s) => s.id !== "staged" && s.id !== "film")
         .map((s) =>
           s.id === "plan"
             ? { ...s, next: [{ ...s.next![0], goto: "stagedCheck" }] }
             : s.id === "stagedCheck"
-              ? { ...s, show: ["plan"] }
+              ? { ...s, show: ["plan"], next: [{ ...s.next![0], goto: "done" }] }
               : s,
         ),
     } as WizardDefinition;
