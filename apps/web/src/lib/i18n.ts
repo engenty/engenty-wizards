@@ -10,7 +10,7 @@ const de = {
   "auth.signIn": "Anmelden oder Konto erstellen",
   "auth.failed": "Die Anmeldung hat nicht geklappt. Bitte noch einmal versuchen.",
   "auth.localLink":
-    "Öffne den Link, den die App beim Start ausgegeben hat – er meldet dich an diesem Gerät an.",
+    "Führe das in einem Terminal aus – es öffnet das Studio und meldet dich an diesem Gerät an:",
   "nav.account": "Konto & Guthaben",
   "setup.keysInAccount":
     "API-Schlüssel für Skripte gehören zu deinem Konto. Du legst sie dort an und ziehst sie dort zurück.",
@@ -1313,7 +1313,7 @@ const en: Record<Key, string> = {
   "auth.legal": "No password, no sign-up form — you sign in with an account you already have.",
   "auth.signIn": "Sign in or create an account",
   "auth.failed": "Sign-in did not work. Please try again.",
-  "auth.localLink": "Open the link the app printed at start — it signs you in on this device.",
+  "auth.localLink": "Run this in a terminal — it opens the studio and signs you in on this device:",
   "nav.account": "Account & credits",
   "setup.keysInAccount":
     "API keys for scripts belong to your account. You create and revoke them there.",

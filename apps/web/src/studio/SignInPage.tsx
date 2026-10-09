@@ -130,7 +130,12 @@ export function SignInPage() {
             </Button>
           ) : null}
           {config.data?.mode === "local" && !config.data.devLogin ? (
-            <p className="text-[0.875rem] text-ink-3">{t("auth.localLink")}</p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-[0.875rem] text-ink-3">{t("auth.localLink")}</p>
+              <code className="select-all rounded bg-paper-2 px-2 py-1 font-mono text-[0.8125rem] text-ink-2">
+                wizards open
+              </code>
+            </div>
           ) : null}
         </div>
         {config.data?.mode === "managed" ? (
