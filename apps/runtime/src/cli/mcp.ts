@@ -1,11 +1,10 @@
-import { spawn } from "node:child_process";
-import { mkdirSync, openSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { LOCAL_CLIENT_HEADER, LOCAL_MCP_HEADER, mintLocalTicket } from "../auth/local-ticket.js";
 import type { Running } from "../running.js";
 import type { Layout } from "./home.js";
-import { runningRuntime, settings } from "./start.js";
+import { runningRuntime, settings, startInBackground } from "./start.js";
 
 /**
  * `wizards mcp`: this install's MCP server over stdio, for AI clients that start their
@@ -16,8 +15,6 @@ import { runningRuntime, settings } from "./start.js";
  *
  * stdout carries only MCP messages; everything else goes to stderr.
  */
-
-const START_TIMEOUT_MS = 60_000;
 
 type Message = {
   jsonrpc: "2.0";
@@ -62,18 +59,6 @@ function readSecret(paths: Layout, dataDir: string): string | null {
   }
 }
 
-/** Starts the runtime in the background, the way `wizards start --no-open` would. */
-function startInBackground(paths: Layout) {
-  mkdirSync(paths.logs, { recursive: true });
-  const log = openSync(join(paths.logs, "runtime.log"), "a");
-  const child = spawn(process.execPath, [process.argv[1], "start", "--no-open"], {
-    detached: true,
-    stdio: ["ignore", log, log],
-    env: process.env,
-  });
-  child.unref();
-}
-
 export async function mcp(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
   let running: Promise<Running> | null = null;
@@ -87,18 +72,11 @@ export async function mcp(paths: Layout): Promise<number> {
         return found;
       }
       process.stderr.write("engenty wizards is not running; starting it …\n");
-      startInBackground(paths);
-      const began = Date.now();
-      while (Date.now() - began < START_TIMEOUT_MS) {
-        await new Promise((wait) => setTimeout(wait, 300));
-        const started = await runningRuntime(dataDir);
-        if (started) {
-          return started;
-        }
+      const started = await startInBackground(paths);
+      if (started) {
+        return started;
       }
-      throw new Error(
-        `engenty wizards did not start within a minute; see ${join(paths.logs, "runtime.log")}.`,
-      );
+      throw new Error(`engenty wizards did not start; see ${join(paths.logs, "runtime.log")}.`);
     })();
     running.catch(() => {
       running = null;

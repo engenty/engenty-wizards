@@ -1,6 +1,6 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, type SpawnOptions, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { styleText } from "node:util";
@@ -103,11 +103,55 @@ function show(url: string, entry: string, open: boolean) {
   }
 }
 
+/** The command of this install, as it is on disk now: `wizards <args>`. */
+function spawnCommand(paths: Layout, args: string[], options: SpawnOptions): ChildProcess {
+  const wrapper = join(paths.bin, "wizards");
+  return existsSync(wrapper)
+    ? spawn(wrapper, args, options)
+    : spawn(process.execPath, [join(packageRoot, "bin/wizards.mjs"), ...args], options);
+}
+
 /**
- * Starts the runtime of this install in the foreground and opens the studio. If one already
- * runs on the same data folder (another terminal, the desktop app), that one is opened instead.
+ * `wizards start --no-open` detached from this terminal, its output in logs/runtime.log; the
+ * runtime once it answers, or null when it ended or did not answer within a minute.
  */
-export async function start(paths: Layout, options: { open: boolean }): Promise<number> {
+export async function startInBackground(paths: Layout): Promise<Running | null> {
+  const { dataDir } = settings(paths);
+  mkdirSync(paths.logs, { recursive: true });
+  const log = openSync(join(paths.logs, "runtime.log"), "a");
+  const child = spawnCommand(paths, ["start", "--no-open"], {
+    cwd: paths.home,
+    detached: true,
+    stdio: ["ignore", log, log],
+  });
+  let exited = false;
+  child.on("error", () => {
+    exited = true;
+  });
+  child.on("exit", () => {
+    exited = true;
+  });
+  child.unref();
+  const began = Date.now();
+  while (!exited && Date.now() - began < START_TIMEOUT_MS) {
+    await new Promise((wait) => setTimeout(wait, 300));
+    const started = await runningRuntime(dataDir);
+    if (started) {
+      return started;
+    }
+  }
+  return null;
+}
+
+/**
+ * Starts the runtime of this install and opens the studio: in the foreground, or with
+ * `background` detached from this terminal. If one already runs on the same data folder
+ * (another terminal, the desktop app), that one is opened instead.
+ */
+export async function start(
+  paths: Layout,
+  options: { open: boolean; background?: boolean },
+): Promise<number> {
   const { fileEnv, dataDir, port: wanted, appUrl } = settings(paths);
   mkdirSync(dataDir, { recursive: true });
   mkdirSync(paths.logs, { recursive: true });
@@ -116,6 +160,22 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   if (running) {
     show(running.url, entryUrl(running, dataDir), options.open);
     console.log(styleText("dim", "    It was already running; stop it with `wizards stop`."));
+    return 0;
+  }
+
+  if (options.background) {
+    const started = await startInBackground(paths);
+    if (!started) {
+      console.error(`engenty wizards did not start; see ${join(paths.logs, "runtime.log")}.`);
+      return 1;
+    }
+    show(started.url, entryUrl(started, dataDir), options.open);
+    console.log(
+      styleText(
+        "dim",
+        `    It runs in the background; stop it with \`wizards stop\`. Its log: ${join(paths.logs, "runtime.log")}`,
+      ),
+    );
     return 0;
   }
 
@@ -171,15 +231,10 @@ export async function start(paths: Layout, options: { open: boolean }): Promise<
   if (code !== RESTART_EXIT) {
     return code;
   }
-  // Updated: the command as it is on disk now starts the new version, in this terminal or
-  // under the login item, which keeps waiting on this process.
-  console.log(styleText("dim", "  Updated; starting the new version."));
-  const wrapper = join(paths.bin, "wizards");
-  current = existsSync(wrapper)
-    ? spawn(wrapper, ["start", "--no-open"], { stdio: "inherit" })
-    : spawn(process.execPath, [join(packageRoot, "bin/wizards.mjs"), "start", "--no-open"], {
-        stdio: "inherit",
-      });
+  // Updated or `wizards restart`: the command as it is on disk now starts it again, in this
+  // terminal or under the login item, which keeps waiting on this process.
+  console.log(styleText("dim", "  Starting it again."));
+  current = spawnCommand(paths, ["start", "--no-open"], { stdio: "inherit" });
   return new Promise<number>((done) => {
     current.on("error", () => done(1));
     current.on("exit", (exit) => done(exit ?? 0));

@@ -57,7 +57,7 @@ export async function update(paths: Layout): Promise<number> {
 
   if (await runningRuntime(settings(paths).dataDir)) {
     console.log(
-      `  The runtime that is running is still the old one. Restart it: ${cyan("wizards stop")}, then ${cyan("wizards")}.`,
+      `  The runtime that is running is still the old one. Restart it: ${cyan("wizards restart")}`,
     );
   }
   return 0;

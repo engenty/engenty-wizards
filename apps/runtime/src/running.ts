@@ -12,6 +12,8 @@ export interface Running {
   /** The origin people open. */
   url: string;
   startedAt: string;
+  /** Started by the command, which starts it again when it exits with RESTART_EXIT. */
+  restarts?: boolean;
 }
 
 const FILE = "running.json";

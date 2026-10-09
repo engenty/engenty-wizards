@@ -7,12 +7,14 @@ description: The wizards command — start, setup, status, update — and the in
 
 | Command | Does |
 |---|---|
-| `wizards` or `wizards start` | Starts it and opens the studio. The first time, the setup runs first |
+| `wizards` | What runs, and a menu: start, stop, restart, update, start at login, connect, status, setup, help. The first time, the setup runs first |
+| `wizards start` | Starts it and opens the studio |
 | `wizards setup` | The guided setup again: an AI client to think with, ffmpeg, start at login |
 | `wizards open` | Lets this browser into the running studio. `--print` only shows the link |
 | `wizards status` | What is installed and what runs |
 | `wizards doctor` | Status, and what is wrong |
 | `wizards stop` | Stops it. The data is kept |
+| `wizards restart` | Stops it and starts it again; after an update, the new version |
 | `wizards update` | Installs the newest version |
 | `wizards autostart on` / `off` | Starts it at login, or no longer. A LaunchAgent on macOS, a systemd user service on Linux |
 | `wizards connect [app …]` | Adds your wizards to your [AI apps](./ai-apps.md): every app found, or the ones you name |
@@ -24,10 +26,12 @@ description: The wizards command — start, setup, status, update — and the in
 | `--yes`, `-y` | Asks nothing and installs nothing optional |
 | `--client <name>` | Installs this AI client without asking: `codex`, `claude`, `gemini`, `cursor` |
 | `--no-open` | Starts without opening the browser |
+| `--service`, `-s` | Starts it as a service: detached from the terminal, and the command returns. `wizards stop` stops it; its output goes to `logs/runtime.log` |
 | `--version`, `--help` | |
 
-Started in a terminal, it runs while that terminal is open; Ctrl-C stops it. If it already
-runs, `wizards` opens the running one instead of starting a second.
+Started in a terminal, it runs while that terminal is open; Ctrl-C stops it. With
+`wizards start --service` it keeps running after the terminal closes. If it already
+runs, `wizards start` opens the running one instead of starting a second.
 
 ## Where things are
 
@@ -37,7 +41,7 @@ runs, `wizards` opens the running one instead of starting a second.
 | `~/.engenty/wizards/data` | Your wizards, results and files. See [Your data](./data.md) |
 | `~/.engenty/wizards/.env` | The settings file |
 | `~/.engenty/wizards/plugins` | [Plugins](./plugins.md) of this install |
-| `~/.engenty/wizards/logs` | Logs: `update.log`, and `runtime.log` when an AI app started it |
+| `~/.engenty/wizards/logs` | Logs: `update.log`, and `runtime.log` when it runs as a service |
 | `~/.local/bin/wizards` | The command |
 
 ## Settings

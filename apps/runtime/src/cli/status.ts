@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { autostartState, setAutostart } from "./autostart.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
-import { runningRuntime, settings } from "./start.js";
+import { entryUrl, runningRuntime, settings, startInBackground } from "./start.js";
 import { bad, badge, cyan, dim, no, ok, tilde } from "./ui.js";
 
 /**
@@ -85,6 +85,19 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
   return problems.length ? 1 : 0;
 }
 
+/** Waits for a process to end; false when it still runs after `ms`. */
+async function ended(pid: number, ms: number): Promise<boolean> {
+  for (let waited = 0; waited < ms; waited += 100) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
+    await new Promise((wait) => setTimeout(wait, 100));
+  }
+  return false;
+}
+
 /** Stops the runtime that runs on this install's data folder. */
 export async function stop(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
@@ -94,17 +107,54 @@ export async function stop(paths: Layout): Promise<number> {
     return 0;
   }
   process.kill(running.pid, "SIGTERM");
-  for (let waited = 0; waited < 8000; waited += 100) {
-    try {
-      process.kill(running.pid, 0);
-    } catch {
-      console.log(`Stopped (pid ${running.pid}). Your data is kept.`);
-      return 0;
-    }
-    await new Promise((wait) => setTimeout(wait, 100));
+  if (await ended(running.pid, 8000)) {
+    console.log(`Stopped (pid ${running.pid}). Your data is kept.`);
+    return 0;
   }
   console.error(`The runtime (pid ${running.pid}) did not stop within 8 seconds.`);
   return 1;
+}
+
+/**
+ * Stops the runtime and starts it again, the version on disk now. One the command started (a
+ * terminal, the login item) is started again by that command, where it ran; any other is
+ * stopped and started in the background. When nothing runs, it is started in the background.
+ */
+export async function restart(paths: Layout): Promise<number> {
+  const { dataDir } = settings(paths);
+  const running = await runningRuntime(dataDir);
+  if (running?.restarts && process.platform !== "win32") {
+    process.kill(running.pid, "SIGUSR2");
+    for (let waited = 0; waited < 60_000; waited += 300) {
+      await new Promise((wait) => setTimeout(wait, 300));
+      const again = await runningRuntime(dataDir);
+      if (again && again.pid !== running.pid) {
+        console.log(`${ok} Restarted: ${cyan(again.url)} ${dim(`pid ${again.pid}`)}`);
+        return 0;
+      }
+    }
+    console.error("engenty wizards did not start again within a minute.");
+    return 1;
+  }
+  if (running) {
+    process.kill(running.pid, "SIGTERM");
+    if (!(await ended(running.pid, 8000))) {
+      console.error(`The runtime (pid ${running.pid}) did not stop within 8 seconds.`);
+      return 1;
+    }
+  }
+  const started = await startInBackground(paths);
+  if (!started) {
+    console.error(`engenty wizards did not start; see ${join(paths.logs, "runtime.log")}.`);
+    return 1;
+  }
+  console.log(
+    `${ok} ${running ? "Restarted" : "Started"}: ${cyan(started.url)} ${dim(`pid ${started.pid}, in the background`)}`,
+  );
+  if (!running) {
+    console.log(`  Open the studio: ${entryUrl(started, dataDir)}`);
+  }
+  return 0;
 }
 
 /** `autostart [on|off]`: whether it starts at login, and the switch. */

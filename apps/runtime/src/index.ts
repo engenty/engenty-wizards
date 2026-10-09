@@ -21,7 +21,7 @@ import { syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
-import { onRestart } from "./update.js";
+import { onRestart, RESTART_EXIT } from "./update.js";
 
 await migrateControlDb();
 // What the linked account's plan confirmed last: the Pro modules it includes load with the rest.
@@ -73,6 +73,7 @@ const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.hos
       port: info.port,
       url: env.appUrl,
       startedAt: new Date().toISOString(),
+      restarts: process.env.ENGENTY_WIZARDS_RESTARTS === "1",
     });
   }
 });
@@ -111,3 +112,7 @@ async function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown());
 process.on("SIGTERM", () => shutdown());
 onRestart((code) => void shutdown(code));
+// `wizards restart`: the command that started it starts it again, where it ran.
+if (process.env.ENGENTY_WIZARDS_RESTARTS === "1" && process.platform !== "win32") {
+  process.on("SIGUSR2", () => shutdown(RESTART_EXIT));
+}
