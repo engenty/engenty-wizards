@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.34] - 2026-10-09
+- FIXED **[studio]** Someone signed in at engenty.ai who opens the studio is signed in to it by itself instead of being sent back to the landing page – the studio's start page sees the account's engenty_signed_in cookie and starts the sign-in, which goes through without a question; only visitors without an account go to the landing page
+
 ## [0.2.33] - 2026-10-09
 - ADDED **[cli]** `wizards` on a terminal opens a menu – it shows what runs (address, pid, since when), whether it starts at login and whether a newer version is out, and offers start, start here, open the studio, restart, stop, update, start at login, connect AI apps, status, setup and help; with options or without a terminal it starts as before. New: `wizards restart` (one the command started starts again where it ran, any other is stopped and started as a service) and `wizards start --service` / `-s` (detached from the terminal, the command returns, output in logs/runtime.log); after an update the command says `wizards restart`
 

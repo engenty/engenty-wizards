@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.34",
+    "timestamp": 1791548290,
+    "commits": [
+      {
+        "id": "381c822",
+        "message": "someone signed in at engenty.ai who opens the studio is signed in to it by itself instead of being sent back to the landing page – the studio's start page sees the account's engenty_signed_in cookie and starts the sign-in, which goes through without a question; only visitors without an account go to the landing page",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.33",
-    "timestamp": 1791547307,
+    "timestamp": 1791547315,
     "commits": [
       {
         "id": "62b3675",
