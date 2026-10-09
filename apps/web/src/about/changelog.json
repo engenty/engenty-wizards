@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.35",
+    "timestamp": 1791549383,
+    "commits": [
+      {
+        "id": "18d894a",
+        "message": "a local studio's sign-in page names the command that lets a browser in, `wizards open`, instead of the link printed at start – a runtime started as a service prints nothing to a terminal",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.34",
-    "timestamp": 1791548290,
+    "timestamp": 1791548294,
     "commits": [
       {
         "id": "381c822",

@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.35] - 2026-10-09
+- FIXED **[studio]** A local studio's sign-in page names the command that lets a browser in, `wizards open`, instead of the link printed at start – a runtime started as a service prints nothing to a terminal
+
 ## [0.2.34] - 2026-10-09
 - FIXED **[studio]** Someone signed in at engenty.ai who opens the studio is signed in to it by itself instead of being sent back to the landing page – the studio's start page sees the account's engenty_signed_in cookie and starts the sign-in, which goes through without a question; only visitors without an account go to the landing page
 
