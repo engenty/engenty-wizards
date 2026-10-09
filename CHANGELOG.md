@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.36] - 2026-10-09
+- ADDED **[studio]** The setup has a light · dark switch beside the language switch – dark stands on the blue ground as before, light on the studio's paper with white choices and the pick in the ground's blue; without a pick it follows the system, and the pick holds for the whole studio. The setup's copy writes engenty in lower case and without an article: "Womit soll engenty denken?"
+
 ## [0.2.35] - 2026-10-09
 - FIXED **[studio]** A local studio's sign-in page names the command that lets a browser in, `wizards open`, instead of the link printed at start – a runtime started as a service prints nothing to a terminal
 

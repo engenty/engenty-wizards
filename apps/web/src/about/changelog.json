@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.36",
+    "timestamp": 1791549777,
+    "commits": [
+      {
+        "id": "930efe8",
+        "message": "the setup has a light · dark switch beside the language switch – dark stands on the blue ground as before, light on the studio's paper with white choices and the pick in the ground's blue; without a pick it follows the system, and the pick holds for the whole studio. The setup's copy writes engenty in lower case and without an article: \"Womit soll engenty denken?\"",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.35",
-    "timestamp": 1791549383,
+    "timestamp": 1791549385,
     "commits": [
       {
         "id": "18d894a",
