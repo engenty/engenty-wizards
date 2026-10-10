@@ -55,14 +55,16 @@ for a run open in the app. Worth it for cloud runs — nothing paid, the text st
 | The runtime: a run's device as a model first — `DeviceModel` wraps the class's own model, asks over the stream, falls back when the phone does not answer in 60 s, errs, the prompt is over 12k characters, or the call needs tools the step declared or has uploads to read | `apps/runtime/src/engine/device.ts`, `events.ts`, `routes/runs.ts`, `models.ts` (`textModel`, `attachTools`) |
 
 Checked end to end in headless Chrome with a fake bridge (record, phone transcript shown, the
-standard step's text from the phone on the result page). On the iOS 26.5 simulator the real
-module is reached both ways — the `think` call arrives, is answered and the runtime falls back
-as designed; the recording reaches the module as AAC — but the simulator itself runs neither
-Apple's model (`ModelManagerError 1026`, a known simulator limitation) nor the speech assets
-("not subscribed to transcription.de" in its log). The answers themselves are verified on the
-Mac, which runs the same `Shared.swift`; a real iPhone with iOS 26 is the device to confirm.
-Android has no counterpart yet: ML Kit's Prompt API (Gemini Nano) is a beta on few devices;
-the bridge offers nothing there and the runner keeps its web way.
+standard step's text from the phone on the result page), and on the iOS simulator with the real
+app: on the iOS 26.5 runtime (the host's own version) Apple's model answered the run's Standard
+step on the phone — the runtime logged "the device answered a 78-character call" and that text
+is the result. On the iOS 26.2 runtime the same call failed with `ModelManagerError 1026` (a
+known simulator version mismatch) and the runtime fell back as designed. Neither simulator
+holds speech assets ("not subscribed to transcription.de" in its log) and their microphone
+records silence, so on-device transcription is verified on the Mac, which runs the same
+`Shared.swift` (the studio's "Try it" for Voice notes answers through it). Android has no
+counterpart yet: ML Kit's Prompt API (Gemini Nano) is a beta on few devices; the bridge offers
+nothing there and the runner keeps its web way.
 
 Not built: a decision step that has uploads runs as an agent with the generic tools and stays
 on the runtime; the voice note's locale is the app's language, not detected.
