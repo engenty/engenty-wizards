@@ -1,6 +1,7 @@
 import {
   Check,
   EyeOff,
+  Home,
   type LucideIcon,
   PanelBottom,
   PanelLeft,
@@ -17,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { BRAND } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import {
@@ -34,9 +35,10 @@ import { cn } from "../ui";
 import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
 
 /**
- * The app bar at an edge of the window, as in engenty-pro: the mark, the space, the apps the
- * plugins added, and at its end the settings and the person. A place is a filled tile, a tool a
- * line glyph; the one that is open is cut from the page's own paper. A right click on the bar
+ * The app bar at an edge of the window, as in engenty-pro: the mark, the space with its home
+ * (the space's page: Info & Marke, Wissen, Daten, Ergebnisse), the apps the plugins added, and
+ * at its end the settings and the person. A place is a filled tile, a tool a line glyph; the
+ * one that is open is cut from the page's own paper. A right click on the bar
  * picks its edge and hides it; hidden, it comes out while the pointer rests at that edge. A
  * phone has it along the bottom, or the top (`useAppBar`); a long press there opens the same
  * menu with those two edges.
@@ -51,11 +53,9 @@ function glyph(active: boolean): string {
   );
 }
 
-/** The space's tile: it opens the spaces to switch between; the ring says its page is open. */
+/** The space's tile: it opens the spaces to switch between; the ring says the menu is open. */
 function SpaceTile({ me }: { me: Me }) {
   const { project } = useCurrentProject();
-  const { pathname } = useLocation();
-  const here = pathname === "/space" || pathname.startsWith("/space/");
   return (
     <SpaceMenu
       me={me}
@@ -64,9 +64,7 @@ function SpaceTile({ me }: { me: Me }) {
       className={(open) =>
         cn(
           "block rounded-lg transition",
-          here || open
-            ? "ring-2 ring-ink/80 ring-offset-2 ring-offset-sidebar"
-            : "hover:shadow-soft",
+          open ? "ring-2 ring-ink/80 ring-offset-2 ring-offset-sidebar" : "hover:shadow-soft",
         )
       }
     >
@@ -276,10 +274,11 @@ export function AppRail({ me }: { me: Me }) {
           className={cn(
             // No text selection and no link callout while a finger rests on the bar.
             "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
-            horizontal ? "min-h-14 w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
-            // Along a phone's edge, clear of the notch and the home indicator.
-            position === "bottom" && "pb-[env(safe-area-inset-bottom)]",
-            position === "top" && "pt-[env(safe-area-inset-top)]",
+            horizontal ? "w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
+            // Along a phone's edge, clear of the notch and the home indicator: the safe area
+            // comes on top of the bar's own padding, so the items keep their place in it.
+            position === "bottom" && "pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
+            position === "top" && "pt-[calc(0.375rem+env(safe-area-inset-top))] pb-1.5",
             hidden && cn("fixed z-50 shadow-overlay", AT_EDGE[position]),
           )}
         >
@@ -300,6 +299,15 @@ export function AppRail({ me }: { me: Me }) {
           <div className={horizontal ? "ml-1" : "mt-2"}>
             <SpaceTile me={me} />
           </div>
+          {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
+          <NavLink
+            to="/space"
+            title={t("nav.project")}
+            aria-label={t("nav.project")}
+            className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
+          >
+            <Home className="size-5" />
+          </NavLink>
           {/* The pages plugins added, each behind its icon, after a divider. */}
           {plugins.nav.length ? (
             <div
