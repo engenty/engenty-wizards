@@ -1,17 +1,19 @@
 import { apps, connectCommand } from "./connect.js";
-import { layout, packageVersion, readInstallNote } from "./home.js";
+import { command, layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { mcp } from "./mcp.js";
 import { menu } from "./menu.js";
-import { command, setup } from "./setup.js";
-import { open, start } from "./start.js";
+import { setup } from "./setup.js";
+import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
 import { update } from "./update.js";
 
 const HELP = `engenty wizards ${packageVersion()}
 
   ${command()}            what runs, and a menu: start, stop, update …; the first time, the setup runs first
-  ${command()} start      start it and open the studio
+                        (needs a terminal)
+  ${command()} start      start it and open the studio; it runs in this terminal until Ctrl-C
+  ${command()} studio     open the studio; when it does not run, it starts as a service first
   ${command()} setup      guided setup: an AI client to think with, ffmpeg, start at login
   ${command()} open       let this browser into the running studio (--print: only show the link)
   ${command()} status     what is installed and what runs
@@ -30,7 +32,7 @@ const HELP = `engenty wizards ${packageVersion()}
   --yes, -y          ask nothing and install nothing optional
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
   --no-open          start without opening the browser
-  --service, -s      start as a service, detached from this terminal; \`wizards stop\` stops it
+  --service, -s      start as a service, detached from this terminal; \`${command()} stop\` stops it
   --version, --help
 
   Everything lives in ~/.engenty/wizards (ENGENTY_HOME moves it); settings go into its .env.
@@ -104,12 +106,16 @@ async function main(argv: string[]): Promise<number> {
   const paths = layout();
   const setupOptions = { yes: args.yes, clients: args.clients };
   if (!args.command) {
-    // On a terminal, without options: the menu. Anywhere else it starts, as it always did.
-    const plain = argv.length === 0 && process.stdin.isTTY && process.stdout.isTTY;
-    if (plain) {
-      return menu(paths, setupOptions, HELP);
+    // Without a command: the menu, which needs a terminal. Starting is \`start\`.
+    if (args.service || !args.open || args.print) {
+      console.error(`Options to start it go with start: ${command()} start ${argv.join(" ")}`);
+      return 2;
     }
-    args.command = "start";
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      console.error(`The menu needs a terminal. To start it: ${command()} start\n\n${HELP}`);
+      return 2;
+    }
+    return menu(paths, setupOptions, HELP);
   }
   switch (args.command) {
     case "help":
@@ -122,21 +128,17 @@ async function main(argv: string[]): Promise<number> {
       // The first start on a terminal begins with the setup.
       const first = !readInstallNote(paths).setupAt;
       if (first && !args.yes && process.stdin.isTTY && process.stdout.isTTY) {
-        const next = await setup(paths, setupOptions);
-        if (next !== "start") {
-          return next === null ? 130 : 0;
+        // You asked to start it: once the setup is done, it starts.
+        if (!(await setup(paths, setupOptions))) {
+          return 130;
         }
       }
       return start(paths, { open: args.open, background: args.service });
     }
-    case "setup": {
-      const next = await setup(paths, setupOptions);
-      return next === "start"
-        ? start(paths, { open: args.open, background: args.service })
-        : next === null
-          ? 130
-          : 0;
-    }
+    case "setup":
+      return (await setup(paths, setupOptions)) ? 0 : 130;
+    case "studio":
+      return studio(paths);
     case "open":
       return open(paths, args.print);
     case "status":

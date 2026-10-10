@@ -8,7 +8,7 @@ import { mintLocalTicket } from "../auth/local-ticket.js";
 import { type Running, readRunning } from "../running.js";
 import { RESTART_EXIT } from "../update.js";
 import { runtimeEnv } from "./environment.js";
-import { type Layout, packageRoot, readEnvFile } from "./home.js";
+import { command, type Layout, packageRoot, readEnvFile } from "./home.js";
 import { findOnPath } from "./machine.js";
 
 const DEFAULT_PORT = 24368;
@@ -159,7 +159,9 @@ export async function start(
   const running = await runningRuntime(dataDir);
   if (running) {
     show(running.url, entryUrl(running, dataDir), options.open);
-    console.log(styleText("dim", "    It was already running; stop it with `wizards stop`."));
+    console.log(
+      styleText("dim", `    It was already running; stop it with \`${command()} stop\`.`),
+    );
     return 0;
   }
 
@@ -173,7 +175,7 @@ export async function start(
     console.log(
       styleText(
         "dim",
-        `    It runs in the background; stop it with \`wizards stop\`. Its log: ${join(paths.logs, "runtime.log")}`,
+        `    It runs in the background; stop it with \`${command()} stop\`. Its log: ${join(paths.logs, "runtime.log")}`,
       ),
     );
     return 0;
@@ -241,12 +243,23 @@ export async function start(
   });
 }
 
+/** `wizards studio`: opens the studio in the browser; when nothing runs, it starts as a service first. */
+export async function studio(paths: Layout): Promise<number> {
+  const { dataDir } = settings(paths);
+  const running = await runningRuntime(dataDir);
+  if (running) {
+    show(running.url, entryUrl(running, dataDir), true);
+    return 0;
+  }
+  return start(paths, { open: true, background: true });
+}
+
 /** `wizards open`: lets the browser into the runtime that runs. */
 export async function open(paths: Layout, print: boolean): Promise<number> {
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
   if (!running) {
-    console.error("engenty wizards is not running. Start it with `wizards`.");
+    console.error(`engenty wizards is not running. Start it with \`${command()} start\`.`);
     return 1;
   }
   const entry = entryUrl(running, dataDir);

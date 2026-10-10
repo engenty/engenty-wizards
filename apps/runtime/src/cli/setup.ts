@@ -7,6 +7,7 @@ import { installClient, installCommand } from "./clients.js";
 import { appStates, connectApps } from "./connect.js";
 import { runLogged } from "./exec.js";
 import {
+  command,
   installedByScript,
   isCheckout,
   type Layout,
@@ -25,6 +26,7 @@ import {
   suggestedClient,
   vendorApp,
 } from "./machine.js";
+import { runningRuntime, settings } from "./start.js";
 import { badge, cyan, dim, tilde } from "./ui.js";
 
 export interface SetupOptions {
@@ -34,16 +36,9 @@ export interface SetupOptions {
   clients: string[];
 }
 
-/** What the person wants after the setup. */
-export type Next = "start" | "later";
-
 /** The studio as an app of its own: Chrome (or Edge) installs it from the page. */
 const CHROME_APP =
   "Tip: in Chrome or Edge the studio installs as an app, in a window of its own with its own icon. The studio offers it at the top; or use the install icon in the address bar.";
-
-/** How this install is started, as the person types it. */
-export const command = () =>
-  installedByScript() ? "wizards" : isCheckout() ? "pnpm wizards" : "npx wizards";
 
 /** A spinner on a terminal; where nobody watches, only what came of it. */
 function busy(message: string) {
@@ -331,11 +326,47 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
   }
 }
 
+/** What runs now, and the commands to start, stop and check it from now on. */
+async function howToUse(paths: Layout) {
+  const [running, atLogin] = await Promise.all([
+    runningRuntime(settings(paths).dataDir),
+    autostartState(paths),
+  ]);
+  const wizards = command();
+  const row = (what: string, cmd: string, note = "") =>
+    `${what.padEnd(9)}${cyan(cmd.padEnd(wizards.length + 12))}${note ? dim(note) : ""}`;
+  p.log.message(
+    [
+      running ? `It runs now: ${cyan(running.url)}` : "It does not run yet. Nothing was started.",
+      "unavailable" in atLogin || !atLogin.on ? "" : dim("It starts by itself when you log in."),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  );
+  p.outro(
+    [
+      "From now on, in a terminal:",
+      "",
+      row("Start", `${wizards} start`, "runs in this terminal; Ctrl-C stops it"),
+      row("", `${wizards} start -s`, "runs as a service; the terminal stays free"),
+      row("Studio", `${wizards} studio`, "opens the studio; starts it first if needed"),
+      row("Stop", `${wizards} stop`, "your data is kept"),
+      row("Check", `${wizards} status`, "what runs and where"),
+      row("Restart", `${wizards} restart`),
+      row("All", wizards, "a menu with all of it"),
+      "",
+      dim("No need to run the installer again: it is installed. To update: ") +
+        cyan(`${wizards} update`),
+    ].join("\n"),
+  );
+}
+
 /**
  * The guided setup: what this machine has, what is missing, and what to install — an AI client
- * to think with, ffmpeg, starting at login. Returns what to do next, or null when it was stopped.
+ * to think with, ffmpeg, starting at login. It starts nothing; it ends with what runs and how to
+ * start, stop and check it. Returns false when it was stopped.
  */
-export async function setup(paths: Layout, options: SetupOptions): Promise<Next | null> {
+export async function setup(paths: Layout, options: SetupOptions): Promise<boolean> {
   const interactive = !options.yes && Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const version = packageVersion();
   p.intro(`${badge("engenty wizards")} ${dim(version)}`);
@@ -347,19 +378,19 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   );
 
   if ((await clientsStep(paths, options, interactive)) === "cancelled") {
-    return null;
+    return false;
   }
   if ((await toolsStep(interactive)) === "cancelled") {
-    return null;
+    return false;
   }
   if ((await autostartStep(paths, interactive)) === "cancelled") {
-    return null;
+    return false;
   }
   if ((await appsStep(paths, interactive)) === "cancelled") {
-    return null;
+    return false;
   }
   if ((await pathStep(interactive)) === "cancelled") {
-    return null;
+    return false;
   }
   writeInstallNote(
     { ...readInstallNote(paths), setupAt: new Date().toISOString(), version },
@@ -367,24 +398,6 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<Next 
   );
 
   p.log.info(CHROME_APP);
-  if (!interactive) {
-    p.outro(`Start it with ${cyan(command())}`);
-    return "later";
-  }
-  const next = await p.select<Next>({
-    message: "All set. What next?",
-    options: [
-      { value: "start", label: "Start it here", hint: "the studio opens in your browser" },
-      { value: "later", label: "Not now" },
-    ],
-  });
-  if (cancelled(next)) {
-    return null;
-  }
-  if (next === "later") {
-    p.outro(`Start it with ${cyan(command())}`);
-  } else {
-    p.outro("Starting engenty wizards");
-  }
-  return next;
+  await howToUse(paths);
+  return true;
 }

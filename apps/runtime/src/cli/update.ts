@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { installedByScript, isCheckout, type Layout } from "./home.js";
+import { command, installedByScript, isCheckout, type Layout } from "./home.js";
 import { runningRuntime, settings } from "./start.js";
 import { cyan } from "./ui.js";
 
@@ -57,7 +57,7 @@ export async function update(paths: Layout): Promise<number> {
 
   if (await runningRuntime(settings(paths).dataDir)) {
     console.log(
-      `  The runtime that is running is still the old one. Restart it: ${cyan("wizards restart")}`,
+      `  The runtime that is running is still the old one. Restart it: ${cyan(`${command()} restart`)}`,
     );
   }
   return 0;

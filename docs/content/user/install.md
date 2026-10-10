@@ -20,15 +20,22 @@ installs engenty wizards into `~/.engenty/wizards` and then walks you through th
 | Google Chrome and ffmpeg (optional) | Chrome makes PDF and PNG exports and runs steps that use a browser. ffmpeg makes MP4 videos of animated widgets |
 | Start at login (optional) | engenty wizards starts in the background when you log in, so links and AI clients always reach it. A LaunchAgent on a Mac, a systemd user service on Linux |
 
-Then it starts, and the studio opens in your browser.
+It starts nothing. At the end it says whether it runs and how to start, stop and check it.
+You install once; from then on you use the `wizards` command.
 
-## Start it
+## Start, stop, check
 
-```bash
-wizards
-```
+| Command | Does |
+|---|---|
+| `wizards start` | Starts it and opens the studio. It runs while that terminal is open; Ctrl-C stops it |
+| `wizards start -s` | Starts it as a service: the terminal stays free |
+| `wizards studio` | Opens the studio; starts it as a service first if it does not run |
+| `wizards stop` | Stops it. Your data is kept |
+| `wizards status` | Whether it runs, and where |
+| `wizards restart` | Stops it and starts it again |
+| `wizards` | A menu with all of it |
 
-It runs while that terminal is open; Ctrl-C stops it. The studio is at
+The studio is at
 `http://localhost:24368/studio/`. The link the command opens signs this browser in; it works
 once. For another browser, see [`wizards open`](./command-line.md).
 
@@ -54,7 +61,8 @@ of the address bar.
 wizards update
 ```
 
-This runs the installer again without its questions. The studio also says when a newer release
+This runs the installer again without its questions, then `wizards restart` starts the new
+version. The studio also says when a newer release
 is out and can run the same update from its footer. Your data is brought up to date at the next
 start.
 

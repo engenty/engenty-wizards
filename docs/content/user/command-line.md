@@ -7,8 +7,9 @@ description: The wizards command — start, setup, status, update — and the in
 
 | Command | Does |
 |---|---|
-| `wizards` | What runs, and a menu: start, stop, restart, update, start at login, connect, status, setup, help. The first time, the setup runs first |
-| `wizards start` | Starts it and opens the studio |
+| `wizards` | What runs, and a menu: start, stop, restart, update, start at login, connect, status, setup, help. The first time, the setup runs first. Needs a terminal |
+| `wizards start` | Starts it and opens the studio. It runs in that terminal; Ctrl-C stops it |
+| `wizards studio` | Opens the studio in your browser. When it does not run, it starts as a service first |
 | `wizards setup` | The guided setup again: an AI client to think with, ffmpeg, start at login |
 | `wizards open` | Lets this browser into the running studio. `--print` only shows the link |
 | `wizards status` | What is installed and what runs |

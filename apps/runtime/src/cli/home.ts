@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +74,10 @@ export function isCheckout(): boolean {
   return existsSync(join(packageRoot, "pnpm-workspace.yaml"));
 }
 
+/** How this install is started, as the person types it. */
+export const command = () =>
+  installedByScript() ? "wizards" : isCheckout() ? "pnpm wizards" : "npx wizards";
+
 export interface InstallNote {
   /** When the guided setup last ran to its end. */
   setupAt?: string;
@@ -89,6 +93,8 @@ export function readInstallNote(paths: Layout = layout()): InstallNote {
 }
 
 export function writeInstallNote(note: InstallNote, paths: Layout = layout()) {
+  // A checkout or npx has no install folder until something writes into it.
+  mkdirSync(dirname(paths.installFile), { recursive: true });
   writeFileSync(paths.installFile, `${JSON.stringify(note, null, 2)}\n`);
 }
 

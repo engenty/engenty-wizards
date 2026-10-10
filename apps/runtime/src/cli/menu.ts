@@ -3,8 +3,8 @@ import type { Running } from "../running.js";
 import { type UpdateStatus, updateStatus } from "../update.js";
 import { type Autostart, autostartState, setAutostart } from "./autostart.js";
 import { connectCommand } from "./connect.js";
-import { type Layout, packageVersion, readInstallNote } from "./home.js";
-import { command, type SetupOptions, setup } from "./setup.js";
+import { command, type Layout, packageVersion, readInstallNote } from "./home.js";
+import { type SetupOptions, setup } from "./setup.js";
 import { open, runningRuntime, settings, start } from "./start.js";
 import { restart, status, stop } from "./status.js";
 import { badge, cyan, dim, no, ok } from "./ui.js";
@@ -102,12 +102,8 @@ export async function menu(
   help: string,
 ): Promise<number> {
   if (!readInstallNote(paths).setupAt) {
-    const next = await setup(paths, setupOptions);
-    if (next === null) {
+    if (!(await setup(paths, setupOptions))) {
       return 130;
-    }
-    if (next === "start") {
-      await start(paths, { open: true, background: true });
     }
   }
 
@@ -165,13 +161,9 @@ export async function menu(
       case "status":
         await status(paths, true);
         break;
-      case "setup": {
-        const next = await setup(paths, setupOptions);
-        if (next === "start" && !state.running) {
-          await start(paths, { open: true, background: true });
-        }
+      case "setup":
+        await setup(paths, setupOptions);
         break;
-      }
       case "help":
         console.log(help);
         break;
