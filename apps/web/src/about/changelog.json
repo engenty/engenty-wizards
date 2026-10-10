@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.37",
+    "timestamp": 1791619262,
+    "commits": [
+      {
+        "id": "6467cae",
+        "message": "`wizards` alone is the menu and nothing starts by itself – without a command it opens the menu (start options without `start`, or no terminal, end with a hint to `wizards start`); the setup, also at the end of install.sh, no longer offers to start it but says whether it runs and how to start, open, stop, check and restart it from now on; new `wizards studio` opens the studio and starts it as a service first when it does not run; a fresh install folder no longer breaks the setup's last step, and every hint names the command as this install types it",
+        "group": "Added",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.36",
-    "timestamp": 1791549777,
+    "timestamp": 1791549779,
     "commits": [
       {
         "id": "930efe8",

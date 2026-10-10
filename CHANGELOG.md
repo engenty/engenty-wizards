@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.37] - 2026-10-10
+- ADDED **[cli]** `wizards` alone is the menu and nothing starts by itself – without a command it opens the menu (start options without `start`, or no terminal, end with a hint to `wizards start`); the setup, also at the end of install.sh, no longer offers to start it but says whether it runs and how to start, open, stop, check and restart it from now on; new `wizards studio` opens the studio and starts it as a service first when it does not run; a fresh install folder no longer breaks the setup's last step, and every hint names the command as this install types it
+
 ## [0.2.36] - 2026-10-09
 - ADDED **[studio]** The setup has a light · dark switch beside the language switch – dark stands on the blue ground as before, light on the studio's paper with white choices and the pick in the ground's blue; without a pick it follows the system, and the pick holds for the whole studio. The setup's copy writes engenty in lower case and without an article: "Womit soll engenty denken?"
 
