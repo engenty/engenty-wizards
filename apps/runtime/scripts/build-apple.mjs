@@ -1,4 +1,4 @@
-// Builds `wizards-apple` (apple/main.swift) into dist/apple/: Apple Intelligence on a Mac as a
+// Builds `wizards-apple` (apple/main.swift + Shared.swift) into dist/apple/: Apple Intelligence on a Mac as a
 // model for the runtime (src/harness/apple.ts). Only a Mac with Apple silicon and the macOS 26
 // SDK (Xcode 26 or its command line tools) can build it; anywhere else there is nothing to
 // build, and the runtime offers no Apple Intelligence. Skipped while the build is newer than
@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const source = join(root, "apple", "main.swift");
+const sources = ["main.swift", "Shared.swift"].map((f) => join(root, "apple", f));
 const out = join(root, "dist", "apple", "wizards-apple");
 const force = process.argv.includes("--force");
 
@@ -22,7 +22,8 @@ const skip = (why) => {
 if (process.platform !== "darwin" || process.arch !== "arm64") {
   skip("not a Mac with Apple silicon");
 }
-if (!force && existsSync(out) && statSync(out).mtimeMs >= statSync(source).mtimeMs) {
+const newest = Math.max(...sources.map((f) => statSync(f).mtimeMs));
+if (!force && existsSync(out) && statSync(out).mtimeMs >= newest) {
   console.log("wizards-apple: up to date");
   process.exit(0);
 }
@@ -45,7 +46,7 @@ mkdirSync(dirname(out), { recursive: true });
 // Runs on every Mac with macOS 26, whatever SDK built it.
 execFileSync(
   swiftc,
-  ["-O", "-parse-as-library", "-sdk", sdkPath, "-target", "arm64-apple-macos26.0", "-o", out, source],
+  ["-O", "-parse-as-library", "-sdk", sdkPath, "-target", "arm64-apple-macos26.0", "-o", out, ...sources],
   { stdio: "inherit" },
 );
 console.log(`wizards-apple: built ${out}`);

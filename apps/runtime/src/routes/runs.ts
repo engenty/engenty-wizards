@@ -1,4 +1,4 @@
-import { FORMATS, LIST_FORMATS } from "@engenty-wizards/shared/definition";
+import { FORMATS, LIST_FORMATS, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { TableColumnValueError } from "@engenty-wizards/shared/engenty/data-tables";
 import type { PublicWizard } from "@engenty-wizards/shared/run";
 import { getConnInfo } from "@hono/node-server/conninfo";
@@ -21,6 +21,7 @@ import {
 import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-connections.js";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
+import { answerDevice, offerDevice } from "../engine/device.js";
 import { signalChanged, subscribe } from "../engine/events.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
@@ -395,7 +396,14 @@ export const runRoutes = new Hono()
           await stream.writeSSE({ event: "view", data: JSON.stringify(await viewOf(run)) });
         }
       };
-      const unsubscribe = subscribe(id, () => {
+      const unsubscribe = subscribe(id, (signal) => {
+        if (signal.device) {
+          // The runtime asks the phone around the runner to think: not a change of the run.
+          if (!closed) {
+            void stream.writeSSE({ event: "device", data: JSON.stringify(signal.device) });
+          }
+          return;
+        }
         void push();
       });
       stream.onAbort(() => {
@@ -410,6 +418,37 @@ export const runRoutes = new Hono()
         }
       }
     });
+  })
+  // The runner says what the device around it offers the run (the app's Apple Intelligence):
+  // from then on short text calls go there first. Renewed on every connect; see engine/device.ts.
+  .post("/:id/device", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const offer = z
+      .object({
+        think: z
+          .object({
+            classes: z.array(z.enum(TEXT_CLASSES)).max(TEXT_CLASSES.length),
+            maxChars: z.number().int().min(500).max(50_000),
+          })
+          .optional(),
+      })
+      .parse(await c.req.json().catch(() => ({})));
+    offerDevice(run.id, offer);
+    return c.json({ ok: true });
+  })
+  // The device's answer to one call the stream carried as a `device` event.
+  .post("/:id/device/:reqId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const answer = z
+      .object({ text: z.string().max(200_000).optional(), error: z.string().max(500).optional() })
+      .parse(await c.req.json().catch(() => ({})));
+    return c.json({ ok: answerDevice(run.id, c.req.param("reqId"), answer) });
   })
   .post("/:id/pages/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));

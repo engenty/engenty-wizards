@@ -478,7 +478,8 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
   const resolved = await textModel(step.model ?? "high", { ...ctx.call, effort: step.effort });
   const uploads = await personUploads(ctx);
   const { tools, assets, close } = await buildStepTools(step, ctx, resolved, uploads);
-  attachTools(resolved, tools);
+  // A step without tools of its own and without uploads: the run's device may answer it alone.
+  attachTools(resolved, tools, step.tools.length === 0 && uploads.length === 0);
   try {
     const photos = await seenPhotos(step, ctx, resolved, uploads);
     const others = uploads.filter((u) => !photos.some((p) => p.upload === u));

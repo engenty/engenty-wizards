@@ -130,6 +130,8 @@ const de = {
   "models.appleDevice": "nicht auf diesem Mac",
   "models.appleHint":
     "Kurze Texte und Entscheidungen (Classifier, Standard) denkt das Modell von Apple Intelligence auf diesem Mac – nichts verlässt ihn. Recherche, lange Dokumente und Code (High, Highest): {way}.",
+  "models.appleListenHint":
+    "Sprachnotizen schreibt dieser Mac selbst auf – nichts verlässt ihn. Beim ersten Mal lädt Apple die Sprache nach.",
   "models.noteIncluded": "im Abo enthalten",
   "models.noteSignedOut": "nicht angemeldet",
   "models.noteMissing": "nicht installiert",
@@ -1441,6 +1443,8 @@ const en: Record<Key, string> = {
   "models.appleDevice": "not on this Mac",
   "models.appleHint":
     "Short texts and decisions (Classifier, Standard) think on Apple Intelligence's model on this Mac; nothing leaves it. Research, long documents and code (High, Highest): {way}.",
+  "models.appleListenHint":
+    "This Mac writes voice notes down itself; nothing leaves it. The first time, Apple fetches the language.",
   "models.noteIncluded": "included in the plan",
   "models.noteSignedOut": "not signed in",
   "models.noteMissing": "not installed",

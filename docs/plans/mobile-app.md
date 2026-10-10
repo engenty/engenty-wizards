@@ -85,7 +85,8 @@ the app sees the run id in the address, catches downloads and new windows itself
 | Photo library, files | file input | the system's picker |
 | Code scan (`scan` on a text field) | `qr-scanner` | bridge: the app's native scanner (all common barcode formats) |
 | Location | `navigator.geolocation` | the same; the app holds the permission |
-| Voice note | `MediaRecorder` | the same; the app holds the microphone permission |
+| Voice note | `MediaRecorder` | the same; the app holds the microphone permission. On iOS 26 the phone writes the note down itself (bridge: `transcribe`, SpeechAnalyzer) and the server skips its own transcription |
+| Short text calls of the run (Classifier, Standard) | the runtime's models | bridge: `think` — Apple Intelligence on the phone, where it is switched on; the runtime asks over the run's stream and falls back to its own way (`docs/plans/local-models-apple.md`) |
 | Signature | canvas | unchanged |
 | Screen stays on | `navigator.wakeLock` | bridge: keep awake |
 | Done / waits for you | notification through `sw.js`, sound, vibrate | bridge: local notification, haptics; push when the app is closed (below) |

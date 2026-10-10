@@ -948,10 +948,13 @@ function CapabilityPanel({
         return;
       }
       case "local":
-        save.mutate({
-          source: "own",
-          bindings: next.by === "apple" ? appleBindings(state) : every("ollama:qwen3"),
-        });
+        save.mutate(
+          next.by === "apple"
+            ? isText(cap)
+              ? { source: "own", bindings: appleBindings(state) }
+              : { bindings: { audio: "apple:transcribe" } }
+            : { source: "own", bindings: every("ollama:qwen3") },
+        );
         return;
       case "credits":
         save.mutate(
@@ -1009,13 +1012,15 @@ function CapabilityPanel({
                 isText(cap) && !place.cloud ? t("models.optOther") : t("models.optCreditsGroup")
               }
             >
-              {isText(cap) && !place.cloud && state.apple?.supported ? (
+              {/* Text thinks on Apple Intelligence once it is switched on; a voice note the Mac
+                  writes down on its own, Apple Intelligence or not. */}
+              {(isText(cap) || cap === "listening") && !place.cloud && state.apple?.supported ? (
                 <Option
                   title={t("models.optApple")}
-                  note={appleNote(state.apple)}
-                  noteTone={state.apple.available ? "done" : undefined}
+                  note={isText(cap) ? appleNote(state.apple) : t("models.optAppleNote")}
+                  noteTone={isText(cap) && !state.apple.available ? undefined : "done"}
                   selected={chosen?.kind === "local" && chosen.by === "apple"}
-                  disabled={!place.canEdit || !state.apple.available}
+                  disabled={!place.canEdit || (isText(cap) && !state.apple.available)}
                   onPick={() => pick({ kind: "local", by: "apple" })}
                 />
               ) : null}
@@ -1127,7 +1132,7 @@ function CapabilityPanel({
 
         {chosen?.kind === "local" ? (
           chosen.by === "apple" ? (
-            <ApplePart state={state} place={place} />
+            <ApplePart cap={cap} state={state} place={place} />
           ) : (
             <OllamaPart state={state} disabled={!place.canEdit} />
           )
@@ -1207,10 +1212,22 @@ function appleNote(apple: AppleStatus): string {
   }
 }
 
-function ApplePart({ state, place }: { state: ModelsState; place: Place }) {
+function ApplePart({
+  cap,
+  state,
+  place,
+}: {
+  cap: ModelCapability;
+  state: ModelsState;
+  place: Place;
+}) {
   return (
     <Part title={t("models.optApple")}>
-      <Hint>{t("models.appleHint", { way: wayText(state.ways.high, place).text })}</Hint>
+      <Hint>
+        {isText(cap)
+          ? t("models.appleHint", { way: wayText(state.ways.high, place).text })
+          : t("models.appleListenHint")}
+      </Hint>
     </Part>
   );
 }

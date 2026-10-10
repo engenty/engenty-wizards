@@ -26,7 +26,11 @@ export type AppAbility =
   /** `signIn({ url })`: the system's sign-in sheet for connecting an account. */
   | "signIn"
   /** `run({ token, runId })`: a run was started or opened; the app keeps it in its results. */
-  | "run";
+  | "run"
+  /** `transcribe({ audio, mime, lang })` → `{ text }`: a recording written down on the phone; null when it cannot. */
+  | "transcribe"
+  /** `think({ system, prompt, schema })` → `{ text }`: the phone's own model answers a short call (runner/device.ts). */
+  | "think";
 
 export interface EngentyApp {
   /** The bridge's own version, raised when a method changes its meaning. */

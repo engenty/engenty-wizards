@@ -103,6 +103,27 @@ describe("the wizards-apple helper", async () => {
     expect(Array.isArray(output?.tags)).toBe(true);
   });
 
+  it.skipIf(!live)("writes a voice note down on this Mac", slow, async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { readFileSync } = await import("node:fs");
+    const { experimental_transcribe } = await import("ai");
+    const { appleTranscriptionModel } = await import("../src/harness/apple");
+    // A note the Mac speaks itself, as the recorder would save it (AAC in an .m4a).
+    const aiff = join(dir, "note.aiff");
+    const m4a = join(dir, "note.m4a");
+    execFileSync("say", ["-v", "Anna", "-o", aiff, "Bitte ruf den Kunden morgen um zehn Uhr zurück."]);
+    execFileSync("afconvert", ["-f", "m4af", "-d", "aac", aiff, m4a]);
+    const result = await experimental_transcribe({
+      model: appleTranscriptionModel(),
+      audio: readFileSync(m4a),
+      mediaType: "audio/mp4",
+      providerOptions: { apple: { locale: "de-DE" } },
+      abortSignal: AbortSignal.timeout(60_000),
+    });
+    expect(result.text.toLowerCase()).toContain("kunden");
+    expect(result.text.toLowerCase()).toMatch(/zehn|10/);
+  });
+
   it.skipIf(!live)("says when a text is too long for the model", slow, async () => {
     const { generateText } = await import("ai");
     const words = Array.from({ length: 5500 }, (_, i) => `word${i}`).join(" ");

@@ -5,7 +5,11 @@
  * a page the WebView reaches elsewhere (a sign-in, a link) gets no bridge.
  */
 
-/** What this app offers the runner; the web runner falls back to its own way for the rest. */
+/**
+ * What this app may offer the runner; the web runner falls back to its own way for the rest.
+ * `transcribe` and `think` are Apple's models on the phone (modules/apple-intelligence): named
+ * to a page only where the phone has them (appAbilities in handle.ts).
+ */
 export const ABILITIES = [
   "scan",
   "share",
@@ -15,9 +19,23 @@ export const ABILITIES = [
   "notifyPermission",
   "signIn",
   "run",
+  "transcribe",
+  "think",
 ] as const;
 
 export type Ability = (typeof ABILITIES)[number];
+
+/** What every phone offers. */
+export const BASE_ABILITIES: Ability[] = [
+  "scan",
+  "share",
+  "download",
+  "keepAwake",
+  "notify",
+  "notifyPermission",
+  "signIn",
+  "run",
+];
 
 export const BRIDGE_VERSION = 1;
 
@@ -44,6 +62,8 @@ export function bridgeScript(opts: {
   visitorId: string;
   lang: "en" | "de";
   secure: boolean;
+  /** What this phone offers; the page reads it as `engentyApp.can`. */
+  can: Ability[];
 }): string {
   const cookie = `wz_vid=${opts.visitorId}; path=/; max-age=31536000; samesite=lax${opts.secure ? "; secure" : ""}`;
   return `(function () {
@@ -63,7 +83,7 @@ export function bridgeScript(opts: {
   };
   window.engentyApp = Object.freeze({
     version: ${BRIDGE_VERSION},
-    can: ${JSON.stringify(ABILITIES)},
+    can: ${JSON.stringify(opts.can)},
     call: function (method, args) {
       return new Promise(function (resolve, reject) {
         var id = next++;

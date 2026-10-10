@@ -13,7 +13,10 @@ pnpm --filter @engenty-wizards/mobile test
 ```
 
 `ios/` and `android/` are generated (`npx expo prebuild`) and not committed; native settings
-live in `app.json`. The workspace's `pnpm build` leaves the app out: a store build is its own
+live in `app.json`. `modules/apple-intelligence` is an Expo module in Swift: Apple's models on
+the phone (iOS 26, Foundation Models and SpeechAnalyzer) behind the bridge abilities
+`transcribe` and `think`, built from the same `Shared.swift` as the runtime's Mac helper
+(`apps/runtime/apple`). The bridge names them to a page only where the phone has them. The workspace's `pnpm build` leaves the app out: a store build is its own
 release (`mobile-vX.Y.Z`).
 
 Generated files — run again when their source changes:

@@ -1,7 +1,10 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { release } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TranscriptionModel } from "ai";
+import { nanoid } from "nanoid";
+import { env } from "../env.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import {
   type HarnessAnswer,
@@ -212,4 +215,80 @@ class AppleModel extends HarnessModel {
 /** `apple:default` or `apple:tagging` as a language model. */
 export function appleModel(alias: string): HarnessModel {
   return new AppleModel(APPLE, alias || "default");
+}
+
+type TranscriptionV3 = Extract<TranscriptionModel, { specificationVersion: "v3" }>;
+type TranscribeOptions = Parameters<TranscriptionV3["doGenerate"]>[0];
+type TranscribeResult = Awaited<ReturnType<TranscriptionV3["doGenerate"]>>;
+
+/** The Mac's own language: what a voice note is most likely in, unless the call names one. */
+function systemLocale(): string {
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+  return /^[a-z]{2}-[A-Z]{2}$/.test(locale) ? locale : locale.startsWith("de") ? "de-DE" : "en-US";
+}
+
+/**
+ * `apple:transcribe`: a voice note written down on this Mac by SpeechAnalyzer (macOS 26). It
+ * needs no Apple Intelligence, only the language's assets, which the system installs on the
+ * first call. The recording goes through a file of its own, deleted afterwards.
+ */
+class AppleTranscriptionModel implements TranscriptionV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "apple";
+  readonly modelId = "transcribe";
+
+  async doGenerate(options: TranscribeOptions): Promise<TranscribeResult> {
+    const dir = join(env.dataDir, "harness", nanoid(10));
+    mkdirSync(dir, { recursive: true });
+    const ext = /mp4|m4a|aac/.test(options.mediaType)
+      ? "m4a"
+      : /wav/.test(options.mediaType)
+        ? "wav"
+        : /ogg|opus/.test(options.mediaType)
+          ? "ogg"
+          : /webm/.test(options.mediaType)
+            ? "webm"
+            : "audio";
+    const path = join(dir, `note.${ext}`);
+    const locale = (options.providerOptions?.apple?.locale as string | undefined) ?? systemLocale();
+    try {
+      writeFileSync(
+        path,
+        typeof options.audio === "string" ? Buffer.from(options.audio, "base64") : options.audio,
+      );
+      const { stdout, stderr, code } = await runClient(APPLE_BIN, ["transcribe", path, locale], {
+        cwd: dir,
+        env: helperEnv(),
+        signal: options.abortSignal,
+      });
+      const answer = lastJson<HelperAnswer>(stdout);
+      if (!answer) {
+        throw new Error(`Apple Intelligence: ${stderr.trim() || `exit ${code}`}`.slice(0, 500));
+      }
+      if (answer.error) {
+        throw appleFailure(answer.error);
+      }
+      return {
+        text: answer.text ?? "",
+        segments: [],
+        language: locale.slice(0, 2),
+        durationInSeconds: undefined,
+        warnings: [],
+        response: { timestamp: new Date(), modelId: this.modelId, headers: undefined },
+      };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new ModelUnavailableError(
+          appleUnavailable({ supported: false, available: false, reason: "missing" }),
+        );
+      }
+      throw err;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+}
+
+export function appleTranscriptionModel(): TranscriptionModel {
+  return new AppleTranscriptionModel();
 }

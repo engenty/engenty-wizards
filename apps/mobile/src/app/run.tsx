@@ -3,8 +3,8 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Platform, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { type BridgeContext, handleBridge } from "../bridge/handle";
-import { answerScript, bridgeScript, isBridgeRequest } from "../bridge/script";
+import { appAbilities, type BridgeContext, handleBridge } from "../bridge/handle";
+import { type Ability, answerScript, bridgeScript, isBridgeRequest } from "../bridge/script";
 import { getRunById, getWizardById, noteRun, useQuery, type Wizard } from "../data/db";
 import { syncRun } from "../data/sync";
 import { visitorId } from "../data/visitor";
@@ -43,6 +43,11 @@ export default function RunScreen() {
   const theme = wizardTheme(wizard?.avatar);
   const web = useRef<WebView>(null);
   const [vid, setVid] = useState<string | null>(null);
+  // What this phone offers the page: known before the page loads, so the page reads it.
+  const [can, setCan] = useState<Ability[] | null>(null);
+  useEffect(() => {
+    void appAbilities().then(setCan);
+  }, []);
   const [failed, setFailed] = useState(false);
   const currentRun = useRef<string | null>(params.runId ?? null);
   const [scanning, setScanning] = useState<((text: string | null) => void) | null>(null);
@@ -147,7 +152,7 @@ export default function RunScreen() {
     setScanning(null);
   };
 
-  if (!(wizard && uri && vid)) {
+  if (!(wizard && uri && vid && can)) {
     return (
       <Screen theme={theme} style={{ alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={theme.ink3} />
@@ -192,6 +197,7 @@ export default function RunScreen() {
           visitorId: vid,
           lang,
           secure: origin.startsWith("https:"),
+          can,
         })}
         injectedJavaScriptBeforeContentLoadedForMainFrameOnly
         onMessage={(e) => void onMessage(e)}

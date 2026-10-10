@@ -2,10 +2,12 @@ import { type AudioValue, isAudioValue } from "@engenty-wizards/shared/definitio
 import { FileAudio, Mic, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
-import { t } from "../lib/i18n";
+import { appCan } from "../lib/app";
+import { lang, t } from "../lib/i18n";
 import { Button, Spinner } from "../ui";
 import { stamp } from "./camera";
 import { canUseMedia } from "./device";
+import { transcribeOnDevice } from "./phone";
 
 const MAX_SECONDS = 300;
 
@@ -13,9 +15,11 @@ function recordingType(): string | undefined {
   if (typeof MediaRecorder === "undefined") {
     return undefined;
   }
-  return ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"].find(
-    (type) => MediaRecorder.isTypeSupported(type),
-  );
+  // A phone that writes the note down itself reads AAC in an .m4a, not WebM or Ogg.
+  const types = appCan("transcribe")
+    ? ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
+    : ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
+  return types.find((type) => MediaRecorder.isTypeSupported(type));
 }
 
 function clock(seconds: number): string {
@@ -77,7 +81,13 @@ export function VoiceField({
     try {
       const ref = await api.upload<{ id: string }>(`/api/runs/${runId}/uploads`, file);
       setLocal({ asset: ref.id, url: URL.createObjectURL(file) });
-      onChange({ asset: ref.id, ...(length !== undefined ? { seconds: length } : {}) });
+      // In the app the phone writes the note down itself; else the server does before the next step.
+      const transcript = await transcribeOnDevice(file, lang);
+      onChange({
+        asset: ref.id,
+        ...(length !== undefined ? { seconds: length } : {}),
+        ...(transcript !== undefined ? { transcript } : {}),
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {

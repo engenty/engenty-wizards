@@ -32,7 +32,10 @@ export async function transcribeAudio(input: {
     });
     return {
       text: result.text.trim(),
-      costUsd: transcriptionCostUsd(result.durationInSeconds ?? 60),
+      costUsd:
+        listener.resolved.vendor === "apple"
+          ? 0
+          : transcriptionCostUsd(result.durationInSeconds ?? 60),
     };
   }
   // Else the audio class is bound to a chat model that takes audio files.

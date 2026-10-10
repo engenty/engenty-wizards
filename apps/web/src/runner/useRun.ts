@@ -2,6 +2,7 @@ import type { RunView } from "@engenty-wizards/shared/run";
 import { useCallback, useEffect, useState } from "react";
 import { withBase } from "@/lib/base";
 import { ApiError, api } from "../lib/api";
+import { answerDevice, offerDevice } from "./phone";
 
 /** Two missed pings: the stream is taken for dead. */
 const STALE_MS = 45_000;
@@ -54,6 +55,12 @@ export function useRun(runId: string | null) {
       });
       es = stream;
       lastHeard = Date.now();
+      // The phone around the runner may think for the run: said on every connect.
+      offerDevice(runId);
+      stream.addEventListener("device", (e) => {
+        lastHeard = Date.now();
+        void answerDevice(runId, JSON.parse((e as MessageEvent).data));
+      });
       stream.addEventListener("view", (e) => {
         retry = 0;
         lastHeard = Date.now();

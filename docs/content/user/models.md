@@ -49,6 +49,16 @@ while High and Highest keep the way they had (a key, an installed client or the 
 step whose text is too long for it fails with a note that says so; bind that class elsewhere.
 The binding is `apple:default`; `apple:tagging` is Apple's adapter for tagging and extraction.
 
+"Voice notes" offers Apple Intelligence on the same Macs: the Mac writes a recording down
+itself (`apple:transcribe`), in the Mac's language, for nothing. The first note in a language
+waits while Apple fetches it.
+
+**In the app.** On an iPhone with iOS 26 the engenty wizards app writes voice notes down on the
+phone, and once Apple Intelligence is switched on it also answers a run's short text calls —
+Classifier and Standard steps without tools or files of their own — so a run in the cloud
+spends no credits on them and that text never leaves the phone. Where the phone does not
+answer, the run thinks the way these settings say.
+
 ## Keys
 
 A key is checked with its provider before it is kept. On your computer keys stay in the Keychain
