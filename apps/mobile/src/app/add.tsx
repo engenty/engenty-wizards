@@ -198,12 +198,39 @@ export default function AddScreen() {
           </Text>
         </Pressable>
       </View>
+      {/* The scanner, one tap away in the room below the ID — not only in the switch above. */}
+      {found ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("add.scan")}
+          onPress={() => router.replace("/scan")}
+          style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Glass interactive tint="rgba(255,255,255,0.05)" style={styles.scanTile}>
+            <Icon d={ICON.scan} size={44} color={theme.ink} strokeWidth={1.7} />
+            <Text style={[styles.scanTitle, { color: theme.ink }]}>{t("add.scan")}</Text>
+            <Text style={[text.sub, { color: theme.ink3, textAlign: "center" }]}>
+              {t("add.scanHint")}
+            </Text>
+          </Glass>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   top: { paddingTop: 14, flexDirection: "row", alignItems: "center" },
+  scanTile: {
+    marginTop: 8,
+    minHeight: 180,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: 20,
+  },
+  scanTitle: { fontSize: 17, fontWeight: "600", marginTop: 6 },
   title: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "600" },
   heading: { fontSize: 22, lineHeight: 28, fontWeight: "700" },
   boxes: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
