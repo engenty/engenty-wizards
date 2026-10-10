@@ -1,7 +1,10 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  declaredByPlugin,
   defaultFeatures,
+  FEATURES,
+  type FeatureDeclaration,
   type Features,
   parseFeatures,
   resolveFeatures,
@@ -10,13 +13,16 @@ import { accountOverview } from "./auth/account.js";
 import { isCheckout, layout, packageRoot } from "./cli/home.js";
 import { env } from "./env.js";
 import { managed, tenantInfo } from "./manage.js";
+import type { PluginSource } from "./plugins/discovery.js";
+import { loadedPlugins } from "./plugins/registry.js";
 import { currentTenantOrNull } from "./tenants/tenant.js";
 
 /**
  * Which feature switches are on for this runtime (packages/shared/src/features.ts), laid over
  * each other, the last winning:
  *
- *   1. the defaults in the code
+ *   1. the defaults the code declares: the core's (packages/shared/src/features.ts) and the
+ *      loaded plugins' (their manifests' `features`, under the plugin's id)
  *   2. the `FEATURES` environment variable (`teamPlans,-site`): the cloud image, compose, dev
  *   3. what the Manage-App says — for the team of a cloud runtime, for the linked account of a
  *      local one; a plan's switches and what an admin set for the team or for everyone
@@ -56,9 +62,25 @@ export function fileFeatures(file = featuresFile()): Features {
 
 const envFeatures = () => parseFeatures(process.env.FEATURES ?? "");
 
+/** Every switch something declared: the core's, then each plugin's under its id. */
+export function declaredFeatures(
+  sources: PluginSource[] = loadedPlugins().map((p) => p.source),
+): Record<string, FeatureDeclaration> {
+  const out: Record<string, FeatureDeclaration> = { ...FEATURES };
+  for (const source of sources) {
+    Object.assign(out, declaredByPlugin(source.id, source.manifest.features));
+  }
+  return out;
+}
+
 /** The switches, with what the Manage-App said for the team or account laid in. */
 export function features(remote?: Features | null): Features {
-  return resolveFeatures(defaultFeatures(), envFeatures(), remote, fileFeatures());
+  return resolveFeatures(
+    defaultFeatures(declaredFeatures()),
+    envFeatures(),
+    remote,
+    fileFeatures(),
+  );
 }
 
 export function feature(name: string, remote?: Features | null): boolean {

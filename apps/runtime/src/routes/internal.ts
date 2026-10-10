@@ -6,6 +6,7 @@ import { z } from "zod";
 import { closeTenantDb, tenantDb } from "../db/client.js";
 import { logs, runDetail, status, tenantModels } from "../debug.js";
 import { env } from "../env.js";
+import { declaredFeatures } from "../features.js";
 import { removeTenantObjects } from "../files/objects.js";
 import { tailQuery } from "../log.js";
 import { forgetTenant, managed } from "../manage.js";
@@ -55,6 +56,8 @@ export const internalRoutes = new Hono()
         description: p.source.manifest.description ?? "",
         version: p.source.manifest.version ?? null,
       })),
+      /** Every feature switch this runtime knows: the core's and its plugins' (under their ids). */
+      features: declaredFeatures(),
     });
   })
   .post("/tenants/:id", async (c) => {

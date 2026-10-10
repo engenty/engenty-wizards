@@ -9,5 +9,6 @@
 # teamPlans          the Team plan: the team page in the cloud studio, the plan on the account pages
 # ownKeys            own API keys in the cloud studio (a plan's switch; on alone)
 
-# A plugin's switch carries its id:
+# A plugin's switches carry its id (declared in its manifest under `features`); `wizards features`
+# lists the ones installed here:
 # contacts.leadScoring

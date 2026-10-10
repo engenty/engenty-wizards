@@ -130,7 +130,12 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
     resolvePath: (relative) => resolve(source.root, relative),
     config: { get: (key) => process.env[key]?.trim() || undefined },
     features: {
-      has: async (name) => (await currentFeatures())[name] === true,
+      // A short name is the plugin's own switch; a dotted or core name is taken as it is.
+      has: async (name) => {
+        const all = await currentFeatures();
+        const own = `${source.id}.${name}`;
+        return (own in all ? all[own] : all[name]) === true;
+      },
       all: currentFeatures,
     },
     log: {

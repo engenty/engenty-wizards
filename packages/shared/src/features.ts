@@ -10,18 +10,51 @@
  * `true` is removed, with its branches, in the same release.
  * `plan`: part of a plan. On until the team's plan says `false`; alone nothing says so.
  */
+export interface FeatureDeclaration {
+  kind: "release" | "plan";
+  /** What counts until a layer says otherwise. */
+  default: boolean;
+  /** A few words for the lists: `wizards features`, the admin's switches. */
+  label: string;
+  hint?: string;
+}
+
+/**
+ * The core's own switches. A plugin declares its own in its manifest (`features`, keyed by the
+ * short name; the switch is known as `<plugin id>.<name>`) and they join these at run time.
+ */
 export const FEATURES = {
-  /** The account: linking a local install, Settings → Account, the offer to sign in. */
-  account: { kind: "release", default: true },
-  /** Built-in connectors whose OAuth client is not set up, shown anyway. */
-  unsetConnectors: { kind: "release", default: false },
-  /** The link to the product's own site from the setup. */
-  site: { kind: "release", default: false },
-  /** The Team plan: the team page in the cloud studio, the plan on the account pages. */
-  teamPlans: { kind: "release", default: false },
-  /** Own API keys in the cloud studio. */
-  ownKeys: { kind: "plan", default: true },
-} as const satisfies Record<string, { kind: "release" | "plan"; default: boolean }>;
+  account: {
+    kind: "release",
+    default: true,
+    label: "Account in a local install",
+    hint: "Linking, Settings → Account, the offer to sign in.",
+  },
+  unsetConnectors: {
+    kind: "release",
+    default: false,
+    label: "Connectors without an OAuth client",
+    hint: "Built-in connectors are shown although their client is not set up.",
+  },
+  site: {
+    kind: "release",
+    default: false,
+    label: "Link to the website in the setup",
+    hint: "The local install's setup links the product's site.",
+  },
+  teamPlans: {
+    kind: "release",
+    default: false,
+    label: "Team plans",
+    hint: "The team page in the cloud studio, and plans that carry this switch on the account pages.",
+  },
+  ownKeys: {
+    kind: "plan",
+    default: true,
+    label: "Own API keys",
+    hint: "The team puts its providers' keys into the cloud studio instead of running on credits.",
+  },
+} as const satisfies Record<string, FeatureDeclaration>;
 
 export type FeatureName = keyof typeof FEATURES;
 export type FeatureKind = (typeof FEATURES)[FeatureName]["kind"];
@@ -34,11 +67,41 @@ export const FEATURE_NAME = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)?$/;
 
 export const FEATURE_NAMES = Object.keys(FEATURES) as FeatureName[];
 
-/** The defaults of the code. */
-export function defaultFeatures(): Features {
+/** What a manifest declares for one switch; what is left out is a release switch, off, named by its key. */
+export interface FeatureDeclarationInput {
+  kind?: "release" | "plan";
+  default?: boolean;
+  label?: string;
+  hint?: string;
+}
+
+/** A plugin's declarations under its id: `contacts` + `leadScoring` → `contacts.leadScoring`. */
+export function declaredByPlugin(
+  pluginId: string,
+  features: Record<string, FeatureDeclarationInput | boolean> | undefined,
+): Record<string, FeatureDeclaration> {
+  const out: Record<string, FeatureDeclaration> = {};
+  for (const [key, raw] of Object.entries(features ?? {})) {
+    const name = `${pluginId}.${key}`;
+    if (!FEATURE_NAME.test(name)) {
+      continue;
+    }
+    const d = typeof raw === "boolean" ? { default: raw } : raw;
+    out[name] = {
+      kind: d.kind ?? "release",
+      default: d.default ?? false,
+      label: d.label ?? key,
+      ...(d.hint ? { hint: d.hint } : {}),
+    };
+  }
+  return out;
+}
+
+/** The defaults of these declarations; without any, the core's. */
+export function defaultFeatures(declared: Record<string, FeatureDeclaration> = FEATURES): Features {
   const out: Features = {};
-  for (const name of FEATURE_NAMES) {
-    out[name] = FEATURES[name].default;
+  for (const [name, d] of Object.entries(declared)) {
+    out[name] = d.default;
   }
   return out;
 }

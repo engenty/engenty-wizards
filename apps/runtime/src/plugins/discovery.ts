@@ -24,6 +24,20 @@ const manifestSchema = z.looseObject({
   server: z.string().optional(),
   studio: z.string().optional(),
   styles: z.string().optional(),
+  features: z
+    .record(
+      z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
+      z.union([
+        z.boolean(),
+        z.object({
+          kind: z.enum(["release", "plan"]).optional(),
+          default: z.boolean().optional(),
+          label: z.string().max(80).optional(),
+          hint: z.string().max(300).optional(),
+        }),
+      ]),
+    )
+    .optional(),
 });
 
 export interface PluginSource {

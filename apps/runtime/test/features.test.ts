@@ -66,3 +66,22 @@ describe("feature switches", () => {
     expect(formatFeatures(fileFeatures(file))).toBe("account=off\n");
   });
 });
+
+describe("declared switches", () => {
+  it("takes a plugin's declarations under its id and their defaults", async () => {
+    const { declaredByPlugin } = await import("@engenty-wizards/shared/features");
+    const declared = declaredByPlugin("contacts", {
+      leadScoring: true,
+      export: { kind: "plan", label: "Export", hint: "CSV of all leads." },
+      "Bad Name": false,
+    });
+    expect(declared).toEqual({
+      "contacts.leadScoring": { kind: "release", default: true, label: "leadScoring" },
+      "contacts.export": { kind: "plan", default: false, label: "Export", hint: "CSV of all leads." },
+    });
+    expect(defaultFeatures({ ...declared })).toEqual({
+      "contacts.leadScoring": true,
+      "contacts.export": false,
+    });
+  });
+});
