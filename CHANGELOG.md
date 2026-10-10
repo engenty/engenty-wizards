@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.38] - 2026-10-10
+- DOCS The Chrome app's manifest and the mobile app's config carry the product's one line – "Make a wish, describe it once, and let the wizards run it on your own AI or in the cloud"
+
 ## [0.2.37] - 2026-10-10
 - ADDED **[cli]** `wizards` alone is the menu and nothing starts by itself – without a command it opens the menu (start options without `start`, or no terminal, end with a hint to `wizards start`); the setup, also at the end of install.sh, no longer offers to start it but says whether it runs and how to start, open, stop, check and restart it from now on; new `wizards studio` opens the studio and starts it as a service first when it does not run; a fresh install folder no longer breaks the setup's last step, and every hint names the command as this install types it
 

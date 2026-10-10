@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.38",
+    "timestamp": 1791630733,
+    "commits": [
+      {
+        "id": "d96034d",
+        "message": "the Chrome app's manifest and the mobile app's config carry the product's one line – \"Make a wish, describe it once, and let the wizards run it on your own AI or in the cloud\"",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.37",
-    "timestamp": 1791619262,
+    "timestamp": 1791619265,
     "commits": [
       {
         "id": "6467cae",
