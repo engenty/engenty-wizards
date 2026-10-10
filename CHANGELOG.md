@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.42] - 2026-10-10
+- ADDED **[studio]** The studio installs as an app on every device – the user menu offers "Als App installieren": Chrome and Edge install on the word, elsewhere a dialog says how the browser does it (the share sheet on an iPhone, File → Add to Dock in Safari on a Mac, Chrome's menu on Android); the studio registers the service worker the public pages already had, and an iPhone's home screen names the icon "wizards"
+
 ## [0.2.41] - 2026-10-10
 - DOCS LIMIT_PROJECTS is no longer listed in the example env or the Manage contract – the runtime still reads it, but it is not documented
 
