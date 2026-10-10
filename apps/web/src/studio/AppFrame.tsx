@@ -22,6 +22,7 @@ import {
 import { Link, NavLink, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
+import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { features } from "../lib/features";
 import { t } from "../lib/i18n";
 import {
@@ -154,7 +155,7 @@ function accountState(me: Me): "linked" | "expired" | "alone" | null {
 }
 
 /** Closes a menu on a click outside it or on Escape, while it is open. */
-function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, close: () => void) {
+export function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, close: () => void) {
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
@@ -178,6 +179,18 @@ function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, close: ()
       document.removeEventListener("keydown", onKey);
     };
   }, [ref, open]);
+}
+
+/**
+ * Where a menu of the top bar or the app bar opens: below its trigger, or away from the bar at
+ * its start (the space) or its end (the person), whichever edge the bar stands at.
+ */
+export type MenuPlacement = "below" | "bar-start" | "bar-end";
+
+function placementClass(placement: MenuPlacement, position: AppBarPosition, below: string) {
+  return placement === "below"
+    ? below
+    : besideBar(position, placement === "bar-start" ? "start" : "end");
 }
 
 /** Text light or dark by the fill's own lightness, as `--ember-on` is for the ember. */
@@ -222,12 +235,13 @@ export function SpaceMenu({
   children,
 }: {
   me: Me;
-  placement: "below" | "beside";
+  placement: MenuPlacement;
   label?: string;
   className: string | ((open: boolean) => string);
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const { position } = useAppBar();
   const { project, projects, select } = useCurrentProject();
   const mayCreate = useMayCreate();
   const [open, setOpen] = useState(false);
@@ -256,7 +270,7 @@ export function SpaceMenu({
           role="menu"
           className={cn(
             "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
-            placement === "beside" ? "top-0 left-full ml-3" : "top-10 left-0",
+            placementClass(placement, position, "top-10 left-0"),
           )}
         >
           {projects.map((p) => {
@@ -349,11 +363,12 @@ function SpaceName({ me }: { me: Me }) {
   );
 }
 
-/** `placement`: where the menu opens — below the avatar in a top bar, beside it in the app bar. */
-export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "below" | "beside" }) {
+/** `placement`: where the menu opens — below the avatar in a top bar, away from the app bar. */
+export function UserMenu({ me, placement = "below" }: { me: Me; placement?: MenuPlacement }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { position } = useAppBar();
   const plugins = useStudioPlugins();
   useDismiss(ref, open, () => setOpen(false));
   const initials = initialsOf(me.user.name);
@@ -368,7 +383,7 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "bel
         className={cn(
           "relative flex shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[0.8125rem] text-ember-strong ring-1 ring-border-soft",
           // In the app bar the avatar is as large as the tiles above it.
-          placement === "beside" ? "size-10" : "size-9",
+          placement === "below" ? "size-9" : "size-10",
         )}
         aria-label={me.user.name || "Menu"}
       >
@@ -398,7 +413,7 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "bel
         <div
           className={cn(
             "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
-            placement === "beside" ? "bottom-0 left-full ml-3" : "top-11 right-0",
+            placementClass(placement, position, "top-11 right-0"),
           )}
         >
           <div className="px-3 pt-2 pb-2.5">
@@ -591,8 +606,23 @@ export function scrollRoot(): HTMLElement {
   return document.getElementById(SCROLL_ROOT_ID) ?? document.documentElement;
 }
 
+/** The page's gap to the window's edges: on the three sides the bar does not stand at. */
+const INSET: Record<AppBarPosition, string> = {
+  left: "md:py-2 md:pr-2",
+  right: "md:py-2 md:pl-2",
+  top: "md:px-2 md:pb-2",
+  bottom: "md:px-2 md:pt-2",
+};
+
+const DIRECTION: Record<AppBarPosition, string> = {
+  left: "flex-row",
+  right: "flex-row-reverse",
+  top: "flex-col",
+  bottom: "flex-col-reverse",
+};
+
 /**
- * The studio's frame: the app bar at the window's left edge and the page beside it, on a wide
+ * The studio's frame: the app bar at an edge of the window and the page beside it, on a wide
  * screen set in from the window's edge with rounded corners, a card on the bar's ground. The
  * page scrolls inside; the bar and the top bar stay. `wide`: a page that lays out columns of its
  * own takes the screen's width. `full`: a page that fills the frame and draws its own top bar.
@@ -608,11 +638,20 @@ export function AppFrame({
   full?: boolean;
   children: ReactNode;
 }) {
+  const { position, hidden } = useAppBar();
   return (
     // `--inset-b`: how far the page's lower edge stands above the window's, for what docks there.
-    <div className="flex h-dvh overflow-hidden bg-sidebar [--inset-b:0px] md:[--inset-b:0.5rem]">
+    <div
+      className={cn(
+        "flex h-dvh overflow-hidden bg-sidebar [--inset-b:0px]",
+        DIRECTION[position],
+        position === "bottom" && !hidden ? "md:[--inset-b:4rem]" : "md:[--inset-b:0.5rem]",
+      )}
+    >
       <AppRail me={me} />
-      <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
+      <div
+        className={cn("flex min-h-0 min-w-0 flex-1 flex-col", hidden ? "md:p-2" : INSET[position])}
+      >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl md:shadow-elevated md:dark:ring-1 md:dark:ring-border-soft">
           <UpdateBanner />
           <InstallBanner />
