@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.39] - 2026-10-10
+- FIXED **[studio]** A signed-out visitor of /studio/ sees the sign-in page instead of being sent to the landing page – the start page is a door like every other page of the studio; someone signed in at engenty.ai is still signed in by itself; SIGNED_OUT_URL is gone, nothing reads it any more
+
 ## [0.2.38] - 2026-10-10
 - DOCS The Chrome app's manifest and the mobile app's config carry the product's one line – "Make a wish, describe it once, and let the wizards run it on your own AI or in the cloud"
 

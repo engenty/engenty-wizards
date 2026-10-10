@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.39",
+    "timestamp": 1791647032,
+    "commits": [
+      {
+        "id": "83b027d",
+        "message": "a signed-out visitor of /studio/ sees the sign-in page instead of being sent to the landing page – the start page is a door like every other page of the studio; someone signed in at engenty.ai is still signed in by itself; SIGNED_OUT_URL is gone, nothing reads it any more",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.38",
-    "timestamp": 1791630733,
+    "timestamp": 1791630737,
     "commits": [
       {
         "id": "d96034d",
