@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../../lib/api";
-import { features } from "../../lib/features";
+import { useFeature } from "../../lib/features";
 import { type Key, lang, t } from "../../lib/i18n";
 import {
   type CloudAnswer,
@@ -713,6 +713,7 @@ export function ShareDialog({
   /** Publishing from here, where the draft is not published as it is. */
   publish?: Publish;
 }) {
+  const account = useFeature("account");
   const me = useMe();
   const local = me.data?.mode === "local";
   // A local install with an account sends what it publishes on to the account's cloud.
@@ -783,7 +784,7 @@ export function ShareDialog({
                 <ExternalLink className="size-4" /> {t("share.open")}
               </Button>
             </div>
-            {features.account ? (
+            {account ? (
               // The ways that need a link everyone reaches stay in sight: each says what it takes.
               <div className="-ml-3 flex flex-wrap gap-1">
                 {(["website", "qr"] as const).map((w) => (
@@ -808,7 +809,7 @@ export function ShareDialog({
           </div>
         ) : null}
         {linked ? <CloudNotes wizard={wizard} cloud={cloud.data} /> : null}
-        {local && !linked && features.account ? <SignInOffer way={teaser} /> : null}
+        {local && !linked && account ? <SignInOffer way={teaser} /> : null}
         {wizard.published ? <Channels wizard={wizard} /> : null}
         <Settings wizard={wizard} cloud={linked ? cloud.data : undefined} />
         {linked && wizard.published ? (

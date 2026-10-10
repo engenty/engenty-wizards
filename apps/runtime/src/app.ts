@@ -12,6 +12,7 @@ import { ZodError } from "zod";
 import { authRoutes, type Principal, principalOf } from "./auth/index.js";
 import { db, schema, withTenant } from "./db/client.js";
 import { basePath, env } from "./env.js";
+import { features } from "./features.js";
 import { allowed, hashIp } from "./limits.js";
 import { linkPreview } from "./link-preview.js";
 import { discovery, managed } from "./manage.js";
@@ -144,6 +145,8 @@ app.get("/api/config", (c) =>
     devLogin: !managed && env.devLogin,
     /** The product's own site, for a runtime that runs alone. */
     site: managed ? null : env.local.cloudUrl,
+    /** The feature switches before anyone is signed in: the code's, the environment's, the file's. */
+    features: features(),
   }),
 );
 

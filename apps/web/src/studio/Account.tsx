@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cloud, Coins, ExternalLink, HardDrive, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
+import { useFeature } from "../lib/features";
 import { type Key, lang, t } from "../lib/i18n";
 import { type ExpiringCredits, initialsOf, type Me, type UserProfile } from "../lib/session";
 import { Button, Chip, Input, Label, Spinner, Textarea } from "../ui";
@@ -66,6 +66,7 @@ export function LinkStatus({ link, waiting }: ReturnType<typeof useAccountLink>)
  * account, which takes an invitation code.
  */
 function Unlinked() {
+  const account = useFeature("account");
   const linking = useAccountLink(false);
   const { link } = linking;
   const [code, setCode] = useState("");
@@ -82,7 +83,7 @@ function Unlinked() {
           </p>
         </div>
       </div>
-      {features.account ? (
+      {account ? (
         <div className="flex flex-col gap-4 py-5 last:pb-0">
           <div>
             <div className="font-medium text-[0.9375rem]">{t("account.with")}</div>
@@ -107,7 +108,7 @@ function Unlinked() {
           </div>
         </div>
       ) : null}
-      {features.account ? (
+      {account ? (
         <form
           className="flex flex-col gap-3 py-5 last:pb-0"
           onSubmit={(e) => {

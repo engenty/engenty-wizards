@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
+import { useFeature } from "../lib/features";
 import { type Key, t } from "../lib/i18n";
 import {
   type PublishResult,
@@ -221,6 +221,7 @@ function useSheetHeight() {
 }
 
 export function EditorPage() {
+  const account = useFeature("account");
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -340,9 +341,7 @@ export function EditorPage() {
    * `connect` without an account, `use` with one whose credits the models do not run on yet.
    */
   const credits =
-    me.data.mode === "local" &&
-    features.account &&
-    missing.some((m) => CREDIT_CLASSES.includes(m.cls))
+    me.data.mode === "local" && account && missing.some((m) => CREDIT_CLASSES.includes(m.cls))
       ? !me.data.account
         ? "connect"
         : me.data.models?.source !== "account"

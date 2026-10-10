@@ -24,7 +24,7 @@ import { Link, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
-import { features } from "../lib/features";
+import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
 import { acceptInstall, standalone, useInstallPrompt } from "../lib/install";
 import {
@@ -146,12 +146,12 @@ export function CreditsPill({ me }: { me: Me }) {
  * Where a local install stands with its account, at the avatar: linked (its cloud runs what is
  * published here), linked with the sign-in run out, or alone. Nothing for a managed runtime.
  */
-function accountState(me: Me): "linked" | "expired" | "alone" | null {
+function accountState(me: Me, account: boolean): "linked" | "expired" | "alone" | null {
   if (me.mode !== "local") {
     return null;
   }
   if (!me.account) {
-    return features.account ? "alone" : null;
+    return account ? "alone" : null;
   }
   return me.account.signedIn ? "linked" : "expired";
 }
@@ -377,7 +377,8 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
   const installPrompt = useInstallPrompt();
   const [installOpen, setInstallOpen] = useState(false);
   const initials = initialsOf(me.user.name);
-  const state = accountState(me);
+  const account = useFeature("account");
+  const state = accountState(me, account);
   const item =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[0.875rem] text-ink-2 hover:bg-accent hover:text-ink";
   return (

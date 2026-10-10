@@ -30,6 +30,7 @@ import { pluginConnections } from "../connectors/plugin-connections.js";
 import { db, onTenantOpen } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
+import { currentFeatures } from "../features.js";
 import { managed } from "../manage.js";
 import { conversationAccess, ModelUnavailableError, textModel } from "../models.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
@@ -128,6 +129,10 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
     plugin: source.manifest,
     resolvePath: (relative) => resolve(source.root, relative),
     config: { get: (key) => process.env[key]?.trim() || undefined },
+    features: {
+      has: async (name) => (await currentFeatures())[name] === true,
+      all: currentFeatures,
+    },
     log: {
       info: (...args) => console.log(tag, ...args),
       warn: (...args) => console.warn(tag, ...args),

@@ -29,6 +29,7 @@ import { balanceCredits, canSpend } from "../credits/credits.js";
 import { estimateRun } from "../credits/estimate.js";
 import { missingModels, stepsWithoutModel } from "../engine/requirements.js";
 import { env } from "../env.js";
+import { feature, features } from "../features.js";
 import { freshAuth, loginEnv } from "../harness/env.js";
 import {
   detectHarness,
@@ -356,8 +357,8 @@ export const studio = new Hono<Vars>()
         /** The plan the team is on; null alone, or where the Manage-App names none. */
         plan: info?.plan ?? null,
       },
-      /** The plan's feature switches (`ownKeys`, …); alone, everything is on. */
-      features: managed ? (info?.features ?? {}) : { ownKeys: true },
+      /** The feature switches: the code's defaults, what the Manage-App says, this install's file. */
+      features: features(managed ? info?.features : overview?.tenant.features),
       mode: managed ? "managed" : "local",
       /** The tenant's balance; null where the runtime resolves models itself. */
       credits: managed ? await balanceCredits() : null,
@@ -1255,7 +1256,7 @@ export const studio = new Hono<Vars>()
       const own =
         Object.values(input.keys ?? {}).some((key) => key?.trim()) ||
         Object.values(input.bindings ?? {}).some((ref) => ref && !isCreditsRef(ref));
-      if (own && info && info.features?.ownKeys === false) {
+      if (own && info && !feature("ownKeys", info.features)) {
         return c.json(
           {
             error: `Eigene API Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,

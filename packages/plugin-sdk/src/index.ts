@@ -790,6 +790,15 @@ export interface WizardsPluginApi {
   server: PluginServerApi;
   /** Settings of this install: its `.env`. Name them after the plugin (`NOTIFY_URL`). */
   config: { get(key: string): string | undefined };
+  /**
+   * Feature switches of the tenant at hand: the runtime's own (`teamPlans`) and the plugin's,
+   * named with its id (`contacts.leadScoring`), as the Manage-App, the install's `.features`
+   * file or `FEATURES` set them. Off unless something turned a switch on.
+   */
+  features: {
+    has(name: string): Promise<boolean>;
+    all(): Promise<Record<string, boolean>>;
+  };
   log: {
     info(...args: unknown[]): void;
     warn(...args: unknown[]): void;

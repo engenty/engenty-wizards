@@ -22,7 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
+import { useFeature } from "../lib/features";
 import { type Key, lang, t } from "../lib/i18n";
 import {
   type Me,
@@ -228,6 +228,7 @@ function LinkTeaser() {
  * no link to hand out; it opens here.
  */
 function WizardCard({ w, me, runners }: { w: WizardSummary; me: Me; runners: Runner[] }) {
+  const account = useFeature("account");
   const navigate = useNavigate();
   const where = whereItRuns(w, me, w.cloud);
   const link = sharedLink(where);
@@ -257,7 +258,7 @@ function WizardCard({ w, me, runners }: { w: WizardSummary; me: Me; runners: Run
           <div className="flex items-center">
             {link ? (
               <CopyLink url={link} />
-            ) : where.kind === "here" && features.account ? (
+            ) : where.kind === "here" && account ? (
               <LinkTeaser />
             ) : null}
             {open ? (

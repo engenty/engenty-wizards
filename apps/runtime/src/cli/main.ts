@@ -1,4 +1,5 @@
 import { apps, connectCommand } from "./connect.js";
+import { featuresCommand } from "./features.js";
 import { command, layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { mcp } from "./mcp.js";
@@ -45,7 +46,7 @@ interface Args {
   command: string;
   /** What follows the command: \`autostart on\`. */
   value: string;
-  /** The apps \`connect\` and \`disconnect\` name. */
+  /** What follows \`connect\`, \`disconnect\` and \`features\`. */
   apps: string[];
   yes: boolean;
   open: boolean;
@@ -89,7 +90,7 @@ function parse(argv: string[]): Args | string {
       return `Unknown option ${arg}.`;
     } else if ((args.command === "autostart" || args.command === "logs") && !args.value) {
       args.value = arg;
-    } else if (args.command === "connect" || args.command === "disconnect") {
+    } else if (["connect", "disconnect", "features"].includes(args.command)) {
       args.apps.push(arg);
     } else if (args.command) {
       return `Unexpected argument ${arg}.`;
@@ -165,6 +166,8 @@ async function main(argv: string[]): Promise<number> {
       return connectCommand(paths, args.apps, args.command === "disconnect");
     case "mcp":
       return mcp(paths);
+    case "features":
+      return featuresCommand(args.apps);
     default:
       console.error(`Unknown command ${args.command}.\n\n${HELP}`);
       return 2;
