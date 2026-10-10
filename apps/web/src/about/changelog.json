@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.41",
+    "timestamp": 1791647251,
+    "commits": [
+      {
+        "id": "aa65e7a",
+        "message": "LIMIT_PROJECTS is no longer listed in the example env or the Manage contract – the runtime still reads it, but it is not documented",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.40",
-    "timestamp": 1791647189,
+    "timestamp": 1791647192,
     "commits": [
       {
         "id": "618da40",

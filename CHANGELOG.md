@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.41] - 2026-10-10
+- DOCS LIMIT_PROJECTS is no longer listed in the example env or the Manage contract – the runtime still reads it, but it is not documented
+
 ## [0.2.40] - 2026-10-10
 - ADDED **[studio]** A long press on a phone's app bar opens the bar's menu, with the phone's two edges and no hiding; the tap that follows the release is swallowed; the menu measures itself and moves back inside the window, so from a bar along the bottom it stands right above the finger
 - ADDED **[studio]** A phone has the app bar too – along the bottom, or the top where that was picked, clear of the home indicator and the notch, never hidden; its menus open toward the page; the page's top bar keeps only the space's name, the trail and the credits, and the editor's header no longer carries the person
