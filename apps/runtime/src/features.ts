@@ -1,9 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   defaultFeatures,
   type Features,
-  formatFeatures,
   parseFeatures,
   resolveFeatures,
 } from "@engenty-wizards/shared/features";
@@ -97,25 +96,30 @@ export async function currentFeatures(): Promise<Features> {
 }
 
 /**
- * Writes one switch into the `.features` file; `null` takes the line out again. For the
- * `wizards features` command.
+ * Writes one switch into the `.features` file, on the line that names it when there is one
+ * (commented out or not), else at the end; `null` comments the line out again. Other lines and
+ * comments stay as they are. For the `wizards features` command.
  */
 export function writeFeature(name: string, on: boolean | null, file = featuresFile()): Features {
-  const current = fileFeatures(file);
-  const next = { ...current };
-  if (on === null) {
-    delete next[name];
+  let lines: string[] = [];
+  try {
+    lines = readFileSync(file, "utf8").replace(/\n+$/, "").split("\n");
+  } catch {
+    lines = [];
+  }
+  const names = (line: string) => {
+    const m = /^\s*#?\s*[+\-!]?\s*([A-Za-z0-9.]+)\s*(?:=\s*\S+)?\s*(?:#.*)?$/.exec(line);
+    return m?.[1] === name;
+  };
+  const written = on === null ? `# ${name}` : on ? name : `${name}=off`;
+  const at = lines.findIndex(names);
+  if (at === -1) {
+    lines.push(written);
   } else {
-    next[name] = on;
+    lines[at] = written;
   }
-  const text = formatFeatures(next);
-  if (text) {
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, text);
-  } else if (existsSync(file)) {
-    // Nothing left to say: no file.
-    rmSync(file);
-  }
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${lines.join("\n")}\n`);
   fileCache = null;
-  return next;
+  return fileFeatures(file);
 }

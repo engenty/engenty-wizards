@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -47,19 +47,22 @@ describe("feature switches", () => {
     expect(all).toMatchObject({ teamPlans: false, site: true, account: true, ownKeys: true });
   });
 
-  it("writes the file and reads it again when it changed", () => {
+  it("writes a switch on its line, keeps the comments, and reads the file again when it changed", () => {
     const file = join(dir, ".features");
     expect(fileFeatures(file)).toEqual({});
+    writeFileSync(file, "# the switches\n# teamPlans\n# site\n");
     writeFeature("teamPlans", true, file);
     writeFeature("site", false, file);
-    expect(readFileSync(file, "utf8")).toBe("teamPlans\nsite=off\n");
-    expect(fileFeatures(file)).toEqual({ teamPlans: true, site: false });
+    writeFeature("contacts.leadScoring", true, file);
+    expect(readFileSync(file, "utf8")).toBe(
+      "# the switches\nteamPlans\nsite=off\ncontacts.leadScoring\n",
+    );
+    expect(fileFeatures(file)).toEqual({ teamPlans: true, site: false, "contacts.leadScoring": true });
     writeFeature("teamPlans", null, file);
-    expect(fileFeatures(file)).toEqual({ site: false });
-    writeFeature("site", null, file);
-    expect(existsSync(file)).toBe(false);
-    writeFileSync(file, "contacts.leadScoring\n");
+    expect(readFileSync(file, "utf8")).toContain("# teamPlans\n");
+    expect(fileFeatures(file)).toEqual({ site: false, "contacts.leadScoring": true });
+    writeFileSync(file, "account=off\n");
     // A fresh mtime: the file is read again.
-    expect(formatFeatures(fileFeatures(file))).toBe("contacts.leadScoring\n");
+    expect(formatFeatures(fileFeatures(file))).toBe("account=off\n");
   });
 });
