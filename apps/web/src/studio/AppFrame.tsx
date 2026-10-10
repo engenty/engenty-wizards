@@ -225,7 +225,7 @@ export function SpaceFace({
 
 /**
  * The spaces, listed as Slack lists its workspaces: the one shown first (its row opens its
- * page), the others to switch to, and a row that adds one — greyed at the plan's limit. The
+ * wizards; its page is behind the home in the bar), the others to switch to, and a row that adds one — greyed at the plan's limit. The
  * trigger is the caller's: the space's tile in the app bar, its name in the top bar. `label`:
  * the trigger's name for a screen reader where it shows no text.
  */
@@ -286,7 +286,7 @@ export function SpaceMenu({
                 onClick={() => {
                   setOpen(false);
                   if (current) {
-                    navigate("/space");
+                    navigate("/");
                   } else {
                     select(p.id);
                   }

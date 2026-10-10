@@ -1,23 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { lazy, Suspense, useState } from "react";
 import { t } from "../lib/i18n";
+import { useUpdate } from "../lib/update";
 import { Button, IconButton, Spinner } from "../ui";
 
 const ChangelogDialog = lazy(() =>
   import("../about/ChangelogDialog").then((m) => ({ default: m.ChangelogDialog })),
 );
-
-interface UpdateStatus {
-  current: string;
-  latest: string | null;
-  newer: boolean;
-  url: string | null;
-  canApply: boolean;
-  restarts: boolean;
-  applying: "idle" | "running" | "done" | "failed";
-}
 
 const DISMISSED_KEY = "wizards.update-banner";
 
@@ -33,54 +22,12 @@ function dismissedFor(): string | null {
  * A newer release is out. A runtime installed by install.sh installs it from here and starts
  * the new version; the page waits for it and loads again. One that cannot (npm, a checkout)
  * only says so. "Was ist neu" opens the changelog of the new release. Closing it hides this
- * release; the next one shows again.
+ * release; the next one shows again — and the About dialog behind the mark keeps saying it.
  */
 export function UpdateBanner() {
-  const qc = useQueryClient();
   const [closed, setClosed] = useState(dismissedFor);
-  const [waiting, setWaiting] = useState<string | null>(null);
   const [notes, setNotes] = useState(false);
-  const status = useQuery({
-    queryKey: ["update"],
-    queryFn: () => api.get<UpdateStatus>("/api/studio/update"),
-    // The runtime asks GitHub at most once an hour, and so does the page ask the runtime.
-    staleTime: 60 * 60_000,
-    refetchInterval: 60 * 60_000,
-    retry: false,
-  });
-  const apply = useMutation({
-    mutationFn: () => api.post<UpdateStatus>("/api/studio/update"),
-    onSuccess: (next) => qc.setQueryData(["update"], next),
-  });
-  const data = status.data;
-  const latest = data?.latest ?? null;
-  const restarting = data?.restarts && (data.applying === "running" || data.applying === "done");
-
-  const from = data?.current;
-  // While it installs and restarts, ask until another version answers, then load it.
-  useEffect(() => {
-    if (!(restarting || data?.applying === "running") || !latest) {
-      return;
-    }
-    const timer = setInterval(async () => {
-      try {
-        const next = await api.get<UpdateStatus>("/api/studio/update");
-        if (next.current !== from) {
-          window.location.reload();
-          return;
-        }
-        qc.setQueryData(["update"], next);
-        if (next.applying === "done" && next.restarts) {
-          setWaiting(latest);
-        }
-      } catch {
-        // Down between the old version and the new one.
-        setWaiting(latest);
-      }
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [restarting, data?.applying, latest, from, qc]);
-
+  const { data, latest, apply, busy, progress } = useUpdate();
   if (!(data?.newer && latest) || (closed === latest && data.applying === "idle")) {
     return null;
   }
@@ -92,17 +39,7 @@ export function UpdateBanner() {
     }
     setClosed(latest);
   };
-  const busy = data.applying === "running" || waiting !== null;
-  const line =
-    waiting !== null
-      ? t("about.update.restarting", { v: latest })
-      : data.applying === "running"
-        ? t("about.update.installing", { v: latest })
-        : data.applying === "done"
-          ? t("about.update.done", { v: latest })
-          : data.applying === "failed"
-            ? t("about.update.failed")
-            : t("about.update.available", { v: latest });
+  const line = progress ?? t("about.update.available", { v: latest });
   return (
     <div className="flex items-center gap-3 border-border-soft border-b bg-ember-tint px-4 py-2 text-[0.8125rem] text-ink-2 sm:px-6">
       {busy ? (

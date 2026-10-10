@@ -11,8 +11,16 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
-import { type MouseEvent, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router";
+import {
+  lazy,
+  type MouseEvent,
+  type PointerEvent,
+  Suspense,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { NavLink } from "react-router";
 import { BRAND } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import {
@@ -29,10 +37,15 @@ import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
 import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
 
+const AboutDialog = lazy(() =>
+  import("../about/AboutDialog").then((m) => ({ default: m.AboutDialog })),
+);
+
 /**
- * The app bar at an edge of the window, as in engenty-pro: the mark, the space with its home
- * (the space's page: Info & Marke, Wissen, Daten, Ergebnisse), the apps the plugins added, and
- * at its end the settings and the person. A place is a filled tile, a tool a line glyph; the
+ * The app bar at an edge of the window, as in engenty-pro: the mark (it opens the About dialog:
+ * the version, updates, what is new), the space with its home (the space's page: Info & Marke,
+ * Wissen, Daten, Ergebnisse), the apps the plugins added, and at its end the settings and the
+ * person. A place is a filled tile, a tool a line glyph; the
  * one that is open is cut from the page's own paper. A right click on the bar picks its edge
  * and the colour scheme. A phone has it along the bottom, or the top (`useAppBar`); a long
  * press there opens the same menu with those two edges.
@@ -156,11 +169,11 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
 }
 
 export function AppRail({ me }: { me: Me }) {
-  const navigate = useNavigate();
   const plugins = useStudioPlugins();
   const { position } = useAppBar();
   const horizontal = isHorizontal(position);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [about, setAbout] = useState(false);
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY });
@@ -210,91 +223,101 @@ export function AppRail({ me }: { me: Me }) {
     }
   };
   return (
-    <aside
-      aria-label={BRAND.name}
-      onContextMenu={onContextMenu}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endPress}
-      onPointerCancel={endPress}
-      onPointerLeave={endPress}
-      onClickCapture={onClickCapture}
-      className={cn(
-        // No text selection and no link callout while a finger rests on the bar.
-        "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
-        horizontal ? "w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
-        // Along a phone's edge, clear of the notch and the home indicator: the safe area
-        // comes on top of the bar's own padding, so the items keep their place in it.
-        position === "bottom" && "pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
-        position === "top" && "pt-[calc(0.375rem+env(safe-area-inset-top))] pb-1.5",
-      )}
-    >
-      {/* Beside the page, the mark's row is as tall as the page's top bar, so the two sit on
-              one line. */}
-      <button
-        type="button"
-        onClick={() => navigate("/")}
-        title={BRAND.name}
+    <>
+      <aside
         aria-label={BRAND.name}
+        onContextMenu={onContextMenu}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPress}
+        onPointerCancel={endPress}
+        onPointerLeave={endPress}
+        onClickCapture={onClickCapture}
         className={cn(
-          "grid shrink-0 place-items-center rounded-lg transition hover:bg-ink/10",
-          horizontal ? "size-11" : "h-12 w-11",
+          // No text selection and no link callout while a finger rests on the bar.
+          "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
+          horizontal ? "w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
+          // Along a phone's edge, clear of the notch and the home indicator: the safe area
+          // comes on top of the bar's own padding, so the items keep their place in it.
+          position === "bottom" && "pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
+          position === "top" && "pt-[calc(0.375rem+env(safe-area-inset-top))] pb-1.5",
         )}
       >
-        <EngentyLogoMark size={32} />
-      </button>
-      <div className={horizontal ? "ml-1" : "mt-2"}>
-        <SpaceTile me={me} />
-      </div>
-      {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
-      <NavLink
-        to="/space"
-        title={t("nav.project")}
-        aria-label={t("nav.project")}
-        className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
-      >
-        <Home className="size-5" />
-      </NavLink>
-      {/* The pages plugins added, each behind its icon, after a divider. */}
-      {plugins.nav.length ? (
-        <div className={cn("shrink-0 bg-border", horizontal ? "mx-2 h-7 w-px" : "my-3 h-px w-7")} />
-      ) : null}
-      <nav
-        className={cn(
-          "flex min-h-0 min-w-0 flex-1 items-center gap-1.5",
-          horizontal ? "flex-row overflow-x-auto" : "flex-col overflow-y-auto",
-        )}
-      >
-        {plugins.nav.map((entry) => (
-          <PluginFrame key={entry.serial} of={entry}>
-            <NavLink
-              to={entry.to}
-              title={entry.label()}
-              aria-label={entry.label()}
-              className={({ isActive }) => glyph(isActive)}
-            >
-              <entry.icon className="size-5" />
-            </NavLink>
-          </PluginFrame>
-        ))}
-      </nav>
-      <div
-        className={cn(
-          "flex shrink-0 items-center gap-2",
-          horizontal ? "flex-row pl-3" : "flex-col pt-3",
-        )}
-      >
-        <NavLink
-          to="/settings"
-          title={t("nav.settings")}
-          aria-label={t("nav.settings")}
-          className={({ isActive }) => glyph(isActive)}
+        {/* Beside the page, the mark's row is as tall as the page's top bar, so the two sit on
+              one line. */}
+        <button
+          type="button"
+          onClick={() => setAbout(true)}
+          title={t("about.title")}
+          aria-label={t("about.title")}
+          className={cn(
+            "grid shrink-0 place-items-center rounded-lg transition hover:bg-ink/10",
+            horizontal ? "size-11" : "h-12 w-11",
+          )}
         >
-          <Settings className="size-5" />
+          <EngentyLogoMark size={32} />
+        </button>
+        <div className={horizontal ? "ml-1" : "mt-2"}>
+          <SpaceTile me={me} />
+        </div>
+        {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
+        <NavLink
+          to="/space"
+          title={t("nav.project")}
+          aria-label={t("nav.project")}
+          className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
+        >
+          <Home className="size-5" />
         </NavLink>
-        <UserMenu me={me} placement="bar-end" />
-      </div>
-      {menu ? <BarMenu at={menu} onClose={() => setMenu(null)} /> : null}
-    </aside>
+        {/* The pages plugins added, each behind its icon, after a divider. */}
+        {plugins.nav.length ? (
+          <div
+            className={cn("shrink-0 bg-border", horizontal ? "mx-2 h-7 w-px" : "my-3 h-px w-7")}
+          />
+        ) : null}
+        <nav
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 items-center gap-1.5",
+            horizontal ? "flex-row overflow-x-auto" : "flex-col overflow-y-auto",
+          )}
+        >
+          {plugins.nav.map((entry) => (
+            <PluginFrame key={entry.serial} of={entry}>
+              <NavLink
+                to={entry.to}
+                title={entry.label()}
+                aria-label={entry.label()}
+                className={({ isActive }) => glyph(isActive)}
+              >
+                <entry.icon className="size-5" />
+              </NavLink>
+            </PluginFrame>
+          ))}
+        </nav>
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-2",
+            horizontal ? "flex-row pl-3" : "flex-col pt-3",
+          )}
+        >
+          <NavLink
+            to="/settings"
+            title={t("nav.settings")}
+            aria-label={t("nav.settings")}
+            className={({ isActive }) => glyph(isActive)}
+          >
+            <Settings className="size-5" />
+          </NavLink>
+          <UserMenu me={me} placement="bar-end" />
+        </div>
+        {menu ? <BarMenu at={menu} onClose={() => setMenu(null)} /> : null}
+      </aside>
+      {/* Outside the bar: its text may be selected, and a right click on it is the browser's. */}
+      {about ? (
+        <Suspense fallback={null}>
+          <AboutDialog open me={me} onClose={() => setAbout(false)} />
+        </Suspense>
+      ) : null}
+    </>
   );
 }

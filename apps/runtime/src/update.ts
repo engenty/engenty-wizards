@@ -34,6 +34,10 @@ export interface UpdateStatus {
   /** After an update the runtime starts the new version by itself; else the person restarts it. */
   restarts: boolean;
   applying: "idle" | "running" | "done" | "failed";
+  /** When GitHub was last asked, found or not; null before the first time. */
+  checkedAt: number | null;
+  /** False where ENGENTY_WIZARDS_NO_UPDATE_CHECK keeps the runtime from asking. */
+  enabled: boolean;
 }
 
 let cached: { at: number; latest: string | null; url: string | null } | null = null;
@@ -70,12 +74,17 @@ export function isNewer(latest: string, current: string): boolean {
   return false;
 }
 
-async function newestRelease(): Promise<{ latest: string | null; url: string | null }> {
-  if (process.env.ENGENTY_WIZARDS_NO_UPDATE_CHECK) {
+const enabled = () => !process.env.ENGENTY_WIZARDS_NO_UPDATE_CHECK;
+
+/** The newest release GitHub knows; `fresh` asks again although the last answer still holds. */
+async function newestRelease(
+  fresh = false,
+): Promise<{ latest: string | null; url: string | null }> {
+  if (!enabled()) {
     return { latest: null, url: null };
   }
   const age = cached ? Date.now() - cached.at : Number.POSITIVE_INFINITY;
-  if (cached && age < CHECK_EVERY_MS) {
+  if (cached && age < CHECK_EVERY_MS && !fresh) {
     return cached;
   }
   let found: { latest: string | null; url: string | null } = { latest: null, url: null };
@@ -101,9 +110,9 @@ function installKind(): InstallKind {
   return installedByScript() ? "script" : isCheckout() ? "checkout" : "npm";
 }
 
-export async function updateStatus(): Promise<UpdateStatus> {
+export async function updateStatus(fresh = false): Promise<UpdateStatus> {
   const current = packageVersion();
-  const { latest, url } = await newestRelease();
+  const { latest, url } = await newestRelease(fresh);
   const kind = installKind();
   return {
     current,
@@ -114,6 +123,8 @@ export async function updateStatus(): Promise<UpdateStatus> {
     canApply: kind === "script",
     restarts: restarts(),
     applying,
+    checkedAt: cached?.at ?? null,
+    enabled: enabled(),
   };
 }
 

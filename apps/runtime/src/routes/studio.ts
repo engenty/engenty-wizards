@@ -420,9 +420,12 @@ export const studio = new Hono<Vars>()
     });
   })
 
-  // A runtime that runs alone says when a newer release is out and can run the update itself.
+  // A runtime that runs alone says when a newer release is out and can run the update itself;
+  // `?fresh=1` asks GitHub now instead of within the hour.
   .get("/update", async (c) =>
-    managed ? c.json({ error: "not_local" }, 404) : c.json(await updateStatus()),
+    managed
+      ? c.json({ error: "not_local" }, 404)
+      : c.json(await updateStatus(c.req.query("fresh") === "1")),
   )
   .post("/update", async (c) => {
     if (managed) {
