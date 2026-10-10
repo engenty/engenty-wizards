@@ -4,6 +4,14 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.40] - 2026-10-10
+- ADDED **[studio]** A long press on a phone's app bar opens the bar's menu, with the phone's two edges and no hiding; the tap that follows the release is swallowed; the menu measures itself and moves back inside the window, so from a bar along the bottom it stands right above the finger
+- ADDED **[studio]** A phone has the app bar too – along the bottom, or the top where that was picked, clear of the home indicator and the notch, never hidden; its menus open toward the page; the page's top bar keeps only the space's name, the trail and the credits, and the editor's header no longer carries the person
+- ADDED **[studio]** The app bar stands at any edge of the window and can hide, as in engenty-pro – a right click on it opens its own menu with the four edges and "App-Leiste ausblenden"; the page and its inset follow the edge, the bar lays its tiles out in a row along the top or the bottom, and its menus open away from it; hidden, a small mark stays at the edge and the bar comes out while the pointer rests there, where the same menu pins it again; the pick is kept per browser, like the theme
+- ADDED **[studio]** The app bar is 4 rem wide with 40 px tiles; the space's tile and its name in the top bar open one menu that lists the spaces as Slack lists workspaces – the one shown first, whose row opens its page, the others to switch to, and a row that adds one, greyed at the plan's limit; the top bar writes the wordmark on a wide screen and starts at the space's name on a phone, so the home page keeps no switcher of its own and its title shares the row with its actions; the engenties on the home cards and in the gallery wobble and follow the pointer
+- ADDED **[studio]** The studio takes engenty-pro's frame – an app bar at the window's left edge with the mark, the space as a filled tile (a chevron below it switches between several), the pages plugins added after a divider, and the settings and the person at its foot; the page stands beside it set in from the window's edge with rounded corners and scrolls inside, so the top bar holds only the trail and the credits; the editor fills the frame with its own top bar; a phone keeps the bar it had
+- DOCS **[plugins]** A plugin's icon stands in the app bar, where the top bar was
+
 ## [0.2.39] - 2026-10-10
 - FIXED **[studio]** A signed-out visitor of /studio/ sees the sign-in page instead of being sent to the landing page – the start page is a door like every other page of the studio; someone signed in at engenty.ai is still signed in by itself; SIGNED_OUT_URL is gone, nothing reads it any more
 
