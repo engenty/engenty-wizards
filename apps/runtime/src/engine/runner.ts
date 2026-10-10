@@ -52,9 +52,17 @@ import { runEnded } from "../plugins/events.js";
 import { projectFiles } from "../services/project-files.js";
 import { projectProfile } from "../services/projects.js";
 import { listRows, scopeOf } from "../store/index.js";
-import { activeRuns, indexRun, markRunActive } from "../tenants/control.js";
+import {
+  claimRun,
+  disownRuns,
+  heartbeatRuns,
+  indexRun,
+  restRun,
+  waitingRuns,
+  wakeRun,
+} from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
-import { askPerson, clearStaleAsk, unattended } from "./asks.js";
+import { askPerson, clearStaleAsk } from "./asks.js";
 import { decide } from "./decide.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { type PageContext, readPageInput } from "./input.js";
@@ -86,12 +94,17 @@ export class NoCreditsError extends Error {
   }
 }
 
+/** The runs this process drives right now, with the handle that stops each. */
 const active = new Map<string, AbortController>();
 
-// --- a tenant's runs that work at the same time ---------------------------------
-// Runs beyond the limit wait in line; nothing is refused.
+// --- the line ------------------------------------------------------------------
+// A run that wants work is marked in the control database (`wakeRun`); a runner claims it there,
+// so several processes share one line. A tenant's runs beyond its limit stay in line; nothing is
+// refused. See docs/plans/runner-process.md.
 
-const slots = new Map<string, { busy: number; waiting: (() => void)[] }>();
+/** How often a runner looks at the line, and how often it reports on the runs it holds. */
+const POLL_MS = 2000;
+const HEARTBEAT_MS = 10_000;
 
 async function concurrencyLimit(tenant: string): Promise<number> {
   if (!managed) {
@@ -99,46 +112,6 @@ async function concurrencyLimit(tenant: string): Promise<number> {
   }
   const info = await tenantInfo(tenant).catch(() => null);
   return info?.limits.concurrentRuns || env.limits.concurrentRuns;
-}
-
-async function acquireSlot(tenant: string, signal: AbortSignal): Promise<boolean> {
-  const limit = await concurrencyLimit(tenant);
-  let slot = slots.get(tenant);
-  if (!slot) {
-    slot = { busy: 0, waiting: [] };
-    slots.set(tenant, slot);
-  }
-  if (slot.busy < limit) {
-    slot.busy++;
-    return true;
-  }
-  const queue = slot.waiting;
-  return new Promise<boolean>((resolve) => {
-    const go = () => {
-      signal.removeEventListener("abort", stop);
-      resolve(true);
-    };
-    const stop = () => {
-      queue.splice(queue.indexOf(go), 1);
-      resolve(false);
-    };
-    queue.push(go);
-    signal.addEventListener("abort", stop, { once: true });
-  });
-}
-
-function releaseSlot(tenant: string) {
-  const slot = slots.get(tenant);
-  if (!slot) {
-    return;
-  }
-  const next = slot.waiting.shift();
-  if (next) {
-    // The slot passes straight to the next run in line.
-    next();
-  } else {
-    slot.busy--;
-  }
 }
 
 async function loadRun(runId: string): Promise<RunRow | undefined> {
@@ -225,6 +198,8 @@ export async function createRun(input: {
   visitorId?: string | null;
   userId?: string | null;
   ipHash?: string | null;
+  /** An autopilot fills the pages (an MCP client's test run): the run asks nobody. */
+  unattended?: boolean;
 }): Promise<string> {
   const id = nanoid(18);
   const first = input.definition.steps[0];
@@ -255,6 +230,7 @@ export async function createRun(input: {
     visitorId: input.visitorId ?? null,
     userId: input.userId ?? null,
     ipHash: input.ipHash ?? null,
+    unattended: input.unattended ?? false,
     status: first.type === "page" ? "waiting_input" : "running",
     cursor: first.id,
     state,
@@ -271,35 +247,101 @@ export async function createRun(input: {
   return id;
 }
 
+/**
+ * Puts the run to work: in line in the control database, and — when this process is a runner —
+ * taken at once if the tenant has a slot. The web alone leaves it for a runner's next look.
+ */
 export function kick(runId: string) {
+  const tenant = currentTenant();
+  void wakeRun(runId)
+    .then(() => {
+      if (env.role !== "web") {
+        return take(runId, tenant);
+      }
+    })
+    .catch((err) => console.error(`[run ${runId}]`, err));
+}
+
+/** Claims the run for this process and drives it; nothing when another holds it or the tenant is full. */
+async function take(runId: string, tenant: string): Promise<void> {
   if (active.has(runId)) {
+    return;
+  }
+  if (!(await claimRun(runId, tenant, await concurrencyLimit(tenant)))) {
     return;
   }
   const abort = new AbortController();
   active.set(runId, abort);
-  const tenant = currentTenant();
-  const work = async () => {
-    await markRunActive(runId, true);
-    if (!(await acquireSlot(tenant, abort.signal))) {
-      return;
-    }
-    try {
-      await drive(runId, abort.signal);
-    } finally {
-      releaseSlot(tenant);
-    }
-  };
-  work()
+  // The heartbeat keeps the claim and hears of a cancel the web wrote while a step works.
+  const beat = setInterval(() => {
+    void heartbeatRuns([runId]).catch(() => undefined);
+    void withTenant(tenant, () => loadRun(runId))
+      .then((run) => {
+        if (run && run.status !== "running") {
+          abort.abort();
+        }
+      })
+      .catch(() => undefined);
+  }, HEARTBEAT_MS);
+  beat.unref();
+  await withTenant(tenant, () => drive(runId, abort.signal))
     .catch(async (err) => {
       console.error(`[run ${runId}]`, err);
-      await updateRun(runId, { status: "failed", error: friendly(err) }).catch(() => undefined);
+      await withTenant(tenant, () =>
+        updateRun(runId, { status: "failed", error: friendly(err) }),
+      ).catch(() => undefined);
     })
     .finally(async () => {
+      clearInterval(beat);
       active.delete(runId);
-      await markRunActive(runId, false).catch(() => undefined);
-      await releaseResources(runId);
-      signalChanged(runId);
+      await withTenant(tenant, () => releaseResources(runId));
+      // A run the shutdown stopped goes back in line for the next runner; the rest is done for now.
+      if (!stopping) {
+        await restRun(runId).catch(() => undefined);
+      }
+      withTenant(tenant, () => signalChanged(runId));
+      // A slot came free: the next run of the line need not wait for the poll.
+      void lookAtLine();
     });
+}
+
+let stopping = false;
+let looking = false;
+
+/** Takes what waits in line, run by run; each claim counts the tenant's limit by itself. */
+async function lookAtLine() {
+  if (looking || stopping) {
+    return;
+  }
+  looking = true;
+  try {
+    for (const r of await waitingRuns()) {
+      if (stopping) {
+        return;
+      }
+      await take(r.runId, r.tenantId).catch((err) => console.error(`[line ${r.runId}]`, err));
+    }
+  } catch (err) {
+    console.error("[line]", err);
+  } finally {
+    looking = false;
+  }
+}
+
+/** A runner: looks at the line every POLL_MS, from now on. Runs a stopped process left behind are in it. */
+export function startRunner() {
+  const timer = setInterval(() => void lookAtLine(), POLL_MS);
+  timer.unref();
+  void lookAtLine();
+}
+
+/** Stops the runs this process holds and hands them back to the line. */
+export async function stopRunner() {
+  stopping = true;
+  for (const abort of active.values()) {
+    abort.abort();
+  }
+  await disownRuns().catch(() => undefined);
 }
 
 /** What conditions read in this run: answers, outputs, and how many rows each stored list has. */
@@ -388,9 +430,7 @@ async function makeContext(
     signal,
     resources,
     ask: (ask) =>
-      unattended.has(run.id)
-        ? Promise.resolve(null)
-        : askPerson(run.id, { ...ask, stepId }, signal),
+      run.unattended ? Promise.resolve(null) : askPerson(run.id, { ...ask, stepId }, signal),
     emit: (type, message, asset) => emitEvent(run.id, run.cursor, type, message, asset),
     call: { runId: run.id, stepId },
     chargeUsd: (usd) => addLocalCost(run.id, stepId, usd),
@@ -573,6 +613,7 @@ async function decidePageFields(
 }
 
 async function drive(runId: string, signal: AbortSignal) {
+  // The step starts afresh here: a question another process left in the row has no one waiting.
   await clearStaleAsk(runId);
   while (!signal.aborted) {
     const run = await loadRun(runId);
@@ -673,20 +714,6 @@ async function drive(runId: string, signal: AbortSignal) {
       await updateRun(runId, { status: "failed", error: message });
       return;
     }
-  }
-}
-
-/** Runs a restart left mid-step go on where they were. */
-export async function resumeInterruptedRuns() {
-  for (const r of await activeRuns()) {
-    await withTenant(r.tenantId, async () => {
-      const run = await loadRun(r.runId);
-      if (run?.status === "running") {
-        kick(r.runId);
-      } else {
-        await markRunActive(r.runId, false);
-      }
-    }).catch((err) => console.error(`[resume ${r.runId}]`, err));
   }
 }
 

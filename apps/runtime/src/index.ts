@@ -8,7 +8,7 @@ import {
   openTenantDb,
   withTenant,
 } from "./db/client.js";
-import { resumeInterruptedRuns } from "./engine/runner.js";
+import { startRunner, stopRunner } from "./engine/runner.js";
 import { basePath, env } from "./env.js";
 import { managed } from "./manage.js";
 import { checkModelsAtStart, loadCatalog, loadLocalModels } from "./models.js";
@@ -20,6 +20,7 @@ import { clearRunning, writeRunning } from "./running.js";
 import { syncMarketplace } from "./services/marketplace.js";
 import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
+import { forgetRunner, registerRunner } from "./tenants/control.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
 import { onRestart, RESTART_EXIT } from "./update.js";
 
@@ -78,7 +79,12 @@ const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.hos
   }
 });
 
-await resumeInterruptedRuns();
+// A runner takes the runs in line, those a stopped process left behind first (RUNTIME_ROLE).
+if (env.role !== "web") {
+  await registerRunner();
+  setInterval(() => void registerRunner().catch(() => undefined), 10_000).unref();
+  startRunner();
+}
 
 // End-user results are kept RESULT_TTL_DAYS; expired runs and their files go once an hour.
 // What a wizard keeps for a person goes once nobody used it for STORE_TTL_DAYS.
@@ -106,6 +112,11 @@ if (!managed) {
 async function shutdown(code = 0) {
   clearRunning(env.dataDir);
   server.close();
+  if (env.role !== "web") {
+    // The runs go back in line for another runner; their steps start afresh there.
+    await stopRunner();
+    await forgetRunner().catch(() => undefined);
+  }
   await closeBrowser();
   process.exit(code);
 }

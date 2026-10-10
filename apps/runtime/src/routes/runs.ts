@@ -21,7 +21,8 @@ import {
 import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-connections.js";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
-import { signalChanged, subscribe } from "../engine/events.js";
+import { signalChanged, watchRun } from "../engine/events.js";
+import { fromOwner } from "../engine/owner.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
 import {
@@ -395,7 +396,7 @@ export const runRoutes = new Hono()
           await stream.writeSSE({ event: "view", data: JSON.stringify(await viewOf(run)) });
         }
       };
-      const unsubscribe = subscribe(id, () => {
+      const unsubscribe = watchRun(id, () => {
         void push();
       });
       stream.onAbort(() => {
@@ -552,7 +553,7 @@ export const runRoutes = new Hono()
         z.object({ type: z.literal("skip") }),
       ])
       .parse(await c.req.json());
-    if (!answerAsk(run.id, c.req.param("askId"), answer)) {
+    if (!(await answerAsk(run.id, c.req.param("askId"), answer))) {
       return c.json({ error: "Diese Frage ist nicht mehr offen." }, 409);
     }
     return c.json({ ok: true });
@@ -560,9 +561,13 @@ export const runRoutes = new Hono()
   // The page the wizard's browser shows: the person sees what they are asked to sign in to.
   .get("/:id/browser/screen", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const page = run?.status === "running" ? liveResources(run.id)?.openPage() : null;
-    if (!page) {
+    if (run?.status !== "running") {
       return c.notFound();
+    }
+    const page = liveResources(run.id)?.openPage();
+    if (!page) {
+      // The run works in another process: its runner answers.
+      return (await fromOwner(c, run.id)) ?? c.notFound();
     }
     const jpeg = await page.screenshot({ type: "jpeg", quality: 70 }).catch(() => null);
     if (!jpeg) {
@@ -579,9 +584,15 @@ export const runRoutes = new Hono()
   // While the wizard waits for a sign-in, the person can use its page: click, type, scroll.
   .post("/:id/browser/act", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const page = run && pendingAsk(run.id) ? liveResources(run.id)?.openPage() : null;
-    if (!page) {
+    if (!run || !(await pendingAsk(run.id))) {
       return c.json({ error: "Der Wizard wartet gerade nicht auf dich." }, 409);
+    }
+    const page = liveResources(run.id)?.openPage();
+    if (!page) {
+      return (
+        (await fromOwner(c, run.id)) ??
+        c.json({ error: "Der Wizard wartet gerade nicht auf dich." }, 409)
+      );
     }
     const act = z
       .discriminatedUnion("type", [
@@ -601,7 +612,7 @@ export const runRoutes = new Hono()
         await page.mouse.click(act.x, act.y);
         const opened = await popup;
         if (opened) {
-          liveResources(run!.id)?.adopt(opened);
+          liveResources(run.id)?.adopt(opened);
         }
       } else if (act.type === "type") {
         await page.keyboard.type(act.text);

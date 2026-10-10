@@ -54,6 +54,10 @@ export const runIndex = sqliteTable(
     visitorId: text("visitor_id"),
     ipHash: text("ip_hash"),
     active: integer("active", { mode: "boolean" }).notNull().default(false),
+    /** The runner working on the run; null while it waits for one. */
+    owner: text("owner"),
+    /** The owner's last heartbeat; one silent for RUNNER_STALE_MS has lost the run. */
+    seen: integer("seen", { mode: "timestamp_ms" }),
     /**
      * The mobile app's device for push, set by the app for this run (`POST /api/runs/:id/notify`):
      * `{ token, platform: "ios" | "android", lang }`. Told through the Manage-App when the run is
@@ -72,6 +76,16 @@ export const runIndex = sqliteTable(
     index("run_index_active").on(t.active, t.tenantId),
   ],
 );
+
+/**
+ * The runners that execute runs (RUNTIME_ROLE=runner or all): where the web reaches one for what
+ * only the process holding a run can answer (its browser's screen), and when it last reported.
+ */
+export const runner = sqliteTable("runner", {
+  id: text("id").primaryKey(),
+  url: text("url"),
+  seen: integer("seen", { mode: "timestamp_ms" }).notNull(),
+});
 
 /** A studio session of someone signed in at the Manage-App. The refresh token is encrypted. */
 export const session = sqliteTable(
