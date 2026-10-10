@@ -9,7 +9,14 @@ import {
   Pin,
   Settings,
 } from "lucide-react";
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type PointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { BRAND } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
@@ -31,7 +38,8 @@ import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
  * plugins added, and at its end the settings and the person. A place is a filled tile, a tool a
  * line glyph; the one that is open is cut from the page's own paper. A right click on the bar
  * picks its edge and hides it; hidden, it comes out while the pointer rests at that edge. A
- * phone has it along the bottom, or the top (`useAppBar`).
+ * phone has it along the bottom, or the top (`useAppBar`); a long press there opens the same
+ * menu with those two edges.
  */
 
 function glyph(active: boolean): string {
@@ -74,11 +82,24 @@ const POSITION_ICON: Record<AppBarPosition, LucideIcon> = {
   bottom: PanelBottom,
 };
 
-/** The bar's own menu, at the pointer: its edge, and whether it shows at all. */
+/** The bar's own menu, at the pointer: its edge, and — on a wide screen — whether it shows at all. */
 function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () => void }) {
-  const { position, hidden } = useAppBar();
+  const { position, hidden, phone } = useAppBar();
+  const edges: readonly AppBarPosition[] = phone ? ["top", "bottom"] : APP_BAR_POSITIONS;
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, true, onClose);
+  // Drawn at the pointer, then moved back inside the window by as much as it stands out of it:
+  // up from a bar along the bottom, left from one along the right.
+  const [shift, setShift] = useState({ x: 0, y: 0 });
+  useLayoutEffect(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) {
+      setShift({
+        x: Math.min(0, window.innerWidth - 8 - rect.right),
+        y: Math.min(0, window.innerHeight - 8 - rect.bottom),
+      });
+    }
+  }, []);
   const item =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.875rem] text-ink-2 hover:bg-accent hover:text-ink";
   return (
@@ -86,17 +107,13 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
       ref={ref}
       role="menu"
       className="fixed z-[60] w-56 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft"
-      // Kept inside the window, whichever corner the bar stands in.
-      style={{
-        left: Math.max(8, Math.min(at.x, window.innerWidth - 232)),
-        top: Math.max(8, Math.min(at.y, window.innerHeight - 290)),
-      }}
+      style={{ left: Math.max(8, at.x + shift.x), top: Math.max(8, at.y + shift.y) }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="px-3 pt-2 pb-1 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.07em]">
         {t("appbar.position")}
       </div>
-      {APP_BAR_POSITIONS.map((edge) => {
+      {edges.map((edge) => {
         const Icon = POSITION_ICON[edge];
         return (
           <button
@@ -116,19 +133,23 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
           </button>
         );
       })}
-      <div className="mx-2 my-1.5 h-px bg-border-soft" />
-      <button
-        type="button"
-        role="menuitem"
-        className={item}
-        onClick={() => {
-          setAppBar({ hidden: !hidden });
-          onClose();
-        }}
-      >
-        {hidden ? <Pin className="size-4" /> : <EyeOff className="size-4" />}
-        {t(hidden ? "appbar.pin" : "appbar.hide")}
-      </button>
+      {phone ? null : (
+        <>
+          <div className="mx-2 my-1.5 h-px bg-border-soft" />
+          <button
+            type="button"
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setAppBar({ hidden: !hidden });
+              onClose();
+            }}
+          >
+            {hidden ? <Pin className="size-4" /> : <EyeOff className="size-4" />}
+            {t(hidden ? "appbar.pin" : "appbar.hide")}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -179,6 +200,50 @@ export function AppRail({ me }: { me: Me }) {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY });
   };
+  // A finger resting on the bar for half a second opens the menu where it rests; the tap that
+  // would follow the release is swallowed, so nothing under the finger opens as well.
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const swallow = useRef(false);
+  const endPress = () => {
+    if (press.current) {
+      window.clearTimeout(press.current.timer);
+      press.current = null;
+    }
+  };
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === "mouse") {
+      return;
+    }
+    endPress();
+    const { clientX: x, clientY: y } = e;
+    press.current = {
+      x,
+      y,
+      timer: window.setTimeout(() => {
+        press.current = null;
+        swallow.current = true;
+        window.setTimeout(() => {
+          swallow.current = false;
+        }, 700);
+        setMenu({ x, y });
+      }, 500),
+    };
+  };
+  const onPointerMove = (e: PointerEvent) => {
+    if (
+      press.current &&
+      Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > 10
+    ) {
+      endPress();
+    }
+  };
+  const onClickCapture = (e: MouseEvent) => {
+    if (swallow.current) {
+      swallow.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
   const shown = !hidden || peek || menu !== null;
   return (
     <>
@@ -200,10 +265,17 @@ export function AppRail({ me }: { me: Me }) {
         <aside
           aria-label={BRAND.name}
           onContextMenu={onContextMenu}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPress}
+          onPointerCancel={endPress}
+          onPointerLeave={endPress}
+          onClickCapture={onClickCapture}
           onMouseEnter={hidden ? comeOut : undefined}
           onMouseLeave={hidden ? goBack : undefined}
           className={cn(
-            "flex shrink-0 items-center bg-sidebar",
+            // No text selection and no link callout while a finger rests on the bar.
+            "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
             horizontal ? "min-h-14 w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
             // Along a phone's edge, clear of the notch and the home indicator.
             position === "bottom" && "pb-[env(safe-area-inset-bottom)]",
