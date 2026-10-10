@@ -623,14 +623,14 @@ export function AppFrame({
   full?: boolean;
   children: ReactNode;
 }) {
-  const { position, hidden, phone } = useAppBar();
+  const { position, phone } = useAppBar();
   // How far the page's lower edge stands above the window's, for what docks there: the bar's
   // height where it stands at the bottom, else the page's inset.
   const insetBottom = phone
     ? position === "bottom"
       ? "calc(3.5rem + env(safe-area-inset-bottom))"
       : "0px"
-    : position === "bottom" && !hidden
+    : position === "bottom"
       ? "4rem"
       : "0.5rem";
   return (
@@ -639,9 +639,7 @@ export function AppFrame({
       style={{ "--inset-b": insetBottom } as CSSProperties}
     >
       <AppRail me={me} />
-      <div
-        className={cn("flex min-h-0 min-w-0 flex-1 flex-col", hidden ? "md:p-2" : INSET[position])}
-      >
+      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", INSET[position])}>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl md:shadow-elevated md:dark:ring-1 md:dark:ring-border-soft">
           <UpdateBanner />
           <InstallBanner />

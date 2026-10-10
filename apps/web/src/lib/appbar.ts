@@ -1,8 +1,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 
 /**
- * Where the app bar stands and whether it shows, as in engenty-pro: picked in the bar's own
- * context menu, kept per browser like the theme and the language.
+ * Where the app bar stands, as in engenty-pro: picked in the bar's own context menu, kept per
+ * browser like the theme and the language.
  */
 
 export const APP_BAR_POSITIONS = ["left", "top", "right", "bottom"] as const;
@@ -10,12 +10,10 @@ export type AppBarPosition = (typeof APP_BAR_POSITIONS)[number];
 
 export interface AppBarPrefs {
   position: AppBarPosition;
-  /** Hidden: the bar leaves the page the whole window and comes out while the pointer rests at its edge. */
-  hidden: boolean;
 }
 
 const KEY = "wizards.appbar";
-const DEFAULT: AppBarPrefs = { position: "left", hidden: false };
+const DEFAULT: AppBarPrefs = { position: "left" };
 
 const isPosition = (value: unknown): value is AppBarPosition =>
   APP_BAR_POSITIONS.includes(value as AppBarPosition);
@@ -23,10 +21,7 @@ const isPosition = (value: unknown): value is AppBarPosition =>
 function read(): AppBarPrefs {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<AppBarPrefs> | null;
-    return {
-      position: isPosition(stored?.position) ? stored.position : DEFAULT.position,
-      hidden: stored?.hidden === true,
-    };
+    return { position: isPosition(stored?.position) ? stored.position : DEFAULT.position };
   } catch {
     return DEFAULT;
   }
@@ -62,7 +57,7 @@ function usePhone(): boolean {
 
 /**
  * The bar as this screen shows it. A phone has it along the bottom — along the top where that
- * was picked — and never hides it: left and right are a wide screen's edges.
+ * was picked: left and right are a wide screen's edges.
  */
 export function useAppBar(): AppBarPrefs & { phone: boolean } {
   const stored = useSyncExternalStore(
@@ -76,7 +71,7 @@ export function useAppBar(): AppBarPrefs & { phone: boolean } {
   return useMemo(
     () =>
       phone
-        ? { position: stored.position === "top" ? "top" : "bottom", hidden: false, phone }
+        ? { position: stored.position === "top" ? "top" : "bottom", phone }
         : { ...stored, phone },
     [stored, phone],
   );

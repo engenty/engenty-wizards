@@ -1,23 +1,17 @@
 import {
   Check,
-  EyeOff,
   Home,
   type LucideIcon,
+  Monitor,
+  Moon,
   PanelBottom,
   PanelLeft,
   PanelRight,
   PanelTop,
-  Pin,
   Settings,
+  Sun,
 } from "lucide-react";
-import {
-  type MouseEvent,
-  type PointerEvent,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { BRAND } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
@@ -28,8 +22,9 @@ import {
   setAppBar,
   useAppBar,
 } from "../lib/appbar";
-import { t } from "../lib/i18n";
+import { type Key, t } from "../lib/i18n";
 import { type Me, useCurrentProject } from "../lib/session";
+import { setTheme, type Theme, useThemePick } from "../lib/theme";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
 import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
@@ -38,10 +33,9 @@ import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
  * The app bar at an edge of the window, as in engenty-pro: the mark, the space with its home
  * (the space's page: Info & Marke, Wissen, Daten, Ergebnisse), the apps the plugins added, and
  * at its end the settings and the person. A place is a filled tile, a tool a line glyph; the
- * one that is open is cut from the page's own paper. A right click on the bar
- * picks its edge and hides it; hidden, it comes out while the pointer rests at that edge. A
- * phone has it along the bottom, or the top (`useAppBar`); a long press there opens the same
- * menu with those two edges.
+ * one that is open is cut from the page's own paper. A right click on the bar picks its edge
+ * and the colour scheme. A phone has it along the bottom, or the top (`useAppBar`); a long
+ * press there opens the same menu with those two edges.
  */
 
 function glyph(active: boolean): string {
@@ -80,9 +74,17 @@ const POSITION_ICON: Record<AppBarPosition, LucideIcon> = {
   bottom: PanelBottom,
 };
 
-/** The bar's own menu, at the pointer: its edge, and — on a wide screen — whether it shows at all. */
+/** The colour schemes to pick from: light, dark, or the OS's own. */
+const SCHEMES: readonly { pick: Theme | null; icon: LucideIcon; label: Key }[] = [
+  { pick: "light", icon: Sun, label: "appbar.light" },
+  { pick: "dark", icon: Moon, label: "appbar.dark" },
+  { pick: null, icon: Monitor, label: "appbar.system" },
+];
+
+/** The bar's own menu, at the pointer: its edge, and the colour scheme. */
 function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () => void }) {
-  const { position, hidden, phone } = useAppBar();
+  const { position, phone } = useAppBar();
+  const picked = useThemePick();
   const edges: readonly AppBarPosition[] = phone ? ["top", "bottom"] : APP_BAR_POSITIONS;
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, true, onClose);
@@ -100,6 +102,7 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
   }, []);
   const item =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.875rem] text-ink-2 hover:bg-accent hover:text-ink";
+  const head = "px-3 pt-2 pb-1 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.07em]";
   return (
     <div
       ref={ref}
@@ -108,9 +111,7 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
       style={{ left: Math.max(8, at.x + shift.x), top: Math.max(8, at.y + shift.y) }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="px-3 pt-2 pb-1 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.07em]">
-        {t("appbar.position")}
-      </div>
+      <div className={head}>{t("appbar.position")}</div>
       {edges.map((edge) => {
         const Icon = POSITION_ICON[edge];
         return (
@@ -131,69 +132,35 @@ function BarMenu({ at, onClose }: { at: { x: number; y: number }; onClose: () =>
           </button>
         );
       })}
-      {phone ? null : (
-        <>
-          <div className="mx-2 my-1.5 h-px bg-border-soft" />
-          <button
-            type="button"
-            role="menuitem"
-            className={item}
-            onClick={() => {
-              setAppBar({ hidden: !hidden });
-              onClose();
-            }}
-          >
-            {hidden ? <Pin className="size-4" /> : <EyeOff className="size-4" />}
-            {t(hidden ? "appbar.pin" : "appbar.hide")}
-          </button>
-        </>
-      )}
+      <div className="mx-2 my-1.5 h-px bg-border-soft" />
+      <div className={head}>{t("appbar.theme")}</div>
+      {SCHEMES.map(({ pick, icon: Icon, label }) => (
+        <button
+          key={label}
+          type="button"
+          role="menuitemradio"
+          aria-checked={pick === picked}
+          className={cn(item, pick === picked && "text-ink")}
+          onClick={() => {
+            setTheme(pick);
+            onClose();
+          }}
+        >
+          <Icon className="size-4" />
+          <span className="flex-1">{t(label)}</span>
+          {pick === picked ? <Check className="size-4 text-ember-strong" /> : null}
+        </button>
+      ))}
     </div>
   );
 }
 
-/** The bar's place when it is hidden and comes out: along the edge it belongs to. */
-const AT_EDGE: Record<AppBarPosition, string> = {
-  left: "inset-y-0 left-0",
-  right: "inset-y-0 right-0",
-  top: "inset-x-0 top-0",
-  bottom: "inset-x-0 bottom-0",
-};
-
-/** The strip along the edge that brings a hidden bar out. */
-const STRIP: Record<AppBarPosition, string> = {
-  left: "inset-y-0 left-0 w-2",
-  right: "inset-y-0 right-0 w-2",
-  top: "inset-x-0 top-0 h-2",
-  bottom: "inset-x-0 bottom-0 h-2",
-};
-
-/** The small mark that says a hidden bar is there. */
-const PILL: Record<AppBarPosition, string> = {
-  left: "-translate-y-1/2 top-1/2 left-1 h-10 w-1",
-  right: "-translate-y-1/2 top-1/2 right-1 h-10 w-1",
-  top: "-translate-x-1/2 top-1 left-1/2 h-1 w-10",
-  bottom: "-translate-x-1/2 bottom-1 left-1/2 h-1 w-10",
-};
-
 export function AppRail({ me }: { me: Me }) {
   const navigate = useNavigate();
   const plugins = useStudioPlugins();
-  const { position, hidden } = useAppBar();
+  const { position } = useAppBar();
   const horizontal = isHorizontal(position);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  // A hidden bar out for the pointer; it stays while its menu is open.
-  const [peek, setPeek] = useState(false);
-  const leave = useRef(0);
-  useEffect(() => () => window.clearTimeout(leave.current), []);
-  const comeOut = () => {
-    window.clearTimeout(leave.current);
-    setPeek(true);
-  };
-  const goBack = () => {
-    window.clearTimeout(leave.current);
-    leave.current = window.setTimeout(() => setPeek(false), 350);
-  };
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY });
@@ -242,116 +209,92 @@ export function AppRail({ me }: { me: Me }) {
       e.stopPropagation();
     }
   };
-  const shown = !hidden || peek || menu !== null;
   return (
-    <>
-      {hidden ? (
-        <>
-          <div className={cn("fixed z-40 max-md:hidden", STRIP[position])} onMouseEnter={comeOut} />
-          {shown ? null : (
-            <div
-              aria-hidden
-              className={cn(
-                "pointer-events-none fixed z-40 rounded-full bg-ink/25 max-md:hidden",
-                PILL[position],
-              )}
-            />
-          )}
-        </>
-      ) : null}
-      {shown ? (
-        <aside
-          aria-label={BRAND.name}
-          onContextMenu={onContextMenu}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endPress}
-          onPointerCancel={endPress}
-          onPointerLeave={endPress}
-          onClickCapture={onClickCapture}
-          onMouseEnter={hidden ? comeOut : undefined}
-          onMouseLeave={hidden ? goBack : undefined}
-          className={cn(
-            // No text selection and no link callout while a finger rests on the bar.
-            "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
-            horizontal ? "w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
-            // Along a phone's edge, clear of the notch and the home indicator: the safe area
-            // comes on top of the bar's own padding, so the items keep their place in it.
-            position === "bottom" && "pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
-            position === "top" && "pt-[calc(0.375rem+env(safe-area-inset-top))] pb-1.5",
-            hidden && cn("fixed z-50 shadow-overlay", AT_EDGE[position]),
-          )}
-        >
-          {/* Beside the page, the mark's row is as tall as the page's top bar, so the two sit on
+    <aside
+      aria-label={BRAND.name}
+      onContextMenu={onContextMenu}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endPress}
+      onPointerCancel={endPress}
+      onPointerLeave={endPress}
+      onClickCapture={onClickCapture}
+      className={cn(
+        // No text selection and no link callout while a finger rests on the bar.
+        "flex shrink-0 select-none items-center bg-sidebar [-webkit-touch-callout:none]",
+        horizontal ? "w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
+        // Along a phone's edge, clear of the notch and the home indicator: the safe area
+        // comes on top of the bar's own padding, so the items keep their place in it.
+        position === "bottom" && "pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]",
+        position === "top" && "pt-[calc(0.375rem+env(safe-area-inset-top))] pb-1.5",
+      )}
+    >
+      {/* Beside the page, the mark's row is as tall as the page's top bar, so the two sit on
               one line. */}
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            title={BRAND.name}
-            aria-label={BRAND.name}
-            className={cn(
-              "grid shrink-0 place-items-center rounded-lg transition hover:bg-ink/10",
-              horizontal ? "size-11" : "h-12 w-11",
-            )}
-          >
-            <EngentyLogoMark size={32} />
-          </button>
-          <div className={horizontal ? "ml-1" : "mt-2"}>
-            <SpaceTile me={me} />
-          </div>
-          {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
-          <NavLink
-            to="/space"
-            title={t("nav.project")}
-            aria-label={t("nav.project")}
-            className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
-          >
-            <Home className="size-5" />
-          </NavLink>
-          {/* The pages plugins added, each behind its icon, after a divider. */}
-          {plugins.nav.length ? (
-            <div
-              className={cn("shrink-0 bg-border", horizontal ? "mx-2 h-7 w-px" : "my-3 h-px w-7")}
-            />
-          ) : null}
-          <nav
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 items-center gap-1.5",
-              horizontal ? "flex-row overflow-x-auto" : "flex-col overflow-y-auto",
-            )}
-          >
-            {plugins.nav.map((entry) => (
-              <PluginFrame key={entry.serial} of={entry}>
-                <NavLink
-                  to={entry.to}
-                  title={entry.label()}
-                  aria-label={entry.label()}
-                  className={({ isActive }) => glyph(isActive)}
-                >
-                  <entry.icon className="size-5" />
-                </NavLink>
-              </PluginFrame>
-            ))}
-          </nav>
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-2",
-              horizontal ? "flex-row pl-3" : "flex-col pt-3",
-            )}
-          >
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        title={BRAND.name}
+        aria-label={BRAND.name}
+        className={cn(
+          "grid shrink-0 place-items-center rounded-lg transition hover:bg-ink/10",
+          horizontal ? "size-11" : "h-12 w-11",
+        )}
+      >
+        <EngentyLogoMark size={32} />
+      </button>
+      <div className={horizontal ? "ml-1" : "mt-2"}>
+        <SpaceTile me={me} />
+      </div>
+      {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
+      <NavLink
+        to="/space"
+        title={t("nav.project")}
+        aria-label={t("nav.project")}
+        className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
+      >
+        <Home className="size-5" />
+      </NavLink>
+      {/* The pages plugins added, each behind its icon, after a divider. */}
+      {plugins.nav.length ? (
+        <div className={cn("shrink-0 bg-border", horizontal ? "mx-2 h-7 w-px" : "my-3 h-px w-7")} />
+      ) : null}
+      <nav
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 items-center gap-1.5",
+          horizontal ? "flex-row overflow-x-auto" : "flex-col overflow-y-auto",
+        )}
+      >
+        {plugins.nav.map((entry) => (
+          <PluginFrame key={entry.serial} of={entry}>
             <NavLink
-              to="/settings"
-              title={t("nav.settings")}
-              aria-label={t("nav.settings")}
+              to={entry.to}
+              title={entry.label()}
+              aria-label={entry.label()}
               className={({ isActive }) => glyph(isActive)}
             >
-              <Settings className="size-5" />
+              <entry.icon className="size-5" />
             </NavLink>
-            <UserMenu me={me} placement="bar-end" />
-          </div>
-          {menu ? <BarMenu at={menu} onClose={() => setMenu(null)} /> : null}
-        </aside>
-      ) : null}
-    </>
+          </PluginFrame>
+        ))}
+      </nav>
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-2",
+          horizontal ? "flex-row pl-3" : "flex-col pt-3",
+        )}
+      >
+        <NavLink
+          to="/settings"
+          title={t("nav.settings")}
+          aria-label={t("nav.settings")}
+          className={({ isActive }) => glyph(isActive)}
+        >
+          <Settings className="size-5" />
+        </NavLink>
+        <UserMenu me={me} placement="bar-end" />
+      </div>
+      {menu ? <BarMenu at={menu} onClose={() => setMenu(null)} /> : null}
+    </aside>
   );
 }

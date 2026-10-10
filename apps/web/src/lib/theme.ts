@@ -58,15 +58,28 @@ function apply() {
 system.addEventListener("change", apply);
 apply();
 
-export function setTheme(theme: Theme) {
+/** The visitor's pick; `null` leaves it to the OS setting again. */
+export function setTheme(theme: Theme | null) {
   try {
-    localStorage.setItem(KEY, theme);
+    if (theme) {
+      localStorage.setItem(KEY, theme);
+    } else {
+      localStorage.removeItem(KEY);
+    }
   } catch {
     // the pick only lasts this page then
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("dark", (theme ?? current()) === "dark");
     return;
   }
   apply();
+}
+
+/** What the visitor picked, if anything: `null` follows the OS. */
+export function useThemePick(): Theme | null {
+  return useSyncExternalStore((listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }, stored);
 }
 
 /** The visitor's pick, else the OS setting — also while a page on its own ground shows dark. */
