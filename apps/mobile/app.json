@@ -2,6 +2,7 @@
   "expo": {
     "name": "engenty wizards",
     "slug": "engenty-wizards",
+    "description": "Make a wish, describe it once, and let the wizards run it on your own AI or in the cloud",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

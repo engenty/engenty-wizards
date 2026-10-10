@@ -2,6 +2,7 @@
   "id": "./",
   "name": "engenty wizards",
   "short_name": "wizards",
+  "description": "Make a wish, describe it once, and let the wizards run it on your own AI or in the cloud",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
