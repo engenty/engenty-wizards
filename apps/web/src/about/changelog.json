@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.2.44",
+    "timestamp": 1791668850,
+    "commits": [
+      {
+        "id": "69a219f",
+        "message": "the app bar's menu picks the colour scheme – Hell, Dunkel or wie das System under its own heading, on a phone too; 'wie das System' gives the pick back to the OS, which the theme switch could not; the bar can no longer be hidden – the item, the hidden state and the strip at the edge that brought it out are gone, the bar always stands at its edge",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "5052d99",
+        "message": "the space has a home in the app bar – a house glyph after the space's tile opens the space's page (Info & Marke, Wissen, Daten, Ergebnisse), which was only behind the current space's row in the switch menu, where nothing said so; every space has one, the glyph opens the one that is open; the tile's ring now says the menu is open, not the page; and the app bar along a phone's edge keeps its items inside – its height is its own padding plus the safe area, where before the safe area was taken out of a fixed height and the icons rose over the bar's top edge in Safari",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.43",
-    "timestamp": 1791648227,
+    "timestamp": 1791648230,
     "commits": [
       {
         "id": "29a7cfb",
