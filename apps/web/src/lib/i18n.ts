@@ -1043,6 +1043,14 @@ const de = {
     "In Chrome oder Edge lässt sich das Studio als App installieren: eigenes Fenster, eigenes Symbol.",
   "install.app.action": "Als App installieren",
   "install.app.close": "Schließen",
+  "install.app.how.ios":
+    "Tippe in Safari auf Teilen und dann auf „Zum Home-Bildschirm“. Das Studio liegt dann wie eine App auf deinem Home-Bildschirm.",
+  "install.app.how.mac":
+    "Wähle in Safari „Ablage“ → „Zum Dock hinzufügen“. Das Studio bekommt ein eigenes Fenster und ein Symbol im Dock.",
+  "install.app.how.android":
+    "Tippe in Chrome auf das Menü ⋮ und dann auf „App installieren“ oder „Zum Startbildschirm hinzufügen“.",
+  "install.app.how.chromium":
+    "Klicke in der Adressleiste auf das Installieren-Symbol oder wähle im Menü „App installieren“. Das Studio bekommt ein eigenes Fenster und ein Symbol.",
   "common.offline": "Keine Verbindung. Prüfe dein Netz und versuch es noch einmal.",
   "common.retry": "Erneut versuchen",
   "common.cancel": "Abbrechen",
@@ -2338,6 +2346,14 @@ const en: Record<Key, string> = {
     "In Chrome or Edge the studio installs as an app: its own window, its own icon.",
   "install.app.action": "Install as app",
   "install.app.close": "Close",
+  "install.app.how.ios":
+    'In Safari, tap Share and then "Add to Home Screen". The studio then sits on your home screen like an app.',
+  "install.app.how.mac":
+    'In Safari, choose File → "Add to Dock". The studio gets its own window and an icon in the Dock.',
+  "install.app.how.android":
+    'In Chrome, tap the ⋮ menu and then "Install app" or "Add to Home screen".',
+  "install.app.how.chromium":
+    'Click the install icon in the address bar, or choose "Install app" in the menu. The studio gets its own window and an icon.',
   "common.offline": "No connection. Check your network and try again.",
   "common.retry": "Try again",
   "common.cancel": "Cancel",

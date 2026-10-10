@@ -1,4 +1,5 @@
 import {
+  AppWindow,
   Check,
   ChevronDown,
   Cloud,
@@ -25,6 +26,7 @@ import { Logo } from "../brand";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { features } from "../lib/features";
 import { t } from "../lib/i18n";
+import { acceptInstall, standalone, useInstallPrompt } from "../lib/install";
 import {
   initialsOf,
   type Me,
@@ -38,7 +40,7 @@ import { useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
 import { AppRail } from "./AppRail";
 import { NewSpaceDialog } from "./HomePage";
-import { InstallBanner } from "./InstallBanner";
+import { InstallBanner, InstallDialog } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -371,6 +373,9 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
   const { position } = useAppBar();
   const plugins = useStudioPlugins();
   useDismiss(ref, open, () => setOpen(false));
+  // The studio as an app on this device: Chrome's offer taken up at once, else how the browser does it.
+  const installPrompt = useInstallPrompt();
+  const [installOpen, setInstallOpen] = useState(false);
   const initials = initialsOf(me.user.name);
   const state = accountState(me);
   const item =
@@ -482,6 +487,22 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
               </button>
             ))}
           <div className="mx-2 my-1.5 h-px bg-border-soft" />
+          {standalone() ? null : (
+            <button
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                if (installPrompt) {
+                  void acceptInstall(installPrompt);
+                } else {
+                  setInstallOpen(true);
+                }
+              }}
+            >
+              <AppWindow className="size-4" /> {t("install.app.action")}
+            </button>
+          )}
           {me.manageUrl ? (
             <a className={item} href={`${me.manageUrl}/account`} target="_blank" rel="noreferrer">
               <CreditCard className="size-4" /> {t("nav.account")}
@@ -502,6 +523,8 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
           ) : null}
         </div>
       ) : null}
+      {/* Beside the menu, not in it: the menu closes as the dialog opens. */}
+      <InstallDialog open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   );
 }

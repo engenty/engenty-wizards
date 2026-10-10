@@ -17,6 +17,12 @@ if ("engentyDesktop" in window) {
 const path = window.location.pathname;
 const studio = path === STUDIO || path.startsWith(`${STUDIO}/`);
 
+// The studio installs as an app on a phone with a service worker behind it; this one caches
+// nothing (public/sw.js), so every request still goes to the runtime.
+if (studio && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register(`${BASE}/sw.js`).catch(() => undefined);
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });

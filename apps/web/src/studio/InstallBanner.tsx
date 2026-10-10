@@ -1,19 +1,47 @@
 import { AppWindow, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "../lib/i18n";
-import { Button, IconButton } from "../ui";
+import { acceptInstall, installWay, standalone, useInstallPrompt } from "../lib/install";
+import { Button, Dialog, IconButton } from "../ui";
 
 const DISMISSED_KEY = "wizards.install-banner";
 
-const standalone = () =>
-  window.matchMedia("(display-mode: standalone)").matches ||
-  window.matchMedia("(display-mode: window-controls-overlay)").matches;
-
-/** Chrome, Edge and the other Chromium browsers install a page as an app; Safari and Firefox not. */
-const chromium = () =>
-  Boolean((navigator as { userAgentData?: { brands?: unknown[] } }).userAgentData?.brands?.length);
-
 const touch = () => window.matchMedia("(pointer: coarse)").matches;
+
+/**
+ * How this device installs the studio: Chrome's offer, taken up right here, or the steps of the
+ * browser's own menu — the share sheet on an iPhone, File → Add to Dock in Safari on a Mac.
+ */
+export function InstallDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const prompt = useInstallPrompt();
+  const way = installWay(prompt);
+  const how =
+    way === "prompt"
+      ? t("install.app.offer")
+      : way === "none"
+        ? t("install.app.browser")
+        : t(`install.app.how.${way}`);
+  return (
+    <Dialog open={open} onClose={onClose} title={t("install.app.action")}>
+      <p className="text-[0.9375rem] text-ink-2 leading-relaxed">{how}</p>
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
+          {t("install.app.close")}
+        </Button>
+        {prompt ? (
+          <Button
+            onClick={() => {
+              void acceptInstall(prompt);
+              onClose();
+            }}
+          >
+            {t("install.app.action")}
+          </Button>
+        ) : null}
+      </div>
+    </Dialog>
+  );
+}
 
 function dismissed(): boolean {
   try {
@@ -29,20 +57,12 @@ function dismissed(): boolean {
  * the app's own window, or after the person closes it.
  */
 export function InstallBanner() {
-  const [prompt, setPrompt] = useState(() => window.wizardInstall ?? null);
+  const prompt = useInstallPrompt();
   const [closed, setClosed] = useState(dismissed);
-  useEffect(() => {
-    const update = () => setPrompt(window.wizardInstall ?? null);
-    const installed = () => setClosed(true);
-    window.addEventListener("wizard-install", update);
-    window.addEventListener("appinstalled", installed);
-    return () => {
-      window.removeEventListener("wizard-install", update);
-      window.removeEventListener("appinstalled", installed);
-    };
-  }, []);
-  // Chromium without an offer: installed already, or the page does not qualify.
-  if (closed || standalone() || touch() || (!prompt && chromium())) {
+  const way = installWay(prompt);
+  // A phone has the offer in the user menu instead. Chrome without an offer: installed already,
+  // or the page does not qualify.
+  if (closed || standalone() || touch() || way === "chromium") {
     return null;
   }
   const close = () => {
@@ -58,14 +78,7 @@ export function InstallBanner() {
       <AppWindow className="size-4 shrink-0 text-ink-3" />
       <p className="min-w-0 flex-1">{prompt ? t("install.app.offer") : t("install.app.browser")}</p>
       {prompt ? (
-        <Button
-          size="sm"
-          onClick={() => {
-            void prompt.prompt();
-            window.wizardInstall = null;
-            setPrompt(null);
-          }}
-        >
+        <Button size="sm" onClick={() => void acceptInstall(prompt)}>
           {t("install.app.action")}
         </Button>
       ) : null}
