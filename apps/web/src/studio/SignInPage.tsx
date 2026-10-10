@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
 import { api } from "../lib/api";
-import { STUDIO } from "../lib/base";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
@@ -22,10 +21,7 @@ function hasDesktop() {
 export function SignInPage() {
   const config = useQuery({
     queryKey: ["config"],
-    queryFn: () =>
-      api.get<{ mode: "managed" | "local"; devLogin: boolean; signedOutUrl: string | null }>(
-        "/api/config",
-      ),
+    queryFn: () => api.get<{ mode: "managed" | "local"; devLogin: boolean }>("/api/config"),
   });
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -34,22 +30,16 @@ export function SignInPage() {
   const auto = config.data?.mode === "local" && config.data.devLogin;
   const [autoFailed, setAutoFailed] = useState(false);
   // Someone signed in at the Manage-App (its cookie for the site, `engenty_signed_in`) but not
-  // yet here: the sign-in goes through without a question, so it starts by itself.
+  // yet here: the sign-in goes through without a question, so it starts by itself. Everyone
+  // else sees this page, on the start page as on any other.
   const account =
     config.data?.mode === "managed" && !failed && !hasDesktop() && SIGNED_IN.test(document.cookie);
-  // While sign-up is closed, a visitor of the studio's start page goes to the landing page; the
-  // sign-in itself stays at /studio/sign-in.
-  const start = window.location.pathname === STUDIO || window.location.pathname === `${STUDIO}/`;
-  const away =
-    config.data?.signedOutUrl && start && !failed && !account ? config.data.signedOutUrl : null;
 
   useEffect(() => {
     if (account) {
       signIn();
-    } else if (away) {
-      window.location.replace(away);
     }
-  }, [account, away]);
+  }, [account]);
 
   useEffect(() => {
     if (!auto || autoFailed) {
@@ -70,7 +60,7 @@ export function SignInPage() {
   }, [auto, autoFailed, qc]);
 
   // Nothing to decide yet, or nothing to decide at all: the engenty alone, until the studio is there.
-  if (config.isLoading || account || away || (auto && !autoFailed)) {
+  if (config.isLoading || account || (auto && !autoFailed)) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Mascot kind="round" size={56} />
