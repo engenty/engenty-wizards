@@ -54,7 +54,11 @@ export async function claudeEnv(): Promise<NodeJS.ProcessEnv> {
 /** What the client prints last with `--output-format json`. */
 export interface ClaudeResult {
   type?: string;
+  /** On a failure: why, e.g. error_max_turns, error_during_execution. */
+  subtype?: string;
   is_error?: boolean;
+  /** On a failure: what went wrong, where the client says. */
+  errors?: unknown[];
   result?: unknown;
   structured_output?: unknown;
   session_id?: string;
@@ -152,7 +156,15 @@ class ClaudeCodeModel extends HarnessModel {
       throw failureOf(this.harness, stderr.trim() || `exit ${code}`);
     }
     if (event.is_error) {
-      throw failureOf(this.harness, String(event.result ?? "error"));
+      // A failed run carries no result, only why (subtype) and sometimes what (errors).
+      const why = [
+        typeof event.result === "string" ? event.result : "",
+        event.subtype ?? "",
+        ...(event.errors ?? []).map((e) => (typeof e === "string" ? e : JSON.stringify(e))),
+        event.num_turns ? `after ${event.num_turns} turns` : "",
+      ].filter(Boolean);
+      console.warn("[claude] the client failed:", JSON.stringify(event).slice(0, 2000));
+      throw failureOf(this.harness, why.join(" – ") || "error");
     }
     return claudeAnswer(event);
   }

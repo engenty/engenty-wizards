@@ -5,6 +5,7 @@ import { isTextMime } from "@engenty-wizards/shared/workspace";
 import { createTool } from "@mastra/core/tools";
 import { MCPClient } from "@mastra/mcp";
 import { z } from "zod";
+import { documentMime, parseDocument } from "../documents/parse.js";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
@@ -33,6 +34,34 @@ export interface StepTools {
   /** Assets the tools made during the step (screenshots, images, exported files). */
   assets: AssetRef[];
   close(): Promise<void>;
+}
+
+/**
+ * Whether a fetched body is text a model can read: a text type, or no type and next to no
+ * bytes that only decode as replacement or control characters.
+ */
+function isReadable(type: string, body: string): boolean {
+  if (
+    isTextMime(type) ||
+    type.includes("html") ||
+    type.includes("xml") ||
+    type.includes("json") ||
+    type.includes("javascript")
+  ) {
+    return true;
+  }
+  if (type && type !== "application/octet-stream") {
+    return false;
+  }
+  const sample = body.slice(0, 4000);
+  let odd = 0;
+  for (let i = 0; i < sample.length; i++) {
+    const code = sample.charCodeAt(i);
+    if (code === 0xfffd || code < 0x09 || (code > 0x0d && code < 0x20)) {
+      odd++;
+    }
+  }
+  return odd <= sample.length * 0.01;
 }
 
 /** The tools an agent step may use: exactly what its definition allowlists. */
@@ -76,8 +105,32 @@ export async function buildStepTools(
           signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(20_000)]),
           headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
         });
-        const type = res.headers.get("content-type") ?? "";
-        const body = await res.text();
+        const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+        const data = new Uint8Array(await res.arrayBuffer());
+        const name = new URL(res.url || safe.toString()).pathname.split("/").pop() || "download";
+        const mime = documentMime(name, type);
+        // A PDF or Word file is read by its own text; an image or other bytes are not text at all.
+        if (mime === "application/pdf" || mime.includes("word")) {
+          const doc = await parseDocument(
+            { data, name, mime },
+            { charge: (usd) => ctx.chargeUsd(usd), signal: ctx.signal, call: ctx.call },
+          ).catch(() => null);
+          return doc
+            ? { status: res.status, url: res.url, content: clip(doc.markdown) }
+            : { status: res.status, url: res.url, error: `The ${mime} file could not be read.` };
+        }
+        const body = new TextDecoder().decode(data);
+        if (!isReadable(type, body)) {
+          return {
+            status: res.status,
+            url: res.url,
+            type: type || "unknown",
+            bytes: data.length,
+            note: type.startsWith("image/")
+              ? "An image, not a page: the address works. Its bytes are not text and are not shown."
+              : "Not a text page: its bytes are not shown.",
+          };
+        }
         const text = type.includes("html") ? htmlToMarkdown(body) : body;
         return { status: res.status, url: res.url, content: clip(text) };
       },

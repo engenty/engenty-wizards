@@ -197,6 +197,78 @@ function tablesToRecords(value: Record<string, unknown>, fields: { id: string; k
   return out;
 }
 
+/** A table cell as the step's schema takes it: a list joined by spaces, anything else as text. */
+function fitCell(value: unknown): string | number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+  if (Array.isArray(value) && value.every((v) => typeof v === "string" || typeof v === "number")) {
+    return value.join(" ");
+  }
+  return typeof value === "boolean" ? String(value) : JSON.stringify(value);
+}
+
+/**
+ * What the agent wrote as JSON itself — its last fenced block, else its answer or the object in
+ * it — fitted to the step's fields (a list in a table cell joined, a missing column empty) and
+ * checked against the schema. Null where none fits; then a model structures the text.
+ */
+export function ownJson(
+  text: string,
+  schema: z.ZodType,
+  fields: { id: string; kind: string; columns?: string[] }[],
+): Record<string, unknown> | null {
+  const blocks = [...text.matchAll(/```(?:json)?[ \t]*\n([\s\S]*?)```/g)].map((m) => m[1]);
+  const open = text.indexOf("{");
+  const close = text.lastIndexOf("}");
+  const tries = [
+    ...blocks.reverse(),
+    text.trim(),
+    ...(open >= 0 && close > open ? [text.slice(open, close + 1)] : []),
+  ];
+  for (const candidate of tries) {
+    let value: unknown;
+    try {
+      value = JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      continue;
+    }
+    const fitted: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+    for (const f of fields) {
+      const v = fitted[f.id];
+      if (f.kind === "table" && f.columns?.length && Array.isArray(v)) {
+        fitted[f.id] = v.map((row) =>
+          row && typeof row === "object" && !Array.isArray(row)
+            ? Object.fromEntries(
+                f.columns!.map((c) => [c, fitCell((row as Record<string, unknown>)[c])]),
+              )
+            : row,
+        );
+      } else if (f.kind === "text" && typeof v === "number") {
+        fitted[f.id] = String(v);
+      } else if (
+        f.kind === "number" &&
+        typeof v === "string" &&
+        v.trim() &&
+        Number.isFinite(Number(v))
+      ) {
+        fitted[f.id] = Number(v);
+      }
+    }
+    const parsed = schema.safeParse(fitted);
+    if (parsed.success) {
+      return parsed.data as Record<string, unknown>;
+    }
+  }
+  return null;
+}
+
 /** An agent step looks at this many photos itself; more are read one by one with read_document. */
 const MAX_SEEN = 8;
 
@@ -582,15 +654,21 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     }
 
     const { schema, fields } = outputSchema(step);
-    const structurer = await textModel("classifier", ctx.call);
-    const structured = await generateText({
-      model: structurer.model,
-      abortSignal: ctx.signal,
-      output: Output.object({ schema }),
-      prompt: `Turn this result into the requested structure. Keep every number and source exactly.\n\n${text}`,
-    });
-    await ctx.chargeUsd(costOf(structurer, structured.usage));
-    const json = tablesToRecords(structured.output as Record<string, unknown>, fields);
+    // The agent mostly writes the JSON itself; a second model only structures what does not fit.
+    // Having it copy kilobytes of JSON again is slow and can fail on its own.
+    let output = ownJson(text, schema, fields);
+    if (!output) {
+      const structurer = await textModel("classifier", ctx.call);
+      const structured = await generateText({
+        model: structurer.model,
+        abortSignal: ctx.signal,
+        output: Output.object({ schema }),
+        prompt: `Turn this result into the requested structure. Keep every number and source exactly.\n\n${text}`,
+      });
+      await ctx.chargeUsd(costOf(structurer, structured.usage));
+      output = structured.output as Record<string, unknown>;
+    }
+    const json = tablesToRecords(output, fields);
     const surface = step.output.surface ? await composeSurface(step, json, ctx) : undefined;
     return {
       text,
