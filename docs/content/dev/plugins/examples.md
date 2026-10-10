@@ -74,7 +74,7 @@ node scripts/build-plugin.mjs examples/plugins/run-log --watch
 Then, in the studio:
 
 1. Test a wizard to its end.
-2. The folder in the top bar → Ergebnisse shows "Runs" below the results: the last five runs of
+2. The space's tile in the app bar → Ergebnisse shows "Runs" below the results: the last five runs of
    the space's wizards. Its last line opens the page with the whole log.
 3. Settings → Runs shows how many lines are kept and deletes them.
 4. An AI step can list the tool "Run log" and tell how the last runs ended.

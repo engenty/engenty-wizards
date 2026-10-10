@@ -1,6 +1,6 @@
 ---
 title: The studio half
-description: Pages, icons in the top bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
+description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -84,7 +84,7 @@ export default defineStudioPlugin((studio) => {
 | Call | Adds |
 |---|---|
 | `studio.registerPage({ path, component, wide? })` | A page of the studio at `/studio<path>`, inside the studio's frame. `path` takes `:name` parts. `wide`: the page lays out its own columns and takes the screen's width |
-| `studio.registerNav({ to, label, icon })` | An icon in the top bar that opens a page |
+| `studio.registerNav({ to, label, icon })` | An icon in the app bar that opens a page |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
 | `studio.registerAssistantCard({ tool, component })` | A card in the space assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
@@ -117,7 +117,7 @@ studio.registerSettingsSection({
 ## The space
 
 A space holds what all its wizards share: a title, logos, colours, facts and Wissen. The
-space page, behind the folder in the top bar, shows them in four parts:
+space page, behind the space's tile in the app bar, shows them in four parts:
 
 | Part | `group` | Holds |
 |---|---|---|

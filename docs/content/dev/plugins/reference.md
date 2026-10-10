@@ -159,7 +159,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 |---|---|
 | `studio.plugin` | `{ id, name, version }` |
 | `studio.registerPage({ path, component, wide? })` | A page at `/studio<path>` |
-| `studio.registerNav({ to, label, icon })` | An icon in the top bar. `label: () => string` |
+| `studio.registerNav({ to, label, icon })` | An icon in the app bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |

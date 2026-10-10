@@ -21,7 +21,7 @@ them from their files and loads one again when its files change.
 | A job, again and again | Nowhere: it works in the background | [The server half](./server.md#jobs) |
 | An account of a space (a calendar, a mailbox), signed in through a built-in connector | Where the plugin's own pages offer it | [Accounts](./connections.md) |
 | A wizard as a template | First among the templates of a new wizard, and in the MCP `list_starters` | [Starters](./starters.md) |
-| A page of the studio | Behind an icon in the top bar, or at its address | [The studio half](./studio.md) |
+| A page of the studio | Behind an icon in the app bar, or at its address | [The studio half](./studio.md) |
 | A section of the settings | In the settings' list | [The studio half](./studio.md) |
 | A section of the space page | In one of its parts, below the part's own sections | [The studio half](./studio.md#the-space) |
 
@@ -33,14 +33,14 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the top bar, sections of the settings and of the space page, cards in the assistant's chat |
+| Adds | Tools, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the app bar, sections of the settings and of the space page, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.
 
 ```mermaid
 flowchart LR
-  page["Studio half, in the browser<br/>ui/plugin.tsx<br/>pages, top bar, settings"]
+  page["Studio half, in the browser<br/>ui/plugin.tsx<br/>pages, app bar, settings"]
   runner["The runtime's step runner"]
   server["Server half, in the runtime<br/>src/plugin.ts<br/>tools, routes, listeners"]
   db[("Tenant database<br/>the plugin's tables")]

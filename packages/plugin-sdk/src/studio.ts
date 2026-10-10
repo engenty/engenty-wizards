@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 /**
  * What the studio hands a plugin's studio half: the built `client.js` the studio loads after
- * sign-in. Its default export registers pages, entries of the top bar, sections of the settings
+ * sign-in. Its default export registers pages, entries of the app bar, sections of the settings
  * and of the space page, and cards of the space assistant's chat. React, the router and the
  * studio's own components come from the studio (docs/content/dev/plugins), so the page a plugin
  * draws is part of the same app.
@@ -23,7 +23,7 @@ export interface StudioPage {
   wide?: boolean;
 }
 
-/** An icon in the top bar that opens a page. */
+/** An icon in the app bar that opens a page. */
 export interface StudioNavEntry {
   to: string;
   /** A function: the language can change while the studio is open. */
