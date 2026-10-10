@@ -93,24 +93,33 @@ const LIQUID = isLiquidGlassAvailable();
 /** The space a tab's screen leaves at its bottom: its content scrolls under the floating tab bar. */
 export const TAB_SPACE = 120;
 
+/** Whether this device draws Liquid Glass (iOS 26); elsewhere Glass is a blur. */
+export const LIQUID_GLASS = LIQUID;
+
 /**
  * Glass: Liquid Glass on iOS 26, a dark blur elsewhere. Chrome that floats over the content —
- * the tab bar, the nav bar's buttons, a secondary action.
+ * the tab bar, the nav bar's buttons, a secondary action. `tint` lightens the glass so it reads
+ * as glass on the flat dark stage too; `clear` is the see-through kind for a lens on top of it.
  */
 export function Glass({
   style,
   children,
   interactive,
+  tint,
+  clear,
 }: {
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
   interactive?: boolean;
+  tint?: string;
+  clear?: boolean;
 }) {
   if (LIQUID) {
     return (
       <GlassView
-        glassEffectStyle="regular"
+        glassEffectStyle={clear ? "clear" : "regular"}
         colorScheme="dark"
+        tintColor={tint}
         isInteractive={interactive}
         style={[{ overflow: "hidden" }, style]}
       >
