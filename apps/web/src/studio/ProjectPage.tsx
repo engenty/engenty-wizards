@@ -202,7 +202,7 @@ export function ProjectPage() {
         : undefined;
 
   useCrumbs([
-    { label: title, to: "/space" },
+    { label: t("nav.project"), to: "/space" },
     ...(entry ? [{ label: entry.label, to: `/space/${entry.id}` }] : []),
     ...(entry && (detail ?? wizardTitle ?? pickedTitle)
       ? [{ label: (detail ?? wizardTitle ?? pickedTitle) as string }]

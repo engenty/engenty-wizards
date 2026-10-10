@@ -191,8 +191,9 @@ function WizardCard({ w, me }: { w: WizardSummary; me: Me }) {
   return (
     // The engenty sits on the card's top edge, half above it; the chip stays inside the card.
     <div className="relative pt-6">
+      {/* Alive: it wobbles and its eye follows the pointer, as on the setup and the landing page. */}
       <div className="pointer-events-none absolute top-0 left-4 z-10">
-        <Mascot kind={w.avatar} size={52} interactive={false} />
+        <Mascot kind={w.avatar} size={52} />
       </div>
       <Card
         className="relative flex h-full cursor-pointer flex-col px-5 pt-10 pb-3 transition hover:shadow-elevated"
@@ -307,9 +308,9 @@ export function HomePage() {
   return (
     <div className="animate-rise">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <ProjectSwitcher />
-        </div>
+        <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">
+          {t("home.title")}
+        </h1>
         {canCreate ? (
           <div className="flex items-center gap-2">
             <ImportWizard />
@@ -319,9 +320,6 @@ export function HomePage() {
           </div>
         ) : null}
       </div>
-      <h1 className="mt-10 font-display font-semibold text-[1.75rem] tracking-tight">
-        {t("home.title")}
-      </h1>
       {project?.origin === "local" ? (
         <p className="mt-2 text-[0.875rem] text-ink-3">
           {t("home.fromLocal")}{" "}

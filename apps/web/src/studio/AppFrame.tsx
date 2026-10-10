@@ -1,14 +1,42 @@
-import { Cloud, CloudOff, CreditCard, Folder, Laptop, LogOut, Settings } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  Check,
+  ChevronDown,
+  Cloud,
+  CloudOff,
+  CreditCard,
+  Folder,
+  Laptop,
+  LogOut,
+  Plus,
+  Settings,
+} from "lucide-react";
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { features } from "../lib/features";
 import { t } from "../lib/i18n";
-import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
+import {
+  initialsOf,
+  type Me,
+  type Project,
+  signOut,
+  spendableCredits,
+  useCurrentProject,
+  useMayCreate,
+} from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, IconButton } from "../ui";
 import { AppRail } from "./AppRail";
+import { NewSpaceDialog } from "./HomePage";
 import { InstallBanner } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
@@ -60,12 +88,11 @@ function Trail() {
       aria-label="Breadcrumb"
       className="flex min-w-0 items-center text-[0.9375rem] max-sm:hidden"
     >
+      {/* After the space's name: set off by a hairline, since the space is no step of the trail. */}
+      <span aria-hidden className="mx-3 h-4 w-px shrink-0 bg-border" />
       {trail.map((crumb, i) => (
         <Fragment key={`${i}:${crumb.label}`}>
-          {/* On a phone the first one sits as close to the wordmark as the others to their words:
-              the logo's own padding and the bar's gap are taken back. On a wide screen the mark
-              stands in the app bar, and the trail starts by itself. */}
-          <span className={cn("text-ink-4", i === 0 ? "-ml-3 mr-2 md:hidden" : "mx-2")}>/</span>
+          {i > 0 ? <span className="mx-2 text-ink-4">/</span> : null}
           {crumb.to && i < trail.length - 1 ? (
             <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
               {crumb.label}
@@ -126,21 +153,209 @@ function accountState(me: Me): "linked" | "expired" | "alone" | null {
   return me.account.signedIn ? "linked" : "expired";
 }
 
+/** Closes a menu on a click outside it or on Escape, while it is open. */
+function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, close: () => void) {
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) {
+        closeRef.current();
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeRef.current();
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ref, open]);
+}
+
+/** Text light or dark by the fill's own lightness, as `--ember-on` is for the ember. */
+const onFill = (color: string) =>
+  `oklch(from ${color} calc(0.16 + 0.83 * clamp(0, (0.65 - l) * 1000, 1)) 0.01 h)`;
+
+/** A space as a tile: its first brand colour behind its initials; without one, quiet paper. */
+export function SpaceFace({
+  project,
+  size = "md",
+}: {
+  project: Project | null;
+  size?: "sm" | "md";
+}) {
+  const color = project?.brand.colors?.[0]?.value;
+  const initials = initialsOf(project?.name ?? "");
+  return (
+    <span
+      className={cn(
+        "grid shrink-0 place-items-center rounded-lg font-semibold tracking-wide",
+        size === "md" ? "size-10 text-[0.8125rem]" : "size-9 text-[0.75rem]",
+        color ? null : "bg-paper-3 text-ink ring-1 ring-border",
+      )}
+      style={color ? { background: color, color: onFill(color) } : undefined}
+    >
+      {initials || <Folder className="size-4" />}
+    </span>
+  );
+}
+
+/**
+ * The spaces, listed as Slack lists its workspaces: the one shown first (its row opens its
+ * page), the others to switch to, and a row that adds one — greyed at the plan's limit. The
+ * trigger is the caller's: the space's tile in the app bar, its name in the top bar. `label`:
+ * the trigger's name for a screen reader where it shows no text.
+ */
+export function SpaceMenu({
+  me,
+  placement,
+  label,
+  className,
+  children,
+}: {
+  me: Me;
+  placement: "below" | "beside";
+  label?: string;
+  className: string | ((open: boolean) => string);
+  children: ReactNode;
+}) {
+  const navigate = useNavigate();
+  const { project, projects, select } = useCurrentProject();
+  const mayCreate = useMayCreate();
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(ref, open, () => setOpen(false));
+  const limit = me.limits.projects;
+  const full = limit !== null && projects.length >= limit;
+  const row =
+    "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={label}
+        title={t("nav.switchSpace")}
+        className={typeof className === "function" ? className(open) : className}
+      >
+        {children}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className={cn(
+            "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
+            placement === "beside" ? "top-0 left-full ml-3" : "top-10 left-0",
+          )}
+        >
+          {projects.map((p) => {
+            const current = p.id === project?.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="menuitem"
+                className={row}
+                onClick={() => {
+                  setOpen(false);
+                  if (current) {
+                    navigate("/space");
+                  } else {
+                    select(p.id);
+                  }
+                }}
+              >
+                <SpaceFace project={p} size="sm" />
+                <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span
+                    className={cn(
+                      "truncate text-[0.875rem]",
+                      current ? "font-semibold text-ink" : "font-medium text-ink-2",
+                    )}
+                  >
+                    {p.name}
+                  </span>
+                  <span className="truncate text-[0.75rem] text-ink-4">
+                    {t("nav.wizardCount", { n: p.wizardCount })}
+                  </span>
+                </span>
+                {current ? <Check className="size-4 shrink-0 text-ember-strong" /> : null}
+              </button>
+            );
+          })}
+          {/* A tenant that builds nothing here makes no space here either; nor does a member. */}
+          {mayCreate ? (
+            <>
+              <div className="mx-2 my-1.5 h-px bg-border-soft" />
+              <button
+                type="button"
+                role="menuitem"
+                disabled={full}
+                className={cn(row, full && "cursor-default opacity-60 hover:bg-transparent")}
+                onClick={() => {
+                  setOpen(false);
+                  setCreating(true);
+                }}
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
+                  <Plus className="size-4" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
+                    {t("nav.addSpace")}
+                  </span>
+                  {full ? (
+                    <span className="truncate text-[0.75rem] text-ink-4">
+                      {t("home.projectLimit", { n: limit })}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      <NewSpaceDialog open={creating} onClose={() => setCreating(false)} />
+    </div>
+  );
+}
+
+/** The space's name in the top bar; it opens the spaces to switch between and to add one. */
+function SpaceName({ me }: { me: Me }) {
+  const { project } = useCurrentProject();
+  if (!project) {
+    return null;
+  }
+  return (
+    <SpaceMenu
+      me={me}
+      placement="below"
+      className="-ml-1 flex h-8 max-w-[16rem] items-center gap-1 rounded-lg px-2 font-medium text-[0.9375rem] text-ink transition hover:bg-accent"
+    >
+      <span className="truncate">{project.name}</span>
+      <ChevronDown className="size-4 shrink-0 text-ink-4" />
+    </SpaceMenu>
+  );
+}
+
 /** `placement`: where the menu opens — below the avatar in a top bar, beside it in the app bar. */
 export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "below" | "beside" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const plugins = useStudioPlugins();
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
+  useDismiss(ref, open, () => setOpen(false));
   const initials = initialsOf(me.user.name);
   const state = accountState(me);
   const item =
@@ -150,7 +365,11 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "bel
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[0.8125rem] text-ember-strong ring-1 ring-border-soft"
+        className={cn(
+          "relative flex shrink-0 items-center justify-center rounded-full bg-ember-tint font-semibold text-[0.8125rem] text-ember-strong ring-1 ring-border-soft",
+          // In the app bar the avatar is as large as the tiles above it.
+          placement === "beside" ? "size-10" : "size-9",
+        )}
         aria-label={me.user.name || "Menu"}
       >
         {me.user.image ? (
@@ -273,18 +492,20 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "bel
 }
 
 /**
- * The row at the top of the page: the trail and the credits. On a phone it also holds the
- * wordmark and what the app bar holds on a wide screen — the space, the apps, the settings and
- * the person.
+ * The row at the top of the page: the wordmark (the mark stands in the app bar), the space's
+ * name, which switches between spaces, then the trail and the credits. A phone starts at the
+ * space's name and also holds what the app bar holds on a wide screen — the space's page, the
+ * apps, the settings and the person.
  */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
   const plugins = useStudioPlugins();
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
-      <span className="md:hidden">
-        <Logo onClick={() => navigate("/")} />
+      <span className="max-md:hidden">
+        <Logo mark={false} onClick={() => navigate("/")} />
       </span>
+      <SpaceName me={me} />
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />
         {children}

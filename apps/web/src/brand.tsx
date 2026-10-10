@@ -100,15 +100,26 @@ export function Mascot({
   return <Engenty goggles={goggles} kind={k} size={size} animated={interactive} />;
 }
 
-/** `place`: where in the product the person is, named after the wordmark. */
-export function Logo({ onClick, place }: { onClick?: () => void; place?: string }) {
+/**
+ * `place`: where in the product the person is, named after the wordmark. `mark`: false where the
+ * mark stands elsewhere already (the studio's app bar), so only the wordmark is written.
+ */
+export function Logo({
+  onClick,
+  place,
+  mark = true,
+}: {
+  onClick?: () => void;
+  place?: string;
+  mark?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex min-w-0 items-center gap-2.5 whitespace-nowrap rounded-full pr-2 text-ink"
     >
-      <EngentyLogoMark size={30} />
+      {mark ? <EngentyLogoMark size={30} /> : null}
       <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
         engenty<span className="text-ember">.</span>
         {/* With a place to name, a phone has no room for the product's own name. */}

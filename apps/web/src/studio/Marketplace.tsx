@@ -203,7 +203,7 @@ function EntryCard({ entry, onOpen }: { entry: MarketplaceEntry; onOpen: () => v
     >
       {/* engenty sits on the card's corner, a little over its edge. */}
       <span className="-top-4 pointer-events-none absolute right-4">
-        <Mascot kind={entry.avatar} size={68} interactive={false} />
+        <Mascot kind={entry.avatar} size={68} />
       </span>
       <div className="min-w-0 pr-20">
         <div className="flex items-center gap-1.5 font-display font-semibold text-[0.9375rem]">
