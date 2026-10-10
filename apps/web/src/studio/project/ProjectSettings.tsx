@@ -5,8 +5,8 @@ import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { type Project, useIsAdmin, useManyProjects } from "../../lib/session";
 import { Button, Input, Label, Textarea } from "../../ui";
+import { useAssistantPage } from "../assistant/page";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
-import { Assistant } from "./Assistant";
 import { Colors } from "./Colors";
 import { useAutosave, useProjectFiles } from "./data";
 import { Facts } from "./Facts";
@@ -51,27 +51,22 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
 /**
  * What a project gives all its wizards, in two parts of the space page: `info` — who it is, its
  * logos and colours, assets and facts — and `knowledge` — Wissen, drawn by the caller as
- * `children`. Every section saves by
- * itself; the assistant above both fills them in from a description, a website or files, and
- * stays when the person switches between them. A read-only project (a local install's, or on a
- * server where nothing is built) shows the same sections, and a note stands where the assistant
- * would. `children`: the sections plugins add to the part, after its own.
+ * `children`. Every section saves by itself; the studio's assistant fills them in from a
+ * description, a website or files, and this tells it what to say here. A read-only project (a
+ * local install's, or on a server where nothing is built) shows the same sections with a note.
+ * `children`: the sections plugins add to the part, after its own.
  */
 export function ProjectSettings({
   project,
   group,
-  docked = false,
   children,
 }: {
   project: Project;
   group: "info" | "knowledge";
-  /** The assistant waits at the lower edge: the page shows one item, a Kategorie or a value. */
-  docked?: boolean;
   children?: ReactNode;
 }) {
   const qc = useQueryClient();
   const files = useProjectFiles(project.id);
-  // What the assistant wrote is shown by mounting the sections again with the new project.
   const [rev, setRev] = useState(0);
   const save = async (patch: Patch) => {
     await api.patch(`/api/studio/projects/${project.id}`, patch);
@@ -87,20 +82,42 @@ export function ProjectSettings({
   const data = files.data ?? { files: [], embeddings: true };
   const key = `${project.id}:${rev}`;
   const readOnly = project.readOnly;
+  const knowledge = group === "knowledge";
+  useAssistantPage(
+    readOnly
+      ? {}
+      : {
+          title: knowledge ? t("project.assistantTitleKnowledge") : t("project.assistantTitle"),
+          hello: knowledge ? t("project.assistantHelloKnowledge") : t("project.assistantHello"),
+          placeholder: knowledge
+            ? t("project.assistantComposerKnowledge")
+            : t("project.assistantComposer"),
+          suggestions: knowledge
+            ? [
+                { label: t("assistant.suggest.knowledgeHow") },
+                { label: t("assistant.suggest.knowledgeSite"), fill: true },
+                { label: t("assistant.suggest.knowledgeCategories") },
+              ]
+            : [
+                { label: t("assistant.suggest.readSite"), fill: true },
+                { label: t("assistant.suggest.missing") },
+                { label: t("assistant.suggest.facts") },
+              ],
+          summary: knowledge
+            ? undefined
+            : [
+                project.brand.name ? `title "${project.brand.name}"` : "no title",
+                `${project.facts.length} facts`,
+                `${project.brand.colors?.length ?? 0} colours`,
+                `${data.files.filter((f) => f.kind === "logo").length} logos`,
+              ].join(" · "),
+          // What the assistant wrote is shown by mounting the sections again with the new project.
+          onChanged: () => setRev((n) => n + 1),
+        },
+  );
   return (
-    // The lower padding leaves room for the assistant's dock under the last section.
-    <div className="flex flex-col gap-9 pb-32">
-      {readOnly ? (
-        <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
-      ) : (
-        <Assistant
-          key={project.id}
-          projectId={project.id}
-          part={group}
-          docked={docked}
-          onChanged={() => setRev((n) => n + 1)}
-        />
-      )}
+    <div className="flex flex-col gap-9">
+      {readOnly ? <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote> : null}
       {group === "info" ? (
         <>
           <Anchor id="base">

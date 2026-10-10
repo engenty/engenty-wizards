@@ -517,7 +517,7 @@ function keywordQuery(query: string): string | null {
  * The question as a trigram query: each word of three letters or more anywhere in a unit, so
  * "Förderhöhe" finds "Höchstförderhöhe"; a code with digits also as it was written ("WIN 6").
  */
-function trigramQuery(query: string): string | null {
+export function trigramQuery(query: string): string | null {
   const words = wordsOf(query).filter((w) => w.length >= 3);
   const codes = (query.match(/[\p{L}\p{N}][\p{L}\p{N}\-./ ]*\d[\p{L}\p{N}\-./]*/gu) ?? [])
     .map((c) => c.trim())

@@ -107,14 +107,50 @@ export interface StudioSpace {
   readOnly: boolean;
 }
 
-/** The space assistant on a plugin's page: what it says before the first message. */
+/** A row under the assistant's hello: a question the person asks with one click. */
+export interface StudioAssistantSuggestion {
+  label: string;
+  /** What is sent; the label where left out. */
+  message?: string;
+  /** Put into the field to finish ("The loafer costs … now") instead of sent at once. */
+  fill?: boolean;
+}
+
+/** The studio's assistant on a plugin's page: what it says before the first message. */
 export interface StudioAssistantProps {
   title?: string;
   hello?: string;
   /** The input's placeholder: an example of what to ask. */
   placeholder?: string;
+  /** Up to three questions under the hello. */
+  suggestions?: StudioAssistantSuggestion[];
   /** The assistant changed something: read the page's data again. */
   onChanged?: () => void;
+}
+
+/**
+ * What a plugin's page shows, for the assistant: it goes up with every message, beside the
+ * page's address and title. At most 16 KiB together.
+ */
+export interface StudioAssistantPage extends StudioAssistantProps {
+  /** An item the page has open. */
+  open?: { kind: string; id?: string; label: string };
+  /** Ids of what the person picked. */
+  selection?: string[];
+  /** A line on what the page holds: "12 products · 3 without a price". */
+  summary?: string;
+  /** Fields of the page with their values. */
+  fields?: { id: string; label: string; value: unknown }[];
+  /** A page of full-height tables: the assistant starts small here. */
+  compact?: boolean;
+}
+
+/** A tool the assistant may run in the page: the shop's "filter the products". */
+export interface StudioAssistantTool {
+  /** What it does, for the model. */
+  description: string;
+  /** Its arguments as JSON Schema (`{ type: "object", properties: { … } }`). */
+  parameters?: Record<string, unknown>;
 }
 
 export interface StudioMe {
@@ -143,11 +179,28 @@ export interface StudioPluginContext {
    */
   useCrumbs(items: { label: string; to?: string }[]): void;
   /**
-   * The space assistant, docked at the lower edge of a page of the plugin, as on the space page.
-   * It talks from the plugin's page: it gets what the server half's `registerAssistantContext`
-   * says and uses the plugin's assistant tools first. Place it once, anywhere in the page.
+   * The studio's assistant stands on every page; on a plugin's page this tells it what to say
+   * there (title, hello, suggestions, placeholder) and what to read again when it changed
+   * something. It talks from the plugin's page: it gets what the server half's
+   * `registerAssistantContext` says and uses the plugin's assistant tools first. Place it once,
+   * anywhere in the page; it draws nothing.
    */
   Assistant: ComponentType<StudioAssistantProps>;
+  /**
+   * A hook: what the page shows, for the assistant — an open item, a selection, a summary,
+   * fields — and its words. Data may change on every render; it is read when the person sends.
+   */
+  useAssistantPage(page: StudioAssistantPage): void;
+  /**
+   * A hook: a tool the assistant may run in the page while it is shown. Its name is prefixed
+   * with the plugin's id (`shop_filter_products`). `run` gets the arguments and returns what the
+   * assistant learns; it may change what the page shows, never save.
+   */
+  useAssistantTool(
+    name: string,
+    tool: StudioAssistantTool,
+    run: (args: Record<string, unknown>) => unknown | Promise<unknown>,
+  ): void;
   i18n: {
     /** Takes the plugin's words and gives the function that reads them in the language in effect. */
     register<M extends StudioMessages>(

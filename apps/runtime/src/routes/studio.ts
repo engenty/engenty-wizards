@@ -1,15 +1,23 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { MODEL_CLASSES, PLUGIN_ID, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import {
+  ASSISTANT_LAYOUTS,
+  ASSISTANT_PAGE_BYTES,
+  type AssistantEvents,
+  assistantTurnSchema,
+} from "@engenty-wizards/shared/assistant";
+import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
 import { generateText } from "ai";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { nanoid } from "nanoid";
 import { z } from "zod";
-import { runProjectAssistant } from "../agents/project-assistant.js";
+import { runStudioAssistant } from "../agents/studio-assistant.js";
 import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscription.js";
+import { answerBrowser, awaitBrowser } from "../assistant/browser.js";
 import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
 import { createLocalKey, deleteLocalKey, listLocalKeys } from "../auth/keys.js";
@@ -52,6 +60,7 @@ import { transcribeAudio } from "../media/transcribe.js";
 import {
   checkKey,
   classProblem,
+  classWays,
   embeddingModel,
   hasTextModel,
   LOCAL_KEYS,
@@ -73,6 +82,17 @@ import {
   requireWritable,
 } from "../services/access.js";
 import { architectTurn } from "../services/architect.js";
+import {
+  addMessage,
+  assistantLayout,
+  currentChat,
+  earlierChats,
+  foldChat,
+  newChat,
+  openChat,
+  readChat,
+  turnHistory,
+} from "../services/assistant-chats.js";
 import {
   checkForCloud,
   cloudLinked,
@@ -436,6 +456,123 @@ export const studio = new Hono<Vars>()
     c.json(await saveProfile(c.get("user"), profileSchema.parse(await c.req.json()))),
   )
 
+  // --- the studio's assistant -------------------------------------------------
+  // One open chat per person and tenant, on every page; turns stream as SSE events shaped like
+  // AG-UI's (packages/shared/src/assistant.ts).
+  .get("/assistant/chat", async (c) => c.json(await currentChat(c.get("user"))))
+  .post("/assistant/chat/new", async (c) => c.json(await newChat(c.get("user"))))
+  .get("/assistant/chats", async (c) => c.json({ chats: await earlierChats(c.get("user")) }))
+  .get("/assistant/chats/:id", async (c) =>
+    c.json(await readChat(c.get("user"), c.req.param("id"))),
+  )
+  .get("/assistant/layout", async (c) => c.json({ layout: await assistantLayout(c.get("user")) }))
+  .put("/assistant/layout", async (c) => {
+    const { layout } = z.object({ layout: z.enum(ASSISTANT_LAYOUTS) }).parse(await c.req.json());
+    await writeSetting(`assistant-layout:${c.get("user").tenantId}:${c.get("user").id}`, layout);
+    return c.json({ layout });
+  })
+  // Live chat reads answers aloud with the speech model where one is set up; else the browser's voices.
+  .get("/assistant/voice", async (c) => c.json({ way: (await classWays()).speech.kind }))
+  .post("/assistant/speak", async (c) => {
+    const { text } = z.object({ text: z.string().min(1).max(4000) }).parse(await c.req.json());
+    if ((await classWays()).speech.kind === "none") {
+      throw new ServiceError("refused", "Hier spricht kein Sprachmodell.");
+    }
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    const voice = await generateSpeechMedia({ text, abortSignal: c.req.raw.signal });
+    return c.body(new Uint8Array(voice.bytes), 200, { "content-type": voice.mime });
+  })
+  // A browser tool's result: the turn that waits for it goes on.
+  .post("/assistant/tool/:callId", async (c) => {
+    const body = z.object({ result: z.unknown() }).parse(await c.req.json());
+    const taken = answerBrowser(c.get("user").id, c.req.param("callId"), body.result ?? null);
+    return c.json({ ok: taken }, taken ? 200 : 404);
+  })
+  .post("/assistant/turn", async (c) => {
+    const user = c.get("user");
+    const body = assistantTurnSchema
+      .extend({ lang: z.enum(["de", "en"]).default("de") })
+      .parse(await c.req.json());
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    const project = body.projectId ? await ownedProject(user.id, body.projectId) : null;
+    const writable = project ? await projectWritable(project) : false;
+    // The page's snapshot is cut, not refused: a page that says too much still gets an answer.
+    const page =
+      body.page && JSON.stringify(body.page).length > ASSISTANT_PAGE_BYTES
+        ? { route: body.page.route, title: body.page.title, view: body.page.view }
+        : (body.page ?? null);
+    const chat = await openChat(user);
+    const history = await turnHistory(user, chat);
+    const runId = nanoid(10);
+    const userMessageId = await addMessage(chat.id, {
+      role: "user",
+      content: body.message,
+      page: page ? { route: page.route, title: page.title } : null,
+    });
+    return streamSSE(c, async (stream) => {
+      const abort = new AbortController();
+      stream.onAbort(() => abort.abort());
+      const send = <K extends keyof AssistantEvents>(event: K, data: AssistantEvents[K]) =>
+        stream.writeSSE({ event, data: JSON.stringify(data) });
+      const messageId = nanoid(14);
+      await send("run_started", { threadId: chat.id, runId, messageId: userMessageId });
+      let reply = "";
+      try {
+        const result = await runStudioAssistant({
+          user,
+          chat,
+          history,
+          project,
+          writable,
+          message: body.message,
+          page,
+          browserTools: body.tools,
+          lang: body.lang,
+          signal: abort.signal,
+          onText: (delta) => {
+            reply += delta;
+            void send("text", { messageId, delta });
+          },
+          onActivity: (label) => void send("activity", { label }),
+          onChanged: () => void send("changed", {}),
+          onCard: (card) => void send("card", card),
+          onToolCall: (call) => void send("tool_call", call),
+          onToolResult: (result) => void send("tool_result", result),
+          callBrowser: (call) => awaitBrowser(user.id, call.toolCallId, abort.signal),
+        });
+        reply =
+          result.reply || (result.changed ? (body.lang === "de" ? "Erledigt." : "Done.") : "");
+        const stored = await addMessage(chat.id, {
+          role: "assistant",
+          content: reply,
+          cards: result.cards,
+          toolCalls: result.toolCalls,
+          changed: result.changed,
+        });
+        await send("done", { messageId: stored, reply, changed: result.changed });
+      } catch (err) {
+        console.error("[studio-assistant]", err);
+        if (reply.trim()) {
+          await addMessage(chat.id, { role: "assistant", content: reply.trim() }).catch(() => null);
+        }
+        await send("error", {
+          message:
+            err instanceof ServiceError || err instanceof ModelUnavailableError
+              ? err.message
+              : body.lang === "de"
+                ? "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen."
+                : "Something went wrong. Please try again.",
+        });
+      }
+      // Older messages fold into the chat's running summary once enough have piled up.
+      void foldChat(chat.id).catch((err) => console.error("[studio-assistant] fold:", err));
+    });
+  })
+
   // --- projects --------------------------------------------------------------
   .get("/projects", async (c) => {
     const projects = await listProjects(c.get("user").id);
@@ -557,71 +694,6 @@ export const studio = new Hono<Vars>()
       .object({ query: z.string().min(1).max(400), where: whereSchema.optional() })
       .parse(await c.req.json());
     return c.json(await searchKnowledge(project.id, body.query, { where: body.where }));
-  })
-  // The assistant fills the project in: from a description, a website, the files given.
-  .post("/projects/:id/assist", async (c) => {
-    const user = c.get("user");
-    const project = await ownedProject(user.id, c.req.param("id"));
-    await requireWritable(project);
-    const body = z
-      .object({
-        message: z.string().min(1).max(8000),
-        history: z
-          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) }))
-          .max(24)
-          .default([]),
-        part: z.enum(["info", "knowledge"]).default("info"),
-        plugin: z.string().regex(PLUGIN_ID).optional(),
-      })
-      .parse(await c.req.json());
-    if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
-    }
-    return streamSSE(c, async (stream) => {
-      const abort = new AbortController();
-      stream.onAbort(() => abort.abort());
-      try {
-        const result = await runProjectAssistant({
-          userId: user.id,
-          projectId: project.id,
-          message: body.message,
-          history: body.history,
-          part: body.part,
-          plugin: body.plugin,
-          signal: abort.signal,
-          onText: (delta) => {
-            void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });
-          },
-          onActivity: (label) => {
-            void stream.writeSSE({ event: "activity", data: JSON.stringify(label) });
-          },
-          onChanged: () => {
-            void stream.writeSSE({ event: "changed", data: "1" });
-          },
-          onCard: (card) => {
-            void stream.writeSSE({ event: "card", data: JSON.stringify(card) });
-          },
-        });
-        await stream.writeSSE({
-          event: "done",
-          data: JSON.stringify({
-            reply: result.reply || (result.changed ? "Erledigt." : ""),
-            changed: result.changed,
-          }),
-        });
-      } catch (err) {
-        console.error("[project-assistant]", err);
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({
-            message:
-              err instanceof ServiceError || err instanceof ModelUnavailableError
-                ? err.message
-                : "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen.",
-          }),
-        });
-      }
-    });
   })
   .delete("/projects/:id", async (c) => {
     await deleteProject(c.get("user").id, c.req.param("id"));

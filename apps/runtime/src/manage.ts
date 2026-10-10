@@ -247,6 +247,46 @@ export function runUsage(tenantId: string, runId: string) {
   );
 }
 
+/** What a tenant spent per calendar month (UTC), newest first, with its costliest runs. */
+export interface MonthlyUsage {
+  months: { month: string; credits: number; runs: { runId: string; credits: number }[] }[];
+}
+
+export function tenantUsage(tenantId: string, months = 3) {
+  return call<MonthlyUsage>(
+    "GET",
+    `/v1/tenants/${encodeURIComponent(tenantId)}/usage?months=${months}`,
+  );
+}
+
+/** A plan teams can be on, as the Manage-App's public `GET /v1/plans` lists it. */
+export interface PublicPlan {
+  id: string;
+  name: string;
+  description: string;
+  /** A month, in cents of `currency`, before tax; 0 for free. */
+  priceCents: number;
+  monthlyCredits: number;
+  topUp: boolean;
+  limits: { members: number | null; projects: number | null };
+}
+
+export interface PublicPlans {
+  currency: string;
+  plans: PublicPlan[];
+  /** Credits bought on top, where the plan allows it. */
+  packages: { id: string; name: string; credits: number; priceCents: number }[];
+}
+
+/** The plans of a Manage-App: public, no key needed. */
+export async function publicPlans(base: string): Promise<PublicPlans> {
+  const res = await fetch(`${base}/v1/plans`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) {
+    throw new ManageError(res.status, "error", `Manage-App ${res.status}`);
+  }
+  return (await res.json()) as PublicPlans;
+}
+
 export function bookUsage(input: {
   tenantId: string;
   runId?: string;

@@ -5,7 +5,9 @@ data
 .env.local
 .git
 .claude
-docs
+# The runtime bundles the guides for its assistant (apps/runtime/src/assistant/docs.ts).
+docs/*
+!docs/content
 apps/docs
 apps/runtime/test
 examples

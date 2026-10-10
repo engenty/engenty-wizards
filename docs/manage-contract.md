@@ -54,6 +54,7 @@ Errors: `{ "error": string, "code": string }`.
 | `POST /v1/reservations/release` | `{ runId }` → `{ ok: true }` · unknown run is fine |
 | `POST /v1/usage` | `{ tenantId, runId?, stepId?, kind, usd, idempotencyKey }` → `{ credits }` · for what is not a model call |
 | `GET /v1/runs/:runId/usage?tenantId=` | → `{ credits, steps: { [stepId]: credits } }` · what the ledger booked for the run; rows without a step under `""` |
+| `GET /v1/tenants/:id/usage?months=` | → `{ months: [{ month: "2026-10", credits, runs: [{ runId, credits }] }] }` · what the tenant spent per calendar month (UTC), the newest first, `months` 1–12 (3 when left out), each with its 20 costliest runs; the studio assistant names the wizards behind the runs |
 | `GET /v1/users/:id` | → `{ id, name, email, image }` |
 | `POST /v1/push` | `{ tenantId, device: { token, platform: "ios" \| "android" }, title, body, data: { runId, kind } }` → `{ ok: true }` · a push to the mobile app (apps/mobile) on one device: `token` is the raw APNs or FCM token the app gave the run (`POST /api/runs/:id/notify`); the Manage-App holds the APNs and FCM keys · `kind`: `done`, `failed`, `waiting` or `asks` · a token APNs or FCM no longer takes is not an error |
 
@@ -65,6 +66,13 @@ With a user's access token instead of the service key:
 | Call | Answer |
 |---|---|
 | `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, plan: { id, name }, balanceCredits, expiring: [{ kind: "start" \| "monthly" \| "gift", credits, expiresAt }] }, tenants: [{ id, name, role }] }` · `expiring`: the part of the balance that ends on a date, the nearest first |
+| `GET /v1/me/usage?months=` | the same as `GET /v1/tenants/:id/usage`, for the token's tenant |
+
+Without any key:
+
+| Call | Answer |
+|---|---|
+| `GET /v1/plans` | `{ currency, plans: [{ id, name, description, priceCents, monthlyCredits, topUp, limits: { members, projects } }], packages: [{ id, name, credits, priceCents }] }` · the public plans, the cheapest first, prices in cents of `currency` before tax · `packages`: the credits to buy on top, empty where nothing is sold · the studio assistant's `plans` |
 
 Roles on the runtime: `owner` and `admin` make and delete (wizards, spaces, connectors, the space's
 settings); `member` edits the wizards there are, tests and publishes them. A member's attempt

@@ -15,7 +15,7 @@ them from their files and loads one again when its files change.
 | A block and tools for every AI step of a space | In the steps' instructions | [The space](./space.md) |
 | Pages, tables and files of a space's Wissen, with Kategorien | In Wissen, and in what `project_search` finds | [The space](./space.md#wissen-a-plugin-writes) |
 | Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
-| Tools of the space assistant, and their cards | In the chat on the space page | [The space](./space.md#tools-of-the-space-assistant) |
+| Tools of the studio's assistant, and their cards | In the assistant's chat, on every page | [The space](./space.md#tools-of-the-space-assistant) |
 | Routes | Below `/api/studio/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
 | Tables | In every tenant's database | [Tables](./tables.md) |
 | A listener on runs that end and spaces that change | Nowhere: it works in the background | [Events](./events.md) |

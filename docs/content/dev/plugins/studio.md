@@ -154,7 +154,7 @@ studio.registerSpaceSection({
   and lists the section in the part's menu under the plugin's name. The component draws the
   rest, usually a `Card`.
 - `id` is the section's anchor: `/studio/space/data#contacts` opens the page there, and so does
-  `/studio/space#contacts`. In Wissen a section is a page of its own, below the assistant:
+  `/studio/space#contacts`. In Wissen a section is a page of its own:
   `/studio/space/knowledge?show=s:<id>`, where `#<id>` leads too. Ids are unique on the whole page; the space's own are taken: `base`,
   `logos`, `colors`, `assets`, `documents`, `facts`.
 - `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A

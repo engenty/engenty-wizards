@@ -85,6 +85,13 @@
       "when": 1791490942531,
       "tag": "0011_runners",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791669018302,
+      "tag": "0012_assistant_chat",
+      "breakpoints": true
     }
   ]
 }

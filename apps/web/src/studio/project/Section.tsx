@@ -11,7 +11,7 @@ import type { Layout, SaveState } from "./data";
  */
 export function Anchor({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <div id={id} className="scroll-mt-6 max-md:scroll-mt-20">
+    <div id={id} data-assist={id} className="scroll-mt-6 max-md:scroll-mt-20">
       {children}
     </div>
   );
@@ -41,7 +41,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-2.5">
+    <section data-assist-section={title} className="flex flex-col gap-2.5">
       <div className="flex items-start justify-between gap-4 px-1">
         <div className="min-w-0">
           <div className="flex items-center gap-3">

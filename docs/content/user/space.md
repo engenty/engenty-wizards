@@ -85,8 +85,8 @@ files.
 
 ## Have it filled in
 
-The assistant above Info & brand and Knowledge fills the space for you. Tell it about yourselves,
-name your website or give it files:
+The [assistant](./assistant.md) at the bottom of the page fills the space for you. Tell it about
+yourselves, name your website or give it files:
 
 > Read our website example.com
 

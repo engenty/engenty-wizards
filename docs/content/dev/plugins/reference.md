@@ -223,7 +223,9 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
 | `studio.useCrumbs(items)` | A hook: the trail in the top bar for the page shown, `{ label, to? }[]`, instead of a heading of the page's own |
-| `studio.Assistant` | The space assistant, docked on a page of the plugin: `title?`, `hello?`, `placeholder?`, `onChanged?` |
+| `studio.Assistant` | Tells the studio's assistant what to say on a page of the plugin: `title?`, `hello?`, `placeholder?`, `suggestions?: { label, message?, fill? }[]`, `onChanged?`. Draws nothing |
+| `studio.useAssistantPage(page)` | A hook: what the page shows, for the assistant: `open?: { kind, id?, label }`, `selection?`, `summary?`, `fields?: { id, label, value }[]`, `compact?`, and the words of `studio.Assistant` |
+| `studio.useAssistantTool(name, { description, parameters? }, run)` | A hook: a tool the assistant runs in the page while it is shown, as `<plugin>_<name>`. `parameters`: JSON Schema; `run(args)` returns what the assistant learns |
 | `studio.useSpace()` | A hook: `{ id, name, readOnly }` of the space the studio shows, or `null` |
 | `studio.i18n.register({ de, en })` | Gives `t(key, vars?)` |
 | `studio.i18n.lang()` | `"de"` or `"en"` |

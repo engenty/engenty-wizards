@@ -61,6 +61,42 @@ export function speak(text: string, lang: "de" | "en" = uiLang, now = false) {
   synth.speak(utterance);
 }
 
+/** Says `text` now, dropping what is being said; resolves when it is said or cut off. */
+export function say(text: string, lang: "de" | "en" = uiLang): Promise<void> {
+  if (!canSpeak || !text.trim()) {
+    return Promise.resolve();
+  }
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const code = lang === "de" ? "de-DE" : "en-US";
+  const utterance = new SpeechSynthesisUtterance(text.trim().slice(0, 4000));
+  utterance.lang = code;
+  const voice = voiceFor(code);
+  if (voice) {
+    utterance.voice = voice;
+  }
+  return new Promise((resolve) => {
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    synth.speak(utterance);
+  });
+}
+
+/** Markdown as it is said: no marks, links by their words, lists as sentences. */
+export function spokenText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/[*_`>|]/g, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function hush() {
   if (canSpeak) {
     window.speechSynthesis.cancel();

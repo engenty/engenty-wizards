@@ -568,6 +568,66 @@ export const spaceItemCategory = sqliteTable(
   ],
 );
 
+// --- The studio's assistant ---------------------------------------------------
+// One open chat per person and tenant, the same on every page and space; nobody else sees it.
+// "New chat" closes it with a dense summary and opens the next one. Messages and summaries are
+// searched through `assistant_search` (FTS5 trigrams), which triggers keep in step.
+
+export interface AssistantCardRecord {
+  plugin: string;
+  tool: string;
+  data: unknown;
+}
+
+/** A tool the assistant called in a turn, as the chat shows it (AG-UI's tool call). */
+export interface AssistantToolCallRecord {
+  toolCallId: string;
+  toolCallName: string;
+  args: unknown;
+  /** What the tool gave back, cut short. */
+  result?: string;
+}
+
+export const assistantChat = sqliteTable(
+  "assistant_chat",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    userId: text("user_id").notNull(),
+    /** Set when the chat is closed; null for the open one. */
+    title: text("title"),
+    /**
+     * Open: what the messages folded away said (`folded` of them, oldest first). Closed: the dense
+     * summary of the whole chat — what was asked, what changed, what is still open.
+     */
+    summary: text("summary"),
+    folded: integer("folded").notNull().default(0),
+    createdAt: createdAt(),
+    closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("assistant_chat_user").on(t.tenantId, t.userId, t.closedAt)],
+);
+
+export const assistantMessage = sqliteTable(
+  "assistant_message",
+  {
+    id: text("id").primaryKey(),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => assistantChat.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    /** Cards of plugins' tools, with their data, so an earlier chat shows them again. */
+    cards: text("cards", { mode: "json" }).$type<AssistantCardRecord[]>(),
+    toolCalls: text("tool_calls", { mode: "json" }).$type<AssistantToolCallRecord[]>(),
+    /** The page the person wrote from: route and title (the snapshot of that turn, cut short). */
+    page: text("page", { mode: "json" }).$type<{ route: string; title?: string }>(),
+    changed: integer("changed", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("assistant_message_chat").on(t.chatId, t.createdAt)],
+);
+
 // --- The wizard's store ------------------------------------------------------
 // What a wizard keeps between runs for one person. `holder` is that person: "u:<userId>" for a
 // signed-in admin, "v:<visitorId>" for an end user on a shared link.

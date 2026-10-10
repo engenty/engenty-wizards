@@ -1,4 +1,14 @@
-import { ArrowUp, Check, ChevronDown, Mic, Paperclip, Plus, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  AudioLines,
+  Check,
+  ChevronDown,
+  Mic,
+  Paperclip,
+  Plus,
+  Square,
+  X,
+} from "lucide-react";
 import { type ReactNode, type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { useDictation, useDictationSettings, useMicrophones } from "../lib/speech";
@@ -35,6 +45,8 @@ function Thumb({ url, label, children }: { url: string; label: string; children?
 export interface ComposerHandle {
   add: (files: File[]) => void;
   focus: () => void;
+  /** Puts a draft into the field, e.g. a suggestion to finish before sending. */
+  fill: (text: string) => void;
 }
 
 /** Taller than this the field scrolls. */
@@ -54,6 +66,7 @@ export function Composer({
   floating,
   autoFocus,
   className,
+  onTalk,
   ref,
 }: {
   placeholder?: string;
@@ -65,6 +78,8 @@ export function Composer({
   floating?: boolean;
   autoFocus?: boolean;
   className?: string;
+  /** Starts a live chat: its button stands where Send does while the field is empty. */
+  onTalk?: () => void;
   ref?: Ref<ComposerHandle>;
 }) {
   const [text, setText] = useState("");
@@ -76,7 +91,18 @@ export function Composer({
   const speech = useDictation(text, setText, { deviceId: prefs.deviceId });
   const add = (picked: File[]) =>
     setFiles((all) => [...all.filter((f) => !picked.some((p) => p.name === f.name)), ...picked]);
-  useImperativeHandle(ref, () => ({ add, focus: () => area.current?.focus() }));
+  useImperativeHandle(ref, () => ({
+    add,
+    focus: () => area.current?.focus(),
+    fill: (draft: string) => {
+      setText(draft);
+      requestAnimationFrame(() => {
+        const el = area.current;
+        el?.focus();
+        el?.setSelectionRange(draft.length, draft.length);
+      });
+    },
+  }));
 
   // The height follows the text, typed or spoken, and the field's width. Empty, the field is one
   // line; a placeholder that wraps does not make it taller.
@@ -232,18 +258,30 @@ export function Composer({
             )}
           />
           {speech.supported ? <DictationButton speech={speech} /> : null}
-          <button
-            type="button"
-            onClick={() => void submit()}
-            disabled={!ready}
-            className={cn(
-              "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition coarse:size-11",
-              ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
-            )}
-            aria-label={t("composer.send")}
-          >
-            <ArrowUp className="size-4" />
-          </button>
+          {onTalk && !(text.trim() || files.length || speech.listening) ? (
+            <button
+              type="button"
+              onClick={onTalk}
+              disabled={disabled}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 font-medium text-[0.8125rem] text-primary-foreground transition disabled:opacity-50 coarse:h-11"
+              aria-label={t("assistant.talk")}
+            >
+              <AudioLines className="size-4" /> {t("assistant.talk")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={!ready}
+              className={cn(
+                "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition coarse:size-11",
+                ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
+              )}
+              aria-label={t("composer.send")}
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          )}
         </div>
       </div>
       {speech.error ? (

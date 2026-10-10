@@ -11,7 +11,6 @@ import {
   Plus,
 } from "lucide-react";
 import {
-  type CSSProperties,
   Fragment,
   type ReactNode,
   type RefObject,
@@ -39,6 +38,7 @@ import {
 import { useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
 import { AppRail } from "./AppRail";
+import { AssistantDock, AssistantSidebar, HighlightLayer } from "./assistant/StudioAssistant";
 import { NewSpaceDialog } from "./HomePage";
 import { InstallBanner, InstallDialog } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
@@ -75,14 +75,24 @@ export function useCrumbs(items: Crumb[]) {
   }, [key]);
 }
 
-function Trail() {
-  const trail = useSyncExternalStore(
+/** The trail as it stands now: the assistant names the page by it. */
+export function currentCrumbs(): Crumb[] {
+  return crumbs;
+}
+
+/** The trail, for a component that shows where the page stands. */
+export function useTrail(): Crumb[] {
+  return useSyncExternalStore(
     (listener) => {
       crumbListeners.add(listener);
       return () => crumbListeners.delete(listener);
     },
     () => crumbs,
   );
+}
+
+function Trail() {
+  const trail = useTrail();
   if (!trail.length) {
     return null;
   }
@@ -623,21 +633,10 @@ export function AppFrame({
   full?: boolean;
   children: ReactNode;
 }) {
-  const { position, phone } = useAppBar();
-  // How far the page's lower edge stands above the window's, for what docks there: the bar's
-  // height where it stands at the bottom, else the page's inset.
-  const insetBottom = phone
-    ? position === "bottom"
-      ? "calc(3.5rem + env(safe-area-inset-bottom))"
-      : "0px"
-    : position === "bottom"
-      ? "4rem"
-      : "0.5rem";
+  const { position } = useAppBar();
+  const column = useRef<HTMLDivElement>(null);
   return (
-    <div
-      className={cn("flex h-dvh overflow-hidden bg-sidebar", DIRECTION[position])}
-      style={{ "--inset-b": insetBottom } as CSSProperties}
-    >
+    <div className={cn("flex h-dvh overflow-hidden bg-sidebar", DIRECTION[position])}>
       <AppRail me={me} />
       <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", INSET[position])}>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl md:shadow-elevated md:dark:ring-1 md:dark:ring-border-soft">
@@ -648,23 +647,33 @@ export function AppFrame({
               {children}
             </main>
           ) : (
-            <>
-              <TopBar me={me} />
-              {/* `relative`: what a page places out of flow without a positioned parent (a hidden
-                  file field) stays in the page's own scroll, not in a frame around it, which a
-                  jump to a section would scroll as well. */}
-              <main id={SCROLL_ROOT_ID} className="relative min-h-0 flex-1 overflow-y-auto">
-                <div
-                  className={cn(
-                    "mx-auto w-full px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
-                    wide ? "max-w-[88rem]" : "max-w-5xl",
-                  )}
+            <div className="flex min-h-0 flex-1">
+              <div ref={column} className="relative flex min-w-0 flex-1 flex-col">
+                <TopBar me={me} />
+                {/* `relative`: what a page places out of flow without a positioned parent (a
+                    hidden file field) stays in the page's own scroll, not in a frame around it,
+                    which a jump to a section would scroll as well. The assistant's dock keeps
+                    its height free below the last section (`--assistant-dock`). */}
+                <main
+                  id={SCROLL_ROOT_ID}
+                  className="relative min-h-0 flex-1 overflow-y-auto"
+                  style={{ paddingBottom: "var(--assistant-dock, 0px)" }}
                 >
-                  {children}
-                </div>
-                <Footer me={me} about />
-              </main>
-            </>
+                  <div
+                    className={cn(
+                      "mx-auto w-full px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
+                      wide ? "max-w-[88rem]" : "max-w-5xl",
+                    )}
+                  >
+                    {children}
+                  </div>
+                  <Footer me={me} about />
+                </main>
+                <AssistantDock column={column} />
+              </div>
+              <AssistantSidebar />
+              <HighlightLayer />
+            </div>
           )}
         </div>
       </div>

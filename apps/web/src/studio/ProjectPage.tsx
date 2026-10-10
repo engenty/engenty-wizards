@@ -6,6 +6,7 @@ import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
 import { scrollRoot, useCrumbs } from "./AppFrame";
+import { useAssistantPage } from "./assistant/page";
 import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
 import { FileView } from "./project/Documents";
 import { CategoryItems, ItemRow, KnowledgeOverview, useKnowledge } from "./project/Knowledge";
@@ -208,6 +209,41 @@ export function ProjectPage() {
       ? [{ label: (detail ?? wizardTitle ?? pickedTitle) as string }]
       : []),
   ]);
+
+  const openKind: Record<string, string> = {
+    p: "page",
+    t: "table",
+    f: "file",
+    c: "kategorie",
+    v: "kategorie value",
+    s: "plugin section",
+  };
+  useAssistantPage({
+    // Full-height tables: the assistant starts small here.
+    ...(group === "data" || group === "results" ? { compact: true } : {}),
+    ...(group === "data"
+      ? {
+          suggestions: [
+            { label: t("assistant.suggest.dataWhat") },
+            { label: t("assistant.suggest.dataWho") },
+            { label: t("assistant.suggest.dataEdit") },
+          ],
+        }
+      : group === "results"
+        ? {
+            suggestions: [
+              { label: t("assistant.suggest.resultsFailed") },
+              { label: t("assistant.suggest.resultsCost") },
+              { label: t("assistant.suggest.resultsShare") },
+            ],
+          }
+        : {}),
+    ...(picked && pickedTitle
+      ? { open: { kind: openKind[picked[0]] ?? "item", id: picked.slice(2), label: pickedTitle } }
+      : wizardId && wizardTitle
+        ? { open: { kind: "wizard", id: wizardId, label: wizardTitle } }
+        : {}),
+  });
 
   // A section named in the address (`#logos`, or `?show=logos` on a phone) is scrolled to once
   // it is drawn: a plugin's comes after the space's own. A jump from the menu scrolls by itself.
@@ -434,15 +470,8 @@ export function ProjectPage() {
                 </SubMenu>
               )}
 
-              {/* Every page of Wissen stands with the assistant, which stays while they change:
-                  on top of all of it and of a plugin's section, docked below the others. */}
               {project && (group === "info" || group === "knowledge") ? (
-                <ProjectSettings
-                  key={project.id}
-                  project={project}
-                  group={group}
-                  docked={group === "knowledge" && Boolean(picked) && !pickedSection}
-                >
+                <ProjectSettings key={project.id} project={project} group={group}>
                   {group !== "knowledge" ? null : item ? (
                     item.startsWith("p:") ? (
                       <PageEditor

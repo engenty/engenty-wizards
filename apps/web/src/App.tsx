@@ -6,6 +6,7 @@ import { useLang } from "./lib/i18n";
 import { useMe } from "./lib/session";
 import { PluginFrame, startStudioPlugins, useStudioPlugins } from "./plugins/host";
 import { AppFrame } from "./studio/AppFrame";
+import { AssistantProvider } from "./studio/assistant/chat";
 import { SignInPage } from "./studio/SignInPage";
 
 // The public runner and the studio are separate bundles: a visitor never downloads the editor.
@@ -130,86 +131,89 @@ export function StudioApp() {
   }, []);
   const plugins = useStudioPlugins();
   return (
-    <Suspense fallback={<Splash />}>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Studio>
-              <HomePage />
-            </Studio>
-          }
-        />
-        <Route
-          path="/sign-in"
-          element={
-            <Studio>
-              <Navigate to="/" replace />
-            </Studio>
-          }
-        />
-        <Route
-          path="/new"
-          element={
-            <Studio>
-              <NewWizardPage />
-            </Studio>
-          }
-        />
-        <Route
-          path="/edit/:id"
-          element={
-            <Studio full>
-              <EditorPage />
-            </Studio>
-          }
-        />
-        <Route
-          path="/space/:group?"
-          element={
-            <Studio wide>
-              <ProjectPage />
-            </Studio>
-          }
-        />
-        <Route
-          path="/settings/:section?"
-          element={
-            <Studio wide>
-              <SettingsPage />
-            </Studio>
-          }
-        />
-        <Route
-          path="/setup"
-          element={
-            <Studio bare>
-              <SetupPage />
-            </Studio>
-          }
-        />
-        {plugins.pages.map((page) => (
+    // The assistant's chat stands above the pages: it stays while the person moves between them.
+    <AssistantProvider>
+      <Suspense fallback={<Splash />}>
+        <Routes>
           <Route
-            key={page.serial}
-            path={page.path}
+            path="/"
             element={
-              <Studio wide={page.wide}>
-                <PluginFrame of={page}>
-                  <page.component />
-                </PluginFrame>
+              <Studio>
+                <HomePage />
               </Studio>
             }
           />
-        ))}
-        <Route
-          path="*"
-          element={
-            <Studio bare>
-              <Unknown />
-            </Studio>
-          }
-        />
-      </Routes>
-    </Suspense>
+          <Route
+            path="/sign-in"
+            element={
+              <Studio>
+                <Navigate to="/" replace />
+              </Studio>
+            }
+          />
+          <Route
+            path="/new"
+            element={
+              <Studio>
+                <NewWizardPage />
+              </Studio>
+            }
+          />
+          <Route
+            path="/edit/:id"
+            element={
+              <Studio full>
+                <EditorPage />
+              </Studio>
+            }
+          />
+          <Route
+            path="/space/:group?"
+            element={
+              <Studio wide>
+                <ProjectPage />
+              </Studio>
+            }
+          />
+          <Route
+            path="/settings/:section?"
+            element={
+              <Studio wide>
+                <SettingsPage />
+              </Studio>
+            }
+          />
+          <Route
+            path="/setup"
+            element={
+              <Studio bare>
+                <SetupPage />
+              </Studio>
+            }
+          />
+          {plugins.pages.map((page) => (
+            <Route
+              key={page.serial}
+              path={page.path}
+              element={
+                <Studio wide={page.wide}>
+                  <PluginFrame of={page}>
+                    <page.component />
+                  </PluginFrame>
+                </Studio>
+              }
+            />
+          ))}
+          <Route
+            path="*"
+            element={
+              <Studio bare>
+                <Unknown />
+              </Studio>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </AssistantProvider>
   );
 }

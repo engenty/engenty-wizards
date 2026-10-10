@@ -11,6 +11,7 @@ import { ProModulesSection } from "../plugins/ProModulesSection";
 import { Button, Card, cn, Empty, IconButton, Input } from "../ui";
 import { Account } from "./Account";
 import { useCrumbs } from "./AppFrame";
+import { useAssistantPage } from "./assistant/page";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
 import { Integrate } from "./Integrate";
@@ -201,6 +202,41 @@ export function SettingsPage() {
   const levelStep = useStepDirection(level);
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
+  useAssistantPage(
+    current?.id === "models"
+      ? {
+          suggestions: [
+            { label: t("assistant.suggest.modelsNow") },
+            { label: t("assistant.suggest.modelsMissing") },
+            { label: t("assistant.suggest.modelsCost") },
+          ],
+        }
+      : current?.id === "account"
+        ? {
+            suggestions: [
+              { label: t("assistant.suggest.credits") },
+              { label: t("assistant.suggest.accountWhy") },
+              { label: t("assistant.suggest.plans") },
+            ],
+          }
+        : current?.id === "integrate"
+          ? {
+              suggestions: [
+                { label: t("assistant.suggest.integrateWhat") },
+                { label: t("assistant.suggest.integrateClaude") },
+                { label: t("assistant.suggest.what") },
+              ],
+            }
+          : current?.id === "connectors"
+            ? {
+                suggestions: [
+                  { label: t("assistant.suggest.connectorsWhat") },
+                  { label: t("assistant.suggest.connectorsAdd"), fill: true },
+                  { label: t("assistant.suggest.what") },
+                ],
+              }
+            : {},
+  );
   // The page's name stands in the top bar: the section's content starts right at the top.
   useCrumbs([
     { label: t("settings.title"), to: "/settings" },

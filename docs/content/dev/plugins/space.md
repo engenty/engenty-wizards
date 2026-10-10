@@ -117,8 +117,9 @@ await server.index.remove(space.id); // every text of the plugin in the space
 
 ## Tools of the space assistant
 
-The assistant on the space page ("Lass dir den Space ausfüllen") fills the space in from what the
-person says, a website or files. A plugin gives it tools:
+The studio's assistant stands on every page of the studio but the editor. Where a space is open
+and may be changed, it fills it in from what the person says, a website or files. A plugin gives
+it tools:
 
 ```ts
 server.registerAssistantTool({
@@ -177,9 +178,9 @@ say what changed. See [Events](./events.md).
 
 ## The assistant on the plugin's own page
 
-A page of the plugin can carry the space assistant, docked at its lower edge as on the space
-page. It talks from that page: the assistant is told what the page holds and uses the plugin's
-assistant tools first.
+The assistant stands on the plugin's pages too, as on every page of the studio. A page tells it
+what to say there, and what it shows; the assistant is told what the page holds and uses the
+plugin's assistant tools first.
 
 ```tsx
 const Assistant = studio.Assistant;
@@ -188,6 +189,10 @@ const Assistant = studio.Assistant;
   title="Sag, wann du Zeit hast"
   hello="Ich trage Bürozeiten, freie Tage und Blocker ein."
   placeholder="z. B. „Ich bin vom 24.12. bis 6.1. im Urlaub“ …"
+  suggestions={[
+    { label: "Welche Termine sind diese Woche frei?" },
+    { label: "Ich bin im Urlaub von … bis …", fill: true },
+  ]}
   onChanged={() => queryClient.invalidateQueries({ queryKey: ["appointments"] })}
 />
 ```
@@ -198,6 +203,56 @@ server.registerAssistantContext({
 });
 ```
 
-- `block` is asked once per message, only when the admin writes from the plugin's page. A block
-  is cut at 8,000 characters; one that throws is logged and left out.
-- A read-only space shows no assistant.
+- `studio.Assistant` draws nothing: place it once, anywhere in the page. `title` and `hello`
+  greet before the first message; up to three `suggestions` stand under them. A click sends one
+  at once; `fill: true` puts it into the field to finish first.
+- `block` is asked once per message, only when the person writes from the plugin's page. A
+  block is cut at 8,000 characters; one that throws is logged and left out.
+- In a read-only space the assistant has none of the space's tools nor the plugins'.
+
+### What the page shows
+
+`studio.useAssistantPage` tells the assistant what the person sees: an open item, a selection,
+a line on what the page holds, its fields. It goes up with every message, beside the page's
+address and the trail of the top bar.
+
+```tsx
+studio.useAssistantPage({
+  open: product ? { kind: "product", id: product.id, label: product.title } : undefined,
+  selection: picked,
+  summary: `${products.length} products · ${withoutPrice} without a price`,
+  // A page of full-height tables keeps the assistant small, at the lower right.
+  compact: true,
+});
+```
+
+### Tools in the page
+
+`studio.useAssistantTool` gives the assistant a tool that runs in the browser while the page is
+shown: it filters a list, opens an item, picks a tab. The model sees it as `<plugin>_<name>`;
+`run` gets the arguments and returns what the assistant learns. It changes what the page shows,
+never saves: saving stays with the server half's tools.
+
+```tsx
+studio.useAssistantTool(
+  "filter_products",
+  {
+    description: "Shows only the products that match: without a price, of a source, by words.",
+    parameters: {
+      type: "object",
+      properties: {
+        missing: { type: "string", enum: ["price", "image"] },
+        query: { type: "string" },
+      },
+    },
+  },
+  ({ missing, query }) => {
+    setFilter({ missing, query });
+    return { shown: count };
+  },
+);
+```
+
+Besides a page's tools the assistant can open a studio page, point at an element, read what is
+on the screen, fill a field and scroll. It finds elements by their headings, labels and
+buttons; `data-assist="<id>"` on an element names it for the assistant.

@@ -18,12 +18,21 @@ export interface ChatCard {
   data: unknown;
 }
 
+/** A tool the assistant called in a turn (AG-UI's tool call), for a line under its answer. */
+export interface ChatToolCall {
+  toolCallId: string;
+  toolCallName: string;
+  args: unknown;
+  result?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   /** Cards of plugins' tools, below the answer's text. */
   cards?: ChatCard[];
+  toolCalls?: ChatToolCall[];
   changed?: boolean;
   pending?: boolean;
   source?: "studio" | "mcp";
@@ -321,6 +330,64 @@ function UserMessage({
   );
 }
 
+/**
+ * The thread's messages: the person's on the right, the assistant's with its avatar, the cards
+ * of plugins' tools and `calls` (a line per tool it called) under an answer.
+ */
+export function Messages({
+  chat,
+  avatar,
+  changedLabel,
+  card,
+  calls,
+}: {
+  chat: Chat;
+  avatar: string;
+  changedLabel: string;
+  card?: (card: ChatCard) => ReactNode;
+  calls?: (message: ChatMessage) => ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      {chat.messages.map((m) =>
+        m.role === "user" ? (
+          <UserMessage key={m.id} message={m} fileUrl={chat.fileUrl} />
+        ) : (
+          <div key={m.id} className="flex items-start gap-3">
+            <div className="shrink-0">
+              <Mascot kind={avatar} size={28} interactive={false} />
+            </div>
+            <div className="min-w-0 pt-0.5 text-[0.875rem]">
+              {m.source === "mcp" ? (
+                <div className="mb-1 inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
+                  <Plug className="size-3" /> {t("editor.viaClient", { client: m.client ?? "MCP" })}
+                </div>
+              ) : null}
+              {calls ? calls(m) : null}
+              {m.content ? <Markdown text={m.content} className="text-[0.875rem]" /> : null}
+              {card && m.cards?.length ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  {m.cards.map((c) => (
+                    <Fragment key={c.id}>{card(c)}</Fragment>
+                  ))}
+                </div>
+              ) : null}
+              {m.pending ? (
+                <Working chat={chat} thought className="mt-1 text-[0.8125rem] text-ink-3" />
+              ) : null}
+              {m.changed ? (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[0.75rem] text-ember-strong">
+                  <Sparkles className="size-3" /> {changedLabel}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
 export function ChatPanel({
   chat,
   avatar,
@@ -445,43 +512,7 @@ export function ChatPanel({
                 </div>
               ))
             : null}
-          <div className="flex flex-col gap-4">
-            {chat.messages.map((m) =>
-              m.role === "user" ? (
-                <UserMessage key={m.id} message={m} fileUrl={chat.fileUrl} />
-              ) : (
-                <div key={m.id} className="flex items-start gap-3">
-                  <div className="shrink-0">
-                    <Mascot kind={avatar} size={28} interactive={false} />
-                  </div>
-                  <div className="min-w-0 pt-0.5 text-[0.875rem]">
-                    {m.source === "mcp" ? (
-                      <div className="mb-1 inline-flex items-center gap-1.5 text-[0.75rem] text-ink-3">
-                        <Plug className="size-3" />{" "}
-                        {t("editor.viaClient", { client: m.client ?? "MCP" })}
-                      </div>
-                    ) : null}
-                    {m.content ? <Markdown text={m.content} className="text-[0.875rem]" /> : null}
-                    {card && m.cards?.length ? (
-                      <div className="mt-2 flex flex-col gap-2">
-                        {m.cards.map((c) => (
-                          <Fragment key={c.id}>{card(c)}</Fragment>
-                        ))}
-                      </div>
-                    ) : null}
-                    {m.pending ? (
-                      <Working chat={chat} thought className="mt-1 text-[0.8125rem] text-ink-3" />
-                    ) : null}
-                    {m.changed ? (
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ember-tint px-2.5 py-0.5 text-[0.75rem] text-ember-strong">
-                        <Sparkles className="size-3" /> {changedLabel}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
+          <Messages chat={chat} avatar={avatar} changedLabel={changedLabel} card={card} />
           {chat.error ? (
             <div className="mt-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
               {chat.error}
