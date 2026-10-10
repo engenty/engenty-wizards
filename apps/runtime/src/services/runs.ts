@@ -11,8 +11,8 @@ import {
 import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
-import { answerAsk, unattended } from "../engine/asks.js";
-import { emitEvent, recentEvents, subscribe } from "../engine/events.js";
+import { answerAsk } from "../engine/asks.js";
+import { emitEvent, recentEvents, watchRun } from "../engine/events.js";
 import {
   cancel,
   createRun,
@@ -54,6 +54,7 @@ export async function startTestRun(
     version: null,
     mode: "test",
     userId,
+    unattended: Boolean(autopilot),
   }).catch((err) => {
     throw err instanceof ModelUnavailableError ? new ServiceError("refused", err.message) : err;
   });
@@ -65,12 +66,10 @@ export async function startTestRun(
 
 function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boolean) {
   autopilots.add(runId);
-  unattended.add(runId);
   let busy = false;
   let again = false;
   const land = () => {
     autopilots.delete(runId);
-    unattended.delete(runId);
     unsubscribe();
     clearTimeout(timeout);
   };
@@ -120,7 +119,7 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
       busy = false;
     }
   };
-  const unsubscribe = subscribe(runId, () => {
+  const unsubscribe = watchRun(runId, () => {
     void step();
   });
   const timeout = setTimeout(land, 30 * 60_000);
@@ -170,7 +169,7 @@ export async function waitRun(load: () => Promise<RunRow>, seconds: number): Pro
   let run = await load();
   while (moving(run) && Date.now() < deadline) {
     await new Promise<void>((resolve) => {
-      const unsubscribe = subscribe(run.id, () => {
+      const unsubscribe = watchRun(run.id, () => {
         unsubscribe();
         clearTimeout(timer);
         resolve();
@@ -195,7 +194,7 @@ async function waitWhileMoving(
   let run = await ownedRun(userId, runId, only);
   while (moving(run) && Date.now() < deadline) {
     await new Promise<void>((resolve) => {
-      const unsubscribe = subscribe(runId, () => {
+      const unsubscribe = watchRun(runId, () => {
         unsubscribe();
         clearTimeout(timer);
         resolve();
@@ -527,7 +526,7 @@ export async function answerRunAsk(
   answer: "allow" | "skip",
 ) {
   await ownedRun(userId, runId);
-  if (!answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" })) {
+  if (!(await answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" }))) {
     throw new ServiceError("refused", "This question is no longer open.");
   }
 }

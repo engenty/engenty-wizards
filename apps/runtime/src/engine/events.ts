@@ -1,7 +1,7 @@
 import { AsyncResource } from "node:async_hooks";
 import { EventEmitter } from "node:events";
 import { noteText, type RunEvent, type RunNote } from "@engenty-wizards/shared/run";
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 
 const bus = new EventEmitter();
@@ -67,6 +67,52 @@ export function subscribe(runId: string, listener: (signal: RunSignal) => void):
   const bound = AsyncResource.bind(listener);
   bus.on(runId, bound);
   return () => bus.off(runId, bound);
+}
+
+/** How often a watcher looks at the row for what another process changed. */
+const WATCH_POLL_MS = 1000;
+
+/**
+ * Tells of every change on a run: at once when this process made it, within a second when the
+ * runner (another process) wrote to the row or added an event. Call it in the run's tenant.
+ */
+export function watchRun(runId: string, listener: (signal?: RunSignal) => void): () => void {
+  const unsubscribe = subscribe(runId, listener);
+  let last: string | null = null;
+  let busy = false;
+  const look = async () => {
+    if (busy) {
+      return;
+    }
+    busy = true;
+    try {
+      const [row] = await db
+        .select({
+          updatedAt: schema.run.updatedAt,
+          event: sql<
+            number | null
+          >`(select max(${schema.runEvent.id}) from ${schema.runEvent} where ${schema.runEvent.runId} = ${runId})`,
+        })
+        .from(schema.run)
+        .where(eq(schema.run.id, runId));
+      const mark = row ? `${row.updatedAt.getTime()}:${row.event ?? 0}` : null;
+      if (last !== null && mark !== last) {
+        listener();
+      }
+      last = mark;
+    } catch {
+      // The next look tells.
+    } finally {
+      busy = false;
+    }
+  };
+  const timer = setInterval(() => void look(), WATCH_POLL_MS);
+  timer.unref();
+  void look();
+  return () => {
+    clearInterval(timer);
+    unsubscribe();
+  };
 }
 
 export async function recentEvents(runId: string, afterId = 0, limit = 40): Promise<RunEvent[]> {

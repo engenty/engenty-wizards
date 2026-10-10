@@ -1,7 +1,7 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
-import type { RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
+import type { AskAnswer, RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
@@ -180,6 +180,10 @@ export const run = sqliteTable(
     error: text("error"),
     /** What a running step is asking the person right now (a login, a code); null = nothing. */
     ask: text("ask", { mode: "json" }).$type<RunAsk | null>(),
+    /** The person's answer to `ask`, written by the web for the runner that waits on it. */
+    answer: text("answer", { mode: "json" }).$type<{ askId: string; answer: AskAnswer } | null>(),
+    /** An autopilot drives this test run (an MCP client fills its pages): it asks nobody. */
+    unattended: integer("unattended", { mode: "boolean" }).notNull().default(false),
     costMicros: integer("cost_micros").notNull().default(0),
     /** Set once the result is shared: `/s/<token>` shows it read-only. */
     shareToken: text("share_token"),

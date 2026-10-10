@@ -23,7 +23,8 @@ import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-conne
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
 import { answerDevice, offerDevice } from "../engine/device.js";
-import { emitEvent, signalChanged, subscribe } from "../engine/events.js";
+import { emitEvent, signalChanged, watchRun } from "../engine/events.js";
+import { fromOwner } from "../engine/owner.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
 import {
@@ -484,8 +485,8 @@ export const runRoutes = new Hono()
           await stream.writeSSE({ event: "view", data: JSON.stringify(await viewOf(run)) });
         }
       };
-      const unsubscribe = subscribe(id, (signal) => {
-        if (signal.device) {
+      const unsubscribe = watchRun(id, (signal) => {
+        if (signal?.device) {
           // The runtime asks the phone around the runner to think: not a change of the run.
           if (!closed) {
             void stream.writeSSE({ event: "device", data: JSON.stringify(signal.device) });
@@ -740,7 +741,7 @@ export const runRoutes = new Hono()
         z.object({ type: z.literal("skip") }),
       ])
       .parse(await c.req.json());
-    if (!answerAsk(run.id, c.req.param("askId"), answer)) {
+    if (!(await answerAsk(run.id, c.req.param("askId"), answer))) {
       return refuse(c, { code: "askClosed" }, 409);
     }
     return c.json({ ok: true });
@@ -750,7 +751,8 @@ export const runRoutes = new Hono()
     const run = await accessibleRun(c, c.req.param("id"));
     const resources = run?.status === "running" ? liveResources(run.id) : null;
     if (!resources?.openPage()) {
-      return c.json({ error: "not found" }, 404);
+      // The run may work in another process: its runner answers.
+      return (run && (await fromOwner(c, run.id))) || c.json({ error: "not found" }, 404);
     }
     return c.json({ seat: resources.seatHolder() });
   })
@@ -760,7 +762,7 @@ export const runRoutes = new Hono()
     const run = await accessibleRun(c, c.req.param("id"));
     const resources = run?.status === "running" ? liveResources(run.id) : null;
     if (!(run && resources?.openPage())) {
-      return refuse(c, { code: "noBrowser" }, 409);
+      return (run && (await fromOwner(c, run.id))) || refuse(c, { code: "noBrowser" }, 409);
     }
     const { to } = z.object({ to: z.enum(["person", "agent"]) }).parse(await c.req.json());
     if (resources.seatHolder() !== to) {
@@ -778,7 +780,7 @@ export const runRoutes = new Hono()
     const run = await accessibleRun(c, c.req.param("id"));
     const resources = run?.status === "running" ? liveResources(run.id) : null;
     if (!resources?.openPage()) {
-      return c.notFound();
+      return (run && (await fromOwner(c, run.id))) || c.notFound();
     }
     const boundary = "frame";
     const encoder = new TextEncoder();
@@ -845,7 +847,14 @@ export const runRoutes = new Hono()
   .post("/:id/browser/act", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     const resources = run ? liveResources(run.id) : null;
-    const theirs = run && (pendingAsk(run.id) || resources?.seatHolder() === "person");
+    if (run?.status === "running" && !resources) {
+      // The run works in another process: its runner answers.
+      const answered = await fromOwner(c, run.id);
+      if (answered) {
+        return answered;
+      }
+    }
+    const theirs = run && ((await pendingAsk(run.id)) || resources?.seatHolder() === "person");
     const page = theirs ? resources?.openPage() : null;
     if (!(run && resources && page)) {
       return refuse(c, { code: "notWaiting" }, 409);

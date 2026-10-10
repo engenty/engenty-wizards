@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join, resolve } from "node:path";
 import { findChrome } from "./render/browser-path.js";
 
@@ -100,6 +101,14 @@ const port = num("API_PORT", 24368);
 const fromSource = import.meta.url.endsWith(".ts");
 const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
 
+function role(): "web" | "runner" | "all" {
+  const given = str("RUNTIME_ROLE", "all");
+  if (given !== "web" && given !== "runner" && given !== "all") {
+    throw new Error(`RUNTIME_ROLE must be web, runner or all, not "${given}"`);
+  }
+  return given;
+}
+
 export const env = {
   production: process.env.NODE_ENV === "production",
   /** Running from source: Vite serves the pages, this server only `/api`. */
@@ -107,6 +116,17 @@ export const env = {
   port,
   /** Listen address; a runtime that runs alone stays on the loopback interface. */
   host: str("API_HOST", manageUrl ? "0.0.0.0" : "127.0.0.1"),
+  /**
+   * What this process does: `web` serves the studio and the API and wakes runs, `runner` takes
+   * the runs that wait and drives them, `all` does both (a runtime that runs alone).
+   */
+  role: role(),
+  runner: {
+    /** This runner's name in the control database; a new one each start. */
+    id: `${hostname()}-${randomBytes(3).toString("hex")}`,
+    /** Where the web reaches this runner (the browser's screen of a run it holds). */
+    url: str("RUNNER_URL").replace(/\/$/, ""),
+  },
   /** The origin people open, e.g. https://wizards.localhost — auth callbacks and links use it. */
   appUrl: str("APP_URL", fromSource ? "http://localhost:5181" : `http://localhost:${port}`).replace(
     /\/$/,

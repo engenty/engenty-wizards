@@ -5,7 +5,7 @@ import { noteText } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk } from "../engine/asks.js";
-import { subscribe } from "../engine/events.js";
+import { watchRun } from "../engine/events.js";
 import {
   cancel,
   createRun,
@@ -157,7 +157,9 @@ export function runsApiFor(pluginId: string): PluginRuns {
     },
     async answerAsk(runId, askId, answer) {
       await pluginRun(runId);
-      if (!answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" })) {
+      if (
+        !(await answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" }))
+      ) {
         throw new ServiceError("refused", "This question is no longer open.");
       }
     },
@@ -169,14 +171,15 @@ export function runsApiFor(pluginId: string): PluginRuns {
     subscribe(runId, listener) {
       // The listener runs inside the tenant the subscription was made in, as the events do.
       const tenantId = currentTenant();
-      return subscribe(runId, (signal) => {
+      return watchRun(runId, (signal) => {
         // The runtime asking the phone around the runner to think is not a change of the run.
-        if (signal.device) {
+        if (signal?.device) {
           return;
         }
-        const event = signal.event;
+        // No signal: the run changed in another process (the runner), which tells no event.
+        const event = signal?.event;
         const shaped: PluginRunSignal = {
-          runId: signal.runId,
+          runId,
           event: event
             ? {
                 id: event.id,
