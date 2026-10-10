@@ -30,7 +30,8 @@ import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
  * The app bar at an edge of the window, as in engenty-pro: the mark, the space, the apps the
  * plugins added, and at its end the settings and the person. A place is a filled tile, a tool a
  * line glyph; the one that is open is cut from the page's own paper. A right click on the bar
- * picks its edge and hides it; hidden, it comes out while the pointer rests at that edge.
+ * picks its edge and hides it; hidden, it comes out while the pointer rests at that edge. A
+ * phone has it along the bottom, or the top (`useAppBar`).
  */
 
 function glyph(active: boolean): string {
@@ -202,8 +203,11 @@ export function AppRail({ me }: { me: Me }) {
           onMouseEnter={hidden ? comeOut : undefined}
           onMouseLeave={hidden ? goBack : undefined}
           className={cn(
-            "hidden shrink-0 items-center bg-sidebar md:flex",
-            horizontal ? "h-14 w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
+            "flex shrink-0 items-center bg-sidebar",
+            horizontal ? "min-h-14 w-full flex-row gap-1.5 px-2" : "h-full w-16 flex-col pt-2 pb-3",
+            // Along a phone's edge, clear of the notch and the home indicator.
+            position === "bottom" && "pb-[env(safe-area-inset-bottom)]",
+            position === "top" && "pt-[env(safe-area-inset-top)]",
             hidden && cn("fixed z-50 shadow-overlay", AT_EDGE[position]),
           )}
         >

@@ -17,7 +17,7 @@ import {
 } from "../lib/session";
 import { RunnerBody } from "../runner/RunnerView";
 import { Button, Chip, cn, IconButton, LinkedText, Spinner } from "../ui";
-import { CreditsPill, UserMenu } from "./AppFrame";
+import { CreditsPill } from "./AppFrame";
 import {
   type Adding,
   AddStepPanel,
@@ -493,10 +493,6 @@ export function EditorPage() {
           )}
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
-          </span>
-          {/* On a wide screen the person stands in the app bar. */}
-          <span className="hidden sm:inline-flex md:hidden">
-            <UserMenu me={me.data} />
           </span>
         </div>
       </header>

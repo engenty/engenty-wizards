@@ -8,9 +8,9 @@ import {
   Laptop,
   LogOut,
   Plus,
-  Settings,
 } from "lucide-react";
 import {
+  type CSSProperties,
   Fragment,
   type ReactNode,
   type RefObject,
@@ -19,7 +19,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, NavLink, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
@@ -34,8 +34,8 @@ import {
   useCurrentProject,
   useMayCreate,
 } from "../lib/session";
-import { PluginFrame, useStudioPlugins } from "../plugins/host";
-import { cn, IconButton } from "../ui";
+import { useStudioPlugins } from "../plugins/host";
+import { cn } from "../ui";
 import { AppRail } from "./AppRail";
 import { NewSpaceDialog } from "./HomePage";
 import { InstallBanner } from "./InstallBanner";
@@ -509,12 +509,10 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
 /**
  * The row at the top of the page: the wordmark (the mark stands in the app bar), the space's
  * name, which switches between spaces, then the trail and the credits. A phone starts at the
- * space's name and also holds what the app bar holds on a wide screen — the space's page, the
- * apps, the settings and the person.
+ * space's name; the rest stands in its app bar along the bottom.
  */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
-  const plugins = useStudioPlugins();
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
       <span className="max-md:hidden">
@@ -526,42 +524,6 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
         {children}
       </div>
       <CreditsPill me={me} />
-      <div className="flex items-center gap-2 sm:gap-3 md:hidden">
-        {/* The space: what all wizards share, and what they keep and produce. */}
-        <NavLink
-          to="/space"
-          title={t("nav.project")}
-          aria-label={t("nav.project")}
-          className={({ isActive }) =>
-            cn(
-              "grid size-9 shrink-0 place-items-center rounded-full ring-1 ring-border-soft transition coarse:size-11",
-              isActive ? "bg-paper-2 text-ink" : "text-ink-3 hover:bg-accent hover:text-ink",
-            )
-          }
-        >
-          <Folder className="size-4" />
-        </NavLink>
-        {/* The pages plugins added, each behind its icon. */}
-        {plugins.nav.map((entry) => (
-          <PluginFrame key={entry.serial} of={entry}>
-            <IconButton
-              label={entry.label()}
-              onClick={() => navigate(entry.to)}
-              className="ring-1 ring-border-soft"
-            >
-              <entry.icon className="size-4" />
-            </IconButton>
-          </PluginFrame>
-        ))}
-        <IconButton
-          label={t("nav.settings")}
-          onClick={() => navigate("/settings")}
-          className="ring-1 ring-border-soft"
-        >
-          <Settings className="size-4" />
-        </IconButton>
-        <UserMenu me={me} />
-      </div>
     </header>
   );
 }
@@ -638,15 +600,20 @@ export function AppFrame({
   full?: boolean;
   children: ReactNode;
 }) {
-  const { position, hidden } = useAppBar();
+  const { position, hidden, phone } = useAppBar();
+  // How far the page's lower edge stands above the window's, for what docks there: the bar's
+  // height where it stands at the bottom, else the page's inset.
+  const insetBottom = phone
+    ? position === "bottom"
+      ? "calc(3.5rem + env(safe-area-inset-bottom))"
+      : "0px"
+    : position === "bottom" && !hidden
+      ? "4rem"
+      : "0.5rem";
   return (
-    // `--inset-b`: how far the page's lower edge stands above the window's, for what docks there.
     <div
-      className={cn(
-        "flex h-dvh overflow-hidden bg-sidebar [--inset-b:0px]",
-        DIRECTION[position],
-        position === "bottom" && !hidden ? "md:[--inset-b:4rem]" : "md:[--inset-b:0.5rem]",
-      )}
+      className={cn("flex h-dvh overflow-hidden bg-sidebar", DIRECTION[position])}
+      style={{ "--inset-b": insetBottom } as CSSProperties}
     >
       <AppRail me={me} />
       <div

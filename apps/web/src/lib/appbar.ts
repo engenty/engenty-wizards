@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 /**
  * Where the app bar stands and whether it shows, as in engenty-pro: picked in the bar's own
@@ -47,13 +47,38 @@ export function setAppBar(patch: Partial<AppBarPrefs>) {
   }
 }
 
-export function useAppBar(): AppBarPrefs {
+const PHONE = "(max-width: 767px)";
+
+function usePhone(): boolean {
   return useSyncExternalStore(
+    (listener) => {
+      const query = window.matchMedia(PHONE);
+      query.addEventListener("change", listener);
+      return () => query.removeEventListener("change", listener);
+    },
+    () => window.matchMedia(PHONE).matches,
+  );
+}
+
+/**
+ * The bar as this screen shows it. A phone has it along the bottom — along the top where that
+ * was picked — and never hides it: left and right are a wide screen's edges.
+ */
+export function useAppBar(): AppBarPrefs & { phone: boolean } {
+  const stored = useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     () => prefs,
+  );
+  const phone = usePhone();
+  return useMemo(
+    () =>
+      phone
+        ? { position: stored.position === "top" ? "top" : "bottom", hidden: false, phone }
+        : { ...stored, phone },
+    [stored, phone],
   );
 }
 
