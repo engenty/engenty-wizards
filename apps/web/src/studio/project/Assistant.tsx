@@ -256,10 +256,11 @@ export function Assistant({
       });
     };
     place();
-    window.addEventListener("scroll", place, { passive: true });
+    // The page scrolls inside the frame: its scroll does not bubble, but it can be caught.
+    window.addEventListener("scroll", place, { passive: true, capture: true });
     window.addEventListener("resize", place);
     return () => {
-      window.removeEventListener("scroll", place);
+      window.removeEventListener("scroll", place, { capture: true });
       window.removeEventListener("resize", place);
     };
   }, [docked]);
@@ -283,10 +284,12 @@ export function Assistant({
           </div>
         ) : null}
         {/* One tree docked or not, so the draft and the open thread stay when it docks. Docked,
-            the composer floats over a blurred band at the window's lower edge, clear of a phone's
+            the composer floats over a blurred band at the page's lower edge, clear of a phone's
             home bar; only the composer and the thread above it take the pointer. */}
         <div
-          className={dock ? "pointer-events-none fixed bottom-0 z-30 animate-dock" : undefined}
+          className={
+            dock ? "pointer-events-none fixed bottom-(--inset-b,0px) z-30 animate-dock" : undefined
+          }
           style={dock ? { left: dock.band.left, width: dock.band.width } : undefined}
         >
           {dock ? (

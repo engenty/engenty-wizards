@@ -40,7 +40,18 @@ function Splash() {
   );
 }
 
-function Studio({ children, bare, wide }: { children: ReactNode; bare?: boolean; wide?: boolean }) {
+/** `bare`: no frame at all (the setup). `full`: the frame, and the page fills it (the editor). */
+function Studio({
+  children,
+  bare,
+  wide,
+  full,
+}: {
+  children: ReactNode;
+  bare?: boolean;
+  wide?: boolean;
+  full?: boolean;
+}) {
   const me = useMe();
   const location = useLocation();
   // Signed in, the studio takes on the tenant's plugins.
@@ -62,7 +73,7 @@ function Studio({ children, bare, wide }: { children: ReactNode; bare?: boolean;
   return bare ? (
     children
   ) : (
-    <AppFrame me={me.data} wide={wide}>
+    <AppFrame me={me.data} wide={wide} full={full}>
       {children}
     </AppFrame>
   );
@@ -140,7 +151,7 @@ export function StudioApp() {
         <Route
           path="/edit/:id"
           element={
-            <Studio bare>
+            <Studio full>
               <EditorPage />
             </Studio>
           }

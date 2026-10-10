@@ -20,24 +20,56 @@ import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
 import { ownLink, sharedLink, WhereChip, whereItRuns } from "./where";
 
-/** Picks the project the studio looks at. Nothing where the tenant works with one project. */
-export function ProjectSwitcher() {
-  const { project, projects, select } = useCurrentProject();
-  // Null: as many as wanted.
-  const limit = useMe().data?.limits.projects ?? 1;
-  const mayCreate = useMayCreate();
+/** Names a new space and makes it the one the studio looks at. */
+export function NewSpaceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { select } = useCurrentProject();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const create = useMutation({
     mutationFn: () => api.post<{ id: string }>("/api/studio/projects", { name }),
     onSuccess: async ({ id }) => {
       await qc.invalidateQueries({ queryKey: ["projects"] });
       select(id);
-      setOpen(false);
       setName("");
+      onClose();
     },
   });
+  return (
+    <Dialog open={open} onClose={onClose} title={t("home.newProject")}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) {
+            create.mutate();
+          }
+        }}
+      >
+        <Input
+          autoFocus
+          placeholder={t("home.projectName")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" busy={create.isPending} disabled={!name.trim()}>
+            {t("home.newProject")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** Picks the project the studio looks at. Nothing where the tenant works with one project. */
+export function ProjectSwitcher() {
+  const { project, projects, select } = useCurrentProject();
+  // Null: as many as wanted.
+  const limit = useMe().data?.limits.projects ?? 1;
+  const mayCreate = useMayCreate();
+  const [open, setOpen] = useState(false);
   if (!project || (limit !== null && limit <= 1)) {
     return null;
   }
@@ -63,31 +95,7 @@ export function ProjectSwitcher() {
             : []),
         ]}
       />
-      <Dialog open={open} onClose={() => setOpen(false)} title={t("home.newProject")}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (name.trim()) {
-              create.mutate();
-            }
-          }}
-        >
-          <Input
-            autoFocus
-            placeholder={t("home.projectName")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <div className="mt-5 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit" busy={create.isPending} disabled={!name.trim()}>
-              {t("home.newProject")}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      <NewSpaceDialog open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

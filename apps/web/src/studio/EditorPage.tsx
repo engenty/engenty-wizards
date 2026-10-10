@@ -311,7 +311,7 @@ export function EditorPage() {
 
   if (wizard.isLoading || !me.data) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-ink-4">
+      <div className="flex flex-1 items-center justify-center text-ink-4">
         <Spinner />
       </div>
     );
@@ -400,7 +400,7 @@ export function EditorPage() {
       };
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {readOnlyNote ? (
         <div className="flex shrink-0 items-center gap-3 border-border-soft border-b bg-paper-2 px-4 py-2 text-[0.8125rem] text-ink-2 sm:px-6">
           <Lock className="size-4 shrink-0 text-ink-3" />
@@ -412,7 +412,7 @@ export function EditorPage() {
           {failed}
         </div>
       ) : null}
-      <header className="flex h-16 shrink-0 items-center gap-2 px-3 sm:px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:px-4">
         <IconButton label="Zurück" onClick={() => navigate("/")}>
           <ArrowLeft className="size-5" />
         </IconButton>
@@ -494,7 +494,8 @@ export function EditorPage() {
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
           </span>
-          <span className="hidden sm:inline-flex">
+          {/* On a wide screen the person stands in the app bar. */}
+          <span className="hidden sm:inline-flex md:hidden">
             <UserMenu me={me.data} />
           </span>
         </div>

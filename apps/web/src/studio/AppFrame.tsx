@@ -8,6 +8,7 @@ import { t } from "../lib/i18n";
 import { initialsOf, type Me, signOut, spendableCredits } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, IconButton } from "../ui";
+import { AppRail } from "./AppRail";
 import { InstallBanner } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
 import { settingsSections } from "./settings-sections";
@@ -61,9 +62,10 @@ function Trail() {
     >
       {trail.map((crumb, i) => (
         <Fragment key={`${i}:${crumb.label}`}>
-          {/* The first one sits as close to the wordmark as the others to their words: the logo's
-              own padding and the bar's gap are taken back. */}
-          <span className={cn("text-ink-4", i === 0 ? "-ml-3 mr-2" : "mx-2")}>/</span>
+          {/* On a phone the first one sits as close to the wordmark as the others to their words:
+              the logo's own padding and the bar's gap are taken back. On a wide screen the mark
+              stands in the app bar, and the trail starts by itself. */}
+          <span className={cn("text-ink-4", i === 0 ? "-ml-3 mr-2 md:hidden" : "mx-2")}>/</span>
           {crumb.to && i < trail.length - 1 ? (
             <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
               {crumb.label}
@@ -124,7 +126,8 @@ function accountState(me: Me): "linked" | "expired" | "alone" | null {
   return me.account.signedIn ? "linked" : "expired";
 }
 
-export function UserMenu({ me }: { me: Me }) {
+/** `placement`: where the menu opens — below the avatar in a top bar, beside it in the app bar. */
+export function UserMenu({ me, placement = "below" }: { me: Me; placement?: "below" | "beside" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -173,7 +176,12 @@ export function UserMenu({ me }: { me: Me }) {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute top-11 right-0 z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft">
+        <div
+          className={cn(
+            "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
+            placement === "beside" ? "bottom-0 left-full ml-3" : "top-11 right-0",
+          )}
+        >
           <div className="px-3 pt-2 pb-2.5">
             <div className="truncate font-medium text-[0.875rem]">
               {me.user.name}
@@ -264,51 +272,60 @@ export function UserMenu({ me }: { me: Me }) {
   );
 }
 
+/**
+ * The row at the top of the page: the trail and the credits. On a phone it also holds the
+ * wordmark and what the app bar holds on a wide screen — the space, the apps, the settings and
+ * the person.
+ */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   const navigate = useNavigate();
   const plugins = useStudioPlugins();
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 bg-background/85 px-3 backdrop-blur-md sm:gap-3 sm:px-6">
-      <Logo onClick={() => navigate("/")} />
+    <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
+      <span className="md:hidden">
+        <Logo onClick={() => navigate("/")} />
+      </span>
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />
         {children}
       </div>
       <CreditsPill me={me} />
-      {/* The space: what all wizards share, and what they keep and produce. */}
-      <NavLink
-        to="/space"
-        title={t("nav.project")}
-        aria-label={t("nav.project")}
-        className={({ isActive }) =>
-          cn(
-            "grid size-9 shrink-0 place-items-center rounded-full ring-1 ring-border-soft transition coarse:size-11",
-            isActive ? "bg-paper-2 text-ink" : "text-ink-3 hover:bg-accent hover:text-ink",
-          )
-        }
-      >
-        <Folder className="size-4" />
-      </NavLink>
-      {/* The pages plugins added, each behind its icon. */}
-      {plugins.nav.map((entry) => (
-        <PluginFrame key={entry.serial} of={entry}>
-          <IconButton
-            label={entry.label()}
-            onClick={() => navigate(entry.to)}
-            className="ring-1 ring-border-soft"
-          >
-            <entry.icon className="size-4" />
-          </IconButton>
-        </PluginFrame>
-      ))}
-      <IconButton
-        label={t("nav.settings")}
-        onClick={() => navigate("/settings")}
-        className="ring-1 ring-border-soft"
-      >
-        <Settings className="size-4" />
-      </IconButton>
-      <UserMenu me={me} />
+      <div className="flex items-center gap-2 sm:gap-3 md:hidden">
+        {/* The space: what all wizards share, and what they keep and produce. */}
+        <NavLink
+          to="/space"
+          title={t("nav.project")}
+          aria-label={t("nav.project")}
+          className={({ isActive }) =>
+            cn(
+              "grid size-9 shrink-0 place-items-center rounded-full ring-1 ring-border-soft transition coarse:size-11",
+              isActive ? "bg-paper-2 text-ink" : "text-ink-3 hover:bg-accent hover:text-ink",
+            )
+          }
+        >
+          <Folder className="size-4" />
+        </NavLink>
+        {/* The pages plugins added, each behind its icon. */}
+        {plugins.nav.map((entry) => (
+          <PluginFrame key={entry.serial} of={entry}>
+            <IconButton
+              label={entry.label()}
+              onClick={() => navigate(entry.to)}
+              className="ring-1 ring-border-soft"
+            >
+              <entry.icon className="size-4" />
+            </IconButton>
+          </PluginFrame>
+        ))}
+        <IconButton
+          label={t("nav.settings")}
+          onClick={() => navigate("/settings")}
+          className="ring-1 ring-border-soft"
+        >
+          <Settings className="size-4" />
+        </IconButton>
+        <UserMenu me={me} />
+      </div>
     </header>
   );
 }
@@ -346,22 +363,63 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
   );
 }
 
-/** `wide`: a page that lays out columns of its own takes the screen's width. */
-export function AppFrame({ me, wide, children }: { me: Me; wide?: boolean; children: ReactNode }) {
+/** The studio's scroll container below the top bar; a page that watches the scroll asks for it. */
+export const SCROLL_ROOT_ID = "studio-scroll";
+
+export function scrollRoot(): HTMLElement {
+  return document.getElementById(SCROLL_ROOT_ID) ?? document.documentElement;
+}
+
+/**
+ * The studio's frame: the app bar at the window's left edge and the page beside it, on a wide
+ * screen set in from the window's edge with rounded corners, a card on the bar's ground. The
+ * page scrolls inside; the bar and the top bar stay. `wide`: a page that lays out columns of its
+ * own takes the screen's width. `full`: a page that fills the frame and draws its own top bar.
+ */
+export function AppFrame({
+  me,
+  wide,
+  full,
+  children,
+}: {
+  me: Me;
+  wide?: boolean;
+  full?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <UpdateBanner />
-      <InstallBanner />
-      <TopBar me={me} />
-      <main
-        className={cn(
-          "mx-auto w-full flex-1 px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
-          wide ? "max-w-[88rem]" : "max-w-5xl",
-        )}
-      >
-        {children}
-      </main>
-      <Footer me={me} about />
+    // `--inset-b`: how far the page's lower edge stands above the window's, for what docks there.
+    <div className="flex h-dvh overflow-hidden bg-sidebar [--inset-b:0px] md:[--inset-b:0.5rem]">
+      <AppRail me={me} />
+      <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl md:shadow-elevated md:dark:ring-1 md:dark:ring-border-soft">
+          <UpdateBanner />
+          <InstallBanner />
+          {full ? (
+            <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              {children}
+            </main>
+          ) : (
+            <>
+              <TopBar me={me} />
+              {/* `relative`: what a page places out of flow without a positioned parent (a hidden
+                  file field) stays in the page's own scroll, not in a frame around it, which a
+                  jump to a section would scroll as well. */}
+              <main id={SCROLL_ROOT_ID} className="relative min-h-0 flex-1 overflow-y-auto">
+                <div
+                  className={cn(
+                    "mx-auto w-full px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
+                    wide ? "max-w-[88rem]" : "max-w-5xl",
+                  )}
+                >
+                  {children}
+                </div>
+                <Footer me={me} about />
+              </main>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

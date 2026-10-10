@@ -5,7 +5,7 @@ import { t } from "../lib/i18n";
 import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
-import { useCrumbs } from "./AppFrame";
+import { scrollRoot, useCrumbs } from "./AppFrame";
 import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
 import { FileView } from "./project/Documents";
 import { CategoryItems, ItemRow, KnowledgeOverview, useKnowledge } from "./project/Knowledge";
@@ -38,8 +38,8 @@ import {
 } from "./settings-menu";
 
 /**
- * The section in view: the last whose top passed the upper third of the window (below the
- * sticky bars); at the end of the page the last one, which may be too short to get there.
+ * The section in view: the last whose top passed the upper third of the page's scroll
+ * container; at its end the last one, which may be too short to get there.
  */
 function useSectionInView(ids: string[]): string | undefined {
   const key = ids.join(" ");
@@ -49,10 +49,11 @@ function useSectionInView(ids: string[]): string | undefined {
     let frame = 0;
     const update = () => {
       frame = 0;
+      const root = scrollRoot();
       const atEnd =
-        window.scrollY > 0 &&
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      const line = Math.max(160, window.innerHeight / 3);
+        root.scrollTop > 0 && root.clientHeight + root.scrollTop >= root.scrollHeight - 4;
+      const top = root === document.documentElement ? 0 : root.getBoundingClientRect().top;
+      const line = top + Math.max(120, root.clientHeight / 3);
       let found = list[0];
       for (const id of list) {
         const top = document.getElementById(id)?.getBoundingClientRect().top;
@@ -66,11 +67,12 @@ function useSectionInView(ids: string[]): string | undefined {
       frame ||= requestAnimationFrame(update);
     };
     update();
-    window.addEventListener("scroll", schedule, { passive: true });
+    // The page scrolls inside the frame: its scroll does not bubble, but it can be caught.
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("scroll", schedule, { capture: true });
       window.removeEventListener("resize", schedule);
     };
   }, [key]);
@@ -287,7 +289,7 @@ export function ProjectPage() {
         <div className="grid gap-6 md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
           <aside
             className={cn(
-              "min-w-0 md:sticky md:top-20 md:self-start",
+              "min-w-0 md:sticky md:top-6 md:self-start",
               narrow && phone === 2 && "hidden",
               narrow && pageStep === "back" && stepClass("back"),
             )}

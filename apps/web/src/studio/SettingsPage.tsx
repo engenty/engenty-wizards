@@ -231,7 +231,7 @@ export function SettingsPage() {
         <div className="grid gap-6 md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
           <aside
             className={cn(
-              "min-w-0 md:sticky md:top-20 md:self-start",
+              "min-w-0 md:sticky md:top-6 md:self-start",
               narrow && phone === 2 && "hidden",
               narrow && pageStep === "back" && stepClass("back"),
             )}

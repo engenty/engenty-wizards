@@ -5,12 +5,13 @@ import { Card, cn, IconButton, Spinner } from "../../ui";
 import type { Layout, SaveState } from "./data";
 
 /**
- * Where the sections menu jumps to (`projectSections`): the section's heading lands below the
- * sticky top bar, and below the section picker on narrow screens.
+ * Where the sections menu jumps to (`projectSections`): the section's heading lands at the top
+ * of the page's scroll container with the page's own padding above it, and below the section
+ * picker on narrow screens.
  */
 export function Anchor({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <div id={id} className="scroll-mt-24 max-md:scroll-mt-36">
+    <div id={id} className="scroll-mt-6 max-md:scroll-mt-20">
       {children}
     </div>
   );

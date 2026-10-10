@@ -6,6 +6,12 @@
 
 @source "../";
 
+/* The app bar is the shell's ground: in light one step below the page's paper, so the page
+   beside it reads as the raised card. Dark sets its own step, below the stage (`.dark` below). */
+:root {
+  --raw-sidebar: var(--paper-2);
+}
+
 /* Dark is not the near-black of the base palette: the page takes the deep
    colour of an engenty (`--stage`, set per wizard by `useStage`), the ground
    the jelly coat is made for. Every surface and ink step derives from it, so
