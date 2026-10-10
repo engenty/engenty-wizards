@@ -5,10 +5,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node --input-type=module -e \"import { cpSync } from 'node:fs'; cpSync('src/db/migrations', 'dist/db/migrations', { recursive: true });\"",
+    "build": "tsc -p tsconfig.json && node --input-type=module -e \"import { cpSync } from 'node:fs'; cpSync('src/db/migrations', 'dist/db/migrations', { recursive: true });\" && node scripts/build-apple.mjs",
     "db:generate": "drizzle-kit generate && DB_SCHEMA=control drizzle-kit generate",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:apple": "node scripts/build-apple.mjs --force"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.54",

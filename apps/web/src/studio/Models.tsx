@@ -75,10 +75,21 @@ interface ModelsState {
   creditFallback: boolean;
   keys: Record<ProviderId, boolean>;
   ways: Record<ModelClass, ClassWay>;
+  /** Apple Intelligence on this Mac: shown where the machine can run it, picked once it answers. */
+  apple?: AppleStatus | null;
   prices: Partial<Record<ModelClass, ClassPrice | null>> | null;
   /** The media models the credits pay for, which a binding may name. */
   creditModels: CreditModel[];
 }
+
+interface AppleStatus {
+  supported: boolean;
+  available: boolean;
+  reason: "device" | "os" | "missing" | "off" | "loading" | null;
+}
+
+/** A model on this machine: Ollama, or Apple Intelligence on a Mac. */
+type LocalBy = "ollama" | "apple";
 
 interface ModelsInput {
   source?: ModelsState["source"];
@@ -171,7 +182,7 @@ const words = (labels: { de: string; en: string } | undefined, at: Lang) => labe
 type Choice =
   | { kind: "client"; id: HarnessId }
   | { kind: "key"; provider: ProviderId }
-  | { kind: "local" }
+  | { kind: "local"; by: LocalBy }
   | { kind: "credits" };
 
 function sameChoice(a: Choice | null, b: Choice | null): boolean {
@@ -193,7 +204,10 @@ function choiceOf(state: ModelsState, cap: ModelCapability, place: Place): Choic
     return { kind: "credits" };
   }
   if (bound?.startsWith("ollama:")) {
-    return { kind: "local" };
+    return { kind: "local", by: "ollama" };
+  }
+  if (bound?.startsWith("apple:")) {
+    return { kind: "local", by: "apple" };
   }
   const provider = bound ? providerOfRef(bound) : null;
   if (provider) {
@@ -209,7 +223,7 @@ function choiceOf(state: ModelsState, cap: ModelCapability, place: Place): Choic
     case "key":
       return providerInfo(way.by ?? "") ? { kind: "key", provider: way.by as ProviderId } : null;
     case "local":
-      return { kind: "local" };
+      return { kind: "local", by: way.by === "apple" ? "apple" : "ollama" };
     case "credits":
       return { kind: "credits" };
     default:
@@ -257,7 +271,10 @@ function wayText(way: ClassWay, place: Place): { text: string; tone: "done" | "o
     case "key":
       return { text: providerInfo(way.by ?? "")?.name ?? way.by ?? "", tone: "done" };
     case "local":
-      return { text: t("models.way.local"), tone: "done" };
+      return {
+        text: way.by === "apple" ? t("models.optApple") : t("models.way.local"),
+        tone: "done",
+      };
     case "credits":
       return {
         text: place.cloud ? t("models.way.creditsTeam") : t("models.way.credits"),
@@ -931,7 +948,10 @@ function CapabilityPanel({
         return;
       }
       case "local":
-        save.mutate({ source: "own", bindings: every("ollama:qwen3") });
+        save.mutate({
+          source: "own",
+          bindings: next.by === "apple" ? appleBindings(state) : every("ollama:qwen3"),
+        });
         return;
       case "credits":
         save.mutate(
@@ -989,13 +1009,23 @@ function CapabilityPanel({
                 isText(cap) && !place.cloud ? t("models.optOther") : t("models.optCreditsGroup")
               }
             >
+              {isText(cap) && !place.cloud && state.apple?.supported ? (
+                <Option
+                  title={t("models.optApple")}
+                  note={appleNote(state.apple)}
+                  noteTone={state.apple.available ? "done" : undefined}
+                  selected={chosen?.kind === "local" && chosen.by === "apple"}
+                  disabled={!place.canEdit || !state.apple.available}
+                  onPick={() => pick({ kind: "local", by: "apple" })}
+                />
+              ) : null}
               {isText(cap) && !place.cloud ? (
                 <Option
                   title={t("models.optLocal")}
                   note={t("models.optLocalNote")}
-                  selected={chosen?.kind === "local"}
+                  selected={chosen?.kind === "local" && chosen.by === "ollama"}
                   disabled={!place.canEdit}
-                  onPick={() => pick({ kind: "local" })}
+                  onPick={() => pick({ kind: "local", by: "ollama" })}
                 />
               ) : null}
               <Option
@@ -1095,7 +1125,13 @@ function CapabilityPanel({
           )
         ) : null}
 
-        {chosen?.kind === "local" ? <OllamaPart state={state} disabled={!place.canEdit} /> : null}
+        {chosen?.kind === "local" ? (
+          chosen.by === "apple" ? (
+            <ApplePart state={state} place={place} />
+          ) : (
+            <OllamaPart state={state} disabled={!place.canEdit} />
+          )
+        ) : null}
 
         {chosen?.kind === "credits" && place.credits ? (
           isText(cap) ? (
@@ -1136,6 +1172,46 @@ function CapabilityPanel({
         ) : null}
       </Card>
     </div>
+  );
+}
+
+/**
+ * Apple Intelligence thinks the short classes; the long ones keep their way, unless that was a
+ * local model too — then they are unbound and the credits or nothing step in, as the hint says.
+ */
+function appleBindings(state: ModelsState): Partial<Record<ModelClass, string>> {
+  const keep = (cls: ModelClass) => {
+    const bound = state.bindings[cls] ?? "";
+    return /^(ollama|apple):/.test(bound) ? "" : bound;
+  };
+  return {
+    classifier: "apple:default",
+    standard: "apple:default",
+    high: keep("high"),
+    highest: keep("highest"),
+  };
+}
+
+/** Why Apple Intelligence can or cannot be picked, under its name. */
+function appleNote(apple: AppleStatus): string {
+  if (apple.available) {
+    return t("models.optAppleNote");
+  }
+  switch (apple.reason) {
+    case "off":
+      return t("models.appleOff");
+    case "loading":
+      return t("models.appleLoading");
+    default:
+      return t("models.appleDevice");
+  }
+}
+
+function ApplePart({ state, place }: { state: ModelsState; place: Place }) {
+  return (
+    <Part title={t("models.optApple")}>
+      <Hint>{t("models.appleHint", { way: wayText(state.ways.high, place).text })}</Hint>
+    </Part>
   );
 }
 

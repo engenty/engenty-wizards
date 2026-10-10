@@ -123,6 +123,13 @@ const de = {
   "models.optKey": "Eigener API Key",
   "models.optLocal": "Lokales Modell",
   "models.optLocalNote": "Ollama auf diesem Computer",
+  "models.optApple": "Apple Intelligence",
+  "models.optAppleNote": "auf diesem Mac, ohne Internet",
+  "models.appleOff": "ausgeschaltet – Systemeinstellungen → Apple Intelligence & Siri",
+  "models.appleLoading": "Apple lädt das Modell noch",
+  "models.appleDevice": "nicht auf diesem Mac",
+  "models.appleHint":
+    "Kurze Texte und Entscheidungen (Classifier, Standard) denkt das Modell von Apple Intelligence auf diesem Mac – nichts verlässt ihn. Recherche, lange Dokumente und Code (High, Highest): {way}.",
   "models.noteIncluded": "im Abo enthalten",
   "models.noteSignedOut": "nicht angemeldet",
   "models.noteMissing": "nicht installiert",
@@ -226,6 +233,9 @@ const de = {
   "setup.noHarness":
     "Noch kein KI-Client installiert. Wähle einen – er wird hier installiert – oder trage eigene Schlüssel ein.",
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic oder Ollama.",
+  "setup.appleDesc": "Das Modell auf diesem Mac – ohne Konto, ohne Internet.",
+  "setup.appleHint":
+    "Apple Intelligence denkt kurze Texte und Entscheidungen auf diesem Mac; nichts verlässt ihn. Für Recherche, lange Dokumente und Code legst du später unter „Modelle & Konto“ einen weiteren Weg an.",
   "setup.recommended": "Empfohlen",
   "setup.done": "Zum Studio",
   "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
@@ -1424,6 +1434,13 @@ const en: Record<Key, string> = {
   "models.optKey": "Own API key",
   "models.optLocal": "Local model",
   "models.optLocalNote": "Ollama on this computer",
+  "models.optApple": "Apple Intelligence",
+  "models.optAppleNote": "on this Mac, offline",
+  "models.appleOff": "switched off – System Settings → Apple Intelligence & Siri",
+  "models.appleLoading": "Apple is still loading the model",
+  "models.appleDevice": "not on this Mac",
+  "models.appleHint":
+    "Short texts and decisions (Classifier, Standard) think on Apple Intelligence's model on this Mac; nothing leaves it. Research, long documents and code (High, Highest): {way}.",
   "models.noteIncluded": "included in the plan",
   "models.noteSignedOut": "not signed in",
   "models.noteMissing": "not installed",
@@ -1526,6 +1543,9 @@ const en: Record<Key, string> = {
   "setup.noHarness":
     "No AI client installed yet. Pick one — it installs right here — or enter your own keys.",
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic or Ollama.",
+  "setup.appleDesc": "The model on this Mac – no account, no internet.",
+  "setup.appleHint":
+    'Apple Intelligence thinks short texts and decisions on this Mac; nothing leaves it. For research, long documents and code, add another way later under "Models & account".',
   "setup.recommended": "Recommended",
   "setup.done": "Open the studio",
   "setup.untilWorks": "The studio opens once the test works.",

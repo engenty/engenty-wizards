@@ -3,10 +3,12 @@
 // what `npx wizards` runs and what the installer (apps/web/public/install.sh) and the
 // desktop app install into ~/.engenty/wizards.
 //
-//   node scripts/npm-package.mjs [--skip-build] [--version 1.2.3]
+//   node scripts/npm-package.mjs [--skip-build] [--version 1.2.3] [--apple <wizards-apple>]
 //
 // --skip-build  reuse the dist/ folders of the checkout instead of building
 // --version     the version to publish (default: the root package.json's)
+// --apple       the `wizards-apple` helper built on a Mac (apps/runtime/scripts/build-apple.mjs),
+//               for a package made elsewhere; a Mac's own build ships as it is
 //
 // Out: dist/npm/wizards/ (the staged folder) and dist/npm/wizards-<version>.tgz.
 // Publish with `npm publish dist/npm/wizards-<version>.tgz`.
@@ -78,6 +80,15 @@ cpSync(join(root, "modules"), join(stage, "modules"), {
   filter: (source) => !/[\\/](node_modules|\.turbo)$/.test(source),
 });
 chmodSync(join(stage, "bin", "wizards.mjs"), 0o755);
+// Apple Intelligence as a model needs the helper only a Mac builds: handed in where the package
+// is made on Linux (release.yml), else the runtime's own build left it in dist/apple.
+const apple = option("apple");
+if (apple) {
+  const to = join(stage, "apps", "runtime", "dist", "apple", "wizards-apple");
+  mkdirSync(join(stage, "apps", "runtime", "dist", "apple"), { recursive: true });
+  cpSync(apple, to);
+  chmodSync(to, 0o755);
+}
 
 // --- 3. package.json --------------------------------------------------------------------
 // The runtime's dependencies at the versions the checkout's lockfile resolved: what was tested

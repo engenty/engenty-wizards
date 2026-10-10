@@ -8,7 +8,6 @@ import { env } from "../env.js";
 import { type BridgeTool, openBridge } from "../mcp/bridge.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import { extensionOf, jsonInstruction, parseJsonAnswer, renderPrompt } from "./prompt.js";
-import type { Harness } from "./types.js";
 
 /**
  * An installed AI client as a model: every call runs the client once, headless, on the person's
@@ -60,7 +59,12 @@ export interface HarnessAnswer {
   stopReason?: string;
 }
 
-export type HarnessMeta = Pick<Harness, "id" | "name" | "exhausted">;
+/** Who answers, as a failure names it: an installed client, or Apple Intelligence (./apple.ts). */
+export interface HarnessMeta {
+  id: string;
+  name: string;
+  exhausted?: string;
+}
 
 const workDir = join(env.dataDir, "harness");
 
@@ -147,6 +151,8 @@ export abstract class HarnessModel implements V3 {
   readonly supportedUrls = {};
   /** Whether the client validates structured output against the schema itself. */
   protected readonly nativeSchema: boolean = false;
+  /** Whether the client runs a call's tools (over the bridge); else they are left out, with a warning. */
+  protected readonly usesTools: boolean = true;
   protected readonly effort?: Effort;
   protected readonly harness: HarnessMeta;
   private readonly executors = new Map<string, Executor>();
@@ -180,7 +186,7 @@ export abstract class HarnessModel implements V3 {
     const bridged: BridgeTool[] = [];
     let webSearch = false;
     for (const tool of options.tools ?? []) {
-      if (tool.type !== "function") {
+      if (tool.type !== "function" || !this.usesTools) {
         warnings.push({ type: "unsupported", feature: `tool ${tool.name}` });
         continue;
       }

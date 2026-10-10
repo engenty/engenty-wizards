@@ -25,6 +25,7 @@ A capability's page asks "Who does it?":
 |---|---|---|
 | Your subscription | Claude Code, Codex, Gemini CLI or Cursor Agent on this computer, on your sign-in there (text; Codex also images) | Your subscription |
 | Own API key | OpenAI, Anthropic, Google Gemini, fal.ai, ElevenLabs, Replicate or Vercel AI Gateway | The provider bills your key |
+| Apple Intelligence | The model of Apple Intelligence on this Mac (text: Classifier and Standard) — shown on a Mac with Apple silicon on macOS 26 or later | Nothing |
 | Local model | [Ollama](https://ollama.com) on this computer (text) | Nothing |
 | engenty credits | Your account's credits; engenty picks the model, or you pick one it offers (FLUX on fal, ElevenLabs voices, Veo …) | Credits |
 
@@ -34,6 +35,19 @@ hear, a 4-second clip or a transcript. A try costs like a real call.
 With an account, credits step in where nothing of your own is set up — videos without a key of
 your own, say. The switch under "engenty credits" turns that off; then a capability without a way
 of its own does not run.
+
+## Apple Intelligence
+
+On a Mac with Apple silicon and macOS 26 or later, "Text & reasoning" offers Apple Intelligence:
+the model Apple keeps on the Mac. Nothing leaves the machine, nothing is signed in and nothing
+is paid. It needs Apple Intelligence switched on (System Settings → Apple Intelligence & Siri);
+until then the choice says why it waits.
+
+The model is small and reads at most 4,096 tokens for a prompt and its answer together. So it
+takes the classes Classifier and Standard — decisions, picking values out of text, short copy —
+while High and Highest keep the way they had (a key, an installed client or the credits). A
+step whose text is too long for it fails with a note that says so; bind that class elsewhere.
+The binding is `apple:default`; `apple:tagging` is Apple's adapter for tagging and extraction.
 
 ## Keys
 

@@ -35,6 +35,7 @@ import {
 } from "ai";
 import { accountToken, linkedAccount } from "./auth/account.js";
 import { env } from "./env.js";
+import { appleModel, appleStatus, appleUnavailable } from "./harness/apple.js";
 import {
   detectHarness,
   type Harness,
@@ -285,6 +286,9 @@ function parse(ref: string): { provider: string | null; id: string; vendor: stri
 
 const vendorOf = (ref: string) => parse(ref).vendor;
 
+/** A model on this machine: Ollama, or Apple Intelligence on a Mac (harness/apple.ts). */
+const isLocalProvider = (provider: string | null) => provider === "ollama" || provider === "apple";
+
 /** The part of `codex/default` after the client. */
 const aliasOf = (id: string) => id.split("/").slice(1).join("/");
 
@@ -294,7 +298,7 @@ function reachable(cfg: ModelConfig, ref: string): boolean {
     return false;
   }
   const { provider, vendor } = parse(ref);
-  if ((provider === null && isHarnessVendor(vendor)) || provider === "ollama") {
+  if ((provider === null && isHarnessVendor(vendor)) || isLocalProvider(provider)) {
     // An installed client and a local model are of this machine.
     return !managed;
   }
@@ -546,6 +550,13 @@ async function ownLanguageModel(
         }).chat(id),
         gateway: false,
       };
+    case "apple": {
+      const status = await appleStatus();
+      if (!status.available) {
+        throw new ModelUnavailableError(appleUnavailable(status));
+      }
+      return { model: appleModel(id), gateway: false };
+    }
     case "openai":
       return { model: createOpenAI({ apiKey: need(cfg, "openai") })(id), gateway: false };
     case "anthropic":
@@ -1030,14 +1041,20 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       const { provider, vendor } = parse(ref);
       const client = provider === null && isHarnessVendor(vendor);
       ways[cls] = {
-        kind: client ? "client" : provider === "ollama" ? "local" : "key",
+        kind: client ? "client" : isLocalProvider(provider) ? "local" : "key",
         by: client
           ? vendor
-          : providerOfRef(ref) === "gateway" && !cfg.keys.gateway
-            ? vendor
-            : providerOfRef(ref),
+          : isLocalProvider(provider)
+            ? provider
+            : providerOfRef(ref) === "gateway" && !cfg.keys.gateway
+              ? vendor
+              : providerOfRef(ref),
         ref,
-        problem: client ? null : await gatewayProblem(cls, ref),
+        problem: client
+          ? null
+          : provider === "apple"
+            ? await appleProblem()
+            : await gatewayProblem(cls, ref),
       };
       continue;
     }
@@ -1059,6 +1076,12 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       : { kind: "none", by: null, ref: "", problem: problem ?? missingText(cfg, cls) };
   }
   return ways;
+}
+
+/** Why Apple Intelligence does not answer right now; null while it does. */
+async function appleProblem(): Promise<string | null> {
+  const status = await appleStatus();
+  return status.available ? null : appleUnavailable(status);
 }
 
 /** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */
@@ -1083,6 +1106,8 @@ export async function modelSettings() {
       boolean
     >,
     ways: await classWays(),
+    /** Apple Intelligence on this Mac: shown where the machine can run it, picked once it answers. */
+    apple: managed ? null : await appleStatus(),
     /** What a class costs on the credits, where they are at hand. */
     prices: (await classCatalog())?.classes ?? null,
     /** The media models the credits pay for, which a binding may name. */

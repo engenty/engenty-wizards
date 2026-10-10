@@ -72,7 +72,7 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
   }
   if (!clients.some((state) => state.path)) {
     console.log(
-      `  ${no} No AI client: the studio needs an API key or Ollama instead. ${dim("`setup` installs one.")}`,
+      `  ${no} No AI client: the studio needs an API key, Ollama or Apple Intelligence (a Mac) instead. ${dim("`setup` installs one.")}`,
     );
   }
   for (const problem of problems) {

@@ -29,11 +29,31 @@ permissions:
   contents: read
 
 jobs:
+  # Apple Intelligence as a model (apps/runtime/src/harness/apple.ts) runs through a Swift helper
+  # that only a Mac with the macOS 26 SDK builds; the package made on Linux takes it from here.
+  apple:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build wizards-apple
+        run: node apps/runtime/scripts/build-apple.mjs --force
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apple-helper
+          path: apps/runtime/dist/apple/wizards-apple
+          if-no-files-found: error
+
   package:
+    needs: apple
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: apple-helper
+          path: dist/apple-helper
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -46,7 +66,7 @@ jobs:
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
 
       - name: Pack
-        run: node scripts/npm-package.mjs
+        run: node scripts/npm-package.mjs --apple dist/apple-helper/wizards-apple
 
       - uses: actions/upload-artifact@v7
         with:
