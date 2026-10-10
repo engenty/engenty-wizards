@@ -950,7 +950,10 @@ const de = {
   "ask.up": "Nach oben",
   "ask.down": "Nach unten",
   "ask.pictureHint":
-    "Das ist die Seite, die der Wizard geöffnet hat. Du kannst auch direkt ins Bild klicken und tippen.",
+    "Das ist die Seite, die der Wizard geöffnet hat, live. Du kannst auch direkt hineinklicken und tippen.",
+  "browser.takeOver": "Übernehmen",
+  "browser.handBack": "Zurückgeben",
+  "browser.driving": "Du steuerst den Browser – klick und tipp in die Seite. Der Wizard wartet.",
   "ask.remember": "Anmeldung für nächstes Mal merken",
   "ask.private":
     "Was du eingibst, geht direkt in die Seite. Die KI bekommt es nicht zu sehen. Gemerkte Anmeldungen werden verschlüsselt gespeichert.",
@@ -1753,10 +1756,10 @@ const en: Record<Key, string> = {
   "where.sending": "Being sent",
   "where.missing": "Not in the cloud",
   "home.steps": "{n} steps",
+  "home.allChannels": "All channels",
   "home.newProject": "New space",
   "home.projectName": "Space name",
   "home.projectLimit": "At most {n} spaces",
-  "home.allChannels": "All channels",
   "team.title": "Team",
   "team.hint":
     "Who is in the team and which plan it is on. Inviting and managing happens in the account.",
@@ -2047,9 +2050,6 @@ const en: Record<Key, string> = {
   "talk.camera": "Switch the camera on",
   "talk.cameraOff": "Switch the camera off",
   "talk.cameraDenied": "The camera is not allowed for this page.",
-  "chat.skip": "Skip",
-  "chat.skipped": "Skipped",
-  "chat.change": "Change",
   "video.join": "Join",
   "video.rejoin": "Rejoin",
   "video.leave": "Leave",
@@ -2064,6 +2064,9 @@ const en: Record<Key, string> = {
   "video.chat": "Chat",
   "talk.joinHint":
     "The microphone is asked for when you start, the camera only when you switch it on. The chat beside it follows along and takes what a voice cannot.",
+  "chat.skip": "Skip",
+  "chat.skipped": "Skipped",
+  "chat.change": "Change",
   "chat.placeholder": "Your answer …",
   "chat.above": "Answer above in the chat",
   "chat.required": "I need an answer for this one.",
@@ -2325,7 +2328,10 @@ const en: Record<Key, string> = {
   "ask.up": "Scroll up",
   "ask.down": "Scroll down",
   "ask.pictureHint":
-    "This is the page the wizard has open. You can also click and type right in the picture.",
+    "This is the page the wizard has open, live. You can also click and type right in it.",
+  "browser.takeOver": "Take over",
+  "browser.handBack": "Hand back",
+  "browser.driving": "You are driving the browser – click and type in the page. The wizard waits.",
   "ask.remember": "Remember this sign-in for next time",
   "ask.private":
     "What you enter goes straight into the page. The AI never sees it. Remembered sign-ins are stored encrypted.",

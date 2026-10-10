@@ -173,6 +173,11 @@ export const env = {
   replicateKey: str("REPLICATE_API_TOKEN"),
   /** TypeSafe's own API, for the classifier that checks what a search found (Jev). */
   typesafeKey: str("TYPESAFE_API_KEY"),
+  /**
+   * `off`: agent steps get no `browser_run_fast`, where a decision model would pick each click
+   * on a page. Otherwise they get it wherever a decision model can be reached.
+   */
+  browserFastLoop: str("BROWSER_FAST_LOOP") !== "off",
   ollamaUrl: str("OLLAMA_URL", "http://127.0.0.1:11434/v1"),
 
   /** What each model class runs on when this runtime resolves classes itself (own keys, Ollama). */

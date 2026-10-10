@@ -114,7 +114,7 @@ export async function buildStepTools(
   const files = new FileKeeper(ctx, assets);
 
   if (allowed.has("browser")) {
-    Object.assign(tools, browserTools(ctx, assets, files));
+    Object.assign(tools, await browserTools(ctx, assets, files));
   }
 
   // The wizard's lists and files, the documents the person gave and the project's documents are

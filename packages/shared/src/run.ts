@@ -122,7 +122,8 @@ export type AskAnswer =
 
 /** One thing the person does in the wizard's browser while it waits for them. */
 export type BrowserAct =
-  | { type: "click"; x: number; y: number }
+  /** Where on the picture, as a share of its width and height (0–1). */
+  | { type: "click"; fx: number; fy: number }
   | { type: "type"; text: string }
   | { type: "key"; key: "Enter" | "Tab" | "Backspace" | "Escape" }
   | { type: "scroll"; dy: number };
@@ -179,7 +180,23 @@ export const RUN_NOTES = {
   readsMany: { de: "Liest {count} Dokumente", en: "Reading {count} documents" },
   opens: { de: "Öffnet {name}", en: "Opening {name}" },
   clicks: { de: "Klickt im Browser", en: "Clicking in the browser" },
+  clicksOn: { de: "Klickt auf „{name}“", en: "Clicking “{name}”" },
   types: { de: "Tippt im Browser", en: "Typing in the browser" },
+  typesText: { de: "Tippt „{text}“", en: "Typing “{text}”" },
+  selects: { de: "Wählt „{option}“", en: "Choosing “{option}”" },
+  scrolls: { de: "Scrollt", en: "Scrolling" },
+  presses: { de: "Drückt {key}", en: "Pressing {key}" },
+  goesBack: { de: "Geht eine Seite zurück", en: "Going back a page" },
+  waitsForPage: { de: "Wartet auf die Seite", en: "Waiting for the page" },
+  fastLoop: { de: "Erledigt im Browser: {goal}", en: "Doing in the browser: {goal}" },
+  personDrives: {
+    de: "Du steuerst den Browser – der Wizard wartet",
+    en: "You are driving the browser – the wizard waits",
+  },
+  agentDrives: {
+    de: "Der Wizard macht im Browser weiter",
+    en: "The wizard carries on in the browser",
+  },
   looksAtPage: { de: "Sieht sich die Seite an", en: "Looking at the page" },
   waitsForSignIn: {
     de: "Wartet auf deine Anmeldung bei {name}",

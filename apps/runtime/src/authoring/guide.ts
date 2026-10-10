@@ -148,10 +148,13 @@ type AgentStep = {
 //   project_list (by Kategorien), page_read / table_read / project_document (an item whole, by its path).
 // "pages" brings: page_read / page_write — Markdown pages of the space the wizard keeps for every run (notes, a log
 //   that grows with append), shown to the admin under Space → Daten; page_read also reads Wissen by path.
-// "browser" brings: browser_open/click/type, browser_screenshot (the model looks at the page),
+// "browser" brings: browser_open/read/click/type/select/scroll/press/back/wait, browser_screenshot (the model looks at the page),
+//   browser_run_fast (a decision model clicks through a page's mechanical part, where one is reached),
 //   browser_request_credentials (the PERSON types a login into the page — the model never sees it; sign-ins can be remembered),
-//   browser_request_user (the person solves a captcha or "continue with Google" in a picture of the page),
+//   browser_request_user (the person solves a captcha or "continue with Google" in the live page; they can also take the browser over any time),
 //   browser_download (keeps a file from a signed-in site).
+//   It clicks cookie banners away by itself with the least consent (only necessary / reject all) —
+//   no need to say so in the instructions.
 
 type SurfaceStep = {
   type: "surface"

@@ -9,6 +9,7 @@ import { streamSSE } from "hono/streaming";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { principalOf } from "../auth/index.js";
+import { MARK_FOCUSED_PERSONAL } from "../browser/snapshot.js";
 import {
   ConnectError,
   connectionViews,
@@ -21,7 +22,7 @@ import {
 import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-connections.js";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
-import { signalChanged, subscribe } from "../engine/events.js";
+import { emitEvent, signalChanged, subscribe } from "../engine/events.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
 import {
@@ -664,35 +665,119 @@ export const runRoutes = new Hono()
     }
     return c.json({ ok: true });
   })
-  // The page the wizard's browser shows: the person sees what they are asked to sign in to.
-  .get("/:id/browser/screen", async (c) => {
+  // Who drives the wizard's browser: the wizard, or the person who took it over.
+  .get("/:id/browser/seat", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const page = run?.status === "running" ? liveResources(run.id)?.openPage() : null;
-    if (!page) {
+    const resources = run?.status === "running" ? liveResources(run.id) : null;
+    if (!resources?.openPage()) {
+      return c.json({ error: "not found" }, 404);
+    }
+    return c.json({ seat: resources.seatHolder() });
+  })
+  // The person takes the wizard's browser over, or hands it back. While they hold it, the
+  // wizard's browser steps wait.
+  .post("/:id/browser/seat", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const resources = run?.status === "running" ? liveResources(run.id) : null;
+    if (!(run && resources?.openPage())) {
+      return c.json({ error: "Der Wizard hat gerade keinen Browser offen." }, 409);
+    }
+    const { to } = z.object({ to: z.enum(["person", "agent"]) }).parse(await c.req.json());
+    if (resources.seatHolder() !== to) {
+      resources.setSeat(to);
+      await emitEvent(run.id, run.cursor, "info", {
+        code: to === "person" ? "personDrives" : "agentDrives",
+      }).catch(() => undefined);
+    }
+    return c.json({ seat: to });
+  })
+  // The wizard's browser as it works, as a picture that keeps changing (MJPEG, for an <img>):
+  // a new frame whenever the page repaints, at most about five a second. Ends with the run's
+  // browser.
+  .get("/:id/browser/live", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const resources = run?.status === "running" ? liveResources(run.id) : null;
+    if (!resources?.openPage()) {
       return c.notFound();
     }
-    const jpeg = await page.screenshot({ type: "jpeg", quality: 70 }).catch(() => null);
-    if (!jpeg) {
-      return c.notFound();
-    }
-    const size = page.viewportSize() ?? { width: 1280, height: 900 };
-    return c.body(new Uint8Array(jpeg), 200, {
-      "content-type": "image/jpeg",
-      "cache-control": "no-store",
-      "x-page-width": String(size.width),
-      "x-page-height": String(size.height),
+    const boundary = "frame";
+    const encoder = new TextEncoder();
+    let stop: () => void = () => undefined;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        let latest: Buffer | null = null;
+        let sentAt = 0;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const send = () => {
+          timer = null;
+          if (!latest) {
+            return;
+          }
+          sentAt = Date.now();
+          const head = `--${boundary}\r\nContent-Type: image/jpeg\r\nContent-Length: ${latest.length}\r\n\r\n`;
+          try {
+            controller.enqueue(encoder.encode(head));
+            controller.enqueue(new Uint8Array(latest));
+            controller.enqueue(encoder.encode("\r\n"));
+          } catch {
+            stop();
+          }
+          latest = null;
+        };
+        const unwatch = resources.watchBrowser((frame) => {
+          if (!frame) {
+            stop();
+            try {
+              controller.close();
+            } catch {
+              // already closed by the viewer
+            }
+            return;
+          }
+          latest = frame;
+          if (!timer) {
+            timer = setTimeout(send, Math.max(0, 200 - (Date.now() - sentAt)));
+          }
+        });
+        stop = () => {
+          if (timer) {
+            clearTimeout(timer);
+          }
+          unwatch();
+        };
+      },
+      cancel() {
+        stop();
+      },
+    });
+    c.req.raw.signal.addEventListener("abort", () => stop());
+    return new Response(body, {
+      headers: {
+        "content-type": `multipart/x-mixed-replace; boundary=${boundary}`,
+        "cache-control": "no-store",
+        "x-accel-buffering": "no",
+      },
     });
   })
-  // While the wizard waits for a sign-in, the person can use its page: click, type, scroll.
+  // While the wizard waits for a sign-in, or the person took its browser over, they use its
+  // page: click, type, scroll. What they type is theirs: no reading of the page gives it to a
+  // model.
   .post("/:id/browser/act", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
-    const page = run && pendingAsk(run.id) ? liveResources(run.id)?.openPage() : null;
-    if (!page) {
+    const resources = run ? liveResources(run.id) : null;
+    const theirs = run && (pendingAsk(run.id) || resources?.seatHolder() === "person");
+    const page = theirs ? resources?.openPage() : null;
+    if (!(run && resources && page)) {
       return c.json({ error: "Der Wizard wartet gerade nicht auf dich." }, 409);
     }
+    resources.touchSeat();
     const act = z
       .discriminatedUnion("type", [
-        z.object({ type: z.literal("click"), x: z.number().min(0), y: z.number().min(0) }),
+        z.object({
+          type: z.literal("click"),
+          fx: z.number().min(0).max(1),
+          fy: z.number().min(0).max(1),
+        }),
         z.object({ type: z.literal("type"), text: z.string().max(500) }),
         z.object({ type: z.literal("key"), key: z.enum(["Enter", "Tab", "Backspace", "Escape"]) }),
         z.object({ type: z.literal("scroll"), dy: z.number().min(-2000).max(2000) }),
@@ -705,12 +790,14 @@ export const runRoutes = new Hono()
           .context()
           .waitForEvent("page", { timeout: 1500 })
           .catch(() => null);
-        await page.mouse.click(act.x, act.y);
+        const size = page.viewportSize() ?? { width: 1280, height: 900 };
+        await page.mouse.click(act.fx * size.width, act.fy * size.height);
         const opened = await popup;
         if (opened) {
-          liveResources(run!.id)?.adopt(opened);
+          resources.adopt(opened);
         }
       } else if (act.type === "type") {
+        await page.evaluate(MARK_FOCUSED_PERSONAL).catch(() => undefined);
         await page.keyboard.type(act.text);
       } else if (act.type === "key") {
         await page.keyboard.press(act.key);

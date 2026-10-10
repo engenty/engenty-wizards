@@ -1,24 +1,10 @@
-import type {
-  AskAnswer,
-  BrowserAct,
-  ConfirmAsk,
-  LoginAsk,
-  RunAsk,
-} from "@engenty-wizards/shared/run";
-import {
-  ArrowDown,
-  ArrowUp,
-  CornerDownLeft,
-  LockKeyhole,
-  PencilLine,
-  ShieldCheck,
-  TriangleAlert,
-} from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
+import type { AskAnswer, ConfirmAsk, LoginAsk, RunAsk } from "@engenty-wizards/shared/run";
+import { LockKeyhole, PencilLine, ShieldCheck, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Button, cn, Input, Label, Switch } from "../ui";
+import { LiveBrowser } from "./browser-live";
 
 /** What a running step asks the person: a sign-in, or leave to change something. */
 export function AskPanel({ runId, ask }: { runId: string; ask: RunAsk }) {
@@ -91,8 +77,8 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
 }
 
 /**
- * A running step asks the person to sign in on a page the wizard has open. The picture is that
- * page: they fill the form here, or click and type in the picture itself (a captcha, "continue
+ * A running step asks the person to sign in on a page the wizard has open. The page is shown
+ * live: they fill the form here, or click and type in the page itself (a captcha, "continue
  * with Google"). What they enter goes into the page — the model never gets it.
  */
 function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
@@ -100,16 +86,6 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  const [text, setText] = useState("");
-  const [hidden, setHidden] = useState(false);
-  const image = useRef<HTMLImageElement>(null);
-  const refresh = useCallback(() => setTick((n) => n + 1), []);
-
-  useEffect(() => {
-    const id = setInterval(refresh, 2500);
-    return () => clearInterval(id);
-  }, [refresh]);
 
   const answer = async (body: AskAnswer) => {
     setBusy(true);
@@ -120,27 +96,6 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
       setError((err as Error).message);
       setBusy(false);
     }
-  };
-  const act = async (body: BrowserAct) => {
-    setError(null);
-    try {
-      await api.post(`/api/runs/${runId}/browser/act`, body);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-    refresh();
-  };
-  const click = (e: React.MouseEvent<HTMLImageElement>) => {
-    const el = image.current;
-    if (!el?.naturalWidth) {
-      return;
-    }
-    const box = el.getBoundingClientRect();
-    void act({
-      type: "click",
-      x: Math.round(((e.clientX - box.left) / box.width) * el.naturalWidth),
-      y: Math.round(((e.clientY - box.top) / box.height) * el.naturalHeight),
-    });
   };
   const filled = ask.fields.some((f) => values[f.id]);
 
@@ -161,54 +116,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-paper-2 ring-1 ring-border-soft">
-        <img
-          ref={image}
-          src={withBase(`/api/runs/${runId}/browser/screen?t=${tick}`)}
-          alt={ask.site.host}
-          onClick={click}
-          className="block w-full cursor-pointer"
-        />
-        <div className="flex flex-wrap items-center gap-1.5 border-border-soft border-t bg-card p-2">
-          <Input
-            type={hidden ? "password" : "text"}
-            autoComplete="off"
-            value={text}
-            placeholder={t("ask.typeInto")}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void act({ type: "type", text }).then(() => setText(""));
-              }
-            }}
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            enterKeyHint="send"
-            className="h-9 min-w-[9rem] flex-1 basis-full text-[0.8125rem] sm:basis-0 coarse:h-11"
-          />
-          <button
-            type="button"
-            onClick={() => setHidden((h) => !h)}
-            className={cn(
-              "h-9 shrink-0 rounded-md px-2.5 text-[0.75rem] coarse:h-11 coarse:px-3.5",
-              hidden ? "bg-ember-veil text-ink" : "text-ink-3 hover:bg-paper-2",
-            )}
-          >
-            {t("ask.hide")}
-          </button>
-          <ToolButton label="Enter" onClick={() => void act({ type: "key", key: "Enter" })}>
-            <CornerDownLeft className="size-4" />
-          </ToolButton>
-          <ToolButton label={t("ask.up")} onClick={() => void act({ type: "scroll", dy: -500 })}>
-            <ArrowUp className="size-4" />
-          </ToolButton>
-          <ToolButton label={t("ask.down")} onClick={() => void act({ type: "scroll", dy: 500 })}>
-            <ArrowDown className="size-4" />
-          </ToolButton>
-        </div>
-      </div>
+      <LiveBrowser runId={runId} driving />
       <p className="mt-2 text-[0.75rem] text-ink-4">{t("ask.pictureHint")}</p>
 
       {ask.fields.length ? (
@@ -282,27 +190,5 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function ToolButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink coarse:size-11"
-    >
-      {children}
-    </button>
   );
 }

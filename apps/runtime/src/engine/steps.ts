@@ -114,9 +114,19 @@ const GROUND_RULES = [
   "Work economically. For web research: search first, open only the few pages you really need (at most five), then write.",
 ].join("\n");
 
+/** How a step with the browser treats a site's consent banners. */
+const BROWSER_RULES = [
+  "# BROWSER",
+  'A cookie or consent banner is in the way: click it away first, before anything else on the page. Give the least consent the banner allows — "Only necessary", "Reject all", "Ablehnen", "Nur notwendige" — or close it; never "Accept all". If the only way past is to open its settings, untick everything optional there and save. Never take part in marketing, newsletter or tracking offers.',
+  "A banner that cannot be got past any other way: accept only what is needed to go on, and say so in your result.",
+  "Controls marked (dialog) lie over the page; a click on what they cover is refused until they are dealt with.",
+  "Where browser_run_fast is offered, hand it the mechanical stretches of a page (the banner, a search form, filters, dropdowns, a date) with every value spelled out, and keep reading results and deciding for yourself.",
+  "The person can take the browser over while you work; your next browser action then waits and gets the page as they left it.",
+].join("\n");
+
 // --- agent -------------------------------------------------------------------
 
-function outputSchema(step: AgentStep) {
+export function outputSchema(step: AgentStep) {
   const fields: {
     id: string;
     kind: string;
@@ -490,6 +500,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
           : "Finish with everything the result needs in your final answer; it is turned into structured data afterwards.";
     const system = [
       GROUND_RULES,
+      step.tools.includes("browser") ? BROWSER_RULES : "",
       `Today is ${today(ctx)}.`,
       brandBlock(ctx),
       // Wissen: what the space holds for its wizards, and how to find and read it.

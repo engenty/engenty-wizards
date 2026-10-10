@@ -8,10 +8,11 @@ import {
   type ReviewStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
-import type { RunView } from "@engenty-wizards/shared/run";
+import type { RunEvent, RunNoteCode, RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowUp,
   Check,
+  Hand,
   Mic,
   Paperclip,
   Pencil,
@@ -20,6 +21,7 @@ import {
   RotateCcw,
   Sparkles,
   Square,
+  Undo2,
   Video,
   VideoOff,
   Volume2,
@@ -39,12 +41,14 @@ import {
 import { createPortal } from "react-dom";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
+import { api } from "../lib/api";
 import { eventText, lang, t } from "../lib/i18n";
 import { canSpeak, useReadAloud, useReadLines } from "../lib/read-aloud";
 import { useDictation } from "../lib/speech";
 import { ShareResultButton } from "../share/ShareSheet";
 import { cn, IconButton, LinkedText, Spinner, Textarea } from "../ui";
 import { AskPanel } from "./AskPanel";
+import { LiveBrowser } from "./browser-live";
 import { CallStage } from "./CallStage";
 import { isTouch, useWakeLock } from "./device";
 import { FieldInput, textHints, type Values } from "./fields";
@@ -66,8 +70,11 @@ export interface Line {
   key: string;
   who: "bot" | "me";
   node: ReactNode;
-  /** A card the width of the thread: an output, a field's own control, a question of the run. */
-  wide?: boolean;
+  /**
+   * A card the width of the thread: an output, a field's own control, a question of the run.
+   * "most": the wizard's browser, four fifths of the thread on a wider screen.
+   */
+  wide?: boolean | "most";
   tone?: "error";
   /** The person's last answer can be changed. */
   onEdit?: () => void;
@@ -255,7 +262,10 @@ export function Thread({ avatar, lines }: { avatar: string; lines: Line[] }) {
                   : "rounded-2xl rounded-tl-md text-[0.9375rem] text-ink leading-relaxed",
                 !line.bare &&
                   (line.wide
-                    ? "w-full bg-card p-4 shadow-soft ring-1 ring-border-soft"
+                    ? cn(
+                        "w-full bg-card p-4 shadow-soft ring-1 ring-border-soft",
+                        line.wide === "most" && "md:w-4/5",
+                      )
                     : "max-w-[min(36rem,100%)] bg-card px-4 py-2.5 shadow-soft ring-1 ring-border-soft"),
                 line.tone === "error" && "bg-rose-tint text-rose shadow-none ring-0",
               )}
@@ -1170,11 +1180,13 @@ function Working({ view }: { view: RunView }) {
       (ev.type === "tool" || ev.type === "info") && new Date(ev.at).getTime() >= started - 500,
   );
   const latest = recent.at(-1);
+  const browsing = [...recent].reverse().find(isBrowserEvent);
   const pictures = [...new Set(recent.map((ev) => ev.asset).filter((id): id is string => !!id))];
   return (
-    // As wide as the line of what it does needs, so that line does not jump with every tool.
+    // As wide as the line of what it does needs, so that line does not jump with every tool;
+    // the whole bubble while the browser is shown.
     <div
-      className="flex w-96 max-w-full flex-col gap-1"
+      className={cn("flex max-w-full flex-col gap-1", browsing ? "w-full" : "w-96")}
       data-say-text={begun?.message ?? view.step?.title ?? t("run.working")}
     >
       <div className="flex items-center gap-3">
@@ -1186,11 +1198,14 @@ function Working({ view }: { view: RunView }) {
           {t("run.elapsed", { s: Math.max(0, Math.round((now - started) / 1000)) })}
         </span>
       </div>
-      {latest ? (
+      {latest && latest !== browsing ? (
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-3">
           <Sparkles className="size-3.5 shrink-0 animate-breathe text-ember" />
           <span className="truncate">{eventText(latest)}</span>
         </div>
+      ) : null}
+      {browsing && view.status === "running" ? (
+        <BrowserLive runId={view.id} event={browsing} />
       ) : null}
       {pictures.length ? (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -1205,6 +1220,107 @@ function Working({ view }: { view: RunView }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+const BROWSER_NOTES = new Set<RunNoteCode>([
+  "opens",
+  "clicks",
+  "clicksOn",
+  "types",
+  "typesText",
+  "selects",
+  "scrolls",
+  "presses",
+  "goesBack",
+  "waitsForPage",
+  "fastLoop",
+  "looksAtPage",
+  "personDrives",
+  "agentDrives",
+]);
+
+function isBrowserEvent(ev: RunEvent): boolean {
+  return !!ev.note && BROWSER_NOTES.has(ev.note.code);
+}
+
+/** While the person drives, how often the seat is checked: it goes back by itself when idle. */
+const SEAT_CHECK_MS = 10_000;
+
+/**
+ * The wizard's browser as it works, streamed from the run, with what it just did over it. The
+ * person can take it over (the wizard's next browser action waits) and hand it back. A stream
+ * that breaks off (the step let the browser go) is hidden until the next browser action.
+ */
+function BrowserLive({ runId, event }: { runId: string; event: RunEvent }) {
+  const [brokeAt, setBrokeAt] = useState<number | null>(null);
+  const [seat, setSeat] = useState<"agent" | "person">("agent");
+  const [busy, setBusy] = useState(false);
+  const code = event.note?.code;
+  useEffect(() => {
+    if (code === "personDrives") {
+      setSeat("person");
+    } else if (code === "agentDrives") {
+      setSeat("agent");
+    }
+  }, [code]);
+  useEffect(() => {
+    const check = () =>
+      api
+        .get<{ seat: "agent" | "person" }>(`/api/runs/${runId}/browser/seat`)
+        .then((r) => setSeat(r.seat))
+        .catch(() => undefined);
+    void check();
+    if (seat !== "person") {
+      return;
+    }
+    const id = setInterval(check, SEAT_CHECK_MS);
+    return () => clearInterval(id);
+  }, [runId, seat]);
+  if (brokeAt !== null && brokeAt >= event.id) {
+    return null;
+  }
+  const driving = seat === "person";
+  const pass = async () => {
+    setBusy(true);
+    try {
+      const r = await api.post<{ seat: "agent" | "person" }>(`/api/runs/${runId}/browser/seat`, {
+        to: driving ? "agent" : "person",
+      });
+      setSeat(r.seat);
+    } catch {
+      // The browser is gone; the stream says so.
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <LiveBrowser
+      // A new connection after a break, the same one for every action in between.
+      key={brokeAt ?? 0}
+      runId={runId}
+      driving={driving}
+      caption={eventText(event)}
+      hint={t("browser.driving")}
+      onBroken={() => setBrokeAt(event.id)}
+      className="mt-1.5"
+      action={
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void pass()}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.8125rem] shadow-soft transition-colors disabled:opacity-60",
+            driving
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-card/90 text-ink ring-1 ring-border-soft backdrop-blur hover:bg-card",
+          )}
+        >
+          {driving ? <Undo2 className="size-3.5" /> : <Hand className="size-3.5" />}
+          {driving ? t("browser.handBack") : t("browser.takeOver")}
+        </button>
+      }
+    />
   );
 }
 
@@ -1528,7 +1644,12 @@ export function ChatBody({
             lines={[
               ...before,
               ...(note ? [me("note", note)] : []),
-              bot(`working:${step?.id}`, <Working view={view} />),
+              // A step at work in the browser gets the thread's width for its picture.
+              bot(`working:${step?.id}`, <Working view={view} />, {
+                wide: view.events.some((ev) => ev.stepId === step?.id && isBrowserEvent(ev))
+                  ? "most"
+                  : undefined,
+              }),
             ]}
           />
           <Idle placeholder={t("run.working")} />
