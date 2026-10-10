@@ -54,9 +54,15 @@ for a run open in the app. Worth it for cloud runs — nothing paid, the text st
 | The runner: a recording is written down by the phone before the field keeps it (the server then skips its own transcription); on every connect of the run's stream it offers the phone for Classifier and Standard (`POST /api/runs/:id/device`), answers `device` events through `think`, and posts the answer | `apps/web/src/runner/{phone.ts,voice.tsx,useRun.ts}`, `lib/app.ts` |
 | The runtime: a run's device as a model first — `DeviceModel` wraps the class's own model, asks over the stream, falls back when the phone does not answer in 60 s, errs, the prompt is over 12k characters, or the call needs tools the step declared or has uploads to read | `apps/runtime/src/engine/device.ts`, `events.ts`, `routes/runs.ts`, `models.ts` (`textModel`, `attachTools`) |
 
-Checked end to end in headless Chrome with a fake bridge (record, phone transcript shown, the
-standard step's text from the phone on the result page), and on the iOS simulator with the real
-app: on the iOS 26.5 runtime (the host's own version) Apple's model answered the run's Standard
+Checked end to end on the Mac with spoken audio and no bridge at all: headless Chrome with a
+spoken WAV as its microphone records a voice note (WebM, which ffmpeg turns into WAV for
+SpeechAnalyzer), the Mac writes it down in the runner's language ("Bitte ruf den Kunden morgen um
+10:00 Uhr zurück. Die Rechnung vom März ist auch noch offen."), and Apple's model thinks the
+Classifier and Standard steps from it — the answer on the result page is about that call and
+that invoice. The note carries the runner's language (`AudioValue.lang`), since SpeechAnalyzer
+listens in one language. Checked in headless Chrome with a fake bridge (record, phone transcript
+shown, the standard step's text from the phone on the result page), and on the iOS simulator with
+the real app: on the iOS 26.5 runtime (the host's own version) Apple's model answered the run's Standard
 step on the phone — the runtime logged "the device answered a 78-character call" and that text
 is the result. On the iOS 26.2 runtime the same call failed with `ModelManagerError 1026` (a
 known simulator version mismatch) and the runtime fell back as designed. Neither simulator

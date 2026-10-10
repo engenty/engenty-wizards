@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { TranscriptionModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
+import { ffmpeg, hasFfmpeg } from "../media/ffmpeg.js";
 import { ModelUnavailableError } from "../model-errors.js";
 import {
   type HarnessAnswer,
@@ -227,10 +228,32 @@ function systemLocale(): string {
   return /^[a-z]{2}-[A-Z]{2}$/.test(locale) ? locale : locale.startsWith("de") ? "de-DE" : "en-US";
 }
 
+/** What AVAudioFile reads as it is; a browser's WebM or Ogg (Opus) is turned into WAV first. */
+function audioExtension(mediaType: string): { ext: string; native: boolean } {
+  const type = mediaType.split(";")[0].trim().toLowerCase();
+  if (/mp4|m4a|aac/.test(type)) {
+    return { ext: "m4a", native: true };
+  }
+  if (/wav/.test(type)) {
+    return { ext: "wav", native: true };
+  }
+  if (/aiff/.test(type)) {
+    return { ext: "aiff", native: true };
+  }
+  if (/mpeg|mp3/.test(type)) {
+    return { ext: "mp3", native: true };
+  }
+  if (/ogg|opus/.test(type)) {
+    return { ext: "ogg", native: false };
+  }
+  return { ext: "webm", native: false };
+}
+
 /**
  * `apple:transcribe`: a voice note written down on this Mac by SpeechAnalyzer (macOS 26). It
  * needs no Apple Intelligence, only the language's assets, which the system installs on the
- * first call. The recording goes through a file of its own, deleted afterwards.
+ * first call. The recording goes through a file of its own, deleted afterwards; what the
+ * system cannot read (a browser's WebM) becomes WAV through ffmpeg on the way.
  */
 class AppleTranscriptionModel implements TranscriptionV3 {
   readonly specificationVersion = "v3" as const;
@@ -240,22 +263,38 @@ class AppleTranscriptionModel implements TranscriptionV3 {
   async doGenerate(options: TranscribeOptions): Promise<TranscribeResult> {
     const dir = join(env.dataDir, "harness", nanoid(10));
     mkdirSync(dir, { recursive: true });
-    const ext = /mp4|m4a|aac/.test(options.mediaType)
-      ? "m4a"
-      : /wav/.test(options.mediaType)
-        ? "wav"
-        : /ogg|opus/.test(options.mediaType)
-          ? "ogg"
-          : /webm/.test(options.mediaType)
-            ? "webm"
-            : "audio";
-    const path = join(dir, `note.${ext}`);
+    const { ext, native } = audioExtension(options.mediaType);
+    const given = join(dir, `note.${ext}`);
     const locale = (options.providerOptions?.apple?.locale as string | undefined) ?? systemLocale();
     try {
       writeFileSync(
-        path,
+        given,
         typeof options.audio === "string" ? Buffer.from(options.audio, "base64") : options.audio,
       );
+      let path = given;
+      if (!native) {
+        if (!(await hasFfmpeg())) {
+          throw new Error(
+            `Apple Intelligence liest ${options.mediaType} nicht; ohne ffmpeg bleibt die Aufnahme so. ffmpeg installieren oder im Browser als MP4 aufnehmen.`,
+          );
+        }
+        path = join(dir, "note.wav");
+        const { code, stderr } = await ffmpeg([
+          "-y",
+          "-i",
+          given,
+          "-ac",
+          "1",
+          "-ar",
+          "16000",
+          path,
+        ]);
+        if (code !== 0) {
+          throw new Error(
+            `Apple Intelligence: die Aufnahme ließ sich nicht wandeln: ${stderr.slice(-300)}`,
+          );
+        }
+      }
       const { stdout, stderr, code } = await runClient(APPLE_BIN, ["transcribe", path, locale], {
         cwd: dir,
         env: helperEnv(),

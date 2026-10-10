@@ -85,6 +85,7 @@ export function VoiceField({
       const transcript = await transcribeOnDevice(file, lang);
       onChange({
         asset: ref.id,
+        lang,
         ...(length !== undefined ? { seconds: length } : {}),
         ...(transcript !== undefined ? { transcript } : {}),
       });

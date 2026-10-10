@@ -50,8 +50,9 @@ step whose text is too long for it fails with a note that says so; bind that cla
 The binding is `apple:default`; `apple:tagging` is Apple's adapter for tagging and extraction.
 
 "Voice notes" offers Apple Intelligence on the same Macs: the Mac writes a recording down
-itself (`apple:transcribe`), in the Mac's language, for nothing. The first note in a language
-waits while Apple fetches it.
+itself (`apple:transcribe`), in the language the runner was in, for nothing. The first note in a
+language waits while Apple fetches it. A recording from Chrome or Firefox (WebM) needs ffmpeg on
+the Mac, which turns it into WAV first; Safari's and the app's recordings need nothing.
 
 **In the app.** On an iPhone with iOS 26 the engenty wizards app writes voice notes down on the
 phone, and once Apple Intelligence is switched on it also answers a run's short text calls —

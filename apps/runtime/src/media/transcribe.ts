@@ -21,6 +21,8 @@ export async function transcribeAudio(input: {
   mediaType: string;
   abortSignal?: AbortSignal;
   call?: CallMeta;
+  /** The language the note is most likely in; a model that listens in one language takes it. */
+  language?: "de" | "en";
 }): Promise<Transcript> {
   const listener = await listenerModel(input.call);
   // A transcription model (ElevenLabs Scribe, Whisper) writes down what is said by itself.
@@ -29,6 +31,9 @@ export async function transcribeAudio(input: {
       model: listener.resolved.model,
       audio: input.bytes,
       abortSignal: input.abortSignal,
+      ...(input.language
+        ? { providerOptions: { apple: { locale: input.language === "en" ? "en-US" : "de-DE" } } }
+        : {}),
     });
     return {
       text: result.text.trim(),

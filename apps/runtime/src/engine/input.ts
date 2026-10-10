@@ -139,6 +139,9 @@ function readAudio(raw: unknown): AudioValue | undefined {
   if (typeof input.transcript === "string") {
     out.transcript = input.transcript.slice(0, 20_000);
   }
+  if (input.lang === "de" || input.lang === "en") {
+    out.lang = input.lang;
+  }
   return out;
 }
 
