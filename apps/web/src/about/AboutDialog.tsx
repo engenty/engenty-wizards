@@ -19,7 +19,11 @@ import { Credits } from "./CreditsDialog";
 type Tab = "new" | "earlier" | "credits";
 const TABS: Tab[] = ["new", "earlier", "credits"];
 const label = (tab: Tab) =>
-  tab === "new" ? t("about.tab.new") : tab === "earlier" ? t("about.history") : t("about.credits");
+  tab === "new"
+    ? t("about.tab.new")
+    : tab === "earlier"
+      ? t("about.tab.earlier")
+      : t("about.credits");
 
 /** `1 Änderung`, `12 Änderungen`. */
 const changes = (n: number) => (n === 1 ? t("about.change") : t("about.changes", { n }));

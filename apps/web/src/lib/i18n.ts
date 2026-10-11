@@ -346,7 +346,7 @@ const de = {
   "about.update.manual":
     "Diese Installation aktualisiert sich nicht selbst: Hol dir die neue Version dort, wo du sie installiert hast.",
   "about.tab.new": "Was ist neu",
-  "about.history": "Frühere Versionen",
+  "about.tab.earlier": "Versionen",
   "about.changes": "{n} Änderungen",
   "about.change": "1 Änderung",
   "about.update.available": "Version {v} von engenty wizards ist da.",
@@ -1752,7 +1752,7 @@ const en: Record<Key, string> = {
   "about.update.manual":
     "This install does not update itself: get the new version where you installed it.",
   "about.tab.new": "What's new",
-  "about.history": "Earlier versions",
+  "about.tab.earlier": "Versions",
   "about.changes": "{n} changes",
   "about.change": "1 change",
   "about.update.available": "Version {v} of engenty wizards is out.",
