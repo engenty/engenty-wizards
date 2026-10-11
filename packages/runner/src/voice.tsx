@@ -1,13 +1,11 @@
 import { type AudioValue, isAudioValue } from "@engenty-wizards/shared/definition";
 import { FileAudio, Mic, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../lib/api";
-import { appCan } from "../lib/app";
-import { lang, t } from "../lib/i18n";
-import { Button, Spinner } from "../ui";
 import { stamp } from "./camera";
 import { canUseMedia } from "./device";
-import { transcribeOnDevice } from "./phone";
+import { api, appCall, appCan, runBase, runnerEnv } from "./env.js";
+import { t } from "./i18n.js";
+import { Button, Spinner } from "./ui.js";
 
 const MAX_SECONDS = 300;
 
@@ -20,6 +18,29 @@ function recordingType(): string | undefined {
     ? ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
     : ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
   return types.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
+/** A recording written down by the app on the phone; undefined when the app cannot. */
+async function transcribeOnDevice(file: Blob, lang: string): Promise<string | undefined> {
+  if (!appCan("transcribe")) {
+    return undefined;
+  }
+  try {
+    const audio = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    const result = await appCall<{ text: string } | null>("transcribe", {
+      audio,
+      mime: file.type,
+      lang,
+    });
+    return typeof result?.text === "string" ? result.text : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function clock(seconds: number): string {
@@ -79,9 +100,10 @@ export function VoiceField({
     onBusy?.(true);
     setError(null);
     try {
-      const ref = await api.upload<{ id: string }>(`/api/runs/${runId}/uploads`, file);
+      const ref = await api.upload<{ id: string }>(`${runBase(runId)}/uploads`, file);
       setLocal({ asset: ref.id, url: URL.createObjectURL(file) });
       // In the app the phone writes the note down itself; else the server does before the next step.
+      const { lang } = runnerEnv();
       const transcript = await transcribeOnDevice(file, lang);
       onChange({
         asset: ref.id,
@@ -199,9 +221,7 @@ export function VoiceField({
           <audio
             controls
             preload="metadata"
-            src={
-              local?.asset === note.asset ? local.url : `/api/runs/${runId}/assets/${note.asset}`
-            }
+            src={local?.asset === note.asset ? local.url : `${runBase(runId)}/assets/${note.asset}`}
             className="h-11 w-full"
           />
           {note.transcript ? (

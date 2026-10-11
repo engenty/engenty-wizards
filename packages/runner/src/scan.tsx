@@ -1,7 +1,5 @@
 import { ImageUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { appCall, appCan } from "../lib/app";
-import { t } from "../lib/i18n";
 import {
   CameraStage,
   type Facing,
@@ -10,6 +8,8 @@ import {
   SheetBar,
   useCameraStream,
 } from "./camera";
+import { appCall, appCan } from "./env.js";
+import { t } from "./i18n.js";
 
 type Detect = (source: HTMLVideoElement | ImageBitmap) => Promise<string | null>;
 

@@ -171,6 +171,35 @@ Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's acc
   transaction. The install sends again by itself — after a minute, then twice as long each time,
   up to an hour — until it arrives; not after a refusal (`4xx`), which only the person can mend.
 
+## Clients of an account: the WordPress plugin
+
+The WordPress plugin is an OAuth client of the Manage-App like an MCP client: it registers itself
+(`POST /api/auth/oauth2/register`, public client, PKCE, its own `admin-post.php?action=engenty_connect`
+as the redirect), sends the admin to the authorization endpoint with `resource=<RUNTIME_URL>/api/mcp`,
+`scope=openid profile email offline_access wizards:read wizards:write wizards:publish runs:read`,
+`login_hint` (the admin's e-mail) and, for "create an account", `prompt=create` (the sign-in page
+then offers a new account first), and keeps the refresh token on the site. An API key does the
+same calls.
+
+Calls of the runtime, below `<RUNTIME_URL>/api/v1`:
+
+| Call | Scopes | Answer |
+|---|---|---|
+| `GET /me` | — | `{ user: { id, name, email, role }, tenant: { id, name, plan: { id, name } \| null, credits }, build, create, plugins, missing, spaces: [{ id, name, title, wizards, writable }], scopes, client, urls: { app, embed, studio, newWizard, space, account, billing, upgrade } }` · `missing`: of `contacts` and `appointments`, what the plan lacks |
+| `GET /wizards?space=` | `wizards:read` | `{ wizards: [{ id, spaceId, title, description, avatar, published, publishedVersion, token, code, shareUrl, shareEnabled, iconUrl, available, unavailableReason, dailyRunLimit, plugins, standalone, studioUrl, updatedAt }] }` · a draft has no `token`, `code`, `shareUrl` · `standalone`: whether it runs on a website by itself, `{ fit: "full" \| "less" \| "no", notes, missing, optional, needs, without }` (`packages/shared/src/fit.ts`) |
+| `GET /wizards/:id/package?knowledge=` | `wizards:read` | the published version as a `.wizard` package (`application/vnd.engenty.wizard+zip`, `content-disposition` with the file name); `knowledge=1` adds the project's pages under `files/wissen/` as Markdown (2 MB cap, the manifest's `knowledge: { pages, truncated }`); `404 not_found` while the wizard is a draft only |
+| `POST /wizards` | `wizards:write wizards:publish` | `{ starterId, spaceId?, lang?, publish = true }` → `{ wizard, published, issues }` · a wizard from a template, published when it has no issues; `403 read_only` without `limits.build` |
+| `GET /templates?q=&lang=` | `wizards:read` | `{ templates: [{ id, title, pitch, avatar, language, useCases, formats, plan, plugin, needs, credits }] }` · the plugins' starters first |
+| `GET /runs?space=&wizard=&status=done\|open\|all&q=&days=&page=` | `runs:read` | `{ runs: [{ id, wizardId, wizard, status, step, createdAt, updatedAt, origin, email, summary, credits, files }], page, pages, total }` · live runs, 50 a page |
+| `GET /runs/:id` | `runs:read` | the run's report (outputs with signed downloads) and `{ wizard, createdAt, origin, email, answers: [{ label, kind, value }], shareUrl }` |
+| `GET /space?space=` | `wizards:read` | `{ id, name, title, about, colors, facts, logoUrl, knowledge: { pages, tables, files }, writable, studioUrl }` |
+| `POST /space/site` | `wizards:write` | `{ spaceId?, url, name, tagline, language?, facts: [{ label, value }], colors: [{ name, value }], logo?: { name, mime, data }, pages: [{ key, title, url?, role?, markdown }], assist = true }` → a job `{ id, status: "running", activity, … }` · fills the space's empty details, writes the pages into Wissen under the origin `wordpress` (a page gone from the site goes), then lets the space assistant read the rest; 20 an hour per tenant |
+| `GET /space/site/:job` | `wizards:read` | `{ id, status: "running" \| "done" \| "failed", activity, pages, reply, error, space }` |
+| `ANY /plugins/:id/*` | `wizards:read` for GET, else `wizards:write` | the plugin's own routes as the token's person · `403 { code: "plugin", plugin }` when the tenant's plan lacks it |
+
+`POST /api/public/wizards/:token/runs` takes `origin` (the embedding page, from `embed.js`'s
+`data-page`) beside `embedded`; it is kept as `run.origin`.
+
 ## Model-gateway
 
 The gateway speaks the Vercel AI Gateway protocol, so `@ai-sdk/gateway` works with

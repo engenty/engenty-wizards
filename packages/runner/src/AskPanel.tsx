@@ -1,10 +1,10 @@
 import type { AskAnswer, ConfirmAsk, LoginAsk, RunAsk } from "@engenty-wizards/shared/run";
 import { LockKeyhole, PencilLine, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { api } from "../lib/api";
-import { t } from "../lib/i18n";
-import { Button, cn, Input, Label, Switch } from "../ui";
-import { LiveBrowser } from "./browser-live";
+import { LiveBrowser } from "./browser-live.js";
+import { api, runBase } from "./env.js";
+import { t } from "./i18n.js";
+import { Button, cn, Input, Label, Switch } from "./ui.js";
 
 /** What a running step asks the person: a sign-in, or leave to change something. */
 export function AskPanel({ runId, ask }: { runId: string; ask: RunAsk }) {
@@ -27,7 +27,7 @@ function ConfirmPanel({ runId, ask }: { runId: string; ask: ConfirmAsk }) {
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/api/runs/${runId}/ask/${ask.id}`, body);
+      await api.post(`${runBase(runId)}/ask/${ask.id}`, body);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -91,7 +91,7 @@ function LoginPanel({ runId, ask }: { runId: string; ask: LoginAsk }) {
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/api/runs/${runId}/ask/${ask.id}`, body);
+      await api.post(`${runBase(runId)}/ask/${ask.id}`, body);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);

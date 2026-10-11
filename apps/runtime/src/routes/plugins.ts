@@ -71,8 +71,11 @@ export function answerOf(
     : null;
 }
 
-async function dispatch(c: Ctx): Promise<Response> {
-  const user = c.get("user");
+/**
+ * Calls the plugin route the request names, as `user`: a signed-in person of the studio, or the
+ * person behind an API key or token (`/api/v1/plugins/…`).
+ */
+export async function dispatchAs(c: Context, user: Principal): Promise<Response> {
   const id = c.req.param("id") ?? "";
   const plugin = (await pluginIdsOf(user.tenantId)).has(id) ? loadedPlugin(id) : undefined;
   if (!plugin) {
@@ -119,6 +122,8 @@ async function dispatch(c: Ctx): Promise<Response> {
   }
   return c.json({ error: "not found", code: "not_found" }, 404);
 }
+
+const dispatch = (c: Ctx) => dispatchAs(c, c.get("user"));
 
 const TYPES: Record<string, { kind: "studio" | "styles"; type: string }> = {
   "client.js": { kind: "studio", type: "text/javascript; charset=utf-8" },

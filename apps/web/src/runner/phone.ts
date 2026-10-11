@@ -49,26 +49,3 @@ export async function answerDevice(runId: string, request: DeviceRequest) {
   }
   await api.post(`/api/runs/${runId}/device/${request.id}`, answer).catch(() => undefined);
 }
-
-/** A recording written down by the app on the phone; undefined when the app cannot. */
-export async function transcribeOnDevice(file: Blob, lang: string): Promise<string | undefined> {
-  if (!appCan("transcribe")) {
-    return undefined;
-  }
-  try {
-    const audio = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-    const result = await appCall<{ text: string } | null>("transcribe", {
-      audio,
-      mime: file.type,
-      lang,
-    });
-    return typeof result?.text === "string" ? result.text : undefined;
-  } catch {
-    return undefined;
-  }
-}

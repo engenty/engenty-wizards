@@ -1,3 +1,4 @@
+import { HtmlFrame } from "@engenty-wizards/runner";
 import {
   ASPECT_RATIOS,
   CONDITION_OPS,
@@ -41,7 +42,6 @@ import { withBase } from "@/lib/base";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { useStudioPlugins } from "../../plugins/host";
-import { HtmlFrame } from "../../runner/outputs";
 import {
   Button,
   cn,

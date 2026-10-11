@@ -75,7 +75,7 @@ const css = (path) => JSON.stringify(path);
 writeFileSync(
   join(work, "tailwind.css"),
   `@import ${css(fromWeb.resolve("tailwindcss/theme.css"))} theme(inline reference);
-@import ${css(join(web, "src/styles/theme.css"))} theme(reference);
+@import ${css(join(root, "packages/runner/src/theme.css"))} theme(reference);
 @layer wizards-plugin {
   [data-plugin="${id}"] {
     @tailwind utilities source(none);

@@ -21,16 +21,15 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
-import { api } from "../lib/api";
-import { lang, t } from "../lib/i18n";
-import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "../ui";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
 import { canUseMedia, isTouch } from "./device";
+import { api, runBase, withBase } from "./env.js";
+import { lang, t } from "./i18n.js";
 import { LocationField } from "./location";
 import { ScanDialog } from "./scan";
 import { SignatureField } from "./signature";
 import { ConnectionField, ListTable } from "./store";
+import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textarea } from "./ui.js";
 import { VoiceField } from "./voice";
 
 export type Values = Record<string, unknown>;
@@ -211,7 +210,7 @@ function UploadField({
       for (const raw of wanted.slice(0, Math.max(0, free))) {
         const file = await shrinkImage(raw);
         const ref = await api.upload<{ id: string; name: string; mime: string }>(
-          `/api/runs/${runId}/uploads`,
+          `${runBase(runId)}/uploads`,
           file,
         );
         setNames((n) => ({ ...n, [ref.id]: { name: ref.name, mime: ref.mime } }));
@@ -350,7 +349,7 @@ function UploadField({
                 ) : null}
                 {mime.startsWith("image/") ? (
                   <img
-                    src={withBase(`/api/runs/${runId}/assets/${id}`)}
+                    src={withBase(`${runBase(runId)}/assets/${id}`)}
                     alt=""
                     className="size-14 rounded-lg object-cover"
                   />
@@ -984,7 +983,7 @@ export function FieldInput({
       {closed ? (
         <div className="mt-1.5 text-[0.8125rem] text-ink-3">
           {t("run.closed", {
-            list: closed.classes.map((c) => t(`run.cls.${CLASS_GROUP[c]}`)).join(", "),
+            list: closed.classes.map((c) => t(`run.cls.${groupOf(c)}`)).join(", "),
           })}
         </div>
       ) : null}
@@ -993,8 +992,20 @@ export function FieldInput({
   );
 }
 
-/** What a model class is called where a person reads that it is missing. */
-const CLASS_GROUP: Record<ModelClass, "text" | "image" | "video" | "speech" | "audio"> = {
+/**
+ * What a model class is called where a person reads that it is missing. A standalone site
+ * names its groups directly, "account" among them: what only an engenty account would do.
+ */
+type ClassGroup = "text" | "image" | "video" | "speech" | "audio" | "account";
+
+function groupOf(cls: string): ClassGroup {
+  if (cls in CLASS_GROUP) {
+    return CLASS_GROUP[cls as ModelClass];
+  }
+  return cls === "account" ? "account" : "text";
+}
+
+const CLASS_GROUP: Record<ModelClass, Exclude<ClassGroup, "account">> = {
   classifier: "text",
   standard: "text",
   high: "text",

@@ -1,15 +1,15 @@
 import type { Format, Step } from "@engenty-wizards/shared/definition";
 import type { StepOutput } from "@engenty-wizards/shared/run";
 import DOMPurify from "dompurify";
-import { Check, Copy, Download, FileText, Maximize2, Share } from "lucide-react";
+import { Check, Copy, Download, FileText, Maximize2, Printer, Share } from "lucide-react";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { asset, withBase } from "@/lib/base";
-import { appCall, appCan, appDownload } from "../lib/app";
-import { t } from "../lib/i18n";
-import { cn, Spinner, Textarea } from "../ui";
 import { canShareFiles } from "./device";
+import { appCall, appCan, appDownload, asset, standalone, withBase } from "./env.js";
+import { t } from "./i18n.js";
+import { type Written, writePdf } from "./pdf.js";
 import { type SurfaceAction, SurfaceView } from "./surface";
+import { cn, Spinner, Textarea } from "./ui.js";
 
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const html = useMemo(
@@ -528,7 +528,8 @@ export function OutputView({
   return null;
 }
 
-const FORMAT_LABEL: Record<Format, string> = {
+/** A download format as a person reads it. */
+export const FORMAT_LABEL: Record<Format, string> = {
   png: "PNG",
   mp4: "MP4",
   mp3: "MP3",
@@ -549,16 +550,40 @@ function downloadName(res: Response, fallback: string): string {
   return header.match(/filename="([^"]+)"/)?.[1] ?? fallback;
 }
 
+/** A file made in the browser, saved as a download would be. */
+function saveFile(file: File) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  a.rel = "noopener";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 /**
  * Hands a result to the phone's share sheet as a file — Mail, WhatsApp, "Save to Files", "Open
- * in …". The file is fetched first; when that took longer than the browser lets a tap wait, a
- * second tap sends it.
+ * in …". The file is fetched first (or made here); when that took longer than the browser lets
+ * a tap wait, a second tap sends it.
  */
-function ShareFileButton({ url, format, title }: { url: string; format: Format; title?: string }) {
+function ShareFileButton({
+  url,
+  format,
+  title,
+  make,
+}: {
+  url: string;
+  format: Format;
+  title?: string;
+  /** The file made in the browser instead of fetched: a written output's PDF on a site. */
+  make?: () => Promise<File>;
+}) {
   const [state, setState] = useState<"idle" | "busy" | "ready">("idle");
   const file = useRef<File | null>(null);
   const share = async () => {
-    if (appCan("share")) {
+    if (appCan("share") && !make) {
       // The app fetches the file itself and opens the native share sheet with it.
       setState("busy");
       await appCall("share", { url: new URL(url, location.href).href, title }).catch(
@@ -570,19 +595,27 @@ function ShareFileButton({ url, format, title }: { url: string; format: Format; 
     try {
       if (!file.current) {
         setState("busy");
-        const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) {
-          throw new Error(String(res.status));
+        if (make) {
+          file.current = await make();
+        } else {
+          const res = await fetch(url, { credentials: "include" });
+          if (!res.ok) {
+            throw new Error(String(res.status));
+          }
+          const blob = await res.blob();
+          file.current = new File([blob], downloadName(res, `download.${format}`), {
+            type: blob.type.split(";")[0],
+          });
         }
-        const blob = await res.blob();
-        file.current = new File([blob], downloadName(res, `download.${format}`), {
-          type: blob.type.split(";")[0],
-        });
       }
       const data = { files: [file.current], title };
       if (!navigator.canShare(data)) {
         // A type the share sheet does not take: it is downloaded instead.
-        location.href = url;
+        if (make) {
+          saveFile(file.current);
+        } else {
+          location.href = url;
+        }
         setState("idle");
         return;
       }
@@ -620,38 +653,102 @@ export function DownloadButtons({
   stepId,
   formats,
   title,
+  step,
+  output,
+  foot,
 }: {
   base: string;
   stepId: string;
   formats: Format[];
   /** Named in the share sheet. */
   title?: string;
+  /** The step and its output: on a standalone host a written output's PDF is made here. */
+  step?: Step;
+  output?: StepOutput;
+  /** The foot of a PDF made here: the wizard, the date. */
+  foot?: string;
 }) {
   const href = (f: Format) => withBase(`${base}/steps/${stepId}/download?format=${f}`);
+  const [busy, setBusy] = useState(false);
+  const made = useRef<File | null>(null);
+  // The server of a standalone host writes no PDF: a written output's PDF is made in the browser.
+  const written: Written | null =
+    standalone() && step?.type === "agent" && output && (output.text || output.json !== undefined)
+      ? {
+          title: title ?? step.title,
+          text: output.text,
+          json: step.output.format === "json" ? output.json : undefined,
+          label: (key) => labelFor(step, key),
+          foot,
+        }
+      : null;
+  const makePdf = async () => {
+    if (!written) {
+      throw new Error("nothing written");
+    }
+    made.current ??= await writePdf(written);
+    return made.current;
+  };
+  const savePdf = async () => {
+    setBusy(true);
+    try {
+      saveFile(await makePdf());
+    } catch (err) {
+      console.warn(`pdf: ${(err as Error).message}`);
+      // Without the library (offline, a blocked script): the page to print stands in.
+      if (formats.includes("html")) {
+        window.open(href("html"), "_blank", "noopener");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+  const look = (i: number) =>
+    cn(
+      "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[0.8125rem] transition coarse:h-11 coarse:px-4",
+      i === 0
+        ? "bg-primary text-primary-foreground hover:brightness-105"
+        : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
+    );
+  const inBrowser = (f: Format) => f === "pdf" && written !== null;
   return (
     <div className="flex flex-wrap gap-2">
-      {formats.map((f, i) => (
-        <a
-          key={f}
-          href={href(f)}
-          onClick={(e) => appDownload(e, href(f))}
-          className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 font-medium text-[0.8125rem] transition coarse:h-11 coarse:px-4",
-            i === 0
-              ? "bg-primary text-primary-foreground hover:brightness-105"
-              : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
-          )}
-        >
-          {i === 0 ? <Download className="size-3.5" /> : null}
-          {FORMAT_LABEL[f]}
-        </a>
-      ))}
+      {formats.map((f, i) =>
+        inBrowser(f) ? (
+          <button
+            key={f}
+            type="button"
+            onClick={() => void savePdf()}
+            disabled={busy}
+            className={look(i)}
+          >
+            {busy ? (
+              <Spinner className="size-3.5" />
+            ) : i === 0 ? (
+              <Download className="size-3.5" />
+            ) : null}
+            {FORMAT_LABEL[f]}
+          </button>
+        ) : f === "html" && standalone() ? (
+          // On a site the HTML of a result is a page to print, opened beside the run.
+          <a key={f} href={href(f)} target="_blank" rel="noopener" className={look(i)}>
+            {i === 0 ? <Printer className="size-3.5" /> : null}
+            {t("run.print")}
+          </a>
+        ) : (
+          <a key={f} href={href(f)} onClick={(e) => appDownload(e, href(f))} className={look(i)}>
+            {i === 0 ? <Download className="size-3.5" /> : null}
+            {FORMAT_LABEL[f]}
+          </a>
+        ),
+      )}
       {SHARES_FILES && formats.length ? (
         <ShareFileButton
           key={href(formats[0])}
           url={href(formats[0])}
           format={formats[0]}
           title={title}
+          make={inBrowser(formats[0]) ? makePdf : undefined}
         />
       ) : null}
     </div>

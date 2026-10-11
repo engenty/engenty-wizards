@@ -1021,7 +1021,14 @@ export const studio = new Hono<Vars>()
     );
   })
   .get("/wizards/:id/export", async (c) => {
-    const { name, zip } = await exportWizard(c.get("user").id, c.req.param("id"));
+    const found = await exportWizard(c.get("user").id, c.req.param("id"), {
+      published: c.req.query("published") === "1",
+      knowledge: c.req.query("knowledge") === "1",
+    });
+    if (!found) {
+      return c.json({ error: "Der Wizard ist noch nicht veröffentlicht." }, 404);
+    }
+    const { name, zip } = found;
     return c.body(new Uint8Array(zip), 200, {
       "content-type": PACKAGE_MIME,
       "content-disposition": `attachment; filename="${name}"`,

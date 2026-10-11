@@ -167,6 +167,11 @@ export const run = sqliteTable(
     visitorId: text("visitor_id"),
     userId: text("user_id"),
     ipHash: text("ip_hash"),
+    /**
+     * Where a visitor started the run: the address of the website page that embeds the wizard
+     * (`data-page` of the embed tag, else the page's own address); null on the wizard's link.
+     */
+    origin: text("origin"),
     status: text("status", {
       enum: ["waiting_input", "running", "done", "failed", "cancelled"],
     }).notNull(),

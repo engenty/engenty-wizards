@@ -1,3 +1,4 @@
+import { Markdown } from "@engenty-wizards/runner";
 import type {
   CategoryCell,
   CategoryType,
@@ -21,7 +22,6 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { lang, t } from "../../lib/i18n";
-import { Markdown } from "../../runner/outputs";
 import {
   Button,
   Card,

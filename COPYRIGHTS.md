@@ -35,8 +35,11 @@ Declared by two or more of the workspaces below:
 |---|---|---|
 | [@modelcontextprotocol/client](https://modelcontextprotocol.io) | 2.2.0 | MIT |
 | [@modelcontextprotocol/ext-apps](https://github.com/modelcontextprotocol/ext-apps) | 2.0.3 | MIT |
+| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT |
 | [lucide-react](https://lucide.dev) | 1.49.0 | ISC |
 | [marked](https://marked.js.org) | 18.0.14 | MIT |
+| [qr-scanner](https://github.com/nimiq/qr-scanner#readme) | 1.4.2 | MIT |
 | [react](https://react.dev/) | 19.3.0 | MIT |
 | [react-dom](https://react.dev/) | 19.3.0 | MIT |
 | [zod](https://zod.dev) | 4.6.5 | MIT |
@@ -51,43 +54,6 @@ Declared by two or more of the workspaces below:
 | [mermaid](https://github.com/mermaid-js/mermaid#readme) | 11.17.2 | MIT |
 | [next](https://nextjs.org) | 16.3.5 | MIT |
 | [next-themes](https://github.com/pacocoursey/next-themes#readme) | 0.4.6 | MIT |
-
-### mobile (apps/mobile)
-
-| Package | Version | Licence |
-|---|---|---|
-| [@expo-google-fonts/space-grotesk](https://github.com/expo/google-fonts/tree/master/font-packages/space-grotesk#readme) | 0.4.1 | MIT AND OFL-1.1 |
-| [expo](https://github.com/expo/expo/tree/main/packages/expo) | 57.0.26 | MIT |
-| [expo-blur](https://docs.expo.dev/versions/latest/sdk/blur-view/) | 57.0.3 | MIT |
-| [expo-camera](https://docs.expo.dev/versions/latest/sdk/camera/) | 57.0.6 | MIT |
-| [expo-clipboard](https://docs.expo.dev/versions/latest/sdk/clipboard) | 57.0.2 | MIT |
-| [expo-constants](https://docs.expo.dev/versions/latest/sdk/constants/) | 57.0.20 | MIT |
-| [expo-crypto](https://docs.expo.dev/versions/latest/sdk/crypto/) | 57.0.3 | MIT |
-| [expo-file-system](https://docs.expo.dev/versions/latest/sdk/filesystem/) | 57.0.7 | MIT |
-| [expo-font](https://docs.expo.dev/versions/latest/sdk/font/) | 57.0.4 | MIT |
-| [expo-glass-effect](https://docs.expo.dev/versions/latest/sdk/glass-effect/) | 57.0.4 | MIT |
-| [expo-haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) | 57.0.3 | MIT |
-| [expo-intent-launcher](https://docs.expo.dev/versions/latest/sdk/intent-launcher/) | 57.0.1 | MIT |
-| [expo-keep-awake](https://docs.expo.dev/versions/latest/sdk/keep-awake/) | 57.0.2 | MIT |
-| [expo-linking](https://docs.expo.dev/versions/latest/sdk/linking) | 57.0.11 | MIT |
-| [expo-localization](https://docs.expo.dev/versions/latest/sdk/localization/) | 57.0.2 | MIT |
-| [expo-notifications](https://docs.expo.dev/versions/latest/sdk/notifications/) | 57.0.21 | MIT |
-| [expo-router](https://docs.expo.dev/routing/introduction/) | 57.0.24 | MIT |
-| [expo-secure-store](https://docs.expo.dev/versions/latest/sdk/securestore/) | 57.0.4 | MIT |
-| [expo-sharing](https://docs.expo.dev/versions/latest/sdk/sharing/) | 57.0.22 | MIT |
-| [expo-splash-screen](https://docs.expo.dev/versions/latest/sdk/splash-screen/) | 57.0.9 | MIT |
-| [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) | 57.0.3 | MIT |
-| [expo-status-bar](https://docs.expo.dev/versions/latest/sdk/status-bar/) | 57.0.1 | MIT |
-| [expo-system-ui](https://docs.expo.dev/versions/latest/sdk/system-ui) | 57.0.4 | MIT |
-| [expo-web-browser](https://docs.expo.dev/versions/latest/sdk/webbrowser/) | 57.0.3 | MIT |
-| [react-native](https://reactnative.dev/) | 0.86.3 | MIT |
-| [react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/) | 3.3.0 | MIT |
-| [react-native-reanimated](https://docs.swmansion.com/react-native-reanimated) | 4.7.1 | MIT |
-| [react-native-safe-area-context](https://github.com/AppAndFlow/react-native-safe-area-context#readme) | 5.7.0 | MIT |
-| [react-native-screens](https://github.com/software-mansion/react-native-screens#readme) | 4.26.2 | MIT |
-| [react-native-svg](https://github.com/react-native-community/react-native-svg) | 15.15.4 | MIT |
-| [react-native-webview](https://github.com/react-native-webview/react-native-webview#readme) | 13.16.1 | MIT |
-| [react-native-worklets](https://docs.swmansion.com/react-native-worklets) | 0.10.1 | MIT |
 
 ### runtime (apps/runtime)
 
@@ -116,7 +82,6 @@ Declared by two or more of the workspaces below:
 | [effect](https://effect.website) | 4.0.0-beta.59 | MIT |
 | [exceljs](https://github.com/exceljs/exceljs#readme) | 4.4.0 | MIT |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser#readme) | 5.11.2 | MIT |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT |
 | [hono](https://hono.dev) | 4.13.12 | MIT |
 | [imapflow](https://imapflow.com/) | 2.2.1 | MIT |
 | [jiti](https://github.com/unjs/jiti#readme) | 2.7.0 | MIT |
@@ -140,10 +105,14 @@ Declared by two or more of the workspaces below:
 | [@xterm/addon-web-links](https://github.com/xtermjs/xterm.js/tree/master#readme) | 0.12.0 | MIT |
 | [@xterm/xterm](https://github.com/xtermjs/xterm.js#readme) | 6.0.0 | MIT |
 | [@xyflow/react](https://reactflow.dev) | 12.12.0 | MIT |
-| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) |
-| [qr-scanner](https://github.com/nimiq/qr-scanner#readme) | 1.4.2 | MIT |
 | [react-router](https://github.com/remix-run/react-router#readme) | 7.18.4 | MIT |
 | [uqr](https://github.com/unjs/uqr#readme) | 0.1.3 | MIT |
+
+### runner (packages/runner)
+
+| Package | Version | Licence |
+|---|---|---|
+| [pdfmake](http://pdfmake.org) | 0.3.11 | MIT |
 
 ### Development only
 
@@ -158,6 +127,7 @@ Used to build, check and test; not part of what people run:
 | [@tailwindcss/vite](https://tailwindcss.com) | 4.3.3 | MIT |
 | [@types/mdx](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdx) | 2.0.14 | MIT |
 | [@types/node](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node) | 26.6.4 | MIT |
+| [@types/pdfmake](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pdfmake) | 0.3.3 | MIT |
 | [@types/react](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) | 19.3.0 | MIT |
 | [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT |
 | [@types/turndown](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/turndown) | 5.0.6 | MIT |
@@ -166,11 +136,11 @@ Used to build, check and test; not part of what people run:
 | [drizzle-kit](https://orm.drizzle.team) | 0.31.11 | MIT |
 | [git-cliff](https://github.com/orhun/git-cliff#readme) | 2.14.2 | MIT OR Apache-2.0 |
 | [postcss](https://postcss.org/) | 8.5.28 | MIT |
-| [sharp](https://sharp.pixelplumbing.com) | 0.35.5 | Apache-2.0 |
 | [tailwindcss](https://tailwindcss.com) | 4.3.3 | MIT |
 | [tsx](https://tsx.hirok.io) | 4.23.15 | MIT |
 | [typescript](https://www.typescriptlang.org/) | 6.0.3 | Apache-2.0 |
 | [vite](https://vite.dev) | 8.3.2 | MIT |
+| [vite-plugin-dts](https://github.com/qmhc/vite-plugin-dts#readme) | 4.5.4 | MIT |
 | [vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile/tree/main/#readme) | 2.3.3 | MIT |
 | [vitest](https://vitest.dev) | 4.1.11 | MIT |
 

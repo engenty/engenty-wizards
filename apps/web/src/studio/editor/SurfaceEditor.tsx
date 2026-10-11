@@ -1,3 +1,4 @@
+import { SurfaceView } from "@engenty-wizards/runner";
 import {
   assembleSurface,
   dataRef,
@@ -9,7 +10,6 @@ import type { SurfaceComponent } from "@engenty-wizards/shared/surface";
 import { Code2, Eye } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../lib/i18n";
-import { SurfaceView } from "../../runner/surface";
 import { cn, IconButton } from "../../ui";
 
 type SurfaceStep = Extract<Step, { type: "surface" }>;

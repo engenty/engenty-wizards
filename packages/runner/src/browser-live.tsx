@@ -1,10 +1,9 @@
 import type { BrowserAct } from "@engenty-wizards/shared/run";
 import { ArrowDown, ArrowUp, CornerDownLeft, MousePointerClick } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { withBase } from "@/lib/base";
-import { api } from "../lib/api";
-import { t } from "../lib/i18n";
-import { cn, Input } from "../ui";
+import { api, runBase, withBase } from "./env.js";
+import { t } from "./i18n.js";
+import { cn, Input } from "./ui.js";
 
 /** Scrolling in the page is sent at most this often; the wheel's movement in between adds up. */
 const WHEEL_EVERY_MS = 250;
@@ -44,7 +43,7 @@ export function LiveBrowser({
   const act = async (body: BrowserAct) => {
     setError(null);
     try {
-      await api.post(`/api/runs/${runId}/browser/act`, body);
+      await api.post(`${runBase(runId)}/browser/act`, body);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -74,7 +73,7 @@ export function LiveBrowser({
         pending = 0;
         if (dy) {
           void api
-            .post(`/api/runs/${runId}/browser/act`, { type: "scroll", dy })
+            .post(`${runBase(runId)}/browser/act`, { type: "scroll", dy })
             .catch(() => undefined);
         }
       }, WHEEL_EVERY_MS);
@@ -110,7 +109,7 @@ export function LiveBrowser({
       >
         <img
           ref={image}
-          src={withBase(`/api/runs/${runId}/browser/live`)}
+          src={withBase(`${runBase(runId)}/browser/live`)}
           alt=""
           draggable={false}
           onClick={click}
