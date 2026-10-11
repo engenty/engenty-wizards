@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.50] - 2026-10-11
+- FIXED **[deploy]** The runtime image installs the runner package's dependencies – its package.json was missing from the manifests, so vite was not there to build it and v0.2.49's image failed
+
 ## [0.2.49] - 2026-10-11
 - ADDED **[runner]** A written output's PDF made in the browser where the server writes none – on a standalone host (the WordPress plugin, standalone: true in its RunnerEnv) the PDF button lays an agent's Markdown or JSON out with pdfmake and Roboto (packages/runner/src/pdf.ts, loaded on the first click, about 1.5 MB), saves the file and hands it to the share sheet; an HTML download there is a page to print, opened beside the run; the fit no longer counts a written text's PDF as a need (web-event and web-dayplan run as is), a document's PDF stays the browser's print; tests for the content tree and a render through the library's server build; the credits list pdfmake; the plan records the change
 - ADDED **[standalone]** The site runs web_fetch and http itself, so the check counts them as no need; a package takes the project's pages along on request (knowledgeSnapshot: files/wissen/<path>.md with title and path in front, 60 000 characters a page and 2 MB in all, the manifest's knowledge field, ?knowledge=1 on the package route and the studio's export, the share dialog's Wissen mitnehmen switch); the runner names what a closed choice lacks on a site, an engenty account among the groups; the plan records the second round, the real-provider runs and what stays open

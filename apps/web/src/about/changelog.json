@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.50",
+    "timestamp": 1791729735,
+    "commits": [
+      {
+        "id": "58e02a9",
+        "message": "the runtime image installs the runner package's dependencies – its package.json was missing from the manifests, so vite was not there to build it and v0.2.49's image failed",
+        "group": "Fixed",
+        "scope": "deploy",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.49",
-    "timestamp": 1791729015,
+    "timestamp": 1791729025,
     "commits": [
       {
         "id": "3e5a8e2",
