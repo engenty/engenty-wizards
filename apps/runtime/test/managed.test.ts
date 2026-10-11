@@ -354,7 +354,10 @@ describe("a runtime of a Manage-App", () => {
       `Bearer ${await token({ sub: "user-a", tenant: "tenant-a", role: "owner", azp: "claude-code" }, `${RUNTIME}/api/mcp`)}`,
     );
     expect(asA.status).toBe(200);
-    expect(await asA.text()).toContain(wizardOfA);
+    const listed = await asA.text();
+    expect(listed).toContain(wizardOfA);
+    // Each wizard names its space and where the space comes from: ids are not for the person.
+    expect(listed).toMatch(/spaceFrom\\?":\\?"here/);
     const asB = await list("Bearer wz_key_of_b");
     expect(asB.status).toBe(200);
     expect(await asB.text()).not.toContain(wizardOfA);
