@@ -1,7 +1,59 @@
 [
   {
+    "version": "v0.2.54",
+    "timestamp": 1791732760,
+    "commits": [
+      {
+        "id": "00a132d",
+        "message": "the JSON Schemas live at engenty.ai/schema/v1/wizard.json and …/v1/wizard-package.json – one folder per definition version, names that say what they hold; the docs site answers /schema/* by asking itself for its public files (Next rewrites past its basePath only to a full URL), the proxy sends /schema to it; /docs/schema/wizard/1.json and …/wizard-package/1.json are gone",
+        "group": "Added",
+        "scope": "format",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.2.53",
+    "timestamp": 1791732563,
+    "commits": [
+      {
+        "id": "3ca9071",
+        "message": "Einbinden starts with what it is for and the apps found here, and every app walks through numbered steps to its first sentence in the chat – a start page with one card and one button per app on this computer and an \"Über engenty.ai\" card; the menu groups the apps (on this computer, through engenty.ai, more apps folded; in the cloud: in the browser, on your computer) with a legend for its dots; an app's page shows what it gets in plain words (wizards in the chat, the wizard as a window or as text) and three steps – add, restart, try – instead of the stage bar and a spinner, the config path behind Details, the address with an API key as a link for another computer; once an app called a tool it offers first sentences with the space's own wizard. claude.ai and ChatGPT on a local install lead to the engenty account (or Claude Desktop) instead of a dead end, and with an account linked or in the cloud they get four steps: open the connector settings, name and address, sign in and allow (with a preview of the consent page), a first sentence with its checks. The runtime asks the Manage-App (POST /v1/grants/check, kept 30 s) whether the grant behind an OAuth token still stands, so \"Trennen\" on the account page, leaving the team or a lock-out end an app's access at once; no answer refuses the token. \"Verbundene Systeme (MCP)\" is \"Verbundene Systeme\", the note against mixing them up is gone, the studio's new strings say API Key",
+        "group": "Added",
+        "scope": "integrate",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.2.52",
+    "timestamp": 1791732208,
+    "commits": [
+      {
+        "id": "c011ee1",
+        "message": "the package check takes the .wizard format's names from shared (wizard-package.ts) – extension, media type, format, wizard.json and files/ are written down once; check.ts still exports PACKAGE_EXTENSION and PACKAGE_MIME for its hosts; COPYRIGHTS.md lists ajv, the schema test's",
+        "group": "Changed",
+        "scope": "runner",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.2.51",
+    "timestamp": 1791731739,
+    "commits": [
+      {
+        "id": "881c4d0",
+        "message": "a published JSON Schema for wizards and `wizards validate` – pnpm schema writes the definition's and a package's wizard.json schema from the Zod schemas the app parses with (packages/shared/src/json-schema.ts) into the docs site, served at engenty.ai/docs/schema/wizard/1.json and …/wizard-package/1.json; objects take no unknown key there, which the app would drop without a word; the export writes \"$schema\" into every wizard.json. `wizards validate <path…>` checks a .wizard file, an unpacked package or a wizard's JSON as the import does, offline and without an account (--json, exit 1 on issues); a project's connectors, MCP servers and plugins stay checked on import. The package format moved to shared (wizard-package.ts), its reading to services/package-file.ts so the CLI loads no database; shape issues name the step everywhere (parseWizard). A test keeps the published schemas equal to a fresh run and checks them with ajv. docs/content/dev/wizard-format.md",
+        "group": "Added",
+        "scope": "format",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.50",
-    "timestamp": 1791729735,
+    "timestamp": 1791729742,
     "commits": [
       {
         "id": "58e02a9",

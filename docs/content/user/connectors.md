@@ -75,9 +75,9 @@ attachments. It never writes. The person picks how to connect:
 | "Gmail" button | The Google client, with the Gmail API enabled and the scope `gmail.readonly`; on a local install without one, your engenty account |
 | "Outlook" button | The Microsoft client, with the delegated permission `Mail.Read` |
 
-## Connected systems (MCP)
+## Connected systems
 
-The section also holds "Connected systems (MCP)": MCP servers of your own, each with a name,
+The section also holds "Connected systems": MCP servers of your own, each with a name,
 its MCP address and, if the server wants one, an authorization header. AI steps read from and write to
 these systems only where you allow the server on the step.
 

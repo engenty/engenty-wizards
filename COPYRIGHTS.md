@@ -1,6 +1,6 @@
 # Copyrights
 
-Copyright © 2026 Matthias Platzer.
+Copyright © 2026 Thru The Heart Creative GmbH - Matthias Platzer.
 
 The code in this repository is published under the Functional Source License, version 1.1,
 with the MIT future licence ([LICENSE](LICENSE), `FSL-1.1-MIT`): use it for yourself and your
@@ -8,9 +8,11 @@ company, run it, change it — just don't offer it to others as a competing prod
 Each release becomes MIT two years after it is published. Every package of the workspace names
 that licence in its `package.json`.
 
-"engenty", "engenty wizards", the wordmark and the engenty figures are marks of their owner. The
-licence covers the code, the figures as code included; it does not license the marks for another
-product or service.
+"engenty" (the brand of a family of products), "engenty.wizards" (also written "engenty wizards"),
+the wordmark and the engenty figures are marks of Thru The Heart Creative GmbH. The word "wizards"
+on its own is not one of them: it names the package, the repository and the command. The licence
+covers the code, the figures as code included; it does not license the marks for another product
+or service.
 
 ## What is not ours
 
@@ -132,6 +134,7 @@ Used to build, check and test; not part of what people run:
 | [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT |
 | [@types/turndown](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/turndown) | 5.0.6 | MIT |
 | [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme) | 6.1.1 | MIT |
+| [ajv](https://ajv.js.org) | 8.20.0 | MIT |
 | [concurrently](https://github.com/open-cli-tools/concurrently#readme) | 10.0.5 | MIT |
 | [drizzle-kit](https://orm.drizzle.team) | 0.31.11 | MIT |
 | [git-cliff](https://github.com/orhun/git-cliff#readme) | 2.14.2 | MIT OR Apache-2.0 |

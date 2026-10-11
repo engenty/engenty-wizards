@@ -1,4 +1,5 @@
 import { SURFACE_GUIDE } from "@engenty-wizards/shared/surface";
+import { WIZARD_SCHEMA_URL } from "@engenty-wizards/shared/wizard-package";
 import { sandboxGuideLine } from "../sandbox/index.js";
 import { EXAMPLE_WIZARD } from "./example.js";
 
@@ -395,6 +396,7 @@ Editing:
 - Prefer edit_wizard with small ops; use replace_wizard only to rewrite most of the wizard.
 - A draft may have issues while you work. publish_wizard and start_test_run refuse until there are none.
 - Put a short "note" on writes (what changed, in the admin's language) — the admin sees it in the studio.
+- A wizard written as a file instead (a .wizard package, its wizard.json, or the JSON alone) follows the JSON Schema at ${WIZARD_SCHEMA_URL}; \`wizards validate <path>\` checks it as the import does.
 - Test runs and published runs spend the admin's credits (research ~150, video ~250, short copy with an image ~15).
 
 Example of a complete wizard:

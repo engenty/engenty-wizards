@@ -635,7 +635,8 @@ export function SetupPage() {
           a place, marked with the wordmark's dot at its own size, for what belongs there later. */}
       <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-(color:--on)/55 text-[0.75rem] sm:pb-8">
         <span>
-          © {new Date().getFullYear()} engenty · {t("setup.local")}
+          © {new Date().getFullYear()} Thru The Heart Creative GmbH - Matthias Platzer ·{" "}
+          {t("setup.local")}
         </span>
         <span className="flex items-center gap-5">
           {site ? <FooterLink href={site}>{new URL(site).host}</FooterLink> : null}

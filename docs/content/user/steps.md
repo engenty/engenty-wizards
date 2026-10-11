@@ -81,7 +81,7 @@ Further tools come from three places:
 
 - **Connections** the wizard declares: the step gets the service's actions as tools. See
   [Connectors](./connectors.md).
-- **Connected systems (MCP)** of the space, where you allow them on the step.
+- **Connected systems** (MCP servers) of the space, where you allow them on the step.
 - **Plugins** installed in this app. See [Plugins](./plugins.md).
 
 ### Model class

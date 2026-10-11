@@ -1,3 +1,4 @@
+import { PACKAGE_MIME } from "@engenty-wizards/shared/wizard-package";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -14,7 +15,7 @@ import { apiRun, apiRuns, apiSpaceDetails, apiSpaces, apiWizards } from "../serv
 import { ServiceError } from "../services/errors.js";
 import { deleteFile, draftFiles, writeFile } from "../services/files.js";
 import { asLang, searchMarketplace } from "../services/marketplace.js";
-import { exportWizard, PACKAGE_MIME } from "../services/package.js";
+import { exportWizard } from "../services/package.js";
 import { siteJob, siteSchema, startSiteJob } from "../services/site.js";
 import {
   checkOnServer,

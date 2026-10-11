@@ -40,20 +40,21 @@ has the WordPress plugin: see [WordPress](./wordpress.md).
 
 ## Add an app
 
-Pick the app on the Integrate page. "Where does the app run?" has two answers:
+Settings → Integrate opens on the apps found on this computer, each with one button and where it
+stands: works, added but not tested yet, or not set up. The dots in the menu say the same.
 
-| | On this computer | At the address |
-|---|---|---|
-| For | An app on the computer engenty wizards is installed on | An app anywhere the address can be reached |
-| Sign-in | None. No key, no port | A key |
-| How | "Add to …" writes engenty wizards into the app's settings | The page shows the command or the config entry to paste |
-| Needs | Nothing running: the app starts engenty wizards itself | engenty wizards running at that address |
+Pick an app and follow its numbered steps:
 
-In the studio on engenty.ai there is only "At the address", and the app signs in in the browser
-on first use instead of with a key. Claude Desktop at the address is added as a custom connector,
-which connects from Anthropic's servers like claude.ai: that works only on engenty.ai.
+1. **Add to …** writes engenty wizards into the app's settings. No key, no port: the app starts
+   engenty wizards itself.
+2. **Restart the app**, or reload its MCP servers. The page notices by itself when the app checks
+   in.
+3. **Try it in the chat**: "Which wizards do I have in engenty?"
 
-From a terminal, the same as "On this computer":
+Once the app has called a tool, the page says "Works" and offers first sentences to try, with your
+own wizards' names.
+
+From a terminal, the same as step 1:
 
 ```bash
 wizards connect
@@ -71,28 +72,31 @@ wizards disconnect cursor
 - Quit Claude Desktop before you add it: it writes its settings from memory while it runs.
 - A settings file that is not plain JSON is left alone. The command prints the entry to paste.
 
-## Test it
+## An app on another computer
 
-"Test" on the app's panel waits for three things and ticks each off:
+Under the steps, "Connect with the address and an API key" is for an app that runs elsewhere. The
+API key is shown once and goes straight into the command or config entry the page shows.
 
-1. **The app checks in.** Quit the app completely and start it again, or reload its MCP servers.
-2. **It called a tool.** In a new chat, write: "Which wizards do I have in engenty?"
-3. **It showed the wizard as a widget**, in apps that can. Write: "Start one of my engenty
-   wizards."
+- Each API key signs one app in and has every right: treat it like a password.
+- The page lists the API keys with their last use. Delete one and that app is signed out.
 
 ## Apps on the web
 
-claude.ai and ChatGPT connect from their makers' servers. They cannot reach your computer: for
-them a wizard runs on engenty.ai. There they sign in in the browser on first use; no key. On
-your computer, use "On this computer" or an app that runs there.
+claude.ai and ChatGPT connect from their makers' servers, and so do Claude Desktop's connectors.
+They cannot reach your computer: for them your wizards run on engenty.ai.
 
-## Keys
+- **From the cloud studio** the page walks through it: open the app's connector settings, enter
+  the name and the address `https://engenty.ai/api/mcp`, click Connect, sign in at engenty and
+  allow. No key.
+- **From your computer** connect your engenty account first. The wizards you publish go to
+  engenty.ai, and claude.ai connects there. Without an account, use Claude Desktop on this
+  computer.
 
-On your computer, "At the address" signs an app in with a key. The key is shown once and goes
-straight into the command the page shows.
+The consent page names the team the access is for and the address it goes back to. An app that
+only named itself is marked "Name given by the app itself".
 
-- Each key signs one app in and has every right: treat it like a password.
-- The page lists the keys with their last use. Delete a key and that app is signed out.
+Disconnect an app under Account → Connected apps at engenty.ai. Its access ends within half a
+minute, even with a token it already holds.
 
 ## The Claude Code plugin
 

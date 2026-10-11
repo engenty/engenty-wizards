@@ -1373,13 +1373,28 @@ export function parseWizard(
   | { ok: false; issues: ValidationIssue[] } {
   const parsed = wizardSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      issues: parsed.error.issues.map((i) => ({ message: `${i.path.join(".")}: ${i.message}` })),
-    };
+    return { ok: false, issues: shapeIssues(parsed.error, input) };
   }
   const issues = validateWizard(parsed.data, files);
   return { ok: true, wizard: parsed.data, issues };
+}
+
+function stepLabel(raw: unknown, index: number): string {
+  const steps = (raw as { steps?: unknown[] } | null)?.steps;
+  const id = (steps?.[index] as { id?: unknown } | undefined)?.id;
+  return typeof id === "string" ? `steps[${index}] "${id}"` : `steps[${index}]`;
+}
+
+/** Where the shape is wrong, a step named by its id: `steps[2] "draft".title: …`. */
+export function shapeIssues(error: z.ZodError, raw: unknown): ValidationIssue[] {
+  return error.issues.map((i) => {
+    const [head, index, ...rest] = i.path;
+    const where =
+      head === "steps" && typeof index === "number"
+        ? [stepLabel(raw, index), ...rest].join(".")
+        : i.path.join(".");
+    return { message: `${where || "wizard"}: ${i.message}` };
+  });
 }
 
 /**

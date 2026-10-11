@@ -9,6 +9,7 @@ import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
 import { update } from "./update.js";
+import { validateCommand } from "./validate.js";
 
 const HELP = `engenty wizards ${packageVersion()}
 
@@ -32,6 +33,9 @@ const HELP = `engenty wizards ${packageVersion()}
                           .join(", ")}
   ${command()} disconnect take them out again (same names)
   ${command()} mcp        the MCP server over stdio, as the AI apps start it
+  ${command()} validate   check wizards without the studio: .wizard files, unpacked packages, wizard JSON
+                        (--json for the issues as JSON); a project's connectors and plugins are
+                        checked on import
 
   --yes, -y          ask nothing and install nothing optional
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
@@ -48,6 +52,9 @@ interface Args {
   value: string;
   /** What follows \`connect\`, \`disconnect\` and \`features\`. */
   apps: string[];
+  /** The paths \`validate\` checks. */
+  paths: string[];
+  json: boolean;
   yes: boolean;
   open: boolean;
   service: boolean;
@@ -60,6 +67,8 @@ function parse(argv: string[]): Args | string {
     command: "",
     value: "",
     apps: [],
+    paths: [],
+    json: false,
     yes: false,
     open: true,
     service: false,
@@ -76,6 +85,8 @@ function parse(argv: string[]): Args | string {
       args.service = true;
     } else if (arg === "--print") {
       args.print = true;
+    } else if (arg === "--json") {
+      args.json = true;
     } else if (arg === "--client") {
       const id = argv[++i];
       if (!CLIENTS.some((client) => client.id === id)) {
@@ -92,6 +103,8 @@ function parse(argv: string[]): Args | string {
       args.value = arg;
     } else if (["connect", "disconnect", "features"].includes(args.command)) {
       args.apps.push(arg);
+    } else if (args.command === "validate") {
+      args.paths.push(arg);
     } else if (args.command) {
       return `Unexpected argument ${arg}.`;
     } else {
@@ -168,6 +181,8 @@ async function main(argv: string[]): Promise<number> {
       return mcp(paths);
     case "features":
       return featuresCommand(args.apps);
+    case "validate":
+      return validateCommand(args.paths, args.json);
     default:
       console.error(`Unknown command ${args.command}.\n\n${HELP}`);
       return 2;

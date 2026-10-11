@@ -16,6 +16,11 @@ code, and it loads from its files while the app runs.
 | [Reference](./plugins/reference.md) | Every call, type, address and setting |
 | [Examples](./plugins/examples.md) | Two plugins to read and copy |
 
+## Wizards as files
+
+A wizard is JSON, and it travels as a `.wizard` package. Its format, the JSON Schema for your
+editor and `wizards validate` are on [The wizard format](./wizard-format.md).
+
 ## What you need
 
 - An install of engenty wizards, or a checkout of
