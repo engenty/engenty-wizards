@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 import { t } from "../lib/i18n";
 
@@ -238,6 +239,84 @@ export function Segmented({
             )}
           >
             {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const SLIDE = "cubic-bezier(0.3, 0.7, 0.2, 1)";
+
+/**
+ * A row of tabs as one button group, in the look of the theme switch: a thumb slides to the
+ * pick and takes its width. The tabs' panels are the caller's.
+ */
+export function Tabs<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: { id: T; label: string }[];
+  /** The group's name for a screen reader. */
+  label?: string;
+}) {
+  const buttons = useRef(new Map<T, HTMLButtonElement>());
+  const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
+  // Measured from the picked tab, again when its width changes (fonts, a resize).
+  useLayoutEffect(() => {
+    const el = buttons.current.get(value);
+    if (!el) {
+      return;
+    }
+    const measure = () => setThumb({ x: el.offsetLeft, w: el.offsetWidth });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value]);
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className="relative inline-flex items-center rounded-full bg-paper-2 p-0.5 ring-1 ring-border-soft"
+    >
+      {thumb ? (
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 bottom-0.5 left-0 rounded-full bg-card shadow-sm motion-reduce:transition-none"
+          style={{
+            width: thumb.w,
+            transform: `translateX(${thumb.x}px)`,
+            transition: `transform 300ms ${SLIDE}, width 300ms ${SLIDE}`,
+          }}
+        />
+      ) : null}
+      {options.map((option) => {
+        const on = option.id === value;
+        return (
+          <button
+            key={option.id}
+            ref={(el) => {
+              if (el) {
+                buttons.current.set(option.id, el);
+              } else {
+                buttons.current.delete(option.id);
+              }
+            }}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "relative h-8 whitespace-nowrap rounded-full px-4 font-medium text-[0.875rem] transition-colors motion-reduce:transition-none coarse:h-9",
+              on ? "text-ink" : "text-ink-3 hover:text-ink-2",
+            )}
+          >
+            {option.label}
           </button>
         );
       })}

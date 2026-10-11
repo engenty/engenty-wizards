@@ -1,11 +1,11 @@
-import { ChevronRight, Download, ExternalLink, RefreshCw } from "lucide-react";
+import { ChevronRight, Download, ExternalLink, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EngentyLogoMark } from "../engenty/logo";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
 import { useUpdate } from "../lib/update";
 import { stepClass, useStepDirection } from "../studio/settings-menu";
-import { Button, cn, Dialog, Segmented, Spinner } from "../ui";
+import { Button, cn, Dialog, IconButton, Spinner, Tabs } from "../ui";
 import { APP_VERSION } from "./AboutLinks";
 import {
   type ChangelogRelease,
@@ -64,23 +64,27 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
     ? new Date(data.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
     : null;
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.title")} wide height="tall">
-      <div className="flex items-center gap-4">
-        <EngentyLogoMark size={56} />
-        <div className="min-w-0">
-          <div className="font-display font-semibold text-[1.125rem] tracking-tight">
-            engenty<span className="text-ember">.</span>
-            <span className="ml-1 font-normal text-ink-3">wizards</span>
-          </div>
-          <div className="text-[0.875rem] text-ink-3 tabular-nums">
-            {t("about.version", { v: APP_VERSION })}
-            {kind ? ` · ${t(`about.kind.${kind}`)}` : ""}
-          </div>
+    <Dialog open={open} onClose={onClose} wide height="tall">
+      {/* No title: the mark says what this is. The close stays in the corner while it scrolls. */}
+      <div className="-mt-2 -mr-2 sticky top-0 z-10 flex h-0 justify-end">
+        <IconButton label={t("common.close")} onClick={onClose}>
+          <X className="size-4" />
+        </IconButton>
+      </div>
+      <div className="flex flex-col items-center pt-4 text-center">
+        <EngentyLogoMark size={96} />
+        <div className="mt-4 font-display font-semibold text-[1.5rem] tracking-tight">
+          engenty<span className="text-ember">.</span>
+          <span className="ml-1.5 font-normal text-ink-3">wizards</span>
+        </div>
+        <div className="mt-1 text-[0.9375rem] text-ink-3 tabular-nums">
+          {t("about.version", { v: APP_VERSION })}
+          {kind ? ` · ${t(`about.kind.${kind}`)}` : ""}
         </div>
       </div>
 
       {local ? (
-        <div className="mt-5 flex flex-col gap-3 rounded-xl bg-paper-2 p-4 text-[0.875rem] text-ink-2">
+        <div className="mt-5 flex flex-col items-center gap-3 text-center text-[0.875rem] text-ink-2">
           {status.isPending || check.isPending ? (
             <div className="flex items-center gap-2.5">
               <Spinner className="size-4 text-ember-strong" />
@@ -115,7 +119,7 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
             </p>
           )}
           {busy || status.isPending ? null : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {data?.newer && data.canApply && data.applying !== "running" ? (
                 <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate()}>
                   <Download className="size-4" /> {t("about.update.install")}
@@ -147,11 +151,12 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
       ) : null}
 
       {/* One of the three at a time, sliding in from the side it stands on. */}
-      <div className="mt-6">
-        <Segmented
-          value={label(tab)}
-          options={TABS.map(label)}
-          onChange={(picked: string) => setTab(TABS.find((x) => label(x) === picked) ?? "new")}
+      <div className="mt-6 flex justify-center">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          options={TABS.map((id) => ({ id, label: label(id) }))}
+          label={t("about.title")}
         />
       </div>
       <div key={tab} className={cn("mt-5", stepClass(step))}>
