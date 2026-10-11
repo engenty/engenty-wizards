@@ -90,10 +90,21 @@ command the page shows.
 
 ## The Claude Code plugin
 
-With a public https address, Claude Code can also install a plugin. It adds the `/wizard`
-command and the skills to build and to use wizards:
+Claude Code can also install a plugin. It adds the `/wizard` command, the skills to build and to
+use wizards, and `/wizards`, a pane beside the chat that lists your wizards and opens one in the
+app's browser pane. From GitHub, for the `engenty-wizards` server your AI apps already have:
+
+```bash
+claude plugin marketplace add engenty/engenty-wizards
+claude plugin install wizards@engenty-wizards
+```
+
+With a public https address, your own engenty wizards serves the plugin with its server bundled:
 
 ```bash
 claude plugin marketplace add <your address>/api/claude-plugin/marketplace.json
-claude plugin install engenty-wizards@engenty
+claude plugin install wizards@engenty
 ```
+
+`claude plugin update wizards` brings the next version. In Claude Code's auto mode the pane's own
+calls need allow rules; the plugin's README names them.

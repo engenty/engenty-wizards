@@ -6,12 +6,12 @@ import { engentyColor, engentySvg } from "./engenty";
 
 const PANE = "wizards";
 
-const wizards = atom({ plugin: "engenty-wizards", key: "wizards" } as const, []);
-const details = atom({ plugin: "engenty-wizards", key: "details" } as const, {}, { shape: "v2" });
-const message = atom({ plugin: "engenty-wizards", key: "message" } as const, null);
-const shown = atom({ plugin: "engenty-wizards", key: "shown" } as const, null);
-const runtime = atom({ plugin: "engenty-wizards", key: "runtime" } as const, null);
-const fallback = atom({ plugin: "engenty-wizards", key: "fallback" } as const, null);
+const wizards = atom({ plugin: "wizards", key: "wizards" } as const, []);
+const details = atom({ plugin: "wizards", key: "details" } as const, {}, { shape: "v2" });
+const message = atom({ plugin: "wizards", key: "message" } as const, null);
+const shown = atom({ plugin: "wizards", key: "shown" } as const, null);
+const runtime = atom({ plugin: "wizards", key: "runtime" } as const, null);
+const fallback = atom({ plugin: "wizards", key: "fallback" } as const, null);
 
 /** The runtime's MCP tools whose answer is a run report: a run the model drives. */
 const RUN_TOOLS = new Set([
@@ -29,7 +29,7 @@ type Called = { ok: true; body: unknown } | { ok: false; error: string };
 type Servers = { server: string; browser: string };
 
 /** This plugin's name in its manifest: a server bundled with it is listed under it. */
-const PLUGIN = "engenty-wizards";
+const PLUGIN = "wizards";
 
 /** A server's spelling inside a tool name: anything but letters, digits, `_` and `-` becomes `_`. */
 const slug = (name: string) => name.replace(/[^A-Za-z0-9_-]/g, "_");

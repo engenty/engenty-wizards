@@ -79,7 +79,7 @@ test("lists the wizards; Run opens the page beside the chat, Edit asks the chat"
     calls.length = 0;
     opened.length = 0;
     const ui = await $.ui.mount({
-      plugin: "engenty-wizards",
+      plugin: "wizards",
       surface,
       component: "Pane",
       requestId: "wizards",
@@ -127,7 +127,7 @@ test("a run the model drives opens beside the chat once", async ($, on) => {
   }));
 
   const ui = await $.ui.mount({
-    plugin: "engenty-wizards",
+    plugin: "wizards",
     surface: "desktop",
     component: "Pane",
     requestId: "wizards",
@@ -149,7 +149,7 @@ test("offers a plain link when the browser pane refuses", async ($, on) => {
   });
   on("mcp.call", { server: "Claude_Browser" }, () => ({ deny: "no verdict for navigate" }));
   const ui = await $.ui.mount({
-    plugin: "engenty-wizards",
+    plugin: "wizards",
     surface: "desktop",
     component: "Pane",
     requestId: "wizards",
@@ -165,7 +165,7 @@ test("offers a plain link when the browser pane refuses", async ($, on) => {
 test("says why when the runtime cannot be reached", async ($, on) => {
   on("mcp.call", { server: "engenty-wizards" }, () => ({ deny: "ECONNREFUSED" }));
   const ui = await $.ui.mount({
-    plugin: "engenty-wizards",
+    plugin: "wizards",
     surface: "terminal",
     component: "Pane",
     requestId: "wizards",
