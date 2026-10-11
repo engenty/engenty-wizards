@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.55] - 2026-10-11
+- FIXED **[mcp]** An AI app names spaces and wizards, not their ids – list_projects says where each space comes from (from: "your computer" for one a local install sent, "here"), list_wizards gives each wizard its space's name and origin, and the tools' descriptions and the server's instructions say ids are for the tools only; claude.ai had listed two spaces both called "Meine Wizards" by their ids
+
 ## [0.2.54] - 2026-10-11
 - ADDED **[format]** The JSON Schemas live at engenty.ai/schema/v1/wizard.json and …/v1/wizard-package.json – one folder per definition version, names that say what they hold; the docs site answers /schema/* by asking itself for its public files (Next rewrites past its basePath only to a full URL), the proxy sends /schema to it; /docs/schema/wizard/1.json and …/wizard-package/1.json are gone
 
