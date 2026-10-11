@@ -14,7 +14,7 @@ import {
   releaseDate,
   releaseLabel,
 } from "./ChangelogDialog";
-import { Credits } from "./CreditsDialog";
+import { Credits } from "./Credits";
 
 type Tab = "new" | "earlier" | "credits";
 const TABS: Tab[] = ["new", "earlier", "credits"];
@@ -34,8 +34,17 @@ const changes = (n: number) => (n === 1 ? t("about.change") : t("about.changes",
  * can be — then three tabs: what is new in the newest release known, the earlier releases (each
  * unfolding to its changes), and the credits.
  */
-export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () => void; me: Me }) {
-  const local = me.mode === "local";
+export function AboutDialog({
+  open,
+  onClose,
+  me,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Without a session (a public page) the dialog says the version and what is new, no updates. */
+  me?: Me | null;
+}) {
+  const local = me?.mode === "local";
   const { status, data, latest, check, apply, busy, progress } = useUpdate(local && open);
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
   const [tab, setTab] = useState<Tab>("new");

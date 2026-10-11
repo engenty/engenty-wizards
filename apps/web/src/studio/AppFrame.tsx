@@ -579,7 +579,7 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
           {link.label}
         </a>
       ))}
-      {about ? <AboutLinks /> : null}
+      {about ? <AboutLinks me={me} /> : null}
     </footer>
   );
 }

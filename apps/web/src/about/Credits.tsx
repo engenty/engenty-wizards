@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { lang, t } from "../lib/i18n";
-import { Dialog, Empty, Input, Spinner } from "../ui";
+import { Empty, Input, Spinner } from "../ui";
 import { ENGENTY_CREDITS, HIGHLIGHT_CREDITS, type ProductCredit } from "./product-credits";
 
 interface OssCredit {
@@ -106,9 +106,8 @@ function PackageList({ label, packages }: { label: string; packages: OssCredit[]
 }
 
 /**
- * engenty wizards and the open-source software it builds on: the body of the credits, in its
- * own dialog or unfolded in the About dialog. `active`: shown now — the list loads then, and the
- * search clears when it is put away.
+ * engenty wizards and the open-source software it builds on: the Credits tab of the About
+ * dialog. `active`: shown now — the list loads then, and the search clears when it is put away.
  */
 export function Credits({ active }: { active: boolean }) {
   const [data, setData] = useState<OssCreditsData | null>(null);
@@ -190,15 +189,5 @@ export function Credits({ active }: { active: boolean }) {
       ) : null}
       {data !== null && nothing ? <Empty>{t("about.noMatches")}</Empty> : null}
     </>
-  );
-}
-
-export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <Dialog open={open} onClose={onClose} title={t("about.credits")} wide height="tall">
-      <div className="-mt-3">
-        <Credits active={open} />
-      </div>
-    </Dialog>
   );
 }
