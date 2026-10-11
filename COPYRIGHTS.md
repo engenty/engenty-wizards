@@ -134,6 +134,7 @@ Used to build, check and test; not part of what people run:
 | [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT |
 | [@types/turndown](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/turndown) | 5.0.6 | MIT |
 | [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme) | 6.1.1 | MIT |
+| [ajv](https://ajv.js.org) | 8.20.0 | MIT |
 | [concurrently](https://github.com/open-cli-tools/concurrently#readme) | 10.0.5 | MIT |
 | [drizzle-kit](https://orm.drizzle.team) | 0.31.11 | MIT |
 | [git-cliff](https://github.com/orhun/git-cliff#readme) | 2.14.2 | MIT OR Apache-2.0 |

@@ -4,6 +4,11 @@ import {
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
 import { type StandaloneFit, standaloneEntry } from "@engenty-wizards/shared/fit";
+import {
+  PACKAGE_FILES,
+  PACKAGE_FORMAT,
+  PACKAGE_MANIFEST,
+} from "@engenty-wizards/shared/wizard-package";
 import { strFromU8, unzipSync } from "fflate";
 
 /**
@@ -12,11 +17,7 @@ import { strFromU8, unzipSync } from "fflate";
  * plugin's import runs this in the browser; the studio computes the same on its server.
  */
 
-const FORMAT = "engenty-wizard";
-const MANIFEST = "wizard.json";
-const FILES = "files/";
-export const PACKAGE_EXTENSION = ".wizard";
-export const PACKAGE_MIME = "application/vnd.engenty.wizard+zip";
+export { PACKAGE_EXTENSION, PACKAGE_MIME } from "@engenty-wizards/shared/wizard-package";
 
 export interface PackageFile {
   path: string;
@@ -79,7 +80,7 @@ function json(data: Uint8Array): unknown {
 /** A manifest, or a bare definition: a wizard without workspace is fully told by its JSON. */
 function definitionOf(raw: unknown): unknown {
   const manifest = raw as { format?: unknown; definition?: unknown } | null;
-  return manifest?.format === FORMAT ? manifest.definition : raw;
+  return manifest?.format === PACKAGE_FORMAT ? manifest.definition : raw;
 }
 
 /** Reads the package's bytes: the manifest and the workspace files under `files/`. */
@@ -97,13 +98,17 @@ export function readPackage(data: Uint8Array): { definition: unknown; files: Pac
   } catch {
     throw new PackageError("Das Wizard-Paket lässt sich nicht öffnen.");
   }
-  const manifest = entries[MANIFEST];
+  const manifest = entries[PACKAGE_MANIFEST];
   if (!manifest) {
     throw new PackageError("Das ist kein Wizard-Paket: wizard.json fehlt.");
   }
   const files = Object.entries(entries)
-    .filter(([name]) => name.startsWith(FILES))
-    .map(([name, bytes]) => ({ path: name.slice(FILES.length), data: bytes, mime: mimeOf(name) }));
+    .filter(([name]) => name.startsWith(PACKAGE_FILES))
+    .map(([name, bytes]) => ({
+      path: name.slice(PACKAGE_FILES.length),
+      data: bytes,
+      mime: mimeOf(name),
+    }));
   return { definition: definitionOf(json(manifest)), files };
 }
 
