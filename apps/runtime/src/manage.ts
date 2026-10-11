@@ -250,6 +250,11 @@ export function verifyKey(key: string): Promise<KeyInfo> {
   return call<KeyInfo>("POST", "/v1/keys/verify", { key });
 }
 
+/** Whether the grant behind an access token still stands: not disconnected, still a member. */
+export function grantActive(userId: string, clientId: string, tenantId: string) {
+  return call<{ active: boolean }>("POST", "/v1/grants/check", { userId, clientId, tenantId });
+}
+
 export function reserve(tenantId: string, runId: string, credits: number) {
   return call<{ id: string }>("POST", "/v1/reservations", { tenantId, runId, credits });
 }

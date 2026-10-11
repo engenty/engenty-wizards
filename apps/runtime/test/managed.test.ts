@@ -97,6 +97,11 @@ const manage: Server = createServer(async (req, res) => {
       db: null,
     });
   }
+  if (url.pathname === "/v1/grants/check") {
+    // The person disconnected this one on the account page.
+    const { clientId } = JSON.parse(raw);
+    return json({ active: clientId !== "disconnected-app" });
+  }
   if (url.pathname === "/v1/keys/verify") {
     const { key } = JSON.parse(raw);
     return json(
@@ -359,6 +364,11 @@ describe("a runtime of a Manage-App", () => {
     );
     expect(wrongAudience.status).toBe(401);
     expect((await list("Bearer wz_unknown")).status).toBe(401);
+    // A token still signed and unexpired, of an app the person disconnected: its grant is gone.
+    const disconnected = await list(
+      `Bearer ${await token({ sub: "user-a", tenant: "tenant-a", role: "owner", azp: "disconnected-app" }, `${RUNTIME}/api/mcp`)}`,
+    );
+    expect(disconnected.status).toBe(401);
     const meta = await app.fetch(
       new Request(`${RUNTIME}/.well-known/oauth-protected-resource/api/mcp`),
     );

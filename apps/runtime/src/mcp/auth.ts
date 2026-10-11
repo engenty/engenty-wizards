@@ -2,7 +2,7 @@ import type { AuthInfo } from "@modelcontextprotocol/server";
 import { API_KEY_PREFIX, verifyLocalKey } from "../auth/keys.js";
 import { LOCAL_CLIENT_HEADER, LOCAL_MCP_HEADER, localTicketExpiry } from "../auth/local-ticket.js";
 import { env } from "../env.js";
-import { managed, type Role, verifyKey, verifyToken } from "../manage.js";
+import { grantActive, managed, type Role, verifyKey, verifyToken } from "../manage.js";
 import { LOCAL_TENANT } from "../tenants/tenant.js";
 import { MCP_RESOURCE, SCOPES, type Scope } from "./scopes.js";
 
@@ -97,6 +97,31 @@ async function apiKeyAuth(key: string): Promise<AuthInfo | Response> {
   return authInfoFor(who, key, result.keyId ?? "");
 }
 
+const grantCache = new Map<string, { at: number; active: boolean }>();
+/** How long an answer of the Manage-App holds: "Trennen" takes effect within this time. */
+const GRANT_TTL = 30_000;
+
+/**
+ * A signed token lives its hour whatever happens; whether the person still allows the app —
+ * and is still in the team — the Manage-App knows. Asked at most every 30 seconds per grant;
+ * when it cannot be asked, the token is refused.
+ */
+async function grantStands(userId: string, clientId: string, tenantId: string) {
+  const key = `${userId}\n${clientId}\n${tenantId}`;
+  const hit = grantCache.get(key);
+  if (hit && Date.now() - hit.at < GRANT_TTL) {
+    return hit.active;
+  }
+  const active = await grantActive(userId, clientId, tenantId)
+    .then((r) => r.active)
+    .catch(() => null);
+  if (active === null) {
+    return false;
+  }
+  grantCache.set(key, { at: Date.now(), active });
+  return active;
+}
+
 /** An access token of the Manage-App, issued for this MCP endpoint, acts within its scopes. */
 async function tokenAuth(token: string): Promise<AuthInfo | Response> {
   if (!managed) {
@@ -105,6 +130,9 @@ async function tokenAuth(token: string): Promise<AuthInfo | Response> {
   const claims = await verifyToken(token, [MCP_RESOURCE, env.appUrl]);
   if (!claims) {
     return challenge(401, "invalid_token", "The access token is invalid or expired.");
+  }
+  if (!(await grantStands(claims.userId, claims.clientId, claims.tenantId))) {
+    return challenge(401, "invalid_token", "This connection was ended. Connect again.");
   }
   const granted = new Set(claims.scopes);
   const who: Principal = {
