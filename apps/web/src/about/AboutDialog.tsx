@@ -13,6 +13,7 @@ import {
   releaseDate,
   releaseLabel,
 } from "./ChangelogDialog";
+import { Credits } from "./CreditsDialog";
 
 /** `1 Änderung`, `12 Änderungen`. */
 const changes = (n: number) => (n === 1 ? t("about.change") : t("about.changes", { n }));
@@ -20,12 +21,14 @@ const changes = (n: number) => (n === 1 ? t("about.change") : t("about.changes",
 /**
  * Behind the mark in the app bar: which release this is and how it got here; on a runtime that
  * runs alone, whether a newer one is out — checked now on a word, installed from here where it
- * can be — then what is new in the newest release known, and the earlier ones folded away.
+ * can be — then what is new in the newest release known, the earlier ones folded away, and the
+ * open-source credits folded away under them.
  */
 export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () => void; me: Me }) {
   const local = me.mode === "local";
   const { status, data, latest, check, apply, busy, progress } = useUpdate(local && open);
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
+  const [credits, setCredits] = useState(false);
   // The notes of the newest release known: the newer one from GitHub, else this build's own.
   const shown = data?.newer && latest ? latest : APP_VERSION;
   useEffect(() => {
@@ -182,6 +185,14 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
           </div>
         </details>
       ) : null}
+
+      <details className="group mt-3" onToggle={(e) => setCredits(e.currentTarget.open)}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-[0.875rem] text-ink-2 transition hover:text-ink [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-4 transition group-open:rotate-90" />
+          {t("about.credits")}
+        </summary>
+        <div className="mt-3">{credits ? <Credits active /> : null}</div>
+      </details>
     </Dialog>
   );
 }
