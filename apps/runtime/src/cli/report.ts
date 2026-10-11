@@ -79,7 +79,7 @@ export async function reportCommand(paths: Layout): Promise<number> {
   }
   if (answer.status === 409) {
     console.error(
-      `${bad} This install is linked to no account. Link one in the studio under Settings → Modelle & Konto, then send again.`,
+      `${bad} This install is linked to no account. Link one in the studio under Settings → Account, then send again.`,
     );
     return 1;
   }

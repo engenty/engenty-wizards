@@ -85,6 +85,7 @@ writeFileSync(
 /* The studio's components a plugin draws carry the studio's classes: the same rules, in the
    plugin's own order, so its stylesheet decides alone inside its part of the page. */
 @source ${css(join(web, "src/ui"))};
+@source ${css(join(root, "packages/runner/src/ui.tsx"))};
 `,
 );
 writeFileSync(

@@ -165,7 +165,7 @@ export function appleFailure(error: { kind: string; message: string }): Error {
       );
     case "contextWindow":
       return new Error(
-        "Apple Intelligence: Der Text ist zu lang für das Modell auf diesem Mac (4.096 Tokens für Frage und Antwort). Diese Klasse in den Einstellungen unter „Modelle & Konto“ auf ein anderes Modell legen.",
+        "Apple Intelligence: Der Text ist zu lang für das Modell auf diesem Mac (4.096 Tokens für Frage und Antwort). Diese Klasse in den Einstellungen unter „Modelle“ auf ein anderes Modell legen.",
       );
     case "guardrail":
     case "refusal":

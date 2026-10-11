@@ -38,6 +38,7 @@ import {
   reviewStep,
   runView,
   submitPage,
+  talkAllowed,
 } from "../engine/runner.js";
 import { basePath, env } from "../env.js";
 import { loadAsset, saveAsset } from "../files/storage.js";
@@ -606,6 +607,9 @@ export const runRoutes = new Hono()
     }
     if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
       return c.json({ error: "Der Durchlauf ist beendet." }, 409);
+    }
+    if (!(await talkAllowed(run))) {
+      return c.json({ error: "Live-Gespräche sind für diesen Wizard nicht eingeschaltet." }, 403);
     }
     if (!allowed(`talk:${run.id}`, 20, 3600_000)) {
       return c.json({ error: "Bitte später noch einmal." }, 429);

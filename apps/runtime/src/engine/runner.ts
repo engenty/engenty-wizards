@@ -27,6 +27,7 @@ import {
   wizardLang,
 } from "@engenty-wizards/shared/definition";
 import type { ClosedChoice, RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
+import { CONVERSATION_RUNNERS, DEFAULT_RUNNER_SETTINGS } from "@engenty-wizards/shared/runners";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { eq } from "drizzle-orm";
@@ -915,6 +916,22 @@ function prefillOf(
   return out;
 }
 
+/**
+ * Whether a run may hold a live conversation: a speech model is set up, and the wizard has live
+ * voice or video switched on. Its owner's test run always may.
+ */
+export async function talkAllowed(run: RunRow): Promise<boolean> {
+  if (!(await conversationAvailable())) {
+    return false;
+  }
+  if (run.mode === "test") {
+    return true;
+  }
+  const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
+  const { enabled } = w?.runners ?? DEFAULT_RUNNER_SETTINGS;
+  return enabled.some((id) => CONVERSATION_RUNNERS.includes(id));
+}
+
 export async function runView(run: RunRow, brand: RunView["brand"]): Promise<RunView> {
   const def = run.definition;
   const step = stepOf(def, run.cursor) ?? null;
@@ -976,7 +993,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       intro: def.intro,
     },
     lang: wizardLang(def),
-    talk: await conversationAvailable(),
+    talk: await talkAllowed(run),
     step,
     answered: run.state.history.map((id) => stepOf(def, id)).filter((s): s is Step => Boolean(s)),
     values: run.state.values,

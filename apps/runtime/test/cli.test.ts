@@ -7,7 +7,7 @@ import { loginItemText, unitText } from "../src/cli/autostart.js";
 import { installCommand } from "../src/cli/clients.js";
 import { inherited, runtimeEnv, runtimePath } from "../src/cli/environment.js";
 import { layout, readEnvFile, wizardsHome } from "../src/cli/home.js";
-import { CLIENTS, nodeIsCurrent, suggestedClient } from "../src/cli/machine.js";
+import { CLIENTS, findChrome, nodeIsCurrent, suggestedClient } from "../src/cli/machine.js";
 import { clearRunning, readRunning, writeRunning } from "../src/running.js";
 
 let dir: string;
@@ -148,6 +148,18 @@ describe("the machine", () => {
     expect(nodeIsCurrent("26.1.0")).toBe(true);
     expect(nodeIsCurrent("24.10.9")).toBe(false);
     expect(nodeIsCurrent("22.20.0")).toBe(false);
+  });
+
+  it("finds the browser the runtime starts: CHROME_PATH, else one on the machine", () => {
+    const home = mkdtempSync(join(tmpdir(), "wizards-chrome-"));
+    const browser = join(home, "chromium");
+    writeFileSync(browser, "#!/bin/sh\n", { mode: 0o755 });
+    expect(findChrome({ CHROME_PATH: browser })).toBe(browser);
+    expect(findChrome({ CHROME_PATH: join(home, "gone") })).toBeNull();
+    if (process.platform !== "darwin") {
+      expect(findChrome({ PATH: home })).toBe(browser);
+    }
+    rmSync(home, { recursive: true, force: true });
   });
 
 });

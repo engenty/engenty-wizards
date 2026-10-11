@@ -250,7 +250,7 @@ const de = {
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic oder Ollama.",
   "setup.appleDesc": "Das Modell auf diesem Mac – ohne Konto, ohne Internet.",
   "setup.appleHint":
-    "Apple Intelligence denkt kurze Texte und Entscheidungen auf diesem Mac; nichts verlässt ihn. Für Recherche, lange Dokumente und Code legst du später unter „Modelle & Konto“ einen weiteren Weg an.",
+    "Apple Intelligence denkt kurze Texte und Entscheidungen auf diesem Mac; nichts verlässt ihn. Für Recherche, lange Dokumente und Code legst du später unter Einstellungen → Modelle einen weiteren Weg an.",
   "setup.recommended": "Empfohlen",
   "setup.done": "Zum Studio",
   "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
@@ -882,6 +882,7 @@ const de = {
   "integrate.wpPlace": "3 · Auf die Seite bringen",
   "integrate.wpPlaceHint":
     "Block „engenty Wizard“, das gleichnamige Elementor-Widget, die Blase aus den Einstellungen des Plugins oder dieser Shortcode mit der ID des Wizards:",
+  "integrate.wpSampleLabel": "Anfrage starten",
   "share.wp": "WordPress",
   "share.wpAccount": "Über dein Konto",
   "share.wpAccountHint":
@@ -1645,7 +1646,7 @@ const en: Record<Key, string> = {
   "setup.ownDesc": "AI Gateway, OpenAI, Anthropic or Ollama.",
   "setup.appleDesc": "The model on this Mac – no account, no internet.",
   "setup.appleHint":
-    'Apple Intelligence thinks short texts and decisions on this Mac; nothing leaves it. For research, long documents and code, add another way later under "Models & account".',
+    "Apple Intelligence thinks short texts and decisions on this Mac; nothing leaves it. For research, long documents and code, add another way later under Settings → Models.",
   "setup.recommended": "Recommended",
   "setup.done": "Open the studio",
   "setup.untilWorks": "The studio opens once the test works.",
@@ -2267,6 +2268,7 @@ const en: Record<Key, string> = {
   "integrate.wpPlace": "3 · Put it on a page",
   "integrate.wpPlaceHint":
     "The \"engenty Wizard\" block, the Elementor widget of the same name, the bubble from the plugin's settings, or this shortcode with the wizard's ID:",
+  "integrate.wpSampleLabel": "Start a request",
   "share.wp": "WordPress",
   "share.wpAccount": "Through your account",
   "share.wpAccountHint":

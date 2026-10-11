@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { findChrome } from "./render/browser-path.js";
 
 /** Load `.env.local` then `.env` without overriding the real environment. */
 function loadEnvFiles() {
@@ -201,11 +202,13 @@ export const env = {
   geocoderUrl: str("GEOCODER_URL"),
   /** CDP endpoint of a Chromium (the engenty-browser image); else a local Chrome is launched. */
   browserCdpUrl: str("BROWSER_CDP_URL"),
+  /** The browser the setup and `wizards doctor` found (render/browser-path.ts). */
   chromePath: str(
     "CHROME_PATH",
-    process.platform === "darwin"
-      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      : "/usr/bin/chromium",
+    findChrome({ PATH: process.env.PATH }) ??
+      (process.platform === "darwin"
+        ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        : "/usr/bin/chromium"),
   ),
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),

@@ -38,7 +38,7 @@ import { WizardQr } from "./WizardQr";
 
 /** Where the WordPress plugin is downloaded: the latest release of its own repository. */
 const WORDPRESS_ZIP =
-  "https://github.com/engenty/engenty-wizards-wordpress/releases/latest/download/engenty-wizards.zip";
+  "https://github.com/engenty/engenty-wizards-wp-plugin/releases/latest/download/engenty-wizards.zip";
 
 /**
  * The wizard on a WordPress site: through the account with the plugin, or without one as a

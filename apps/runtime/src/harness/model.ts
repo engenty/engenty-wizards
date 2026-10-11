@@ -69,9 +69,9 @@ export interface HarnessMeta {
 const workDir = join(env.dataDir, "harness");
 
 export const signedOut = (h: HarnessMeta) =>
-  `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle & Konto“ an.`;
+  `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle“ an.`;
 export const notInstalled = (h: HarnessMeta) =>
-  `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle & Konto“.`;
+  `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle“.`;
 export const exhausted = (h: HarnessMeta) =>
   h.exhausted ??
   `Das Konto, mit dem ${h.name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.`;
