@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { principalOf } from "../auth/index.js";
 import { MARK_FOCUSED_PERSONAL } from "../browser/snapshot.js";
+import { clientOf, clientRefused } from "../clients.js";
 import {
   ConnectError,
   connectionViews,
@@ -313,6 +314,13 @@ export const publicRoutes = new Hono()
     if (!(await verifyTurnstile(body.turnstileToken, ip))) {
       return c.json({ error: "Bitte bestätige kurz, dass du ein Mensch bist." }, 403);
     }
+    // The client that starts it (docs/content/dev/api.md): on a managed runtime the Manage-App's
+    // list says which may, and how often an hour.
+    const client = clientOf(c);
+    const refused = clientRefused(client);
+    if (refused) {
+      return c.json({ error: refused.error, code: refused.code }, refused.status);
+    }
     const vid = visitorId(c, true, body.embedded)!;
     const ipHash = hashIp(ip);
     if (await visitorOverLimit(vid, ipHash)) {
@@ -340,6 +348,7 @@ export const publicRoutes = new Hono()
         visitorId: vid,
         ipHash,
         origin: body.embedded ? webAddress(body.origin) : null,
+        client,
       });
       return c.json({ runId });
     } catch (err) {

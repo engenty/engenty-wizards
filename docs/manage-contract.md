@@ -80,6 +80,12 @@ settings); `member` edits the wizards there are, tests and publishes them. A mem
 answers `403 { code: "forbidden" }`, whichever way it came in (studio, API, MCP). A runtime that
 runs alone has one person, who does everything.
 
+### Clients of the public run API
+
+| Call | Answer |
+|---|---|
+| `GET /v1/clients` | `{ clients: [{ id, name, runsPerHour, revoked }], unknown: { allow, runsPerHour } }` · which clients (`x-wizards-client`, docs/content/dev/api.md) may start runs on the Manage-App's runtimes and how many an hour across all visitors (`null` = no cap); `unknown` is what an id not in the list gets. Fetched at the start and hourly; a `404` means no list, and every client may start runs. Not yet built in the Manage-App: docs/plans/api-clients.md |
+
 ## Manage-App → runtime
 
 `Authorization: Bearer <service key of the runtime>`.

@@ -1,11 +1,18 @@
 import { ApiError, createApi, isOffline } from "@engenty-wizards/runner";
+import { IN_APP } from "./app";
 import { withBase } from "./base";
 import { report } from "./report";
 
 export { ApiError, isOffline };
 
+/**
+ * Who this is, to the runtime (docs/content/dev/api.md): the runner in a browser, or the same
+ * runner inside the mobile app. A managed runtime may limit or refuse a client by this name.
+ */
+const CLIENT = { "x-wizards-client": IN_APP ? "app" : "web" };
+
 /** JSON calls to this runtime, under the app's base path (and a remote runtime's ticket); a 5xx goes to the log. */
-export const api = createApi(withBase, {}, (line) => report("error", line));
+export const api = createApi(withBase, CLIENT, (line) => report("error", line));
 
 function safeJson(text: string) {
   try {
@@ -25,7 +32,7 @@ export async function postStream(
   const res = await fetch(withBase(path), {
     method: "POST",
     credentials: "include",
-    headers: { "content-type": "application/json" },
+    headers: { ...CLIENT, "content-type": "application/json" },
     body: JSON.stringify(body),
     signal,
   });

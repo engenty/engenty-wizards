@@ -14,6 +14,7 @@ code, and it loads from its files while the app runs.
 | [Quick start](./plugins/quick-start.md) | A tool for AI steps in one file, working in two minutes |
 | [Reference](./plugins/reference.md) | Every call, type, address and setting |
 | [Examples](./plugins/examples.md) | Two plugins to read and copy |
+| [The API](./api.md) | What a program may rely on, what is private, and how a client names itself |
 
 ## Wizards as files
 
