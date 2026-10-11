@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Plus, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { Mascot } from "../brand";
@@ -19,6 +19,7 @@ import { LinkStatus, useAccountLink } from "./Account";
 import { ChannelFilter, ChannelIcons, channelsOf, type Runner, useRunners } from "./channels";
 import { ImportWizard } from "./ImportWizard";
 import { openExternal } from "./LocalRuntime";
+import { MarketplaceHits } from "./Marketplace";
 import { ownLink, sharedLink, WhereChip, whereItRuns } from "./where";
 
 /** Names a new space and makes it the one the studio looks at. */
@@ -237,6 +238,38 @@ function WizardCard({ w, me, runners }: { w: WizardSummary; me: Me; runners: Run
   );
 }
 
+/** More wizards than this — four rows of three — and the home is searched, not scrolled. */
+const SEARCH_FROM = 12;
+/** Fewer own hits than this, and the marketplace is asked as well. */
+const FEW = 3;
+
+/** The home's search, in the title's place: as the marketplace's, with the space's own words. */
+function WizardSearch({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  return (
+    <label className="relative flex h-10 w-full max-w-md items-center gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus sm:h-11">
+      <Search className="size-4 shrink-0 text-ink-3" />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t("home.search")}
+        aria-label={t("home.search")}
+        className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          aria-label={t("market.reset")}
+          onClick={() => onChange("")}
+          className="-mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink"
+        >
+          <X className="size-4" />
+        </button>
+      ) : null}
+    </label>
+  );
+}
+
 const INSTALL = "curl -fsSL https://engenty.ai/install.sh | bash";
 
 /**
@@ -290,6 +323,7 @@ function FromLocal() {
 
 export function HomePage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { project, projects, loading } = useCurrentProject();
   const me = useMe().data;
   const build = useMayBuild();
@@ -303,9 +337,26 @@ export function HomePage() {
   const runners = useRunners().data ?? [];
   // One channel to narrow the cards to, or all of them.
   const [channel, setChannel] = useState<string | null>(null);
+  // Past a few rows the title gives way to a search over title and description.
+  const [query, setQuery] = useState("");
+  const searching = (wizards.data?.length ?? 0) > SEARCH_FROM;
+  const q = searching ? query.trim().toLowerCase() : "";
   const shown = (wizards.data ?? []).filter(
-    (w) => !channel || channelsOf(w, runners).includes(channel),
+    (w) =>
+      (!channel || channelsOf(w, runners).includes(channel)) &&
+      (!q || `${w.title} ${w.description}`.toLowerCase().includes(q)),
   );
+  // Few own hits: the marketplace is asked the same, and a new one is offered.
+  const beyond = Boolean(q) && shown.length < FEW;
+  const fromEntry = useMutation({
+    mutationFn: (starterId: string) =>
+      api.post<{ id: string }>("/api/studio/wizards", { projectId: project!.id, starterId, lang }),
+    onSuccess: async ({ id }) => {
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+      await qc.invalidateQueries({ queryKey: ["wizards"] });
+      navigate(`/edit/${id}`);
+    },
+  });
   const total = projects.reduce((n, p) => n + p.wizardCount, 0);
   /** Wizards are made in this project: the person makes things here, and the project is the team's own. */
   const canCreate = create && !project?.readOnly;
@@ -319,12 +370,16 @@ export function HomePage() {
   return (
     <div className="animate-rise">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">
-          {t("home.title")}
-        </h1>
+        {searching ? (
+          <WizardSearch value={query} onChange={setQuery} />
+        ) : (
+          <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">
+            {t("home.title")}
+          </h1>
+        )}
         {canCreate ? (
           <div className="flex items-center gap-2">
-            <ImportWizard />
+            <ImportWizard compact />
             <Button onClick={() => navigate("/new")}>
               <Plus className="size-4" /> {t("home.new")}
             </Button>
@@ -344,7 +399,17 @@ export function HomePage() {
             : null}
         </p>
       ) : null}
-      {wizards.data && wizards.data.length === 0 ? <Empty>{t("home.empty")}</Empty> : null}
+      {/* An empty space says so and, where wizards are made here, offers the first one. */}
+      {wizards.data && wizards.data.length === 0 ? (
+        <Empty>
+          <p>{t("home.empty")}</p>
+          {canCreate ? (
+            <Button className="mt-5" onClick={() => navigate("/new")}>
+              <Plus className="size-4" /> {t("home.new")}
+            </Button>
+          ) : null}
+        </Empty>
+      ) : null}
       {wizards.data?.length ? (
         <ChannelFilter
           wizards={wizards.data}
@@ -353,9 +418,35 @@ export function HomePage() {
           onChange={setChannel}
         />
       ) : null}
+      {q && shown.length === 0 ? (
+        <p className="mt-6 text-[0.875rem] text-ink-3">{t("home.noMatch")}</p>
+      ) : null}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {me ? shown.map((w) => <WizardCard key={w.id} w={w} me={me} runners={runners} />) : null}
       </div>
+      {beyond ? (
+        <>
+          {canCreate ? (
+            <MarketplaceHits
+              query={query}
+              busy={fromEntry.isPending}
+              onUse={(entry) => project && !fromEntry.isPending && fromEntry.mutate(entry.id)}
+            />
+          ) : (
+            <MarketplaceHits query={query} />
+          )}
+          {canCreate ? (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/new?wish=${encodeURIComponent(query.trim())}`)}
+              >
+                <Sparkles className="size-4" /> {t("home.newFromSearch", { q: query.trim() })}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

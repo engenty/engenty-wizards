@@ -819,6 +819,59 @@ function useSettled<T>(value: T, ms: number): T {
 const PAGE = 60;
 
 /**
+ * The marketplace's first answers to a search made elsewhere — the home, when few of the
+ * space's own wizards match: a few cards under their own heading, each opening as in the
+ * browser; nothing at all while the search is empty or the marketplace has nothing for it.
+ */
+export function MarketplaceHits({
+  query,
+  onUse,
+  busy,
+  limit = 6,
+}: {
+  query: string;
+  onUse?: (entry: MarketplaceEntry) => void;
+  busy?: boolean;
+  limit?: number;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const q = useSettled(query.trim(), 250);
+  const search = useQuery({
+    queryKey: ["marketplace", lang, q, "hits", limit],
+    queryFn: () =>
+      api.get<SearchPage>(
+        `/api/studio/marketplace?${new URLSearchParams({ lang, limit: String(limit), offset: "0", q })}`,
+      ),
+    enabled: Boolean(q),
+    placeholderData: keepPreviousData,
+  });
+  const entries = q ? (search.data?.entries ?? []) : [];
+  if (!entries.length) {
+    return null;
+  }
+  return (
+    <section className="mt-10">
+      <h2 className="mb-5 flex items-center gap-2 font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.08em]">
+        {t("market.hits")}
+        {search.isFetching ? <Spinner className="size-3.5" /> : null}
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {entries.map((e) => (
+          <EntryCard key={e.id} entry={e} onOpen={() => setPicked(e.id)} />
+        ))}
+      </div>
+      <EntryDialog
+        id={picked}
+        fallback={entries.find((e) => e.id === picked) ?? null}
+        onClose={() => setPicked(null)}
+        onUse={onUse}
+        busy={busy}
+      />
+    </section>
+  );
+}
+
+/**
  * The marketplace as a person browses it: a search the marketplace answers live, the ways to
  * narrow it, the starred entries, and a card per entry that opens with what the wizard makes,
  * needs and costs. Without a connection it shows what this machine keeps.
