@@ -4,7 +4,8 @@ import { EngentyLogoMark } from "../engenty/logo";
 import { t } from "../lib/i18n";
 import type { Me } from "../lib/session";
 import { useUpdate } from "../lib/update";
-import { Button, cn, Dialog, Spinner } from "../ui";
+import { stepClass, useStepDirection } from "../studio/settings-menu";
+import { Button, cn, Dialog, Segmented, Spinner } from "../ui";
 import { APP_VERSION } from "./AboutLinks";
 import {
   type ChangelogRelease,
@@ -15,20 +16,26 @@ import {
 } from "./ChangelogDialog";
 import { Credits } from "./CreditsDialog";
 
+type Tab = "new" | "earlier" | "credits";
+const TABS: Tab[] = ["new", "earlier", "credits"];
+const label = (tab: Tab) =>
+  tab === "new" ? t("about.tab.new") : tab === "earlier" ? t("about.history") : t("about.credits");
+
 /** `1 Änderung`, `12 Änderungen`. */
 const changes = (n: number) => (n === 1 ? t("about.change") : t("about.changes", { n }));
 
 /**
  * Behind the mark in the app bar: which release this is and how it got here; on a runtime that
  * runs alone, whether a newer one is out — checked now on a word, installed from here where it
- * can be — then what is new in the newest release known, the earlier ones folded away, and the
- * open-source credits folded away under them.
+ * can be — then three tabs: what is new in the newest release known, the earlier releases (each
+ * unfolding to its changes), and the credits.
  */
 export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () => void; me: Me }) {
   const local = me.mode === "local";
   const { status, data, latest, check, apply, busy, progress } = useUpdate(local && open);
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
-  const [credits, setCredits] = useState(false);
+  const [tab, setTab] = useState<Tab>("new");
+  const step = useStepDirection(TABS.indexOf(tab));
   // The notes of the newest release known: the newer one from GitHub, else this build's own.
   const shown = data?.newer && latest ? latest : APP_VERSION;
   useEffect(() => {
@@ -135,36 +142,38 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
         </div>
       ) : null}
 
-      <section className="mt-6">
-        <h3 className="flex items-baseline gap-3 border-border-soft border-b pb-2 font-display font-semibold text-[1rem]">
-          {newest ? t("about.whatsNew", { v: releaseLabel(newest) }) : t("about.changelog")}
-          {newest ? (
-            <span className="font-normal font-sans text-[0.8125rem] text-ink-3 tabular-nums">
-              {releaseDate(newest)}
-            </span>
-          ) : null}
-        </h3>
-        <div className="mt-3">
-          {releases === null ? (
+      {/* One of the three at a time, sliding in from the side it stands on. */}
+      <div className="mt-6">
+        <Segmented
+          value={label(tab)}
+          options={TABS.map(label)}
+          onChange={(picked: string) => setTab(TABS.find((x) => label(x) === picked) ?? "new")}
+        />
+      </div>
+      <div key={tab} className={cn("mt-5", stepClass(step))}>
+        {tab === "new" ? (
+          releases === null ? (
             <div className="flex justify-center py-6 text-ink-3">
               <Spinner />
             </div>
           ) : newest ? (
-            <ReleaseNotes release={newest} />
+            <>
+              <h3 className="flex items-baseline gap-3 border-border-soft border-b pb-2 font-display font-semibold text-[1rem]">
+                {releaseLabel(newest)}
+                <span className="font-normal font-sans text-[0.8125rem] text-ink-3 tabular-nums">
+                  {releaseDate(newest)}
+                </span>
+              </h3>
+              <div className="mt-3">
+                <ReleaseNotes release={newest} />
+              </div>
+            </>
           ) : (
             <p className="text-[0.875rem] text-ink-3">{t("about.changelogEmpty")}</p>
-          )}
-        </div>
-      </section>
-
-      {earlier.length ? (
-        <details className="group mt-5">
-          <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-[0.875rem] text-ink-2 transition hover:text-ink [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="size-4 transition group-open:rotate-90" />
-            {t("about.history")}
-            <span className="font-normal text-ink-4">({earlier.length})</span>
-          </summary>
-          <div className="mt-2 flex flex-col divide-y divide-border-soft">
+          )
+        ) : null}
+        {tab === "earlier" ? (
+          <div className="flex flex-col divide-y divide-border-soft">
             {earlier.map((release) => (
               <details key={release.version ?? "unreleased"} className="group/r py-2">
                 <summary className="flex cursor-pointer list-none items-baseline gap-3 text-[0.875rem] [&::-webkit-details-marker]:hidden">
@@ -183,16 +192,9 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
               </details>
             ))}
           </div>
-        </details>
-      ) : null}
-
-      <details className="group mt-3" onToggle={(e) => setCredits(e.currentTarget.open)}>
-        <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-[0.875rem] text-ink-2 transition hover:text-ink [&::-webkit-details-marker]:hidden">
-          <ChevronRight className="size-4 transition group-open:rotate-90" />
-          {t("about.credits")}
-        </summary>
-        <div className="mt-3">{credits ? <Credits active /> : null}</div>
-      </details>
+        ) : null}
+        {tab === "credits" ? <Credits active /> : null}
+      </div>
     </Dialog>
   );
 }

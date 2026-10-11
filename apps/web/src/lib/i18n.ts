@@ -345,7 +345,7 @@ const de = {
   "about.update.release": "Release auf GitHub",
   "about.update.manual":
     "Diese Installation aktualisiert sich nicht selbst: Hol dir die neue Version dort, wo du sie installiert hast.",
-  "about.whatsNew": "Was ist neu in {v}",
+  "about.tab.new": "Was ist neu",
   "about.history": "Frühere Versionen",
   "about.changes": "{n} Änderungen",
   "about.change": "1 Änderung",
@@ -1751,7 +1751,7 @@ const en: Record<Key, string> = {
   "about.update.release": "Release on GitHub",
   "about.update.manual":
     "This install does not update itself: get the new version where you installed it.",
-  "about.whatsNew": "What's new in {v}",
+  "about.tab.new": "What's new",
   "about.history": "Earlier versions",
   "about.changes": "{n} changes",
   "about.change": "1 change",
