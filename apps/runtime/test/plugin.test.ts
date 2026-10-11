@@ -23,7 +23,7 @@ describe("Claude Code plugin of this deployment", () => {
     const market = await (await app.fetch(new Request(`${base}/marketplace.json`))).json();
     expect(market.name).toBe("engenty");
     const [entry] = market.plugins;
-    expect(entry.source).toMatchObject({ source: "archive", url: `${base}/engenty-wizards.zip` });
+    expect(entry.source).toMatchObject({ source: "archive", url: `${base}/wizards.zip` });
 
     const res = await app.fetch(new Request(entry.source.url));
     const zip = new Uint8Array(await res.arrayBuffer());
@@ -33,13 +33,21 @@ describe("Claude Code plugin of this deployment", () => {
     expect(Object.keys(files).sort()).toEqual([
       ".claude-plugin/plugin.json",
       ".mcp.json",
+      "README.md",
       "commands/wizard.md",
+      "hooks/engenty.ts",
+      "hooks/hooks.json",
+      "hooks/pane.test.tsx",
+      "hooks/register.tsx",
       "skills/build-wizard/SKILL.md",
       "skills/use-wizard/SKILL.md",
+      "types/index.d.ts",
     ]);
     const mcp = JSON.parse(strFromU8(files[".mcp.json"]));
     expect(mcp.mcpServers["engenty-wizards"].url).toBe("https://wizards.example.com/api/mcp");
     const manifest = JSON.parse(strFromU8(files[".claude-plugin/plugin.json"]));
+    expect(manifest.name).toBe("wizards");
+    expect(manifest.homepage).toBe("https://wizards.example.com");
     expect(manifest.version).toMatch(/^\d+\.\d+\.\d+/);
   });
 });

@@ -28,7 +28,7 @@ export type RunView = {
 
 declare module "claude-code" {
   interface PluginState {
-    "engenty-wizards": {
+    wizards: {
       wizards: WizardRow[];
       /** Kept under a shape tag: a newer module reading another tag starts afresh. */
       details: { shape: string; value: Record<string, WizardDetails> };

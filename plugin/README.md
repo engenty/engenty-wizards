@@ -1,4 +1,4 @@
-# engenty wizards for Claude Code
+# wizards, the Claude Code plugin
 
 The plugin a running engenty wizards serves at `<APP_URL>/api/claude-plugin/marketplace.json`,
 with its own address filled in. It holds:
@@ -18,10 +18,23 @@ its state declared in `types/index.d.ts`. `claude plugin validate plugin` checks
 
 ## Install
 
+From GitHub, for the `engenty-wizards` MCP server you already have (the local install writes it
+into your AI apps; `claude mcp add --transport http engenty-wizards <APP_URL>/api/mcp` adds a
+hosted one):
+
+```bash
+claude plugin marketplace add engenty/engenty-wizards
+claude plugin install wizards@engenty-wizards
+```
+
+From a running engenty wizards with a public https address, which bundles its own server:
+
 ```bash
 claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json
-claude plugin install engenty-wizards@engenty
+claude plugin install wizards@engenty
 ```
+
+`claude plugin update wizards` brings the next version.
 
 ## Permissions in auto mode
 
@@ -30,7 +43,7 @@ such a call has no classifier verdict and is refused unless an allow rule names 
 these in `permissions.allow` of `.claude/settings.local.json` or your user settings:
 
 ```json
-["mcp__plugin_engenty-wizards_engenty-wizards", "mcp__Claude_Browser__navigate"]
+["mcp__plugin_wizards_engenty-wizards", "mcp__Claude_Browser__navigate"]
 ```
 
 A server you configured yourself under the name `engenty-wizards` is `mcp__engenty-wizards`
