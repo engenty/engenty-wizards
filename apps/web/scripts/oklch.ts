@@ -1,6 +1,7 @@
 /**
- * The web's palette is written in oklch; React Native takes no oklch, so the app turns each
- * colour into hex. Out-of-gamut colours (the engenties' high chroma) are clipped to sRGB.
+ * The web's palette is written in oklch; the mobile app takes no oklch, so engenty-shapes.tsx
+ * turns each colour into hex for it. Out-of-gamut colours (the engenties' high chroma) are clipped
+ * to sRGB. The same file is in the mobile app (engenty-wizards-apps, mobile/src/theme/oklch.ts).
  */
 
 /** `oklch(L C h)` with L as 0..1 or a percentage, as the web's CSS writes it. */

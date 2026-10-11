@@ -33,6 +33,13 @@ export interface LocalModels {
   keys: { gateway: boolean; openai: boolean; anthropic: boolean };
 }
 
+/** Apple Intelligence as the runtime sees it: supported by the machine, answering, or why not. */
+export interface AppleStatus {
+  supported: boolean;
+  available: boolean;
+  reason: "device" | "os" | "missing" | "off" | "loading" | null;
+}
+
 /** What the person says about themselves; the avatar shows the name's initials. */
 export interface UserProfile {
   name: string;
@@ -81,6 +88,8 @@ export interface Me {
     signedIn: boolean;
   } | null;
   models: LocalModels | null;
+  /** Apple Intelligence on this Mac: offered where the machine can run it, picked once it answers. */
+  apple: AppleStatus | null;
   /** The AI clients this runtime can think with — installed or not, and how each is signed in. */
   harnesses: HarnessStatus[];
   /** Installed AI clients whose subscription can answer the studio chat. */

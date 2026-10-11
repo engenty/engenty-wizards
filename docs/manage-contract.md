@@ -56,7 +56,7 @@ Errors: `{ "error": string, "code": string }`.
 | `GET /v1/runs/:runId/usage?tenantId=` | → `{ credits, steps: { [stepId]: credits } }` · what the ledger booked for the run; rows without a step under `""` |
 | `GET /v1/tenants/:id/usage?months=` | → `{ months: [{ month: "2026-10", credits, runs: [{ runId, credits }] }] }` · what the tenant spent per calendar month (UTC), the newest first, `months` 1–12 (3 when left out), each with its 20 costliest runs; the studio assistant names the wizards behind the runs |
 | `GET /v1/users/:id` | → `{ id, name, email, image }` |
-| `POST /v1/push` | `{ tenantId, device: { token, platform: "ios" \| "android" }, title, body, data: { runId, kind } }` → `{ ok: true }` · a push to the mobile app (apps/mobile) on one device: `token` is the raw APNs or FCM token the app gave the run (`POST /api/runs/:id/notify`); the Manage-App holds the APNs and FCM keys · `kind`: `done`, `failed`, `waiting` or `asks` · a token APNs or FCM no longer takes is not an error |
+| `POST /v1/push` | `{ tenantId, device: { token, platform: "ios" \| "android" }, title, body, data: { runId, kind } }` → `{ ok: true }` · a push to the mobile app (the apps repo engenty-wizards-apps) on one device: `token` is the raw APNs or FCM token the app gave the run (`POST /api/runs/:id/notify`); the Manage-App holds the APNs and FCM keys · `kind`: `done`, `failed`, `waiting` or `asks` · a token APNs or FCM no longer takes is not an error |
 
 Free balance = balance − open reservations. A reservation's hold shrinks by what its run has
 been booked. Reservations older than 24 h lapse.

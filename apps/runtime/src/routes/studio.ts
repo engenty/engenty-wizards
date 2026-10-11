@@ -38,6 +38,7 @@ import { estimateRun } from "../credits/estimate.js";
 import { missingModels, stepsWithoutModel } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { feature, features } from "../features.js";
+import { appleStatus } from "../harness/apple.js";
 import { freshAuth, loginEnv } from "../harness/env.js";
 import {
   detectHarness,
@@ -398,6 +399,8 @@ export const studio = new Hono<Vars>()
           }
         : null,
       models: managed ? null : localModelSettings(),
+      /** Apple Intelligence on this Mac: offered where the machine can run it (harness/apple.ts). */
+      apple: managed ? null : await appleStatus(),
       /** The AI clients this runtime can think with — installed or not, and how each is signed in. */
       harnesses: managed ? [] : await detectHarnesses(),
       /** Installed AI clients whose subscription can answer the studio chat. */

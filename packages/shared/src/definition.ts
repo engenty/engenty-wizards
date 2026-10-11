@@ -89,6 +89,8 @@ export interface AudioValue {
   asset: string;
   seconds?: number;
   transcript?: string;
+  /** The language the runner was in when the note was taken: what it is most likely spoken in. */
+  lang?: "de" | "en";
 }
 
 export function isLocationValue(v: unknown): v is LocationValue {
