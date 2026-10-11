@@ -67,7 +67,7 @@ studio does not: one `NAME=value` per line. Restart after a change.
 
 The OAuth clients of the built-in connectors go here too: see [Connectors](./connectors.md).
 Every setting, with what it is for, is in
-[.env.example](https://github.com/engenty/engenty-wizards/blob/main/.env.example).
+[.env.example](https://github.com/engenty/wizards/blob/main/.env.example).
 
 The command line hands the app only a short list of your terminal's variables. A key your shell
 exports for another project does not reach it: put it into the settings file, or enter it in

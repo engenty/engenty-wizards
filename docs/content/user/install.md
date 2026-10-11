@@ -52,7 +52,7 @@ of the address bar.
 | Way | For |
 |---|---|
 | `npx wizards` | Trying it on your own Node.js 24.11 or newer, without the installer |
-| [From source](https://github.com/engenty/engenty-wizards#from-source) | Working on the code |
+| [From source](https://github.com/engenty/wizards#from-source) | Working on the code |
 | [Docker](./server.md) | A server others can reach |
 
 ## Update

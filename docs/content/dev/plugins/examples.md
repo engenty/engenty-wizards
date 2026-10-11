@@ -11,7 +11,7 @@ PLUGINS_DIR=examples/plugins
 
 ## notify: one file
 
-[examples/plugins/notify.ts](https://github.com/engenty/engenty-wizards/blob/main/examples/plugins/notify.ts)
+[examples/plugins/notify.ts](https://github.com/engenty/wizards/blob/main/examples/plugins/notify.ts)
 posts a line to an address whenever a real run of a wizard reached its end.
 
 ```ts
@@ -47,7 +47,7 @@ export default plugin;
 
 ## run-log: both halves
 
-[examples/plugins/run-log](https://github.com/engenty/engenty-wizards/tree/main/examples/plugins/run-log)
+[examples/plugins/run-log](https://github.com/engenty/wizards/tree/main/examples/plugins/run-log)
 keeps a line for every run that ended and shows them in the studio.
 
 | File | Shows |
@@ -93,7 +93,7 @@ The `contacts` plugin these pages build up, piece by piece:
 
 ## Tests to read
 
-[apps/runtime/test/plugins.test.ts](https://github.com/engenty/engenty-wizards/blob/main/apps/runtime/test/plugins.test.ts)
+[apps/runtime/test/plugins.test.ts](https://github.com/engenty/wizards/blob/main/apps/runtime/test/plugins.test.ts)
 writes small plugins into a folder and exercises them: finding, loading, a plugin that fails,
 routes, tables per tenant, tools in a run, events, reloading. `managed.test.ts` beside it covers
 which tenant has which plugin.

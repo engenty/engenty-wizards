@@ -66,7 +66,7 @@ The theme's names are the studio's:
 | Variants | `dark:` and `coarse:` (a finger, not a mouse) beside Tailwind's own |
 
 The full list is
-[apps/web/src/styles/theme.css](https://github.com/engenty/engenty-wizards/blob/main/apps/web/src/styles/theme.css).
+[apps/web/src/styles/theme.css](https://github.com/engenty/wizards/blob/main/apps/web/src/styles/theme.css).
 
 ## Rules
 

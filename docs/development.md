@@ -382,11 +382,11 @@ bauen" issues API keys.
 
 ```bash
 # Claude Code: the plugin from GitHub (uses the engenty-wizards server the person has)
-claude plugin marketplace add engenty/engenty-wizards
-claude plugin install wizards@engenty-wizards
+claude plugin marketplace add engenty/wizards
+claude plugin install wizards@engenty
 # or from this deployment, with its server bundled (needs a public https APP_URL)
 claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json
-claude plugin install wizards@engenty
+claude plugin install wizards@<host-with-dashes>   # the marketplace is named after the host
 # or just the server
 claude mcp add --transport http --scope user engenty-wizards <APP_URL>/api/mcp
 # Codex
@@ -394,7 +394,7 @@ codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty
 ```
 
 The plugin is `plugin/`, a valid plugin as it is in git (the root `.claude-plugin/marketplace.json`
-lists it); the runtime serves a copy with this deployment's address, version and bundled server
+is the marketplace `engenty`); the runtime serves a copy with this deployment's address, version and bundled server
 (`apps/runtime/src/plugin.ts`). It holds the `/wizard` command, the skills `build-wizard` and
 `use-wizard`, and the `/wizards` pane — a mod (`plugin/hooks/register.tsx`) that lists the
 wizards beside the chat and opens one in the app's browser pane. In auto mode its own calls need

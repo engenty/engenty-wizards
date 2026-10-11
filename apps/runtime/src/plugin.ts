@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { marketplaceNameOf } from "@engenty-wizards/shared/claude-plugin";
 import { zipSync } from "fflate";
 import { env } from "./env.js";
 
@@ -21,7 +22,8 @@ const base = resolve(here, "../../..");
 const root = existsSync(join(base, "plugin")) ? base : undefined;
 
 export const PLUGIN_NAME = "wizards";
-export const MARKETPLACE_NAME = "engenty";
+/** This deployment's marketplace, named after its host; `engenty` is the GitHub one. */
+export const MARKETPLACE_NAME = marketplaceNameOf(env.appUrl);
 export const pluginBase = `${env.appUrl}/api/claude-plugin`;
 
 async function filesUnder(dir: string): Promise<string[]> {

@@ -48,5 +48,5 @@ description: What to do when a link is no longer valid, a client shows as not si
 
 ## Still stuck
 
-Open an issue at [github.com/engenty/engenty-wizards](https://github.com/engenty/engenty-wizards/issues)
+Open an issue at [github.com/engenty/wizards](https://github.com/engenty/wizards/issues)
 with what `wizards doctor` prints.

@@ -5,7 +5,7 @@ import { installedByScript, isCheckout, layout, packageRoot, packageVersion } fr
 
 const RELEASES_URL =
   process.env.ENGENTY_WIZARDS_RELEASES_URL?.trim() ||
-  "https://api.github.com/repos/engenty/engenty-wizards/releases/latest";
+  "https://api.github.com/repos/engenty/wizards/releases/latest";
 /** How long an answer from GitHub holds, found or not, before the runtime asks again. */
 const CHECK_EVERY_MS = 60 * 60_000;
 
