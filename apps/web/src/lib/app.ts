@@ -1,5 +1,5 @@
 /**
- * The mobile app (apps/mobile) shows the runner in a WebView on `/w/<token>?app=1` and puts
+ * The mobile app (the apps repo engenty-wizards-apps, mobile/) shows the runner in a WebView on `/w/<token>?app=1` and puts
  * `window.engentyApp` into the page before it loads, as the desktop app puts
  * `window.engentyDesktop` into the studio. The runner asks it before it uses a browser API and
  * falls back to the web's way for everything the bridge does not name: an older app shows a newer

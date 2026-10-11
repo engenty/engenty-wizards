@@ -4,10 +4,10 @@ import FoundationModels
 import Speech
 
 /**
- * Apple's models on the device, for the runtime's helper (main.swift, a Mac) and the app's
- * module (apps/mobile/modules/apple-intelligence, an iPhone): the same code in both. The
- * Foundation Models framework answers text, with guided generation for a JSON schema;
- * SpeechAnalyzer writes voice notes down. Both need the 26 systems.
+ * Apple's models on the device, for the runtime's helper (main.swift, a Mac). The mobile app's
+ * module (engenty-wizards-apps, mobile/modules/apple-intelligence) is built from a copy of this
+ * file; keep the two the same. The Foundation Models framework answers text, with guided
+ * generation for a JSON schema; SpeechAnalyzer writes voice notes down. Both need the 26 systems.
  */
 
 /** One text call: instructions, the prompt, and a JSON schema the answer must match. */

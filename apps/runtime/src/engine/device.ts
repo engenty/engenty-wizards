@@ -5,7 +5,7 @@ import { parseJsonAnswer, renderPrompt } from "../harness/prompt.js";
 import { signalDevice } from "./events.js";
 
 /**
- * The device a run is watched from as a model: the mobile app (apps/mobile) offers Apple
+ * The device a run is watched from as a model: the mobile app (engenty-wizards-apps) offers Apple
  * Intelligence on the phone through the runner's bridge, and the runner tells this runtime so
  * (`POST /api/runs/:id/device`). From then on a text call of the classes it names goes to the
  * phone first — over the run's stream as a `device` event, answered with

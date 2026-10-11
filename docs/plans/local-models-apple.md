@@ -44,13 +44,13 @@ sends a default instruction where a call brings none.
 ## The phone (built)
 
 The app runs wizards in the runtime's runner (a WebView); the steps think on the runtime. The
-phone's models answer what the runtime hands them through the bridge (`apps/mobile/src/bridge`),
+phone's models answer what the runtime hands them through the bridge (the apps repo engenty-wizards-apps, `mobile/src/bridge`),
 for a run open in the app. Worth it for cloud runs — nothing paid, the text stays on the phone.
 
 | | Where |
 |---|---|
-| The Expo module `AppleIntelligence`: `status`, `generate`, `transcribe` — the Swift of the Mac helper (`Shared.swift`, linked in), weak-linked frameworks, nothing before iOS 26 | `apps/mobile/modules/apple-intelligence/` |
-| Two bridge abilities, named to a page only where the phone has them: `transcribe` on iOS 26, `think` once Apple Intelligence answers (`appAbilities`) | `apps/mobile/src/bridge/{script,handle}.ts`, `src/app/run.tsx` |
+| The Expo module `AppleIntelligence`: `status`, `generate`, `transcribe` — a copy of the Mac helper's `Shared.swift` (keep the two the same), weak-linked frameworks, nothing before iOS 26 | engenty-wizards-apps: `mobile/modules/apple-intelligence/` |
+| Two bridge abilities, named to a page only where the phone has them: `transcribe` on iOS 26, `think` once Apple Intelligence answers (`appAbilities`) | engenty-wizards-apps: `mobile/src/bridge/{script,handle}.ts`, `mobile/src/app/run.tsx` |
 | The runner: a recording is written down by the phone before the field keeps it (the server then skips its own transcription); on every connect of the run's stream it offers the phone for Classifier and Standard (`POST /api/runs/:id/device`), answers `device` events through `think`, and posts the answer | `apps/web/src/runner/{phone.ts,voice.tsx,useRun.ts}`, `lib/app.ts` |
 | The runtime: a run's device as a model first — `DeviceModel` wraps the class's own model, asks over the stream, falls back when the phone does not answer in 60 s, errs, the prompt is over 12k characters, or the call needs tools the step declared or has uploads to read | `apps/runtime/src/engine/device.ts`, `events.ts`, `routes/runs.ts`, `models.ts` (`textModel`, `attachTools`) |
 
