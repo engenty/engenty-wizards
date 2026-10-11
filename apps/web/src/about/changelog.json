@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.51",
+    "timestamp": 1791731698,
+    "commits": [
+      {
+        "id": "881c4d0",
+        "message": "a published JSON Schema for wizards and `wizards validate` – pnpm schema writes the definition's and a package's wizard.json schema from the Zod schemas the app parses with (packages/shared/src/json-schema.ts) into the docs site, served at engenty.ai/docs/schema/wizard/1.json and …/wizard-package/1.json; objects take no unknown key there, which the app would drop without a word; the export writes \"$schema\" into every wizard.json. `wizards validate <path…>` checks a .wizard file, an unpacked package or a wizard's JSON as the import does, offline and without an account (--json, exit 1 on issues); a project's connectors, MCP servers and plugins stay checked on import. The package format moved to shared (wizard-package.ts), its reading to services/package-file.ts so the CLI loads no database; shape issues name the step everywhere (parseWizard). A test keeps the published schemas equal to a fresh run and checks them with ajv. docs/content/dev/wizard-format.md",
+        "group": "Added",
+        "scope": "format",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.50",
-    "timestamp": 1791729735,
+    "timestamp": 1791729742,
     "commits": [
       {
         "id": "58e02a9",
