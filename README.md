@@ -187,4 +187,5 @@ and is a site of its own: `pnpm dev:docs`.
 
 [FSL-1.1-MIT](LICENSE): use it for yourself and your company, run it, change it — just don't
 offer it to others as a competing product or service. Each release becomes MIT two years
-after it is published.
+after it is published. [COPYRIGHTS.md](COPYRIGHTS.md) names the owner, the marks, what is not ours and the
+third-party software with its licences.
