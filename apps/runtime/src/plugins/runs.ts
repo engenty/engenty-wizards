@@ -171,13 +171,9 @@ export function runsApiFor(pluginId: string): PluginRuns {
     subscribe(runId, listener) {
       // The listener runs inside the tenant the subscription was made in, as the events do.
       const tenantId = currentTenant();
+      // Changes the runner makes in another process reach the plugin too, each event once.
       return watchRun(runId, (signal) => {
-        // The runtime asking the phone around the runner to think is not a change of the run.
-        if (signal?.device) {
-          return;
-        }
-        // No signal: the run changed in another process (the runner), which tells no event.
-        const event = signal?.event;
+        const event = signal.event;
         const shaped: PluginRunSignal = {
           runId,
           event: event

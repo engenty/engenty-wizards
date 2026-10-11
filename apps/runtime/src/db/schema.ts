@@ -17,6 +17,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import type { ImportedConnectorRecord } from "../engenty/connections-external/types.js";
+import type { DeviceAnswer, DeviceOffer, DeviceRequest } from "../engine/device.js";
 
 const now = sql`(unixepoch() * 1000)`;
 const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().default(now);
@@ -184,6 +185,14 @@ export const run = sqliteTable(
     answer: text("answer", { mode: "json" }).$type<{ askId: string; answer: AskAnswer } | null>(),
     /** An autopilot drives this test run (an MCP client fills its pages): it asks nobody. */
     unattended: integer("unattended", { mode: "boolean" }).notNull().default(false),
+    /**
+     * What the device the run is watched from offers as a model (the app's Apple Intelligence),
+     * with when it last said so; written by the web, read by the runner (engine/device.ts).
+     */
+    deviceOffer: text("device_offer", { mode: "json" }).$type<{
+      offer: DeviceOffer;
+      at: number;
+    } | null>(),
     costMicros: integer("cost_micros").notNull().default(0),
     /** Set once the result is shared: `/s/<token>` shows it read-only. */
     shareToken: text("share_token"),
@@ -219,6 +228,25 @@ export const runEvent = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index("run_event_run").on(t.runId, t.id)],
+);
+
+/**
+ * A call the runner put to the run's device, open until the device answers or the runner stops
+ * waiting: the stream (any web process) carries it to the phone, and the answer comes back here.
+ */
+export const deviceCall = sqliteTable(
+  "device_call",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => run.id, { onDelete: "cascade" }),
+    reqId: text("req_id").notNull(),
+    request: text("request", { mode: "json" }).$type<DeviceRequest>().notNull(),
+    answer: text("answer", { mode: "json" }).$type<DeviceAnswer>(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("device_call_req").on(t.reqId), index("device_call_run").on(t.runId)],
 );
 
 /** What each step of a run cost, in credit micros: the measurements estimates are made from. */

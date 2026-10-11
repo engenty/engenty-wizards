@@ -7,24 +7,8 @@ import { db, schema } from "../db/client.js";
 const bus = new EventEmitter();
 bus.setMaxListeners(0);
 
-/**
- * Something changed on a run: a new event row, or a status change (event = null) — or the
- * runtime asks the device the run is watched from to think (`device`, nothing stored).
- */
-export type RunSignal = { runId: string; event: RunEvent | null; device?: DeviceRequest };
-
-/** A call for the run's device, as engine/device.ts makes it. */
-export interface DeviceRequest {
-  id: string;
-  kind: "think";
-  system: string;
-  prompt: string;
-  schema: unknown | null;
-}
-
-export function signalDevice(runId: string, request: DeviceRequest) {
-  bus.emit(runId, { runId, event: null, device: request } satisfies RunSignal);
-}
+/** Something changed on a run: a new event row, or a status change (event = null). */
+export type RunSignal = { runId: string; event: RunEvent | null };
 
 export async function emitEvent(
   runId: string,
@@ -74,10 +58,22 @@ const WATCH_POLL_MS = 1000;
 
 /**
  * Tells of every change on a run: at once when this process made it, within a second when the
- * runner (another process) wrote to the row or added an event. Call it in the run's tenant.
+ * runner (another process) wrote to the row, added an event or put a call to the run's device.
+ * Each event row reaches the listener once, whichever process wrote it. Call it in the run's
+ * tenant.
  */
-export function watchRun(runId: string, listener: (signal?: RunSignal) => void): () => void {
-  const unsubscribe = subscribe(runId, listener);
+export function watchRun(runId: string, listener: (signal: RunSignal) => void): () => void {
+  /** The newest event the listener has had; null until the first look. */
+  let told: number | null = null;
+  const unsubscribe = subscribe(runId, (signal) => {
+    if (signal.event) {
+      if (told !== null && signal.event.id <= told) {
+        return;
+      }
+      told = Math.max(told ?? 0, signal.event.id);
+    }
+    listener(signal);
+  });
   let last: string | null = null;
   let busy = false;
   const look = async () => {
@@ -92,12 +88,27 @@ export function watchRun(runId: string, listener: (signal?: RunSignal) => void):
           event: sql<
             number | null
           >`(select max(${schema.runEvent.id}) from ${schema.runEvent} where ${schema.runEvent.runId} = ${runId})`,
+          call: sql<
+            number | null
+          >`(select max(${schema.deviceCall.id}) from ${schema.deviceCall} where ${schema.deviceCall.runId} = ${runId})`,
         })
         .from(schema.run)
         .where(eq(schema.run.id, runId));
-      const mark = row ? `${row.updatedAt.getTime()}:${row.event ?? 0}` : null;
+      const newest = row?.event ?? 0;
+      if (told === null) {
+        told = newest;
+      } else if (newest > told) {
+        // Events another process wrote, in order; at most a page per look.
+        for (const event of await recentEvents(runId, told, 100)) {
+          if (event.id > (told ?? 0)) {
+            told = event.id;
+            listener({ runId, event });
+          }
+        }
+      }
+      const mark = row ? `${row.updatedAt.getTime()}:${row.call ?? 0}` : null;
       if (last !== null && mark !== last) {
-        listener();
+        listener({ runId, event: null });
       }
       last = mark;
     } catch {

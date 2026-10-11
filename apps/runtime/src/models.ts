@@ -609,7 +609,7 @@ export async function textModel(
   meta: CallMeta = {},
 ): Promise<ResolvedModel<LanguageModel>> {
   const resolved = await ownTextModel(cls, meta);
-  const device = meta.runId && isText(cls) ? deviceThinks(meta.runId, cls) : null;
+  const device = meta.runId && isText(cls) ? await deviceThinks(meta.runId, cls) : null;
   return device
     ? { ...resolved, model: new DeviceModel(meta.runId as string, resolved.model, device.maxChars) }
     : resolved;

@@ -22,7 +22,7 @@ import {
 import { finishPluginOAuth, pluginStateTenant } from "../connectors/plugin-connections.js";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
-import { answerDevice, offerDevice } from "../engine/device.js";
+import { answerDevice, offerDevice, openDeviceCalls } from "../engine/device.js";
 import { emitEvent, signalChanged, watchRun } from "../engine/events.js";
 import { fromOwner } from "../engine/owner.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
@@ -485,13 +485,19 @@ export const runRoutes = new Hono()
           await stream.writeSSE({ event: "view", data: JSON.stringify(await viewOf(run)) });
         }
       };
-      const unsubscribe = watchRun(id, (signal) => {
-        if (signal?.device) {
-          // The runtime asks the phone around the runner to think: not a change of the run.
-          if (!closed) {
-            void stream.writeSSE({ event: "device", data: JSON.stringify(signal.device) });
+      // Calls the runner put to the device the run is watched from, each sent once per stream.
+      const sent = new Set<string>();
+      const sendDeviceCalls = async () => {
+        for (const call of await openDeviceCalls(id)) {
+          if (!(closed || sent.has(call.id))) {
+            sent.add(call.id);
+            await stream.writeSSE({ event: "device", data: JSON.stringify(call) });
           }
-          return;
+        }
+      };
+      const unsubscribe = watchRun(id, (signal) => {
+        if (!signal.event) {
+          void sendDeviceCalls().catch(() => undefined);
         }
         void push();
       });
@@ -500,6 +506,7 @@ export const runRoutes = new Hono()
         unsubscribe();
       });
       await stream.writeSSE({ event: "view", data: JSON.stringify(await viewOf(first)) });
+      await sendDeviceCalls();
       while (!closed) {
         await stream.sleep(20_000);
         if (!closed) {
@@ -525,7 +532,7 @@ export const runRoutes = new Hono()
           .optional(),
       })
       .parse(await c.req.json().catch(() => ({})));
-    offerDevice(run.id, offer);
+    await offerDevice(run.id, offer);
     return c.json({ ok: true });
   })
   // The device's answer to one call the stream carried as a `device` event.
@@ -537,7 +544,7 @@ export const runRoutes = new Hono()
     const answer = z
       .object({ text: z.string().max(200_000).optional(), error: z.string().max(500).optional() })
       .parse(await c.req.json().catch(() => ({})));
-    return c.json({ ok: answerDevice(run.id, c.req.param("reqId"), answer) });
+    return c.json({ ok: await answerDevice(run.id, c.req.param("reqId"), answer) });
   })
   .post("/:id/pages/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));

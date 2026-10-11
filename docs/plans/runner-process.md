@@ -32,8 +32,15 @@ the runs.
   with both cleared: the step asks again. `run.unattended` marks an autopilot test run (an MCP
   client fills its pages); it was a process-local set.
 - **Change notices.** `watchRun()` in `engine/events.ts` fires on the process's own bus and on a
-  1 s poll of `run.updated_at` and the newest event id. The SSE stream, the autopilot and
-  `waitWhileMoving` use it; a change made in another process arrives within a second.
+  1 s poll of `run.updated_at`, the newest event id and the newest device call. Event rows
+  another process wrote are handed on as events, each once. The SSE stream, the autopilot,
+  `waitWhileMoving` and the plugins' `runs.subscribe` use it; a change made in another process
+  arrives within a second.
+- **The phone as a model goes through the tenant database.** The offer of the device a run is
+  watched from is `run.device_offer`; a call to it is a `device_call` row the runner writes and
+  polls (250 ms) for its answer, and deletes once answered or timed out. The run's stream (any
+  web) sends open calls as `device` events, and the answer route writes the row's `answer`. A
+  claimed run starts with its calls cleared.
 - **Runners register.** Table `runner` (`id`, `url`, `seen`) in the control database. `RUNNER_URL`
   names where the web reaches a runner (compose: `http://runner:8891`); without it the web
   answers "not found" for the browser's screen of a run another process holds.
@@ -47,11 +54,6 @@ leaves an install. The runner id is `<hostname>-<random>`; run ids stay `nanoid(
 
 ## Not built
 
-- The phone's model (`engine/device.ts`, the app's Apple Intelligence) is per process: the offer
-  and the open requests live in memory and the `device` event rides the process's own bus. Where
-  web and runner are apart, the runner never sees the phone's offer, so every call goes to the
-  runtime's own model; on a runtime that runs as one process (`all`, every local install) the
-  phone is used as before.
 - A runner serves one browser container (`BROWSER_CDP_URL`); several runners share it.
 - The studio's draft events (`services/draft-events.ts`) are process-local; one web process is
   assumed.

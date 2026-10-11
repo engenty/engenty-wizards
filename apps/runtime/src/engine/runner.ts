@@ -76,6 +76,7 @@ import {
 import { currentTenant } from "../tenants/tenant.js";
 import { askPerson, clearStaleAsk } from "./asks.js";
 import { decide } from "./decide.js";
+import { clearDeviceCalls } from "./device.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
 import { type PageContext, readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
@@ -649,8 +650,10 @@ async function decidePageFields(
 }
 
 async function drive(runId: string, signal: AbortSignal) {
-  // The step starts afresh here: a question another process left in the row has no one waiting.
+  // The step starts afresh here: a question or a device call another process left has no one
+  // waiting.
   await clearStaleAsk(runId);
+  await clearDeviceCalls(runId);
   while (!signal.aborted) {
     const run = await loadRun(runId);
     if (run?.status !== "running") {

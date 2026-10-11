@@ -1,8 +1,9 @@
 import type { TextClass } from "@engenty-wizards/shared/definition";
 import type { LanguageModel } from "ai";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { db, schema } from "../db/client.js";
 import { parseJsonAnswer, renderPrompt } from "../harness/prompt.js";
-import { signalDevice } from "./events.js";
 
 /**
  * The device a run is watched from as a model: the mobile app (engenty-wizards-apps) offers Apple
@@ -11,6 +12,8 @@ import { signalDevice } from "./events.js";
  * phone first — over the run's stream as a `device` event, answered with
  * `POST /api/runs/:id/device/:reqId` — and falls back to the runtime's own way when the phone
  * does not answer in time, the call needs tools, or the prompt is too long for a small model.
+ * The offer, the calls and the answers go through the run's tenant database (`run.device_offer`,
+ * `device_call`), so the web that holds the stream need not be the process running the step.
  * Tools: every agent step gets the generic ones (lists, the person's documents, the space's
  * knowledge); a step that declares none and has no uploads may be answered without them, as
  * the Mac's Apple Intelligence answers (`attach(tools, ignorable)`). Nothing is paid for an
@@ -42,78 +45,100 @@ export interface DeviceAnswer {
 const OFFER_TTL_MS = 30 * 60_000;
 /** How long the phone has to answer before the runtime thinks on its own. */
 export const DEVICE_TIMEOUT_MS = 60_000;
-
-const offers = new Map<string, { offer: DeviceOffer; at: number }>();
-const pending = new Map<
-  string,
-  { runId: string; resolve: (text: string) => void; reject: (err: Error) => void }
->();
+/** How often a waiting call looks for the answer in the database. */
+const ANSWER_POLL_MS = 250;
 
 /** The runner says what the device around it can do; renewed on every (re)connect. */
-export function offerDevice(runId: string, offer: DeviceOffer) {
-  if (offer.think?.classes.length) {
-    offers.set(runId, { offer, at: Date.now() });
-  } else {
-    offers.delete(runId);
-  }
-}
-
-export function forgetDevice(runId: string) {
-  offers.delete(runId);
+export async function offerDevice(runId: string, offer: DeviceOffer) {
+  await db
+    .update(schema.run)
+    .set({ deviceOffer: offer.think?.classes.length ? { offer, at: Date.now() } : null })
+    .where(eq(schema.run.id, runId));
 }
 
 /** Whether the device of this run thinks the class, and how much it takes. */
-export function deviceThinks(runId: string, cls: string): { maxChars: number } | null {
-  const hit = offers.get(runId);
+export async function deviceThinks(
+  runId: string,
+  cls: string,
+): Promise<{ maxChars: number } | null> {
+  const row = await db.query.run.findFirst({
+    where: eq(schema.run.id, runId),
+    columns: { deviceOffer: true },
+  });
+  const hit = row?.deviceOffer;
   if (!hit || Date.now() - hit.at > OFFER_TTL_MS) {
-    offers.delete(runId);
     return null;
   }
   const think = hit.offer.think;
   return think?.classes.includes(cls as TextClass) ? { maxChars: think.maxChars } : null;
 }
 
+/** The calls of a run still waiting for the device, oldest first: what its stream carries. */
+export async function openDeviceCalls(runId: string): Promise<DeviceRequest[]> {
+  const rows = await db
+    .select({ request: schema.deviceCall.request })
+    .from(schema.deviceCall)
+    .where(and(eq(schema.deviceCall.runId, runId), isNull(schema.deviceCall.answer)))
+    .orderBy(asc(schema.deviceCall.id));
+  return rows.map((r) => r.request);
+}
+
 /** Sends one call to the device and waits for its answer. */
-export function askDevice(
+export async function askDevice(
   runId: string,
   request: Omit<DeviceRequest, "id">,
   timeoutMs = DEVICE_TIMEOUT_MS,
 ): Promise<string> {
   const id = nanoid(10);
-  return new Promise<string>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error("the device did not answer in time"));
-    }, timeoutMs);
-    pending.set(id, {
-      runId,
-      resolve: (text) => {
-        clearTimeout(timer);
-        resolve(text);
-      },
-      reject: (err) => {
-        clearTimeout(timer);
-        reject(err);
-      },
-    });
-    signalDevice(runId, { id, ...request });
-  });
+  await db.insert(schema.deviceCall).values({ runId, reqId: id, request: { id, ...request } });
+  const until = Date.now() + timeoutMs;
+  try {
+    while (Date.now() < until) {
+      const row = await db.query.deviceCall.findFirst({
+        where: eq(schema.deviceCall.reqId, id),
+        columns: { answer: true },
+      });
+      const answer = row?.answer;
+      if (answer) {
+        if (typeof answer.text === "string") {
+          console.log(`[run ${runId}] the device answered a ${answer.text.length}-character call`);
+          return answer.text;
+        }
+        throw new Error(answer.error || "the device could not answer");
+      }
+      await new Promise((r) => setTimeout(r, Math.min(ANSWER_POLL_MS, until - Date.now())));
+    }
+    throw new Error("the device did not answer in time");
+  } finally {
+    await db
+      .delete(schema.deviceCall)
+      .where(eq(schema.deviceCall.reqId, id))
+      .catch(() => undefined);
+  }
 }
 
-/** The device's answer to one call; false when the call is unknown or not this run's. */
-export function answerDevice(runId: string, reqId: string, answer: DeviceAnswer): boolean {
-  const hit = pending.get(reqId);
-  if (!hit || hit.runId !== runId) {
-    return false;
-  }
-  pending.delete(reqId);
-  if (typeof answer.text === "string") {
-    console.log(`[run ${runId}] the device answered a ${answer.text.length}-character call`);
-    hit.resolve(answer.text);
-  } else {
-    hit.reject(new Error(answer.error || "the device could not answer"));
-  }
-  return true;
+/** The device's answer to one call; false when the call is unknown, answered or not this run's. */
+export async function answerDevice(
+  runId: string,
+  reqId: string,
+  answer: DeviceAnswer,
+): Promise<boolean> {
+  const result = await db
+    .update(schema.deviceCall)
+    .set({ answer })
+    .where(
+      and(
+        eq(schema.deviceCall.reqId, reqId),
+        eq(schema.deviceCall.runId, runId),
+        isNull(schema.deviceCall.answer),
+      ),
+    );
+  return result.rowsAffected > 0;
+}
+
+/** A run a runner takes starts its step afresh: calls left in the database have no one waiting. */
+export async function clearDeviceCalls(runId: string) {
+  await db.delete(schema.deviceCall).where(eq(schema.deviceCall.runId, runId));
 }
 
 type V3 = Extract<LanguageModel, { specificationVersion: "v3" }>;
