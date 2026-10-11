@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.58] - 2026-10-11
+- ADDED **[runtime]** With web and runner apart, the phone still thinks for a run and plugins hear of its changes – the device's offer is run.device_offer and each call a device_call row in the tenant database, which the runner polls for the answer and any web's stream sends to the phone; watchRun hands on event rows another process wrote, each once, and tells of new device calls; the plugins' runs.subscribe uses it
+
 ## [0.2.57] - 2026-10-11
 - ADDED **[runtime]** The runner is its own process – RUNTIME_ROLE web | runner | all (a runtime that runs alone stays one process). The line of runs lives in the control database: run_index gained owner and seen, a runner claims a run in one statement that counts the tenant's held runs against its limit, reports every 10 s, hears of a cancel the web wrote and hands its runs back when it stops; a runner silent for 30 s loses them. A step's question and the person's answer go through the run's row (run.answer; run.unattended marks an autopilot), so the web that takes the answer need not be the process that asked. watchRun tells the stream, the autopilot and waitWhileMoving of changes another process made within a second. Runners register with an address (table runner, RUNNER_URL); the web hands a run's browser screen and acts on it to the runner holding it. compose.cloud.yaml runs web and runner apart. docs/plans/runner-process.md
 

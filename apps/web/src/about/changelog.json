@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.58",
+    "timestamp": 1791756850,
+    "commits": [
+      {
+        "id": "8552943",
+        "message": "with web and runner apart, the phone still thinks for a run and plugins hear of its changes – the device's offer is run.device_offer and each call a device_call row in the tenant database, which the runner polls for the answer and any web's stream sends to the phone; watchRun hands on event rows another process wrote, each once, and tells of new device calls; the plugins' runs.subscribe uses it",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.57",
-    "timestamp": 1791752564,
+    "timestamp": 1791752566,
     "commits": [
       {
         "id": "dbb1e2f",
