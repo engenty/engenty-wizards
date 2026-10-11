@@ -282,6 +282,18 @@ export function openStudioLink(href: string): boolean {
 
 const target = { type: "string", description: "A ref or area from look_at_page, or the label" };
 
+/** The tools pages add while they are shown, by name. */
+const added = new Map<string, Registered>();
+
+/** The tools of the page shown now, as page_tool takes them. */
+function pageTools() {
+  return [...added.values()].map(({ name, description, parameters }) => ({
+    name,
+    description,
+    parameters,
+  }));
+}
+
 const BUILT_IN: Registered[] = [
   {
     name: "navigate",
@@ -299,7 +311,8 @@ const BUILT_IN: Registered[] = [
       }
       go?.(path);
       await settle();
-      return { opened: path };
+      // The page now shown may offer tools of its own: page_tool runs them.
+      return { opened: path, pageTools: pageTools() };
     },
   },
   {
@@ -350,6 +363,7 @@ const BUILT_IN: Registered[] = [
       route: window.location.pathname,
       scrolled: Math.round(pageRoot().scrollTop),
       items: listOf(pageRoot(), true),
+      pageTools: pageTools(),
     }),
   },
   {
@@ -426,6 +440,26 @@ const BUILT_IN: Registered[] = [
     },
   },
   {
+    name: "page_tool",
+    description:
+      "Runs a tool the page shown now offers, by its name, with its arguments: a page opened during this answer brings tools that are not among yours (navigate and look_at_page list them with their parameters).",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        args: { type: "object", description: "The tool's arguments, as its parameters say" },
+      },
+      required: ["name"],
+    },
+    run: async ({ name, args }) => {
+      const tool = added.get(String(name ?? ""));
+      if (!tool) {
+        return { error: `The page offers no tool "${String(name)}".`, pageTools: pageTools() };
+      }
+      return tool.run((args ?? {}) as Record<string, unknown>);
+    },
+  },
+  {
     name: "scroll_to",
     description: "Scroll an element of the page into view.",
     parameters: { type: "object", properties: { target }, required: ["target"] },
@@ -442,8 +476,6 @@ const BUILT_IN: Registered[] = [
 ];
 
 // --- what pages add ------------------------------------------------------------------------
-
-const added = new Map<string, Registered>();
 
 /**
  * A tool of the page while it is shown, e.g. the shop's "filter the products". `parameters` is

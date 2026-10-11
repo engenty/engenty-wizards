@@ -285,7 +285,6 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                 break;
               }
               case "changed":
-                setPhase("building");
                 void refresh();
                 break;
               case "done": {

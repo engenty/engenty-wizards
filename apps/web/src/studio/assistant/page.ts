@@ -119,10 +119,35 @@ export function pageSnapshot(): AssistantPage {
   const path = window.location.pathname;
   const route = path.startsWith(STUDIO) ? path.slice(STUDIO.length) || "/" : path;
   const view = sectionInView();
+  // Cut to what the runtime takes: a page that says too much still gets its answer.
+  const cut = (text: string | undefined, max: number) =>
+    text && text.length > max ? `${text.slice(0, max - 1)}…` : text;
   return {
-    route: `${route}${window.location.search}`,
-    ...(trail.length ? { title: trail.join(" / ") } : {}),
-    ...(view ? { view } : {}),
-    ...shown,
+    route: `${route}${window.location.search}`.slice(0, 400),
+    ...(trail.length ? { title: cut(trail.join(" / "), 200) } : {}),
+    ...(view ? { view: cut(view, 200) } : {}),
+    ...(shown.open
+      ? {
+          open: {
+            kind: shown.open.kind.slice(0, 60),
+            ...(shown.open.id ? { id: shown.open.id.slice(0, 120) } : {}),
+            label: cut(shown.open.label, 200) ?? "",
+          },
+        }
+      : {}),
+    ...(shown.selection
+      ? { selection: shown.selection.slice(0, 100).map((id) => id.slice(0, 120)) }
+      : {}),
+    ...(shown.summary ? { summary: cut(shown.summary, 2000) } : {}),
+    ...(shown.fields
+      ? {
+          fields: shown.fields.slice(0, 60).map((f) => ({
+            id: f.id.slice(0, 120),
+            label: cut(f.label, 200) ?? "",
+            value: f.value,
+          })),
+        }
+      : {}),
+    ...(shown.plugin ? { plugin: shown.plugin } : {}),
   };
 }

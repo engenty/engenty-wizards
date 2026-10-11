@@ -86,7 +86,9 @@ function callLabel(call: ChatToolCall): string | null {
   } catch {
     // a result cut short says nothing more
   }
-  const what = String(result.shown ?? result.filled ?? result.area ?? args.target ?? "");
+  // A ref of look_at_page ("e19") says nothing to the person.
+  const target = /^e\d+$/.test(String(args.target ?? "")) ? "" : String(args.target ?? "");
+  const what = String(result.shown || result.filled || result.area || target);
   switch (call.toolCallName) {
     case "navigate":
       return t("assistant.tool.navigate", { where: String(args.to ?? "") });
