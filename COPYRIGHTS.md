@@ -8,6 +8,12 @@ company, run it, change it — just don't offer it to others as a competing prod
 Each release becomes MIT two years after it is published. Every package of the workspace names
 that licence in its `package.json`.
 
+The wizard format is open to everyone now: the seven files that define a wizard and read it
+(`packages/shared/src/definition.ts`, `fit.ts`, `run.ts`, `store.ts`, `surface.ts` and
+`engenty/data-tables/columns.ts`, `columns-format.ts`) are also under the MIT licence, at the
+choice of whoever uses them (`FSL-1.1-MIT OR MIT`, [packages/shared/LICENSE-MIT](packages/shared/LICENSE-MIT)).
+Each says so in its first line. The runner package (`packages/runner`, MIT) bundles them under MIT.
+
 "engenty" (the brand of a family of products), "engenty.wizards" (also written "engenty wizards"),
 the wordmark and the engenty figures are marks of Thru The Heart Creative GmbH. The word "wizards"
 on its own is not one of them: it names the package, the repository and the command. The licence

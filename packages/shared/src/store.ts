@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 import { coerceRowValues, mergeRowValues, type TableColumn } from "./engenty/data-tables/index.js";
 
 /**

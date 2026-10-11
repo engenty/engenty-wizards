@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 import type { CardOption, Format, ModelClass, Step, WizardDefinition } from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
 import type { Surface } from "./surface.js";
