@@ -182,3 +182,11 @@ export async function forgetTenantRows(id: string) {
     }
   }
 }
+
+/** The line's view of one run: which tenant it belongs to, whether it is awake. */
+export async function runIndexOf(runId: string) {
+  const row = await controlDb.query.runIndex.findFirst({
+    where: eq(control.runIndex.runId, runId),
+  });
+  return row ? { tenantId: row.tenantId, active: row.active } : null;
+}

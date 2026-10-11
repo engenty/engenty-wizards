@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { z } from "zod";
 import { closeTenantDb, tenantDb } from "../db/client.js";
+import { logs, runDetail, status, tenantModels } from "../debug.js";
 import { env } from "../env.js";
 import { removeTenantObjects } from "../files/objects.js";
+import { tailQuery } from "../log.js";
 import { forgetTenant, managed } from "../manage.js";
 import { loadedPlugins } from "../plugins/registry.js";
 import { forgetTenantRows, setTenantStatus } from "../tenants/control.js";
@@ -27,11 +29,25 @@ function fromManage(header: string | undefined): boolean {
  * itself is deleted by whoever created it (the Manage-App, or here when it is a file).
  */
 export const internalRoutes = new Hono()
-  // The plugins this runtime carries: the Manage-App offers them when a plan's modules are picked.
-  .get("/plugins", (c) => {
+  .use(async (c, next) => {
     if (!fromManage(c.req.header("authorization"))) {
       return c.json({ error: "unauthorized" }, 401);
     }
+    await next();
+  })
+  // --- a look from afar (docs/plans/remote-debug.md): read-only, never a key -------------
+  .get("/debug/status", async (c) => c.json(await status()))
+  .get("/debug/logs", (c) => c.json(logs(tailQuery((key) => c.req.query(key)))))
+  .get("/debug/runs/:id", async (c) => {
+    const found = await runDetail(c.req.param("id"));
+    return found ? c.json(found) : c.json({ error: "not found" }, 404);
+  })
+  .get("/debug/tenants/:id/models", async (c) => {
+    const found = await tenantModels(c.req.param("id"));
+    return found ? c.json(found) : c.json({ error: "not found" }, 404);
+  })
+  // The plugins this runtime carries: the Manage-App offers them when a plan's modules are picked.
+  .get("/plugins", (c) => {
     return c.json({
       plugins: loadedPlugins().map((p) => ({
         id: p.source.id,
@@ -42,9 +58,6 @@ export const internalRoutes = new Hono()
     });
   })
   .post("/tenants/:id", async (c) => {
-    if (!fromManage(c.req.header("authorization"))) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
     const id = c.req.param("id");
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
       return c.json({ error: "bad tenant id" }, 400);

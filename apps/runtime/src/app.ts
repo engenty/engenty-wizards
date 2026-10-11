@@ -12,6 +12,7 @@ import { ZodError } from "zod";
 import { authRoutes, type Principal, principalOf } from "./auth/index.js";
 import { db, schema, withTenant } from "./db/client.js";
 import { basePath, env } from "./env.js";
+import { allowed, hashIp } from "./limits.js";
 import { linkPreview } from "./link-preview.js";
 import { discovery, managed } from "./manage.js";
 import { bridgeRequest } from "./mcp/bridge.js";
@@ -19,11 +20,12 @@ import { mcpHandler } from "./mcp/handler.js";
 import { MCP_RESOURCE, SCOPES } from "./mcp/scopes.js";
 import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
+import { browserReport, localDebugRoutes } from "./routes/debug.js";
 import { internalRoutes } from "./routes/internal.js";
 import { marketplaceStudio } from "./routes/marketplace.js";
 import { publicPluginRoutes } from "./routes/plugin-public.js";
 import { pluginRoutes } from "./routes/plugins.js";
-import { connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
+import { clientIp, connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
 import { studio } from "./routes/studio.js";
 import { wizardStream } from "./routes/wizard-stream.js";
 import { runTicketValid } from "./secrets/signing.js";
@@ -106,6 +108,33 @@ app.use("*", async (c, next) => {
 });
 
 app.get("/api/health", (c) => c.json({ ok: true }));
+
+/**
+ * A page in a browser (the studio, a wizard's own page) tells of an error it met: the line
+ * goes into this process's log like the server's own, so a look from afar sees both sides
+ * (docs/plans/remote-debug.md). Anyone may send; the size and the count per address are capped.
+ */
+app.post("/api/log", bodyLimit({ maxSize: 8 * 1024 }), async (c) => {
+  const ip = hashIp(clientIp(c));
+  if (!allowed(`log:${ip ?? "?"}`, 60, 60 * 60 * 1000)) {
+    return c.json({ ok: false }, 429);
+  }
+  const parsed = browserReport.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ ok: false }, 400);
+  }
+  const report = parsed.data;
+  const who = await principalOf(c).catch(() => null);
+  const tag = who ? `${who.tenantId}/${who.id}` : "visitor";
+  const where = report.url ? ` at ${report.url}` : "";
+  const line = `[browser ${tag}]${where}: ${report.message}${report.stack ? `\n${report.stack}` : ""}${report.agent ? `\n${report.agent}` : ""}`;
+  if (report.level === "warn") {
+    console.warn(line);
+  } else {
+    console.error(line);
+  }
+  return c.json({ ok: true });
+});
 
 app.route("/api", authRoutes);
 
@@ -206,6 +235,7 @@ app.route("/api/studio/plugins", pluginRoutes);
 app.route("/api/studio", studio);
 app.route("/api/v1", apiRoutes);
 app.route("/api/internal", internalRoutes);
+app.route("/api/local/debug", localDebugRoutes);
 app.route("/api/public/plugins", publicPluginRoutes);
 app.route("/api/public", publicRoutes);
 app.route("/api/runs", runRoutes);

@@ -79,7 +79,7 @@ const VISITOR_COOKIE = "wz_vid";
 /** Kept files a review shows inline. */
 const INLINE_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
 
-function clientIp(c: Context): string | null {
+export function clientIp(c: Context): string | null {
   const fwd = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
   if (fwd) {
     return fwd;

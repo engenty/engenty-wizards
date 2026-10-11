@@ -10,6 +10,7 @@ import {
 } from "./db/client.js";
 import { resumeInterruptedRuns } from "./engine/runner.js";
 import { basePath, env } from "./env.js";
+import { hookConsole } from "./log.js";
 import { managed } from "./manage.js";
 import { checkModelsAtStart, loadCatalog, loadLocalModels } from "./models.js";
 import { startJobs } from "./plugins/jobs.js";
@@ -23,6 +24,8 @@ import { purgeUnusedStores } from "./store/index.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
 import { onRestart, RESTART_EXIT } from "./update.js";
 
+// Before anything prints: the last lines stay in memory for a look from afar (debug.ts).
+hookConsole();
 await migrateControlDb();
 // What the linked account's plan confirmed last: the Pro modules it includes load with the rest.
 await loadEntitlement();

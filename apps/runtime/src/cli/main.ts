@@ -3,6 +3,7 @@ import { command, layout, packageVersion, readInstallNote } from "./home.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { mcp } from "./mcp.js";
 import { menu } from "./menu.js";
+import { logsCommand, reportCommand } from "./report.js";
 import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
@@ -18,6 +19,8 @@ const HELP = `engenty wizards ${packageVersion()}
   ${command()} open       let this browser into the running studio (--print: only show the link)
   ${command()} status     what is installed and what runs
   ${command()} doctor     status, and what is wrong
+  ${command()} logs       the last lines it printed (\`logs 500\` for more)
+  ${command()} report     send status, model settings and the last log lines to your account, for support
   ${command()} stop       stop it; the data is kept
   ${command()} restart    stop it and start it again (after an update: the new version)
   ${command()} update     the newest version
@@ -84,7 +87,7 @@ function parse(argv: string[]): Args | string {
       args.command = "version";
     } else if (arg.startsWith("-")) {
       return `Unknown option ${arg}.`;
-    } else if (args.command === "autostart" && !args.value) {
+    } else if ((args.command === "autostart" || args.command === "logs") && !args.value) {
       args.value = arg;
     } else if (args.command === "connect" || args.command === "disconnect") {
       args.apps.push(arg);
@@ -145,6 +148,10 @@ async function main(argv: string[]): Promise<number> {
       return status(paths, false);
     case "doctor":
       return status(paths, true);
+    case "logs":
+      return logsCommand(paths, args.value);
+    case "report":
+      return reportCommand(paths);
     case "stop":
       return stop(paths);
     case "restart":
