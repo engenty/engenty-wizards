@@ -6,20 +6,15 @@ import { useNavigate } from "react-router";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useCurrentProject, useMayCreate } from "../lib/session";
-import { Button, Dialog, IconButton, Spinner } from "../ui";
+import { Button, Dialog } from "../ui";
 
-/**
- * Makes a new wizard in the current project of a package (`.wizard`) and opens it. `compact`:
- * the icon alone, beside the button that makes a new one.
- */
+/** Makes a new wizard in the current project of a package (`.wizard`) and opens it. */
 export function ImportWizard({
   variant = "secondary",
   label = t("home.import"),
-  compact,
 }: {
   variant?: "secondary" | "ghost";
   label?: string;
-  compact?: boolean;
 }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -43,25 +38,14 @@ export function ImportWizard({
   }
   return (
     <>
-      {compact ? (
-        <IconButton
-          label={label}
-          disabled={!project || upload.isPending}
-          onClick={() => input.current?.click()}
-          className="size-10 bg-card text-ink-2 shadow-soft ring-1 ring-border-soft hover:bg-card hover:text-ink coarse:size-11"
-        >
-          {upload.isPending ? <Spinner className="size-4" /> : <Upload className="size-4" />}
-        </IconButton>
-      ) : (
-        <Button
-          variant={variant}
-          busy={upload.isPending}
-          disabled={!project}
-          onClick={() => input.current?.click()}
-        >
-          <Upload className="size-4" /> {label}
-        </Button>
-      )}
+      <Button
+        variant={variant}
+        busy={upload.isPending}
+        disabled={!project}
+        onClick={() => input.current?.click()}
+      >
+        <Upload className="size-4" /> {label}
+      </Button>
       <input
         ref={input}
         hidden
