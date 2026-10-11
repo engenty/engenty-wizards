@@ -23,15 +23,15 @@ into your AI apps; `claude mcp add --transport http engenty-wizards <APP_URL>/ap
 hosted one):
 
 ```bash
-claude plugin marketplace add engenty/engenty-wizards
-claude plugin install wizards@engenty-wizards
+claude plugin marketplace add engenty/wizards
+claude plugin install wizards@engenty
 ```
 
 From a running engenty wizards with a public https address, which bundles its own server:
 
 ```bash
 claude plugin marketplace add <APP_URL>/api/claude-plugin/marketplace.json
-claude plugin install wizards@engenty
+claude plugin install wizards@<host-with-dashes>   # wizards.example.com → wizards-example-com
 ```
 
 `claude plugin update wizards` brings the next version.

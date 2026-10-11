@@ -1,3 +1,4 @@
+import { marketplaceNameOf } from "@engenty-wizards/shared/claude-plugin";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AppWindow,
@@ -156,7 +157,7 @@ function AddByAddress({ id, url, apiKey }: { id: string; url: string; apiKey?: s
             <>
               <Hint>{t("mcp.ccPlugin")}</Hint>
               <CopyLine text={`claude plugin marketplace add ${plugin}/marketplace.json`} />
-              <CopyLine text={`claude plugin install ${PLUGIN}@engenty`} />
+              <CopyLine text={`claude plugin install ${PLUGIN}@${marketplaceNameOf(url)}`} />
             </>
           ) : null}
         </>

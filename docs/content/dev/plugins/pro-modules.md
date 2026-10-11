@@ -12,7 +12,7 @@ linked account, in Settings → Plugins → Pro modules.
 1. Settings → Account links the install to an engenty account.
 2. The runtime asks the account's Manage-App which modules are built for its release and which
    of them the plan includes (`GET /v1/modules`,
-   [contract](https://github.com/engenty/engenty-wizards/blob/main/docs/manage-contract.md)).
+   [contract](https://github.com/engenty/wizards/blob/main/docs/manage-contract.md)).
    The answer holds an entitlement the Manage-App signed: the team, the plan's modules, an end
    about a week ahead.
 3. "Install" downloads the module's zip. The runtime takes it only when its SHA-256 matches and

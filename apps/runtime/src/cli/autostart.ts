@@ -64,7 +64,7 @@ export function unitText(command: string): string {
   return [
     "[Unit]",
     "Description=engenty wizards",
-    "Documentation=https://github.com/engenty/engenty-wizards",
+    "Documentation=https://github.com/engenty/wizards",
     "",
     "[Service]",
     `ExecStart="${command.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}" start --no-open`,

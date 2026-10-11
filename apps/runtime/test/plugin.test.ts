@@ -21,7 +21,7 @@ describe("Claude Code plugin of this deployment", () => {
   it("serves a marketplace whose archive carries this server's MCP URL", async () => {
     const base = "https://wizards.example.com/api/claude-plugin";
     const market = await (await app.fetch(new Request(`${base}/marketplace.json`))).json();
-    expect(market.name).toBe("engenty");
+    expect(market.name).toBe("wizards-example-com");
     const [entry] = market.plugins;
     expect(entry.source).toMatchObject({ source: "archive", url: `${base}/wizards.zip` });
 

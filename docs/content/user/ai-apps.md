@@ -95,15 +95,15 @@ use wizards, and `/wizards`, a pane beside the chat that lists your wizards and 
 app's browser pane. From GitHub, for the `engenty-wizards` server your AI apps already have:
 
 ```bash
-claude plugin marketplace add engenty/engenty-wizards
-claude plugin install wizards@engenty-wizards
+claude plugin marketplace add engenty/wizards
+claude plugin install wizards@engenty
 ```
 
 With a public https address, your own engenty wizards serves the plugin with its server bundled:
 
 ```bash
 claude plugin marketplace add <your address>/api/claude-plugin/marketplace.json
-claude plugin install wizards@engenty
+claude plugin install wizards@<your-host-with-dashes>   # wizards.example.com → wizards-example-com
 ```
 
 `claude plugin update wizards` brings the next version. In Claude Code's auto mode the pane's own
