@@ -50,7 +50,7 @@ export function AboutDialog({ open, onClose, me }: { open: boolean; onClose: () 
     ? new Date(data.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
     : null;
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.title")}>
+    <Dialog open={open} onClose={onClose} title={t("about.title")} wide>
       <div className="flex items-center gap-4">
         <EngentyLogoMark size={56} />
         <div className="min-w-0">
