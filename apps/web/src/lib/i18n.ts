@@ -9,8 +9,19 @@ const de = {
     "Kein Passwort, keine Registrierung – du meldest dich mit einem bestehenden Konto an.",
   "auth.signIn": "Anmelden oder Konto erstellen",
   "auth.failed": "Die Anmeldung hat nicht geklappt. Bitte noch einmal versuchen.",
+  "auth.localTitle": "Dieser Browser ist nicht angemeldet",
+  "auth.localWhy":
+    "Das Studio läuft auf deinem Computer und lässt nur einen Browser herein, der seinen Link geöffnet hat. Hier fehlt diese Anmeldung – etwa weil die Cookies gelöscht wurden oder ein anderes Studio auf diesem Computer (eine andere Adresse auf localhost) sie ersetzt hat.",
   "auth.localLink":
-    "Führe das in einem Terminal aus – es öffnet das Studio und meldet dich an diesem Gerät an:",
+    "Führe das in einem Terminal aus – es öffnet das Studio und meldet diesen Browser an:",
+  "auth.localStartLink":
+    "Oder öffne den Link, den die App beim Start ausgegeben hat („Open the studio: …/api/local/enter?k=…“). Er gilt einmal pro Start.",
+  "auth.wrongHost": "Das Studio läuft unter einer anderen Adresse",
+  "auth.wrongHostWhy":
+    "Die App auf diesem Computer antwortet nur unter ihrer eigenen Adresse – das schützt sie vor fremden Webseiten. Öffne das Studio dort:",
+  "auth.unreachable": "Die App antwortet gerade nicht",
+  "auth.unreachableWhy":
+    "Unter {address} läuft das Studio, aber die App dahinter gibt keine Antwort – sie startet vielleicht gerade neu oder ist beendet. Die Seite versucht es weiter.",
   "nav.account": "Konto & Guthaben",
   "setup.keysInAccount":
     "API-Schlüssel für Skripte gehören zu deinem Konto. Du legst sie dort an und ziehst sie dort zurück.",
@@ -1505,7 +1516,18 @@ const en: Record<Key, string> = {
   "auth.legal": "No password, no sign-up form — you sign in with an account you already have.",
   "auth.signIn": "Sign in or create an account",
   "auth.failed": "Sign-in did not work. Please try again.",
-  "auth.localLink": "Run this in a terminal — it opens the studio and signs you in on this device:",
+  "auth.localTitle": "This browser is not signed in",
+  "auth.localWhy":
+    "The studio runs on your computer and lets in only a browser that opened its link. That sign-in is missing here – maybe the cookies were cleared, or another studio on this computer (another address on localhost) replaced it.",
+  "auth.localLink": "Run this in a terminal — it opens the studio and signs this browser in:",
+  "auth.localStartLink":
+    "Or open the link the app printed at its start (“Open the studio: …/api/local/enter?k=…”). It works once per start.",
+  "auth.wrongHost": "The studio runs at another address",
+  "auth.wrongHostWhy":
+    "The app on this computer answers only at its own address – that keeps other web pages out. Open the studio there:",
+  "auth.unreachable": "The app is not answering",
+  "auth.unreachableWhy":
+    "The studio is at {address}, but the app behind it gives no answer – it may be restarting or stopped. This page keeps trying.",
   "nav.account": "Account & credits",
   "setup.keysInAccount":
     "API keys for scripts belong to your account. You create and revoke them there.",

@@ -65,7 +65,8 @@ const ticketedRun = /^\/api\/runs\/([^/]+)(\/|$)/;
 
 app.use("*", async (c, next) => {
   if (!managed && !hostAllowed(c.req.header("host") ?? new URL(c.req.url).host)) {
-    return c.text("Forbidden host", 403);
+    // Says where it does answer: the studio opened under another name shows the way there.
+    return c.json({ error: "Forbidden host", code: "host", appUrl: env.appUrl }, 403);
   }
   const origin = c.req.header("origin");
   const path = c.req.path.startsWith(`${basePath}/`)

@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { EngentyWordmark } from "../engenty/logo";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
@@ -18,10 +18,46 @@ function hasDesktop() {
  * create an account); a runtime that runs alone is entered through the link it printed at start.
  * Where the dev login is the only way in, there is nothing to choose: the door opens by itself.
  */
+/** A text one sentence per line: a line never breaks after a sentence's first word. */
+function Sentences({ text }: { text: string }) {
+  return text.split(/(?<=[.!?])\s+/).map((sentence) => (
+    <span key={sentence} className="block">
+      {sentence}
+    </span>
+  ));
+}
+
+/** Why the studio does not open here, and what helps. */
+function Note({
+  title,
+  children,
+  className = "mt-8",
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`${className} w-full rounded-xl bg-card px-5 py-4 text-left text-[0.875rem] text-ink-2 leading-relaxed shadow-soft ring-1 ring-border-soft`}
+    >
+      <div className="mb-1.5 font-medium text-ink">{title}</div>
+      {children}
+    </div>
+  );
+}
+
 export function SignInPage() {
   const config = useQuery({
     queryKey: ["config"],
     queryFn: () => api.get<{ mode: "managed" | "local"; devLogin: boolean }>("/api/config"),
+    // A runtime that restarts answers again in a moment: the page asks until it does.
+    refetchInterval: (query) =>
+      query.state.status === "error" &&
+      !(query.state.error instanceof ApiError && query.state.error.body?.code === "host")
+        ? 2000
+        : false,
+    retry: false,
   });
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -68,15 +104,37 @@ export function SignInPage() {
     );
   }
 
+  const local = config.data?.mode === "local" && !config.data.devLogin;
+  // Opened under a name the app does not answer to (127.0.0.1 for localhost, the machine's IP).
+  const refusal =
+    config.error instanceof ApiError && config.error.body?.code === "host" ? config.error : null;
+  const ownAddress = refusal ? String(refusal.body.appUrl ?? "") : null;
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">
-      <div className="flex w-full max-w-sm animate-rise flex-col items-center text-center">
-        <Mascot kind="round" size={200} fluffy />
+      <div className="flex w-full max-w-md animate-rise flex-col items-center text-center">
+        <Mascot kind="round" size={local || config.isError ? 140 : 200} fluffy />
         <EngentyWordmark className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight" />
-        <h1 className="mt-3 font-display font-semibold text-[2.125rem] leading-[1.1] tracking-tight">
-          {t("brand.tagline")}
+        <h1 className="mt-3 text-balance font-display font-semibold text-[2.125rem] leading-[1.1] tracking-tight">
+          <Sentences text={t("brand.tagline")} />
         </h1>
-        <p className="mt-4 text-[1rem] text-ink-2 leading-relaxed">{t("brand.sub")}</p>
+        <p className="mt-4 text-balance text-[1rem] text-ink-2 leading-relaxed">
+          <Sentences text={t("brand.sub")} />
+        </p>
+        {ownAddress ? (
+          <Note title={t("auth.wrongHost")}>
+            <p>{t("auth.wrongHostWhy")}</p>
+            <a
+              href={`${ownAddress}${window.location.pathname}`}
+              className="mt-1.5 block break-all font-medium text-ember-strong underline-offset-2 hover:underline"
+            >
+              {ownAddress}
+            </a>
+          </Note>
+        ) : config.isError ? (
+          <Note title={t("auth.unreachable")}>
+            {t("auth.unreachableWhy", { address: window.location.host })}
+          </Note>
+        ) : null}
         <div className="mt-10 flex w-full flex-col gap-3">
           {failed ? <p className="text-[0.875rem] text-rose">{t("auth.failed")}</p> : null}
           {config.data?.mode === "managed" ? (
@@ -119,13 +177,15 @@ export function SignInPage() {
               {t("auth.dev")}
             </Button>
           ) : null}
-          {config.data?.mode === "local" && !config.data.devLogin ? (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-[0.875rem] text-ink-3">{t("auth.localLink")}</p>
-              <code className="select-all rounded bg-paper-2 px-2 py-1 font-mono text-[0.8125rem] text-ink-2">
+          {local ? (
+            <Note title={t("auth.localTitle")} className="-mt-2">
+              <p>{t("auth.localWhy")}</p>
+              <p className="mt-3">{t("auth.localLink")}</p>
+              <code className="mt-1.5 block select-all rounded-lg bg-paper-2 px-3 py-2 font-mono text-[0.8125rem] text-ink">
                 wizards open
               </code>
-            </div>
+              <p className="mt-3 text-ink-3">{t("auth.localStartLink")}</p>
+            </Note>
           ) : null}
         </div>
         {config.data?.mode === "managed" ? (
