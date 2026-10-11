@@ -354,7 +354,8 @@ export function Chip({
 }
 
 /**
- * A centred modal on the native <dialog>. Its height does not jump while it is open: a dialog
+ * A centred modal on the native <dialog>; on a phone it fills the screen, with no gutter. Its
+ * height does not jump while it is open: a dialog
  * with tabs, folds or lists (`height="tall"`) stands at a height taken from the window and
  * scrolls inside; any other keeps the tallest height it has had, so switching to a shorter tab
  * or folding a section leaves it where it is.
@@ -428,12 +429,13 @@ export function Dialog({
       }}
       className={cn(
         "m-auto p-0 text-ink backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
+        // A phone: the whole screen, no gutter, clear of the notch and the home indicator.
+        "max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none",
         bare
-          ? "w-[calc(100%-48px)] overflow-visible bg-transparent max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none"
-          : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay",
+          ? "w-[calc(100%-48px)] overflow-visible bg-transparent"
+          : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay max-sm:rounded-none max-sm:pt-[env(safe-area-inset-top)] max-sm:pb-[env(safe-area-inset-bottom)]",
         wide === "page" ? "sm:max-w-4xl" : wide ? "sm:max-w-2xl" : "sm:max-w-md",
-        !bare && (wide === "page" ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-md"),
-        !bare && height === "tall" && "h-[min(calc(100dvh-32px),56rem)]",
+        !bare && height === "tall" && "sm:h-[min(calc(100dvh-32px),56rem)]",
       )}
     >
       {open && bare ? (
