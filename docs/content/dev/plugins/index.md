@@ -1,7 +1,7 @@
 ---
 title: Plugins
 description: What a plugin is, what its two halves can add, and what it may touch.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A plugin adds to a runtime without changing its code. The runtime finds plugins at start, loads
@@ -17,7 +17,7 @@ them from their files and loads one again when its files change.
 | Pages, tables and files of a space's Knowledge, with Kategorien | In Knowledge, and in what `project_search` finds | [The space](./space.md#knowledge-a-plugin-writes) |
 | Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
 | Tools of the studio's assistant, and their cards | In the assistant's chat, on every page | [The space](./space.md#tools-of-the-space-assistant) |
-| Routes | Below `/api/studio/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
+| Routes | Below `/api/studio/plugins/<id>`, for programs with a key below `/api/v1/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
 | Tables | In every tenant's database | [Tables](./tables.md) |
 | A listener on runs that end and spaces that change | Nowhere: it works in the background | [Events](./events.md) |
 | A job, again and again | Nowhere: it works in the background | [The server half](./server.md#jobs) |

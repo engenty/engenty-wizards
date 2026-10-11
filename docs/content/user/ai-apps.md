@@ -1,11 +1,12 @@
 ---
 title: AI apps
 description: Run and build your wizards inside Claude Desktop, Cursor, Codex and other AI apps.
-version: 0.2.48
+version: 0.2.50
 ---
 
 Settings → Integrate brings your wizards to where you work. engenty wizards is an MCP server:
-an AI app that adds it gets the tools to find, run and build wizards.
+an AI app that adds it gets the tools to find, run and build wizards. Under "Share" the same page
+has the WordPress plugin: see [WordPress](./wordpress.md).
 
 ## What an app can do
 

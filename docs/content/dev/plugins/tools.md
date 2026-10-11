@@ -1,7 +1,7 @@
 ---
 title: Tools
 description: A tool an AI step can call — how to register it, how a wizard lists it, and what the model sees.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A tool is a function an AI step may call while it works. The model decides when, from the
@@ -84,6 +84,9 @@ A step lists the tool beside the built-in ones:
 - A draft whose step lists a tool in `tools` that this tenant does not have shows an issue.
 - A run fails at the step that names one. A wizard that uses a plugin's tool runs only where
   that plugin is installed: think of that before you publish a wizard to the cloud or export it.
+- The model has to call tools. Apple Intelligence on a Mac calls none: a step whose class it
+  answers (Classifier, Standard) runs from its prompt alone. A step that needs the tool runs on
+  High, or a [call without a model](#called-without-a-model) does it.
 
 ### Called without a model
 

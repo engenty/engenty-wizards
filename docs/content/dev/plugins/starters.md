@@ -1,7 +1,7 @@
 ---
 title: Starters
 description: Wizards a plugin brings as templates — how to register one, where it shows, and what a wizard made from it gets.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A starter is a wizard a plugin brings as a template. It stands beside the marketplace's starters
@@ -51,6 +51,7 @@ has no dot, so the two never meet.
 | New wizard in the studio | First among the templates, with the plugin's name on its card. It cannot be starred: it is always there, also without a connection |
 | `GET /api/studio/marketplace` | First on the first page, with `plugin: { id, name }` |
 | MCP `list_starters`, `get_starter`, `create_wizard` | Listed first with `plugin`; `starterId` takes its id |
+| `GET /api/v1/templates`, for programs with a key | First, with `plugin`; `POST /api/v1/wizards` takes its id as `starterId` |
 
 Only the tenants that have the plugin see it, by the same rule as its tools
 ([Which tenant has a plugin](./shipping.md#which-tenant-has-a-plugin)). Words and filters of a search find it by its title, its description

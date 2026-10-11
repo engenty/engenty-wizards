@@ -1,7 +1,7 @@
 ---
 title: Test and share
 description: Try the wizard, publish it, and hand out its link or put it on a website.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ## Test
@@ -46,6 +46,7 @@ gives it one, and the arrow opens it here.
 | · Link is active | Switch it off and the link stops answering |
 | · Runs per day | How many runs the link allows a day. 50 unless you change it |
 | · Create a new link | Replaces the address. The old link stops working, in the cloud too |
+| WordPress | "Get the plugin" for a site connected to your account, and the wizard as a package that runs on a WordPress site without an account, with what it lacks there: see [WordPress](./wordpress.md#without-an-account) |
 
 Where the draft is not published as it is, the dialog says so first and publishes from there.
 
@@ -191,24 +192,33 @@ The share dialog gives a tag to paste into a page's HTML:
 | Inline | The wizard in that place of the page, as tall as its content |
 | Button + modal | A button in that place that opens the wizard in a window over the page |
 | Chat button | The wizard's engenty in the lower right corner; the chat opens above it |
-| Bubble | A round button at the bottom right of the page that opens the wizard in the window |
+| Bubble | Steps only: a round button at the bottom right of the page that opens the wizard in a window over the page, best put in the site's footer |
 
 ```html
 <script async src="https://example.com/embed.js" data-wizard="TOKEN"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="modal" data-label="Start"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-runner="chat"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="popout"></script>
-<script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="bubble" data-label="Fragen?" data-text="Angebot in 2 Minuten"></script>
+<script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="bubble" data-label="Questions?" data-text="A quote in 2 minutes"></script>
 ```
 
 A chat in the page that is switched off for the wizard shows the page instead; the chat button
 always opens the chat.
 
-The button takes your website's own styles through the class `engenty-wizard-button`, the bubble
-through `engenty-wizard-bubble`; `data-color` gives the bubble a colour. `data-page` names the
-page a run is started on (the page's own address when left out): the results show it.
+| Attribute | Does |
+|---|---|
+| `data-label` | The button's words; beside the chat button; the bubble's name for screen readers |
+| `data-text` | A short line beside the bubble |
+| `data-color` | The colour of the chat button and of the bubble |
+| `data-height` | The height of a chat in the page, in px |
+| `data-page` | The page a run is started on, kept with its result; the page's own address when left out |
 
-On WordPress the plugin writes this tag for you: see [WordPress](./wordpress.md).
+Your website's own styles reach the button through the class `engenty-wizard-button`, the chat
+button through `engenty-wizard-launcher` and the bubble through `engenty-wizard-bubble`. A page
+shows one bubble: a second bubble tag stays silent.
+
+On WordPress the plugin writes this tag for you, and its results show the page: see
+[WordPress](./wordpress.md).
 
 ## Results people share
 
@@ -218,5 +228,5 @@ earlier.
 
 ## Move a wizard
 
-Export it as a package (`.wizard`) from the editor and import it in another studio. See
-[Build a wizard](./build-a-wizard.md#take-it-with-you).
+Export it as a package (`.wizard`) from the editor and import it in another studio, or in the
+WordPress plugin. See [Build a wizard](./build-a-wizard.md#take-it-with-you).

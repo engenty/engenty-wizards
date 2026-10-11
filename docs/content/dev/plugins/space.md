@@ -1,7 +1,7 @@
 ---
 title: The space
 description: Knowledge a plugin writes, a block and tools for every AI step of a space, texts in its search index, tools and cards of its assistant.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A space holds what all its wizards share: a title, logos, colours, facts, and Knowledge —
@@ -90,6 +90,9 @@ server.registerSpaceContext({
   it.
 - The tools are [tools](./tools.md) like the ones a step lists; the model sees
   `<plugin>_<name>`. Their names and the names of the plugin's other tools are one list.
+- A model on the device calls no tools: Apple Intelligence on a Mac, or the phone a run is
+  followed on, which answers only steps that list no tools themselves. The step then gets the
+  block without the tools.
 
 ## The search index
 

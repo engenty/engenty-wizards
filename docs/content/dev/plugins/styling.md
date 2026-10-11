@@ -1,7 +1,7 @@
 ---
 title: Styles and components
 description: The studio's components, Tailwind against the studio's theme, and why a plugin's styles never leak.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A plugin's page should look like the studio. Two things make that easy: the studio's components
@@ -50,6 +50,11 @@ import { Button, Card, Chip, Label, Input } from "@engenty-wizards/web/ui";
 
 Icons are from `lucide-react`.
 
+Most of these components live in the runner package (`@engenty-wizards/runner`), so a wizard's
+run page looks like the studio. Import them from `@engenty-wizards/web/ui` all the same: that
+is the import the studio shares. `@engenty-wizards/runner` is not shared and would be bundled
+into `client.js`.
+
 ## Tailwind
 
 A plugin writes Tailwind classes, as the studio does. The build collects the classes the
@@ -70,7 +75,8 @@ The theme's names are the studio's:
 | Variants | `dark:` and `coarse:` (a finger, not a mouse) beside Tailwind's own |
 
 The full list is
-[apps/web/src/styles/theme.css](https://github.com/engenty/engenty-wizards/blob/main/apps/web/src/styles/theme.css).
+[packages/runner/src/theme.css](https://github.com/engenty/engenty-wizards/blob/main/packages/runner/src/theme.css):
+the studio and a wizard's run page share it.
 
 ## Rules
 

@@ -1,7 +1,7 @@
 ---
 title: User Guide
 description: Install engenty wizards, build a wizard, run and share it.
-version: 0.2.48
+version: 0.2.50
 ---
 
 engenty wizards turns something you do again and again into a wizard: pages that ask what it

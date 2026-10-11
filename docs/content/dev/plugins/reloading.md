@@ -1,7 +1,7 @@
 ---
 title: While it runs
 description: Save a file and the plugin loads again — what reloads, what survives, and how to work on a plugin.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A runtime that runs alone watches its plugins. You do not restart it while you write one.

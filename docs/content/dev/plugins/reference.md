@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ## Server half
@@ -272,6 +272,12 @@ All below `/api/studio/plugins`, all signed in:
 
 "Alone": where the runtime runs alone, not as the runtime of engenty.ai.
 
+For programs, with an API key or an access token:
+
+| Address | | Who |
+|---|---|---|
+| `ALL /api/v1/plugins/<id>/…` | The plugin's own routes, as the key's person. [With a key](./routes.md#with-a-key) | `GET` with `wizards:read`, the rest with `wizards:write`; `403` `plugin` where the account lacks the plugin |
+
 And public, nobody signed in:
 
 | Address | |
@@ -308,7 +314,7 @@ In the install's `.env`:
 |---|---|
 | `packages/plugin-sdk/src/` | The types, with their comments |
 | `apps/runtime/src/plugins/` | Finding, loading, tables, events |
-| `apps/runtime/src/routes/plugins.ts` | The addresses above |
+| `apps/runtime/src/routes/plugins.ts` | The addresses above; `apps/runtime/src/routes/api.ts` the ones for programs |
 | `apps/web/src/plugins/` | The studio's side |
 | `scripts/build-plugin.mjs` | The build of a studio half |
 | `apps/runtime/test/plugins.test.ts` | Loading, routes, tools, tables per tenant, reloading |

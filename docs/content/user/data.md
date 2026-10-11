@@ -1,7 +1,7 @@
 ---
 title: Your data
 description: Where wizards, results, files and keys are kept, how to back them up and how to start over.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ## Where it is
@@ -14,7 +14,7 @@ Everything of an install on your computer is in one folder:
 
 | In it | What |
 |---|---|
-| Databases | Your wizards, their versions, runs and results; what wizards keep for people |
+| Databases | Your wizards, their versions, runs and results (a run from a website tag also keeps the page it was started on); what wizards keep for people |
 | Files | Uploads, generated media, documents, the files of each wizard |
 | A secret | Signs the studio's sign-in and links, and encrypts what is stored encrypted |
 
@@ -35,7 +35,8 @@ After an update, your data is brought up to date at the next start.
 ## What leaves your computer
 
 - **Model calls** go to whatever the models run on: your AI client's provider, the provider of
-  your key, or your engenty account. With Ollama they stay on your computer.
+  your key, or your engenty account. With Ollama, or Apple Intelligence on a Mac, they stay on
+  your computer.
 - **Steps that use the web** send what they search, open or call.
 - **Connected services** get what a wizard's actions send them.
 - **Published wizards**, with an account signed in: the published version, its files, the

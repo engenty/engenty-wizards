@@ -1,7 +1,7 @@
 ---
 title: Events
 description: Do something when a run ends or a space changes — keep who it was, post a message, read a new document.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A plugin can listen to runs that reach their end, and to spaces that change.

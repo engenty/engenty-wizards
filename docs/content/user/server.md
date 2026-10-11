@@ -1,7 +1,7 @@
 ---
 title: Run it on a server
 description: One Docker container behind an https proxy, so others can open your wizards' links.
-version: 0.2.48
+version: 0.2.50
 ---
 
 An install on your computer answers on `localhost` only. On a server with a public address,

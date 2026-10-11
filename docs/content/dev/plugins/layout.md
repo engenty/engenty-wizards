@@ -1,7 +1,7 @@
 ---
 title: Files and manifest
 description: Where the runtime looks for plugins, what counts as one, and what engenty.plugin.json says.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ## Where the runtime looks

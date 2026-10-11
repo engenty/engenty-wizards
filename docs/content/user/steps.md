@@ -1,7 +1,7 @@
 ---
 title: Steps
 description: What a wizard is made of — pages, AI steps, generated media, widgets, reviews and the result.
-version: 0.2.48
+version: 0.2.50
 ---
 
 A wizard runs its steps from top to bottom. The last step is always the result.
@@ -29,7 +29,7 @@ A page has a title, up to five fields and a button. Each field has a kind:
 | File | uploads documents; the camera can scan papers and record a short clip |
 | Line items | fills rows with amounts. The wizard computes net, VAT and total |
 | Location | taps "Use my location" or types an address |
-| Voice note | records up to 5 minutes. The wizard writes down what was said before the next step reads it |
+| Voice note | records up to 5 minutes. The wizard writes down what was said before the next step reads it. Who writes it down is set under Voice notes in [Models](./models.md); a Mac can do it itself |
 | Signature | signs with a finger |
 | Appointment | picks one of the free times offered, shown by day |
 | Connection | connects their own account of a service, for example their mailbox |
@@ -94,6 +94,10 @@ A step names the kind of model it needs, never a model:
 | Standard | Short copy, calling an API, reformatting |
 | High | Research with tools, long documents, weighing many sources. The default |
 | Highest | Hard reasoning or code. Several times the cost of High |
+
+On a Mac, Classifier and Standard can run on [Apple Intelligence](./models.md#apple-intelligence):
+free and on the machine, but for short texts and without tools. There, give a step that calls an
+API or reads documents the class High.
 
 Images, video, voice notes and voice-overs have classes of their own. Which model serves a class
 is set under [Models & account](./models.md). "Thinking effort" tells the model how hard to

@@ -1,7 +1,7 @@
 ---
 title: Models and account
 description: Who does what your wizards ask for — an installed AI client, your own API keys, a local model, or credits.
-version: 0.2.48
+version: 0.2.50
 ---
 
 Settings → Models decides who does what your wizards ask for. On your computer it is yours; on
@@ -26,7 +26,7 @@ A capability's page asks "Who does it?":
 |---|---|---|
 | Your subscription | Claude Code, Codex, Gemini CLI or Cursor Agent on this computer, on your sign-in there (text; Codex also images) | Your subscription |
 | Own API key | OpenAI, Anthropic, Google Gemini, fal.ai, ElevenLabs, Replicate or Vercel AI Gateway | The provider bills your key |
-| Apple Intelligence | The model of Apple Intelligence on this Mac (text: Classifier and Standard) — shown on a Mac with Apple silicon on macOS 26 or later | Nothing |
+| Apple Intelligence | The model on this Mac: short texts and decisions (Classifier, Standard) and voice notes. See [Apple Intelligence](#apple-intelligence) | Nothing |
 | Local model | [Ollama](https://ollama.com) on this computer (text) | Nothing |
 | engenty credits | Your account's credits; engenty picks the model, or you pick one it offers (FLUX on fal, ElevenLabs voices, Veo …) | Credits |
 
@@ -39,21 +39,28 @@ of its own does not run.
 
 ## Apple Intelligence
 
-On a Mac with Apple silicon and macOS 26 or later, "Text & reasoning" offers Apple Intelligence:
-the model Apple keeps on the Mac. Nothing leaves the machine, nothing is signed in and nothing
+On a Mac with Apple silicon and macOS 26 or later, the [setup](./first-start.md) and "Text &
+reasoning" offer Apple Intelligence: the model Apple keeps on the Mac. It is there on your
+computer only, not on engenty.ai. Nothing leaves the machine, nothing is signed in and nothing
 is paid. It needs Apple Intelligence switched on (System Settings → Apple Intelligence & Siri);
-until then the choice says why it waits.
+until then the choice says why it waits: "switched off", or "Apple is still loading the model".
 
-The model is small and reads at most 4,096 tokens for a prompt and its answer together. So it
-takes the classes Classifier and Standard — decisions, picking values out of text, short copy —
-while High and Highest keep the way they had (a key, an installed client or the credits). A
-step whose text is too long for it fails with a note that says so; bind that class elsewhere.
-The binding is `apple:default`; `apple:tagging` is Apple's adapter for tagging and extraction.
+The model is small: it reads at most 4,096 tokens for a prompt and its answer together, and it
+uses no tools. So it takes the classes Classifier and Standard — decisions, picking values out
+of text, short copy. A step of these classes runs there without its tools (no API call, no web,
+no lists or documents), and a step whose text is too long fails with a note that says so: give
+such a step the class High, or bind the class elsewhere. The binding is `apple:default`;
+`apple:tagging` is Apple's adapter for tagging and extraction.
 
-"Voice notes" offers Apple Intelligence on the same Macs: the Mac writes a recording down
-itself (`apple:transcribe`), in the language the runner was in, for nothing. The first note in a
-language waits while Apple fetches it. A recording from Chrome or Firefox (WebM) needs ffmpeg on
-the Mac, which turns it into WAV first; Safari's and the app's recordings need nothing.
+High and Highest need a way of their own: a key, or the credits. The page under the choice
+names what they run on. An installed AI client thinks all text or none, so picking Apple
+Intelligence takes text off the client.
+
+"Voice notes" offers Apple Intelligence on the same Macs, even with Apple Intelligence switched
+off: the Mac writes a recording down itself (`apple:transcribe`), in the language the runner was
+in, for nothing. The first note in a language waits while Apple fetches it. A recording from
+Chrome or Firefox (WebM, Ogg) needs ffmpeg on the Mac, which turns it into WAV first; Safari's
+and the app's recordings need nothing.
 
 **In the app.** On an iPhone with iOS 26 the engenty wizards app writes voice notes down on the
 phone, and once Apple Intelligence is switched on it also answers a run's short text calls —

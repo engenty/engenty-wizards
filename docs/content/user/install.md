@@ -1,7 +1,7 @@
 ---
 title: Install
 description: One command on macOS or Linux. It brings its own Node.js and asks for no password.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ## Install
@@ -18,8 +18,8 @@ command into `~/.local/bin` and then walks you through the rest:
 
 | Step | What it does |
 |---|---|
-| Something to think with | Looks for Codex, Claude Code, Gemini CLI and Cursor Agent and offers to install the ones that are missing. It proposes the one whose app (ChatGPT, Claude, Cursor) is on your Mac first, as that subscription is most likely yours already. You can also use an API key or [Ollama](https://ollama.com) |
-| A browser and ffmpeg | Says whether there is a browser for PDF and PNG exports and steps that use a browser, and whether there is ffmpeg for MP4 videos of animated widgets. With Homebrew it offers to install ffmpeg |
+| Something to think with | Looks for Codex, Claude Code, Gemini CLI and Cursor Agent and offers to install the ones that are missing. It proposes the one whose app (ChatGPT, Claude, Cursor) is on your Mac first, as that subscription is most likely yours already. You can also use an API key, [Ollama](https://ollama.com) or, on a Mac with Apple silicon and macOS 26, Apple Intelligence: the studio's [first page](./first-start.md) offers them |
+| A browser and ffmpeg | Names the browser for PDF and PNG exports and steps on websites: the first of Chrome, Edge and Chromium it finds (on a Mac also Brave). The app uses that one; [`CHROME_PATH`](./command-line.md#settings) picks another. Says whether there is ffmpeg for MP4 videos of animated widgets; with Homebrew it offers to install it |
 | Start at login (optional) | engenty wizards starts in the background when you log in, so links and AI clients always reach it. A LaunchAgent on a Mac, a systemd user service on Linux |
 | Your AI apps (optional) | Offers to add your wizards to the [AI apps](./ai-apps.md) it finds, such as Claude Desktop, Cursor or Codex |
 | The command | If `~/.local/bin` is not on your PATH, offers to add it in your shell's settings file |

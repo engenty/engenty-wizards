@@ -1,7 +1,7 @@
 ---
 title: Run a wizard
 description: What a person sees who opens a wizard's link, on a computer or a phone.
-version: 0.2.48
+version: 0.2.50
 ---
 
 ![A wizard on a phone: two pages of questions and the finished result with its downloads](../../assets/wizard.png)
@@ -27,7 +27,7 @@ question, and every answer stays in the thread. The composer has these buttons:
 |---|---|
 | Speaker | Reads what the wizard says aloud, with the browser's own voice in the wizard's language. Costs nothing, stays on in this browser |
 | Microphone (⌘⇧M, Ctrl⇧M on Windows) | Dictates into the composer. The browser writes along where it can recognise speech; elsewhere the recording is written down by the wizard's own model when you stop, like a voice note |
-| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. Only where the app that runs the wizard has an OpenAI API key under Models, for now |
+| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. Only where the owner switched on live voice or the video call for the wizard (always in the owner's test run) and the app that runs it has an OpenAI API key under Models, for now |
 | Camera, in a conversation | The wizard sees what you show it ("is the dent on the left?") and takes photos into a photo field when you hold something still. The small picture shows what it sees |
 
 When a step works on a website, the chat shows that page live with what the wizard just did.

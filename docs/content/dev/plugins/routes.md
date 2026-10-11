@@ -1,11 +1,11 @@
 ---
 title: Routes
 description: HTTP routes below the plugin's own address — signed in, inside the person's tenant.
-version: 0.2.48
+version: 0.2.50
 ---
 
-A plugin's routes live below `/api/studio/plugins/<id>`. Every request is a signed-in person's,
-inside that person's tenant.
+A plugin's routes live below `/api/studio/plugins/<id>`, and for programs with a key below
+`/api/v1/plugins/<id>`. Every request is a signed-in person's, inside that person's tenant.
 
 ```ts
 // GET /api/studio/plugins/contacts/
@@ -70,11 +70,34 @@ throw Object.assign(new Error("No such contact."), { status: 404, code: "no_cont
 
 ## Who can call a route
 
-- Only the studio, signed in. A request without a session gets `401` before it reaches the
-  plugin.
-- Only people of a tenant that has the plugin. For any other tenant the address answers `404`.
+- The studio, signed in. A request without a session gets `401` before it reaches the plugin.
+- A program with a key, at a second address: [With a key](#with-a-key).
+- Only people of a tenant that has the plugin. For any other tenant the studio's address
+  answers `404`.
 - Not the people who run a wizard on its link, and not the outside world. For a webhook of
   another service, a plugin has [public routes](#public-routes).
+
+## With a key
+
+A program that is not the studio, such as the [WordPress plugin](../../user/wordpress.md),
+calls the same routes below `/api/v1/plugins/<id>`. It signs in with an API key (on your own
+install Settings → Integrate makes one, on engenty.ai the account) or an access token of
+engenty.ai:
+
+```bash
+curl -H "Authorization: Bearer $KEY" https://wizards.example.com/api/v1/plugins/contacts/
+```
+
+- The route runs as the key's person, inside that person's tenant: `request.user` is that
+  person, with the role. A `role: "admin"` route answers a member's key with `403`. `name` and
+  `email` can be empty.
+- `GET` needs the scope `wizards:read`, every other method `wizards:write`. A key has every
+  scope, a token the ones the person granted. Without it: `403` with the code
+  `insufficient_scope`.
+- A plugin the runtime has but the key's account does not answers `403` with the code `plugin`.
+  An id it does not know answers `404`.
+- `x-api-key: <key>` works in place of the `Authorization` header.
+- The answers and errors are the same as at the studio's address.
 
 ## Public routes
 
