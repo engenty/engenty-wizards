@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.52",
+    "timestamp": 1791732189,
+    "commits": [
+      {
+        "id": "c011ee1",
+        "message": "the package check takes the .wizard format's names from shared (wizard-package.ts) – extension, media type, format, wizard.json and files/ are written down once; check.ts still exports PACKAGE_EXTENSION and PACKAGE_MIME for its hosts; COPYRIGHTS.md lists ajv, the schema test's",
+        "group": "Changed",
+        "scope": "runner",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.51",
-    "timestamp": 1791731698,
+    "timestamp": 1791731739,
     "commits": [
       {
         "id": "881c4d0",

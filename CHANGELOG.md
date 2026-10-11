@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.52] - 2026-10-11
+- CHANGED **[runner]** The package check takes the .wizard format's names from shared (wizard-package.ts) – extension, media type, format, wizard.json and files/ are written down once; check.ts still exports PACKAGE_EXTENSION and PACKAGE_MIME for its hosts; COPYRIGHTS.md lists ajv, the schema test's
+
 ## [0.2.51] - 2026-10-11
 - ADDED **[format]** A published JSON Schema for wizards and `wizards validate` – pnpm schema writes the definition's and a package's wizard.json schema from the Zod schemas the app parses with (packages/shared/src/json-schema.ts) into the docs site, served at engenty.ai/docs/schema/wizard/1.json and …/wizard-package/1.json; objects take no unknown key there, which the app would drop without a word; the export writes "$schema" into every wizard.json. `wizards validate <path…>` checks a .wizard file, an unpacked package or a wizard's JSON as the import does, offline and without an account (--json, exit 1 on issues); a project's connectors, MCP servers and plugins stay checked on import. The package format moved to shared (wizard-package.ts), its reading to services/package-file.ts so the CLI loads no database; shape issues name the step everywhere (parseWizard). A test keeps the published schemas equal to a fresh run and checks them with ajv. docs/content/dev/wizard-format.md
 
