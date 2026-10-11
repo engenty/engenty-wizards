@@ -4,6 +4,11 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.47] - 2026-10-11
+- ADDED **[runtime]** A person's own feature switches from the Manage-App lie over the team's in the cloud studio's /me
+- ADDED **[plugins]** A plugin declares its feature switches in its manifest – known as <id>.<name>, with default, kind and label; the runtime's list of switches is the core's plus the loaded plugins', the report to the Manage-App carries it, the features command lists what the plugins here declare, and a plugin asks for its own switch by its short name
+- ADDED **[runtime]** Feature switches – one map of what is on, resolved from the code's defaults, what the account or the team's Manage-App says and what this install sets; the studio, the mobile app and plugins (open and closed) read it from the config and the person's /me, a plugin through its API; the studio's compile-time switches move into it and the team page waits for its switch
+
 ## [0.2.46] - 2026-10-11
 - ADDED **[debug]** A look from afar at every installation – every process keeps the last 3000 lines it printed in memory (log.ts: the console is hooked once, each line still goes where it went, keys, tokens, JWTs and one-time links are taken out before a line is kept). The runtime answers about itself in debug.ts, read-only and never with a key: status, logs, one run of any tenant with its error and events, where a tenant's classes run. The Manage-App reaches it over /api/internal/debug/* with the service key; the command line of a local install over /api/local/debug/* with a ticket (wizards logs, wizards report – status, model settings without keys and the last 500 lines go to the account's /v1/diagnostics only when the person runs it). A page in a browser sends the errors it meets to POST /api/log, capped and rate-limited, so the studio's side shows in the same log. The raw words of an installed AI client's failure are logged before they are summed up for the person. docs/plans/remote-debug.md
 

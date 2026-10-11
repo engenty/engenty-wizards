@@ -1,7 +1,34 @@
 [
   {
+    "version": "v0.2.47",
+    "timestamp": 1791708846,
+    "commits": [
+      {
+        "id": "b04affd",
+        "message": "a person's own feature switches from the Manage-App lie over the team's in the cloud studio's /me",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      },
+      {
+        "id": "fb4c100",
+        "message": "a plugin declares its feature switches in its manifest – known as <id>.<name>, with default, kind and label; the runtime's list of switches is the core's plus the loaded plugins', the report to the Manage-App carries it, the features command lists what the plugins here declare, and a plugin asks for its own switch by its short name",
+        "group": "Added",
+        "scope": "plugins",
+        "breaking": false
+      },
+      {
+        "id": "f41dd6d",
+        "message": "feature switches – one map of what is on, resolved from the code's defaults, what the account or the team's Manage-App says and what this install sets; the studio, the mobile app and plugins (open and closed) read it from the config and the person's /me, a plugin through its API; the studio's compile-time switches move into it and the team page waits for its switch",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.46",
-    "timestamp": 1791704956,
+    "timestamp": 1791704960,
     "commits": [
       {
         "id": "1d4622e",
