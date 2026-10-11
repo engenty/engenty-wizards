@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.54",
+    "timestamp": 1791732760,
+    "commits": [
+      {
+        "id": "00a132d",
+        "message": "the JSON Schemas live at engenty.ai/schema/v1/wizard.json and …/v1/wizard-package.json – one folder per definition version, names that say what they hold; the docs site answers /schema/* by asking itself for its public files (Next rewrites past its basePath only to a full URL), the proxy sends /schema to it; /docs/schema/wizard/1.json and …/wizard-package/1.json are gone",
+        "group": "Added",
+        "scope": "format",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.53",
-    "timestamp": 1791732533,
+    "timestamp": 1791732563,
     "commits": [
       {
         "id": "3ca9071",
