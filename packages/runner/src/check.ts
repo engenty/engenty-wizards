@@ -73,7 +73,7 @@ function json(data: Uint8Array): unknown {
   try {
     return JSON.parse(strFromU8(data));
   } catch {
-    throw new PackageError("Das ist kein Wizard-Paket: wizard.json ist kein gültiges JSON.");
+    throw new PackageError("This is not a wizard package: wizard.json is not valid JSON.");
   }
 }
 
@@ -96,11 +96,11 @@ export function readPackage(data: Uint8Array): { definition: unknown; files: Pac
         !file.name.endsWith("/") && !file.name.startsWith("__MACOSX/") && !/\/\./.test(file.name),
     });
   } catch {
-    throw new PackageError("Das Wizard-Paket lässt sich nicht öffnen.");
+    throw new PackageError("The wizard package cannot be opened.");
   }
   const manifest = entries[PACKAGE_MANIFEST];
   if (!manifest) {
-    throw new PackageError("Das ist kein Wizard-Paket: wizard.json fehlt.");
+    throw new PackageError("This is not a wizard package: wizard.json is missing.");
   }
   const files = Object.entries(entries)
     .filter(([name]) => name.startsWith(PACKAGE_FILES))
@@ -121,7 +121,7 @@ export function checkPackage(data: Uint8Array): CheckedPackage {
   );
   if (!parsed.ok) {
     throw new PackageError(
-      "Dieses Wizard-Paket stammt aus einer neueren Version oder ist beschädigt.",
+      "This wizard package comes from a newer version, or it is damaged.",
       parsed.issues,
     );
   }

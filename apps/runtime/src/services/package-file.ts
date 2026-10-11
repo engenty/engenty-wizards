@@ -21,7 +21,7 @@ export function json(data: Uint8Array): unknown {
   try {
     return JSON.parse(strFromU8(data));
   } catch {
-    throw invalid("Das ist kein Wizard-Paket: wizard.json ist kein gültiges JSON.");
+    throw invalid("This is not a wizard package: wizard.json is not valid JSON.");
   }
 }
 
@@ -32,7 +32,7 @@ export function readManifest(raw: unknown): Manifest {
   }
   const parsed = manifestSchema.safeParse(raw);
   if (!parsed.success) {
-    throw invalid("Dieses Wizard-Paket stammt aus einer neueren Version oder ist beschädigt.");
+    throw invalid("This wizard package comes from a newer version, or it is damaged.");
   }
   return parsed.data;
 }
@@ -59,23 +59,23 @@ export function readPackage(data: Uint8Array): {
         total += file.originalSize;
         count += 1;
         if (file.originalSize > WORKSPACE_LIMITS.fileBytes) {
-          throw invalid(`${file.name} ist größer als 5 MB.`);
+          throw invalid(`${file.name} is larger than 5 MB.`);
         }
         if (count > WORKSPACE_LIMITS.files + 1 || total > PACKAGE_MAX_BYTES) {
-          throw invalid("Das Paket ist größer als ein Workspace sein darf (200 Dateien, 25 MB).");
+          throw invalid("The package is larger than a workspace may be (200 files, 25 MB).");
         }
         return true;
       },
     });
   } catch (err) {
-    throw err instanceof ServiceError ? err : invalid("Das Paket lässt sich nicht entpacken.");
+    throw err instanceof ServiceError ? err : invalid("The package cannot be unpacked.");
   }
   // A package unpacked and zipped again often sits in a folder of its own.
   const manifestPath = Object.keys(entries)
     .filter((name) => name === PACKAGE_MANIFEST || name.endsWith(`/${PACKAGE_MANIFEST}`))
     .sort((a, b) => a.length - b.length)[0];
   if (manifestPath === undefined) {
-    throw invalid("Das ist kein Wizard-Paket: wizard.json fehlt.");
+    throw invalid("This is not a wizard package: wizard.json is missing.");
   }
   const root = manifestPath.slice(0, -PACKAGE_MANIFEST.length);
   const files = Object.entries(entries)
@@ -83,12 +83,12 @@ export function readPackage(data: Uint8Array): {
     .map(([name, content]) => {
       const path = cleanPath(name.slice(root.length + PACKAGE_FILES.length));
       if (!path) {
-        throw invalid(`"${name}" ist kein gültiger Dateipfad.`);
+        throw invalid(`"${name}" is not a valid file path.`);
       }
       return { path, data: content };
     });
   if (files.reduce((n, f) => n + f.data.byteLength, 0) > WORKSPACE_LIMITS.totalBytes) {
-    throw invalid("Der Workspace im Paket ist größer als 25 MB.");
+    throw invalid("The workspace in the package is larger than 25 MB.");
   }
   return { manifest: readManifest(json(entries[manifestPath])), files };
 }

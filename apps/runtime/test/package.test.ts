@@ -199,21 +199,21 @@ describe("wizard packages", () => {
       const before = (await wizards.listWizards(USER, otherProject)).length;
       const refused = async (data: Uint8Array, message: RegExp) =>
         expect(pkg.importWizard(USER, otherProject, data)).rejects.toThrow(message);
-      await refused(zipSync({ "readme.txt": strToU8("hi") }), /wizard\.json fehlt/);
-      await refused(strToU8("PK not a zip"), /entpacken/);
-      await refused(strToU8("hello"), /kein gültiges JSON/);
+      await refused(zipSync({ "readme.txt": strToU8("hi") }), /wizard\.json is missing/);
+      await refused(strToU8("PK not a zip"), /cannot be unpacked/);
+      await refused(strToU8("hello"), /not valid JSON/);
       await refused(zipSync({ "wizard.json": manifest({ title: "Ohne Schritte" }) }), /schema/);
       await refused(
         zipSync({ "wizard.json": strToU8(JSON.stringify({ format: "engenty-wizard", version: 2 })) }),
-        /neueren Version/,
+        /newer version/,
       );
       await refused(
         zipSync({ "wizard.json": manifest(definition), "files/.env": strToU8("x") }),
-        /Dateipfad/,
+        /not a valid file path/,
       );
       await refused(
         zipSync({ "wizard.json": manifest(definition), "files/big.bin": new Uint8Array(5_000_001) }),
-        /größer als 5 MB/,
+        /larger than 5 MB/,
       );
       expect((await wizards.listWizards(USER, otherProject)).length).toBe(before);
     });
