@@ -18,7 +18,7 @@ export const ENGENTY_CREDITS: ProductCredit[] = [
       de: "KI-Wizards aus einer Beschreibung, mit einem Link geteilt.",
       en: "AI wizards built from a description, shared with a link.",
     },
-    homepage: "https://github.com/engenty/engenty-wizards",
+    homepage: "https://github.com/engenty/wizards",
     license: "FSL-1.1-MIT",
   },
   {

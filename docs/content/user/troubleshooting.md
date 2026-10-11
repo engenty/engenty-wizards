@@ -56,7 +56,7 @@ version: 0.2.50
 ## Still stuck
 
 `wizards logs` shows the last lines the install printed; keys and tokens are taken out. Open an
-issue at [github.com/engenty/engenty-wizards](https://github.com/engenty/engenty-wizards/issues)
+issue at [github.com/engenty/wizards](https://github.com/engenty/wizards/issues)
 with what `wizards doctor` prints and the lines that matter.
 
 With a [linked account](./models.md#account), `wizards report` sends the status, the model settings

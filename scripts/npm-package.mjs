@@ -150,7 +150,7 @@ writeFileSync(
         "Make a wish. Get your wizard. It guides you step by step. Let AI do the work. Runs on your machine, on the AI subscription you already have.",
       license: pkg.license,
       homepage: "https://engenty.ai",
-      repository: { type: "git", url: "git+https://github.com/engenty/engenty-wizards.git" },
+      repository: { type: "git", url: "git+https://github.com/engenty/wizards.git" },
       type: "module",
       bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,

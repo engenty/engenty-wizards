@@ -75,7 +75,7 @@ The theme's names are the studio's:
 | Variants | `dark:` and `coarse:` (a finger, not a mouse) beside Tailwind's own |
 
 The full list is
-[packages/runner/src/theme.css](https://github.com/engenty/engenty-wizards/blob/main/packages/runner/src/theme.css):
+[packages/runner/src/theme.css](https://github.com/engenty/wizards/blob/main/packages/runner/src/theme.css):
 the studio and a wizard's run page share it.
 
 ## Rules
