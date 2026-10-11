@@ -1,39 +1,31 @@
 import { lazy, Suspense, useState } from "react";
 import { t } from "../lib/i18n";
+import type { Me } from "../lib/session";
 
-const ChangelogDialog = lazy(() =>
-  import("./ChangelogDialog").then((m) => ({ default: m.ChangelogDialog })),
-);
-const CreditsDialog = lazy(() =>
-  import("./CreditsDialog").then((m) => ({ default: m.CreditsDialog })),
-);
+const AboutDialog = lazy(() => import("./AboutDialog").then((m) => ({ default: m.AboutDialog })));
 
 /** The release this app is: the version of the root package.json. */
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 
 /**
- * The app's version and the two things about it — its changelog and its open-source credits —
- * as inline links that open a dialog each. Sits wherever a line of quiet links is.
+ * The app's version as a quiet link that opens the About dialog — the same one as behind the
+ * mark in the app bar, with the updates, what is new and the credits. Sits wherever a line of
+ * quiet links is.
  */
-export function AboutLinks() {
-  const [dialog, setDialog] = useState<"changelog" | "credits" | null>(null);
-  const link = "transition hover:text-ink-2";
+export function AboutLinks({ me }: { me?: Me | null }) {
+  const [open, setOpen] = useState(false);
   return (
     <>
-      <span className="tabular-nums">{t("about.version", { v: APP_VERSION })}</span>
-      <button type="button" className={link} onClick={() => setDialog("changelog")}>
-        {t("about.changelog")}
+      <button
+        type="button"
+        className="tabular-nums transition hover:text-ink-2"
+        onClick={() => setOpen(true)}
+      >
+        {t("about.version", { v: APP_VERSION })}
       </button>
-      <button type="button" className={link} onClick={() => setDialog("credits")}>
-        {t("about.credits")}
-      </button>
-      {dialog ? (
+      {open ? (
         <Suspense fallback={null}>
-          {dialog === "changelog" ? (
-            <ChangelogDialog open onClose={() => setDialog(null)} />
-          ) : (
-            <CreditsDialog open onClose={() => setDialog(null)} />
-          )}
+          <AboutDialog open me={me} onClose={() => setOpen(false)} />
         </Suspense>
       ) : null}
     </>

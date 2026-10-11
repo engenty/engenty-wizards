@@ -1,7 +1,97 @@
 [
   {
+    "version": "v0.2.45",
+    "timestamp": 1791703040,
+    "commits": [
+      {
+        "id": "59d4e95",
+        "message": "the home's pills narrow the wizards by status – Entwurf, Lokal, Live, Nicht in der Cloud, as the cards' chips say it – in place of the channels, drawn once two statuses are in play; the import lives on the new-wizard page alone; the new-space dialog says what a space is and holds (its wizards, Info & Marke, Wissen & Daten, Connectors, Ergebnisse) and that account, models and plugins are everyone's",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "02fde4f",
+        "message": "the home is searched once a space holds more than twelve wizards – a search over title and description stands in the title's place (\"Suche nach deinen Wizards\"); with fewer than three own hits the marketplace is asked the same and answers with its first cards under \"Aus dem Marktplatz\", each opening and usable as on the new page, and \"Neuen Wizard bauen: …\" carries the words to the new page as the wish (?wish=); an empty space offers the first wizard under its line; the import is an icon beside \"Neuer Wizard\"",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "a8683d7",
+        "message": "the footer's version opens the About dialog; its Changelog and Credits links are gone – both live in the dialog's tabs; the credits' own dialog went with them (about/Credits.tsx keeps the body)",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "f82e99e",
+        "message": "the About dialog looks like an About window – the mark, the name and the version centred at the top with the update line and its button under them, no title, the close in the corner where it stays while the dialog scrolls; the three tabs are one button group in the middle, a thumb sliding to the pick and taking its width (ui Tabs, in the look of the theme switch)",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "b3dea5f",
+        "message": "the About dialog's middle tab says Versionen, so the three tabs stand in one row on a phone",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "63ca95c",
+        "message": "on a phone a dialog fills the screen – no gutter, no rounded corners, clear of the notch and the home indicator; the fixed height of a tall dialog is a wide screen's",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "f1da7f0",
+        "message": "the About dialog's three parts are tabs – Was ist neu, Frühere Versionen, Credits – one at a time, sliding in from the side it stands on like the settings' levels; the newest release's notes stand under their version and date",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "94f04cf",
+        "message": "a dialog's height does not jump while it is open – one with tabs, folds or lists (About, Changelog, Credits: height=\"tall\") stands as tall as the window allows, up to 56 rem, and scrolls inside; any other keeps the tallest height it has had, so a shorter tab or a folded section leaves it where it is, within what the window allows",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "0178a83",
+        "message": "the credits are called Credits – in the About dialog's fold, the footer link and the dialog's title, not Open Source",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "28e6c8b",
+        "message": "the About dialog folds the open-source credits under the earlier versions – the same body as the Open Source dialog in the footer, loaded when unfolded",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "01b99d5",
+        "message": "the About dialog is as wide as the changelog, so a release's notes run in fewer lines",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "b70d37d",
+        "message": "the mark in the app bar opens \"Über engenty wizards\" – which version this is and how it got here (local install, checkout, npm, cloud); on a runtime that runs alone whether a newer release is out, checked right now on \"Nach Updates suchen\" (GET /api/studio/update?fresh=1 asks GitHub again within the hour, the answer says when it last asked) and installed from there where install.sh put it, with the release's page beside it; what is new in the newest release known, and the earlier versions folded away, each unfolding to its changes; the update banner and the dialog share one hook (lib/update.ts); the space's row in the switch menu opens its wizards, the space's page stays behind the home glyph",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.44",
-    "timestamp": 1791668850,
+    "timestamp": 1791668855,
     "commits": [
       {
         "id": "69a219f",

@@ -30,9 +30,9 @@ export function NewWizardPage() {
   const qc = useQueryClient();
   const { project } = useCurrentProject();
   const build = useMayCreate();
-  const [prompt, setPrompt] = useState("");
-  // A link from the gallery names the template to open.
+  // A link from the gallery names the template to open; one from the home's search brings the wish.
   const [params] = useSearchParams();
+  const [prompt, setPrompt] = useState(params.get("wish") ?? "");
 
   const create = useMutation({
     mutationFn: (starterId?: string) =>

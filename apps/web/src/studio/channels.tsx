@@ -11,7 +11,7 @@ import {
   Video,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { lang, t } from "../lib/i18n";
+import { lang } from "../lib/i18n";
 import type { WizardSummary } from "../lib/session";
 import { cn } from "../ui";
 
@@ -81,64 +81,5 @@ export function ChannelIcons({ w, runners }: { w: WizardSummary; runners: Runner
         );
       })}
     </span>
-  );
-}
-
-/**
- * A row of pills, one per channel any wizard here is on: all, or one of them. Drawn only where
- * channels are in play: a wizard beyond steps and chat, or a door a plugin brought.
- */
-export function ChannelFilter({
-  wizards,
-  runners,
-  value,
-  onChange,
-}: {
-  wizards: WizardSummary[];
-  runners: Runner[];
-  value: string | null;
-  onChange: (id: string | null) => void;
-}) {
-  const counts = new Map<string, number>();
-  for (const w of wizards) {
-    for (const id of channelsOf(w, runners)) {
-      counts.set(id, (counts.get(id) ?? 0) + 1);
-    }
-  }
-  const beyondDefault =
-    [...counts.keys()].some((id) => !DEFAULT_ENABLED.includes(id)) ||
-    runners.some((r) => !DEFAULT_ENABLED.includes(r.id) && !r.problem);
-  if (!beyondDefault) {
-    return null;
-  }
-  const pill = (on: boolean) =>
-    cn(
-      "inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.8125rem] transition",
-      on ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
-    );
-  return (
-    <div className="mt-5 flex flex-wrap items-center gap-1">
-      <button type="button" className={pill(value === null)} onClick={() => onChange(null)}>
-        {t("home.allChannels")}
-      </button>
-      {runners
-        .filter((r) => counts.has(r.id))
-        .map((r) => {
-          const Icon = runnerIcon(r.id);
-          return (
-            <button
-              key={r.id}
-              type="button"
-              aria-pressed={value === r.id}
-              className={pill(value === r.id)}
-              onClick={() => onChange(value === r.id ? null : r.id)}
-            >
-              <Icon className="size-3.5" />
-              {r.label[lang]}
-              <span className="text-[0.75rem] text-ink-4">{counts.get(r.id)}</span>
-            </button>
-          );
-        })}
-    </div>
   );
 }

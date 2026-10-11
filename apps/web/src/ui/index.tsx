@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 import { t } from "../lib/i18n";
 
@@ -245,6 +246,84 @@ export function Segmented({
   );
 }
 
+const SLIDE = "cubic-bezier(0.3, 0.7, 0.2, 1)";
+
+/**
+ * A row of tabs as one button group, in the look of the theme switch: a thumb slides to the
+ * pick and takes its width. The tabs' panels are the caller's.
+ */
+export function Tabs<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: { id: T; label: string }[];
+  /** The group's name for a screen reader. */
+  label?: string;
+}) {
+  const buttons = useRef(new Map<T, HTMLButtonElement>());
+  const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
+  // Measured from the picked tab, again when its width changes (fonts, a resize).
+  useLayoutEffect(() => {
+    const el = buttons.current.get(value);
+    if (!el) {
+      return;
+    }
+    const measure = () => setThumb({ x: el.offsetLeft, w: el.offsetWidth });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value]);
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className="relative inline-flex items-center rounded-full bg-paper-2 p-0.5 ring-1 ring-border-soft"
+    >
+      {thumb ? (
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 bottom-0.5 left-0 rounded-full bg-card shadow-sm motion-reduce:transition-none"
+          style={{
+            width: thumb.w,
+            transform: `translateX(${thumb.x}px)`,
+            transition: `transform 300ms ${SLIDE}, width 300ms ${SLIDE}`,
+          }}
+        />
+      ) : null}
+      {options.map((option) => {
+        const on = option.id === value;
+        return (
+          <button
+            key={option.id}
+            ref={(el) => {
+              if (el) {
+                buttons.current.set(option.id, el);
+              } else {
+                buttons.current.delete(option.id);
+              }
+            }}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "relative h-8 whitespace-nowrap rounded-full px-4 font-medium text-[0.875rem] transition-colors motion-reduce:transition-none coarse:h-9",
+              on ? "text-ink" : "text-ink-3 hover:text-ink-2",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Switch({
   checked,
   onChange,
@@ -353,7 +432,13 @@ export function Chip({
   );
 }
 
-/** A centred modal on the native <dialog>. */
+/**
+ * A centred modal on the native <dialog>; on a phone it fills the screen, with no gutter. Its
+ * height does not jump while it is open: a dialog
+ * with tabs, folds or lists (`height="tall"`) stands at a height taken from the window and
+ * scrolls inside; any other keeps the tallest height it has had, so switching to a shorter tab
+ * or folding a section leaves it where it is.
+ */
 export function Dialog({
   open,
   onClose,
@@ -361,6 +446,7 @@ export function Dialog({
   children,
   wide,
   bare,
+  height = "auto",
 }: {
   open: boolean;
   onClose: () => void;
@@ -373,6 +459,8 @@ export function Dialog({
    * may sit on the panel's edge) and fills the screen of a phone.
    */
   bare?: boolean;
+  /** `"tall"`: as tall as the window allows (up to 56 rem), whatever is in it. */
+  height?: "auto" | "tall";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -389,6 +477,26 @@ export function Dialog({
       el.close();
     }
   }, [open]);
+  // Open, the dialog never gets shorter than it has been — within what the window allows.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !open || bare || height === "tall") {
+      return;
+    }
+    let tallest = 0;
+    const keep = () => {
+      tallest = Math.max(tallest, el.getBoundingClientRect().height);
+      el.style.minHeight = `${Math.min(tallest, window.innerHeight - 32)}px`;
+    };
+    const observer = new ResizeObserver(keep);
+    observer.observe(el);
+    window.addEventListener("resize", keep);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", keep);
+      el.style.minHeight = "";
+    };
+  }, [open, bare, height]);
   return (
     <dialog
       ref={ref}
@@ -400,11 +508,13 @@ export function Dialog({
       }}
       className={cn(
         "m-auto p-0 text-ink backdrop:bg-[oklch(20%_0.01_60/0.28)] backdrop:backdrop-blur-[2px]",
+        // A phone: the whole screen, no gutter, clear of the notch and the home indicator.
+        "max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none",
         bare
-          ? "w-[calc(100%-48px)] overflow-visible bg-transparent max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none"
-          : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay",
+          ? "w-[calc(100%-48px)] overflow-visible bg-transparent"
+          : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay max-sm:rounded-none max-sm:pt-[env(safe-area-inset-top)] max-sm:pb-[env(safe-area-inset-bottom)]",
         wide === "page" ? "sm:max-w-4xl" : wide ? "sm:max-w-2xl" : "sm:max-w-md",
-        !bare && (wide === "page" ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-md"),
+        !bare && height === "tall" && "sm:h-[min(calc(100dvh-32px),56rem)]",
       )}
     >
       {open && bare ? (

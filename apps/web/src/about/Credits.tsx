@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { lang, t } from "../lib/i18n";
-import { Dialog, Empty, Input, Spinner } from "../ui";
+import { Empty, Input, Spinner } from "../ui";
 import { ENGENTY_CREDITS, HIGHLIGHT_CREDITS, type ProductCredit } from "./product-credits";
 
 interface OssCredit {
@@ -105,14 +105,17 @@ function PackageList({ label, packages }: { label: string; packages: OssCredit[]
   );
 }
 
-/** engenty wizards and the open-source software it builds on. */
-export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * engenty wizards and the open-source software it builds on: the Credits tab of the About
+ * dialog. `active`: shown now — the list loads then, and the search clears when it is put away.
+ */
+export function Credits({ active }: { active: boolean }) {
   const [data, setData] = useState<OssCreditsData | null>(null);
   const [query, setQuery] = useState("");
 
-  // The list of dependencies is its own chunk, fetched when the dialog first opens.
+  // The list of dependencies is its own chunk, fetched when the credits first show.
   useEffect(() => {
-    if (!open || data) {
+    if (!active || data) {
       return;
     }
     let cancelled = false;
@@ -124,13 +127,13 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
     return () => {
       cancelled = true;
     };
-  }, [open, data]);
+  }, [active, data]);
 
   useEffect(() => {
-    if (!open) {
+    if (!active) {
       setQuery("");
     }
-  }, [open]);
+  }, [active]);
 
   const q = query.trim().toLowerCase();
   const product = (credits: ProductCredit[]) =>
@@ -155,8 +158,8 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
   const nothing = own.length === 0 && builtWith.length === 0 && lists.length === 0;
 
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.credits")} wide>
-      <p className="-mt-3 mb-4 text-[0.875rem] text-ink-3">{t("about.creditsHint")}</p>
+    <>
+      <p className="mb-4 text-[0.875rem] text-ink-3">{t("about.creditsHint")}</p>
       <Input
         type="search"
         value={query}
@@ -185,6 +188,6 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
         </Section>
       ) : null}
       {data !== null && nothing ? <Empty>{t("about.noMatches")}</Empty> : null}
-    </Dialog>
+    </>
   );
 }

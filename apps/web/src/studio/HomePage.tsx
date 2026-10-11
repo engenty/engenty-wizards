@@ -1,11 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  Check,
+  CloudOff,
+  Copy,
+  Fingerprint,
+  Inbox,
+  Laptop,
+  type LucideIcon,
+  PencilLine,
+  Plug,
+  Plus,
+  Radio,
+  Search,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { features } from "../lib/features";
-import { lang, t } from "../lib/i18n";
+import { type Key, lang, t } from "../lib/i18n";
 import {
   type Me,
   useCurrentProject,
@@ -14,14 +32,27 @@ import {
   useMe,
   type WizardSummary,
 } from "../lib/session";
-import { Button, Card, Chip, Dialog, Empty, IconButton, Input, Select } from "../ui";
+import { Button, Card, Chip, cn, Dialog, Empty, IconButton, Input, Select } from "../ui";
 import { LinkStatus, useAccountLink } from "./Account";
-import { ChannelFilter, ChannelIcons, channelsOf, type Runner, useRunners } from "./channels";
-import { ImportWizard } from "./ImportWizard";
+import { ChannelIcons, type Runner, useRunners } from "./channels";
 import { openExternal } from "./LocalRuntime";
+import { MarketplaceHits } from "./Marketplace";
 import { ownLink, sharedLink, WhereChip, whereItRuns } from "./where";
 
-/** Names a new space and makes it the one the studio looks at. */
+/** What a space holds, row by row: its own wizards and what they share. */
+const SPACE_HOLDS: { icon: LucideIcon; name: () => string; what: Key }[] = [
+  { icon: Wand2, name: () => t("nav.wizards"), what: "space.holds.wizards" },
+  { icon: Fingerprint, name: () => t("space.info"), what: "space.holds.info" },
+  {
+    icon: BookOpen,
+    name: () => `${t("space.knowledge")} & ${t("space.data")}`,
+    what: "space.holds.knowledge",
+  },
+  { icon: Plug, name: () => t("connectors.title"), what: "space.holds.connectors" },
+  { icon: Inbox, name: () => t("space.results"), what: "space.holds.results" },
+];
+
+/** Names a new space and makes it the one the studio looks at; says first what a space is. */
 export function NewSpaceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { select } = useCurrentProject();
   const qc = useQueryClient();
@@ -37,7 +68,19 @@ export function NewSpaceDialog({ open, onClose }: { open: boolean; onClose: () =
   });
   return (
     <Dialog open={open} onClose={onClose} title={t("home.newProject")}>
+      <p className="-mt-2 text-[0.875rem] text-ink-2">{t("space.holds.intro")}</p>
+      <dl className="mt-4 flex flex-col gap-2.5 text-[0.8125rem]">
+        {SPACE_HOLDS.map((row) => (
+          <div key={row.what} className="flex items-start gap-2.5">
+            <row.icon className="mt-0.5 size-4 shrink-0 text-ink-3" />
+            <dt className="w-28 shrink-0 font-medium text-ink">{row.name()}</dt>
+            <dd className="min-w-0 text-ink-3">{t(row.what)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-[0.8125rem] text-ink-4">{t("space.holds.shared")}</p>
       <form
+        className="mt-5"
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim()) {
@@ -237,6 +280,115 @@ function WizardCard({ w, me, runners }: { w: WizardSummary; me: Me; runners: Run
   );
 }
 
+/** Where a wizard stands, as the cards' chips say it: not yet published, here, live, or amiss. */
+type Status = "draft" | "here" | "live" | "missing";
+const STATUSES: Status[] = ["draft", "here", "live", "missing"];
+const STATUS_ICON: Record<Status, LucideIcon> = {
+  draft: PencilLine,
+  here: Laptop,
+  live: Radio,
+  missing: CloudOff,
+};
+const statusLabel = (status: Status) =>
+  status === "draft"
+    ? t("home.draft")
+    : status === "here"
+      ? t("where.here")
+      : status === "live"
+        ? t("home.live")
+        : t("where.missing");
+function statusOf(w: WizardSummary, me: Me): Status {
+  const { kind } = whereItRuns(w, me, w.cloud);
+  return kind === "draft" || kind === "here"
+    ? kind
+    : kind === "live" || kind === "unknown"
+      ? "live"
+      : "missing";
+}
+
+/** A row of pills: all the wizards, or those of one status — drawn once two statuses are in play. */
+function StatusFilter({
+  wizards,
+  me,
+  value,
+  onChange,
+}: {
+  wizards: WizardSummary[];
+  me: Me;
+  value: Status | null;
+  onChange: (next: Status | null) => void;
+}) {
+  const counts = new Map<Status, number>();
+  for (const w of wizards) {
+    const status = statusOf(w, me);
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  if (counts.size < 2) {
+    return null;
+  }
+  const pill = (on: boolean) =>
+    cn(
+      "inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[0.8125rem] transition",
+      on ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
+    );
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-1">
+      <button type="button" className={pill(value === null)} onClick={() => onChange(null)}>
+        {t("home.all")}
+        <span className="text-[0.75rem] text-ink-4">{wizards.length}</span>
+      </button>
+      {STATUSES.filter((status) => counts.has(status)).map((status) => {
+        const Icon = STATUS_ICON[status];
+        return (
+          <button
+            key={status}
+            type="button"
+            aria-pressed={value === status}
+            className={pill(value === status)}
+            onClick={() => onChange(value === status ? null : status)}
+          >
+            <Icon className="size-3.5" />
+            {statusLabel(status)}
+            <span className="text-[0.75rem] text-ink-4">{counts.get(status)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** More wizards than this — four rows of three — and the home is searched, not scrolled. */
+const SEARCH_FROM = 12;
+/** Fewer own hits than this, and the marketplace is asked as well. */
+const FEW = 3;
+
+/** The home's search, in the title's place: as the marketplace's, with the space's own words. */
+function WizardSearch({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  return (
+    <label className="relative flex h-10 w-full max-w-md items-center gap-2.5 rounded-full bg-card px-4 shadow-soft ring-1 ring-border-soft transition focus-within:ring-2 focus-within:ring-focus sm:h-11">
+      <Search className="size-4 shrink-0 text-ink-3" />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t("home.search")}
+        aria-label={t("home.search")}
+        className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          aria-label={t("market.reset")}
+          onClick={() => onChange("")}
+          className="-mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink"
+        >
+          <X className="size-4" />
+        </button>
+      ) : null}
+    </label>
+  );
+}
+
 const INSTALL = "curl -fsSL https://engenty.ai/install.sh | bash";
 
 /**
@@ -290,6 +442,7 @@ function FromLocal() {
 
 export function HomePage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { project, projects, loading } = useCurrentProject();
   const me = useMe().data;
   const build = useMayBuild();
@@ -301,11 +454,28 @@ export function HomePage() {
     enabled: Boolean(project),
   });
   const runners = useRunners().data ?? [];
-  // One channel to narrow the cards to, or all of them.
-  const [channel, setChannel] = useState<string | null>(null);
+  // One status to narrow the cards to, or all of them.
+  const [status, setStatus] = useState<Status | null>(null);
+  // Past a few rows the title gives way to a search over title and description.
+  const [query, setQuery] = useState("");
+  const searching = (wizards.data?.length ?? 0) > SEARCH_FROM;
+  const q = searching ? query.trim().toLowerCase() : "";
   const shown = (wizards.data ?? []).filter(
-    (w) => !channel || channelsOf(w, runners).includes(channel),
+    (w) =>
+      (!status || !me || statusOf(w, me) === status) &&
+      (!q || `${w.title} ${w.description}`.toLowerCase().includes(q)),
   );
+  // Few own hits: the marketplace is asked the same, and a new one is offered.
+  const beyond = Boolean(q) && shown.length < FEW;
+  const fromEntry = useMutation({
+    mutationFn: (starterId: string) =>
+      api.post<{ id: string }>("/api/studio/wizards", { projectId: project!.id, starterId, lang }),
+    onSuccess: async ({ id }) => {
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+      await qc.invalidateQueries({ queryKey: ["wizards"] });
+      navigate(`/edit/${id}`);
+    },
+  });
   const total = projects.reduce((n, p) => n + p.wizardCount, 0);
   /** Wizards are made in this project: the person makes things here, and the project is the team's own. */
   const canCreate = create && !project?.readOnly;
@@ -319,16 +489,17 @@ export function HomePage() {
   return (
     <div className="animate-rise">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">
-          {t("home.title")}
-        </h1>
+        {searching ? (
+          <WizardSearch value={query} onChange={setQuery} />
+        ) : (
+          <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">
+            {t("home.title")}
+          </h1>
+        )}
         {canCreate ? (
-          <div className="flex items-center gap-2">
-            <ImportWizard />
-            <Button onClick={() => navigate("/new")}>
-              <Plus className="size-4" /> {t("home.new")}
-            </Button>
-          </div>
+          <Button onClick={() => navigate("/new")}>
+            <Plus className="size-4" /> {t("home.new")}
+          </Button>
         ) : null}
       </div>
       {project?.origin === "local" ? (
@@ -344,18 +515,49 @@ export function HomePage() {
             : null}
         </p>
       ) : null}
-      {wizards.data && wizards.data.length === 0 ? <Empty>{t("home.empty")}</Empty> : null}
-      {wizards.data?.length ? (
-        <ChannelFilter
-          wizards={wizards.data}
-          runners={runners}
-          value={channel}
-          onChange={setChannel}
-        />
+      {/* An empty space says so and, where wizards are made here, offers the first one. */}
+      {wizards.data && wizards.data.length === 0 ? (
+        <Empty>
+          <p>{t("home.empty")}</p>
+          {canCreate ? (
+            <Button className="mt-5" onClick={() => navigate("/new")}>
+              <Plus className="size-4" /> {t("home.new")}
+            </Button>
+          ) : null}
+        </Empty>
+      ) : null}
+      {wizards.data?.length && me ? (
+        <StatusFilter wizards={wizards.data} me={me} value={status} onChange={setStatus} />
+      ) : null}
+      {q && shown.length === 0 ? (
+        <p className="mt-6 text-[0.875rem] text-ink-3">{t("home.noMatch")}</p>
       ) : null}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {me ? shown.map((w) => <WizardCard key={w.id} w={w} me={me} runners={runners} />) : null}
       </div>
+      {beyond ? (
+        <>
+          {canCreate ? (
+            <MarketplaceHits
+              query={query}
+              busy={fromEntry.isPending}
+              onUse={(entry) => project && !fromEntry.isPending && fromEntry.mutate(entry.id)}
+            />
+          ) : (
+            <MarketplaceHits query={query} />
+          )}
+          {canCreate ? (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/new?wish=${encodeURIComponent(query.trim())}`)}
+              >
+                <Sparkles className="size-4" /> {t("home.newFromSearch", { q: query.trim() })}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

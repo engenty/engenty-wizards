@@ -10,7 +10,7 @@ interface ChangelogCommit {
   breaking: boolean;
 }
 
-interface ChangelogRelease {
+export interface ChangelogRelease {
   /** Null: not released yet. */
   version: string | null;
   timestamp: number | null;
@@ -40,10 +40,10 @@ function groupOf(commit: ChangelogCommit): { label: string; dot: string } {
   }
 }
 
-const releaseLabel = (release: ChangelogRelease) =>
+export const releaseLabel = (release: ChangelogRelease) =>
   release.version ? release.version.replace(/^v/, "") : t("about.unreleased");
 
-const releaseDate = (release: ChangelogRelease) =>
+export const releaseDate = (release: ChangelogRelease) =>
   release.timestamp ? new Date(release.timestamp * 1000).toISOString().slice(0, 10) : "";
 
 const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -74,7 +74,7 @@ function filterReleases(releases: ChangelogRelease[], query: string): ChangelogR
  * The changelog as a release newer than this build has it: the file at its tag on GitHub. Offline,
  * the bundled one, which ends at this build.
  */
-async function loadReleases(version?: string): Promise<ChangelogRelease[]> {
+export async function loadReleases(version?: string): Promise<ChangelogRelease[]> {
   if (version) {
     try {
       const response = await fetch(
@@ -89,6 +89,34 @@ async function loadReleases(version?: string): Promise<ChangelogRelease[]> {
     }
   }
   return (await import("./changelog.json")).default as ChangelogRelease[];
+}
+
+/** A release's entries: a dot in the colour of its group, the group's name, the change. */
+export function ReleaseNotes({ release }: { release: ChangelogRelease }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {release.commits.map((commit) => {
+        const group = groupOf(commit);
+        return (
+          <li key={commit.id} className="flex items-start gap-2.5 text-[0.875rem]">
+            <span className={cn("mt-[7px] size-1.5 shrink-0 rounded-full", group.dot)} />
+            <span className="min-w-0 text-ink-2">
+              <span className="font-semibold text-[0.75rem] text-ink tracking-wide">
+                {group.label}
+                {commit.scope ? ` [${commit.scope}]` : ""}
+              </span>{" "}
+              {upperFirst(commit.message)}
+              {commit.breaking ? (
+                <span className="ml-1.5 rounded-full bg-rose-tint px-1.5 py-0.5 font-medium text-[0.75rem] text-rose">
+                  {t("about.breaking")}
+                </span>
+              ) : null}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 /**
@@ -132,7 +160,7 @@ export function ChangelogDialog({
   const visible = releases ? filterReleases(releases, query) : [];
 
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.changelog")} wide>
+    <Dialog open={open} onClose={onClose} title={t("about.changelog")} wide height="tall">
       <p className="-mt-3 mb-4 text-[0.875rem] text-ink-3">{t("about.changelogHint")}</p>
       {releases === null ? (
         <div className="flex justify-center py-10 text-ink-3">
@@ -157,28 +185,9 @@ export function ChangelogDialog({
                   {releaseDate(release)}
                 </span>
               </h3>
-              <ul className="mt-3 flex flex-col gap-2">
-                {release.commits.map((commit) => {
-                  const group = groupOf(commit);
-                  return (
-                    <li key={commit.id} className="flex items-start gap-2.5 text-[0.875rem]">
-                      <span className={cn("mt-[7px] size-1.5 shrink-0 rounded-full", group.dot)} />
-                      <span className="min-w-0 text-ink-2">
-                        <span className="font-semibold text-[0.75rem] text-ink tracking-wide">
-                          {group.label}
-                          {commit.scope ? ` [${commit.scope}]` : ""}
-                        </span>{" "}
-                        {upperFirst(commit.message)}
-                        {commit.breaking ? (
-                          <span className="ml-1.5 rounded-full bg-rose-tint px-1.5 py-0.5 font-medium text-[0.75rem] text-rose">
-                            {t("about.breaking")}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="mt-3">
+                <ReleaseNotes release={release} />
+              </div>
             </section>
           ))}
         </>
