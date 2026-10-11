@@ -165,9 +165,33 @@ const linkText = (inner: string) =>
     .trim()
     .slice(0, 120);
 
+/** The `<script type="application/ld+json">` blocks of a page, parsed; a `@graph` is spread out. */
+export function jsonLdOf(html: string): unknown[] {
+  const out: unknown[] = [];
+  for (const m of html.matchAll(
+    /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(m[1].trim());
+    } catch {
+      continue;
+    }
+    for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+      const graph = (item as { "@graph"?: unknown } | null)?.["@graph"];
+      out.push(...(Array.isArray(graph) ? graph : [item]));
+    }
+    if (out.length >= 50) {
+      break;
+    }
+  }
+  return out.slice(0, 50);
+}
+
 /**
- * A page for a plugin (`server.web.read`): its whole text as Markdown and every link, as against
- * `readWebsite`, which picks what the assistant needs of a company's site.
+ * A page for a plugin (`server.web.read`): its whole text as Markdown, every link and its
+ * structured data, as against `readWebsite`, which picks what the assistant needs of a
+ * company's site.
  */
 export async function readPage(raw: string, signal?: AbortSignal): Promise<PluginWebPage> {
   const { res, base, html } = await loadPage(raw, signal);
@@ -187,6 +211,7 @@ export async function readPage(raw: string, signal?: AbortSignal): Promise<Plugi
     description: metaOf(html, "description") || metaOf(html, "og:description"),
     text: htmlToMarkdown(html).slice(0, 400_000),
     links,
+    jsonld: jsonLdOf(html),
   };
 }
 

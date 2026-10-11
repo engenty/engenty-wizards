@@ -47,6 +47,8 @@ const doc = await server.spaceData.putDocument({ space, key, label, name, mime, 
 | `putTable(input)` | A table: typed `columns`, `rows` (cells by column id, they replace the rows the key had), `format: "faq"` |
 | `putFile(input)` | A file that is no page: found by its name, `description` and Kategorien; `text` is what a step reads of it |
 | `putDocument(input)` | A file read as an upload is. Gives what it became: `items` (pages, tables), `review` when it read badly or not at all |
+| `readPages(space, { parent? })` | The space's own pages, whoever wrote them, with their Markdown: `{ id, title, path, parentId, markdown, origin, originKey, updatedAt }` |
+| `files(space, kind?)`, `readFile(space, id)` | The space's files (`document` when no kind is named), and one with its bytes: a price list someone dropped into Wissen |
 | `list(space)` | Everything the plugin wrote, by key, with its path and `state` |
 | `remove(space, key?)` | Takes out one key, or everything of the plugin in the space |
 | `summarize(space, category?, value?)` | Writes the Übersicht of values with three items or more; a model call each |

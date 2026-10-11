@@ -1,12 +1,12 @@
 import type { PluginSpaceData } from "@engenty-wizards/plugin-sdk";
 import type { CategoryInput } from "@engenty-wizards/shared/knowledge";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { UnreadableDocument } from "../documents/parse.js";
 import { ServiceError } from "./errors.js";
 import { filePaths, pageTree, tablePaths } from "./knowledge.js";
 import { convertDocument, fillCategories, summarizeValues } from "./knowledge-model.js";
-import { putOriginFile } from "./project-files.js";
+import { projectFileContent, putOriginFile } from "./project-files.js";
 import { queueIndex } from "./project-index.js";
 import { putCategory, setItemCategories } from "./space-categories.js";
 import { listOrigin, putOriginPage, putOriginTable, removeOrigin } from "./space-data.js";
@@ -180,6 +180,57 @@ export function originData(origin: string): PluginSpaceData {
             )?.review ?? null)
           : null;
       return { id, path, state: "written", items, review };
+    },
+    async readPages(space, opts) {
+      const tree = await pageTree(space);
+      const rows = await db.query.spacePage.findMany({
+        where: and(
+          eq(schema.spacePage.projectId, space),
+          isNull(schema.spacePage.wizardId),
+          opts?.parent ? eq(schema.spacePage.parentId, opts.parent) : undefined,
+        ),
+        orderBy: [schema.spacePage.position, schema.spacePage.title],
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        path: tree.get(r.id)?.path ?? `pages/${r.slug ?? r.id}`,
+        parentId: r.parentId,
+        markdown: r.markdown,
+        origin: r.origin,
+        originKey: r.originKey,
+        updatedAt: r.updatedAt.toISOString(),
+      }));
+    },
+    async files(space, kind = "document") {
+      const rows = await db.query.projectFile.findMany({
+        where: and(
+          eq(schema.projectFile.projectId, space),
+          eq(schema.projectFile.kind, kind),
+          eq(schema.projectFile.status, "ready"),
+        ),
+        orderBy: [desc(schema.projectFile.updatedAt)],
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        mime: r.mime,
+        size: r.size,
+        kind: r.kind,
+        updatedAt: r.updatedAt.toISOString(),
+      }));
+    },
+    async readFile(space, fileId) {
+      const { row, data } = await projectFileContent(space, fileId);
+      return {
+        id: row.id,
+        name: row.name,
+        mime: row.mime,
+        size: row.size,
+        kind: row.kind,
+        updatedAt: row.updatedAt.toISOString(),
+        data: new Uint8Array(data),
+      };
     },
     list: (space) => listOrigin(origin, space),
     remove: (space, key) => removeOrigin(origin, space, key),

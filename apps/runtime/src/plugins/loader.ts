@@ -32,6 +32,7 @@ import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
 import { managed } from "../manage.js";
 import { conversationAccess, ModelUnavailableError, textModel } from "../models.js";
+import { seal, unseal } from "../secrets/crypto.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
 import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
@@ -241,6 +242,7 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         };
       },
       connections: pluginConnections(source.id),
+      secrets: { seal, unseal },
       registerStarter(starter) {
         if (!PLUGIN_ID.test(starter.id)) {
           throw new Error(`Starter "${starter.id}": an id is lower case, digits and "-".`);

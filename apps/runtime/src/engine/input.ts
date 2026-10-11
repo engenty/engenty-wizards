@@ -1,5 +1,6 @@
 import {
   type AudioValue,
+  type CardOption,
   type Field,
   isDecidedField,
   isLocationValue,
@@ -148,6 +149,8 @@ export interface PageContext {
   known?: Record<string, unknown>;
   /** Choices from earlier data (`optionsFrom`), by field id. */
   options?: Record<string, string[]>;
+  /** The same choices as cards, for fields with `cards`; the view shows them, nothing is checked against them. */
+  cards?: Record<string, CardOption[]>;
   /** The decided fields (`ask`, `group`) a decision kept; the others are not asked. */
   decided?: string[];
 }

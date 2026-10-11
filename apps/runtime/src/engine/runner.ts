@@ -5,6 +5,8 @@ import {
 } from "@engenty-wizards/shared/decision";
 import {
   branchValues,
+  type CardOption,
+  cardsFromData,
   conditionsOf,
   dataRef,
   type Format,
@@ -328,7 +330,7 @@ export async function pageContext(run: RunRow, step: PageStep): Promise<Required
   const sourced = step.fields.filter((f) => f.optionsFrom);
   const decided = step.fields.some(isDecidedField) ? (run.state.pages?.[step.id]?.shown ?? []) : [];
   if (!needs.length && !sourced.length) {
-    return { known: {}, options: {}, decided };
+    return { known: {}, options: {}, cards: {}, decided };
   }
   const all = await flowValues(run, run.state);
   const known = Object.fromEntries(needs.map((ref) => [ref, all[ref]]));
@@ -336,19 +338,26 @@ export async function pageContext(run: RunRow, step: PageStep): Promise<Required
     ? await storedLists(run)
     : {};
   const options: Record<string, string[]> = {};
+  const cards: Record<string, CardOption[]> = {};
   for (const field of sourced) {
-    const found = optionsFromData(field.optionsFrom ?? "", run.state.outputs, lists);
+    const found = optionsFromData(field.optionsFrom ?? "", run.state.outputs, lists, field.cards);
     if (found.length) {
       options[field.id] = found;
     }
+    if (field.cards) {
+      const drawn = cardsFromData(field.optionsFrom ?? "", run.state.outputs, field.cards);
+      if (drawn.length) {
+        cards[field.id] = drawn;
+      }
+    }
   }
-  return { known, options, decided };
+  return { known, options, cards, decided };
 }
 
 function viewContext(
   ctx: Required<PageContext>,
-): Pick<RunView, "known" | "options" | "decidedFields"> {
-  return { known: ctx.known, options: ctx.options, decidedFields: ctx.decided };
+): Pick<RunView, "known" | "options" | "cards" | "decidedFields"> {
+  return { known: ctx.known, options: ctx.options, cards: ctx.cards, decidedFields: ctx.decided };
 }
 
 /** The wizard's lists with the person's rows, by list id. */
