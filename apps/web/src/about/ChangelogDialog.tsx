@@ -160,7 +160,7 @@ export function ChangelogDialog({
   const visible = releases ? filterReleases(releases, query) : [];
 
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.changelog")} wide>
+    <Dialog open={open} onClose={onClose} title={t("about.changelog")} wide height="tall">
       <p className="-mt-3 mb-4 text-[0.875rem] text-ink-3">{t("about.changelogHint")}</p>
       {releases === null ? (
         <div className="flex justify-center py-10 text-ink-3">

@@ -353,7 +353,12 @@ export function Chip({
   );
 }
 
-/** A centred modal on the native <dialog>. */
+/**
+ * A centred modal on the native <dialog>. Its height does not jump while it is open: a dialog
+ * with tabs, folds or lists (`height="tall"`) stands at a height taken from the window and
+ * scrolls inside; any other keeps the tallest height it has had, so switching to a shorter tab
+ * or folding a section leaves it where it is.
+ */
 export function Dialog({
   open,
   onClose,
@@ -361,6 +366,7 @@ export function Dialog({
   children,
   wide,
   bare,
+  height = "auto",
 }: {
   open: boolean;
   onClose: () => void;
@@ -373,6 +379,8 @@ export function Dialog({
    * may sit on the panel's edge) and fills the screen of a phone.
    */
   bare?: boolean;
+  /** `"tall"`: as tall as the window allows (up to 56 rem), whatever is in it. */
+  height?: "auto" | "tall";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -389,6 +397,26 @@ export function Dialog({
       el.close();
     }
   }, [open]);
+  // Open, the dialog never gets shorter than it has been — within what the window allows.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !open || bare || height === "tall") {
+      return;
+    }
+    let tallest = 0;
+    const keep = () => {
+      tallest = Math.max(tallest, el.getBoundingClientRect().height);
+      el.style.minHeight = `${Math.min(tallest, window.innerHeight - 32)}px`;
+    };
+    const observer = new ResizeObserver(keep);
+    observer.observe(el);
+    window.addEventListener("resize", keep);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", keep);
+      el.style.minHeight = "";
+    };
+  }, [open, bare, height]);
   return (
     <dialog
       ref={ref}
@@ -405,6 +433,7 @@ export function Dialog({
           : "max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-overlay",
         wide === "page" ? "sm:max-w-4xl" : wide ? "sm:max-w-2xl" : "sm:max-w-md",
         !bare && (wide === "page" ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-md"),
+        !bare && height === "tall" && "h-[min(calc(100dvh-32px),56rem)]",
       )}
     >
       {open && bare ? (

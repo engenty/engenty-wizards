@@ -195,7 +195,7 @@ export function Credits({ active }: { active: boolean }) {
 
 export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Dialog open={open} onClose={onClose} title={t("about.credits")} wide>
+    <Dialog open={open} onClose={onClose} title={t("about.credits")} wide height="tall">
       <div className="-mt-3">
         <Credits active={open} />
       </div>
