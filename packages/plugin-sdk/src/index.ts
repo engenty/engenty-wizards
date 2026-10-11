@@ -24,6 +24,15 @@ export interface PluginManifest {
   studio?: string;
   /** The studio half's styles, built. Default `dist/client.css`. */
   styles?: string;
+  /**
+   * The plugin's feature switches, by short name; each is known as `<id>.<name>` everywhere
+   * (`wizards features`, the `.features` file, the Manage-App's admin). `true`/`false` is the
+   * default alone; a `plan` switch is one a plan includes.
+   */
+  features?: Record<
+    string,
+    boolean | { kind?: "release" | "plan"; default?: boolean; label?: string; hint?: string }
+  >;
 }
 
 export type PluginRole = "owner" | "admin" | "member";
@@ -868,6 +877,16 @@ export interface WizardsPluginApi {
   server: PluginServerApi;
   /** Settings of this install: its `.env`. Name them after the plugin (`NOTIFY_URL`). */
   config: { get(key: string): string | undefined };
+  /**
+   * Feature switches of the tenant at hand: the runtime's own (`teamPlans`) and the plugin's,
+   * named with its id (`contacts.leadScoring`), as the Manage-App, the install's `.features`
+   * file or `FEATURES` set them. Off unless something turned a switch on.
+   */
+  features: {
+    /** `has("leadScoring")` asks for the plugin's own switch; a full name (`teamPlans`) for any. */
+    has(name: string): Promise<boolean>;
+    all(): Promise<Record<string, boolean>>;
+  };
   log: {
     info(...args: unknown[]): void;
     warn(...args: unknown[]): void;

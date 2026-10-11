@@ -24,8 +24,8 @@ export function settingsSections(
 ): SettingsSection[] {
   return [
     { id: "account", label: t("account.title"), icon: UserRound, menu: true },
-    // In the cloud the studio is a team's: who is in it, and the plan it is on.
-    ...(me?.mode === "managed"
+    // In the cloud the studio is a team's: who is in it, and the plan it is on — once team plans are on.
+    ...(me?.mode === "managed" && me.features.teamPlans
       ? [{ id: "team", label: t("team.title"), icon: Users, menu: true }]
       : []),
     { id: "connectors", label: t("connectors.title"), icon: Plug, menu: true },

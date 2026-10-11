@@ -74,6 +74,8 @@ export const exhausted = (h: HarnessMeta) =>
 
 /** The failure a client reports, as the person should read it. */
 export function failureOf(h: HarnessMeta, detail: string): Error {
+  // The client's own words stay in the log: the sentence below sums them up for the person.
+  console.warn(`[${h.id}] ${detail.replace(/\s+/g, " ").trim().slice(0, 1500)}`);
   if (
     /credit balance|billing|too low|usage limit|quota|insufficient|rate.?limit|\b429\b/i.test(
       detail,

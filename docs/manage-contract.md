@@ -67,6 +67,7 @@ With a user's access token instead of the service key:
 |---|---|
 | `GET /v1/me` | `{ user: { id, name, email, image }, tenant: { id, name, role, plan: { id, name }, balanceCredits, expiring: [{ kind: "start" \| "monthly" \| "gift", credits, expiresAt }] }, tenants: [{ id, name, role }] }` · `expiring`: the part of the balance that ends on a date, the nearest first |
 | `GET /v1/me/usage?months=` | the same as `GET /v1/tenants/:id/usage`, for the token's tenant |
+| `POST /v1/diagnostics` | `{ kind: "install", version, status, models, logs: [{ id, at, level, text }] }` → `{ id }` · what a local install sends when its person runs `wizards report` ([plans/remote-debug.md](plans/remote-debug.md)): its status, model settings without keys, the last lines it printed; at most 256 KB, 10 an hour per person (`429`); the Manage-App keeps 20 per tenant for 30 days, for its admins |
 
 Without any key:
 
@@ -87,6 +88,10 @@ runs alone has one person, who does everything.
 |---|---|
 | `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
 | `GET <RUNTIME_URL>/api/internal/plugins` | → `{ plugins: [{ id, name, description, version }] }` · the plugins the runtime carries, so a plan's `modules` are picked from what exists |
+| `GET <RUNTIME_URL>/api/internal/debug/status` | → `{ app, version, process: { pid, node, platform, hostname, startedAt, uptimeSeconds, memoryMb, log }, managed, appUrl, manageUrl, gatewayUrl, sandbox, browser, files, database, tenantDatabases, tenants, plugins: [{ id, version }] }` · a look from afar ([plans/remote-debug.md](plans/remote-debug.md)); never a key |
+| `GET <RUNTIME_URL>/api/internal/debug/logs?since=&after=&limit=&level=&q=` | → `{ sources: [{ from, ok, error? }], lines: [{ id, at, level, text, from }] }` · the last lines the process printed, secrets taken out; `since` an id, `after` ms, `limit` ≤ 2000 (200), `level` `debug` \| `info` \| `warn` \| `error` and up, `q` a text |
+| `GET <RUNTIME_URL>/api/internal/debug/runs/:id` | → `{ tenantId, run: { id, wizardId, version, mode, status, cursor, error, ask, unattended, costCredits, userId, createdAt, updatedAt, expiresAt }, wizard: { id, title, publishedVersion } \| null, line: { active } \| null, events: [{ id, stepId, type, message, createdAt }] }` · one run of any tenant; `404` when unknown |
+| `GET <RUNTIME_URL>/api/internal/debug/tenants/:id/models` | → `{ tenantId, source, bindings, creditFallback, keys: { [provider]: boolean }, ways: { [class]: { kind, by, ref, problem } } }` · where each class of the tenant runs; `404` for a tenant the runtime never opened |
 
 ## Google accounts through the Manage-App
 

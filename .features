@@ -1,0 +1,22 @@
+# Feature flags of this checkout (an install: ~/.engenty/wizards/.features); the list: packages/shared/src/feature-flags.ts
+# Same shape as .env: one `name=on` or `name=off` per line, `#` keeps the default.
+# This file has the last word over the account's or team's switches from the Manage-App.
+# A running runtime reads it at once; `wizards features` lists what counts.
+
+# the account in a local install: linking, Settings → Account, the sign-in offer (on by default)
+# account=on|off
+#
+# built-in connectors without an OAuth client, shown anyway
+# unsetConnectors=on|off
+#
+# the link to the product's own site from the setup
+# site=on|off
+#
+# the Team plan: the team page in the cloud studio, the plan on the account pages
+# teamPlans=on|off
+#
+# own API keys in the cloud studio (a plan's switch; on alone)
+# ownKeys=on|off
+#
+# a plugin's switches carry its id; `wizards features` lists the ones installed here
+# contacts.leadScoring=on|off

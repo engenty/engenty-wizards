@@ -30,6 +30,7 @@ import { pluginConnections } from "../connectors/plugin-connections.js";
 import { db, onTenantOpen } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
+import { currentFeatures } from "../features.js";
 import { managed } from "../manage.js";
 import { conversationAccess, ModelUnavailableError, textModel } from "../models.js";
 import { seal, unseal } from "../secrets/crypto.js";
@@ -129,6 +130,15 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
     plugin: source.manifest,
     resolvePath: (relative) => resolve(source.root, relative),
     config: { get: (key) => process.env[key]?.trim() || undefined },
+    features: {
+      // A short name is the plugin's own switch; a dotted or core name is taken as it is.
+      has: async (name) => {
+        const all = await currentFeatures();
+        const own = `${source.id}.${name}`;
+        return (own in all ? all[own] : all[name]) === true;
+      },
+      all: currentFeatures,
+    },
     log: {
       info: (...args) => console.log(tag, ...args),
       warn: (...args) => console.warn(tag, ...args),

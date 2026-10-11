@@ -173,6 +173,8 @@ export async function accountOverview(): Promise<{
     balanceCredits: number;
     /** What of the balance ends on a date, the nearest first. */
     expiring?: { kind: string; credits: number; expiresAt: string }[];
+    /** The account's feature switches: its plan's, and what an admin set for it or for everyone. */
+    features?: Record<string, boolean>;
   };
 } | null> {
   const token = await accountToken();

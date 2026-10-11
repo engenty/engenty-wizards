@@ -193,6 +193,24 @@ export function tenantMembers(id: string): Promise<TenantMembers> {
   return call<TenantMembers>("GET", `/v1/tenants/${encodeURIComponent(id)}/members`);
 }
 
+const users = new Map<string, { at: number; value: Record<string, boolean> }>();
+
+/** A person's own feature switches, as an admin set them at the Manage-App; cached a minute. */
+export async function userFeatures(userId: string): Promise<Record<string, boolean>> {
+  const hit = users.get(userId);
+  if (hit && Date.now() - hit.at < 60_000) {
+    return hit.value;
+  }
+  const value = await call<{ features?: Record<string, boolean> }>(
+    "GET",
+    `/v1/users/${encodeURIComponent(userId)}`,
+  )
+    .then((u) => u.features ?? {})
+    .catch(() => hit?.value ?? {});
+  users.set(userId, { at: Date.now(), value });
+  return value;
+}
+
 const tenants = new Map<string, { at: number; value: TenantInfo }>();
 
 /** Plan, limits and balance of a tenant, cached for a minute. */

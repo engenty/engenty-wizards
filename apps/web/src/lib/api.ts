@@ -1,5 +1,6 @@
 import { withBase } from "./base";
 import { t } from "./i18n";
+import { report } from "./report";
 
 export class ApiError extends Error {
   constructor(
@@ -31,6 +32,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
+    if (res.status >= 500) {
+      report("error", `${method} ${path} answered ${res.status}: ${data?.error ?? ""}`);
+    }
     throw new ApiError(data?.error ?? res.statusText, res.status, data);
   }
   return data as T;

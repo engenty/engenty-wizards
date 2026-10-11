@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, RefreshCw } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
+import { useConfig, useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
 import { type HarnessStatus, type LocalModels, useMe } from "../lib/session";
 import { useGround, usePreferredTheme } from "../lib/theme";
@@ -288,16 +288,14 @@ function FooterLink({ href, children }: { href: string; children: string }) {
  * in front until a test has worked; everything here is in the settings too.
  */
 export function SetupPage() {
+  const siteOn = useFeature("site");
   // Dark stands on the vivid ground, light on the theme's paper.
   const onGround = usePreferredTheme() === "dark";
   useGround(onGround ? GROUND : null);
   const me = useMe();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const config = useQuery({
-    queryKey: ["config"],
-    queryFn: () => api.get<{ site: string | null }>("/api/config"),
-  });
+  const config = useConfig();
   const [picked, setPicked] = useState(ownPicked);
   // A narrow page shows the opened choice alone; the person goes back to the choices from there.
   const [listOpen, setListOpen] = useState(false);
@@ -348,7 +346,7 @@ export function SetupPage() {
       : hasKey
         ? t("setup.h.test")
         : t("setup.h.keys");
-  const site = features.site ? config.data?.site : null;
+  const site = siteOn ? config.data?.site : null;
   /** On a narrow page: the opened choice is all there is to see. */
   const panelOnly = selected !== null && !listOpen;
   /** The row that is lit: the one just clicked, at once; else the one in effect. */

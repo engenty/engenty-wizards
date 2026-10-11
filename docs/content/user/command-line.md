@@ -14,6 +14,8 @@ description: The wizards command — start, setup, status, update — and the in
 | `wizards open` | Lets this browser into the running studio. `--print` only shows the link |
 | `wizards status` | What is installed and what runs |
 | `wizards doctor` | Status, and what is wrong |
+| `wizards logs [n]` | The last lines the running install printed (100, or `n`); keys and tokens are taken out |
+| `wizards report` | Sends status, model settings (never a key) and the last 500 log lines to your [linked account](./models.md), so support can look at what went wrong. Nothing is sent unless you run it. The command names the report's id |
 | `wizards stop` | Stops it. The data is kept |
 | `wizards restart` | Stops it and starts it again; after an update, the new version |
 | `wizards update` | Installs the newest version |

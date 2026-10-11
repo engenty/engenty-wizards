@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Plug, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
-import { features } from "../lib/features";
+import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
 import { Button, Card, Chip, cn, IconButton, Input, Spinner } from "../ui";
 
@@ -259,6 +259,7 @@ function SourceRow({
  * here, so the list is shown and nothing is imported, refreshed or removed.
  */
 export function Connectors({ projectId, readOnly }: { projectId: string; readOnly?: boolean }) {
+  const unsetConnectors = useFeature("unsetConnectors");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<RegistryHit[] | null>(null);
   const [service, setService] = useState<RegistryService | null>(null);
@@ -282,7 +283,7 @@ export function Connectors({ projectId, readOnly }: { projectId: string; readOnl
   });
   const connectors = list.data ?? [];
   const builtin = connectors.filter(
-    (c) => c.sourceKind === "builtin" && (features.unsetConnectors || c.usable),
+    (c) => c.sourceKind === "builtin" && (unsetConnectors || c.usable),
   );
   const imported = connectors.filter((c) => c.sourceKind !== "builtin");
   return (

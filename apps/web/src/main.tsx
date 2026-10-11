@@ -4,8 +4,11 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { PublicApp, StudioApp } from "./App";
 import { BASE, STUDIO } from "./lib/base";
+import { watchErrors } from "./lib/report";
 import "./lib/theme";
 import "./styles/app.css";
+
+watchErrors();
 
 // The desktop app's window is marked: there, what can be clicked keeps the arrow, as apps do.
 if ("engentyDesktop" in window) {
