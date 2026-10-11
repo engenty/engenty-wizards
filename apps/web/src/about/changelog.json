@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.46",
+    "timestamp": 1791704956,
+    "commits": [
+      {
+        "id": "1d4622e",
+        "message": "a look from afar at every installation – every process keeps the last 3000 lines it printed in memory (log.ts: the console is hooked once, each line still goes where it went, keys, tokens, JWTs and one-time links are taken out before a line is kept). The runtime answers about itself in debug.ts, read-only and never with a key: status, logs, one run of any tenant with its error and events, where a tenant's classes run. The Manage-App reaches it over /api/internal/debug/* with the service key; the command line of a local install over /api/local/debug/* with a ticket (wizards logs, wizards report – status, model settings without keys and the last 500 lines go to the account's /v1/diagnostics only when the person runs it). A page in a browser sends the errors it meets to POST /api/log, capped and rate-limited, so the studio's side shows in the same log. The raw words of an installed AI client's failure are logged before they are summed up for the person. docs/plans/remote-debug.md",
+        "group": "Added",
+        "scope": "debug",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.45",
-    "timestamp": 1791703040,
+    "timestamp": 1791703051,
     "commits": [
       {
         "id": "59d4e95",
