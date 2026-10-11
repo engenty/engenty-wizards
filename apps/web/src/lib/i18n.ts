@@ -251,6 +251,8 @@ const de = {
   "setup.appleDesc": "Das Modell auf diesem Mac – ohne Konto, ohne Internet.",
   "setup.appleHint":
     "Apple Intelligence denkt kurze Texte und Entscheidungen auf diesem Mac; nichts verlässt ihn. Für Recherche, lange Dokumente und Code legst du später unter Einstellungen → Modelle einen weiteren Weg an.",
+  "setup.appleHintKeeps":
+    "Apple Intelligence denkt kurze Texte und Entscheidungen auf diesem Mac; nichts verlässt ihn. Recherche, lange Dokumente und Code (High, Highest) bleiben, wie sie waren: {way}.",
   "setup.recommended": "Empfohlen",
   "setup.done": "Zum Studio",
   "setup.untilWorks": "Das Studio öffnet sich, sobald der Test klappt.",
@@ -1647,6 +1649,8 @@ const en: Record<Key, string> = {
   "setup.appleDesc": "The model on this Mac – no account, no internet.",
   "setup.appleHint":
     "Apple Intelligence thinks short texts and decisions on this Mac; nothing leaves it. For research, long documents and code, add another way later under Settings → Models.",
+  "setup.appleHintKeeps":
+    "Apple Intelligence thinks short texts and decisions on this Mac; nothing leaves it. Research, long documents and code (High, Highest) stay as they were: {way}.",
   "setup.recommended": "Recommended",
   "setup.done": "Open the studio",
   "setup.untilWorks": "The studio opens once the test works.",

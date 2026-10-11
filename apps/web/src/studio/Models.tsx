@@ -37,7 +37,7 @@ import { type ReactNode, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { type Lang, lang, t } from "../lib/i18n";
-import { type HarnessId, type HarnessStatus, type Me, useMe } from "../lib/session";
+import { type HarnessId, type HarnessStatus, type Me, useMe, withoutApple } from "../lib/session";
 import { Button, Card, cn, Input, LinkedText, Select, Spinner, Switch } from "../ui";
 import { billingUrl } from "./AppFrame";
 import { HarnessPanel } from "./Harness";
@@ -192,6 +192,10 @@ function sameChoice(a: Choice | null, b: Choice | null): boolean {
 function choiceOf(state: ModelsState, cap: ModelCapability, place: Place): Choice | null {
   const cls = LEAD_CLASS[cap];
   if (isText(cap) && !place.cloud) {
+    // Apple Intelligence thinks the short classes beside any source.
+    if (state.bindings.standard?.startsWith("apple:")) {
+      return { kind: "local", by: "apple" };
+    }
     if (state.source === "account") {
       return { kind: "credits" };
     }
@@ -936,7 +940,9 @@ function CapabilityPanel({
     switch (next.kind) {
       case "client":
         save.mutate(
-          isText(cap) ? { source: next.id } : { bindings: { [cls]: `${next.id}/image` } },
+          isText(cap)
+            ? { source: next.id, bindings: withoutApple(state.bindings) }
+            : { bindings: { [cls]: `${next.id}/image` } },
         );
         return;
       case "key": {
@@ -950,15 +956,15 @@ function CapabilityPanel({
       case "local":
         save.mutate(
           next.by === "apple"
-            ? isText(cap)
-              ? { source: "own", bindings: appleBindings(state) }
-              : { bindings: { audio: "apple:transcribe" } }
+            ? { bindings: isText(cap) ? appleBindings(state) : { audio: "apple:transcribe" } }
             : { source: "own", bindings: every("ollama:qwen3") },
         );
         return;
       case "credits":
         save.mutate(
-          isText(cap) && !place.cloud ? { source: "account" } : { bindings: every(CREDITS) },
+          isText(cap) && !place.cloud
+            ? { source: "account", bindings: withoutApple(state.bindings) }
+            : { bindings: every(CREDITS) },
         );
         return;
     }
@@ -1181,8 +1187,9 @@ function CapabilityPanel({
 }
 
 /**
- * Apple Intelligence thinks the short classes; the long ones keep their way, unless that was a
- * local model too — then they are unbound and the credits or nothing step in, as the hint says.
+ * Apple Intelligence thinks the short classes; the source stays, so the long ones keep their way
+ * (the installed client, the credits, a key), unless that was a local model too — then they are
+ * unbound and the credits or nothing step in, as the hint says.
  */
 function appleBindings(state: ModelsState): Partial<Record<ModelClass, string>> {
   const keep = (cls: ModelClass) => {
@@ -1456,7 +1463,7 @@ function ClientPanel({
                         onClick={() =>
                           save.mutate(
                             cap === "text"
-                              ? { source: id }
+                              ? { source: id, bindings: withoutApple(state.bindings) }
                               : { bindings: { image: `${id}/image` } },
                           )
                         }

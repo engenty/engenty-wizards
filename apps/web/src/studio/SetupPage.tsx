@@ -7,7 +7,13 @@ import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { useConfig, useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
-import { type AppleStatus, type HarnessStatus, type LocalModels, useMe } from "../lib/session";
+import {
+  type AppleStatus,
+  type HarnessStatus,
+  type LocalModels,
+  useMe,
+  withoutApple,
+} from "../lib/session";
 import { useGround, usePreferredTheme } from "../lib/theme";
 import { Button, cn } from "../ui";
 import { HarnessPanel, ModelTest } from "./Harness";
@@ -16,7 +22,7 @@ import { OwnModels, openExternal } from "./LocalRuntime";
 import { ThemeSwitch } from "./ThemeSwitch";
 
 type Source = LocalModels["source"];
-/** What the setup offers: a source, or Apple Intelligence — own bindings on this Mac. */
+/** What the setup offers: a source, or Apple Intelligence — the short classes bound on this Mac. */
 type Pick = Source | "apple";
 
 /** The ground the setup stands on and the text on white, as on the landing page. */
@@ -318,15 +324,16 @@ export function SetupPage() {
   // A narrow page shows the opened choice alone; the person goes back to the choices from there.
   const [listOpen, setListOpen] = useState(false);
   const choose = useMutation({
-    // Apple Intelligence is the short classes bound on this Mac; "own keys" after it unbinds them.
+    // Apple Intelligence is the short classes bound on this Mac; the source stays and keeps High
+    // and Highest. Another choice after it unbinds them.
     mutationFn: (pick: Pick) =>
       api.put(
         "/api/studio/local/models",
         pick === "apple"
-          ? { source: "own", bindings: { classifier: "apple:default", standard: "apple:default" } }
+          ? { bindings: { classifier: "apple:default", standard: "apple:default" } }
           : pick === "own"
             ? { source: "own", bindings: { classifier: "", standard: "" } }
-            : { source: pick },
+            : { source: pick, bindings: withoutApple(me.data?.models?.bindings ?? {}) },
       ),
     onSuccess: async (_saved, source) => {
       // First what the server now says, then the move: the choice opens on its own state,
@@ -356,13 +363,18 @@ export function SetupPage() {
   const installed = clients.filter((h) => h.version !== null);
   // A first start has nothing chosen yet; a source picked earlier (here or in the settings) stays picked.
   const apple = me.data.apple;
-  const appleChosen = models.source === "own" && models.bindings.standard?.startsWith("apple:");
+  const appleChosen = models.bindings.standard?.startsWith("apple:");
   const selected: Pick | null = appleChosen
     ? "apple"
     : picked || me.data.setupDone || models.source !== "own"
       ? models.source
       : null;
   const client = me.data.harnesses.find((h) => h.id === selected);
+  // Beside Apple the source stays: High and Highest think on the client or the credits picked before.
+  const keeps =
+    models.source === "account"
+      ? t("models.creditsName")
+      : (me.data.harnesses.find((h) => h.id === models.source)?.name ?? null);
   const works = me.data.setupDone;
   const hasKey = Object.values(models.keys).some(Boolean);
   // Connect, test, done: where the chosen source stands. Apple has nothing to connect.
@@ -562,7 +574,7 @@ export function SetupPage() {
                   ) : selected === "apple" ? (
                     <div className="flex flex-col gap-5">
                       <p className="text-[0.875rem] text-ink-2 leading-relaxed">
-                        {t("setup.appleHint")}
+                        {keeps ? t("setup.appleHintKeeps", { way: keeps }) : t("setup.appleHint")}
                       </p>
                       <ModelTest auto={!works && apple?.available === true} />
                     </div>

@@ -19,7 +19,7 @@ import {
 import { saveAsset } from "../files/storage.js";
 import { wizardUnavailable } from "../limits.js";
 import { transcribeAudio } from "../media/transcribe.js";
-import { ModelUnavailableError } from "../model-errors.js";
+import { errorText, ModelUnavailableError } from "../model-errors.js";
 import { runTicket } from "../secrets/signing.js";
 import { notFound, ServiceError } from "../services/errors.js";
 import { runnerSettingsOf, runnersOf } from "../services/runners.js";
@@ -54,17 +54,6 @@ export function runsApiFor(pluginId: string): PluginRuns {
       if (!w || w.publishedVersion === null) {
         throw notFound();
       }
-      const reason = await wizardUnavailable(w);
-      if (reason) {
-        throw new ServiceError("refused", reason);
-      }
-      const visitorId = visitorOf(input.person);
-      if (await visitorOverLimit(visitorId, null)) {
-        throw new ServiceError(
-          "refused",
-          "This person started many runs lately. Try again in an hour.",
-        );
-      }
       const version = await db.query.wizardVersion.findFirst({
         where: and(
           eq(schema.wizardVersion.wizardId, w.id),
@@ -73,6 +62,17 @@ export function runsApiFor(pluginId: string): PluginRuns {
       });
       if (!version) {
         throw notFound();
+      }
+      const reason = await wizardUnavailable(w);
+      if (reason) {
+        throw new ServiceError("refused", noteText(reason, wizardLang(version.definition)));
+      }
+      const visitorId = visitorOf(input.person);
+      if (await visitorOverLimit(visitorId, null)) {
+        throw new ServiceError(
+          "refused",
+          "This person started many runs lately. Try again in an hour.",
+        );
       }
       const runId = await createRun({
         wizardId: w.id,
@@ -84,7 +84,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
         runner: input.runner ?? pluginId,
       }).catch((err) => {
         if (err instanceof ModelUnavailableError) {
-          throw new ServiceError("refused", err.message);
+          throw new ServiceError("refused", errorText(err, wizardLang(version.definition)));
         }
         if (err instanceof NoCreditsError) {
           throw new ServiceError("no_credits", "The wizard's credits are used up.");
@@ -230,7 +230,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
         call: { runId: run.id },
       }).catch((err) => {
         if (err instanceof ModelUnavailableError) {
-          throw new ServiceError("refused", err.message);
+          throw new ServiceError("refused", errorText(err, wizardLang(run.definition)));
         }
         throw err;
       });

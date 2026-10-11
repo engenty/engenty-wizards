@@ -2,11 +2,12 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { release } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import type { TranscriptionModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
 import { ffmpeg, hasFfmpeg } from "../media/ffmpeg.js";
-import { ModelUnavailableError } from "../model-errors.js";
+import { ModelUnavailableError, NotedError } from "../model-errors.js";
 import {
   type HarnessAnswer,
   type HarnessCall,
@@ -132,55 +133,60 @@ async function detectApple(): Promise<AppleStatus> {
   }
 }
 
-/** What to tell the person when Apple Intelligence cannot answer. */
-export function appleUnavailable(status: AppleStatus): string {
+/** What to tell the person when Apple Intelligence cannot answer, as a note of `RUN_NOTES`. */
+export function appleUnavailableNote(status: AppleStatus): RunNote {
   switch (status.reason) {
     case "off":
-      return "Apple Intelligence ist auf diesem Mac ausgeschaltet. Einschalten unter Systemeinstellungen → Apple Intelligence & Siri.";
+      return { code: "appleOff" };
     case "loading":
-      return "Apple lädt das Modell für Apple Intelligence noch auf diesen Mac. Gleich noch einmal versuchen.";
+      return { code: "appleLoading" };
     case "missing":
-      return "Der Helfer für Apple Intelligence (wizards-apple) fehlt in dieser Installation.";
+      return { code: "appleMissing" };
     case "os":
-      return "Apple Intelligence braucht macOS 26 oder neuer.";
+      return { code: "appleOs" };
     default:
-      return "Apple Intelligence gibt es nur auf einem Mac mit Apple Silicon.";
+      return { code: "appleDevice" };
   }
 }
 
-/** The failure the helper reports, as the person should read it. */
+/** What to tell the person when Apple Intelligence cannot answer, in German (the settings). */
+export function appleUnavailable(status: AppleStatus): string {
+  return noteText(appleUnavailableNote(status), "de");
+}
+
+/**
+ * The failure the helper reports, as the person should read it: a note, so a run shows it in the
+ * wizard's language.
+ */
 export function appleFailure(error: { kind: string; message: string }): Error {
   switch (error.kind) {
     case "unavailable":
       return new ModelUnavailableError(
-        appleUnavailable({
+        appleUnavailableNote({
           supported: true,
           available: false,
           reason: appleReasonOf(error.message),
         }),
       );
     case "rateLimited":
-      return new ModelUnavailableError(
-        "Apple Intelligence nimmt gerade keine weiteren Anfragen an. Gleich noch einmal versuchen.",
-      );
+      return new ModelUnavailableError({ code: "appleBusy" });
     case "contextWindow":
-      return new Error(
-        "Apple Intelligence: Der Text ist zu lang für das Modell auf diesem Mac (4.096 Tokens für Frage und Antwort). Diese Klasse in den Einstellungen unter „Modelle“ auf ein anderes Modell legen.",
-      );
+      return new NotedError({ code: "appleTooLong" });
     case "guardrail":
     case "refusal":
-      return new Error(
-        "Apple Intelligence hat die Anfrage abgelehnt: Apples Inhaltsregeln lassen sie nicht zu.",
-      );
+      return new NotedError({ code: "appleRefused" });
     case "language":
-      return new Error("Apple Intelligence versteht die Sprache dieser Anfrage nicht.");
+      return new NotedError({ code: "appleLanguage" });
     case "schema":
-      return new Error(
-        `Apple Intelligence kann dieses Antwortformat nicht liefern: ${error.message}`,
-      );
+      return new NotedError({ code: "appleFormat", params: { detail: error.message } });
     default:
-      return new Error(`Apple Intelligence: ${error.message}`.slice(0, 500));
+      return appleFailed(error.message);
   }
+}
+
+/** Anything else the helper says, in its own words. */
+function appleFailed(detail: string): Error {
+  return new NotedError({ code: "appleFailed", params: { detail: detail.slice(0, 480) } });
 }
 
 class AppleModel extends HarnessModel {
@@ -204,7 +210,7 @@ class AppleModel extends HarnessModel {
     });
     const answer = lastJson<HelperAnswer>(stdout);
     if (!answer) {
-      throw new Error(`Apple Intelligence: ${stderr.trim() || `exit ${code}`}`.slice(0, 500));
+      throw appleFailed(stderr.trim() || `exit ${code}`);
     }
     if (answer.error) {
       throw appleFailure(answer.error);
@@ -274,9 +280,7 @@ class AppleTranscriptionModel implements TranscriptionV3 {
       let path = given;
       if (!native) {
         if (!(await hasFfmpeg())) {
-          throw new Error(
-            `Apple Intelligence liest ${options.mediaType} nicht; ohne ffmpeg bleibt die Aufnahme so. ffmpeg installieren oder im Browser als MP4 aufnehmen.`,
-          );
+          throw new NotedError({ code: "appleNoFfmpeg", params: { type: options.mediaType } });
         }
         path = join(dir, "note.wav");
         const { code, stderr } = await ffmpeg([
@@ -290,9 +294,10 @@ class AppleTranscriptionModel implements TranscriptionV3 {
           path,
         ]);
         if (code !== 0) {
-          throw new Error(
-            `Apple Intelligence: die Aufnahme ließ sich nicht wandeln: ${stderr.slice(-300)}`,
-          );
+          throw new NotedError({
+            code: "appleNotConverted",
+            params: { detail: stderr.slice(-300) },
+          });
         }
       }
       const { stdout, stderr, code } = await runClient(APPLE_BIN, ["transcribe", path, locale], {
@@ -302,7 +307,7 @@ class AppleTranscriptionModel implements TranscriptionV3 {
       });
       const answer = lastJson<HelperAnswer>(stdout);
       if (!answer) {
-        throw new Error(`Apple Intelligence: ${stderr.trim() || `exit ${code}`}`.slice(0, 500));
+        throw appleFailed(stderr.trim() || `exit ${code}`);
       }
       if (answer.error) {
         throw appleFailure(answer.error);
@@ -318,7 +323,7 @@ class AppleTranscriptionModel implements TranscriptionV3 {
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         throw new ModelUnavailableError(
-          appleUnavailable({ supported: false, available: false, reason: "missing" }),
+          appleUnavailableNote({ supported: false, available: false, reason: "missing" }),
         );
       }
       throw err;

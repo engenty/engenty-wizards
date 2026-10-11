@@ -41,6 +41,7 @@ import {
   appleStatus,
   appleTranscriptionModel,
   appleUnavailable,
+  appleUnavailableNote,
 } from "./harness/apple.js";
 import {
   detectHarness,
@@ -53,6 +54,7 @@ import {
   signedOut,
 } from "./harness/index.js";
 import { managed } from "./manage.js";
+import { hasFfmpeg } from "./media/ffmpeg.js";
 import { ModelUnavailableError } from "./model-errors.js";
 import { seal, unseal } from "./secrets/crypto.js";
 import { vaultDelete, vaultGet, vaultSet } from "./secrets/vault.js";
@@ -99,7 +101,11 @@ export interface ResolvedModel<M> {
 export const LOCAL_KEYS = PROVIDER_IDS;
 export type LocalKey = ProviderId;
 
-/** A client's id = text on that installed client; `account` = text on the account's credits; `own` = own keys or a local model. */
+/**
+ * A client's id = text on that installed client; `account` = text on the account's credits;
+ * `own` = own keys or a local model. A text class bound to Apple Intelligence (`apple:default`)
+ * thinks there under any source.
+ */
 export type LocalSource = HarnessId | "account" | "own";
 
 export interface LocalModelSettings {
@@ -322,6 +328,11 @@ function reachable(cfg: ModelConfig, ref: string): boolean {
 /** What a class runs on without credits: a client, an own key or a local model. "" = no way of its own. */
 function ownRef(cfg: ModelConfig, cls: ModelClass): string {
   const bound = cfg.settings.bindings[cls];
+  // A text class bound to Apple Intelligence (Classifier, Standard) thinks on this Mac whatever
+  // the source is: the others keep the installed client, the account's credits or the keys.
+  if (isText(cls) && bound && parse(bound).provider === "apple") {
+    return reachable(cfg, bound) ? bound : "";
+  }
   const client = managed ? null : harness(cfg.settings.source);
   if (isText(cls) && client) {
     // Text thinks on the installed client; a binding counts only where it names that client.
@@ -559,7 +570,7 @@ async function ownLanguageModel(
     case "apple": {
       const status = await appleStatus();
       if (!status.available) {
-        throw new ModelUnavailableError(appleUnavailable(status));
+        throw new ModelUnavailableError(appleUnavailableNote(status));
       }
       return { model: appleModel(id), gateway: false };
     }
@@ -1071,8 +1082,12 @@ export async function filmClient(
   if (status.auth === "none") {
     return { problem: signedOut(client) };
   }
+  // A class that thinks on Apple Intelligence makes its films on the client's model of the class.
   const ref = ownRef(cfg, cls);
-  return { client, alias: ref.slice(client.id.length + 1) || client.classes[cls] };
+  return {
+    client,
+    alias: ref.startsWith(`${client.id}/`) ? ref.slice(client.id.length + 1) : client.classes[cls],
+  };
 }
 
 /** Whether any text model can answer at all: the studio says so before the first chat turn. */
@@ -1118,7 +1133,7 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
         problem: client
           ? null
           : provider === "apple"
-            ? await appleProblem()
+            ? await appleProblem(cls)
             : await gatewayProblem(cls, ref),
       };
       continue;
@@ -1143,10 +1158,23 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
   return ways;
 }
 
-/** Why Apple Intelligence does not answer right now; null while it does. */
-async function appleProblem(): Promise<string | null> {
+/**
+ * Why this Mac's models do not take a class right now; null while they do. Text needs Apple
+ * Intelligence switched on. A voice note needs only the Mac (macOS 26 on Apple silicon, the
+ * helper; the system fetches a language on its first note), and ffmpeg for a recording it
+ * cannot read itself: a browser's WebM or Ogg.
+ */
+async function appleProblem(cls: ModelClass): Promise<string | null> {
   const status = await appleStatus();
-  return status.available ? null : appleUnavailable(status);
+  if (cls !== "audio") {
+    return status.available ? null : appleUnavailable(status);
+  }
+  if (!status.supported || status.reason === "missing") {
+    return appleUnavailable(status);
+  }
+  return (await hasFfmpeg())
+    ? null
+    : "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf; Safari und die App brauchen es nicht. ffmpeg installieren, z. B. mit „brew install ffmpeg“.";
 }
 
 /** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */

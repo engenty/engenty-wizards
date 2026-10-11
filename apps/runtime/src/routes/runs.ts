@@ -1,6 +1,6 @@
 import { FORMATS, LIST_FORMATS, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { TableColumnValueError } from "@engenty-wizards/shared/engenty/data-tables";
-import type { PublicWizard } from "@engenty-wizards/shared/run";
+import { noteText, type PublicWizard, type RunNote } from "@engenty-wizards/shared/run";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { and, eq } from "drizzle-orm";
 import { type Context, Hono, type MiddlewareHandler } from "hono";
@@ -46,7 +46,7 @@ import { reverseGeocode } from "../geocode.js";
 import { allowed, hashIp, verifyTurnstile, wizardUnavailable } from "../limits.js";
 import { mintConversation } from "../media/conversation.js";
 import { transcribeAudio } from "../media/transcribe.js";
-import { ModelUnavailableError } from "../model-errors.js";
+import { errorText, ModelUnavailableError, noteOf } from "../model-errors.js";
 import { listDownload, renderDownload, stepHtml } from "../render/downloads.js";
 import { HTML_RESPONSE_CSP } from "../render/guard.js";
 import { runTicketValid, verifySignedUrl } from "../secrets/signing.js";
@@ -91,6 +91,21 @@ export function clientIp(c: Context): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The language a visitor's request asks for: what the runner around it speaks, the browser's
+ * first language (apps/web: `navigator.language`) — German for "de…", else English; German
+ * without one, as the runner starts.
+ */
+function requestLang(c: Context): "de" | "en" {
+  const asked = c.req.header("accept-language")?.trim().toLowerCase();
+  return !asked || asked.startsWith("de") ? "de" : "en";
+}
+
+/** A refusal the visitor reads, in the language their request asks for. */
+function refuse(c: Context, note: RunNote, status: 400 | 403 | 404 | 409 | 422 | 429 | 502) {
+  return c.json({ error: noteText(note, requestLang(c)) }, status);
 }
 
 /**
@@ -171,10 +186,10 @@ async function viewOf(run: NonNullable<Awaited<ReturnType<typeof accessibleRun>>
 
 function commandError(c: Context, err: unknown) {
   if (err instanceof RunInputError) {
-    return c.json({ error: err.message, fields: err.errors }, 422);
+    return c.json({ error: errorText(err, requestLang(c)), fields: err.errors }, 422);
   }
   if (err instanceof RunConflict) {
-    return c.json({ error: err.message }, 409);
+    return c.json({ error: errorText(err, requestLang(c)) }, 409);
   }
   throw err;
 }
@@ -190,7 +205,7 @@ function tenantFrom(find: (c: Context) => Promise<string | null>): MiddlewareHan
       return c.json({ error: "not found" }, 404);
     }
     if ((await tenantStatus(tenant)) === "suspended") {
-      return c.json({ error: "Dieser Wizard ist gerade nicht verfügbar." }, 403);
+      return refuse(c, { code: "wizardUnavailable" }, 403);
     }
     return withTenant(tenant, next);
   };
@@ -286,7 +301,7 @@ export const publicRoutes = new Hono()
       brand: await brandView(w.projectId),
       turnstileSiteKey: env.turnstile.siteKey || null,
       available: !reason,
-      unavailableReason: reason,
+      unavailableReason: reason && noteText(reason, requestLang(c)),
       runners: await publicRunners(w, def),
     };
     return c.json(body);
@@ -300,7 +315,7 @@ export const publicRoutes = new Hono()
     }
     const reason = await wizardUnavailable(w);
     if (reason) {
-      return c.json({ error: reason }, 403);
+      return refuse(c, reason, 403);
     }
     const body = z
       .object({
@@ -312,18 +327,12 @@ export const publicRoutes = new Hono()
       .parse(await c.req.json().catch(() => ({})));
     const ip = clientIp(c);
     if (!(await verifyTurnstile(body.turnstileToken, ip))) {
-      return c.json({ error: "Bitte bestätige kurz, dass du ein Mensch bist." }, 403);
+      return refuse(c, { code: "confirmHuman" }, 403);
     }
     const vid = visitorId(c, true, body.embedded)!;
     const ipHash = hashIp(ip);
     if (await visitorOverLimit(vid, ipHash)) {
-      return c.json(
-        {
-          error:
-            "Du hast gerade viele Durchläufe gestartet. Bitte versuche es in einer Stunde wieder.",
-        },
-        429,
-      );
+      return refuse(c, { code: "tooManyRuns" }, 429);
     }
     const version = await db.query.wizardVersion.findFirst({
       where: and(
@@ -345,7 +354,7 @@ export const publicRoutes = new Hono()
       return c.json({ runId });
     } catch (err) {
       if (err instanceof NoCreditsError || err instanceof ModelUnavailableError) {
-        return c.json({ error: "Dieser Wizard ist gerade nicht verfügbar." }, 403);
+        return refuse(c, { code: "wizardUnavailable" }, 403);
       }
       throw err;
     }
@@ -606,23 +615,23 @@ export const runRoutes = new Hono()
       return c.json({ error: "not found" }, 404);
     }
     if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
-      return c.json({ error: "Der Durchlauf ist beendet." }, 409);
+      return refuse(c, { code: "runOver" }, 409);
     }
     if (!(await talkAllowed(run))) {
-      return c.json({ error: "Live-Gespräche sind für diesen Wizard nicht eingeschaltet." }, 403);
+      return refuse(c, { code: "talkOff" }, 403);
     }
     if (!allowed(`talk:${run.id}`, 20, 3600_000)) {
-      return c.json({ error: "Bitte später noch einmal." }, 429);
+      return refuse(c, { code: "tryLater" }, 429);
     }
     try {
       const view = await viewOf(run);
       return c.json(await mintConversation(view));
     } catch (err) {
       if (err instanceof ModelUnavailableError) {
-        return c.json({ error: err.message }, 403);
+        return c.json({ error: errorText(err, requestLang(c)) }, 403);
       }
       console.error("[talk]", err);
-      return c.json({ error: (err as Error).message }, 502);
+      return c.json({ error: errorText(err, requestLang(c)) }, 502);
     }
   })
   // What the person says into the chat's composer, written down — where the browser cannot do it itself.
@@ -632,14 +641,14 @@ export const runRoutes = new Hono()
       return c.json({ error: "not found" }, 404);
     }
     if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
-      return c.json({ error: "Der Durchlauf ist beendet." }, 409);
+      return refuse(c, { code: "runOver" }, 409);
     }
     if (!allowed(`transcribe:${run.id}`, 60, 3600_000)) {
-      return c.json({ error: "Bitte später noch einmal." }, 429);
+      return refuse(c, { code: "tryLater" }, 429);
     }
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File) || !file.size || file.size > 10_000_000) {
-      return c.json({ error: "Bitte eine Aufnahme bis 10 MB." }, 400);
+      return refuse(c, { code: "recordingTooLarge" }, 400);
     }
     try {
       const { text } = await transcribeAudio({
@@ -650,7 +659,11 @@ export const runRoutes = new Hono()
       return c.json({ text });
     } catch (err) {
       if (err instanceof ModelUnavailableError) {
-        return c.json({ error: err.message }, 403);
+        return c.json({ error: errorText(err, requestLang(c)) }, 403);
+      }
+      // Apple Intelligence on this Mac says why in a note (harness/apple.ts).
+      if (noteOf(err)) {
+        return c.json({ error: errorText(err, requestLang(c)) }, 502);
       }
       throw err;
     }
@@ -666,8 +679,9 @@ export const runRoutes = new Hono()
     const mime = file instanceof File ? file.type.split(";")[0].trim().toLowerCase() : "";
     const limit = uploadLimit(mime);
     if (!(file instanceof File) || file.size > limit) {
-      return c.json(
-        { error: `Bitte eine Datei bis ${Math.round(limit / 1_000_000)} MB wählen.` },
+      return refuse(
+        c,
+        { code: "fileTooLarge", params: { mb: Math.round(limit / 1_000_000) } },
         400,
       );
     }
@@ -727,7 +741,7 @@ export const runRoutes = new Hono()
       ])
       .parse(await c.req.json());
     if (!answerAsk(run.id, c.req.param("askId"), answer)) {
-      return c.json({ error: "Diese Frage ist nicht mehr offen." }, 409);
+      return refuse(c, { code: "askClosed" }, 409);
     }
     return c.json({ ok: true });
   })
@@ -746,7 +760,7 @@ export const runRoutes = new Hono()
     const run = await accessibleRun(c, c.req.param("id"));
     const resources = run?.status === "running" ? liveResources(run.id) : null;
     if (!(run && resources?.openPage())) {
-      return c.json({ error: "Der Wizard hat gerade keinen Browser offen." }, 409);
+      return refuse(c, { code: "noBrowser" }, 409);
     }
     const { to } = z.object({ to: z.enum(["person", "agent"]) }).parse(await c.req.json());
     if (resources.seatHolder() !== to) {
@@ -834,7 +848,7 @@ export const runRoutes = new Hono()
     const theirs = run && (pendingAsk(run.id) || resources?.seatHolder() === "person");
     const page = theirs ? resources?.openPage() : null;
     if (!(run && resources && page)) {
-      return c.json({ error: "Der Wizard wartet gerade nicht auf dich." }, 409);
+      return refuse(c, { code: "notWaiting" }, 409);
     }
     resources.touchSeat();
     const act = z
@@ -872,7 +886,7 @@ export const runRoutes = new Hono()
       }
       await page.waitForLoadState("domcontentloaded", { timeout: 3000 }).catch(() => undefined);
     } catch {
-      return c.json({ error: "Das hat auf der Seite nicht geklappt." }, 422);
+      return refuse(c, { code: "pageActFailed" }, 422);
     }
     return c.json({ ok: true });
   })
@@ -1148,10 +1162,10 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
   const ticket = c.req.query("ticket");
   const state = c.req.query("state");
   let ok = false;
-  let message =
+  let said: RunNote =
     c.req.query("error") === "exchange_failed"
-      ? "Verbinden hat nicht geklappt. Bitte noch einmal versuchen."
-      : "Verbinden wurde abgebrochen.";
+      ? { code: "connectFailed" }
+      : { code: "connectCancelled" };
   // A plugin's sign-in (server.connections) names its tenant; a wizard's names its run.
   const pluginTenant = state ? pluginStateTenant(state) : null;
   const tenant = state ? (pluginTenant ?? (await tenantOfRun(oauthStateRun(state) ?? ""))) : null;
@@ -1165,12 +1179,13 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
         signalChanged(done.runId);
       }
       ok = true;
-      message = "Verbunden. Du kannst dieses Fenster schließen.";
+      said = { code: "connected" };
     } catch (err) {
       console.error("[connect]", err);
-      message = "Verbinden hat nicht geklappt. Bitte noch einmal versuchen.";
+      said = { code: "connectFailed" };
     }
   }
+  const message = noteText(said, requestLang(c));
   return c.html(
     `<!doctype html><meta charset="utf-8"><title>engenty wizards</title>
 <body style="font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#333">
@@ -1264,7 +1279,7 @@ export const shareRoutes = new Hono()
   .get("/:token", async (c) => {
     const run = await sharedRun(c.req.param("token"));
     if (!run) {
-      return c.json({ error: "Dieser Link ist abgelaufen oder wurde zurückgezogen." }, 404);
+      return refuse(c, { code: "linkGone" }, 404);
     }
     return c.json(await shareView(run));
   })

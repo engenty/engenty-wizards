@@ -1,6 +1,7 @@
-import type { Field, WizardDefinition } from "@engenty-wizards/shared/definition";
+import { type Field, type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
 import { standaloneEntry } from "@engenty-wizards/shared/fit";
 import { pluginsOf } from "@engenty-wizards/shared/marketplace";
+import { noteText } from "@engenty-wizards/shared/run";
 import { and, count, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
@@ -126,7 +127,7 @@ export async function apiWizards(userId: string, spaceId?: string | null) {
           ? `${env.appUrl}/api/public/wizards/${w.shareToken}/icons/icon-192.png`
           : null,
         available: Boolean(live) && !reason,
-        unavailableReason: reason,
+        unavailableReason: reason && noteText(reason, wizardLang(def)),
         dailyRunLimit: w.dailyRunLimit,
         /** The plugins its steps call: a wizard that books needs `appointments`. */
         plugins: pluginsOf(def),

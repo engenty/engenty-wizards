@@ -26,7 +26,13 @@ import {
   whenHolds,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import type { ClosedChoice, RunState, RunView, ShownList } from "@engenty-wizards/shared/run";
+import {
+  type ClosedChoice,
+  noteText,
+  type RunState,
+  type RunView,
+  type ShownList,
+} from "@engenty-wizards/shared/run";
 import { CONVERSATION_RUNNERS, DEFAULT_RUNNER_SETTINGS } from "@engenty-wizards/shared/runners";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -46,6 +52,7 @@ import { env } from "../env.js";
 import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
+import { NotedError, noteOf } from "../model-errors.js";
 import {
   conversationAvailable,
   freeTierRefusal,
@@ -77,11 +84,11 @@ import { answersAsText, resolveRef } from "./template.js";
 import type { ProjectRow, RunRow, StepContext } from "./types.js";
 import { StepError } from "./types.js";
 
-/** A command the run cannot take in its current state. */
-export class RunConflict extends Error {}
-export class RunInputError extends Error {
+/** A command the run cannot take in its current state; a note where the person may read it. */
+export class RunConflict extends NotedError {}
+export class RunInputError extends NotedError {
   constructor(readonly errors: { field: string; message: string }[]) {
-    super("Bitte die markierten Felder prüfen.");
+    super({ code: "checkFields" });
   }
 }
 
@@ -217,6 +224,17 @@ function friendly(err: unknown): string {
     return "Der KI-Dienst ist gerade nicht erreichbar. Bitte später noch einmal versuchen.";
   }
   return `Dieser Schritt ist fehlgeschlagen: ${msg.slice(0, 300)}`;
+}
+
+/**
+ * A step that failed ends the run. A failure with a note (Apple Intelligence's) goes into the log
+ * as that note, so a runner shows it in its language; the run's error is in the wizard's.
+ */
+async function failRun(run: RunRow, stepId: string, err: unknown) {
+  const note = noteOf(err);
+  const message = note ? noteText(note, wizardLang(run.definition)) : friendly(err);
+  await emitEvent(run.id, stepId, "error", note ?? message);
+  await updateRun(run.id, { status: "failed", error: message });
 }
 
 // --- creating & driving ------------------------------------------------------
@@ -614,9 +632,7 @@ async function drive(runId: string, signal: AbortSignal) {
           return;
         }
         console.error(`[run ${runId} deciding ${deciding.id}]`, err);
-        const message = friendly(err);
-        await emitEvent(runId, deciding.id, "error", message);
-        await updateRun(runId, { status: "failed", error: message });
+        await failRun(run, deciding.id, err);
         return;
       }
       continue;
@@ -642,9 +658,7 @@ async function drive(runId: string, signal: AbortSignal) {
           return;
         }
         console.error(`[run ${runId} fields of ${step.id}]`, err);
-        const message = friendly(err);
-        await emitEvent(runId, step.id, "error", message);
-        await updateRun(runId, { status: "failed", error: message });
+        await failRun(run, step.id, err);
         return;
       }
       continue;
@@ -686,9 +700,7 @@ async function drive(runId: string, signal: AbortSignal) {
       }
       console.error(`[run ${runId} step ${step.id}]`, err);
       await noteFreeTierRefusal(err);
-      const message = friendly(err);
-      await emitEvent(runId, step.id, "error", message);
-      await updateRun(runId, { status: "failed", error: message });
+      await failRun(run, step.id, err);
       return;
     }
   }
@@ -716,10 +728,10 @@ async function requireWaiting(runId: string, stepId: string) {
     throw new RunConflict("Run not found");
   }
   if (run.status !== "waiting_input" && run.status !== "done") {
-    throw new RunConflict("Der Wizard arbeitet gerade.");
+    throw new RunConflict({ code: "runBusy" });
   }
   if (run.cursor !== stepId) {
-    throw new RunConflict("Diese Seite ist nicht mehr aktuell.");
+    throw new RunConflict({ code: "pageOutdated" });
   }
   return run;
 }
@@ -831,12 +843,12 @@ export async function goBack(runId: string) {
     !run ||
     (run.status !== "waiting_input" && run.status !== "done" && run.status !== "failed")
   ) {
-    throw new RunConflict("Der Wizard arbeitet gerade.");
+    throw new RunConflict({ code: "runBusy" });
   }
   const state = structuredClone(run.state);
   const previous = state.history.pop();
   if (!previous) {
-    throw new RunConflict("Kein vorheriger Schritt.");
+    throw new RunConflict({ code: "noStepBefore" });
   }
   // A decision that failed belongs to the step left behind.
   delete state.deciding;

@@ -1,4 +1,5 @@
 import type { RunView } from "@engenty-wizards/shared/run";
+import { NotedError } from "../model-errors.js";
 import { conversationAccess } from "../models.js";
 
 /**
@@ -156,7 +157,7 @@ export function conversationInstructions(view: RunView): string {
   return `${about}\n\n${rules.join("\n")}`;
 }
 
-/** Mints the secret a browser opens a session with. */
+/** Mints the secret a browser opens a session with; a failure carries a note for the run's language. */
 export async function mintConversation(view: RunView): Promise<ConversationSession> {
   const { apiKey, model } = await conversationAccess();
   const res = await fetch(SECRETS_URL, {
@@ -183,15 +184,15 @@ export async function mintConversation(view: RunView): Promise<ConversationSessi
     // The provider's answer goes to the log; the page hears only that it did not work, and why in a word.
     const detail = (await res.text()).slice(0, 500);
     console.error(`[talk] the provider refused the session (${res.status}):`, detail);
-    throw new Error(
+    throw new NotedError(
       res.status === 401 || res.status === 403
-        ? "The conversation could not be started: the OpenAI API key was refused."
-        : `The conversation could not be started (${res.status}).`,
+        ? { code: "talkKeyRefused" }
+        : { code: "talkFailed", params: { status: res.status } },
     );
   }
   const body = (await res.json()) as { value?: string; expires_at?: number };
   if (!body.value) {
-    throw new Error("The conversation could not be started: no secret came back.");
+    throw new NotedError({ code: "talkNoSecret" });
   }
   return {
     clientSecret: body.value,

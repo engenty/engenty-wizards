@@ -205,13 +205,17 @@ async function testedSources(): Promise<string[]> {
   return Array.isArray(tested) ? (tested as string[]) : [];
 }
 
-/** The chosen source has passed a test call and can still answer: its client is there and signed in. */
+/**
+ * The chosen source has passed a test call and can still answer: its client is there and signed
+ * in. Where Apple Intelligence thinks the short classes, the test ran there; a client behind High
+ * and Highest is no condition then.
+ */
 async function setupDone(): Promise<boolean> {
-  const source = localModelSettings().source;
+  const { source, bindings } = localModelSettings();
   if (!(await testedSources()).includes(source)) {
     return false;
   }
-  const client = harness(source);
+  const client = bindings.standard.startsWith("apple:") ? null : harness(source);
   if (client) {
     const status = await detectHarness(client.id);
     return Boolean(status?.version) && status?.auth !== "none";

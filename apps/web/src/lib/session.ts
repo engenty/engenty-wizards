@@ -1,4 +1,8 @@
-import type { ModelClass, WizardDefinition } from "@engenty-wizards/shared/definition";
+import {
+  type ModelClass,
+  TEXT_CLASSES,
+  type WizardDefinition,
+} from "@engenty-wizards/shared/definition";
 import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +42,18 @@ export interface AppleStatus {
   supported: boolean;
   available: boolean;
   reason: "device" | "os" | "missing" | "off" | "loading" | null;
+}
+
+/**
+ * Apple Intelligence thinks the text classes bound to it (`apple:default`) beside any source, so
+ * picking another way for text unbinds them; voice notes (`apple:transcribe`) stay.
+ */
+export function withoutApple(
+  bindings: Partial<Record<ModelClass, string>>,
+): Partial<Record<ModelClass, string>> {
+  return Object.fromEntries(
+    TEXT_CLASSES.filter((c) => bindings[c]?.startsWith("apple:")).map((c) => [c, ""]),
+  );
 }
 
 /** What the person says about themselves; the avatar shows the name's initials. */
