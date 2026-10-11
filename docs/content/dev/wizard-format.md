@@ -11,7 +11,7 @@ JSON Schema, and checked completely with `wizards validate`.
 
 ```json
 {
-  "$schema": "https://engenty.ai/docs/schema/wizard/1.json",
+  "$schema": "https://engenty.ai/schema/v1/wizard.json",
   "version": 1,
   "title": "Rechnung erstellen",
   "description": "Aus ein paar Angaben wird eine fertige Rechnung.",
@@ -24,8 +24,8 @@ JSON Schema, and checked completely with `wizards validate`.
 fields are in the schema below. The studio's MCP tool `get_authoring_guide` explains them with a
 complete example.
 
-`version` is the definition's version. It changes only with a breaking change; the schema of
-each version stays online under its number.
+`version` is the definition's version. It changes only with a breaking change; the schemas of
+each version stay online in their own folder (`/schema/v1/`, `/schema/v2/`, …).
 
 ## The `.wizard` file
 
@@ -38,7 +38,7 @@ A zip with two things in it:
 
 ```json
 {
-  "$schema": "https://engenty.ai/docs/schema/wizard-package/1.json",
+  "$schema": "https://engenty.ai/schema/v1/wizard-package.json",
   "format": "engenty-wizard",
   "version": 1,
   "definition": { … },
@@ -57,8 +57,8 @@ The file's media type is `application/vnd.engenty.wizard+zip`.
 
 | For | Schema |
 |---|---|
-| A definition | [`https://engenty.ai/docs/schema/wizard/1.json`](https://engenty.ai/docs/schema/wizard/1.json) |
-| `wizard.json` in a package | [`https://engenty.ai/docs/schema/wizard-package/1.json`](https://engenty.ai/docs/schema/wizard-package/1.json) |
+| A definition | [`https://engenty.ai/schema/v1/wizard.json`](https://engenty.ai/schema/v1/wizard.json) |
+| `wizard.json` in a package | [`https://engenty.ai/schema/v1/wizard-package.json`](https://engenty.ai/schema/v1/wizard-package.json) |
 
 Put the address under `"$schema"`, and editors such as VS Code complete keys and mark mistakes
 as you type. The studio's export writes it into every `wizard.json`.

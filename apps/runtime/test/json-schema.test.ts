@@ -17,7 +17,7 @@ const checkWizard = ajv.compile(wizardJsonSchema());
 const checkPackage = ajv.compile(packageJsonSchema());
 
 const manifest = (definition: unknown) => ({
-  $schema: "https://engenty.ai/docs/schema/wizard-package/1.json",
+  $schema: "https://engenty.ai/schema/v1/wizard-package.json",
   format: "engenty-wizard",
   version: 1,
   definition,
@@ -25,8 +25,8 @@ const manifest = (definition: unknown) => ({
 
 describe("the published JSON Schemas", () => {
   it("are the ones the Zod schemas give (pnpm schema writes them)", () => {
-    expect(published(`wizard/${DEFINITION_VERSION}.json`)).toEqual(wizardJsonSchema());
-    expect(published("wizard-package/1.json")).toEqual(packageJsonSchema());
+    expect(published(`v${DEFINITION_VERSION}/wizard.json`)).toEqual(wizardJsonSchema());
+    expect(published(`v${DEFINITION_VERSION}/wizard-package.json`)).toEqual(packageJsonSchema());
   });
 
   it("take what the app takes", () => {

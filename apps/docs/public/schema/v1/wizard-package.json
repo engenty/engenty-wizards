@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://engenty.ai/docs/schema/wizard-package/1.json",
+  "$id": "https://engenty.ai/schema/v1/wizard-package.json",
   "title": "engenty.wizards package manifest (wizard.json)",
   "description": "wizard.json in a .wizard package — a zip with this file and the wizard's workspace under files/.",
   "type": "object",

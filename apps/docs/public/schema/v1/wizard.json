@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://engenty.ai/docs/schema/wizard/1.json",
+  "$id": "https://engenty.ai/schema/v1/wizard.json",
   "title": "engenty.wizards wizard definition",
   "description": "A wizard's definition, version 1. Checked by `wizards validate`, which also checks what this schema cannot say: ids, references between steps and templates.",
   "type": "object",

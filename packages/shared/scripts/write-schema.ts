@@ -1,6 +1,6 @@
 // Writes the JSON Schemas of a wizard's definition and of a package's wizard.json into the docs
-// site's public folder, where engenty.ai/docs/schema/… serves them. Commit both; a test fails
-// when they differ from the Zod schemas.
+// site's public folder, where engenty.ai/schema/v<version>/… serves them (apps/docs/next.config.mjs).
+// Commit both; a test fails when they differ from the Zod schemas.
 //
 //   pnpm schema
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -17,5 +17,5 @@ function write(path: string, schema: unknown) {
   console.log(`wrote ${file}`);
 }
 
-write(`wizard/${DEFINITION_VERSION}.json`, wizardJsonSchema());
-write("wizard-package/1.json", packageJsonSchema());
+write(`v${DEFINITION_VERSION}/wizard.json`, wizardJsonSchema());
+write(`v${DEFINITION_VERSION}/wizard-package.json`, packageJsonSchema());

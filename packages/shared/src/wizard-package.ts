@@ -18,11 +18,13 @@ export const PACKAGE_MAX_BYTES = 30_000_000;
 
 /**
  * Where the JSON Schemas of both are published (the docs site's public folder, written by
- * `pnpm schema`). One file per version: a breaking change adds the next and keeps the old.
+ * `pnpm schema`, answered at engenty.ai/schema/…). One folder per definition version: a breaking
+ * change adds the next and keeps the old. The package's schema holds the definition's, so it sits
+ * beside it.
  */
-export const SCHEMA_BASE_URL = "https://engenty.ai/docs/schema";
-export const WIZARD_SCHEMA_URL = `${SCHEMA_BASE_URL}/wizard/${DEFINITION_VERSION}.json`;
-export const PACKAGE_SCHEMA_URL = `${SCHEMA_BASE_URL}/wizard-package/1.json`;
+export const SCHEMA_BASE_URL = `https://engenty.ai/schema/v${DEFINITION_VERSION}`;
+export const WIZARD_SCHEMA_URL = `${SCHEMA_BASE_URL}/wizard.json`;
+export const PACKAGE_SCHEMA_URL = `${SCHEMA_BASE_URL}/wizard-package.json`;
 
 export const manifestSchema = z.object({
   /** The JSON Schema an editor checks the file against; the app does not read it. */
