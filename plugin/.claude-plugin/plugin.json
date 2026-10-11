@@ -3,7 +3,29 @@
   "displayName": "engenty wizards",
   "version": "{{VERSION}}",
   "description": "Build page-by-page AI wizards that people open on a shared link — designed, tested and published from Claude Code — and run your published ones right in the chat.",
-  "author": { "name": "engenty" },
+  "author": {
+    "name": "engenty"
+  },
   "homepage": "{{APP_URL}}",
-  "keywords": ["wizards", "forms", "ai-workflows", "mcp"]
+  "keywords": [
+    "wizards",
+    "forms",
+    "ai-workflows",
+    "mcp"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "server": {
+      "type": "string",
+      "title": "Wizards server",
+      "description": "The MCP server of the wizards runtime, as /mcp lists it. The plugin's own (engenty-wizards) when left as is.",
+      "default": "engenty-wizards"
+    },
+    "browser": {
+      "type": "string",
+      "title": "Browser pane",
+      "description": "The MCP server of the app's browser pane, whose navigate tool opens a wizard beside the chat.",
+      "default": "Claude_Browser"
+    }
+  }
 }

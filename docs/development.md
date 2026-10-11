@@ -391,8 +391,11 @@ codex mcp add engenty-wizards --url <APP_URL>/api/mcp && codex mcp login engenty
 ```
 
 The plugin is built from `plugin/` with this deployment's `APP_URL` filled in
-(`apps/runtime/src/plugin.ts`): the `/wizard` command and the skills `build-wizard` and
-`use-wizard`.
+(`apps/runtime/src/plugin.ts`): the `/wizard` command, the skills `build-wizard` and
+`use-wizard`, and the `/wizards` pane — a mod (`plugin/hooks/register.tsx`) that lists the
+wizards beside the chat and opens one in the app's browser pane. In auto mode its own calls need
+allow rules; `plugin/README.md` names them. `claude plugin validate plugin` and
+`claude plugin test plugin` check the mod.
 Test runs that a client starts spend the tenant's credits. Writes from a client show up live in an
 open editor.
 
