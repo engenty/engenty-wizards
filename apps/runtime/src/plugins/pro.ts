@@ -26,7 +26,7 @@ import {
 import { loadedPlugin } from "./registry.js";
 
 /*
- * Pro modules on a runtime that runs alone (docs/content/dev/plugins/pro-modules): the closed
+ * Pro modules on a runtime that runs alone (docs/pro-modules.md): the closed
  * plugins the linked account's plan includes, fetched from its Manage-App.
  *
  *   GET /v1/modules?runtime=<release>              what is built for this release, the plan's

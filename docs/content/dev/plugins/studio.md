@@ -1,6 +1,7 @@
 ---
 title: The studio half
 description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
+version: 0.2.48
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -88,7 +89,7 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
 | `studio.registerShareSection({ runner, component })` | A runner's own part of the share dialog, under its row once the runner is on for the wizard. See [Runners](./runners.md#the-runners-part-of-the-share-dialog) |
-| `studio.registerAssistantCard({ tool, component })` | A card in the space assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
+| `studio.registerAssistantCard({ tool, component })` | A card in the assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
 - The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,
   `/sign-in`.
@@ -117,15 +118,15 @@ studio.registerSettingsSection({
 
 ## The space
 
-A space holds what all its wizards share: a title, logos, colours, facts and Wissen. The
-space page, behind the space's tile in the app bar, shows them in four parts:
+A space holds what all its wizards share: a title, logos, colours, facts and Knowledge. The
+space page, behind the house icon (Space) in the app bar, shows them in four parts:
 
 | Part | `group` | Holds |
 |---|---|---|
-| Info & Marke | `info` | Basis, Logos, Farben, Assets, Fakten |
-| Wissen | `knowledge` | Pages, tables and files with their Kategorien: what every AI step looks things up in |
-| Daten | `data` | What the wizards keep |
-| Ergebnisse | `results` | The runs that reached their result |
+| Info & brand | `info` | Basics, Logos, Colours, Assets, Facts |
+| Knowledge | `knowledge` | Documents, pages, tables and files with their Kategorien: what every AI step looks things up in |
+| Data | `data` | What the wizards keep |
+| Results | `results` | The runs that reached their result |
 
 A plugin adds a section to one of them, below the part's own:
 
@@ -149,14 +150,14 @@ studio.registerSpaceSection({
 });
 ```
 
-- `group` is the part; without one the section stands under Wissen.
+- `group` is the part; without one the section stands under Knowledge.
 - The studio draws the heading and the hint above the section, as it does for the space's own,
   and lists the section in the part's menu under the plugin's name. The component draws the
   rest, usually a `Card`.
 - `id` is the section's anchor: `/studio/space/data#contacts` opens the page there, and so does
-  `/studio/space#contacts`. In Wissen a section is a page of its own:
-  `/studio/space/knowledge?show=s:<id>`, where `#<id>` leads too. Ids are unique on the whole page; the space's own are taken: `base`,
-  `logos`, `colors`, `assets`, `documents`, `facts`.
+  `/studio/space#contacts`. In Knowledge a section is a page of its own:
+  `/studio/space/knowledge?show=s:<id>`, where `#<id>` leads too. Ids are unique on the whole
+  page; the space's own are taken: `base`, `logos`, `colors`, `assets`, `documents`, `facts`.
 - `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A
   component that calls it draws again when the person picks another space. `readOnly`: the
   space came from a local install, or nothing is built on this runtime; show it, change nothing.
@@ -203,10 +204,30 @@ Each gives the parsed JSON. Use them with `useQuery` and `useMutation`, as the p
 |---|---|
 | `user` | `{ id, name, email }` |
 | `tenant` | `{ id, role }`, the role `owner`, `admin` or `member` |
-| `mode` | `"local"`: the runtime runs alone. `"managed"`: signed in at a Manage-App |
+| `mode` | `"local"`: the runtime runs alone. `"managed"`: on engenty.ai |
 
 Hide what a member may not do, and guard it on the server too with `role: "admin"` on the
 route.
+
+`studio.plugin` is the plugin itself: `{ id, name, version }`.
+
+## Where the page stands
+
+The top bar shows a trail after the space's name. `studio.useCrumbs` is a hook that sets it
+while the page is shown, in place of a heading of the page's own:
+
+```tsx
+studio.useCrumbs([{ label: t("title"), to: "/contacts" }, { label: person.name ?? person.email }]);
+```
+
+- Each step is `{ label, to? }`; the last one is the page itself. A phone does not show the trail.
+- The assistant names the page by its trail.
+
+## The assistant
+
+The studio's assistant stands on a plugin's pages too. `studio.Assistant`,
+`studio.useAssistantPage` and `studio.useAssistantTool` tell it what to say there, what the page
+shows and what it may do in it. See [The space](./space.md#the-assistant-on-the-plugins-own-page).
 
 ## Build it
 

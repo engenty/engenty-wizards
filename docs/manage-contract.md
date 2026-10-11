@@ -87,11 +87,39 @@ runs alone has one person, who does everything.
 | Call | Body |
 |---|---|
 | `POST <RUNTIME_URL>/api/internal/tenants/:id` | `{ action: "suspend" \| "resume" \| "delete" }` → `{ ok: true }` |
-| `GET <RUNTIME_URL>/api/internal/plugins` | → `{ plugins: [{ id, name, description, version }] }` · the plugins the runtime carries, so a plan's `modules` are picked from what exists |
+| `GET <RUNTIME_URL>/api/internal/plugins` | → `{ plugins: [{ id, name, description, version }], features }` · the plugins the runtime carries, so a plan's `modules` are picked from what exists; `features` every feature switch it knows (the core's and its plugins', under their ids) |
 | `GET <RUNTIME_URL>/api/internal/debug/status` | → `{ app, version, process: { pid, node, platform, hostname, startedAt, uptimeSeconds, memoryMb, log }, managed, appUrl, manageUrl, gatewayUrl, sandbox, browser, files, database, tenantDatabases, tenants, plugins: [{ id, version }] }` · a look from afar ([plans/remote-debug.md](plans/remote-debug.md)); never a key |
 | `GET <RUNTIME_URL>/api/internal/debug/logs?since=&after=&limit=&level=&q=` | → `{ sources: [{ from, ok, error? }], lines: [{ id, at, level, text, from }] }` · the last lines the process printed, secrets taken out; `since` an id, `after` ms, `limit` ≤ 2000 (200), `level` `debug` \| `info` \| `warn` \| `error` and up, `q` a text |
 | `GET <RUNTIME_URL>/api/internal/debug/runs/:id` | → `{ tenantId, run: { id, wizardId, version, mode, status, cursor, error, ask, unattended, costCredits, userId, createdAt, updatedAt, expiresAt }, wizard: { id, title, publishedVersion } \| null, line: { active } \| null, events: [{ id, stepId, type, message, createdAt }] }` · one run of any tenant; `404` when unknown |
 | `GET <RUNTIME_URL>/api/internal/debug/tenants/:id/models` | → `{ tenantId, source, bindings, creditFallback, keys: { [provider]: boolean }, ways: { [class]: { kind, by, ref, problem } } }` · where each class of the tenant runs; `404` for a tenant the runtime never opened |
+
+## Plugins of a tenant
+
+A runtime that runs alone gives every tenant every plugin it loaded. In a runtime of a
+Manage-App:
+
+- Plugins are installed by whoever runs the runtime, into the image or a folder of
+  `PLUGINS_DIR`. A tenant cannot install one.
+- `PLUGINS_DEFAULT` is a comma-separated list of ids every tenant has.
+- The Manage-App switches further ones on per tenant: `modules` in its answer to
+  `GET /v1/tenants/:id` (kept for a minute; while the Manage-App is out of reach, what it said within the hour). An id
+  the runtime does not carry is passed over; without an answer the tenant has only
+  `PLUGINS_DEFAULT`. The
+  Manage-App learns which plugins a runtime carries from `GET /api/internal/plugins`, so a plan's
+  modules are picked from what exists.
+- For a tenant without a plugin, that plugin does not exist: no routes or public routes, no
+  tools, no space context or assistant tools, no listeners, no jobs, no runners, no index
+  entries, no studio half, no starters.
+- A plugin's tables are made in every tenant's database, whether the tenant has the plugin or
+  not.
+- Nothing reloads while it runs: `PLUGINS_WATCH` is ignored there, `/api/studio/plugins/-/reload`
+  answers `403` and `/-/events` `404`. A reload would hit every tenant at once; a new version of a
+  plugin comes with a new start of the runtime.
+- Pro modules are a local install's alone: a runtime of a Manage-App neither fetches nor loads
+  them.
+
+So one image serves tenants with different sets of plugins: the plugin is in the image, and the
+Manage-App decides who has it. `apps/runtime/test/managed.test.ts` covers it.
 
 ## Google accounts through the Manage-App
 
@@ -117,7 +145,7 @@ through the Manage-App.
 
 A runtime that runs alone, linked to an account, gets the closed plugins the account's plan
 includes (`modules` of the plan) from the Manage-App
-([Pro modules](content/dev/plugins/pro-modules.md)). Every call carries the linked account's
+([Pro modules](pro-modules.md)). Every call carries the linked account's
 access token; `runtime` is the install's release (`0.2.27` or `v0.2.27`).
 
 | Call | Answer |

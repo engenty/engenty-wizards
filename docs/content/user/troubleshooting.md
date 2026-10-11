@@ -1,6 +1,7 @@
 ---
 title: Troubleshooting
 description: What to do when a link is no longer valid, a client shows as not signed in, or an export fails.
+version: 0.2.48
 ---
 
 `wizards doctor` checks the install and says what is wrong. Start there.
@@ -10,9 +11,10 @@ description: What to do when a link is no longer valid, a client shows as not si
 | What you see | Do |
 |---|---|
 | "This link is no longer valid" | The link works once. `wizards open` gives this browser a new one |
+| "The app is not answering" | It stopped or is restarting. `wizards status` says whether it runs; `wizards start` starts it |
 | `wizards`: command not found | Open a new terminal, or run `~/.local/bin/wizards` |
-| The sign-in page instead of the studio | This browser is not signed in to the install. Run `wizards open` |
-| You open it under another address | Set `APP_URL` in `~/.engenty/wizards/.env` to the address you open |
+| "This browser is not signed in" | The browser has no sign-in for the install, for example after clearing cookies. Run `wizards open` |
+| "The studio runs at another address" | Open the address the page names, or set `APP_URL` in `~/.engenty/wizards/.env` to the address you open |
 | Port 24368 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env` |
 
 ## Models
@@ -29,10 +31,10 @@ description: What to do when a link is no longer valid, a client shows as not si
 
 | What you see | Do |
 |---|---|
-| PDF or PNG export fails | Install Google Chrome, or set `CHROME_PATH` to Chrome or Chromium |
+| PDF or PNG export fails | On a Mac, install Google Chrome; on Linux, Chromium at `/usr/bin/chromium`. Or set `CHROME_PATH` to Chrome, Chromium or Edge |
 | A widget offers no video | Install ffmpeg, or set `FFMPEG_PATH` |
 | "This wizard is not available right now" | The link is switched off, or the account the wizard runs on has no credits left. See [Test and share](./test-and-share.md) |
-| The wizard says its limit is reached for today | The link's runs for the day are used up. Raise "Runs per day" in the share dialog |
+| The wizard says its limit is reached for today | The link's runs for the day are used up; the day starts at midnight UTC. Raise "Runs per day" in the share dialog |
 | "This wizard does not exist (anymore)" | It is not published, or its link was replaced by a new one |
 | Others cannot open the link | An install on your computer answers on `localhost` only. See [who can open the link](./test-and-share.md#who-can-open-the-link) |
 | The camera, microphone or location does not work | Allow it in the browser's site settings (the lock icon in the address bar) |
@@ -52,6 +54,6 @@ description: What to do when a link is no longer valid, a client shows as not si
 issue at [github.com/engenty/engenty-wizards](https://github.com/engenty/engenty-wizards/issues)
 with what `wizards doctor` prints and the lines that matter.
 
-With a [linked account](./models.md), `wizards report` sends the status, the model settings
+With a [linked account](./models.md#account), `wizards report` sends the status, the model settings
 (never a key) and the last 500 log lines to engenty, and names the report's id: give that id when
 you ask for help. Nothing is sent unless you run the command.

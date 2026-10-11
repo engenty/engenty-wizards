@@ -1,6 +1,7 @@
 ---
 title: Plugins
 description: What a plugin is, what its two halves can add, and what it may touch.
+version: 0.2.48
 ---
 
 A plugin adds to a runtime without changing its code. The runtime finds plugins at start, loads
@@ -13,7 +14,7 @@ them from their files and loads one again when its files change.
 | A tool for AI steps | In a step's tool list, in the assistant's and the MCP authoring guide | [Tools](./tools.md) |
 | A runner: a door a wizard runs through, with the run API that drives runs from it | In the share dialog's channels, at `/w/<token>/<runner>`, on the wizard's first page | [Runners](./runners.md) |
 | A block and tools for every AI step of a space | In the steps' instructions | [The space](./space.md) |
-| Pages, tables and files of a space's Wissen, with Kategorien | In Wissen, and in what `project_search` finds | [The space](./space.md#wissen-a-plugin-writes) |
+| Pages, tables and files of a space's Knowledge, with Kategorien | In Knowledge, and in what `project_search` finds | [The space](./space.md#knowledge-a-plugin-writes) |
 | Texts in a space's search index | In what `project_search` finds | [The space](./space.md#the-search-index) |
 | Tools of the studio's assistant, and their cards | In the assistant's chat, on every page | [The space](./space.md#tools-of-the-space-assistant) |
 | Routes | Below `/api/studio/plugins/<id>`; public ones below `/api/public/plugins/<id>` | [Routes](./routes.md) |
@@ -34,7 +35,7 @@ them from their files and loads one again when its files change.
 | Runs in | The runtime | The studio, after sign-in |
 | Loaded | As TypeScript, no build | As the built script |
 | Types | `@engenty-wizards/plugin-sdk` | `@engenty-wizards/plugin-sdk/studio` |
-| Adds | Tools, runners, routes, tables, listeners, jobs, starters, Wissen, the space's block, index and assistant tools | Pages, icons in the app bar, sections of the settings and of the space page, cards in the assistant's chat |
+| Adds | Tools, runners, routes, tables, listeners, jobs, starters, accounts, Knowledge, the space's block, index and assistant tools | Pages, icons in the app bar, sections of the settings and of the space page, a runner's part of the share dialog, cards in the assistant's chat |
 
 A plugin has one half or both. The studio half talks to the server half over the plugin's own
 routes.

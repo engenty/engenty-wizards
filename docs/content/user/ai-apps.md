@@ -1,6 +1,7 @@
 ---
 title: AI apps
 description: Run and build your wizards inside Claude Desktop, Cursor, Codex and other AI apps.
+version: 0.2.48
 ---
 
 Settings → Integrate brings your wizards to where you work. engenty wizards is an MCP server:
@@ -47,6 +48,10 @@ Pick the app on the Integrate page. "Where does the app run?" has two answers:
 | How | "Add to …" writes engenty wizards into the app's settings | The page shows the command or the config entry to paste |
 | Needs | Nothing running: the app starts engenty wizards itself | engenty wizards running at that address |
 
+In the studio on engenty.ai there is only "At the address", and the app signs in in the browser
+on first use instead of with a key. Claude Desktop at the address is added as a custom connector,
+which connects from Anthropic's servers like claude.ai: that works only on engenty.ai.
+
 From a terminal, the same as "On this computer":
 
 ```bash
@@ -82,8 +87,8 @@ your computer, use "On this computer" or an app that runs there.
 
 ## Keys
 
-"At the address" signs an app in with a key. The key is shown once and goes straight into the
-command the page shows.
+On your computer, "At the address" signs an app in with a key. The key is shown once and goes
+straight into the command the page shows.
 
 - Each key signs one app in and has every right: treat it like a password.
 - The page lists the keys with their last use. Delete a key and that app is signed out.

@@ -1,6 +1,7 @@
 ---
 title: Run a wizard
 description: What a person sees who opens a wizard's link, on a computer or a phone.
+version: 0.2.48
 ---
 
 ![A wizard on a phone: two pages of questions and the finished result with its downloads](../../assets/wizard.png)
@@ -18,24 +19,28 @@ A run that was left can be picked up again: "Continue your last run".
 
 ## As a chat
 
-Where the owner switched it on, the wizard also runs as a chat, at `…/chat` or straight on its
+Unless the owner switched it off, the wizard also runs as a chat, at `…/chat` or straight on its
 link: it asks one question at a time, answers come from the composer or the replies under the
-question, and every answer stays in the thread. Two buttons sit in the composer:
+question, and every answer stays in the thread. The composer has these buttons:
 
 | Button | Does |
 |---|---|
 | Speaker | Reads what the wizard says aloud, with the browser's own voice in the wizard's language. Costs nothing, stays on in this browser |
 | Microphone (⌘⇧M, Ctrl⇧M on Windows) | Dictates into the composer. The browser writes along where it can recognise speech; elsewhere the recording is written down by the wizard's own model when you stop, like a voice note |
-| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. Only where the owner switched it on |
+| Phone | A live conversation: you talk, the wizard talks back and fills its pages from what you say, one question at a time. Files and signatures stay on the screen; the wizard says so. Only where the app that runs the wizard has an OpenAI API key under Models, for now |
 | Camera, in a conversation | The wizard sees what you show it ("is the dent on the left?") and takes photos into a photo field when you hold something still. The small picture shows what it sees |
+
+When a step works on a website, the chat shows that page live with what the wizard just did.
+"Take over" lets you click and type in it yourself while the wizard waits; "Hand back" lets it
+go on from where you left the page.
 
 ## As a live conversation
 
-At `…/talk`, or straight on its link, the wizard opens as a live audio screen: its engenty
-alone in the middle, breathing while it speaks and glowing while it listens, the whole
-transcript of what either of you said under it, and mute, camera and leave underneath. The chat
-sits beside it as the screen the wizard draws on. Switch the camera on and it becomes the video
-call below.
+Where the owner switched it on, the wizard opens at `…/talk`, or straight on its link, as a
+live audio screen: its engenty alone in the middle, breathing while it speaks and glowing while
+it listens, the whole transcript of what either of you said under it, and mute, camera and
+leave underneath. The chat sits beside it as the screen the wizard draws on. Switch the camera
+on and it becomes the video call below.
 
 ## As a video call
 
@@ -73,7 +78,7 @@ buzz brings you back. "Add to home screen" puts the wizard on the phone like an 
 
 | It shows | Because | You |
 |---|---|---|
-| A sign-in in a picture of a website | A step met a login | Type into the page. What you enter goes straight into the page; the AI never sees it. "Remember this sign-in for next time" stores it encrypted. "Skip" goes on without the site |
+| A website live, with a sign-in | A step met a login, a captcha or "continue with Google" | Fill the fields shown, or click and type in the live page itself, then "Sign in" or "I am signed in". What you enter goes straight into the page; the AI never sees it. "Remember this sign-in for next time" stores it encrypted. "Skip" goes on without the site |
 | "The wizard wants to run this in …" | A step wants to change something in a service you connected | "Allow", "Allow for the rest of this run" or "Don't allow". Reading does not ask; deleting always does |
 | "Connect" | The wizard works with your own account of a service | Sign in to the service in a new tab. The connection is kept for your next run |
 

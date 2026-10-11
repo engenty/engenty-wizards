@@ -1,6 +1,7 @@
 ---
 title: Tables
 description: A plugin's own tables in every tenant's database — SQL files that run once, and Drizzle to read and write.
+version: 0.2.48
 ---
 
 Every tenant has a database of its own (libSQL, the SQLite dialect). A plugin's tables are made
@@ -65,8 +66,8 @@ await db()
 await db().delete(person).where(eq(person.id, id));
 ```
 
-Call `getTenantDb()` inside the handler, the tool or the listener. Outside of them there is no
-tenant.
+Call `getTenantDb()` inside the handler, the tool, the listener or the job. Outside of them
+there is no tenant.
 
 ## How the files run
 
@@ -78,8 +79,9 @@ tenant.
 | When | A database gets the files when it opens. The open ones get them when the plugin loads, also when it loads again with a new file |
 | Never back | Nothing is taken back. Unloading or removing a plugin leaves its tables and rows |
 
-A file that fails is logged with the plugin's id and the file's name, and the files after it
-wait for that database until it is mended. The tenant's database still opens.
+A file that fails is logged with the plugin's id and the file's name, and the files after it,
+other plugins' included, wait for that database until it is mended. The tenant's database
+still opens.
 
 ## Rules
 

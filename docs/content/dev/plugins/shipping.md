@@ -1,6 +1,7 @@
 ---
 title: Shipping
 description: Hand a plugin to someone else, put it into a server's image, and decide which tenant has it.
+version: 0.2.48
 ---
 
 ## To someone's install
@@ -61,34 +62,11 @@ installed app and in the Docker image. A module there is part of the open produc
 A plugin that is not part of the open product stays out of `modules/` and goes into a folder of
 `PLUGINS_DIR`.
 
-engenty's own closed plugins reach a local install as [Pro modules](./pro-modules): signed
-packages from the linked account, on while its plan includes them.
-
 ## Which tenant has a plugin
 
-| The runtime runs | A tenant has |
-|---|---|
-| Alone: one person's install, your own server | Every plugin the runtime loaded |
-| As the runtime of a Manage-App | The plugins in `PLUGINS_DEFAULT`, and the ones the Manage-App lists for that tenant |
-
-In a runtime of a Manage-App:
-
-- Plugins are installed by whoever runs the runtime, into the image or a folder of
-  `PLUGINS_DIR`. A tenant cannot install one.
-- `PLUGINS_DEFAULT` is a comma-separated list of ids every tenant has.
-- The Manage-App switches further ones on per tenant: `modules` in its answer to
-  `GET /v1/tenants/:id`
-  ([manage-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/manage-contract.md)).
-  It learns which plugins a runtime carries from `GET /api/internal/plugins` (with the
-  runtime's service key), so a plan's modules are picked from what exists.
-- For a tenant without a plugin, that plugin does not exist: no routes, no tools, no listeners,
-  no studio half.
-- A plugin's tables are made in every tenant's database, whether the tenant has the plugin or
-  not.
-- Nothing reloads while it runs.
-
-So one image serves tenants with different sets of plugins: the plugin is in the image, and the
-Manage-App decides who has it.
+On an install of your own, on your computer or your own server, every tenant has every plugin
+the runtime loaded. On engenty.ai the service installs the plugins and switches them on per
+account; a person cannot install one there.
 
 ## Versions
 

@@ -1,6 +1,7 @@
 ---
 title: Plugins
 description: Add pages, settings and tools for steps to your install. What a plugin may do, and how to install one.
+version: 0.2.48
 ---
 
 A plugin adds to engenty wizards without changing it:
@@ -8,9 +9,12 @@ A plugin adds to engenty wizards without changing it:
 | It can add | You find it |
 |---|---|
 | Tools for AI steps | In a step's tool list, beside the built-in ones |
-| A page | Behind an icon in the studio's top bar |
+| A page | Behind an icon in the studio's app bar |
 | A settings section | In the settings |
-| Something that happens when a run ends | Nowhere: it works in the background, for example posts a message |
+| A section of the space page | In one of the space page's parts |
+| A template | First among the templates of a new wizard |
+| A channel a wizard runs through | In the share dialog's channels |
+| Something that happens when a run ends, or again and again | Nowhere: it works in the background, for example posts a message |
 
 > A plugin runs with the app's full rights: it reads your wizards, your results, your settings
 > and the files of your computer. Install only what you know.
@@ -26,12 +30,13 @@ A plugin is a file or a folder. Put it into the plugins folder of your install:
 - The app sees a new plugin while it runs; no restart.
 - A plugin's own instructions say which settings it needs. They go into the install's
   [settings file](./command-line.md#settings).
-- Another folder: `PLUGINS_DIR` in the settings file names one or several, comma-separated.
+- Another folder: `PLUGINS_DIR` in the settings file names one or several, comma-separated. It
+  replaces the plugins folder above; name that one too to keep it.
 
 ## See what is installed
 
 Settings → Plugins lists the plugins with their version and the tools they add. The section
-appears once a plugin is there.
+appears once a plugin, or a file that looks like one, is there.
 
 | Button | Does |
 |---|---|

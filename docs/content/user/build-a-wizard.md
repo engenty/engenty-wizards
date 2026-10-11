@@ -1,6 +1,7 @@
 ---
 title: Build a wizard
 description: Describe what the wizard should do, or start from a template. Then change it in the conversation or step by step.
+version: 0.2.48
 ---
 
 ## Start one
@@ -11,7 +12,7 @@ description: Describe what the wizard should do, or start from a template. Then 
 |---|---|
 | Describe it | Answer "What should your wizard do?" in your own words and press "Build wizard" |
 | A template | Pick one below the text field. Search, or narrow by industry, result and capability |
-| A package | "Import a wizard package" takes a `.wizard` file someone exported |
+| A package | "Import a wizard package", at the foot of the page, takes a `.wizard` file someone exported |
 
 A description that works says who enters what, what the wizard does with it, and what comes out:
 
@@ -37,6 +38,7 @@ You can change everything afterwards.
 | Conversation | Say what should change. The assistant edits the flow and tells you what it did |
 | Steps | One step at a time: its texts, fields, tools and model class. Move it up or down, or delete it |
 | Files | What the wizard needs on every run: widget code, libraries, price lists. Upload your own or let the assistant write them |
+| Memory | What the wizard knows across all its runs: the notes AI steps with the "Pages" tool read and add to, and the tables of its shared lists |
 | Runs | The test runs and live runs of this wizard |
 
 ### In the conversation
@@ -51,6 +53,11 @@ You can change everything afterwards.
 
 Open a step from the diagram or under "Steps". What you can set depends on its type: see
 [Steps](./steps.md).
+
+"Add step" on a step in the diagram, or under "Steps", puts a new step after it. Say what it
+should do, pick its kind or leave it to the AI, and say when it comes: always, only if a
+condition holds, or when the AI decides so. "Create" lets the assistant build it in the
+conversation; "Insert empty" adds a blank step of the kind you pick, for you to fill.
 
 ## When the wizard needs fixes
 
@@ -76,4 +83,4 @@ path needs it cannot start; if only one branch needs it, choose another path whe
 ## Take it with you
 
 The download icon in the editor's top bar exports the wizard as a package (`.wizard`): its steps
-and its files. "Import" on the first page of any studio takes it in.
+and its files. "Import a wizard package" on the "New wizard" page of any studio takes it in.

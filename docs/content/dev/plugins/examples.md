@@ -1,6 +1,7 @@
 ---
 title: Examples
 description: Two plugins in the repository to read, run and copy.
+version: 0.2.48
 ---
 
 The repository has two example plugins. Load them from a checkout with one line in `.env.local`:
@@ -56,9 +57,9 @@ keeps a line for every run that ended and shows them in the studio.
 | `migrations/0001_init.sql` | A table, `run_log_entry`, with an index |
 | `migrations/0002_space.sql` | A column added later: the space of each line |
 | `src/schema.ts` | The same table for Drizzle |
-| `src/plugin.ts` | A listener on all three events, two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
+| `src/plugin.ts` | A listener on the three run events (`run.done`, `run.failed`, `run.cancelled`), two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
 | `ui/messages.ts` | Words in German and English |
-| `ui/plugin.tsx` | A section of the space page with the space's last runs, under Ergebnisse, a page with the whole log, and a section of the settings that empties the log |
+| `ui/plugin.tsx` | A section of the space page with the space's last runs, under Results, a page with the whole log, and a section of the settings that empties the log |
 | `package.json` | A workspace package whose `build` script builds the studio half |
 
 Build its studio half once, or on every save:
@@ -74,8 +75,9 @@ node scripts/build-plugin.mjs examples/plugins/run-log --watch
 Then, in the studio:
 
 1. Test a wizard to its end.
-2. The space's tile in the app bar → Ergebnisse shows "Runs" below the results: the last five runs of
-   the space's wizards. Its last line opens the page with the whole log.
+2. The house icon in the app bar opens the space's page; under Results, "Runs" stands below the
+   results: the last five runs of the space's wizards. Its last line opens the page with the
+   whole log.
 3. Settings → Runs shows how many lines are kept and deletes them.
 4. An AI step can list the tool "Run log" and tell how the last runs ended.
 
@@ -95,5 +97,4 @@ The `contacts` plugin these pages build up, piece by piece:
 
 [apps/runtime/test/plugins.test.ts](https://github.com/engenty/engenty-wizards/blob/main/apps/runtime/test/plugins.test.ts)
 writes small plugins into a folder and exercises them: finding, loading, a plugin that fails,
-routes, tables per tenant, tools in a run, events, reloading. `managed.test.ts` beside it covers
-which tenant has which plugin.
+routes, tables per tenant, tools in a run, events, reloading.

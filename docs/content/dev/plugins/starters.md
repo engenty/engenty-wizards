@@ -1,6 +1,7 @@
 ---
 title: Starters
 description: Wizards a plugin brings as templates — how to register one, where it shows, and what a wizard made from it gets.
+version: 0.2.48
 ---
 
 A starter is a wizard a plugin brings as a template. It stands beside the marketplace's starters
@@ -12,11 +13,12 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(wizards.resolvePath(path), "utf8");
 
 server.registerStarter({
-  id: "book",
-  title: "Termin buchen",
-  description: "Fragt nach Anliegen und Wunschzeit und bucht einen freien Termin.",
-  definition: JSON.parse(read("starters/book.json")),
-  files: { "widget/slots.html": read("starters/slots.html") },
+  id: "follow-up",
+  title: "Follow up a contact",
+  description: "Looks the person up and drafts a follow-up e-mail.",
+  language: "en",
+  definition: JSON.parse(read("starters/follow-up.json")),
+  files: { "widget/card.html": read("starters/card.html") },
 });
 ```
 
@@ -36,12 +38,12 @@ an id that is not allowed and an id registered twice throw, and the plugin does 
 error names the starter:
 
 ```
-Starter "book": steps.2.fields: …
+Starter "follow-up": steps.2.fields: …
 ```
 
 ## Where it shows
 
-The starter is known as `<plugin id>.<starter id>`: `appointments.book`. A marketplace entry's id
+The starter is known as `<plugin id>.<starter id>`: `contacts.follow-up`. A marketplace entry's id
 has no dot, so the two never meet.
 
 | Where | |

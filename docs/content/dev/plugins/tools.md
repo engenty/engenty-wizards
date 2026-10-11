@@ -1,6 +1,7 @@
 ---
 title: Tools
 description: A tool an AI step can call — how to register it, how a wizard lists it, and what the model sees.
+version: 0.2.48
 ---
 
 A tool is a function an AI step may call while it works. The model decides when, from the
@@ -25,7 +26,7 @@ server.registerTool({
 
 | Field | |
 |---|---|
-| `name` | Lower case, digits and `_`, starting with a letter, at most 40 characters. Unique in the plugin |
+| `name` | Lower case, digits and `_`, starting with a letter, at most 40 characters. Unique in the plugin, its [space tools](./space.md#a-block-for-every-ai-step) included |
 | `title` | What the editor calls it. Default: the name |
 | `description` | For the model: what the tool does and when to use it. The assistant reads it too when it builds a wizard |
 | `inputSchema` | A zod schema. `.describe()` on a field tells the model what to put there |
@@ -47,7 +48,8 @@ The second argument is the step that calls the tool:
 |---|---|
 | `step.runId`, `step.stepId` | The run and the step |
 | `step.tenantId` | The tenant |
-| `step.project` | `{ id, name }` |
+| `step.space` | `{ id, name }`: the space of the step's wizard |
+| `step.project` | The same as `step.space`, by its older name |
 | `step.wizard` | `{ id, title }` |
 | `step.mode` | `"test"` for a test run from the studio, else `"live"`. Keep what a test makes apart: a booking, a message to someone outside |
 | `step.signal` | Aborted when the run is cancelled. Pass it to `fetch` |
@@ -79,7 +81,7 @@ A step lists the tool beside the built-in ones:
 
 - The editor offers the tools of the tenant's plugins in every AI step.
 - The assistant and the MCP authoring guide list them with their descriptions.
-- A draft that names a tool this tenant does not have shows an issue.
+- A draft whose step lists a tool in `tools` that this tenant does not have shows an issue.
 - A run fails at the step that names one. A wizard that uses a plugin's tool runs only where
   that plugin is installed: think of that before you publish a wizard to the cloud or export it.
 
@@ -90,25 +92,30 @@ picks the tool, and none copies its answer.
 
 ```json
 {
-  "id": "free",
+  "id": "known",
   "type": "agent",
-  "title": "Freie Termine",
+  "title": "Known contact",
   "call": {
-    "tool": "appointments.availability",
-    "input": { "duration_minutes": "{{steps.assess.dauer}}", "days": 21 }
+    "tool": "contacts.lookup",
+    "input": { "email": "{{steps.ask.email}}" }
   },
   "output": {
     "format": "json",
-    "fields": [{ "id": "slots", "kind": "table", "columns": ["start", "end", "label"] }]
+    "fields": [
+      { "id": "known", "kind": "yesno" },
+      { "id": "name", "kind": "text" }
+    ]
   }
 }
 ```
 
-- The tool's answer is the step's json output, as it is. `output.fields` name the keys later
-  steps read, so the editor and the checks know them.
-- String inputs are templates. A filled-in whole number or `true`/`false` is passed as one; an
+- The tool's answer is the step's json output, as it is. An answer that is not an object (a
+  list, a text) is kept as `{ "result": … }`. `output.fields` name the keys later steps read,
+  so the editor and the checks know them.
+- String inputs are templates. A filled-in number or `true`/`false` is passed as one; an
   empty one is left out. The input is checked against the tool's schema.
-- What the tool throws is the step's error.
+- What the tool throws, or an answer that is only `{ "error": … }`, is the step's error. A tool
+  this tenant does not have fails the step too.
 - It costs no credits and answers as fast as the tool: the free times of a calendar in under a
   second instead of half a minute.
 

@@ -1,9 +1,11 @@
 ---
 title: Space
 description: What your wizards share and produce — who you are, what they look things up in, and the results of their runs.
+version: 0.2.48
 ---
 
-The folder in the top bar opens your space: what all your wizards share, and what they produce.
+The house in the app bar, after the space's tile, opens your space: what all your wizards share,
+and what they produce.
 Every AI step knows it, so a wizard never has to ask for your company's name or address.
 
 The menu on the left shows the space's four parts; a part opens its own sections, the arrow at
@@ -12,7 +14,7 @@ the top leads back. On a phone the parts, a part's sections and the page take tu
 | Part | Sections | Used for |
 |---|---|---|
 | Info & brand | Basics, Logos, Colours, Assets, Facts | Who you are and how you look |
-| Knowledge | All, then each Kategorie, then a plugin's sections (Sources) | What every AI step looks things up in |
+| Knowledge | All, then each Kategorie, then the sections plugins add | What every AI step looks things up in |
 | Data | All data, then each wizard | Tables and pages the wizards keep |
 | Results | All results, then each wizard | The runs that reached their result |
 
@@ -29,7 +31,8 @@ the top leads back. On a phone the parts, a part's sections and the page take tu
 ## Knowledge
 
 The ground truth your wizards' steps look things up in: pages, tables and files. You see here
-exactly what a step can find.
+exactly what a step can find. Drop documents on the page, or add a page or a table yourself
+("New page", "New table"; a table can be an FAQ, a question and its answer per row).
 
 - **Documents become pages and tables when they arrive.** A PDF, a Word file or a scan becomes a
   page; the original stays behind it ("Original"), and the page marks where each page of it
@@ -49,11 +52,12 @@ exactly what a step can find.
 - **"Try a search …"** searches the way a step does: the filters first, then words and meaning,
   then a classifier asks of each hit whether it answers the question and keeps those that do,
   with how sure it is. Without a classifier the hits stay unchecked; it needs a Vercel AI Gateway
-  or TypeSafe key, or an account. See [Models and account](./models.md).
+  or TypeSafe key, or an account. Searching by meaning needs an AI Gateway or OpenAI key, or an
+  account; without one the search finds words only. See [Models and account](./models.md).
 
-A plugin such as Sources fills Knowledge from outside: a website, a sitemap, a folder of this
-computer. What it wrote shows where it came from; once you change it, it stays yours and the
-source no longer writes it.
+A plugin can fill Knowledge from outside, from a website or a folder, say. What it wrote shows
+where it came from ("From …"); once you change it by hand, it stays yours and the plugin no
+longer writes it.
 
 ## Data
 
@@ -94,4 +98,7 @@ It enters what it finds: title, description, logo, colours and facts. You correc
 
 ## One space
 
-An install has one space. Its wizards, settings and files belong together.
+A local install has one space. On engenty.ai the team's plan says how many it may have: the
+space's name in the top bar switches between them, and "Add space" adds one. Each space has its
+own wizards, Info & brand, Knowledge, Data, connectors and results; the account, the models and
+the plugins are the same for every space.

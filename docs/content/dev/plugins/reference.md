@@ -1,6 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
+version: 0.2.48
 ---
 
 ## Server half
@@ -34,17 +35,19 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `registerSpaceContext({ block, tools? })` | [The space](./space.md). `block(space): string \| null` |
 | `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
 | `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
+| `spaceData.putCategories`, `.putPage`, `.putTable`, `.putFile`, `.putDocument`, `.list`, `.readPages`, `.files`, `.readFile`, `.remove`, `.summarize` | [The space](./space.md#knowledge-a-plugin-writes). Knowledge of a space: pages, tables and files under keys of the plugin's own, with their Kategorien; and the space's own pages and files to read |
 | `registerHttpRoute(route: PluginRoute)` | [Routes](./routes.md) |
 | `registerPublicRoute(route: PluginPublicRoute)` | [Routes](./routes.md#public-routes) |
 | `publicUrl(path): Promise<string>` | The full address of a public route for the current tenant |
 | `registerMigrations(folder: string)` | [Tables](./tables.md). The folder is relative to the plugin's |
 | `on(event, listener)` | [Events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"`, `"space.created"`, `"space.updated"`, `"space.deleted"`, `"space.file.ready"`, `"space.file.removed"` |
-| `every(name, everyMs, handler)` | [Jobs](./server.md#jobs). `handler({ tenantId, lastRun, signal })` |
+| `every(name, everyMs, handler)` | [Jobs](./server.md#jobs). Per tenant that has the plugin, at most once per `everyMs` (a minute at least). `handler({ tenantId, lastRun, signal })` |
 | `web.fetch(url, init?)`, `web.read(url, { signal? })` | [The web](./server.md#the-web) |
 | `documents.parse({ data, name, mime }, { signal? })` | [Documents](./server.md#documents). `{ markdown, pages }` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
 | `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`. See [The server half](./server.md#asking-a-model) |
-| `connections.available(ids)`, `.start({ space, connector, actions })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md) |
+| `connections.available(ids)`, `.start({ space, connector, actions })`, `.connect({ space, connector, actions, credentials })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md) |
+| `secrets.seal(value): string`, `secrets.unseal(sealed)` | [Keys of the plugin's own](./server.md#keys-of-the-plugins-own). `unseal` gives null for a value sealed on another install |
 | `registerAssistantContext({ block })` | [The space](./space.md#the-assistant-on-the-plugins-own-page). `block(space): string \| null` |
 | `registerStarter(starter: PluginStarter)` | [Starters](./starters.md). Known as `<plugin id>.<starter id>` |
 | `onUnload(fn)` | Runs when the plugin unloads or loads again |
@@ -110,7 +113,8 @@ interface PluginRuns {
     answers?: Record<string, unknown>;
     runner?: string;
   }): Promise<{ runId: string; ticket: string; refused: { field: string; message: string }[] | null }>;
-  report(runId: string, options?: { waitSeconds?: number }): Promise<PluginRunReport>;
+  report(runId: string, options?: { waitSeconds?: number; draft?: Record<string, unknown> }): Promise<PluginRunReport>;
+  wizards(runner: string): Promise<{ wizardId: string; token: string; title: string; lang: "de" | "en" }[]>;
   answerPage(runId: string, stepId: string, values: Record<string, unknown>): Promise<void>;
   review(runId: string, stepId: string, action: PluginReviewAction): Promise<void>;
   answerAsk(runId: string, askId: string, answer: "allow" | "skip"): Promise<void>;
@@ -118,8 +122,13 @@ interface PluginRuns {
   subscribe(runId: string, listener: (signal: PluginRunSignal) => void): () => void;
   handoffUrl(runId: string): Promise<string>;
   upload(runId: string, file: { data: Uint8Array | ArrayBuffer; mime: string; name: string }): Promise<{ assetId: string }>;
+  transcribe(runId: string, file: { data: Uint8Array | ArrayBuffer; mime: string }): Promise<{ text: string }>;
 }
 ```
+
+`waitSeconds` is at most 45. `draft`: the answers a door has so far for the page shown, so a
+field's `shown` follows them. `wizards(runner)`: the published wizards that switched the runner
+on. `transcribe`: a recording of the person written down, charged to the run.
 
 `PluginRunReport` is what `get_run` gives an MCP client: status, the step, `waitingFor` (a
 page with its fields shown, a review, a question), outputs with signed links, cost,
@@ -220,6 +229,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerPage({ path, component, wide? })` | A page at `/studio<path>` |
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
+| `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own part of the share dialog, once it is switched on for a wizard. `component` gets `{ wizard: { id, title } }` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
 | `studio.useCrumbs(items)` | A hook: the trail in the top bar for the page shown, `{ label, to? }[]`, instead of a heading of the page's own |
@@ -242,9 +252,9 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | Tool id in a wizard | `<plugin id>.<tool name>` | `run-log.recent` |
 | Tool name for the model | The id with `_` for `.` and `-` | `run_log_recent` |
 | Starter id | Lower case, digits and `-`, starting with a letter, at most 40 characters | `book` |
-| Starter id in a list of templates | `<plugin id>.<starter id>` | `appointments.book` |
+| Starter id in a list of templates | `<plugin id>.<starter id>` | `contacts.follow-up` |
 | Table name | Begins with the plugin's id | `run_log_entry` |
-| Runner id | Lower case, digits and `-`, at most 24 characters; not `steps`, `chat` or a sub-path of a wizard's address | `kiosk` |
+| Runner id | Lower case, digits and `-`, starting with a letter, at most 24 characters; not `steps`, `chat` or a sub-path of a wizard's address | `kiosk` |
 | Element around what a plugin draws | `data-plugin="<plugin id>"` | |
 
 ## Addresses
@@ -253,18 +263,24 @@ All below `/api/studio/plugins`, all signed in:
 
 | Address | | Who |
 |---|---|---|
-| `GET /` | The tenant's plugins: id, name, version, tools, where the built files are, what did not load | Everyone |
+| `GET /` | The tenant's plugins: id, name, version, description, tools, where the built files are, why a server half did not load; and what looked like a plugin and is none | Everyone; what is none: owners and admins, alone |
 | `ALL /<id>/…` | The plugin's own routes | Members of a tenant that has the plugin; `role: "admin"` routes owners and admins |
 | `GET /-/assets/<id>/client.js`, `/client.css` | The built studio half | Members of a tenant that has the plugin |
-| `GET /-/events` | A stream that says when a plugin loaded again | A runtime that runs alone |
-
-And public, nobody signed in: `/w/<token>/<runner>` serves a plugin's page runner for a wizard
-that switched it on (built; from source `/api/public/wizards/<token>/runners/<runner>`).
+| `GET /-/events` | A stream that says when a plugin loaded again | Everyone, alone |
 | `POST /-/reload` | Loads every plugin again | Owners and admins, alone |
 | `POST /-/reload/<id>` | Loads one plugin again | Owners and admins, alone |
 
+"Alone": where the runtime runs alone, not as the runtime of engenty.ai.
+
+And public, nobody signed in:
+
+| Address | |
+|---|---|
+| `ALL /api/public/plugins/<id>/<ref>/…` | A plugin's public routes; `<ref>` names the tenant. `server.publicUrl` gives the full address |
+| `/w/<token>/<runner>` | A plugin's page runner for a wizard that switched it on (built; from source `/api/public/wizards/<token>/runners/<runner>`) |
+
 The studio's addresses of a plugin: `/studio<path>` for its pages, `/studio/settings/<id>` for a
-section.
+settings section, `/studio/space/<group>#<id>` for a section of the space page.
 
 ## Settings
 
@@ -273,8 +289,8 @@ In the install's `.env`:
 | Setting | | Default |
 |---|---|---|
 | `PLUGINS_DIR` | Folders to look for plugins in, comma-separated, besides the runtime's `modules/` | Installed app: `~/.engenty/wizards/plugins`. Checkout: none |
-| `PLUGINS_WATCH` | `0`: plugins do not load again when their files change | `1` where the runtime runs alone. Never as the runtime of a Manage-App |
-| `PLUGINS_DEFAULT` | Runtime of a Manage-App: ids of the plugins every tenant has | none |
+| `PLUGINS_WATCH` | `0`: plugins do not load again when their files change | `1` |
+| `PLUGIN_JOBS` | `0`: this runtime runs no jobs (`server.every`), for one whose jobs another process runs | `1` |
 
 ## Files
 

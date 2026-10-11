@@ -110,6 +110,15 @@ pnpm build:docs   # what CI runs; `pnpm build` leaves the site out
 - **A page** is a `.md` file with `title` and `description` in its frontmatter and no `#`
   heading of its own. Links to other pages are relative file paths (`./install.md`,
   `../dev/plugins/index.md`); pictures come from `docs/assets` the same way.
+- **Which release a page describes.** `version` in its frontmatter (`version: 0.2.48`) is the
+  release whose code the page was last checked against; a page without one does not build. Check
+  a page against the code and the commits since that release, then set `version` to the current
+  one. The page shows it beside its buttons, the first page the oldest and newest.
+  `pnpm docs:check` fails on a missing or too new `version` and lists the pages behind the
+  current release with the number of code commits since theirs.
+- **Public.** The site and the studio assistant show these pages to everyone: the open product
+  and the plugin SDK only. The Manage-App's side, Pro modules and engenty's closed plugins are
+  documented outside `docs/content` (`docs/manage-contract.md`, `docs/pro-modules.md`).
 - **Diagrams** are fenced `mermaid` blocks.
 - **Below `/docs`.** The site's pages, files and search all live below that path (`basePath` in
   `apps/docs/next.config.mjs`), so a proxy can send `/docs` to it and the rest of a host

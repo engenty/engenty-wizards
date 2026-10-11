@@ -1,12 +1,14 @@
 ---
 title: Runners
 description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
+version: 0.2.48
 ---
 
-A runner is a way to run a wizard. The runtime has two: the stepped page at `/w/<token>` and
-the chat at `/w/<token>/chat`. A plugin adds more. The owner switches them on per wizard in
-the share dialog; the link opens the default, the others answer under their own address or
-from their own channel.
+A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the
+chat at `/w/<token>/chat`, live voice at `/w/<token>/talk` and the video call at
+`/w/<token>/video`; the last two only where a speech model is set up. A plugin adds more. The
+owner switches them on per wizard in the share dialog; the link opens the default, the others
+answer under their own address or from their own channel.
 
 ## Register a runner
 
@@ -29,10 +31,11 @@ server.registerRunner({
 
 | | |
 |---|---|
-| `id` | Lower case, digits and `-`, at most 24 characters. The sub-path of the wizard's address |
+| `id` | Lower case, digits and `-`, starting with a letter, at most 24 characters. The sub-path of the wizard's address. Not one of the built-in runners (`steps`, `chat`, `talk`, `video`), `runs` or `icons`: such an id throws "is taken" |
+| `label` | `{ de, en }`: its name in German and English |
 | `kind` | `page`: the person opens an address. `channel`: the runner has an address of its own (a number, a bot) and drives runs from its webhooks |
 | `capabilities` | What the runner takes in and shows; see below |
-| `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in |
+| `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in. A page runner without one throws when it is registered |
 | `problem` | `() => string \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. With a problem the owner cannot switch it on |
 
 A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. From
@@ -43,7 +46,8 @@ right address either way.
 ### Capabilities
 
 The runner declares; the runtime works out per wizard how far it gets, and the editor shows it:
-everything in the channel, hands off to the page at these steps, or not possible.
+everything in the channel, hands off to the page at these steps, or not possible. A kind the
+runtime does not know throws when the runner is registered.
 
 | Field | Says |
 |---|---|
@@ -93,10 +97,11 @@ server.registerPublicRoute({
 | `runs.subscribe(runId, listener)` | Hears every change of the run: its events with their note in both languages, or a status change. Returns the function that stops it |
 | `runs.handoffUrl(runId)` | The run page with the run's ticket: the link to send for what the door cannot do. The person who opens it and the door's person are one to the wizard |
 | `runs.upload(runId, { data, mime, name })` | A file of the person; the asset id goes into an image or file field with `answerPage` |
-| `runs.transcribe(runId, { data, mime })` | What is said in a recording of the person (a voice message), written down with the tenant's listener and charged to the run |
+| `runs.transcribe(runId, { data, mime })` | What is said in a recording of the person (a voice message), written down with the tenant's audio model and charged to the run. Up to 10 MB |
 
-A refused command throws an error with `code` (`invalid`, `refused`, `no_credits`) and the
-fields that did not fit, which a route passes on as it is.
+A refused command throws an error with a `status` and a `code` (`not_found`, `invalid`,
+`refused`, `no_credits`); an `invalid` one also carries the fields that did not fit as
+`data.fields`. A route that lets it through answers that status with `{ error, code }`.
 
 ## What the person sees
 

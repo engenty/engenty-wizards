@@ -1,6 +1,7 @@
 ---
 title: Files and manifest
 description: Where the runtime looks for plugins, what counts as one, and what engenty.plugin.json says.
+version: 0.2.48
 ---
 
 ## Where the runtime looks
@@ -81,7 +82,7 @@ A path in the manifest must stay inside the plugin's folder.
 
 | The plugin imports | It comes from |
 |---|---|
-| `@engenty-wizards/plugin-sdk`, `zod`, `drizzle-orm`, `drizzle-orm/sqlite-core` | The runtime's own copies, wherever the plugin's file is |
+| `@engenty-wizards/plugin-sdk`, `@engenty-wizards/plugin-sdk/thread`, `zod`, `drizzle-orm`, `drizzle-orm/sqlite-core` | The runtime's own copies, wherever the plugin's file is |
 | Its own files | Beside it, as TypeScript |
 | Anything else | A `node_modules` the plugin brings beside it |
 

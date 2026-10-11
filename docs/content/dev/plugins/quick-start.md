@@ -1,6 +1,7 @@
 ---
 title: Quick start
 description: A tool for AI steps in one file. No build, no restart.
+version: 0.2.48
 ---
 
 You write one file. The running app finds it, and every AI step can use the tool in it.
@@ -55,9 +56,9 @@ export default definePlugin((wizards) => {
 
 The app loaded the file the moment you saved it.
 
-- **Settings → Plugins** lists `workdays` with its tool "Working days".
-- **In the editor**, open an AI step: "Working days" is in its tool list, beside "Web search"
-  and the other built-in tools.
+- **Settings → Plugins** lists `workdays`, with `workdays.count` under "Tools for steps".
+- **In the editor**, open an AI step: `workdays.count` is in its list of tools, beside
+  `web_search` and the other built-in ones; the line below the list names it "Working days".
 - **In the conversation**, ask for it: "Add a step that counts the working days between the two
   dates." The assistant knows the tool from its description.
 

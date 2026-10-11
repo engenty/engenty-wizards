@@ -1,6 +1,7 @@
 ---
 title: Routes
 description: HTTP routes below the plugin's own address — signed in, inside the person's tenant.
+version: 0.2.48
 ---
 
 A plugin's routes live below `/api/studio/plugins/<id>`. Every request is a signed-in person's,
@@ -58,7 +59,7 @@ server.registerHttpRoute({
 |---|---|
 | Returns a value | `200` with the value as JSON. `undefined` becomes `null` |
 | Returns a `Response` | That response: a file, a redirect, another status |
-| Throws an error with a `status` and a `code` | That status with `{ "error": "<message>", "code": "<code>" }` |
+| Throws an error with a `status` (400 to 599) and a `code` (a string) | That status with `{ "error": "<message>", "code": "<code>" }` |
 | Throws anything else | `500` with `{ "error": "The plugin failed.", "code": "plugin_failed" }`. The error itself is logged, not sent |
 
 Send a `code`, not a sentence for the person. The studio half says it in the person's language:

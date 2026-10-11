@@ -1,6 +1,7 @@
 ---
 title: Accounts
 description: Accounts a plugin connects for a space — a calendar, a mailbox — through the runtime's built-in connectors.
+version: 0.2.48
 ---
 
 A wizard's connections belong to the person who runs it. A plugin that works for the whole
@@ -19,7 +20,7 @@ const { url } = await server.connections.start({ space, connector: "google-calen
 
 // Later, in a route, a tool or a job:
 const [account] = await server.connections.list(space);
-const { events } = await server.connections.call(account.id, "list_events", {
+const { events } = await server.connections.call<{ events: unknown[] }>(account.id, "list_events", {
   time_min: from,
   time_max: to,
 });
@@ -54,8 +55,8 @@ window.addEventListener("message", (event) => {
 
 - A second sign-in to the same account for the same space replaces the first one's tokens and
   actions; it does not add a second connection.
-- A local install without a Google client of its own connects Google through the Manage-App of
-  the linked account. Without a linked account `start` throws an error with the status `409` and
+- A local install without a Google client of its own connects Google through the linked
+  engenty account. Without a linked account `start` throws an error with the status `409` and
   the code `account`, whose message says what to do.
 
 ## What `call` refuses

@@ -1,11 +1,12 @@
 ---
 title: The assistant
 description: The chat at the bottom of every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
+version: 0.2.48
 ---
 
 The assistant stands at the bottom of every page of the studio but the editor, which has a
-conversation of its own. It thinks with what the studio thinks with: your subscription, your
-keys or credits ([Models and account](./models.md)).
+conversation of its own. It thinks on the High class of Text & reasoning: your subscription,
+your keys or credits ([Models and account](./models.md)).
 
 | Ask it | It |
 |---|---|
@@ -14,6 +15,7 @@ keys or credits ([Models and account](./models.md)).
 | About your account | Looks up your plan, credits and what you used; it never buys or upgrades |
 | About templates | Searches the gallery |
 | About your wizards | Looks at their runs, the failed ones too |
+| About models | Says what thinks and makes here, and what is missing |
 | To fill in the space | Reads a website or your files ([Space](./space.md#have-it-filled-in)) |
 
 It sees the page you write from: where you are, what is open and what the page shows. It may put
@@ -25,7 +27,7 @@ a value into a field for you; you check it and save. It does not press buttons.
 |---|---|
 | At the bottom | The default. Click the field or the engenty, and the chat rises above it |
 | Small | The engenty at the lower right; a click opens the chat beside it. Data and Results keep it small |
-| Sidebar | Beside the page, on a window wide enough for both |
+| Sidebar | Beside the page, on a window 1,520 pixels wide or more |
 
 The buttons in the chat's header switch between them; the studio remembers your choice.
 

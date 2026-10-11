@@ -1,6 +1,7 @@
 ---
 title: User Guide
 description: Install engenty wizards, build a wizard, run and share it.
+version: 0.2.48
 ---
 
 engenty wizards turns something you do again and again into a wizard: pages that ask what it
@@ -15,7 +16,7 @@ briefing, an invoice, a quote, a damage report.
 |---|---|
 | **Describe it** | Say in plain words what the wizard should do. The assistant builds the flow; you see it as a diagram and change any step. |
 | **Let AI steps work** | They research the web, write, draw images, render video, read PDFs, scans and mails, build documents and dashboards, and write into other services. Anything that changes an account asks first. |
-| **Share a link** | Anyone runs the wizard in a browser, on a phone too. Results download as PDF, Word, HTML, Markdown, PNG, MP4, CSV, Excel or JSON, or go out as a link. |
+| **Share a link** | Anyone runs the wizard in a browser, on a phone too. Results download as PDF, Word, HTML, Markdown, PNG, MP4, MP3, CSV, Excel or JSON, or go out as a link. |
 | **Keep it on your machine** | It thinks with Codex, Claude Code, Gemini CLI or Cursor Agent on your own subscription, with your own keys, or with a local model. Wizards and results stay in a folder on your computer. |
 
 ## Where to start

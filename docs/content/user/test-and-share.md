@@ -1,12 +1,14 @@
 ---
 title: Test and share
 description: Try the wizard, publish it, and hand out its link or put it on a website.
+version: 0.2.48
 ---
 
 ## Test
 
 "Test" in the editor starts a run of the draft, as a person would see it. Test runs are listed
-under "Runs". A test spends what a real run spends: your model's usage, or credits.
+under "Runs". A test spends what a real run spends: your model's usage, or credits. A test run
+reads the wizard's memory but writes into a copy of its own, which goes with the run.
 
 Where runs spend credits, each AI step shows an estimate. It is a formula at first and is
 measured from the latest runs after five of them.
@@ -54,7 +56,8 @@ One visitor can start 6 runs an hour.
 A wizard runs page by page, as a chat, as a live conversation on top of the chat, or as a video
 call on a stage with the chat beside it (the person talks, the wizard talks back and sees the
 camera; both need an OpenAI API key under Models for now); a plugin can add further ways, a
-kiosk page or a messenger. Each channel in the list says how far it gets with this wizard:
+kiosk page or a messenger. A new wizard has the page and the chat switched on; the others are
+switched on per wizard. Each channel in the list says how far it gets with this wizard:
 
 | It says | Meaning |
 |---|---|
@@ -62,13 +65,14 @@ kiosk page or a messenger. Each channel in the list says how far it gets with th
 | Hands off to the page at: … | At those steps the person gets a link to the wizard's page, for a photo, a signature or a sign-in, and comes back after |
 | Not possible: … | A step nobody can hand off, for example one that takes minutes on a channel that cannot wait |
 
-The home's cards show the channels that are on as small icons, the link's door first, and a row
-of pills above the cards narrows them to one channel once channels beyond steps and chat are in
-play.
+The home's cards show the channels that are on as small icons, the link's door first. A row of
+pills above the cards narrows them to one status (Draft, Local, Live, Not in the cloud) once
+two statuses are in play.
 
 The link opens the **default**; "Make default" moves it. What else is switched on answers under
-its own address, `/chat` for the chat, and is offered on the wizard's first page: "Or: Chat". A
-switched-off address sends people to the link instead.
+its own address (`/steps`, `/chat`, `/talk` for live voice, `/video` for the video call) and is
+offered on the wizard's first page: "Or: Chat". A switched-off address sends people to the link
+instead.
 
 ### WhatsApp
 
@@ -116,13 +120,13 @@ business number, or a phone call to a Twilio number. Twilio carries the call and
 model of your OpenAI account (Settings → Models) speaks, as the chat's live voice does, so the
 same rules apply: one field at a time, choices read out, e-mail addresses and numbers read back.
 
-Settings → Calls takes the Twilio account, a Twilio number that can text, the OpenAI project ID
-and the webhook secret of a webhook you add in the OpenAI dashboard for incoming calls, and
-shows what to enter where: the voice webhook for Twilio's SIP domain and phone number, the
-OpenAI webhook, and for WhatsApp the SIP server to set on the number in Meta's calling settings
-(the Twilio SIP domain, port 5061). Switch "Call" on for a wizard; with several on, the wizard
-asks which one at the start of the call. A WhatsApp call button or deep link whose payload is a
-wizard's link token picks that wizard.
+Settings → Calls takes the Twilio account, a Twilio number that can text, the OpenAI project ID,
+the webhook secret of a webhook you add in the OpenAI dashboard for incoming calls and the
+region (EU or US), and shows what to enter where: the voice webhook for Twilio's SIP domain and
+phone number, the OpenAI webhook, and for WhatsApp the SIP server to set on the number in Meta's
+calling settings (the Twilio SIP domain, port 5061). Switch "Call" on for a wizard; with several
+on, the wizard asks which one at the start of the call. A WhatsApp call button or deep link whose
+payload is a wizard's link token picks that wizard.
 
 What a voice cannot take (a photo, a file, a signature) is texted as a link to the wizard's page,
 and the call goes on once it was filled there. At the end the result is texted as a link too.
@@ -162,8 +166,9 @@ What goes and what stays:
 | Goes to the cloud | Stays on your computer |
 |---|---|
 | The published version and its files | Drafts and the chat with the assistant |
-| The space's name, what it says about itself, its logo | Runs and results of your computer |
-| How the link is shared: on or off, runs a day | Connected accounts, keys, the space's documents and MCP servers |
+| The space's name, what it says about itself, its colours, facts and logo | Runs and results of your computer |
+| The space's own tables and pages | What the wizards keep: their lists and notes |
+| How the link is shared: on or off, runs a day, channels | Connected accounts, keys, the space's documents and MCP servers |
 
 At engenty.ai/studio you see the space and its runs there. It is changed on your computer:
 the studio there edits nothing. An account holds one space of one computer. On a new computer
@@ -194,7 +199,8 @@ The share dialog gives a tag to paste into a page's HTML:
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="popout"></script>
 ```
 
-A chat that is switched off for the wizard shows the page instead.
+A chat in the page that is switched off for the wizard shows the page instead; the chat button
+always opens the chat.
 
 The button takes your website's own styles through the class `engenty-wizard-button`.
 

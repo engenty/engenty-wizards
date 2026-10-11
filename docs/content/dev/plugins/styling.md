@@ -1,6 +1,7 @@
 ---
 title: Styles and components
 description: The studio's components, Tailwind against the studio's theme, and why a plugin's styles never leak.
+version: 0.2.48
 ---
 
 A plugin's page should look like the studio. Two things make that easy: the studio's components
@@ -16,20 +17,23 @@ and its theme.
 | `IconButton` | An action that is only an icon | `label`: its name for screen readers and the tooltip |
 | `Input`, `Textarea` | Text. The textarea grows with its content | `minRows`, `maxRows` on the textarea |
 | `Select` | One of a list | `value`, `onChange(value)`, `options: { value, label, disabled? }[]`, `placeholder` |
-| `Segmented` | One or several of a few | `value`, `onChange`, `options: string[]`, `multi` |
-| `Switch` | On or off | `checked`, `onChange(checked)`, `label` |
+| `Segmented` | One or several of a few | `value`, `onChange`, `options: string[]`, `multi`, `disabled` (options shown but not to be picked) |
+| `Tabs` | A row of tabs; the panels are yours | `value`, `onChange`, `options: { id, label }[]`, `label` (for screen readers) |
+| `Switch` | On or off | `checked`, `onChange(checked)`, `label`, `disabled` |
 | `Swatch` | A colour | The native colour input's |
 | `Label` | A field's label | `hint`, `required` |
 | `Card` | A surface | |
-| `Chip` | A state in a word | `tone`: `neutral` (default), `live`, `warn`, `ember` |
+| `Chip` | A state in a word | `tone`: `neutral` (default), `live`, `warn`, `ember` · `icon` (in place of the live dot) · `title` (on hover) |
 | `DatePicker` | A date from a month | `value` ("YYYY-MM-DD" or ""), `onChange`, `min`, `max`, `clearable` |
 | `DateRangePicker` | A day or a period in one month: the first click is the start, the second the end | `from`, `to`, `onChange({ from, to })`, `min`, `max` |
 | `TimePicker` | A time of day from an hour and a minute column; arrow keys on the field move it by `step` | `value` ("HH:MM" or ""), `onChange`, `step` (minutes, default 5), `compact` (narrow, no clock) |
-| `PageMenu` | A page's own menu: a list at the side with one level below that slides in, tabs on a phone | `title`, `entries` ({ id, label, icon, to, entries? }), `current`, `footer` |
+| `PageMenu` | A page's own menu: a list at the side with one level below that slides in, tabs on a phone | `title`, `entries` ({ id, label, icon?, to, entries? }), `current`, `footer` |
 | `Composer` | The field a message is written in: text, dictation, files, send | `onSend(text, files)` (false keeps the draft), `placeholder`, `disabled`, `attach`, `floating` |
-| `Dialog` | A modal | `open`, `onClose`, `title`, `wide` |
+| `Dialog` | A modal; on a phone it fills the screen | `open`, `onClose`, `title`, `wide` (`true`, or `"page"` for a document), `height="tall"` (for tabs, folds or lists: its height does not jump), `bare` (the children are the panel) |
 | `Spinner`, `Empty` | Loading, and nothing there yet | |
+| `LinkedText` | A sentence with its web addresses as links, named by their host | `text` |
 | `cn(...)` | Joins class names, skipping what is false | |
+| `dateText(date, withWeekday?)` | A "YYYY-MM-DD" date in the studio's language: "Wed 14 Oct 2026" | |
 
 ```tsx
 import { Button, Card, Chip, Label, Input } from "@engenty-wizards/web/ui";
@@ -81,9 +85,9 @@ The full list is
 
 `client.css` is built so that it cannot change how the studio looks:
 
-- Every rule applies only inside what the plugin draws. The studio wraps each page and section
-  of a plugin in an element with `data-plugin="<id>"`, and every rule of `client.css` is nested
-  below that.
+- Every rule applies only inside what the plugin draws. The studio wraps each page, section,
+  app bar icon, part of the share dialog and assistant card of a plugin in an element with
+  `data-plugin="<id>"`, and every rule of `client.css` is nested below that.
 - The rules sit in a layer above the studio's utilities, so inside the plugin's part the
   plugin's stylesheet decides.
 - The theme is used by reference: `client.css` carries the names' uses, none of the variables

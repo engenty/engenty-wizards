@@ -1,24 +1,28 @@
 ---
 title: Install
 description: One command on macOS or Linux. It brings its own Node.js and asks for no password.
+version: 0.2.48
 ---
 
 ## Install
 
-In a terminal, on macOS or Linux:
+In a terminal, on macOS or Linux (arm64 or x64; on Windows, in WSL):
 
 ```bash
 curl -fsSL https://engenty.ai/install.sh | bash
 ```
 
-It needs nothing but `curl`. It brings its own Node.js (a Node you already have is left alone),
-installs engenty wizards into `~/.engenty/wizards` and then walks you through the rest:
+It needs nothing but `curl` and `tar`. It brings its own Node.js (a Node you already have is left
+alone), installs engenty wizards into `~/.engenty/wizards` (about 650 MB), links the `wizards`
+command into `~/.local/bin` and then walks you through the rest:
 
 | Step | What it does |
 |---|---|
-| Something to think with | Looks for Codex, Claude Code, Gemini CLI and Cursor Agent and offers to install one if there is none. It proposes the one whose app (Claude, ChatGPT, Cursor) is on your Mac first, as that subscription is most likely yours already. You can also use an API key or [Ollama](https://ollama.com) |
-| Google Chrome and ffmpeg (optional) | Chrome makes PDF and PNG exports and runs steps that use a browser. ffmpeg makes MP4 videos of animated widgets |
+| Something to think with | Looks for Codex, Claude Code, Gemini CLI and Cursor Agent and offers to install the ones that are missing. It proposes the one whose app (ChatGPT, Claude, Cursor) is on your Mac first, as that subscription is most likely yours already. You can also use an API key or [Ollama](https://ollama.com) |
+| A browser and ffmpeg | Says whether there is a browser for PDF and PNG exports and steps that use a browser, and whether there is ffmpeg for MP4 videos of animated widgets. With Homebrew it offers to install ffmpeg |
 | Start at login (optional) | engenty wizards starts in the background when you log in, so links and AI clients always reach it. A LaunchAgent on a Mac, a systemd user service on Linux |
+| Your AI apps (optional) | Offers to add your wizards to the [AI apps](./ai-apps.md) it finds, such as Claude Desktop, Cursor or Codex |
+| The command | If `~/.local/bin` is not on your PATH, offers to add it in your shell's settings file |
 
 It starts nothing. At the end it says whether it runs and how to start, stop and check it.
 You install once; from then on you use the `wizards` command.
@@ -61,16 +65,20 @@ of the address bar.
 wizards update
 ```
 
-This runs the installer again without its questions, then `wizards restart` starts the new
-version. The studio also says when a newer release
-is out and can run the same update from its footer. Your data is brought up to date at the next
+This runs the installer again without its questions. If it runs, `wizards restart` then starts
+the new version; the command says so. The studio also says in a banner at the top when a newer
+release is out: "Update" there installs it and starts the new version. The About dialog, behind
+the engenty mark in the app bar, shows the same. Your data is brought up to date at the next
 start.
 
 ## Remove
 
 ```bash
+wizards stop
 wizards autostart off
+wizards disconnect
 ```
 
-Then delete `~/.engenty/wizards` and `~/.local/bin/wizards`. Your wizards and results are in
-`~/.engenty/wizards/data`: [back that folder up](./data.md) first if you want to keep them.
+`wizards disconnect` takes your wizards out of your AI apps again. Then delete `~/.engenty/wizards`
+and `~/.local/bin/wizards`. Your wizards and results are in `~/.engenty/wizards/data`:
+[back that folder up](./data.md) first if you want to keep them.

@@ -1,6 +1,7 @@
 ---
 title: Developer
 description: Extend engenty wizards with plugins — tools for AI steps, routes with their own tables, pages in the studio.
+version: 0.2.48
 ---
 
 engenty wizards is extended with **plugins**. A plugin adds to a runtime without changing its
@@ -30,5 +31,4 @@ These pages are about extending it. The code's own documents are in the reposito
 | | |
 |---|---|
 | [docs/development.md](https://github.com/engenty/engenty-wizards/blob/main/docs/development.md) | Run it from source, the checks, how it is built, releases |
-| [docs/manage-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/manage-contract.md) | What a runtime and a Manage-App speak |
 | [docs/marketplace-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/marketplace-contract.md) | What a runtime and the marketplace speak |

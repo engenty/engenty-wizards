@@ -16,6 +16,7 @@
     "dev:portless": "portless wizards pnpm dev",
     "build": "pnpm -r --filter \"!@engenty-wizards/docs\" build",
     "build:docs": "pnpm --filter @engenty-wizards/docs build",
+    "docs:check": "node scripts/docs-check.mjs",
     "start": "node apps/runtime/dist/index.js",
     "wizards": "node bin/wizards.mjs",
     "package": "node scripts/npm-package.mjs",

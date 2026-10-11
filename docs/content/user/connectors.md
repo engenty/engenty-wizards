@@ -1,11 +1,13 @@
 ---
 title: Connectors
 description: Services a wizard works in for the person who runs it — built in, from the registry, or over MCP.
+version: 0.2.48
 ---
 
-Settings → Connectors lists the services your wizards can work in. A connector is used with the
-account of the person who runs the wizard: they connect it during a run, on a page that asks
-for it.
+Settings → Connectors lists the services the space's wizards can work in. A connector is used
+with the account of the person who runs the wizard: they connect it during a run, on a page that
+asks for it. Each space has its own connectors; in a team on engenty.ai, the owner and the admins
+add and remove them.
 
 ## Built in
 
@@ -19,7 +21,10 @@ for it.
 | S3 | Keys they enter |
 
 A connector marked "not set up" needs something from the install first: the page says what.
-The OAuth services need a client of your own, entered in the install's settings file:
+The OAuth services need a client of your own, entered in the install's settings file. Google is
+the exception on a local install: without a Google client of its own, Gmail, Drive, Calendar and
+Contacts connect through your engenty account, which holds the client. Connecting then asks you
+to sign in to the account first (Settings → Account).
 
 | Service | Settings |
 |---|---|
@@ -41,23 +46,23 @@ Any other service comes from the [integrations.sh](https://integrations.sh) regi
 1. Search the service, for example Notion or Stripe.
 2. "Import" takes it in, from its API description or its MCP server.
 3. Its actions appear, marked as "reads", "changes" or "deletes". Some services list them only
-   once an account is connected.
+   once an account is connected; "Reload actions" asks the service again.
 
 A service that needs an OAuth client of your own says so: remove it and import it again with
 "Own OAuth client".
 
-The assistant can do the same from the conversation: ask it to work with a service, and it
-finds and imports the connector.
+The editor's chat does the same while it builds a wizard: ask it to work with a service, and it
+finds and imports the connector. So does an [AI app](./ai-apps.md) connected to engenty wizards.
 
 ## What a wizard may do
 
-A wizard names the actions it uses. During a run:
+A wizard names the actions it uses; without a list it uses only those that read. During a run:
 
 | The action | Happens |
 |---|---|
-| Reads | Runs without asking |
-| Changes something | The person confirms each call, or allows it for the rest of the run |
-| Deletes | Always asks |
+| Reads | Runs without asking, unless the wizard says to ask |
+| Changes something | The person confirms each call, or allows it for the rest of the run. A wizard can let it run without asking |
+| Deletes | The person confirms it like a change. A wizard can never let it run without asking |
 
 ## The person's mailbox
 
@@ -67,7 +72,7 @@ attachments. It never writes. The person picks how to connect:
 | Way | Needs from the install |
 |---|---|
 | Any mailbox over IMAP | Nothing |
-| "Gmail" button | The Google client, with the Gmail API enabled and the scope `gmail.readonly` |
+| "Gmail" button | The Google client, with the Gmail API enabled and the scope `gmail.readonly`; on a local install without one, your engenty account |
 | "Outlook" button | The Microsoft client, with the delegated permission `Mail.Read` |
 
 ## Connected systems (MCP)
