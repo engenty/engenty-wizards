@@ -46,7 +46,7 @@ import {
   subscribeTerminal,
   writeTerminal,
 } from "../harness/terminal.js";
-import { managed, tenantInfo, tenantMembers } from "../manage.js";
+import { managed, tenantInfo, tenantMembers, userFeatures } from "../manage.js";
 import { seenApps } from "../mcp/seen.js";
 import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
 import { transcribeAudio } from "../media/transcribe.js";
@@ -345,8 +345,9 @@ export const studio = new Hono<Vars>()
     const linked = managed ? null : await linkedAccount();
     const overview = linked ? await accountOverview() : null;
     const profile = await userProfile(user);
-    // What the Manage-App says of the tenant: its plan and feature switches.
+    // What the Manage-App says of the tenant: its plan and feature switches; and of the person.
     const info = managed ? await tenantInfo(user.tenantId).catch(() => null) : null;
+    const own = managed ? await userFeatures(user.id) : null;
     return c.json({
       user: { id: user.id, name: profile.name, email: profile.email, image: user.image ?? null },
       /** What the person says about themselves; name and e-mail are the account's when managed. */
@@ -357,8 +358,8 @@ export const studio = new Hono<Vars>()
         /** The plan the team is on; null alone, or where the Manage-App names none. */
         plan: info?.plan ?? null,
       },
-      /** The feature switches: the code's defaults, what the Manage-App says, this install's file. */
-      features: features(managed ? info?.features : overview?.tenant.features),
+      /** The feature switches: the code's defaults, what the Manage-App says of the team and the person, this install's file. */
+      features: features(managed ? { ...info?.features, ...own } : overview?.tenant.features),
       mode: managed ? "managed" : "local",
       /** The tenant's balance; null where the runtime resolves models itself. */
       credits: managed ? await balanceCredits() : null,
