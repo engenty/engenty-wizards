@@ -1,7 +1,7 @@
 ---
 title: WordPress
 description: Put wizards on a WordPress site with the plugin "engenty wizards" — connect, read the site in, place a wizard, read results in the admin.
-version: 0.2.50
+version: 0.2.55
 ---
 
 The plugin **engenty wizards** puts the wizards of an engenty.ai account on a WordPress site and
@@ -36,8 +36,8 @@ team and plan, and **Disconnect** ends the connection and revokes the access.
 
 **By hand:** for your own engenty server, or where signing in through the browser does not work,
 enter an **Address** and an **API key** under **Settings → Connect by hand**. On engenty.ai the key
-is made under Account; on your own server under Settings → Integrate, with an app's "At the
-address" (see [AI apps](./ai-apps.md#keys)).
+is made under Account; on your own server under Settings → Integrate, with an app's "Connect
+with the address and an API key" (see [AI apps](./ai-apps.md#an-app-on-another-computer)).
 
 ## Set up
 

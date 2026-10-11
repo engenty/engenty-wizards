@@ -1,7 +1,7 @@
 ---
 title: Styles and components
 description: The studio's components, Tailwind against the studio's theme, and why a plugin's styles never leak.
-version: 0.2.50
+version: 0.2.55
 ---
 
 A plugin's page should look like the studio. Two things make that easy: the studio's components

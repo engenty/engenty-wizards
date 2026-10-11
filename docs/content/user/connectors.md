@@ -1,7 +1,7 @@
 ---
 title: Connectors
 description: Services a wizard works in for the person who runs it — built in, from the registry, or over MCP.
-version: 0.2.50
+version: 0.2.55
 ---
 
 Settings → Connectors lists the services the space's wizards can work in. A connector is used

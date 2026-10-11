@@ -1,7 +1,7 @@
 ---
 title: The assistant
 description: The chat at the bottom of every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
-version: 0.2.50
+version: 0.2.55
 ---
 
 The assistant stands at the bottom of every page of the studio but the editor, which has a

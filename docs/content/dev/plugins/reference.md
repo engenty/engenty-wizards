@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.2.50
+version: 0.2.55
 ---
 
 ## Server half

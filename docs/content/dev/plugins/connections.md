@@ -1,7 +1,7 @@
 ---
 title: Accounts
 description: Accounts a plugin connects for a space — a calendar, a mailbox — through the runtime's built-in connectors.
-version: 0.2.50
+version: 0.2.55
 ---
 
 A wizard's connections belong to the person who runs it. A plugin that works for the whole

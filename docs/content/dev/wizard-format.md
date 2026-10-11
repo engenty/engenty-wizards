@@ -1,6 +1,7 @@
 ---
 title: The wizard format
 description: A wizard as JSON and as a .wizard file, its JSON Schema, and checking it with wizards validate.
+version: 0.2.55
 ---
 
 A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file,
@@ -13,8 +14,8 @@ JSON Schema, and checked completely with `wizards validate`.
 {
   "$schema": "https://engenty.ai/schema/v1/wizard.json",
   "version": 1,
-  "title": "Rechnung erstellen",
-  "description": "Aus ein paar Angaben wird eine fertige Rechnung.",
+  "title": "Create an invoice",
+  "description": "A finished invoice from a few details.",
   "avatar": "round",
   "steps": [ … ]
 }

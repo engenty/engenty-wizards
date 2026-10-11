@@ -1,7 +1,7 @@
 ---
 title: The studio half
 description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
-version: 0.2.50
+version: 0.2.55
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after

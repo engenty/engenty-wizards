@@ -1,7 +1,7 @@
 ---
 title: Starters
 description: Wizards a plugin brings as templates — how to register one, where it shows, and what a wizard made from it gets.
-version: 0.2.50
+version: 0.2.55
 ---
 
 A starter is a wizard a plugin brings as a template. It stands beside the marketplace's starters

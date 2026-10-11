@@ -1,7 +1,7 @@
 ---
 title: The space
 description: Knowledge a plugin writes, a block and tools for every AI step of a space, texts in its search index, tools and cards of its assistant.
-version: 0.2.50
+version: 0.2.55
 ---
 
 A space holds what all its wizards share: a title, logos, colours, facts, and Knowledge —
