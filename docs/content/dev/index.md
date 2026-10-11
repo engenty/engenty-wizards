@@ -18,7 +18,7 @@ code, and it loads from its files while the app runs.
 ## What you need
 
 - An install of engenty wizards, or a checkout of
-  [engenty/engenty-wizards](https://github.com/engenty/engenty-wizards).
+  [engenty/wizards](https://github.com/engenty/wizards).
 - TypeScript. A plugin's server half is read as TypeScript, without a build.
 - A checkout, if your plugin draws in the studio: its studio half is built with the studio's
   own tools.
@@ -29,6 +29,6 @@ These pages are about extending it. The code's own documents are in the reposito
 
 | | |
 |---|---|
-| [docs/development.md](https://github.com/engenty/engenty-wizards/blob/main/docs/development.md) | Run it from source, the checks, how it is built, releases |
-| [docs/manage-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/manage-contract.md) | What a runtime and a Manage-App speak |
-| [docs/marketplace-contract.md](https://github.com/engenty/engenty-wizards/blob/main/docs/marketplace-contract.md) | What a runtime and the marketplace speak |
+| [docs/development.md](https://github.com/engenty/wizards/blob/main/docs/development.md) | Run it from source, the checks, how it is built, releases |
+| [docs/manage-contract.md](https://github.com/engenty/wizards/blob/main/docs/manage-contract.md) | What a runtime and a Manage-App speak |
+| [docs/marketplace-contract.md](https://github.com/engenty/wizards/blob/main/docs/marketplace-contract.md) | What a runtime and the marketplace speak |

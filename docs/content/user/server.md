@@ -11,7 +11,7 @@ anyone with a link can run your wizards.
 You need Docker and an https proxy in front: Caddy, Traefik or Coolify.
 
 ```bash
-git clone https://github.com/engenty/engenty-wizards.git
+git clone https://github.com/engenty/wizards.git
 cd engenty-wizards
 cp .env.example .env
 ```

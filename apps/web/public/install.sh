@@ -31,7 +31,7 @@ NODE_VERSION="${ENGENTY_WIZARDS_NODE_VERSION:-24.14.0}"
 PACKAGE_NAME="wizards"
 # What the package and the command were called up to 0.1.8.
 OLD_NAME="engenty-wizards"
-RELEASES="https://github.com/engenty/engenty-wizards/releases"
+RELEASES="https://github.com/engenty/wizards/releases"
 
 main() {
   YES=0
@@ -381,7 +381,7 @@ platform() {
       name="Linux"
       # Node's own builds need glibc.
       if (ldd --version 2>&1 || true) | grep -qi musl; then
-        die "This Linux uses musl (Alpine). Use the Docker image instead: https://github.com/engenty/engenty-wizards#run-it-on-a-server"
+        die "This Linux uses musl (Alpine). Use the Docker image instead: https://github.com/engenty/wizards#run-it-on-a-server"
       fi
       ;;
     *) die "$system is not supported: macOS and Linux are. On Windows, use WSL." ;;

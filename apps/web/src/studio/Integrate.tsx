@@ -1,3 +1,4 @@
+import { marketplaceNameOf } from "@engenty-wizards/shared/claude-plugin";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AppWindow,
@@ -28,6 +29,8 @@ import {
 
 /** The name the server gets in every client's config. */
 const NAME = "engenty-wizards";
+/** The Claude Code plugin's name, as the deployment's marketplace lists it. */
+const PLUGIN = "wizards";
 /** The variable Codex reads the key from. */
 const KEY_VAR = "ENGENTY_WIZARDS_KEY";
 
@@ -154,7 +157,7 @@ function AddByAddress({ id, url, apiKey }: { id: string; url: string; apiKey?: s
             <>
               <Hint>{t("mcp.ccPlugin")}</Hint>
               <CopyLine text={`claude plugin marketplace add ${plugin}/marketplace.json`} />
-              <CopyLine text={`claude plugin install ${NAME}@engenty`} />
+              <CopyLine text={`claude plugin install ${PLUGIN}@${marketplaceNameOf(url)}`} />
             </>
           ) : null}
         </>

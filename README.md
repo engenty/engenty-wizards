@@ -85,7 +85,7 @@ icon at the right of the address bar.
 You need Node.js 24.11 or newer and pnpm 10 (`corepack enable`).
 
 ```bash
-git clone https://github.com/engenty/engenty-wizards.git
+git clone https://github.com/engenty/wizards.git
 cd engenty-wizards
 pnpm install
 pnpm build
@@ -148,7 +148,7 @@ To remove engenty wizards, run `wizards autostart off`, then delete `~/.engenty/
 With Docker, behind an https proxy (Caddy, Traefik, Coolify):
 
 ```bash
-git clone https://github.com/engenty/engenty-wizards.git
+git clone https://github.com/engenty/wizards.git
 cd engenty-wizards
 cp .env.example .env    # set APP_URL to your https address and add a model key
 docker compose up -d --build
