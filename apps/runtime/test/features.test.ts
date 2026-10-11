@@ -18,24 +18,24 @@ describe("feature switches", () => {
     expect(
       parseFeatures(`
         # a comment
-        teamPlans
-        +site
-        -account
-        !unsetConnectors
-        ownKeys = off  # trailing comment
-        contacts.leadScoring=yes
-        Bad-Name
+        # teamPlans=on|off
+        teamPlans=on
+        site = off  # trailing comment
+        account=false
+        unsetConnectors=1
+        contacts.leadScoring=on
+        ownKeys
+        Bad-Name=on
         nonsense=maybe
       `),
     ).toEqual({
       teamPlans: true,
-      site: true,
+      site: false,
       account: false,
-      unsetConnectors: false,
-      ownKeys: false,
+      unsetConnectors: true,
       "contacts.leadScoring": true,
     });
-    expect(parseFeatures("teamPlans,-site, account=0")).toEqual({
+    expect(parseFeatures("teamPlans=on,site=off, account=0")).toEqual({
       teamPlans: true,
       site: false,
       account: false,
@@ -50,16 +50,16 @@ describe("feature switches", () => {
   it("writes a switch on its line, keeps the comments, and reads the file again when it changed", () => {
     const file = join(dir, ".features");
     expect(fileFeatures(file)).toEqual({});
-    writeFileSync(file, "# the switches\n# teamPlans\n# site\n");
+    writeFileSync(file, "# the switches\n# teamPlans=on|off\n#\n# site=on|off\n");
     writeFeature("teamPlans", true, file);
     writeFeature("site", false, file);
     writeFeature("contacts.leadScoring", true, file);
     expect(readFileSync(file, "utf8")).toBe(
-      "# the switches\nteamPlans\nsite=off\ncontacts.leadScoring\n",
+      "# the switches\nteamPlans=on\n#\nsite=off\ncontacts.leadScoring=on\n",
     );
     expect(fileFeatures(file)).toEqual({ teamPlans: true, site: false, "contacts.leadScoring": true });
     writeFeature("teamPlans", null, file);
-    expect(readFileSync(file, "utf8")).toContain("# teamPlans\n");
+    expect(readFileSync(file, "utf8")).toContain("# teamPlans=on|off\n");
     expect(fileFeatures(file)).toEqual({ site: false, "contacts.leadScoring": true });
     writeFileSync(file, "account=off\n");
     // A fresh mtime: the file is read again.

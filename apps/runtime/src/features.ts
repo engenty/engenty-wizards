@@ -23,7 +23,7 @@ import { currentTenantOrNull } from "./tenants/tenant.js";
  *
  *   1. the defaults the code declares: the core's (packages/shared/src/features.ts) and the
  *      loaded plugins' (their manifests' `features`, under the plugin's id)
- *   2. the `FEATURES` environment variable (`teamPlans,-site`): the cloud image, compose, dev
+ *   2. the `FEATURES` environment variable (`teamPlans=on,site=off`): the cloud image, compose, dev
  *   3. what the Manage-App says — for the team of a cloud runtime, for the linked account of a
  *      local one; a plan's switches and what an admin set for the team or for everyone
  *   4. the `.features` file of this install (`~/.engenty/wizards/.features`; a checkout reads
@@ -118,9 +118,10 @@ export async function currentFeatures(): Promise<Features> {
 }
 
 /**
- * Writes one switch into the `.features` file, on the line that names it when there is one
- * (commented out or not), else at the end; `null` comments the line out again. Other lines and
- * comments stay as they are. For the `wizards features` command.
+ * Writes one switch into the `.features` file as `name=on` or `name=off`, on the line that
+ * names it when there is one (commented out or not), else at the end; `null` turns the line
+ * back into the template's `# name=on|off`. Other lines and comments stay as they are. For the
+ * `wizards features` command.
  */
 export function writeFeature(name: string, on: boolean | null, file = featuresFile()): Features {
   let lines: string[] = [];
@@ -130,10 +131,10 @@ export function writeFeature(name: string, on: boolean | null, file = featuresFi
     lines = [];
   }
   const names = (line: string) => {
-    const m = /^\s*#?\s*[+\-!]?\s*([A-Za-z0-9.]+)\s*(?:=\s*\S+)?\s*(?:#.*)?$/.exec(line);
+    const m = /^\s*#?\s*([A-Za-z0-9.]+)\s*=\s*\S+\s*(?:#.*)?$/.exec(line);
     return m?.[1] === name;
   };
-  const written = on === null ? `# ${name}` : on ? name : `${name}=off`;
+  const written = on === null ? `# ${name}=on|off` : `${name}=${on ? "on" : "off"}`;
   const at = lines.findIndex(names);
   if (at === -1) {
     lines.push(written);

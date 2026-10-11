@@ -107,10 +107,10 @@ export function defaultFeatures(declared: Record<string, FeatureDeclaration> = F
 }
 
 /**
- * Switches as a file or an environment variable writes them, one per line or comma-separated:
- * `teamPlans` or `+teamPlans` turns one on, `-teamPlans`, `!teamPlans` or `teamPlans=off` turns
- * it off (`=on|off|true|false|yes|no|1|0`). `#` starts a comment. Unknown names are kept: a
- * plugin's switches are not known here.
+ * Switches in the shape of a `.env` file: one `name=on` or `name=off` per line (`true`/`false`
+ * and `1`/`0` count too), `#` starts a comment, anything else is skipped. The `FEATURES`
+ * environment variable holds the same, comma-separated. Unknown names are kept: a plugin's
+ * switches are not known here.
  */
 export function parseFeatures(text: string): Features {
   const out: Features = {};
@@ -119,30 +119,23 @@ export function parseFeatures(text: string): Features {
     if (!line) {
       continue;
     }
-    const m = /^([+\-!]?)\s*([A-Za-z0-9.]+)\s*(?:=\s*(\S+))?$/.exec(line);
-    if (!m?.[2] || !FEATURE_NAME.test(m[2])) {
+    const m = /^([A-Za-z0-9.]+)\s*=\s*(\S+)$/.exec(line);
+    if (!m?.[1] || !m[2] || !FEATURE_NAME.test(m[1])) {
       continue;
     }
-    const sign = m[1];
-    const value = m[3]?.toLowerCase();
-    let on = sign !== "-" && sign !== "!";
-    if (value !== undefined) {
-      if (["on", "true", "yes", "1"].includes(value)) {
-        on = true;
-      } else if (["off", "false", "no", "0"].includes(value)) {
-        on = false;
-      } else {
-        continue;
-      }
+    const value = m[2].toLowerCase();
+    if (["on", "true", "1"].includes(value)) {
+      out[m[1]] = true;
+    } else if (["off", "false", "0"].includes(value)) {
+      out[m[1]] = false;
     }
-    out[m[2]] = on;
   }
   return out;
 }
 
-/** The text of a `.features` file for these switches, one per line. */
+/** The text of a `.features` file for these switches, one `name=on|off` per line. */
 export function formatFeatures(features: Features): string {
-  const lines = Object.entries(features).map(([name, on]) => (on ? name : `${name}=off`));
+  const lines = Object.entries(features).map(([name, on]) => `${name}=${on ? "on" : "off"}`);
   return lines.length ? `${lines.join("\n")}\n` : "";
 }
 
