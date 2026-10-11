@@ -75,6 +75,11 @@ function failure(err: unknown): CallToolResult {
   return { isError: true, content: [{ type: "text", text: JSON.stringify(body) }] };
 }
 
+/** Where a space comes from, as the person knows it: sent by their local install, or made here. */
+function spaceFrom(p: { origin: string | null }): "your computer" | "here" {
+  return p.origin === "local" ? "your computer" : "here";
+}
+
 export function registerTools(server: McpServer, who: Principal) {
   const writer: Writer = { source: "mcp", client: who.client };
   const tool = <S extends z.ZodObject>(
@@ -265,7 +270,8 @@ export function registerTools(server: McpServer, who: Principal) {
     "wizards:read",
     {
       title: "List projects",
-      description: "The admin's projects. Each holds wizards, a brand and MCP servers.",
+      description:
+        "The admin's projects, called spaces in the studio. Each holds wizards, a brand and MCP servers. Name a space by its name; where two share one, add where it comes from (`from`). Ids are for the tools: never show them to the person.",
       input: z.object({}),
       readOnly: true,
     },
@@ -273,6 +279,7 @@ export function registerTools(server: McpServer, who: Principal) {
       (await listProjects(who.userId)).map((p) => ({
         id: p.id,
         name: p.name,
+        from: spaceFrom(p),
         wizardCount: p.wizardCount,
       })),
   );
@@ -282,20 +289,28 @@ export function registerTools(server: McpServer, who: Principal) {
     "wizards:read",
     {
       title: "List wizards",
-      description: "The admin's wizards, newest first.",
+      description:
+        "The admin's wizards, newest first, each with its space's name and where that space comes from. Ids are for the tools: never show them to the person.",
       input: z.object({ projectId: z.string().optional() }),
       readOnly: true,
     },
-    async ({ projectId }) =>
-      (await listWizards(who.userId, projectId)).map((w) => ({
-        id: w.id,
-        projectId: w.projectId,
-        title: w.title,
-        revision: w.revision,
-        published: w.published,
-        updatedAt: w.updatedAt,
-        studioUrl: studioUrl(w.id),
-      })),
+    async ({ projectId }) => {
+      const spaces = new Map((await listProjects(who.userId)).map((p) => [p.id, p]));
+      return (await listWizards(who.userId, projectId)).map((w) => {
+        const space = spaces.get(w.projectId);
+        return {
+          id: w.id,
+          projectId: w.projectId,
+          space: space?.name ?? null,
+          spaceFrom: space ? spaceFrom(space) : null,
+          title: w.title,
+          revision: w.revision,
+          published: w.published,
+          updatedAt: w.updatedAt,
+          studioUrl: studioUrl(w.id),
+        };
+      });
+    },
   );
 
   tool(

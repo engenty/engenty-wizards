@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.55",
+    "timestamp": 1791733245,
+    "commits": [
+      {
+        "id": "a2a25b2",
+        "message": "an AI app names spaces and wizards, not their ids – list_projects says where each space comes from (from: \"your computer\" for one a local install sent, \"here\"), list_wizards gives each wizard its space's name and origin, and the tools' descriptions and the server's instructions say ids are for the tools only; claude.ai had listed two spaces both called \"Meine Wizards\" by their ids",
+        "group": "Fixed",
+        "scope": "mcp",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.54",
-    "timestamp": 1791732760,
+    "timestamp": 1791732778,
     "commits": [
       {
         "id": "00a132d",
