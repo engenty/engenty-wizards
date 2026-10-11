@@ -1,6 +1,6 @@
 # Copyrights
 
-Copyright © 2026 Matthias Platzer.
+Copyright © 2026 Thru The Heart Creative GmbH - Matthias Platzer.
 
 The code in this repository is published under the Functional Source License, version 1.1,
 with the MIT future licence ([LICENSE](LICENSE), `FSL-1.1-MIT`): use it for yourself and your
@@ -8,9 +8,11 @@ company, run it, change it — just don't offer it to others as a competing prod
 Each release becomes MIT two years after it is published. Every package of the workspace names
 that licence in its `package.json`.
 
-"engenty", "engenty wizards", the wordmark and the engenty figures are marks of their owner. The
-licence covers the code, the figures as code included; it does not license the marks for another
-product or service.
+"engenty" (the brand of a family of products), "engenty.wizards" (also written "engenty wizards"),
+the wordmark and the engenty figures are marks of Thru The Heart Creative GmbH. The word "wizards"
+on its own is not one of them: it names the package, the repository and the command. The licence
+covers the code, the figures as code included; it does not license the marks for another product
+or service.
 
 ## What is not ours
 
