@@ -28,8 +28,8 @@ engenty think with?
   the page so it is.
 - **Apple Intelligence** has nothing to connect: the test runs once it is switched on (System
   Settings → Apple Intelligence & Siri). It thinks short texts and decisions; research, long
-  documents and code need another way, added later under Settings → Models. See
-  [Apple Intelligence](./models.md#apple-intelligence).
+  documents and code stay with a client you picked before it, or need another way, added later
+  under Settings → Models. See [Apple Intelligence](./models.md#apple-intelligence).
 
 ## The test
 

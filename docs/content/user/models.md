@@ -52,15 +52,15 @@ no lists or documents), and a step whose text is too long fails with a note that
 such a step the class High, or bind the class elsewhere. The binding is `apple:default`;
 `apple:tagging` is Apple's adapter for tagging and extraction.
 
-High and Highest need a way of their own: a key, or the credits. The page under the choice
-names what they run on. An installed AI client thinks all text or none, so picking Apple
-Intelligence takes text off the client.
+High and Highest keep the way they had: the installed AI client, a key, or the credits. The
+page under the choice names it. Picking another way for text afterwards takes Classifier and
+Standard off Apple Intelligence again.
 
 "Voice notes" offers Apple Intelligence on the same Macs, even with Apple Intelligence switched
 off: the Mac writes a recording down itself (`apple:transcribe`), in the language the runner was
 in, for nothing. The first note in a language waits while Apple fetches it. A recording from
 Chrome or Firefox (WebM, Ogg) needs ffmpeg on the Mac, which turns it into WAV first; Safari's
-and the app's recordings need nothing.
+and the app's recordings need nothing. Without ffmpeg the page says so under "Voice notes".
 
 **In the app.** On an iPhone with iOS 26 the engenty wizards app writes voice notes down on the
 phone, and once Apple Intelligence is switched on it also answers a run's short text calls —
