@@ -21,7 +21,7 @@ import { currentTenantOrNull } from "./tenants/tenant.js";
  * Which feature switches are on for this runtime (packages/shared/src/features.ts), laid over
  * each other, the last winning:
  *
- *   1. the defaults the code declares: the core's (packages/shared/src/features.ts) and the
+ *   1. the defaults the code declares: the core's (packages/shared/src/feature-flags.ts) and the
  *      loaded plugins' (their manifests' `features`, under the plugin's id)
  *   2. the `FEATURES` environment variable (`teamPlans=on,site=off`): the cloud image, compose, dev
  *   3. what the Manage-App says — for the team of a cloud runtime, for the linked account of a

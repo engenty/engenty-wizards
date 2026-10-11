@@ -1,4 +1,4 @@
-# Feature switches of this checkout (an install: ~/.engenty/wizards/.features).
+# Feature flags of this checkout (an install: ~/.engenty/wizards/.features); the list: packages/shared/src/feature-flags.ts
 # Same shape as .env: one `name=on` or `name=off` per line, `#` keeps the default.
 # This file has the last word over the account's or team's switches from the Manage-App.
 # A running runtime reads it at once; `wizards features` lists what counts.

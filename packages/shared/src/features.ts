@@ -1,61 +1,12 @@
+import { FEATURES, type FeatureDeclaration } from "./feature-flags.js";
+
 /**
- * Feature switches: which parts of a release are on. A switch names a part that ships in the
- * code but is not for everyone yet (`teamPlans`), or one a plan includes (`ownKeys`). The
- * runtime resolves them from the defaults here, what the Manage-App says for the team or the
+ * Feature switches: how a flag of feature-flags.ts (or a plugin's manifest) gets its value.
+ * The runtime resolves them from the defaults, what the Manage-App says for the team or the
  * linked account, and this install's `.features` file; the studio and plugins read the result.
- * The names stay in the code — no public page lists them.
- *
- * `release`: on or off for everyone by default; the Manage-App or a `.features` file turns it
- * on for a team or a machine before the default flips. A release switch whose default became
- * `true` is removed, with its branches, in the same release.
- * `plan`: part of a plan. On until the team's plan says `false`; alone nothing says so.
  */
-export interface FeatureDeclaration {
-  kind: "release" | "plan";
-  /** What counts until a layer says otherwise. */
-  default: boolean;
-  /** A few words for the lists: `wizards features`, the admin's switches. */
-  label: string;
-  hint?: string;
-}
 
-/**
- * The core's own switches. A plugin declares its own in its manifest (`features`, keyed by the
- * short name; the switch is known as `<plugin id>.<name>`) and they join these at run time.
- */
-export const FEATURES = {
-  account: {
-    kind: "release",
-    default: true,
-    label: "Account in a local install",
-    hint: "Linking, Settings → Account, the offer to sign in.",
-  },
-  unsetConnectors: {
-    kind: "release",
-    default: false,
-    label: "Connectors without an OAuth client",
-    hint: "Built-in connectors are shown although their client is not set up.",
-  },
-  site: {
-    kind: "release",
-    default: false,
-    label: "Link to the website in the setup",
-    hint: "The local install's setup links the product's site.",
-  },
-  teamPlans: {
-    kind: "release",
-    default: false,
-    label: "Team plans",
-    hint: "The team page in the cloud studio, and plans that carry this switch on the account pages.",
-  },
-  ownKeys: {
-    kind: "plan",
-    default: true,
-    label: "Own API keys",
-    hint: "The team puts its providers' keys into the cloud studio instead of running on credits.",
-  },
-} as const satisfies Record<string, FeatureDeclaration>;
-
+export { FEATURES, type FeatureDeclaration };
 export type FeatureName = keyof typeof FEATURES;
 export type FeatureKind = (typeof FEATURES)[FeatureName]["kind"];
 
