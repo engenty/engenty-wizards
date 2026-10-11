@@ -10,6 +10,11 @@ import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition"
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
+import {
+  PACKAGE_EXTENSION,
+  PACKAGE_MAX_BYTES,
+  PACKAGE_MIME,
+} from "@engenty-wizards/shared/wizard-package";
 import { generateText } from "ai";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -117,13 +122,7 @@ import {
   valueContents,
 } from "../services/knowledge.js";
 import { writeSummary } from "../services/knowledge-model.js";
-import {
-  exportWizard,
-  importWizard,
-  PACKAGE_EXTENSION,
-  PACKAGE_MAX_BYTES,
-  PACKAGE_MIME,
-} from "../services/package.js";
+import { exportWizard, importWizard } from "../services/package.js";
 import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
 import {
   addProjectFile,

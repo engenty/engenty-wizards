@@ -1,5 +1,6 @@
 import {
   pluginToolOf,
+  shapeIssues,
   type ValidationIssue,
   validateWizard,
   type WizardDefinition,
@@ -8,7 +9,6 @@ import {
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { z } from "zod";
 import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
@@ -227,12 +227,6 @@ export async function addMessage(
   return id;
 }
 
-function stepLabel(raw: unknown, index: number): string {
-  const steps = (raw as { steps?: unknown[] } | null)?.steps;
-  const id = (steps?.[index] as { id?: unknown } | undefined)?.id;
-  return typeof id === "string" ? `steps[${index}] "${id}"` : `steps[${index}]`;
-}
-
 /** The schema check every write passes. Validator issues are allowed in a draft; a wrong shape is not. */
 export function parseDraft(
   raw: unknown,
@@ -245,17 +239,6 @@ export function parseDraft(
     });
   }
   return { draft: parsed.data, issues: validateWizard(parsed.data, files) };
-}
-
-export function shapeIssues(error: z.ZodError, raw: unknown): ValidationIssue[] {
-  return error.issues.map((i) => {
-    const [head, index, ...rest] = i.path;
-    const where =
-      head === "steps" && typeof index === "number"
-        ? [stepLabel(raw, index), ...rest].join(".")
-        : i.path.join(".");
-    return { message: `${where || "wizard"}: ${i.message}` };
-  });
 }
 
 export async function createWizard(
