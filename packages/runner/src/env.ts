@@ -57,6 +57,12 @@ export interface RunnerEnv {
   ShareResultButton?: ComponentType<ShareResultProps>;
   /** Extra headers on every request (a WordPress nonce). */
   headers?: Record<string, string>;
+  /**
+   * A host that runs wizards on its own (the WordPress plugin): its server writes no PDF, so the
+   * runner writes one from a written output in the browser (pdf.ts); an HTML download of a
+   * written output is a page to print.
+   */
+  standalone?: boolean;
 }
 
 const none: AppBridge = {
@@ -95,3 +101,4 @@ export const appTell = (ability: AppAbility, args?: unknown) =>
   (env?.app ?? none).tell(ability, args);
 export const appDownload = (event: { preventDefault(): void }, href: string, filename?: string) =>
   (env?.app ?? none).download(event, href, filename);
+export const standalone = () => env?.standalone === true;

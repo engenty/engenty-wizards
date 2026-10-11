@@ -217,10 +217,15 @@ export function needs(step: Step, def: WizardDefinition): StepNeed[] {
         }
         const stays = d.formats.some((f) => BASE_FORMATS.has(f));
         for (const f of d.formats) {
-          // A PDF the browser prints from the HTML; the others fall away where another stays.
-          if (!BASE_FORMATS.has(f)) {
-            add(`format:${f}`, f !== "pdf" && !stays);
+          if (BASE_FORMATS.has(f)) {
+            continue;
           }
+          // A PDF of a written text the runner makes in the browser (packages/runner/src/pdf.ts);
+          // of a document the browser prints the HTML. The others fall away where another stays.
+          if (f === "pdf" && from?.type === "agent") {
+            continue;
+          }
+          add(`format:${f}`, f !== "pdf" && !stays);
         }
       }
       break;

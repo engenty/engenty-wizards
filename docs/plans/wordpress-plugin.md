@@ -344,7 +344,7 @@ model, as stable ids so every app can word them. `standaloneFit(def)` folds them
 | `field:audio`, `field:connection`, `field:slot` | page fields | hard; an optional `audio` field is soft (it is left out, as the cloud does) |
 | `field:file` | a `file` field a later thinking step reads | hard: `read_document` is Node |
 | `field:image`, `field:location` | page fields | soft: photos go to the model where the provider takes images, else the step runs without them; a typed address stands in for geocoding |
-| `format:pdf`, `docx`, `xlsx`, `png`, `mp4`, `mp3`, `zip` | result deliverables | soft when another format of the same output stays (html, md, txt, csv, json); hard when none does |
+| `format:pdf`, `docx`, `xlsx`, `png`, `mp4`, `mp3`, `zip` | result deliverables | a PDF of a written text is no need: the runner makes it in the browser (pdfmake, Roboto bundled); a PDF of a document is soft, the browser prints the HTML; the others are soft when another format of the same output stays (html, md, txt, csv, json), hard when none does |
 | `lists`, `memory` | `def.lists`, the `list` field kind, `{{memory}}` | hard |
 | `each` | `agent.each`, `generate.each` | soft: runs, one request per entry, slower |
 
@@ -379,7 +379,7 @@ wizards and computes it itself only for uploads.
 
 | Runs | With less | Not standalone |
 |---|---|---|
-| Pages with every field but `audio`, `connection`, `slot`; thinking steps without tools (text, markdown, json); decisions, decided fields, branches and surfaces; `review`; `surface`; `widget`; results as html, md, txt, csv, json | photos and addresses (above); `pages` without Wissen; `each`; PDF through the browser's print | tools, accounts, MCP, Pro plugins; films; video, voice, document and dashboard generation; file reading; lists and memory; docx, xlsx, png, mp4, mp3, zip |
+| Pages with every field but `audio`, `connection`, `slot`; thinking steps without tools (text, markdown, json); decisions, decided fields, branches and surfaces; `review`; `surface`; `widget`; results as html, md, txt, csv, json, and a PDF of a written text made in the browser | photos and addresses (above); `pages` without Wissen; `each`; a document's PDF through the browser's print | tools, accounts, MCP, Pro plugins; films; video, voice, document and dashboard generation; file reading; lists and memory; docx, xlsx, png, mp4, mp3, zip |
 
 Fits: lead and contact forms, quotes and price estimates, advice and recommendations, checklists
 and classifications, text generators, anything that is pages, thinking and a text or JSON result.
@@ -670,7 +670,8 @@ What changed against the plan above:
 | Widgets run standalone | A widget needs the runtime's widget host: `widget` is a hard need | None of the templates that fit uses one |
 | `GET local/runs/:id/download?step=&format=` | `GET local/runs/:id/steps/:step/download?format=`, the runtime's shape, so the runner package's `DownloadButtons` needs no change | One copy |
 | The provider from the AI Client's registry | `getRegisteredProviderIds`, `isProviderConfigured`, the connector's name; WordPress 7.1 core registers the OpenAI, Anthropic and Google *connectors*, the providers themselves are plugins from WordPress.org (`ai-provider-for-openai`) | What 7.1.3 has |
-| Checkpoint 8: a PDF branch closed | A Word branch: a PDF asked of a written output is the browser's print of its HTML and never closes; a Word file has no stand-in, so a toggle leading to it is what closes | Follows from the first row |
+| Checkpoint 8: a PDF branch closed | A Word branch: a PDF asked of a written output never closes (the browser's print of its HTML then, a file made in the browser since 2026-10-11); a Word file has no stand-in, so a toggle leading to it is what closes | Follows from the first row |
+| A PDF of a written output is the browser's print of its HTML | A real file, made in the browser: pdfmake lays the Markdown or the JSON out with Roboto (`packages/runner/src/pdf.ts`, loaded on the first click, about 1.5 MB), the runner's PDF button saves it and the share button hands it on; the HTML of a written output opens as a page with the print dialog ("Drucken"), a document's PDF stays that print; `format:pdf` of a written text is no need any more | A visitor promised a PDF got an .html download labelled HTML, and had to open and print it |
 | No model choice of our own | None in the admin; the filter `engenty_wizards_prompt` lets a site prefer a provider or a model in code where Connectors give no choice (several Ollama models) | A developer hook, no screen |
 
 Tried on 2026-10-09 on WordPress 7.1.3 (SQLite) with a provider that answers canned (`bin/fake-provider.php`): the local setup, two shipped wizards live, the FAQ wizard and the price wizard (page → JSON step → prefilled line items → document → result) through the routes and in the browser (start, page, working, result with Markdown and Text, the modal, the bubble), the seventh run in an hour refused, the honeypot, downloads, Ergebnisse with the drawer, the settings. No prompt in the page source.

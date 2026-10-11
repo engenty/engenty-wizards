@@ -626,6 +626,9 @@ function Result({
                 stepId={s.id}
                 formats={formats}
                 title={label ?? s.title}
+                step={s}
+                output={output ?? undefined}
+                foot={`${view.wizard.title} · ${new Date().toLocaleDateString(runnerEnv().lang)}`}
               />
             </div>
             <OutputView base={`${runBase(view.id)}`} step={s} output={output} />

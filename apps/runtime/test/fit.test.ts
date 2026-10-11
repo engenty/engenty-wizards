@@ -174,17 +174,14 @@ describe("what a step needs beyond a text model", () => {
 });
 
 describe("whether a wizard runs on its own", () => {
-  it("a quote request runs with less: photos where the provider takes them, the PDF falls away", () => {
+  it("a quote request runs with less: photos where the provider takes them; its PDF the runner makes in the browser", () => {
     const fit = standaloneFit(quote);
     expect(fit.fit).toBe("less");
-    expect(fit.notes).toEqual([
-      { stepId: "wish", need: "field:image", hard: false },
-      { stepId: "done", need: "format:pdf", hard: false },
-    ]);
+    expect(fit.notes).toEqual([{ stepId: "wish", need: "field:image", hard: false }]);
     const entry = standaloneEntry(quote);
     expect(entry.missing).toEqual([]);
     expect(entry.optional).toEqual(["documents"]);
-    expect(entry.without).toEqual(["pdf"]);
+    expect(entry.without).toEqual([]);
     expect(entry.needs).toEqual([]);
   });
 

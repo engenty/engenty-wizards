@@ -29,9 +29,14 @@
     "./theme.css": "./src/theme.css",
     "./runner.css": "./dist/runner.css"
   },
-  "files": ["dist", "src", "LICENSE"],
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "vite build && node scripts/css.mjs",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -40,6 +45,7 @@
     "fflate": "0.8.3",
     "lucide-react": "^1.49.0",
     "marked": "^18.0.14",
+    "pdfmake": "0.3.11",
     "qr-scanner": "1.4.2"
   },
   "peerDependencies": {
@@ -48,6 +54,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/pdfmake": "0.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
@@ -57,6 +64,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
     "vite": "^8.3.2",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.11"
   }
 }
