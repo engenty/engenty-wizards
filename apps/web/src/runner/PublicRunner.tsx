@@ -7,7 +7,7 @@ import { BASE, withBase } from "@/lib/base";
 import { BRAND, Mascot, ThemeToggle } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { appLink, appTell, IN_APP } from "../lib/app";
-import { closeEmbed, EMBED, useEmbed } from "../lib/embed";
+import { closeEmbed, EMBED, EMBED_PAGE, useEmbed } from "../lib/embed";
 import { t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
 import { Button, cn, IconButton, Spinner } from "../ui";
@@ -256,6 +256,7 @@ function useStartRun(wizard: PublicWizard, home: string) {
         {
           turnstileToken: captcha ?? undefined,
           embedded: EMBED !== null,
+          origin: EMBED_PAGE ?? undefined,
         },
       );
       try {

@@ -34,7 +34,14 @@ import {
   type TranscriptionModel,
 } from "ai";
 import { accountToken, linkedAccount } from "./auth/account.js";
+import { DeviceModel, deviceThinks } from "./engine/device.js";
 import { env } from "./env.js";
+import {
+  appleModel,
+  appleStatus,
+  appleTranscriptionModel,
+  appleUnavailable,
+} from "./harness/apple.js";
 import {
   detectHarness,
   type Harness,
@@ -285,6 +292,9 @@ function parse(ref: string): { provider: string | null; id: string; vendor: stri
 
 const vendorOf = (ref: string) => parse(ref).vendor;
 
+/** A model on this machine: Ollama, or Apple Intelligence on a Mac (harness/apple.ts). */
+const isLocalProvider = (provider: string | null) => provider === "ollama" || provider === "apple";
+
 /** The part of `codex/default` after the client. */
 const aliasOf = (id: string) => id.split("/").slice(1).join("/");
 
@@ -294,7 +304,7 @@ function reachable(cfg: ModelConfig, ref: string): boolean {
     return false;
   }
   const { provider, vendor } = parse(ref);
-  if ((provider === null && isHarnessVendor(vendor)) || provider === "ollama") {
+  if ((provider === null && isHarnessVendor(vendor)) || isLocalProvider(provider)) {
     // An installed client and a local model are of this machine.
     return !managed;
   }
@@ -546,6 +556,13 @@ async function ownLanguageModel(
         }).chat(id),
         gateway: false,
       };
+    case "apple": {
+      const status = await appleStatus();
+      if (!status.available) {
+        throw new ModelUnavailableError(appleUnavailable(status));
+      }
+      return { model: appleModel(id), gateway: false };
+    }
     case "openai":
       return { model: createOpenAI({ apiKey: need(cfg, "openai") })(id), gateway: false };
     case "anthropic":
@@ -572,10 +589,24 @@ async function ownLanguageModel(
   );
 }
 
-/** The language model a text class runs on. */
+/**
+ * The language model a text class runs on. A run watched from a device that offers the class
+ * (the app's Apple Intelligence, engine/device.ts) asks the device first and falls back to this.
+ */
 export async function textModel(
   cls: TextClass | "audio" | "image",
   meta: CallMeta = {},
+): Promise<ResolvedModel<LanguageModel>> {
+  const resolved = await ownTextModel(cls, meta);
+  const device = meta.runId && isText(cls) ? deviceThinks(meta.runId, cls) : null;
+  return device
+    ? { ...resolved, model: new DeviceModel(meta.runId as string, resolved.model, device.maxChars) }
+    : resolved;
+}
+
+async function ownTextModel(
+  cls: TextClass | "audio" | "image",
+  meta: CallMeta,
 ): Promise<ResolvedModel<LanguageModel>> {
   const route = await routeOf(cls);
   if (route.kind === "credits") {
@@ -585,10 +616,20 @@ export async function textModel(
   return { model, ref: route.ref, vendor: vendorOf(route.ref), gateway, metered: false };
 }
 
-/** Hands the tools an agent will call to a model that runs them itself (an installed AI client). */
-export function attachTools(resolved: ResolvedModel<unknown>, tools: Record<string, unknown>) {
+/**
+ * Hands the tools an agent will call to a model that runs them itself (an installed AI client).
+ * `ignorable`: the step declared no tools and has no uploads — the run's device may answer
+ * without the generic ones (engine/device.ts).
+ */
+export function attachTools(
+  resolved: ResolvedModel<unknown>,
+  tools: Record<string, unknown>,
+  ignorable = false,
+) {
   if (resolved.model instanceof HarnessModel) {
     resolved.model.attach(tools);
+  } else if (resolved.model instanceof DeviceModel) {
+    resolved.model.attach(tools, ignorable);
   }
 }
 
@@ -741,6 +782,19 @@ export async function listenerModel(
   if (route.kind === "own") {
     const { cfg, ref } = route;
     const { provider, id, vendor } = parse(ref);
+    if (provider === "apple") {
+      // This Mac writes the note down itself (SpeechAnalyzer); nothing is paid.
+      return {
+        kind: "transcription",
+        resolved: {
+          model: appleTranscriptionModel(),
+          ref,
+          vendor,
+          gateway: false,
+          metered: false,
+        },
+      };
+    }
     const transcriber =
       provider === "elevenlabs"
         ? createElevenLabs({ apiKey: need(cfg, "elevenlabs") }).transcription(id)
@@ -1052,14 +1106,20 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       const { provider, vendor } = parse(ref);
       const client = provider === null && isHarnessVendor(vendor);
       ways[cls] = {
-        kind: client ? "client" : provider === "ollama" ? "local" : "key",
+        kind: client ? "client" : isLocalProvider(provider) ? "local" : "key",
         by: client
           ? vendor
-          : providerOfRef(ref) === "gateway" && !cfg.keys.gateway
-            ? vendor
-            : providerOfRef(ref),
+          : isLocalProvider(provider)
+            ? provider
+            : providerOfRef(ref) === "gateway" && !cfg.keys.gateway
+              ? vendor
+              : providerOfRef(ref),
         ref,
-        problem: client ? null : await gatewayProblem(cls, ref),
+        problem: client
+          ? null
+          : provider === "apple"
+            ? await appleProblem()
+            : await gatewayProblem(cls, ref),
       };
       continue;
     }
@@ -1081,6 +1141,12 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       : { kind: "none", by: null, ref: "", problem: problem ?? missingText(cfg, cls) };
   }
   return ways;
+}
+
+/** Why Apple Intelligence does not answer right now; null while it does. */
+async function appleProblem(): Promise<string | null> {
+  const status = await appleStatus();
+  return status.available ? null : appleUnavailable(status);
 }
 
 /** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */
@@ -1105,6 +1171,8 @@ export async function modelSettings() {
       boolean
     >,
     ways: await classWays(),
+    /** Apple Intelligence on this Mac: shown where the machine can run it, picked once it answers. */
+    apple: managed ? null : await appleStatus(),
     /** What a class costs on the credits, where they are at hand. */
     prices: (await classCatalog())?.classes ?? null,
     /** The media models the credits pay for, which a binding may name. */

@@ -1,6 +1,6 @@
 {
   "name": "engenty-wizards",
-  "version": "0.2.48",
+  "version": "0.2.50",
   "license": "FSL-1.1-MIT",
   "private": true,
   "type": "module",
@@ -28,11 +28,14 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "biome check .",
-    "fix": "biome check --write ."
+    "fix": "biome check --write .",
+    "templates:export": "tsx --conditions=wizards-source scripts/export-templates.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
+    "@engenty-wizards/shared": "workspace:*",
     "concurrently": "^10.0.5",
+    "fflate": "0.8.3",
     "git-cliff": "^2.14.2",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"

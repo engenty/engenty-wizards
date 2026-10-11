@@ -18,6 +18,7 @@ COPY apps/runtime/package.json apps/runtime/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
 COPY packages/plugin-sdk/package.json packages/plugin-sdk/
+COPY packages/runner/package.json packages/runner/
 COPY modules/calls/package.json modules/calls/
 COPY modules/sms/package.json modules/sms/
 COPY modules/whatsapp/package.json modules/whatsapp/

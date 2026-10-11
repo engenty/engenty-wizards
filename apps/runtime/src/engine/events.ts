@@ -7,8 +7,24 @@ import { db, schema } from "../db/client.js";
 const bus = new EventEmitter();
 bus.setMaxListeners(0);
 
-/** Something changed on a run: a new event row, or a status change (event = null). */
-export type RunSignal = { runId: string; event: RunEvent | null };
+/**
+ * Something changed on a run: a new event row, or a status change (event = null) — or the
+ * runtime asks the device the run is watched from to think (`device`, nothing stored).
+ */
+export type RunSignal = { runId: string; event: RunEvent | null; device?: DeviceRequest };
+
+/** A call for the run's device, as engine/device.ts makes it. */
+export interface DeviceRequest {
+  id: string;
+  kind: "think";
+  system: string;
+  prompt: string;
+  schema: unknown | null;
+}
+
+export function signalDevice(runId: string, request: DeviceRequest) {
+  bus.emit(runId, { runId, event: null, device: request } satisfies RunSignal);
+}
 
 export async function emitEvent(
   runId: string,

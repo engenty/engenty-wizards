@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../../lib/api";
+import { withBase } from "../../lib/base";
 import { useFeature } from "../../lib/features";
 import { type Key, lang, t } from "../../lib/i18n";
 import {
@@ -30,9 +31,70 @@ import { PluginFrame, useStudioPlugins } from "../../plugins/host";
 import { Button, cn, Dialog, Input, Segmented, Spinner, Switch } from "../../ui";
 import { LinkStatus, useAccountLink } from "../Account";
 import { openExternal } from "../LocalRuntime";
+import { FitChip, NeedList, useStandalone } from "../StandaloneNeeds";
 import { hostOf, ownLink, sharedLink, type WhereItRuns, whereItRuns } from "../where";
 import { useEstimate } from "./estimate";
 import { WizardQr } from "./WizardQr";
+
+/** Where the WordPress plugin is downloaded: the latest release of its own repository. */
+const WORDPRESS_ZIP =
+  "https://github.com/engenty/engenty-wizards-wordpress/releases/latest/download/engenty-wizards.zip";
+
+/**
+ * The wizard on a WordPress site: through the account with the plugin, or without one as a
+ * package the site runs by itself — with what it needs there, in the gallery's words.
+ */
+function WordPress({ wizard }: { wizard: WizardDetail }) {
+  const fit = useStandalone(wizard.draft);
+  const [knowledge, setKnowledge] = useState(false);
+  const query = [wizard.published ? "published=1" : "", knowledge ? "knowledge=1" : ""]
+    .filter(Boolean)
+    .join("&");
+  const href = `/api/studio/wizards/${wizard.id}/export${query ? `?${query}` : ""}`;
+  return (
+    <div className="flex flex-col gap-3 border-border-soft border-t pt-4">
+      <h3 className="font-medium text-[0.9375rem]">{t("share.wp")}</h3>
+      <div className="flex items-start gap-3 rounded-lg bg-paper-2 px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-[0.875rem]">{t("share.wpAccount")}</div>
+          <p className="text-[0.8125rem] text-ink-3">{t("share.wpAccountHint")}</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => window.open(WORDPRESS_ZIP, "_blank")}>
+          {t("share.wpPlugin")}
+        </Button>
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg px-3 py-2.5 ring-1 ring-border-soft">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-[0.875rem]">{t("share.wpLocal")}</span>
+          <FitChip fit={fit.fit} />
+        </div>
+        <p className="text-[0.8125rem] text-ink-3">{t("share.wpLocalHint")}</p>
+        <NeedList def={wizard.draft} fit={fit} />
+        {fit.fit === "no" ? null : (
+          <div className="flex items-start justify-between gap-4 pt-1">
+            <div className="min-w-0">
+              <div className="text-[0.875rem]">{t("share.wpKnowledge")}</div>
+              <p className="text-[0.75rem] text-ink-3">{t("share.wpKnowledgeHint")}</p>
+            </div>
+            <Switch checked={knowledge} onChange={setKnowledge} label={t("share.wpKnowledge")} />
+          </div>
+        )}
+        {fit.fit === "no" ? null : (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant={wizard.published ? "primary" : "secondary"}
+              onClick={() => window.open(withBase(href), "_blank")}
+            >
+              {t(wizard.published ? "share.wpPackage" : "share.wpPackageDraft")}
+            </Button>
+          </div>
+        )}
+      </div>
+      <p className="text-[0.75rem] text-ink-3">{t("share.wpHelp")}</p>
+    </div>
+  );
+}
 
 /** What the cloud would lack for the draft; `documents`: the project's documents are not sent. */
 interface CloudCheck {
@@ -60,33 +122,44 @@ const shortTime = () => new Intl.DateTimeFormat(lang, { timeStyle: "short" });
 
 /**
  * The tag that shows the wizard behind `url` (…/w/<token>) in a website (`public/embed.js`):
- * page by page or as a chat; in the page, or behind a button that opens it.
+ * page by page or as a chat; in the page, behind a button that opens it, or as a bubble at the
+ * bottom right of every page (a chat's button is the popout).
  */
 function Embed({ url, title }: { url: string; title: string }) {
   const [chat, setChat] = useState(false);
-  const [button, setButton] = useState(false);
+  const [place, setPlace] = useState<"inline" | "button" | "bubble">("inline");
   const [copied, setCopied] = useState(false);
   const [, app, token] = url.match(/^(.*)\/w\/([^/]+)$/) ?? [];
   if (!token) {
     return null;
   }
-  const extra = chat
-    ? button
-      ? ' data-mode="popout"'
-      : ' data-runner="chat"'
-    : button
-      ? ` data-mode="modal" data-label="${attr(title)}"`
-      : "";
+  // A chat has no bubble: its button in the corner is the popout.
+  const at = chat && place === "bubble" ? "button" : place;
+  let extra = "";
+  if (chat) {
+    extra = at === "button" ? ' data-mode="popout"' : ' data-runner="chat"';
+  } else if (at !== "inline") {
+    extra = ` data-mode="${at === "button" ? "modal" : "bubble"}" data-label="${attr(title)}"`;
+  }
   const tag = `<script async src="${app}/embed.js" data-wizard="${token}"${extra}></script>`;
   const looks = [t("embed.steps"), t("embed.chat")];
-  const places = [t("embed.inline"), t(chat ? "embed.popout" : "embed.modal")];
-  const hint: Key = chat
-    ? button
-      ? "embed.popoutHint"
-      : "embed.chatInlineHint"
-    : button
-      ? "embed.modalHint"
-      : "embed.inlineHint";
+  const placeKeys = chat
+    ? (["inline", "button"] as const)
+    : (["inline", "button", "bubble"] as const);
+  const placeLabel = {
+    inline: t("embed.inline"),
+    button: t(chat ? "embed.popout" : "embed.modal"),
+    bubble: t("embed.bubble"),
+  };
+  const stepHints = {
+    inline: "embed.inlineHint",
+    button: "embed.modalHint",
+    bubble: "embed.bubbleHint",
+  } as const;
+  let hint: Key = stepHints[at];
+  if (chat) {
+    hint = at === "button" ? "embed.popoutHint" : "embed.chatInlineHint";
+  }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-4">
@@ -111,9 +184,9 @@ function Embed({ url, title }: { url: string; title: string }) {
           options={looks}
         />
         <Segmented
-          value={places[button ? 1 : 0]}
-          onChange={(v) => setButton(v === places[1])}
-          options={places}
+          value={placeLabel[at]}
+          onChange={(v) => setPlace(placeKeys.find((k) => placeLabel[k] === v) ?? "inline")}
+          options={placeKeys.map((k) => placeLabel[k])}
         />
       </div>
       <pre className="select-all whitespace-pre-wrap break-all rounded-lg bg-paper-2 px-3 py-2.5 font-mono text-[0.75rem] text-ink-2 leading-relaxed">
@@ -812,6 +885,7 @@ export function ShareDialog({
         {local && !linked && account ? <SignInOffer way={teaser} /> : null}
         {wizard.published ? <Channels wizard={wizard} /> : null}
         <Settings wizard={wizard} cloud={linked ? cloud.data : undefined} />
+        {account ? <WordPress wizard={wizard} /> : null}
         {linked && wizard.published ? (
           <button
             type="button"

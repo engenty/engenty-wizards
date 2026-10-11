@@ -20,6 +20,7 @@ on:
       - packages/**
       - bin/**
       - scripts/npm-package.mjs
+      - scripts/export-templates.ts
       - package.json
       - pnpm-lock.yaml
       - .github/workflows/release.yml
@@ -29,11 +30,31 @@ permissions:
   contents: read
 
 jobs:
+  # Apple Intelligence as a model (apps/runtime/src/harness/apple.ts) runs through a Swift helper
+  # that only a Mac with the macOS 26 SDK builds; the package made on Linux takes it from here.
+  apple:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build wizards-apple
+        run: node apps/runtime/scripts/build-apple.mjs --force
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apple-helper
+          path: apps/runtime/dist/apple/wizards-apple
+          if-no-files-found: error
+
   package:
+    needs: apple
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: apple-helper
+          path: dist/apple-helper
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -46,12 +67,57 @@ jobs:
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
 
       - name: Pack
-        run: node scripts/npm-package.mjs
+        run: node scripts/npm-package.mjs --apple dist/apple-helper/wizards-apple
 
       - uses: actions/upload-artifact@v7
         with:
           name: npm-package
           path: dist/npm/*.tgz
+          if-no-files-found: error
+
+  # The marketplace's templates as `.wizard` packages with their standalone fit: what the
+  # WordPress plugin ships for sites without an account (its release workflow takes the ones
+  # that run there as they are). Nothing of an account is needed.
+  templates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm templates:export
+      - name: The templates as one archive
+        run: (cd dist && tar -czf templates.tgz templates)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: templates
+          path: dist/templates.tgz
+          if-no-files-found: error
+
+  # The runner package as a host without this repository takes it: the WordPress plugin's
+  # release vendors it (packages/runner/README.md).
+  runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @engenty-wizards/runner build
+      - name: The runner as one archive
+        run: mkdir -p dist && (cd packages/runner && tar -czf ../../dist/runner.tgz dist LICENSE README.md package.json)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: runner
+          path: dist/runner.tgz
           if-no-files-found: error
 
   # The installer, as a person runs it, with the package of this commit instead of the registry's:
@@ -95,7 +161,7 @@ jobs:
           "$wizards" stop
 
   publish:
-    needs: [package, installer]
+    needs: [package, installer, templates, runner]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -106,6 +172,14 @@ jobs:
         with:
           name: npm-package
           path: artifacts/npm-package
+      - uses: actions/download-artifact@v8
+        with:
+          name: templates
+          path: artifacts
+      - uses: actions/download-artifact@v8
+        with:
+          name: runner
+          path: artifacts
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -117,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
-            artifacts/npm-package/*.tgz
+            artifacts/npm-package/*.tgz artifacts/templates.tgz artifacts/runner.tgz
 
       - name: npm
         if: vars.PUBLISH_NPM == 'true'

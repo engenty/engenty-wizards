@@ -41,6 +41,7 @@ export async function prepareInputs(ctx: StepContext): Promise<void> {
         mediaType: found.row.mime,
         abortSignal: ctx.signal,
         call: ctx.call,
+        language: value.lang,
       });
       await ctx.chargeUsd(transcript.costUsd);
       values[field.id] = { ...value, transcript: transcript.text };

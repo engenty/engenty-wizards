@@ -191,18 +191,24 @@ The share dialog gives a tag to paste into a page's HTML:
 | Inline | The wizard in that place of the page, as tall as its content |
 | Button + modal | A button in that place that opens the wizard in a window over the page |
 | Chat button | The wizard's engenty in the lower right corner; the chat opens above it |
+| Bubble | A round button at the bottom right of the page that opens the wizard in the window |
 
 ```html
 <script async src="https://example.com/embed.js" data-wizard="TOKEN"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="modal" data-label="Start"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-runner="chat"></script>
 <script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="popout"></script>
+<script async src="https://example.com/embed.js" data-wizard="TOKEN" data-mode="bubble" data-label="Fragen?" data-text="Angebot in 2 Minuten"></script>
 ```
 
 A chat in the page that is switched off for the wizard shows the page instead; the chat button
 always opens the chat.
 
-The button takes your website's own styles through the class `engenty-wizard-button`.
+The button takes your website's own styles through the class `engenty-wizard-button`, the bubble
+through `engenty-wizard-bubble`; `data-color` gives the bubble a colour. `data-page` names the
+page a run is started on (the page's own address when left out): the results show it.
+
+On WordPress the plugin writes this tag for you: see [WordPress](./wordpress.md).
 
 ## Results people share
 

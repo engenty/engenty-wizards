@@ -225,7 +225,7 @@ export const env = {
   turnstile: { siteKey: str("TURNSTILE_SITE_KEY"), secret: str("TURNSTILE_SECRET_KEY") },
 
   /**
-   * The mobile app (apps/mobile): a phone opens this runtime's `/w/` and `/s/` links in it.
+   * The mobile app (the apps repo engenty-wizards-apps, mobile/): a phone opens this runtime's `/w/` and `/s/` links in it.
    * Served as /.well-known/apple-app-site-association and /.well-known/assetlinks.json.
    */
   mobile: {

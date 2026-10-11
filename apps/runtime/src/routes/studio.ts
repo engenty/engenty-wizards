@@ -38,6 +38,7 @@ import { estimateRun } from "../credits/estimate.js";
 import { missingModels, stepsWithoutModel } from "../engine/requirements.js";
 import { env } from "../env.js";
 import { feature, features } from "../features.js";
+import { appleStatus } from "../harness/apple.js";
 import { freshAuth, loginEnv } from "../harness/env.js";
 import {
   detectHarness,
@@ -398,6 +399,8 @@ export const studio = new Hono<Vars>()
           }
         : null,
       models: managed ? null : localModelSettings(),
+      /** Apple Intelligence on this Mac: offered where the machine can run it (harness/apple.ts). */
+      apple: managed ? null : await appleStatus(),
       /** The AI clients this runtime can think with — installed or not, and how each is signed in. */
       harnesses: managed ? [] : await detectHarnesses(),
       /** Installed AI clients whose subscription can answer the studio chat. */
@@ -1018,7 +1021,14 @@ export const studio = new Hono<Vars>()
     );
   })
   .get("/wizards/:id/export", async (c) => {
-    const { name, zip } = await exportWizard(c.get("user").id, c.req.param("id"));
+    const found = await exportWizard(c.get("user").id, c.req.param("id"), {
+      published: c.req.query("published") === "1",
+      knowledge: c.req.query("knowledge") === "1",
+    });
+    if (!found) {
+      return c.json({ error: "Der Wizard ist noch nicht veröffentlicht." }, 404);
+    }
+    const { name, zip } = found;
     return c.body(new Uint8Array(zip), 200, {
       "content-type": PACKAGE_MIME,
       "content-disposition": `attachment; filename="${name}"`,

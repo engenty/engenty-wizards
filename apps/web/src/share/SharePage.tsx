@@ -1,3 +1,4 @@
+import { DownloadButtons, OutputView } from "@engenty-wizards/runner";
 import type { ShareView } from "@engenty-wizards/shared/run";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
@@ -8,7 +9,6 @@ import { BRAND, Mascot } from "../brand";
 import { api, isOffline } from "../lib/api";
 import { lang, t } from "../lib/i18n";
 import { useStage } from "../lib/theme";
-import { DownloadButtons, OutputView } from "../runner/outputs";
 import { BrandHeader, useBrandAccent } from "../runner/PublicRunner";
 import { Button, Card, Spinner } from "../ui";
 
