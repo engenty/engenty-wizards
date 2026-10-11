@@ -1,7 +1,69 @@
 [
   {
+    "version": "v0.2.56",
+    "timestamp": 1791738267,
+    "commits": [
+      {
+        "id": "e2e9e8d",
+        "message": "every page describes v0.2.56",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "00f92fc",
+        "message": "every page checked against v0.2.55 – the wizard format's example in English, the WordPress page's key link to the new Integrate page",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e7e0b65",
+        "message": "a wizard package's errors in English like the definition's issues – wizards validate, the studio's import and the runner's check (which the WordPress plugin carries) said them in German",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "04a7c61",
+        "message": "Apple Intelligence keeps High and Highest on their way; the WordPress import follows the shared check and a thinking step gets the pages that match it",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "1881010",
+        "message": "Apple Intelligence leaves High and Highest on their way, a visitor reads the runtime's answers in their language",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "8a4470f",
+        "message": "every page checked against v0.2.50",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "c41c615",
+        "message": "a live conversation only where the wizard has it on, the browser the setup found, plugin runs without device signals, the WordPress plugin's download",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "d2038e8",
+        "message": "every page checked against v0.2.48, public pages only, versions tracked",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.55",
-    "timestamp": 1791733245,
+    "timestamp": 1791733250,
     "commits": [
       {
         "id": "a2a25b2",

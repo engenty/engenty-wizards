@@ -4,6 +4,16 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.56] - 2026-10-11
+- DOCS Every page describes v0.2.56
+- DOCS Every page checked against v0.2.55 – the wizard format's example in English, the WordPress page's key link to the new Integrate page
+- DOCS Apple Intelligence keeps High and Highest on their way; the WordPress import follows the shared check and a thinking step gets the pages that match it
+- DOCS Every page checked against v0.2.50
+- DOCS Every page checked against v0.2.48, public pages only, versions tracked
+- FIXED A wizard package's errors in English like the definition's issues – wizards validate, the studio's import and the runner's check (which the WordPress plugin carries) said them in German
+- FIXED Apple Intelligence leaves High and Highest on their way, a visitor reads the runtime's answers in their language
+- FIXED A live conversation only where the wizard has it on, the browser the setup found, plugin runs without device signals, the WordPress plugin's download
+
 ## [0.2.55] - 2026-10-11
 - FIXED **[mcp]** An AI app names spaces and wizards, not their ids – list_projects says where each space comes from (from: "your computer" for one a local install sent, "here"), list_wizards gives each wizard its space's name and origin, and the tools' descriptions and the server's instructions say ids are for the tools only; claude.ai had listed two spaces both called "Meine Wizards" by their ids
 
