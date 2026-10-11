@@ -1,7 +1,7 @@
 ---
 title: Install
 description: One command on macOS or Linux. It brings its own Node.js and asks for no password.
-version: 0.2.55
+version: 0.2.56
 ---
 
 ## Install

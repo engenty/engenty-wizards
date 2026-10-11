@@ -1,7 +1,7 @@
 ---
 title: AI apps
 description: Run and build your wizards inside Claude Desktop, Cursor, Codex and other AI apps.
-version: 0.2.55
+version: 0.2.56
 ---
 
 Settings → Integrate brings your wizards to where you work. engenty wizards is an MCP server:

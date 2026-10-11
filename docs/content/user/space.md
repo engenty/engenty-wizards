@@ -1,7 +1,7 @@
 ---
 title: Space
 description: What your wizards share and produce — who you are, what they look things up in, and the results of their runs.
-version: 0.2.55
+version: 0.2.56
 ---
 
 The house in the app bar, after the space's tile, opens your space: what all your wizards share,

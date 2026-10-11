@@ -1,7 +1,7 @@
 ---
 title: The wizard format
 description: A wizard as JSON and as a .wizard file, its JSON Schema, and checking it with wizards validate.
-version: 0.2.55
+version: 0.2.56
 ---
 
 A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file,

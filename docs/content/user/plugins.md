@@ -1,7 +1,7 @@
 ---
 title: Plugins
 description: Add pages, settings and tools for steps to your install. What a plugin may do, and how to install one.
-version: 0.2.55
+version: 0.2.56
 ---
 
 A plugin adds to engenty wizards without changing it:

@@ -1,7 +1,7 @@
 ---
 title: Quick start
 description: A tool for AI steps in one file. No build, no restart.
-version: 0.2.55
+version: 0.2.56
 ---
 
 You write one file. The running app finds it, and every AI step can use the tool in it.

@@ -1,7 +1,7 @@
 ---
 title: The server half
 description: The function a plugin exports, what it is handed, and the rules it runs under.
-version: 0.2.55
+version: 0.2.56
 ---
 
 The server half is a file whose default export is a function. The runtime calls it once when the

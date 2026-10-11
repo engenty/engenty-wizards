@@ -1,7 +1,7 @@
 ---
 title: Runners
 description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
-version: 0.2.55
+version: 0.2.56
 ---
 
 A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the

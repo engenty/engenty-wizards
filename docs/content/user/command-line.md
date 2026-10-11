@@ -1,7 +1,7 @@
 ---
 title: Command line
 description: The wizards command — start, setup, status, update — and the install's settings file.
-version: 0.2.55
+version: 0.2.56
 ---
 
 ## Commands

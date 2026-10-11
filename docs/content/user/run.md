@@ -1,7 +1,7 @@
 ---
 title: Run a wizard
 description: What a person sees who opens a wizard's link, on a computer or a phone.
-version: 0.2.55
+version: 0.2.56
 ---
 
 ![A wizard on a phone: two pages of questions and the finished result with its downloads](../../assets/wizard.png)

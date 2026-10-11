@@ -1,7 +1,7 @@
 ---
 title: Models and account
 description: Who does what your wizards ask for — an installed AI client, your own API keys, a local model, or credits.
-version: 0.2.55
+version: 0.2.56
 ---
 
 Settings → Models decides who does what your wizards ask for. On your computer it is yours; on
