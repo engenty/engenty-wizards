@@ -173,7 +173,7 @@ export const apiRoutes = new Hono()
         client: who.client,
         urls: {
           app: env.appUrl,
-          embed: `${env.appUrl}/embed.js`,
+          embed: `${env.publicUrl}/embed.js`,
           studio: `${env.appUrl}/studio`,
           newWizard: `${env.appUrl}/studio/new`,
           space: `${env.appUrl}/studio/space`,

@@ -112,7 +112,7 @@ export function runnerUrl(
   }
   if (runner.plugin && env.fromSource) {
     // From source Vite serves /w/*: a plugin's page is reached on this server's own address.
-    return `${env.appUrl}/api/public/wizards/${w.shareToken}/runners/${runner.id}`;
+    return `${env.publicUrl}/api/public/wizards/${w.shareToken}/runners/${runner.id}`;
   }
   return runner.id === settings.default
     ? shareUrl(w.shareToken)

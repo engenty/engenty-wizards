@@ -101,13 +101,22 @@ const port = num("API_PORT", 24368);
 const fromSource = import.meta.url.endsWith(".ts");
 const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
 
-function role(): "web" | "runner" | "all" {
+const ROLES = ["studio", "doors", "web", "runner", "all"] as const;
+type Role = (typeof ROLES)[number];
+
+function role(): Role {
   const given = str("RUNTIME_ROLE", "all");
-  if (given !== "web" && given !== "runner" && given !== "all") {
-    throw new Error(`RUNTIME_ROLE must be web, runner or all, not "${given}"`);
+  if (!ROLES.includes(given as Role)) {
+    throw new Error(`RUNTIME_ROLE must be one of ${ROLES.join(", ")}, not "${given}"`);
   }
-  return given;
+  return given as Role;
 }
+
+/** The origin people open, e.g. https://wizards.localhost — auth callbacks and links use it. */
+const appUrl = str(
+  "APP_URL",
+  fromSource ? "http://localhost:5181" : `http://localhost:${port}`,
+).replace(/\/$/, "");
 
 export const env = {
   production: process.env.NODE_ENV === "production",
@@ -117,21 +126,32 @@ export const env = {
   /** Listen address; a runtime that runs alone stays on the loopback interface. */
   host: str("API_HOST", manageUrl ? "0.0.0.0" : "127.0.0.1"),
   /**
-   * What this process does: `web` serves the studio and the API and wakes runs, `runner` takes
-   * the runs that wait and drives them, `all` does both (a runtime that runs alone).
+   * What this process does. `studio`: the makers' half (authoring, publishing, sign-in, MCP, the
+   * studio's pages). `doors`: the customers' half (wizard pages, their API, shared results, the
+   * plugins' public routes). `web`: both halves. `runner`: takes the runs that wait and drives
+   * them (it serves the routes too, for what the web hands it). `all`: everything in one process
+   * (a runtime that runs alone). docs/plans/runner-process.md.
    */
   role: role(),
+  /** Which parts this process serves, from its role. */
+  serves: {
+    studio: ["studio", "web", "runner", "all"].includes(role()),
+    doors: ["doors", "web", "runner", "all"].includes(role()),
+    runner: ["runner", "all"].includes(role()),
+  },
   runner: {
     /** This runner's name in the control database; a new one each start. */
     id: `${hostname()}-${randomBytes(3).toString("hex")}`,
     /** Where the web reaches this runner (the browser's screen of a run it holds). */
     url: str("RUNNER_URL").replace(/\/$/, ""),
   },
-  /** The origin people open, e.g. https://wizards.localhost — auth callbacks and links use it. */
-  appUrl: str("APP_URL", fromSource ? "http://localhost:5181" : `http://localhost:${port}`).replace(
-    /\/$/,
-    "",
-  ),
+  appUrl,
+  /**
+   * Where the wizards' pages live (`/w/<token>`, `/s/<token>`, the embed script): the doors'
+   * origin, when they are served apart from the studio. Links to a wizard, a result or a public
+   * file carry it. Default: APP_URL, the same origin.
+   */
+  publicUrl: str("PUBLIC_URL", appUrl).replace(/\/$/, ""),
   /** More host names this server answers under, besides APP_URL's and the loopback names. */
   allowedHosts: list("ALLOWED_HOSTS"),
   dataDir,

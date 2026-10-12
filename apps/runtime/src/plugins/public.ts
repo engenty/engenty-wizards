@@ -25,7 +25,7 @@ export async function publicUrlOf(plugin: string, path: string): Promise<string>
     row = (await controlDb.query.pluginAddress.findFirst({ where }))!;
   }
   const rest = path.startsWith("/") ? path : `/${path}`;
-  return `${env.appUrl}/api/public/plugins/${plugin}/${row.ref}${rest === "/" ? "" : rest}`;
+  return `${env.publicUrl}/api/public/plugins/${plugin}/${row.ref}${rest === "/" ? "" : rest}`;
 }
 
 /** The tenant a plugin's public address belongs to. */

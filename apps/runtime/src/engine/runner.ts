@@ -1068,7 +1068,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
         ? await connectionViews(def.connections ?? [], scopeOf(run), await projectIdOf(run))
         : [],
     keeps: Boolean(def.lists?.length || def.connections?.length),
-    shareUrl: run.shareToken ? `${env.appUrl}/s/${run.shareToken}` : null,
+    shareUrl: run.shareToken ? `${env.publicUrl}/s/${run.shareToken}` : null,
     expiresAt: run.expiresAt?.toISOString() ?? null,
   };
 }

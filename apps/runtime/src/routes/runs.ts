@@ -273,7 +273,7 @@ export const publicRoutes = new Hono()
       codeMissed(ip);
       return c.json({ error: "not found" }, 404);
     }
-    return c.json({ token: found.token, url: `${env.appUrl}/w/${found.token}` });
+    return c.json({ token: found.token, url: `${env.publicUrl}/w/${found.token}` });
   })
   .use("/wizards/:token", wizardLink)
   .use("/wizards/:token/*", wizardLink)
@@ -1207,7 +1207,10 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
 <body style="font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#333">
 <p>${message}</p>
 <script>
-  try { window.opener && window.opener.postMessage({ type: "wizards:connected", ok: ${ok} }, ${JSON.stringify(env.appUrl)}); } catch (e) {}
+  // The opener is the studio or a wizard's page: each origin gets the word, the wrong one drops it.
+  for (const origin of ${JSON.stringify([...new Set([env.appUrl, env.publicUrl])])}) {
+    try { window.opener && window.opener.postMessage({ type: "wizards:connected", ok: ${ok} }, origin); } catch (e) {}
+  }
   setTimeout(function () { window.close(); }, ${ok ? 300 : 4000});
 </script>`,
   );
