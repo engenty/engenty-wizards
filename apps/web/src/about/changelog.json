@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.1",
+    "timestamp": 1791812928,
+    "commits": [
+      {
+        "id": "efc3934",
+        "message": "studio, doors and runner share one /data volume – the tenant databases are files there while the Manage-App's TENANT_DB_PROVISIONER is none, so with a volume per role each process saw a tenant of its own: a wizard published in the studio was not found on the doors, and the runner never found the runs it claimed",
+        "group": "Fixed",
+        "scope": "cloud",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.0",
-    "timestamp": 1791811857,
+    "timestamp": 1791811863,
     "commits": [
       {
         "id": "ab35b50",
