@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.60",
+    "timestamp": 1791802891,
+    "commits": [
+      {
+        "id": "ae9f070",
+        "message": "the opened assistant at the bottom no longer grows past the page – its dock covers the column, so the chat's max height has a height to measure against",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.59",
-    "timestamp": 1791802201,
+    "timestamp": 1791802205,
     "commits": [
       {
         "id": "ae940c1",

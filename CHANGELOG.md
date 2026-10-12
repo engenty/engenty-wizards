@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.60] - 2026-10-12
+- FIXED **[studio]** The opened assistant at the bottom no longer grows past the page – its dock covers the column, so the chat's max height has a height to measure against
+
 ## [0.2.59] - 2026-10-12
 - FIXED **[cli]** The menu tells what an update did – a runtime that runs restarts into the new version inside the update, and the menu ends with the commands used most instead of claiming `wizards` opens the new version; "Start" is "Start as service", and starting at login moved into "Service settings" with a yes/no question
 
