@@ -670,9 +670,9 @@ function DropZone({
 // --- the three places ----------------------------------------------------------------------
 
 /**
- * At the bottom of the page and small at its lower right: drawn over the page's column. The
- * height of what stays at rest is written to `--assistant-dock` on the column, so the page's
- * last section stays clear of it.
+ * At the bottom of the page and small at its lower right: drawn over the page's column, as high
+ * as it, so the opened chat never grows past it. The height of what stays at rest is written to
+ * `--assistant-dock` on the column, so the page's last section stays clear of it.
  */
 export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | null> }) {
   const state = useAssistant();
@@ -774,7 +774,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
     <DropZone
       composer={composer}
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center",
+        "pointer-events-none absolute inset-0 flex flex-col items-center justify-end",
         lifted ? "z-[61]" : "z-30",
       )}
     >
@@ -791,7 +791,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       ) : null}
       <div
         ref={rest}
-        className="relative w-full px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5"
+        className="relative w-full shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5"
       >
         <div
           aria-hidden
@@ -828,7 +828,7 @@ function LastTurn({ state }: { state: AssistantState }) {
     <button
       type="button"
       onClick={() => state.setOpen(true)}
-      className="pointer-events-auto mx-3 mb-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-2xl bg-card px-4 py-2 text-left text-[0.8125rem] text-ink-3 shadow-overlay ring-1 ring-border transition hover:text-ink"
+      className="pointer-events-auto mx-3 mb-2 flex w-[calc(100%-1.5rem)] shrink-0 items-center gap-2 rounded-2xl bg-card px-4 py-2 text-left text-[0.8125rem] text-ink-3 shadow-overlay ring-1 ring-border transition hover:text-ink"
       style={{ maxWidth: DOCK_WIDTH }}
     >
       {last?.pending ? (
