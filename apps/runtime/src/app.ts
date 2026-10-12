@@ -259,15 +259,20 @@ app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
  * `/w/<token>/<runner>`: a plugin's page runner, where the tenant has it and the wizard offers
  * it; otherwise the next handler (the app's page, which knows `steps`, `chat` and run ids).
  */
-async function pluginRunnerPage(c: Context, next: () => Promise<void>): Promise<Response | void> {
+async function pluginRunnerPage(
+  c: Context,
+  next: () => Promise<void>,
+): Promise<Response | undefined> {
   const token = c.req.param("token") ?? "";
   const runnerId = c.req.param("runner") ?? "";
   if (!RUNNER_ID.test(runnerId) || BUILT_IN_RUNNERS.some((r) => r.id === runnerId)) {
-    return next();
+    await next();
+    return;
   }
   const tenant = await tenantOfLink(token, "wizard").catch(() => null);
   if (!tenant) {
-    return next();
+    await next();
+    return;
   }
   const served = await withTenant(tenant, async () => {
     const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.shareToken, token) });
@@ -284,7 +289,10 @@ async function pluginRunnerPage(c: Context, next: () => Promise<void>): Promise<
     const rest = c.req.path.slice(c.req.path.indexOf(head) + head.length);
     return version ? servePageRunner(w, version.definition, runnerId, rest, c.req.raw) : null;
   });
-  return served ?? next();
+  if (served) {
+    return served;
+  }
+  await next();
 }
 
 /** Link cards for `/w/<token>`, `/w/<token>/chat` and `/s/<token>`; the token names the tenant. */
