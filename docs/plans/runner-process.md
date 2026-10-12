@@ -69,6 +69,12 @@ halves answer under one origin: Coolify routes `/w`, `/s`, `/api/public`, `/api/
 Not built: a kitchen on another server still reads wizards from the same tenant database; the
 studio → kitchen sync (the reverse of the local → cloud sync) is its own piece.
 
+Learned on the first deploy (v0.3.0, 2026-10-12): the cloud's tenant databases are files under
+`/data` (`TENANT_DB_PROVISIONER=none`), and every role had a volume of its own, so the studio,
+the doors and the runner each saw a tenant of their own — a wizard published in the studio was
+"not found" on the doors, and the v0.2.57 runner never found the runs it claimed. v0.3.1 gives
+the three roles one volume. The real answer is tenant databases on Turso (the provisioner).
+
 ## Ids across installs
 
 Settled by the sync (2026-10-06): every tenant has its own database, a synced wizard keeps the
