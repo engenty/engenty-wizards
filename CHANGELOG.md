@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.61] - 2026-10-12
+- ADDED **[studio]** The account settings say the version on top – one line in the first card (Lokale Installation, the linked account or the cloud): the version, which opens the About dialog with what is new, and on a runtime that runs alone whether it is the newest, the newer one with Aktualisieren, and the check again; the About dialog and that line share about/UpdateCheck.tsx; no link to the GitHub release any more
+- FIXED **[runtime]** An update from the About dialog no longer ends on {"error":"Interner Fehler"} – packageVersion() reads package.json once, so a runtime still running the old code goes on saying its own version while the installer replaces its files, and the studio reloads only once the new one answers instead of into the old process whose index.html is gone
+
 ## [0.2.60] - 2026-10-12
 - FIXED **[studio]** The opened assistant at the bottom no longer grows past the page – its dock covers the column, so the chat's max height has a height to measure against
 

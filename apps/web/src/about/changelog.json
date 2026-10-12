@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.2.61",
+    "timestamp": 1791806440,
+    "commits": [
+      {
+        "id": "a7e01b4",
+        "message": "the account settings say the version on top – one line in the first card (Lokale Installation, the linked account or the cloud): the version, which opens the About dialog with what is new, and on a runtime that runs alone whether it is the newest, the newer one with Aktualisieren, and the check again; the About dialog and that line share about/UpdateCheck.tsx; no link to the GitHub release any more",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "542a901",
+        "message": "an update from the About dialog no longer ends on {\"error\":\"Interner Fehler\"} – packageVersion() reads package.json once, so a runtime still running the old code goes on saying its own version while the installer replaces its files, and the studio reloads only once the new one answers instead of into the old process whose index.html is gone",
+        "group": "Fixed",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.60",
-    "timestamp": 1791802891,
+    "timestamp": 1791802895,
     "commits": [
       {
         "id": "ae9f070",
