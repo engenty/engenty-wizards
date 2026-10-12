@@ -369,7 +369,6 @@ const de = {
   "about.update.checkedAt": "zuletzt geprüft {when}",
   "about.update.unknown": "Konnte nicht prüfen – keine Verbindung zu GitHub?",
   "about.update.off": "Die Suche nach Updates ist abgeschaltet.",
-  "about.update.release": "Release auf GitHub",
   "about.update.manual":
     "Diese Installation aktualisiert sich nicht selbst: Hol dir die neue Version dort, wo du sie installiert hast.",
   "about.tab.new": "Was ist neu",
@@ -1815,7 +1814,6 @@ const en: Record<Key, string> = {
   "about.update.checkedAt": "last checked {when}",
   "about.update.unknown": "Could not check – no connection to GitHub?",
   "about.update.off": "Checking for updates is switched off.",
-  "about.update.release": "Release on GitHub",
   "about.update.manual":
     "This install does not update itself: get the new version where you installed it.",
   "about.tab.new": "What's new",
