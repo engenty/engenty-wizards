@@ -7,7 +7,6 @@ import { MCPClient } from "@mastra/mcp";
 import { z } from "zod";
 import { documentMime, parseDocument } from "../documents/parse.js";
 import type { StepContext } from "../engine/types.js";
-import { env } from "../env.js";
 import { generateImageMedia } from "../media/generate.js";
 import { markMedia } from "../media/marking.js";
 import { gatewayTools, isHarnessVendor, type ResolvedModel } from "../models.js";
