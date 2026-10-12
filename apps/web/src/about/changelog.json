@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.2",
+    "timestamp": 1791836811,
+    "commits": [
+      {
+        "id": "5aeddad",
+        "message": "templates the assistant recommends show as the gallery's cards under its answer – a new show_templates tool sends them as a card of the studio's own, kept with the chat; a card opens the gallery's dialog and makes a wizard of it in the space",
+        "group": "Added",
+        "scope": "assistant",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.1",
-    "timestamp": 1791812928,
+    "timestamp": 1791812932,
     "commits": [
       {
         "id": "efc3934",
