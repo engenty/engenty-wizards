@@ -1,3 +1,4 @@
+import type { MarketplaceEntry } from "@engenty-wizards/shared/marketplace";
 import {
   ArrowLeft,
   AudioLines,
@@ -14,8 +15,10 @@ import {
   X,
 } from "lucide-react";
 import {
+  lazy,
   type ReactNode,
   type RefObject,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -34,6 +37,11 @@ import { type AssistantState, useAssistant, useEarlierChats, useStoredChat } fro
 import { canLive } from "./live";
 import { type AssistantSuggestion, usePageAssistant } from "./page";
 import { openStudioLink, setHighlight, useHighlight } from "./tools";
+
+// The gallery's cards come with the gallery's code, loaded when an answer shows templates.
+const MarketplaceCards = lazy(() =>
+  import("../Marketplace").then((m) => ({ default: m.MarketplaceCards })),
+);
 
 /**
  * The studio assistant on every page but the editor: docked at the bottom (the default), as a
@@ -106,6 +114,7 @@ function callLabel(call: ChatToolCall): string | null {
       return t("assistant.tool.docs");
     case "gallery_search":
     case "gallery_detail":
+    case "show_templates":
       return t("assistant.tool.gallery");
     case "plans":
     case "account":
@@ -148,6 +157,19 @@ function Calls({ calls }: { calls?: ChatToolCall[] }) {
       ))}
     </div>
   );
+}
+
+/** A card under an answer: the studio's own templates, or a plugin's for what its tool returned. */
+function AnswerCard({ card, send }: { card: ChatCard; send: (message: string) => void }) {
+  if (!card.plugin && card.tool === "templates") {
+    const { entries } = card.data as { entries: MarketplaceEntry[] };
+    return (
+      <Suspense fallback={<Spinner className="m-2 size-4" />}>
+        <MarketplaceCards entries={entries} />
+      </Suspense>
+    );
+  }
+  return <PluginCard card={card} send={send} />;
 }
 
 /** A plugin's card for what its tool returned, drawn by the plugin's studio half. */
@@ -283,7 +305,7 @@ function ReadChat({ id }: { id: string }) {
         avatar="round"
         changedLabel={t("project.assistantChanged")}
         // Its cards show again with what their tools returned; nothing is sent from here.
-        card={(card) => <PluginCard card={card} send={() => undefined} />}
+        card={(card) => <AnswerCard card={card} send={() => undefined} />}
         calls={(m) => <Calls calls={m.toolCalls} />}
       />
     </div>
@@ -337,7 +359,7 @@ function Thread({
           chat={chat}
           avatar="round"
           changedLabel={t("project.assistantChanged")}
-          card={(card) => <PluginCard card={card} send={(message) => void chat.send(message)} />}
+          card={(card) => <AnswerCard card={card} send={(message) => void chat.send(message)} />}
           calls={(m) => <Calls calls={m.toolCalls} />}
         />
       ) : (

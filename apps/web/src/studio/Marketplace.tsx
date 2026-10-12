@@ -72,6 +72,7 @@ import { Mascot } from "../brand";
 import { ENGENTY_FILL, ENGENTY_KIND_FILL, type EngentyKind } from "../engenty/colors";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
+import { useCurrentProject, useMayCreate } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import { Button, Card, Chip, cn, Dialog, Spinner } from "../ui";
 import { TYPE_TONE } from "./editor/meta";
@@ -868,6 +869,48 @@ export function MarketplaceHits({
         busy={busy}
       />
     </section>
+  );
+}
+
+/**
+ * Templates the studio assistant shows under an answer: the gallery's cards, each opening as in
+ * the gallery; a wizard made of one opens in the editor.
+ */
+export function MarketplaceCards({ entries }: { entries: MarketplaceEntry[] }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { project } = useCurrentProject();
+  const mayCreate = useMayCreate() && Boolean(project) && !project?.readOnly;
+  const [picked, setPicked] = useState<string | null>(null);
+  const create = useMutation({
+    mutationFn: (starterId: string) =>
+      api.post<{ id: string }>("/api/studio/wizards", { projectId: project!.id, starterId, lang }),
+    onSuccess: async ({ id }) => {
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+      await qc.invalidateQueries({ queryKey: ["wizards"] });
+      setPicked(null);
+      navigate(`/edit/${id}`);
+    },
+  });
+  return (
+    // Two side by side where the chat is wide enough, one under the other in the sidebar.
+    <div className="@container mt-3">
+      <div className="grid gap-4 @xl:grid-cols-2">
+        {entries.map((e) => (
+          <EntryCard key={e.id} entry={e} onOpen={() => setPicked(e.id)} />
+        ))}
+      </div>
+      {create.error ? (
+        <p className="mt-2 text-[0.8125rem] text-rose">{(create.error as Error).message}</p>
+      ) : null}
+      <EntryDialog
+        id={picked}
+        fallback={entries.find((e) => e.id === picked) ?? null}
+        onClose={() => setPicked(null)}
+        onUse={mayCreate ? (entry) => !create.isPending && create.mutate(entry.id) : undefined}
+        busy={create.isPending}
+      />
+    </div>
   );
 }
 
