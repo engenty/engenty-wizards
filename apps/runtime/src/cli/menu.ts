@@ -17,7 +17,7 @@ type Action =
   | "restart"
   | "stop"
   | "update"
-  | "autostart"
+  | "service"
   | "connect"
   | "status"
   | "setup"
@@ -63,7 +63,7 @@ function choices({ running, atLogin, release }: State): p.Option<Action>[] {
         { value: "stop", label: "Stop", hint: "the data is kept" },
       ]
     : [
-        { value: "start", label: "Start", hint: "in the background, opens the studio" },
+        { value: "start", label: "Start as service", hint: "in the background, opens the studio" },
         { value: "foreground", label: "Start here", hint: "in this terminal; Ctrl-C stops it" },
       ];
   options.push({
@@ -77,8 +77,9 @@ function choices({ running, atLogin, release }: State): p.Option<Action>[] {
   });
   if (!("unavailable" in atLogin)) {
     options.push({
-      value: "autostart",
-      label: atLogin.on ? "Don't start at login" : "Start at login",
+      value: "service",
+      label: "Service settings",
+      hint: atLogin.on ? "starts at login" : "does not start at login",
     });
   }
   options.push(
@@ -89,6 +90,45 @@ function choices({ running, atLogin, release }: State): p.Option<Action>[] {
     { value: "quit", label: "Quit", hint: running ? "it keeps running" : undefined },
   );
   return options;
+}
+
+/** How the service runs: whether it starts at login. Esc goes back to the menu. */
+async function serviceSettings(paths: Layout, atLogin: Autostart) {
+  if ("unavailable" in atLogin) {
+    return;
+  }
+  const on = await p.select<boolean>({
+    message: "Start at login?",
+    initialValue: atLogin.on,
+    options: [
+      { value: true, label: "Yes", hint: "runs in the background from login on" },
+      { value: false, label: "No", hint: "only when you start it" },
+    ],
+  });
+  if (p.isCancel(on) || on === atLogin.on) {
+    return;
+  }
+  try {
+    await setAutostart(paths, on);
+  } catch (error) {
+    p.log.warn(`Starting at login could not be switched: ${(error as Error).message}`);
+  }
+}
+
+/** The commands used most, for when the menu ends. */
+function commands(): string {
+  const name = command();
+  return [
+    [`${name} start`, "start it and open the studio"],
+    [`${name} studio`, "open the studio; starts it when it does not run"],
+    [`${name} stop`, "stop it; the data is kept"],
+    [`${name} status`, "what is installed and what runs"],
+    [`${name} update`, "the newest version"],
+    [`${name} --version`, "the version you have"],
+    [`${name} help`, "every command"],
+  ]
+    .map(([line, what]) => `${cyan(line.padEnd(name.length + 12))}${dim(what)}`)
+    .join("\n");
 }
 
 /**
@@ -136,24 +176,17 @@ export async function menu(
         await stop(paths);
         break;
       case "update": {
-        if ((await update(paths)) !== 0) {
+        // What runs restarts into the new version.
+        if ((await update(paths, { restart: true })) !== 0) {
           break;
         }
-        // This menu is still the old version: what runs restarts into the new one, then it ends.
-        if (state.running) {
-          await restart(paths);
-        }
-        p.outro(`Updated. ${cyan(command())} opens the new version.`);
+        // This menu is still the old version, so it ends here.
+        p.note(commands(), "Updated");
+        p.outro(dim(`${command()} opens this menu again, in the new version.`));
         return 0;
       }
-      case "autostart":
-        if (!("unavailable" in state.atLogin)) {
-          try {
-            await setAutostart(paths, !state.atLogin.on);
-          } catch (error) {
-            p.log.warn(`Starting at login could not be switched: ${(error as Error).message}`);
-          }
-        }
+      case "service":
+        await serviceSettings(paths, state.atLogin);
         break;
       case "connect":
         await connectCommand(paths, [], false);

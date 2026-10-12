@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { command, installedByScript, isCheckout, type Layout } from "./home.js";
 import { runningRuntime, settings } from "./start.js";
+import { restart } from "./status.js";
 import { cyan } from "./ui.js";
 
 /** The installer this install was made with; it also updates one. */
@@ -26,9 +27,10 @@ async function installer(into: string): Promise<string> {
 
 /**
  * Brings an install made by install.sh to the newest version by running the installer again
- * without its questions: Node, the runtime and the command.
+ * without its questions: Node, the runtime and the command. With `restart`, a runtime that runs
+ * restarts into the new version; otherwise it says how.
  */
-export async function update(paths: Layout): Promise<number> {
+export async function update(paths: Layout, options: { restart?: boolean } = {}): Promise<number> {
   if (!installedByScript(paths)) {
     console.log(
       isCheckout()
@@ -56,6 +58,9 @@ export async function update(paths: Layout): Promise<number> {
   }
 
   if (await runningRuntime(settings(paths).dataDir)) {
+    if (options.restart) {
+      return restart(paths);
+    }
     console.log(
       `  The runtime that is running is still the old one. Restart it: ${cyan(`${command()} restart`)}`,
     );
