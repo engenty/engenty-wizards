@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.2.59] - 2026-10-12
+- FIXED **[cli]** The menu tells what an update did – a runtime that runs restarts into the new version inside the update, and the menu ends with the commands used most instead of claiming `wizards` opens the new version; "Start" is "Start as service", and starting at login moved into "Service settings" with a yes/no question
+
 ## [0.2.58] - 2026-10-11
 - ADDED **[runtime]** With web and runner apart, the phone still thinks for a run and plugins hear of its changes – the device's offer is run.device_offer and each call a device_call row in the tenant database, which the runner polls for the answer and any web's stream sends to the phone; watchRun hands on event rows another process wrote, each once, and tells of new device calls; the plugins' runs.subscribe uses it
 

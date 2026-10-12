@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.2.59",
+    "timestamp": 1791802201,
+    "commits": [
+      {
+        "id": "ae940c1",
+        "message": "the menu tells what an update did – a runtime that runs restarts into the new version inside the update, and the menu ends with the commands used most instead of claiming `wizards` opens the new version; \"Start\" is \"Start as service\", and starting at login moved into \"Service settings\" with a yes/no question",
+        "group": "Fixed",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.58",
-    "timestamp": 1791756850,
+    "timestamp": 1791756854,
     "commits": [
       {
         "id": "8552943",
