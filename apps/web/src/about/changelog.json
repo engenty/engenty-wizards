@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.3",
+    "timestamp": 1791845664,
+    "commits": [
+      {
+        "id": "355cb97",
+        "message": "every page checked against v0.3.2 – the wizards menu (Start as service, Service settings, an update that restarts what runs), the version line at the top of Settings → Account, the templates the assistant shows as cards, the wizard format's code under MIT, the server page's clone folder (wizards)",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.2",
-    "timestamp": 1791836811,
+    "timestamp": 1791836815,
     "commits": [
       {
         "id": "5aeddad",

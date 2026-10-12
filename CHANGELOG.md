@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.3] - 2026-10-12
+- DOCS Every page checked against v0.3.2 – the wizards menu (Start as service, Service settings, an update that restarts what runs), the version line at the top of Settings → Account, the templates the assistant shows as cards, the wizard format's code under MIT, the server page's clone folder (wizards)
+
 ## [0.3.2] - 2026-10-12
 - ADDED **[assistant]** Templates the assistant recommends show as the gallery's cards under its answer – a new show_templates tool sends them as a card of the studio's own, kept with the chat; a card opens the gallery's dialog and makes a wizard of it in the space
 
