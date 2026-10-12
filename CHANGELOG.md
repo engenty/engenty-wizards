@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.0] - 2026-10-12
+- ADDED **[runtime]** The web is cut into studio and doors – RUNTIME_ROLE studio serves the makers' half (sign-in, authoring, MCP, the sync API, the studio's pages), doors the customers' half (the wizards' pages, their API, shared results, the plugins' public routes, the app links); web is both, all adds the runner; the runs' API, the connect callback and the app's files serve both halves. PUBLIC_URL names the doors' origin when it is not APP_URL: wizard and result links, link previews, the embed script, public logos and icons, a plugin's public address and the AI app widget carry it, /api/config tells it and the studio's own link to a wizard uses it. compose.cloud.yaml runs runtime (studio), doors and runner from one image; docs/plans/runner-process.md says which paths go where
+
 ## [0.2.61] - 2026-10-12
 - ADDED **[studio]** The account settings say the version on top – one line in the first card (Lokale Installation, the linked account or the cloud): the version, which opens the About dialog with what is new, and on a runtime that runs alone whether it is the newest, the newer one with Aktualisieren, and the check again; the About dialog and that line share about/UpdateCheck.tsx; no link to the GitHub release any more
 - FIXED **[runtime]** An update from the About dialog no longer ends on {"error":"Interner Fehler"} – packageVersion() reads package.json once, so a runtime still running the old code goes on saying its own version while the installer replaces its files, and the studio reloads only once the new one answers instead of into the old process whose index.html is gone

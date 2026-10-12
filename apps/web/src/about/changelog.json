@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.0",
+    "timestamp": 1791811857,
+    "commits": [
+      {
+        "id": "ab35b50",
+        "message": "the web is cut into studio and doors – RUNTIME_ROLE studio serves the makers' half (sign-in, authoring, MCP, the sync API, the studio's pages), doors the customers' half (the wizards' pages, their API, shared results, the plugins' public routes, the app links); web is both, all adds the runner; the runs' API, the connect callback and the app's files serve both halves. PUBLIC_URL names the doors' origin when it is not APP_URL: wizard and result links, link previews, the embed script, public logos and icons, a plugin's public address and the AI app widget carry it, /api/config tells it and the studio's own link to a wizard uses it. compose.cloud.yaml runs runtime (studio), doors and runner from one image; docs/plans/runner-process.md says which paths go where",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.61",
-    "timestamp": 1791806440,
+    "timestamp": 1791806444,
     "commits": [
       {
         "id": "a7e01b4",
