@@ -1,7 +1,7 @@
 ---
 title: Examples
 description: Two plugins in the repository to read, run and copy.
-version: 0.2.56
+version: 0.3.2
 ---
 
 The repository has two example plugins. Load them from a checkout with one line in `.env.local`:

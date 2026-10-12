@@ -1,7 +1,7 @@
 ---
 title: The assistant
 description: The chat at the bottom of every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
-version: 0.2.56
+version: 0.3.2
 ---
 
 The assistant stands at the bottom of every page of the studio but the editor, which has a
@@ -13,7 +13,7 @@ your keys or credits ([Models and account](./models.md)).
 | How something works | Reads this guide (the version you installed) and links the page |
 | Where something is | Opens the page and points at the place |
 | About your account | Looks up your plan, credits and what you used; it never buys or upgrades |
-| About templates | Searches the gallery |
+| About templates | Searches the gallery and shows the ones it recommends as the gallery's cards under its answer. A card opens the template; make a wizard of it there |
 | About your wizards | Looks at their runs, the failed ones too |
 | About models | Says what thinks and makes here, and what is missing |
 | To fill in the space | Reads a website or your files ([Space](./space.md#have-it-filled-in)) |

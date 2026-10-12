@@ -1,7 +1,7 @@
 ---
 title: Routes
 description: HTTP routes below the plugin's own address — signed in, inside the person's tenant.
-version: 0.2.56
+version: 0.3.2
 ---
 
 A plugin's routes live below `/api/studio/plugins/<id>`, and for programs with a key below

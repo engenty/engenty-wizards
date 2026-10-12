@@ -1,7 +1,7 @@
 ---
 title: WordPress
 description: Put wizards on a WordPress site with the plugin "engenty wizards" — connect, read the site in, place a wizard, read results in the admin.
-version: 0.2.56
+version: 0.3.2
 ---
 
 The plugin **engenty wizards** puts the wizards of an engenty.ai account on a WordPress site and

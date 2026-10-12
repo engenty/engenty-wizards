@@ -1,7 +1,7 @@
 ---
 title: Install
 description: One command on macOS or Linux. It brings its own Node.js and asks for no password.
-version: 0.2.56
+version: 0.3.2
 ---
 
 ## Install
@@ -66,10 +66,12 @@ wizards update
 ```
 
 This runs the installer again without its questions. If it runs, `wizards restart` then starts
-the new version; the command says so. The studio also says in a banner at the top when a newer
-release is out: "Update" there installs it and starts the new version. The About dialog, behind
-the engenty mark in the app bar, shows the same. Your data is brought up to date at the next
-start.
+the new version; the command says so. "Update" in the `wizards` menu restarts it into the new
+version by itself. The studio also says in a banner at the top when a newer release is out:
+"Update" there installs it and starts the new version. The About dialog, behind the engenty mark
+in the app bar, shows the same, and so does the line at the top of Settings → Account: its
+version number opens the About dialog with what is new. Your data is brought up to date at the
+next start.
 
 ## Remove
 
