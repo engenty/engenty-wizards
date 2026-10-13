@@ -1,4 +1,5 @@
 import { Markdown } from "@engenty-wizards/runner";
+import type { AssistantStep } from "@engenty-wizards/shared/assistant";
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Paperclip, Plug, Sparkles } from "lucide-react";
@@ -39,6 +40,10 @@ export interface ChatMessage {
   client?: string | null;
   /** Pictures sent with this message, by file name, shown before the server has them. */
   previews?: Record<string, string>;
+  /** Written while the answer before it was under way, and taken into that turn. */
+  signal?: boolean;
+  /** The model's steps of this answer, in the studio assistant's developer mode. */
+  steps?: AssistantStep[];
 }
 
 const IMAGE = /\.(png|jpe?g|gif|webp|avif|svg)$/i;
@@ -318,6 +323,9 @@ function UserMessage({
   const { text, names } = attachmentsOf(message.content);
   return (
     <div className="ml-8 flex flex-col items-end gap-1.5 self-end">
+      {message.signal ? (
+        <span className="text-[0.6875rem] text-ink-4">{t("assistant.signalled")}</span>
+      ) : null}
       {names.length ? (
         <Attachments names={names} previews={message.previews} fileUrl={fileUrl} />
       ) : null}
@@ -332,7 +340,7 @@ function UserMessage({
 
 /**
  * The thread's messages: the person's on the right, the assistant's with its avatar, the cards
- * of plugins' tools and `calls` (a line per tool it called) under an answer.
+ * of plugins' tools and `calls` (a line per tool it called) above an answer, `foot` below it.
  */
 export function Messages({
   chat,
@@ -340,12 +348,14 @@ export function Messages({
   changedLabel,
   card,
   calls,
+  foot,
 }: {
   chat: Chat;
   avatar: string;
   changedLabel: string;
   card?: (card: ChatCard) => ReactNode;
   calls?: (message: ChatMessage) => ReactNode;
+  foot?: (message: ChatMessage) => ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -380,6 +390,7 @@ export function Messages({
                   <Sparkles className="size-3" /> {changedLabel}
                 </div>
               ) : null}
+              {foot ? foot(m) : null}
             </div>
           </div>
         ),

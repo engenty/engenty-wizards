@@ -96,6 +96,8 @@ export interface Me {
   };
   /** The plan's feature switches; alone, everything is on. `ownKeys`: own API keys here. */
   features: Record<string, boolean>;
+  /** The studio assistant's developer mode may be switched on (ASSISTANT_DEV; platform admins when managed). */
+  assistantDev?: boolean;
   /** `managed`: signed in at the Manage-App. `local`: this runtime runs alone (desktop app, own machine). */
   mode: "managed" | "local";
   /** The tenant's balance; null where no credits are involved. */

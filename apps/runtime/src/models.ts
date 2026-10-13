@@ -1261,6 +1261,7 @@ export async function checkKey(
 interface CatalogEntry {
   id: string;
   pricing?: Record<string, unknown>;
+  context_window?: number;
 }
 
 let catalog = new Map<string, CatalogEntry>();
@@ -1290,6 +1291,13 @@ function priceOf(ref: string): Record<string, unknown> {
     catalog.get(provider === null || provider === "gateway" ? id : `${provider}/${id}`)?.pricing ??
     {}
   );
+}
+
+/** A model's context window in tokens, as the AI Gateway's catalog gives it; null where unknown. */
+export function contextWindowOf(ref: string): number | null {
+  const { provider, id } = parse(ref);
+  const entry = catalog.get(provider === null || provider === "gateway" ? id : `${provider}/${id}`);
+  return typeof entry?.context_window === "number" ? entry.context_window : null;
 }
 
 const n = (v: unknown, fallback: number) => {

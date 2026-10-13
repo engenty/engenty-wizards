@@ -1,10 +1,10 @@
 ---
-title: The assistant
+title: Goose, the assistant
 description: The chat at the bottom of every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
-version: 0.3.2
+version: 0.3.7
 ---
 
-The assistant stands at the bottom of every page of the studio but the editor, which has a
+Goose, the assistant, stands at the bottom of every page of the studio but the editor, which has a
 conversation of its own. It thinks on the High class of Text & reasoning: your subscription,
 your keys or credits ([Models and account](./models.md)).
 
@@ -26,20 +26,38 @@ a value into a field for you; you check it and save. It does not press buttons.
 | | |
 |---|---|
 | At the bottom | The default. Click the field or the engenty, and the chat rises above it |
-| Small | The engenty at the lower right; a click opens the chat beside it. Data and Results keep it small |
+| Closed | ✕ in the header: the engenty at the lower right; a click opens the chat where it last stood. Data and Results start closed |
 | Sidebar | Beside the page, on a window 1,520 pixels wide or more |
 
 The buttons in the chat's header switch between them; the studio remembers your choice.
+
+At the bottom, the chat moves out of the way of what it covers: drag it by the grip before its
+name (or the engenty, while it is folded). It stays where you put it. Near the bottom it snaps to
+the middle or the right; near the right side, higher up, it becomes the sidebar, and the
+sidebar's grip pulls it out again. A dashed outline shows where it will snap. The handle on top of
+the chat sets how tall the thread is; a click on it folds the chat away.
+
+## Writing while it works
+
+You can write on while Goose answers. What you send waits above the field:
+
+| | |
+|---|---|
+| Enter | Goose reads it before its next step, and keeps what you asked before unless the message changes it |
+| ⌘↩ (Ctrl+↩) | It goes out as the next question once the answer is done |
+| Send now | Stops the answer and sends it at once |
+
+The stop button stands where Send does while the field is empty.
 
 ## One chat
 
 You have one chat, the same on every page and in every space, after a reload and on another
 device. Nobody else in the team sees it.
 
-- **New chat** (the menu at the chat's name) closes the chat with a short summary and starts an
-  empty one. The assistant keeps the summaries of your last chats in mind.
+- **New chat** (the pen in the header, or the menu at the chat's name) clears the chat at once and
+  sums the old one up meanwhile. Goose keeps the summaries of your last chats in mind.
 - **Earlier chats** lists the closed ones to read. Ask about something you discussed before, and
-  the assistant searches them.
+  Goose searches them.
 
 ## Live chat
 

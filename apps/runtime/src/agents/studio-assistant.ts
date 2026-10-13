@@ -1,5 +1,11 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import type { AssistantPage, BrowserTool } from "@engenty-wizards/shared/assistant";
+import type {
+  AssistantPage,
+  AssistantPrompt,
+  AssistantSignal,
+  AssistantStep,
+  BrowserTool,
+} from "@engenty-wizards/shared/assistant";
 import {
   cleanAssetSections,
   cleanLogoSections,
@@ -21,7 +27,14 @@ import { knowsTools } from "../assistant/knows.js";
 import { PRIMER } from "../assistant/primer.js";
 import type { SessionUser } from "../auth/index.js";
 import type { AssistantCardRecord, AssistantToolCallRecord } from "../db/schema.js";
-import { attachTools, costOf, gatewayTools, textModel } from "../models.js";
+import {
+  attachTools,
+  contextWindowOf,
+  costOf,
+  gatewayTools,
+  textModel,
+  usageOf,
+} from "../models.js";
 import type { ChatRow, TurnHistory } from "../services/assistant-chats.js";
 import { ServiceError } from "../services/errors.js";
 import { knowledgeCounts } from "../services/knowledge.js";
@@ -69,19 +82,38 @@ export interface AssistantInput {
     toolCallName: string;
     args: unknown;
   }) => Promise<unknown>;
+  /** Messages the person wrote meanwhile, taken before each step after the first. */
+  takeSignals?: () => AssistantSignal[];
+  /**
+   * The turn took messages written meanwhile; `before` is what the answer said and did up to
+   * them, which the result no longer holds.
+   */
+  onSignal?: (taken: AssistantSignal[], before: AnswerPart) => Promise<void>;
+  /** Developer mode: what went to the model, and each step. */
+  onPrompt?: (prompt: AssistantPrompt) => void;
+  onStep?: (step: Omit<AssistantStep, "step">) => void;
 }
 
-export interface AssistantResult {
+/** What an answer said and did: all of it, or the part since the last message written meanwhile. */
+export interface AnswerPart {
   reply: string;
   changed: boolean;
   cards: AssistantCardRecord[];
   toolCalls: AssistantToolCallRecord[];
+}
+
+export interface AssistantResult extends AnswerPart {
   costUsd: number;
+}
+
+/** How a message written meanwhile reaches the model. */
+export function signalText(taken: AssistantSignal[]): string {
+  return `The person wrote this while you were working. What they asked before still stands unless this changes it:\n\n${taken.map((s) => s.message).join("\n\n")}`;
 }
 
 const MAX_STEPS = 24;
 
-const SYSTEM = `You are the assistant of the engenty wizards studio. You stand on every page of the studio except the wizard editor, which has a chat of its own: the space's pages, the settings, the plugins' pages. You help the person who works here understand the app, set it up and find their way.
+const SYSTEM = `You are Goose, the assistant of the engenty wizards studio. You stand on every page of the studio except the wizard editor, which has a chat of its own: the space's pages, the settings, the plugins' pages. You help the person who works here understand the app, set it up and find their way.
 
 You talk to the person. Answer in their language, briefly and warmly: a few sentences, a short list where it helps. Never mention JSON, ids, keys or tool names. Call it a space (German „Space“), never a project: the tools say project, the app says space.
 
@@ -790,12 +822,31 @@ function partOf(route: string): string | null {
   return m ? m[1] : route === "/space" ? "info" : null;
 }
 
+/** How large each tool is in the prompt: its description and its schema, in characters. */
+function toolSizes(tools: Record<string, any>): AssistantPrompt["tools"] {
+  return Object.entries(tools)
+    .map(([name, tool]) => {
+      let schema = "";
+      try {
+        schema = JSON.stringify(
+          tool?.inputSchema ? z.toJSONSchema(tool.inputSchema, { unrepresentable: "any" }) : {},
+        );
+      } catch {
+        // A provider's own tool (web search) has no schema of ours.
+      }
+      return { name, chars: String(tool?.description ?? "").length + schema.length };
+    })
+    .sort((a, b) => b.chars - a.chars);
+}
+
 /** One turn of the studio assistant. */
 export async function runStudioAssistant(input: AssistantInput): Promise<AssistantResult> {
-  let changed = false;
+  // How often the space or a plugin's data changed: a part of the answer changed something when
+  // this grew during it.
+  let changes = 0;
   const resolved = await textModel("high");
   const wrote = () => {
-    changed = true;
+    changes++;
     input.onChanged?.();
   };
   const cards: AssistantCardRecord[] = [];
@@ -900,6 +951,31 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
   ]
     .filter(Boolean)
     .join("\n\n");
+  input.onPrompt?.({
+    model: resolved.ref,
+    system: SYSTEM,
+    context,
+    history: history.messages.map((m) => ({ role: m.role, chars: m.content.length })),
+    tools: toolSizes(tools),
+  });
+  let reply = "";
+  // Where the part the result holds begins: a message written meanwhile cuts the answer there.
+  const from = { reply: 0, cards: 0, toolCalls: 0, changes: 0 };
+  const cut = (): AnswerPart => {
+    const part = {
+      reply: reply.slice(from.reply).trim(),
+      changed: changes > from.changes,
+      cards: cards.slice(from.cards),
+      toolCalls: toolCalls.slice(from.toolCalls),
+    };
+    Object.assign(from, {
+      reply: reply.length,
+      cards: cards.length,
+      toolCalls: toolCalls.length,
+      changes,
+    });
+    return part;
+  };
   const stream = await agent.stream(
     [
       ...history.messages.map((m) =>
@@ -913,12 +989,39 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
       maxSteps: MAX_STEPS,
       abortSignal: input.signal,
       modelSettings: { maxOutputTokens: 8000 },
+      // What the person wrote meanwhile comes before the next step, after the tools' results.
+      prepareStep: async ({ stepNumber, messageList }) => {
+        const taken = stepNumber > 0 ? (input.takeSignals?.() ?? []) : [];
+        if (!taken.length) {
+          return;
+        }
+        await input.onSignal?.(taken, cut());
+        messageList.add({ role: "user", content: signalText(taken) }, "input");
+        return { messageList };
+      },
     },
   );
-  let reply = "";
+  const window = contextWindowOf(resolved.ref);
+  // A step lasts from the end of the one before – its tools' work included – to its own end.
+  let stepStarted = Date.now();
   for await (const chunk of stream.fullStream as AsyncIterable<any>) {
     const payload = chunk.payload ?? chunk;
-    if (chunk.type === "text-delta") {
+    if (chunk.type === "step-finish" && input.onStep) {
+      const usage = usageOf(payload.output?.usage);
+      input.onStep({
+        model: resolved.ref,
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        cachedInputTokens: usage.cachedInputTokens ?? 0,
+        ms: Date.now() - stepStarted,
+        costUsd: costOf(resolved, payload.output?.usage),
+        tools: (payload.output?.toolCalls ?? []).map(
+          (c: any) => c.payload?.toolName ?? c.toolName ?? "",
+        ),
+        window,
+      });
+      stepStarted = Date.now();
+    } else if (chunk.type === "text-delta") {
       const text: string = payload.text ?? payload.delta ?? "";
       reply += text;
       input.onText?.(text);
@@ -937,5 +1040,5 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
     }
   }
   const usage: any = (await (stream as any).totalUsage) ?? (await stream.usage);
-  return { reply: reply.trim(), changed, cards, toolCalls, costUsd: costOf(resolved, usage) };
+  return { ...cut(), costUsd: costOf(resolved, usage) };
 }
