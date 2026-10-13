@@ -184,7 +184,8 @@ sign-in in the browser → "engenty credits" as the engine; `wizards account` sh
 Not built in this slice: the cap on Free's cloud build, `wizard.home`, the pricing page, the
 onboarding wizard as a definition in manage (it is a page of the studio for now). Seen on the
 way and done the same day: a new account goes on to the studio, not the account pages (manage
-`ae24de6`). Still so: a sign-up by e-mail link has no name, so the studio greets without one
+`ae24de6`), and so does a sign-in at /sign-in that no client asked for (manage `c8a0dbc`); the
+account pages themselves still return to the page that was asked for. Still so: a sign-up by e-mail link has no name, so the studio greets without one
 and the team's first name defaults to "Mein Team" until the first page.
 
 ## Decisions for Matthias
