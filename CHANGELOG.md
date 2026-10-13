@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.6] - 2026-10-13
+- ADDED **[studio]** "Veröffentlichen" is gone – the first share publishes (the dialog says "Beim Teilen veröffentlicht", or what to fix first), and later changes go live from "Änderungen live schalten" in the editor's top bar: a dialog with what changed since the version people run (the wizard, each step by its title and part, the order, the files), whether exactly this draft was tested, that runs under way keep their version, what a run costs now, then "Live schalten"; the runtime answers it at /wizards/:id/changes
+
 ## [0.3.5] - 2026-10-13
 - ADDED **[studio]** The share dialog starts over – who may open the wizard (anyone with the link, or only you), how others reach it by the channels it was made for, each with its own link or number to copy (SMS and WhatsApp show keyword and number from the runner's new `address`), and "Link kopieren"; QR code (any way's link, print, download), website (what it shows, where on the page, the tag; WordPress by plugin or as a package without an account), the gear (runs a day, each channel's keyword, a new link) and "Ändern" (the new-wizard page's channel list) open inside it with a way back; a draft, unpublished changes, a local install without an account and a cloud that lacks something say so on top; in the editor sharing stays at hand while there is something to publish
 - FIXED **[studio]** On the new-wizard page pictures and files sit above the wish, as in a chat's input

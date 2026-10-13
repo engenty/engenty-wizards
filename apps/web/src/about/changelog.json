@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.6",
+    "timestamp": 1791884443,
+    "commits": [
+      {
+        "id": "f9e1456",
+        "message": "\"Veröffentlichen\" is gone – the first share publishes (the dialog says \"Beim Teilen veröffentlicht\", or what to fix first), and later changes go live from \"Änderungen live schalten\" in the editor's top bar: a dialog with what changed since the version people run (the wizard, each step by its title and part, the order, the files), whether exactly this draft was tested, that runs under way keep their version, what a run costs now, then \"Live schalten\"; the runtime answers it at /wizards/:id/changes",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.5",
-    "timestamp": 1791872678,
+    "timestamp": 1791872682,
     "commits": [
       {
         "id": "c922964",
