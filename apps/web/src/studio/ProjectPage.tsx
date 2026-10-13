@@ -1,12 +1,13 @@
-import { Layers, LayoutGrid, Puzzle, WandSparkles } from "lucide-react";
+import { Home, Layers, LayoutGrid, Puzzle, WandSparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
 import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, SpacePartFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
-import { scrollRoot, useCrumbs } from "./AppFrame";
+import { scrollRoot, useAreaSlot, useCrumbs, useSpaceSidebarShown } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
 import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
 import { FileView } from "./project/Documents";
@@ -160,6 +161,9 @@ export function ProjectPage() {
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
   const title = project ? project.brand.name?.trim() || project.name : t("nav.project");
+  const areaSlot = useAreaSlot();
+  const sidebarShown = useSpaceSidebarShown();
+  const inSidebar = sidebarShown && Boolean(areaSlot) && !narrow;
 
   // Typography waits behind its switch.
   const off = useFeature("typography") ? [] : ["typography"];
@@ -332,34 +336,56 @@ export function ProjectPage() {
   // On a phone the menu marks nothing: a row opens the page.
   const marked = narrow ? undefined : inView;
 
+  // The area's menu: in the sidebar while that is open, else at the page's left.
+  const menuBody = (
+    <>
+      <LevelHead
+        title={title}
+        open={level === 1 ? (entry ?? null) : null}
+        onBack={() => (narrow ? navigate("/space") : setUpAt(open ?? null))}
+        // The house's own name in the bar, and the way back to the wizards.
+        root={{
+          icon: Home,
+          label: t("nav.project"),
+          backLabel: t("nav.wizards"),
+          onBack: () => navigate("/"),
+        }}
+      />
+      <div key={level} className={cn(stepClass(levelStep))}>
+        {level === 0 ? (
+          <LevelList
+            entries={entries}
+            current={narrow ? undefined : entry}
+            onPick={() => setUpAt(null)}
+          />
+        ) : (
+          <div ref={setSlot} />
+        )}
+      </div>
+    </>
+  );
   return (
     <SettingsMenuContext.Provider value={menu}>
+      {inSidebar && areaSlot ? createPortal(menuBody, areaSlot) : null}
       <div className="animate-rise">
-        <div className="grid gap-6 md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
-          <aside
-            className={cn(
-              "min-w-0 md:sticky md:top-6 md:self-start",
-              narrow && phone === 2 && "hidden",
-              narrow && pageStep === "back" && stepClass("back"),
-            )}
-          >
-            <LevelHead
-              title={title}
-              open={level === 1 ? (entry ?? null) : null}
-              onBack={() => (narrow ? navigate("/space") : setUpAt(open ?? null))}
-            />
-            <div key={level} className={cn(stepClass(levelStep))}>
-              {level === 0 ? (
-                <LevelList
-                  entries={entries}
-                  current={narrow ? undefined : entry}
-                  onPick={() => setUpAt(null)}
-                />
-              ) : (
-                <div ref={setSlot} />
+        <div
+          className={cn(
+            "grid gap-6",
+            !inSidebar &&
+              "md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10",
+          )}
+        >
+          {inSidebar ? null : (
+            <aside
+              className={cn(
+                "min-w-0 md:sticky md:top-6 md:self-start",
+                narrow && phone === 2 && "hidden",
+                narrow && pageStep === "back" && stepClass("back"),
               )}
-            </div>
-          </aside>
+            >
+              {menuBody}
+            </aside>
+          )}
           {open ? (
             <div
               className={cn(

@@ -1,16 +1,20 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AppWindow,
   Check,
-  ChevronDown,
   Cloud,
   CloudOff,
   CreditCard,
   Folder,
   Laptop,
   LogOut,
+  PanelLeft,
+  Pencil,
   Plus,
+  WandSparkles,
 } from "lucide-react";
 import {
+  type ComponentType,
   Fragment,
   type ReactNode,
   type RefObject,
@@ -19,7 +23,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { api } from "../lib/api";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
@@ -34,12 +39,13 @@ import {
   useMayCreate,
 } from "../lib/session";
 import { useStudioPlugins } from "../plugins/host";
-import { cn } from "../ui";
+import { Button, cn, Dialog, Input } from "../ui";
 import { AppRail } from "./AppRail";
 import { AssistantDock, AssistantSidebar, HighlightLayer } from "./assistant/StudioAssistant";
 import { NewSpaceDialog } from "./HomePage";
 import { InstallBanner, InstallDialog } from "./InstallBanner";
 import { LangSwitch } from "./LangSwitch";
+import { spaceGroups, withParts } from "./project-sections";
 import { settingsSections } from "./settings-sections";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { UpdateBanner } from "./UpdateBanner";
@@ -91,6 +97,8 @@ export function useTrail(): Crumb[] {
 
 function Trail() {
   const trail = useTrail();
+  // With the sidebar open the space's name stands there: the trail starts without a slash.
+  const nameBeside = !useSpaceSidebarShown();
   if (!trail.length) {
     return null;
   }
@@ -99,11 +107,13 @@ function Trail() {
       aria-label="Breadcrumb"
       className="flex min-w-0 items-center text-[0.9375rem] max-sm:hidden"
     >
-      {/* After the space's name: set off by a hairline, since the space is no step of the trail. */}
-      <span aria-hidden className="mx-3 h-4 w-px shrink-0 bg-border" />
       {trail.map((crumb, i) => (
         <Fragment key={`${i}:${crumb.label}`}>
-          {i > 0 ? <span className="mx-2 text-ink-4">/</span> : null}
+          {/* The first follows the space's name as the others follow each other: the bar's gap
+              and the name's own padding are taken back, so every slash stands alike. */}
+          {i > 0 || nameBeside ? (
+            <span className={cn("mr-2 text-ink-4", i === 0 ? "-ml-1 sm:-ml-2" : "ml-2")}>/</span>
+          ) : null}
           {crumb.to && i < trail.length - 1 ? (
             <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
               {crumb.label}
@@ -241,15 +251,12 @@ export function SpaceMenu({
   me,
   placement,
   label,
-  lead,
   className,
   children,
 }: {
   me: Me;
   placement: MenuPlacement;
   label?: string;
-  /** Stands before the button, inside the menu's box: the menu opens under it. */
-  lead?: ReactNode;
   className: string | ((open: boolean) => string);
   children: ReactNode;
 }) {
@@ -259,19 +266,15 @@ export function SpaceMenu({
   const mayCreate = useMayCreate();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, open, () => setOpen(false));
   const limit = me.limits.projects;
   const full = limit !== null && projects.length >= limit;
-  // With a name beside it and nothing to switch to or add, there is no button to show.
-  if (lead && projects.length <= 1 && !(mayCreate && !full)) {
-    return lead;
-  }
   const row =
     "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
   return (
-    <div className={cn("shrink-0", Boolean(lead) && "flex items-center")} ref={ref}>
-      {lead}
+    <div className="shrink-0" ref={ref}>
       <div className="relative">
         <button
           type="button"
@@ -327,6 +330,52 @@ export function SpaceMenu({
                 </button>
               );
             })}
+            <div className="mx-2 my-1.5 h-px bg-border-soft" />
+            {[
+              { to: "/", icon: WandSparkles, label: t("nav.wizardsInSpace"), show: true },
+              { to: "/new", icon: Plus, label: t("nav.addWizard"), show: mayCreate },
+            ]
+              .filter((entry) => entry.show)
+              .map((entry) => (
+                <button
+                  key={entry.to}
+                  type="button"
+                  role="menuitem"
+                  className={row}
+                  onClick={() => {
+                    setOpen(false);
+                    navigate(entry.to);
+                  }}
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
+                    <entry.icon className="size-4" />
+                  </span>
+                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
+                    {entry.label}
+                  </span>
+                </button>
+              ))}
+            {project && !project.readOnly ? (
+              <>
+                <div className="mx-2 my-1.5 h-px bg-border-soft" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={row}
+                  onClick={() => {
+                    setOpen(false);
+                    setRenaming(true);
+                  }}
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
+                    <Pencil className="size-4" />
+                  </span>
+                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
+                    {t("nav.renameSpace")}
+                  </span>
+                </button>
+              </>
+            ) : null}
             {/* A tenant that builds nothing here makes no space here either; nor does a member; at the limit there is nothing to offer. */}
             {mayCreate && !full ? (
               <>
@@ -354,31 +403,103 @@ export function SpaceMenu({
           </div>
         ) : null}
         <NewSpaceDialog open={creating} onClose={() => setCreating(false)} />
+        {project ? (
+          <RenameSpaceDialog project={project} open={renaming} onClose={() => setRenaming(false)} />
+        ) : null}
       </div>
     </div>
   );
 }
 
 /** The space's name in the top bar; it opens the spaces to switch between and to add one. */
+/** The space's name, changed in a dialog of its own. */
+function RenameSpaceDialog({
+  project,
+  open,
+  onClose,
+}: {
+  project: Project;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(project.name);
+  useEffect(() => {
+    if (open) {
+      setName(project.name);
+    }
+  }, [open, project.name]);
+  const rename = useMutation({
+    mutationFn: () => api.patch(`/api/studio/projects/${project.id}`, { name: name.trim() }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+      onClose();
+    },
+  });
+  return (
+    <Dialog open={open} onClose={onClose} title={t("nav.renameSpace")}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) {
+            rename.mutate();
+          }
+        }}
+      >
+        <Input
+          autoFocus
+          maxLength={80}
+          aria-label={t("nav.renameSpace")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" busy={rename.isPending} disabled={!name.trim()}>
+            {t("settings.save")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** Where the space lives: on this computer (a local install, or a space one sent here) or in the cloud. */
+function SpacePlace({ me, project }: { me: Me; project: Project }) {
+  const local = me.mode === "local" || project.origin === "local";
+  const Icon = local ? Laptop : Cloud;
+  const label = local ? t("nav.spaceLocal") : t("nav.spaceCloud");
+  return (
+    <span title={label} className="grid size-6 shrink-0 place-items-center text-ink-4">
+      <Icon className="size-3.5" aria-label={label} />
+    </span>
+  );
+}
+
 function SpaceName({ me }: { me: Me }) {
   const { project } = useCurrentProject();
   if (!project) {
     return null;
   }
   return (
-    <SpaceMenu
-      me={me}
-      placement="below"
-      label={t("nav.switchSpace")}
-      lead={
-        <span className="max-w-[16rem] truncate px-1 font-medium text-[0.9375rem] text-ink">
-          {project.name}
-        </span>
-      }
-      className="flex size-8 items-center justify-center rounded-lg text-ink-4 transition hover:bg-accent hover:text-ink"
-    >
-      <ChevronDown className="size-4 shrink-0" />
-    </SpaceMenu>
+    <span className="flex min-w-0 items-center gap-1">
+      <SpaceMenu
+        me={me}
+        placement="below"
+        label={project.name}
+        className={(open) =>
+          cn(
+            "-mx-1 max-w-[16rem] translate-y-[0.5px] truncate rounded-md px-2 py-0.5 text-left font-medium text-[0.9375rem] text-ink transition hover:bg-accent",
+            open && "bg-accent",
+          )
+        }
+      >
+        {project.name}
+      </SpaceMenu>
+      <SpacePlace me={me} project={project} />
+    </span>
   );
 }
 
@@ -547,15 +668,215 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
   );
 }
 
+const SPACE_SIDEBAR_KEY = "wizards.spaceSidebar";
+const spaceSidebarListeners = new Set<() => void>();
+
+function spaceSidebarOpen(): boolean {
+  try {
+    return localStorage.getItem(SPACE_SIDEBAR_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setSpaceSidebar(open: boolean) {
+  try {
+    localStorage.setItem(SPACE_SIDEBAR_KEY, open ? "1" : "0");
+  } catch {
+    // the choice only lasts until the page is left
+  }
+  for (const listener of spaceSidebarListeners) {
+    listener();
+  }
+}
+
+/** Whether the space's sidebar stands beside the page: kept per browser. */
+function useSpaceSidebarPick(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      spaceSidebarListeners.add(listener);
+      return () => spaceSidebarListeners.delete(listener);
+    },
+    spaceSidebarOpen,
+    () => false,
+  );
+}
+
+/** The space page's areas have a menu of their own: there it is the only one, and no toggle shows. */
+function useInArea(): boolean {
+  return useLocation().pathname.startsWith("/space");
+}
+
+/** Whether the sidebar stands beside the page: picked, and not in an area. */
+function useSpaceSidebar(): boolean {
+  return useSpaceSidebarPick();
+}
+
+const WIDE = "(min-width: 1024px)";
+/** Wide enough for the sidebar beside the page (`lg`): below it, it stays closed. */
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      const query = window.matchMedia(WIDE);
+      query.addEventListener("change", listener);
+      return () => query.removeEventListener("change", listener);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => true,
+  );
+}
+
+/** Whether the sidebar is there to see: picked, and the window wide enough. */
+export function useSpaceSidebarShown(): boolean {
+  const picked = useSpaceSidebarPick();
+  const wide = useWide();
+  return picked && wide;
+}
+
+// In an area of the space page the sidebar holds the area's own menu: the page draws it into
+// this slot, so one menu stands at the left, whichever page is open.
+let areaSlot: HTMLElement | null = null;
+const areaSlotListeners = new Set<() => void>();
+
+function setAreaSlot(el: HTMLElement | null) {
+  if (areaSlot !== el) {
+    areaSlot = el;
+    for (const listener of areaSlotListeners) {
+      listener();
+    }
+  }
+}
+
+/** Where an area's menu goes while the sidebar is open; `null` while there is none. */
+export function useAreaSlot(): HTMLElement | null {
+  return useSyncExternalStore(
+    (listener) => {
+      areaSlotListeners.add(listener);
+      return () => areaSlotListeners.delete(listener);
+    },
+    () => areaSlot,
+    () => null,
+  );
+}
+
+/** Left of the space's name: opens and closes the space's sidebar. */
+function SpaceSidebarToggle() {
+  const open = useSpaceSidebar();
+  return (
+    <button
+      type="button"
+      aria-pressed={open}
+      aria-label={t("nav.spaceMenu")}
+      title={t("nav.spaceMenu")}
+      onClick={() => setSpaceSidebar(!open)}
+      className={cn(
+        "grid size-8 shrink-0 place-items-center rounded-lg transition hover:bg-accent hover:text-ink max-lg:hidden",
+        open ? "bg-accent text-ink" : "text-ink-3",
+      )}
+    >
+      <PanelLeft className="size-[1.125rem]" />
+    </button>
+  );
+}
+
+type SidebarRow = {
+  to: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  end: boolean;
+};
+
+/** The space's menu beside the page: its wizards, a new one, and the parts of its page. */
+function SpaceSidebar({ me }: { me: Me }) {
+  const open = useSpaceSidebar();
+  const inArea = useInArea();
+  const { project } = useCurrentProject();
+  const plugins = useStudioPlugins();
+  const mayCreate = useMayCreate();
+  if (!project) {
+    return null;
+  }
+  // The rows of the areas' own menu, so both read alike.
+  const item = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "group flex items-center gap-2 rounded-lg px-2 py-1 text-[0.875rem] transition",
+      isActive ? "bg-paper-2 font-medium text-ink" : "text-ink-2 hover:bg-accent hover:text-ink",
+    );
+  const icon = "size-4 transition-transform duration-200 ease-out group-hover:scale-110";
+  const wizards: SidebarRow[] = [
+    { to: "/", label: t("nav.wizards"), icon: WandSparkles, end: true },
+    ...(mayCreate ? [{ to: "/new", label: t("home.new"), icon: Plus, end: false }] : []),
+  ];
+  // The space's own parts, under the heading the area menus give their groups.
+  const parts = withParts(spaceGroups(), plugins).map((part) => ({
+    to: `/space/${part.id}`,
+    label: part.label,
+    icon: part.icon,
+    end: false,
+  }));
+  const list = (rows: SidebarRow[]) => (
+    <ul className="flex flex-col gap-0.5">
+      {rows.map((row) => (
+        <li key={row.to}>
+          <NavLink to={row.to} end={row.end} className={item}>
+            <span className="grid size-7 shrink-0 place-items-center">
+              <row.icon className={icon} />
+            </span>
+            <span className="min-w-0 flex-1 truncate">{row.label}</span>
+          </NavLink>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    // The width animates; the content keeps its own, so it slides away instead of reflowing. Below
+    // `lg` the window has no room for it and it stays closed, whatever was picked.
+    <aside
+      aria-hidden={!open}
+      inert={!open}
+      className={cn(
+        "shrink-0 overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none max-md:hidden",
+        open ? "w-64 max-lg:w-0" : "w-0",
+      )}
+    >
+      <div className="flex h-full w-64 flex-col overflow-y-auto px-4 pb-4">
+        {/* The toggle stands where it stood in the top bar, the space's name beside it. */}
+        <div className="flex h-12 shrink-0 items-center gap-2 pl-1 coarse:h-14 sm:gap-3">
+          <SpaceSidebarToggle />
+          <SpaceName me={me} />
+        </div>
+        {/* In an area its own menu stands here (the page draws it in); else the space's. */}
+        {inArea ? (
+          <div key="area" ref={setAreaSlot} className="mt-6 animate-rise" />
+        ) : (
+          <div key="space" className="mt-6 animate-rise">
+            {list(wizards)}
+            <p className="mt-5 mb-1 px-2 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.12em]">
+              {t("nav.project")}
+            </p>
+            {list(parts)}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 /**
  * The row at the top of the page: the space's name, which switches between spaces, then the
  * trail and the credits. No wordmark: the mark stands in the app bar. A phone starts at the
  * space's name; the rest stands in its app bar along the bottom.
  */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
+  // Open, the sidebar holds the toggle and the space's name; below `lg` it is closed and the
+  // toggle hidden, so the name stays here.
+  const sidebar = useSpaceSidebar();
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
-      <SpaceName me={me} />
+      {sidebar ? null : <SpaceSidebarToggle />}
+      <span className={cn("flex min-w-0 items-center", sidebar && "lg:hidden")}>
+        <SpaceName me={me} />
+      </span>
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />
         {children}
@@ -619,6 +940,7 @@ export function AppFrame({
             </main>
           ) : (
             <div className="flex min-h-0 flex-1">
+              <SpaceSidebar me={me} />
               <div ref={column} className="relative flex min-w-0 flex-1 flex-col">
                 <TopBar me={me} />
                 {/* `relative`: what a page places out of flow without a positioned parent (a

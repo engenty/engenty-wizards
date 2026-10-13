@@ -107,6 +107,7 @@ export function Composer({
   onSend,
   attach = true,
   floating,
+  bare,
   autoFocus,
   className,
   onTalk,
@@ -126,6 +127,8 @@ export function Composer({
   onSend: (text: string, files: File[], later?: boolean) => boolean | Promise<boolean>;
   attach?: boolean;
   floating?: boolean;
+  /** Drawn inside a card of the caller's: no fill, ring, shadow or rounding of its own. */
+  bare?: boolean;
   autoFocus?: boolean;
   className?: string;
   /** Starts a live chat: its button stands where Send does while the field is empty. */
@@ -216,9 +219,10 @@ export function Composer({
     <div className={className}>
       <div
         className={cn(
-          "bg-card p-1 ring-1 ring-border focus-within:ring-focus",
-          tall || files.length ? "rounded-[1.375rem]" : "rounded-full",
-          floating ? "shadow-overlay" : "shadow-soft",
+          bare ? "px-2 py-3" : "p-1",
+          !bare && "bg-card ring-1 ring-border focus-within:ring-focus",
+          !bare && (tall || files.length ? "rounded-[1.375rem]" : "rounded-full"),
+          !bare && (floating ? "shadow-overlay" : "shadow-soft"),
         )}
       >
         {thumbs.size ? (

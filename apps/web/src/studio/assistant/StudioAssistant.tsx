@@ -511,7 +511,7 @@ function Header({
         >
           <ArrowLeft className="size-4" />
         </IconButton>
-      ) : (
+      ) : where !== "sidebar" ? null : (
         <Mascot kind="round" size={26} goggles interactive={false} />
       )}
       {/* Never narrower than the name and the developer switch. */}
@@ -753,10 +753,13 @@ function Bottom({
   state,
   composer,
   floating,
+  bare,
 }: {
   state: AssistantState;
   composer: RefObject<ComposerHandle | null>;
   floating?: boolean;
+  /** In the dock's one card: the composer draws no card of its own. */
+  bare?: boolean;
 }) {
   const page = usePageAssistant();
   const live = state.live;
@@ -781,6 +784,7 @@ function Bottom({
           <Composer
             ref={composer}
             floating={floating}
+            bare={bare}
             placeholder={
               busy
                 ? t("assistant.busyComposer", { keys: LATER_KEYS })
@@ -1021,11 +1025,16 @@ function DockFrame({
 function Flap({
   thread,
   max,
+  folded,
   onFold,
+  onOpen,
 }: {
   thread: RefObject<HTMLDivElement | null>;
   max: number;
+  /** The chat is folded: a click opens it, and pulling up opens it as high as it was pulled. */
+  folded: boolean;
   onFold: () => void;
+  onOpen: () => void;
 }) {
   const prefs = useDockPrefs();
   const start = useRef<{ y: number; height: number; moved: boolean } | null>(null);
@@ -1040,8 +1049,8 @@ function Flap({
       aria-valuenow={height}
       aria-valuemin={THREAD.min}
       aria-valuemax={max}
-      aria-label={t("assistant.flap")}
-      title={t("assistant.flap")}
+      aria-label={folded ? t("assistant.open") : t("assistant.flap")}
+      title={folded ? t("assistant.open") : t("assistant.flap")}
       onPointerDown={(e) => {
         if (e.button !== 0) {
           return;
@@ -1055,6 +1064,12 @@ function Flap({
         if (!from || (!from.moved && Math.abs(e.clientY - from.y) < 4)) {
           return;
         }
+        if (folded && e.clientY > from.y) {
+          return;
+        }
+        if (folded && !from.moved) {
+          onOpen();
+        }
         from.moved = true;
         setDockPrefs({ height: clamp(from.height + (from.y - e.clientY)) });
       }}
@@ -1062,7 +1077,7 @@ function Flap({
         const click = start.current && !start.current.moved;
         start.current = null;
         if (click) {
-          onFold();
+          (folded ? onOpen : onFold)();
         }
       }}
       onPointerCancel={() => {
@@ -1071,10 +1086,16 @@ function Flap({
       onKeyDown={(e) => {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.preventDefault();
+          if (folded) {
+            if (e.key === "ArrowUp") {
+              onOpen();
+            }
+            return;
+          }
           setDockPrefs({ height: clamp(height + (e.key === "ArrowUp" ? 32 : -32)) });
         } else if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onFold();
+          (folded ? onOpen : onFold)();
         }
       }}
       className="group flex h-3.5 shrink-0 cursor-row-resize touch-none items-center justify-center outline-none"
@@ -1097,6 +1118,8 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
   const lifted = Boolean(useHighlight());
   const composer = useRef<ComposerHandle>(null);
   const rest = useRef<HTMLDivElement>(null);
+  /** The room kept below the docked card (the phone's home bar). */
+  const pad = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const thread = useRef<HTMLDivElement>(null);
   const where = useWhereOrNull(state);
@@ -1129,7 +1152,8 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       return;
     }
     const observer = new ResizeObserver(() => {
-      host.style.setProperty("--assistant-dock", `${Math.ceil(el.offsetHeight) + 8}px`);
+      const below = pad.current?.offsetHeight ?? 0;
+      host.style.setProperty("--assistant-dock", `${Math.ceil(el.offsetHeight + below) + 8}px`);
     });
     observer.observe(el);
     return () => {
@@ -1196,6 +1220,38 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       </DropZone>
     );
   }
+  // Goose perches while the chat is in use (focused, open, working or live): on top of whatever
+  // stands highest – the open chat, the last turn, or the bar. It is the handle that moves the chat, too.
+  const perch = (
+    <button
+      type="button"
+      aria-label={t("assistant.open")}
+      title={`${t("assistant.open")} · ${t("assistant.move")}`}
+      tabIndex={-1}
+      onPointerDown={(e) =>
+        startDockDrag(e, {
+          column: () => column.current,
+          frame: () => frame.current,
+          sidebar: where.wide,
+          onClick: () => state.setOpen(true),
+          onDrop: dropped(state),
+        })
+      }
+      onClick={(e) => {
+        if (e.detail === 0) {
+          state.setOpen(true);
+        }
+      }}
+      className={cn(
+        "pointer-events-auto absolute bottom-full left-6 -mb-3 origin-bottom cursor-grab touch-none transition duration-300 ease-out active:cursor-grabbing max-sm:hidden",
+        active
+          ? "translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-3 scale-75 opacity-0",
+      )}
+    >
+      <Mascot kind="round" size={44} goggles interactive={active} />
+    </button>
+  );
   // The thread is as high as the handle set it, within what the column leaves.
   const maxThread = Math.max(THREAD.min, Math.min(THREAD.max, size.height - 220));
   const threadHeight = prefs.height === null ? null : Math.min(prefs.height, maxThread);
@@ -1221,92 +1277,74 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       ) : null}
       <DropOutline />
       <DockFrame place={place} free={prefs.free} width={width} column={size} frame={frame}>
-        {open ? (
+        {perch}
+        {/* One card: the open chat or the last turn on top, the bar below, melted together. */}
+        <div className="pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-[1.375rem] bg-card shadow-overlay ring-1 ring-border focus-within:ring-focus">
+          {/* The handle stays, open or folded: it sets the height, folds, and opens again. */}
+          <Flap
+            thread={thread}
+            max={maxThread}
+            folded={!open}
+            onFold={() => state.setOpen(false)}
+            onOpen={() => state.setOpen(true)}
+          />
+          {open ? (
+            <div className="relative flex min-h-0 flex-col">
+              <div
+                className="flex min-h-0 animate-rise flex-col border-border-soft border-b"
+                style={{ maxHeight: maxThread + 60 }}
+              >
+                <Header
+                  state={state}
+                  where={small ? "avatar" : "bottom"}
+                  wide={where.wide}
+                  phone={where.phone}
+                  compact={where.compact}
+                  grip={grip}
+                />
+                <div
+                  ref={thread}
+                  className="flex min-h-0 flex-col"
+                  style={
+                    threadHeight === null ? { maxHeight: maxThread } : { height: threadHeight }
+                  }
+                >
+                  <Thread state={state} composer={composer} />
+                </div>
+              </div>
+            </div>
+          ) : state.chat.messages.length || state.chat.error ? (
+            <LastTurn state={state} />
+          ) : null}
           <div
-            className="pointer-events-auto mb-2 flex min-h-0 animate-rise flex-col overflow-hidden rounded-2xl bg-card shadow-overlay ring-1 ring-border"
-            style={{ maxHeight: maxThread + 60 }}
-          >
-            <Flap thread={thread} max={maxThread} onFold={() => state.setOpen(false)} />
-            <Header
-              state={state}
-              where={small ? "avatar" : "bottom"}
-              wide={where.wide}
-              phone={where.phone}
-              compact={where.compact}
-              grip={grip}
-            />
-            <div
-              ref={thread}
-              className="flex min-h-0 flex-col"
-              style={threadHeight === null ? { maxHeight: maxThread } : { height: threadHeight }}
-            >
-              <Thread state={state} composer={composer} />
-            </div>
-          </div>
-        ) : state.chat.messages.length || state.chat.error ? (
-          <LastTurn state={state} />
-        ) : null}
-        <div
-          ref={rest}
-          onFocusCapture={() => setFocused(true)}
-          onBlurCapture={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-              setFocused(false);
-            }
-          }}
-          className={cn(
-            "relative w-full",
-            docked && "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-          )}
-        >
-          <div className="pointer-events-auto relative">
-            {/* Goose perches on the bar while it is in use: focused, open, working or live. */}
-            <button
-              type="button"
-              aria-label={t("assistant.open")}
-              title={`${t("assistant.open")} · ${t("assistant.move")}`}
-              tabIndex={-1}
-              onPointerDown={(e) =>
-                startDockDrag(e, {
-                  column: () => column.current,
-                  frame: () => frame.current,
-                  sidebar: where.wide,
-                  onClick: () => state.setOpen(true),
-                  onDrop: dropped(state),
-                })
+            ref={rest}
+            onFocusCapture={() => setFocused(true)}
+            onBlurCapture={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setFocused(false);
               }
-              onClick={(e) => {
-                if (e.detail === 0) {
-                  state.setOpen(true);
-                }
-              }}
-              className={cn(
-                "absolute bottom-full left-5 -mb-1.5 origin-bottom cursor-grab touch-none transition duration-300 ease-out active:cursor-grabbing max-sm:hidden",
-                active
-                  ? "translate-y-0 scale-100 opacity-100"
-                  : "pointer-events-none translate-y-3 scale-75 opacity-0",
-              )}
-            >
-              <Mascot kind="round" size={44} goggles interactive={active} />
-            </button>
-            <div className="min-w-0 flex-1">
-              <Bottom state={state} composer={composer} floating />
-            </div>
+            }}
+            className="relative w-full"
+          >
+            <Bottom state={state} composer={composer} floating bare />
           </div>
         </div>
+        {docked ? (
+          <div ref={pad} className="h-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0" />
+        ) : null}
       </DockFrame>
     </DropZone>
   );
 }
 
-/** Folded, one line about the last turn stands above the bar; it opens the chat. */
+/** Folded, one line about the last turn stands on top of the bar, in its card; it opens the chat. */
 function LastTurn({ state }: { state: AssistantState }) {
   const last = state.chat.messages.at(-1);
   return (
     <button
       type="button"
       onClick={() => state.setOpen(true)}
-      className="pointer-events-auto mb-2 flex w-full items-center gap-2 rounded-2xl bg-card px-4 py-2 text-left text-[0.8125rem] text-ink-3 shadow-overlay ring-1 ring-border transition hover:text-ink"
+      className="flex w-full items-center gap-2 border-border-soft border-b px-4 py-3.5 text-left text-[0.8125rem] text-ink-3 transition hover:text-ink"
     >
       {last?.pending ? (
         <Working chat={state.chat} className="flex-1" />
@@ -1315,7 +1353,6 @@ function LastTurn({ state }: { state: AssistantState }) {
           {state.chat.error ?? spokenText(last?.content ?? "")}
         </span>
       )}
-      <ChevronDown className="size-4 shrink-0 rotate-180" />
     </button>
   );
 }

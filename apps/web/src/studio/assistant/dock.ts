@@ -70,7 +70,7 @@ export function useDockPrefs(): DockPrefs {
 /** How near the bottom or the right side the chat has to come to snap there. */
 const SNAP = 64;
 /** The chat's width at most, and its distance from the column's edges. */
-export const DOCK_WIDTH = 720;
+export const DOCK_WIDTH = 600;
 const PAD = 12;
 
 export type DockZone = "center" | "right" | "sidebar";
