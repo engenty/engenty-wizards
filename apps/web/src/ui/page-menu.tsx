@@ -2,7 +2,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { useSideMenuSlot } from "../studio/AppFrame";
+import { useSideMenuSlot } from "../studio/side-menu";
 import { cn } from "./index";
 
 export interface PageMenuEntry {

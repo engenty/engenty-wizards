@@ -7,7 +7,7 @@ import { t } from "../lib/i18n";
 import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, SpacePartFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
-import { scrollRoot, useCrumbs, useSideMenuSlot } from "./AppFrame";
+import { scrollRoot, useCrumbs } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
 import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
 import { FileView } from "./project/Documents";
@@ -40,6 +40,7 @@ import {
   useNarrow,
   useStepDirection,
 } from "./settings-menu";
+import { useSideMenuSlot } from "./side-menu";
 
 /**
  * The section in view: the last whose top passed the upper third of the page's scroll

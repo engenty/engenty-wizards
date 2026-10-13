@@ -11,7 +11,7 @@ import { PluginsSection } from "../plugins/PluginsSection";
 import { ProModulesSection } from "../plugins/ProModulesSection";
 import { Button, Card, cn, Empty, IconButton, Input } from "../ui";
 import { Account } from "./Account";
-import { useCrumbs, useSideMenuSlot } from "./AppFrame";
+import { useCrumbs } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
@@ -28,6 +28,7 @@ import {
   useStepDirection,
 } from "./settings-menu";
 import { settingsSections } from "./settings-sections";
+import { useSideMenuSlot } from "./side-menu";
 import { Team } from "./Team";
 
 type Server = Project["mcpServers"][number] & { auth?: string };
