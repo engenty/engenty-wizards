@@ -173,7 +173,13 @@ export async function mintConversation(view: RunView): Promise<ConversationSessi
         tool_choice: "auto",
         audio: {
           // What the person said, written down: the call screen shows it as captions.
-          input: { transcription: { model: "gpt-4o-mini-transcribe" } },
+          input: {
+            transcription: { model: "gpt-4o-mini-transcribe" },
+            // Phones and laptops play the wizard's voice through their own speakers, which the mic
+            // picks up: far-field filtering and a higher bar for speech keep it from interrupting itself.
+            noise_reduction: { type: "far_field" },
+            turn_detection: { type: "server_vad", threshold: 0.7, silence_duration_ms: 600 },
+          },
           output: { voice: VOICES[view.lang] },
         },
       },
