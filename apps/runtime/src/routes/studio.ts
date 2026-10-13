@@ -6,7 +6,11 @@ import {
   type AssistantEvents,
   assistantTurnSchema,
 } from "@engenty-wizards/shared/assistant";
-import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import {
+  MODEL_CLASSES,
+  TEXT_CLASSES,
+  type WizardDefinition,
+} from "@engenty-wizards/shared/definition";
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
@@ -180,6 +184,7 @@ import { draftWidgetPreview } from "../services/widgets.js";
 import {
   createWizard,
   deleteWizard,
+  draftChanges,
   duplicateWizard,
   listWizards,
   ownedWizard,
@@ -1111,6 +1116,21 @@ export const studio = new Hono<Vars>()
   .post("/wizards/:id/publish", async (c) =>
     c.json(await publishAndSync(c.get("user").id, c.req.param("id"))),
   )
+  // What publishing the draft would change: the steps and files, its last test, the cost of a run before and after.
+  .get("/wizards/:id/changes", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    const { published, ...found } = await draftChanges(w);
+    const cost = async (def: WizardDefinition) =>
+      estimateRun(w.id, null, def, await stepsWithoutModel(def));
+    const [before, after] = published ? await Promise.all([cost(published), cost(w.draft)]) : [];
+    return c.json({
+      ...found,
+      cost:
+        before?.available && after?.available
+          ? { before: before.credits, after: after.credits }
+          : null,
+    });
+  })
   // What a run of the draft is expected to cost, per step and in total.
   .get("/wizards/:id/estimate", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));

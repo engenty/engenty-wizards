@@ -1,3 +1,4 @@
+import { versionChanges } from "@engenty-wizards/shared/changes";
 import {
   pluginToolOf,
   shapeIssues,
@@ -199,6 +200,33 @@ export async function wizardState(w: WizardRow) {
       !sameFiles(published.files, files),
     shareUrl: shareUrl(w.shareToken),
     studioUrl: studioUrl(w.id),
+  };
+}
+
+/**
+ * What "Änderungen live schalten" says: the version people run, what the draft changes of it,
+ * and the latest test run of exactly this draft and its files.
+ */
+export async function draftChanges(w: WizardRow) {
+  const published = await publishedVersion(w);
+  const files = await draftFiles(w.id);
+  const draft = JSON.stringify(w.draft);
+  const tests = await db.query.run.findMany({
+    where: and(eq(schema.run.wizardId, w.id), eq(schema.run.mode, "test")),
+    orderBy: [desc(schema.run.createdAt)],
+    columns: { id: true, definition: true, files: true, createdAt: true, status: true },
+    limit: 20,
+  });
+  const tested = tests.find(
+    (r) => JSON.stringify(r.definition) === draft && sameFiles(r.files, files),
+  );
+  return {
+    version: published?.version ?? null,
+    published: published?.definition ?? null,
+    changes: published ? versionChanges(published, { definition: w.draft, files }) : [],
+    tested: tested
+      ? { runId: tested.id, at: tested.createdAt.toISOString(), status: tested.status }
+      : null,
   };
 }
 

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   CircleAlert,
+  CircleCheck,
   Cloud,
   Code,
   Copy,
@@ -37,13 +38,14 @@ import { type Key, lang, t } from "../../lib/i18n";
 import {
   type CloudAnswer,
   type CloudState,
+  type PublishResult,
   type ServerProblem,
   useCloud,
   useMe,
   type WizardDetail,
 } from "../../lib/session";
 import { PluginFrame, useStudioPlugins } from "../../plugins/host";
-import { Button, cn, Dialog, IconButton, Input, Switch } from "../../ui";
+import { Button, cn, Dialog, IconButton, Input, Spinner, Switch } from "../../ui";
 import { LinkStatus, useAccountLink } from "../Account";
 import {
   CHANNEL_GROUPS,
@@ -69,11 +71,19 @@ import { printQr, QrImage, qrSvg, saveQrPng, spacedCode } from "./WizardQr";
 const WORDPRESS_ZIP =
   "https://github.com/engenty/engenty-wizards-wp-plugin/releases/latest/download/engenty-wizards.zip";
 
-/** The editor's publishing, offered where the draft is not published as it is. */
+/**
+ * The editor's publishing: a wizard shared for the first time goes live as it opens; later
+ * changes go live through "Änderungen live schalten".
+ */
 interface Publish {
-  run: () => void;
+  run: () => Promise<PublishResult>;
   busy: boolean;
+  /** The draft cannot be published as it is: it has issues, or it is being built. */
   disabled: boolean;
+  /** Asks the assistant to mend the draft's issues. */
+  fix?: () => void;
+  /** Opens "Änderungen live schalten". */
+  goLive: () => void;
 }
 
 /** Where a channel's plugin says a person reaches the wizard. */
@@ -203,11 +213,14 @@ const heading = "text-[0.8125rem] font-medium text-ink-3";
 /** A line on top of the dialog: what keeps others out, or what to do first. */
 function Banner({
   warn,
+  done,
   title,
   children,
   action,
 }: {
   warn?: boolean;
+  /** It went well: the first version is live. */
+  done?: boolean;
   title?: string;
   children?: ReactNode;
   action?: ReactNode;
@@ -216,10 +229,11 @@ function Banner({
     <div
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-3.5 py-3 text-[0.875rem]",
-        warn ? "bg-amber-tint" : "bg-paper-2",
+        warn ? "bg-amber-tint" : done ? "bg-moss-tint" : "bg-paper-2",
       )}
     >
       {warn ? <CircleAlert className="size-4 shrink-0 self-start text-amber sm:mt-0.5" /> : null}
+      {done ? <CircleCheck className="size-4 shrink-0 self-start text-moss sm:mt-0.5" /> : null}
       <div className="min-w-0 flex-[1_1_14rem]">
         {title ? <div className="font-medium">{title}</div> : null}
         {children ? (
@@ -1173,6 +1187,25 @@ function SharePanel({
   });
   const [view, setView] = useState<View>("main");
   const { copied, copy } = useCopy();
+  // Shared for the first time: it goes live as the dialog opens. Nobody has the link yet, and
+  // "Nur du" keeps it closed.
+  const [firstShare, setFirstShare] = useState<"publishing" | "done" | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const tried = useRef(false);
+  useEffect(() => {
+    if (tried.current || wizard.published || wizard.readOnly || !publish || publish.disabled) {
+      return;
+    }
+    tried.current = true;
+    setFirstShare("publishing");
+    publish
+      .run()
+      .then(() => setFirstShare("done"))
+      .catch((err: Error) => {
+        setFirstShare(null);
+        setFailed(err.message);
+      });
+  }, [wizard.published, wizard.readOnly, publish]);
 
   const ways = useMemo(
     () => (runners.data ? waysOf(runners.data, base) : []),
@@ -1185,7 +1218,10 @@ function SharePanel({
   const groups = new Set(ways.map((w) => w.group)).size;
   const wanted = Math.min(
     720,
-    Math.max(580, 300 + groups * 28 + ways.length * 52 + (wizard.published ? 0 : 96)),
+    Math.max(
+      580,
+      300 + groups * 28 + ways.length * 52 + (wizard.published && !wizard.dirty ? 0 : 96),
+    ),
   );
   const [height, setHeight] = useState(wanted);
   useEffect(() => setHeight((h) => Math.max(h, wanted)), [wanted]);
@@ -1199,11 +1235,6 @@ function SharePanel({
     note = t("share.linkNote", { how });
   }
 
-  const publishButton = publish ? (
-    <Button size="sm" busy={publish.busy} disabled={publish.disabled} onClick={publish.run}>
-      {t("editor.publish")}
-    </Button>
-  ) : null;
   const back = () => setView(view === "package" ? "website" : "main");
   const title = wizard.draft.title;
 
@@ -1239,13 +1270,54 @@ function SharePanel({
       {view === "main" ? (
         <>
           <Body className="flex flex-col gap-6">
-            {wizard.published ? null : (
-              <Banner warn title={t("share.notPublished")} action={publishButton}>
-                {linked ? t("cloud.onPublish") : t("share.notPublishedHint")}
+            {firstShare === "publishing" ? (
+              <Banner>
+                <span className="flex items-center gap-2">
+                  <Spinner className="size-4 text-ink-3" /> {t("share.publishing")}
+                </span>
               </Banner>
-            )}
-            {wizard.published && wizard.dirty && !wizard.readOnly ? (
-              <Banner action={publishButton}>
+            ) : null}
+            {firstShare === "done" && wizard.published ? (
+              <Banner done title={t("share.firstTitle")}>
+                {t("share.firstText", { v: wizard.publishedVersion ?? 1 })}
+              </Banner>
+            ) : null}
+            {!wizard.published && !firstShare ? (
+              <Banner
+                warn
+                title={t(wizard.issues.length ? "share.notReady" : "share.notPublished")}
+                action={
+                  wizard.issues.length && publish?.fix ? (
+                    <Button size="sm" variant="secondary" onClick={publish.fix}>
+                      {t("editor.fixWithChat")}
+                    </Button>
+                  ) : null
+                }
+              >
+                {wizard.issues.length ? (
+                  <>
+                    <p>{t("share.notReadyHint")}</p>
+                    <ul className="mt-1 list-disc pl-5">
+                      {wizard.issues.slice(0, 4).map((issue, i) => (
+                        <li key={i}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  (failed ?? t(wizard.readOnly ? "share.readOnly" : "share.stillBuilding"))
+                )}
+              </Banner>
+            ) : null}
+            {wizard.published && wizard.dirty && !wizard.readOnly && !firstShare ? (
+              <Banner
+                action={
+                  publish ? (
+                    <Button size="sm" onClick={publish.goLive}>
+                      {t("live.open")}
+                    </Button>
+                  ) : null
+                }
+              >
                 {t("share.changes", { v: wizard.publishedVersion ?? 0 })}
               </Banner>
             ) : null}
@@ -1343,7 +1415,7 @@ export function ShareDialog({
   wizard: WizardDetail;
   open: boolean;
   onClose: () => void;
-  /** Publishing from here, where the draft is not published as it is. */
+  /** The editor's publishing; none where nothing is changed here. */
   publish?: Publish;
 }) {
   return (
