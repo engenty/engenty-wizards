@@ -9,6 +9,7 @@ import {
   cleanAssetSections,
   cleanLogoSections,
   FACT_TYPES,
+  FONT_USES,
   FONT_WEIGHTS,
   GRADIENT_TYPES,
   type LogoSection,
@@ -53,7 +54,6 @@ export const brandColorSchema = z.object({
 export const colorSectionSchema = z.object({
   id: sectionId,
   title: z.string().max(80),
-  description: z.string().max(400),
   kind: z.enum(COLOR_SECTION_KINDS).optional(),
 });
 
@@ -62,6 +62,7 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const gradientSchema = z.object({
   id: sectionId,
   name: z.string().max(80),
+  description: z.string().max(400).optional(),
   section: sectionId,
   type: z.enum(GRADIENT_TYPES),
   angle: z.number().min(-360).max(720),
@@ -74,6 +75,7 @@ export const gradientSchema = z.object({
 export const patternSchema = z.object({
   id: sectionId,
   name: z.string().max(80),
+  description: z.string().max(400).optional(),
   section: sectionId,
   file: z.string().max(40),
   tile: z.boolean().optional(),
@@ -88,6 +90,8 @@ export const brandFontSchema = z.object({
   family: z.string().max(80),
   role: z.string().max(200),
   weights: z.array(z.number().int().min(100).max(900)).max(FONT_WEIGHTS.length + 3),
+  license: z.string().max(200).optional(),
+  uses: z.array(z.enum(FONT_USES)).max(FONT_USES.length).optional(),
 });
 
 export const textStyleSchema = z.object({
@@ -356,7 +360,6 @@ function brandAfter(
     .map((s) => ({
       ...s,
       title: s.title.trim(),
-      description: s.description.trim(),
       ...(s.kind && s.kind !== "colors" ? { kind: s.kind } : { kind: undefined }),
     }))
     .filter((s) => s.title || used.has(s.id));
@@ -364,12 +367,13 @@ function brandAfter(
   const kindOf = (id: string | undefined) => colorGroups.find((s) => s.id === id)?.kind ?? "colors";
   const inKind = (id: string, kind: "gradients" | "patterns") =>
     colorGroups.some((s) => s.id === id && s.kind === kind);
-  const fills = (gradients ?? [])
-    .filter((g) => inKind(g.section, "gradients"))
-    .map((g) => ({ ...g, name: g.name.trim() }));
-  const tiles = (patterns ?? [])
-    .filter((p) => inKind(p.section, "patterns"))
-    .map((p) => ({ ...p, name: p.name.trim() }));
+  const told = <T extends { name: string; description?: string }>({ description, ...x }: T) => ({
+    ...x,
+    name: x.name.trim(),
+    ...(description?.trim() ? { description: description.trim() } : {}),
+  });
+  const fills = (gradients ?? []).filter((g) => inKind(g.section, "gradients")).map(told);
+  const tiles = (patterns ?? []).filter((p) => inKind(p.section, "patterns")).map(told);
   const swatches = colors?.map((c) =>
     c.section && kindOf(c.section) !== "colors" ? { name: c.name, value: c.value } : c,
   );
@@ -384,7 +388,13 @@ function brandAfter(
     (assetSections ?? []).map((s) => ({ ...s, title: s.title.trim() })),
   ).filter((s) => s.title || s.assets.length);
   const typefaces = (fonts ?? [])
-    .map((f) => ({ ...f, family: f.family.trim(), role: f.role.trim() }))
+    .map(({ license, uses, ...f }) => ({
+      ...f,
+      family: f.family.trim(),
+      role: f.role.trim(),
+      ...(license?.trim() ? { license: license.trim() } : {}),
+      ...(uses?.length ? { uses: FONT_USES.filter((u) => uses.includes(u)) } : {}),
+    }))
     .filter((f) => f.family);
   const styles = (textStyles ?? [])
     .map((s) => ({

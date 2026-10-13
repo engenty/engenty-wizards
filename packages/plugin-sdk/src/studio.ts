@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 /**
  * What the studio hands a plugin's studio half: the built `client.js` the studio loads after
  * sign-in. Its default export registers pages, entries of the app bar, sections of the settings
- * and of the space page, and cards of the space assistant's chat. React, the router and the
+ * and of the space page, parts of the space page, and cards of the space assistant's chat. React, the router and the
  * studio's own components come from the studio (docs/content/dev/plugins), so the page a plugin
  * draws is part of the same app.
  */
@@ -64,6 +64,28 @@ export interface StudioSpaceSection {
   component: ComponentType;
 }
 
+/**
+ * A part of the space page of the plugin's own, beside Info & Marke, Wissen, Daten and
+ * Ergebnisse: an entry in the parts' menu and a page at `/space/<id>`. The component draws the
+ * whole part; `useSpaceMenu` fills the part's menu with what it draws.
+ */
+export interface StudioSpacePart {
+  /** Its address: `/space/<id>`. Lower case, digits and `-`; never one of the studio's parts. */
+  id: string;
+  label: () => string;
+  icon: Icon;
+  /** The part it follows in the menu; after `data` when left out. */
+  after?: Exclude<StudioSpaceGroup, "results">;
+  component: ComponentType;
+}
+
+/** An entry of a plugin part's menu: it jumps to the element with that id. */
+export interface StudioSpaceMenuEntry {
+  id: string;
+  label: string;
+  icon?: Icon;
+}
+
 /** What a runner's section of the share dialog is handed: the wizard the dialog is about. */
 export interface StudioShareSectionProps {
   wizard: { id: string; title: string };
@@ -99,6 +121,16 @@ export interface StudioAssistantCard {
   component: ComponentType<StudioAssistantCardProps<any>>;
 }
 
+/** A space's brand as Info & Marke has it: what a plugin draws in its look. */
+export interface StudioBrand {
+  /** The title end users see. */
+  name: string;
+  /** The colours in order: the first is the accent. */
+  colors: { name: string; value: string }[];
+  /** The fonts, each with what it is for ("Headings") and the weights the brand uses. */
+  fonts: { family: string; role: string; weights: number[] }[];
+}
+
 /** The space the studio shows: what all its wizards share. */
 export interface StudioSpace {
   id: string;
@@ -106,6 +138,7 @@ export interface StudioSpace {
   name: string;
   /** Synced from a local install, or on a runtime where nothing is built: shown, not changed. */
   readOnly: boolean;
+  brand: StudioBrand;
 }
 
 /** A row under the assistant's hello: a question the person asks with one click. */
@@ -167,6 +200,7 @@ export interface StudioPluginContext {
   registerNav(entry: StudioNavEntry): void;
   registerSettingsSection(section: StudioSettingsSection): void;
   registerSpaceSection(section: StudioSpaceSection): void;
+  registerSpacePart(part: StudioSpacePart): void;
   registerShareSection(section: StudioShareSection): void;
   registerAssistantCard(card: StudioAssistantCard): void;
   /**
@@ -174,6 +208,11 @@ export interface StudioPluginContext {
    * again when the person picks another space.
    */
   useSpace(): StudioSpace | null;
+  /**
+   * A hook for a plugin's space part: the entries of the part's menu, each jumping to the element
+   * of its id in what the part draws. The menu marks the one in view.
+   */
+  useSpaceMenu(entries: StudioSpaceMenuEntry[]): void;
   /**
    * A hook: where the page stands, as the trail after the logo in the top bar ("Termine /
    * Kalender"), said there instead of a heading of the page's own. Set while the page is shown.

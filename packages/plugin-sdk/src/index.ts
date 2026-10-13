@@ -161,6 +161,11 @@ export interface PluginGenerateRequest<T = undefined> {
   maxOutputTokens?: number;
   /** Default: two minutes. */
   signal?: AbortSignal;
+  /**
+   * Pictures (PNG, JPEG, WebP, GIF) and PDFs the model looks at with the prompt: a screenshot to
+   * build after, a brand guide. Text files go into the prompt as text.
+   */
+  files?: { data: Uint8Array; mediaType: string; name?: string }[];
 }
 
 export interface PluginGenerateResult<T = undefined> {
@@ -169,7 +174,7 @@ export interface PluginGenerateResult<T = undefined> {
   object: T;
 }
 
-/** What a plugin adds to every agent step of a space's wizards. */
+/** What a plugin adds to the AI steps of a space's wizards: every agent step, unless `steps` says. */
 export interface PluginSpaceContext {
   /**
    * A block of the step's instructions, after what the space says about itself and its
@@ -179,6 +184,21 @@ export interface PluginSpaceContext {
   block(space: PluginSpace): string | null | Promise<string | null>;
   /** Tools the step gets with the block, named `<plugin>_<name>` for the model. */
   tools?: PluginTool[];
+  /**
+   * The steps that get it: `agent` (default), `html` — the steps that write a document or a
+   * dashboard as HTML, which get the block without the tools.
+   */
+  steps?: ("agent" | "html")[];
+}
+
+/** A space's brand as the studio's Info & Marke has it: what a plugin draws or writes in its look. */
+export interface PluginBrand {
+  /** The title end users see. */
+  name: string;
+  /** The colours in order: the first is the accent. */
+  colors: { name: string; value: string }[];
+  /** The fonts, each with what it is for ("Headings") and the weights the brand uses. */
+  fonts: { family: string; role: string; weights: number[] }[];
 }
 
 /** A text a plugin puts into a space's search index, beside the space's documents. */
@@ -848,7 +868,7 @@ export interface PluginServerApi {
     conversation(): Promise<{ provider: "openai"; apiKey: string; model: string }>;
   };
   registerTool<S extends z.ZodType>(tool: PluginTool<S>): void;
-  /** A block and tools for every agent step of a space's wizards. */
+  /** A block and tools for every agent step of a space's wizards, or a block for its HTML steps. */
   registerSpaceContext(context: PluginSpaceContext): void;
   /** A tool of the space assistant. */
   registerAssistantTool<S extends z.ZodType>(tool: PluginAssistantTool<S>): void;
@@ -868,6 +888,10 @@ export interface PluginServerApi {
   index: PluginIndex;
   /** Wissen of a space: pages, tables and files the plugin writes, with their Kategorien. */
   spaceData: PluginSpaceData;
+  spaces: {
+    /** The space's brand, of the current tenant; null for a space it does not have. */
+    brand(space: string): Promise<PluginBrand | null>;
+  };
   web: PluginWeb;
   documents: PluginDocuments;
   /**

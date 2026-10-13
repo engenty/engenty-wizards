@@ -112,16 +112,14 @@ export const COLOR_SECTION_KINDS = ["colors", "gradients", "patterns"] as const;
 export type ColorSectionKind = (typeof COLOR_SECTION_KINDS)[number];
 
 /**
- * Further colours of one use, as a brand guide groups them: "Illustration – for drawings and
- * charts". Optional. A section holds colours, gradients or patterns (`kind`, colours when none).
- * Colours in no section are the standard ones: they come first, and the first of them is the
- * accent.
+ * Further colours of one use, as a brand guide groups them: "Illustration". Optional. A section
+ * holds colours, gradients or patterns (`kind`, colours when none); each of them says itself what
+ * it is for. Colours in no section are the standard ones: they come first, and the first of them
+ * is the accent.
  */
 export interface ColorSection {
   id: string;
   title: string;
-  /** When to use what is in it. */
-  description: string;
   kind?: ColorSectionKind;
 }
 
@@ -132,6 +130,8 @@ export type GradientType = (typeof GRADIENT_TYPES)[number];
 export interface BrandGradient {
   id: string;
   name: string;
+  /** What it is for and how to use it, as a colour's name says it. */
+  description?: string;
   /** The gradients section it is in. */
   section: string;
   type: GradientType;
@@ -144,6 +144,8 @@ export interface BrandGradient {
 export interface BrandPattern {
   id: string;
   name: string;
+  /** What it is for and how to use it. */
+  description?: string;
   /** The patterns section it is in. */
   section: string;
   /** The project file (kind `pattern`) with the picture. */
@@ -282,6 +284,19 @@ export function ruleLines(rules: BrandRule[]): string {
     .join("\n");
 }
 
+/** What a font's licence can allow it for, among what the wizards make. */
+export const FONT_USES = ["web", "documents", "print", "images", "video"] as const;
+export type FontUse = (typeof FONT_USES)[number];
+
+/** How a model reads a use. */
+export const FONT_USE_WORDS: Record<FontUse, string> = {
+  web: "web pages and widgets",
+  documents: "documents (PDF, Word, slides)",
+  print: "print",
+  images: "images and social graphics",
+  video: "video",
+};
+
 /** A typeface of the brand and what it is for: "Space Grotesk – headings". */
 export interface BrandFont {
   id: string;
@@ -291,6 +306,24 @@ export interface BrandFont {
   role: string;
   /** The weights the brand uses: 400, 600, … */
   weights: number[];
+  /** Its licence as the admin names it: "SIL Open Font License", "Adobe Fonts". */
+  license?: string;
+  /**
+   * All the licence allows it for; none: not said. What a step makes for another use is set in
+   * a system font.
+   */
+  uses?: FontUse[];
+}
+
+/** The font's licence as a model reads it: ", licence …, may only be used for …". */
+export function fontLicenseWords(f: Pick<BrandFont, "license" | "uses">): string {
+  return [
+    f.license ? `licence ${f.license}` : "",
+    f.uses?.length ? `may only be used for ${f.uses.map((u) => FONT_USE_WORDS[u]).join(", ")}` : "",
+  ]
+    .filter(Boolean)
+    .map((x) => `, ${x}`)
+    .join("");
 }
 
 /** A text style of the type scale: "Headline XL – Space Grotesk 600, 48 px, line 90 %, −4 %". */

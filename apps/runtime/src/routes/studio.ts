@@ -116,6 +116,7 @@ import {
   readChat,
   turnHistory,
 } from "../services/assistant-chats.js";
+import { describeGradient } from "../services/brand.js";
 import {
   checkForCloud,
   cloudLinked,
@@ -157,6 +158,7 @@ import { documentText, queueIndex, searchKnowledge } from "../services/project-i
 import {
   createProject,
   deleteProject,
+  gradientSchema,
   listProjects,
   maskedServers,
   ownedProject,
@@ -747,6 +749,31 @@ export const studio = new Hono<Vars>()
       throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
     });
     return c.json({ colors });
+  })
+  // A gradient from the admin's words, or theirs changed as they say. Nothing is saved.
+  .post("/projects/:id/gradients/describe", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const { text, gradient } = z
+      .object({
+        text: z.string().trim().min(1).max(1000),
+        gradient: gradientSchema
+          .pick({ name: true, type: true, angle: true, stops: true })
+          .optional(),
+      })
+      .parse(await c.req.json());
+    if (!(await canSpend())) {
+      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    }
+    try {
+      return c.json({
+        gradient: await describeGradient(project.brand.colors ?? [], text, gradient),
+      });
+    } catch (err) {
+      if (err instanceof ModelUnavailableError) {
+        throw new ServiceError("refused", err.message);
+      }
+      throw err;
+    }
   })
   .post("/projects/:id/fonts/scan", async (c) => {
     await ownedProject(c.get("user").id, c.req.param("id"));

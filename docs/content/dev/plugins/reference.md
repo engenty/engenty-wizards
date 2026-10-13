@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.3.4
+version: 0.3.7
 ---
 
 ## Server half
@@ -32,7 +32,8 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `registerRunner(runner: PluginRunner)` | [Runners](./runners.md). A door a wizard runs through; `page` runners answer at `/w/<token>/<id>` |
 | `runs` | [Runners](./runners.md#drive-a-run). `start`, `report`, `wizards`, `answerPage`, `review`, `answerAsk`, `control`, `subscribe`, `handoffUrl`, `upload`, `transcribe`: the functions behind the MCP tools, for the plugin's door |
 | `speech.conversation()` | [Runners](./runners.md#a-call). `{ provider: "openai", apiKey, model }`: the tenant's realtime speech model, for a call a plugin drives itself. Throws `503` / `no_model` while none is set up |
-| `registerSpaceContext({ block, tools? })` | [The space](./space.md). `block(space): string \| null` |
+| `registerSpaceContext({ block, tools?, steps? })` | [The space](./space.md). `block(space): string \| null`; `steps`: `agent` (default), `html` (steps that write a document or a dashboard, without the tools) |
+| `spaces.brand(space)` | [The space](./space.md#the-spaces-brand). `{ name, colors, fonts }` of the space, or `null` |
 | `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
 | `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
 | `spaceData.putCategories`, `.putPage`, `.putTable`, `.putFile`, `.putDocument`, `.list`, `.readPages`, `.files`, `.readFile`, `.remove`, `.summarize` | [The space](./space.md#knowledge-a-plugin-writes). Knowledge of a space: pages, tables and files under keys of the plugin's own, with their Kategorien; and the space's own pages and files to read |
@@ -45,7 +46,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `web.fetch(url, init?)`, `web.read(url, { signal? })` | [The web](./server.md#the-web) |
 | `documents.parse({ data, name, mime }, { signal? })` | [Documents](./server.md#documents). `{ markdown, pages }` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
-| `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`. See [The server half](./server.md#asking-a-model) |
+| `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`, `files?` (pictures and PDFs: `{ data, mediaType, name? }[]`). See [The server half](./server.md#asking-a-model) |
 | `connections.available(ids)`, `.start({ space, connector, actions })`, `.connect({ space, connector, actions, credentials })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md) |
 | `secrets.seal(value): string`, `secrets.unseal(sealed)` | [Keys of the plugin's own](./server.md#keys-of-the-plugins-own). `unseal` gives null for a value sealed on another install |
 | `registerAssistantContext({ block })` | [The space](./space.md#the-assistant-on-the-plugins-own-page). `block(space): string \| null` |
@@ -240,11 +241,13 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own settings for a wizard (a keyword), under the share dialog's gear once it is switched on and set up. `component` gets `{ wizard: { id, title } }` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
+| `studio.registerSpacePart({ id, label, icon, after?, component })` | [A part of the plugin's own](./studio.md#a-part-of-the-plugins-own) at `/studio/space/<id>`, after `info`, `knowledge` or `data` (default) in the menu |
+| `studio.useSpaceMenu(entries)` | A hook in a plugin's part: its menu, `{ id, label, icon? }[]`, each jumping to the element with that id |
 | `studio.useCrumbs(items)` | A hook: the trail in the top bar for the page shown, `{ label, to? }[]`, instead of a heading of the page's own |
 | `studio.Assistant` | Tells the studio's assistant what to say on a page of the plugin: `title?`, `hello?`, `placeholder?`, `suggestions?: { label, message?, fill? }[]`, `onChanged?`. Draws nothing |
 | `studio.useAssistantPage(page)` | A hook: what the page shows, for the assistant: `open?: { kind, id?, label }`, `selection?`, `summary?`, `fields?: { id, label, value }[]`, `compact?`, and the words of `studio.Assistant` |
 | `studio.useAssistantTool(name, { description, parameters? }, run)` | A hook: a tool the assistant runs in the page while it is shown, as `<plugin>_<name>`. `parameters`: JSON Schema; `run(args)` returns what the assistant learns |
-| `studio.useSpace()` | A hook: `{ id, name, readOnly }` of the space the studio shows, or `null` |
+| `studio.useSpace()` | A hook: `{ id, name, readOnly, brand }` of the space the studio shows, or `null`; `brand` is `{ name, colors, fonts }` |
 | `studio.i18n.register({ de, en })` | Gives `t(key, vars?)` |
 | `studio.i18n.lang()` | `"de"` or `"en"` |
 | `studio.api.get`, `.post`, `.put`, `.patch`, `.del` | The plugin's own routes |

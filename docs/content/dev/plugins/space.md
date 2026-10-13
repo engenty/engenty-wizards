@@ -1,7 +1,7 @@
 ---
 title: The space
 description: Knowledge a plugin writes, a block and tools for every AI step of a space, texts in its search index, tools and cards of its assistant.
-version: 0.3.2
+version: 0.3.7
 ---
 
 A space holds what all its wizards share: a title, logos, colours, facts, and Knowledge —
@@ -93,6 +93,24 @@ server.registerSpaceContext({
 - A model on the device calls no tools: Apple Intelligence on a Mac, or the phone a run is
   followed on, which answers only steps that list no tools themselves. The step then gets the
   block without the tools.
+- `steps` says which steps get it: `["agent"]` when left out. `"html"` is the steps that write a
+  document or a dashboard as HTML; they get the block without the tools, after the space's
+  brand: how the brand's elements look, say.
+
+## The space's brand
+
+`server.spaces.brand(space)` reads what Info & brand holds of the space's look, for a block, a
+page or a model call in it:
+
+```ts
+const brand = await server.spaces.brand(space.id);
+// { name: "Mira Kaffee", colors: [{ name: "Primär", value: "#7a3e1d" }, …],
+//   fonts: [{ family: "Fraunces", role: "Headings", weights: [600] }, …] }
+```
+
+- The first colour is the accent. A font's `role` is what it is for, in the person's words.
+- `null` for a space the tenant does not have. The studio half gets the same as
+  `studio.useSpace().brand`.
 
 ## The search index
 

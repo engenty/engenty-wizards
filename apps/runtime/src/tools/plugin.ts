@@ -90,6 +90,8 @@ const MAX_BLOCK = 8000;
 export interface SpaceContext {
   /** Blocks of the step's instructions, one per plugin context that has something to say. */
   blocks: string[];
+  /** Blocks for a step that writes HTML: of the contexts whose `steps` name `html`. */
+  html: string[];
   /** The tools that come with them. */
   tools: Record<string, any>;
 }
@@ -97,8 +99,9 @@ export interface SpaceContext {
 const contexts = new WeakMap<StepContext, Promise<SpaceContext>>();
 
 /**
- * What the tenant's plugins add to an agent step of a space's wizard (`registerSpaceContext`):
- * asked once per step, for its instructions and for its tools. A context that fails adds nothing.
+ * What the tenant's plugins add to an AI step of a space's wizard (`registerSpaceContext`):
+ * asked once per step, for its instructions and for its tools — an agent step's, or an HTML
+ * step's blocks. A context that fails adds nothing.
  */
 export function spaceContextOf(ctx: StepContext): Promise<SpaceContext> {
   let found = contexts.get(ctx);
@@ -111,9 +114,10 @@ export function spaceContextOf(ctx: StepContext): Promise<SpaceContext> {
 
 async function gather(ctx: StepContext): Promise<SpaceContext> {
   const space: PluginSpace = { id: ctx.project.id, name: ctx.project.name };
-  const result: SpaceContext = { blocks: [], tools: {} };
+  const result: SpaceContext = { blocks: [], html: [], tools: {} };
   for (const plugin of await pluginsOf(ctx.tenantId)) {
     for (const context of plugin.contexts) {
+      const steps = context.steps ?? ["agent"];
       const block = await Promise.resolve()
         .then(() => context.block(space))
         .catch((err) => {
@@ -121,6 +125,12 @@ async function gather(ctx: StepContext): Promise<SpaceContext> {
           return null;
         });
       if (!block?.trim()) {
+        continue;
+      }
+      if (steps.includes("html")) {
+        result.html.push(clip(block.trim(), MAX_BLOCK));
+      }
+      if (!steps.includes("agent")) {
         continue;
       }
       result.blocks.push(clip(block.trim(), MAX_BLOCK));

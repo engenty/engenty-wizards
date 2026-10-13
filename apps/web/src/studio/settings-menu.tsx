@@ -256,7 +256,7 @@ export function MenuRow({
   disabled,
   onPick,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   badge?: ReactNode;
   tone?: MenuTone;

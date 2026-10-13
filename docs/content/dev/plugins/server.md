@@ -1,7 +1,7 @@
 ---
 title: The server half
 description: The function a plugin exports, what it is handed, and the rules it runs under.
-version: 0.3.2
+version: 0.3.7
 ---
 
 The server half is a file whose default export is a function. The runtime calls it once when the
@@ -39,6 +39,7 @@ export default definePlugin((wizards) => {
 | `registerAssistantTool(tool)` | A tool of the space assistant | [The space](./space.md#tools-of-the-space-assistant) |
 | `registerAssistantContext(context)` | What the space assistant is told on the plugin's own page | [The space](./space.md#the-assistant-on-the-plugins-own-page) |
 | `spaceData.putPage(input)`, `putTable`, `putFile`, `putDocument`, `putCategories`, … | Knowledge of a space: pages, tables, files and Kategorien | [The space](./space.md#knowledge-a-plugin-writes) |
+| `spaces.brand(space)` | The space's look: its title, colours and fonts | [The space](./space.md#the-spaces-brand) |
 | `index.put(entry)`, `index.remove(space, key?)` | Texts in the space's search index | [The space](./space.md#the-search-index) |
 | `registerHttpRoute(route)` | A route below `/api/studio/plugins/<id>` | [Routes](./routes.md) |
 | `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
@@ -106,6 +107,7 @@ const { object } = await server.generate({
 | `model` | `classifier` (fast, cheap), `standard`, `high`, `highest` | `standard` |
 | `maxOutputTokens` | A limit on the answer | the model's |
 | `signal` | Aborts the call | two minutes |
+| `files` | Pictures (PNG, JPEG, WebP, GIF) and PDFs the model looks at with the prompt: `{ data, mediaType, name? }[]`, `data` a `Uint8Array` | none |
 
 It answers `{ text, object }`. Without a model set up it throws an error with the status `503`
 and the code `no_model`: a route that lets it through answers just that, and the studio half

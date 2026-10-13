@@ -13,6 +13,7 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { api } from "../../lib/api";
+import { useFeature } from "../../lib/features";
 import { t } from "../../lib/i18n";
 import { type Project, useIsAdmin, useManyProjects } from "../../lib/session";
 import { Button, Input, Label, Textarea } from "../../ui";
@@ -110,6 +111,10 @@ export function ProjectSettings({
   const key = `${project.id}:${rev}`;
   const readOnly = project.readOnly;
   const knowledge = group === "knowledge";
+  // Parts of the brand that wait behind their switches.
+  const sectioned = useFeature("brandSections");
+  const ruled = useFeature("brandRules");
+  const typography = useFeature("typography");
   useAssistantPage(
     readOnly
       ? {}
@@ -166,6 +171,8 @@ export function ProjectSettings({
               readOnly={readOnly}
               sections={project.brand.logoSections ?? []}
               rules={project.brand.logoRules ?? []}
+              sectioned={sectioned}
+              ruled={ruled}
               save={(brand) => save({ brand })}
             />
           </Anchor>
@@ -179,22 +186,27 @@ export function ProjectSettings({
               gradients={project.brand.gradients ?? []}
               patterns={project.brand.patterns ?? []}
               rules={project.brand.colorRules ?? []}
+              sectioned={sectioned}
+              ruled={ruled}
               save={(brand) => save({ brand })}
               readOnly={readOnly}
             />
           </Anchor>
-          <Anchor id="typography">
-            <Typography
-              key={`typography:${key}`}
-              projectId={project.id}
-              fonts={project.brand.fonts ?? []}
-              styles={project.brand.textStyles ?? []}
-              rules={project.brand.typeRules ?? []}
-              sample={project.brand.name || t("project.typeSample")}
-              save={(brand) => save({ brand })}
-              readOnly={readOnly}
-            />
-          </Anchor>
+          {typography ? (
+            <Anchor id="typography">
+              <Typography
+                key={`typography:${key}`}
+                projectId={project.id}
+                fonts={project.brand.fonts ?? []}
+                styles={project.brand.textStyles ?? []}
+                rules={project.brand.typeRules ?? []}
+                ruled={ruled}
+                sample={project.brand.name || t("project.typeSample")}
+                save={(brand) => save({ brand })}
+                readOnly={readOnly}
+              />
+            </Anchor>
+          ) : null}
           <Anchor id="assets">
             <Assets
               key={`assets:${key}`}

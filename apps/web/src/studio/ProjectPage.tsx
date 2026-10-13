@@ -1,9 +1,10 @@
 import { Layers, LayoutGrid, Puzzle, WandSparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
 import { useCurrentProject, useManyProjects } from "../lib/session";
-import { PluginFrame, useStudioPlugins } from "../plugins/host";
+import { PluginFrame, SpacePartFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
 import { scrollRoot, useCrumbs } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
@@ -24,6 +25,7 @@ import {
   projectSections,
   type SpaceGroupId,
   spaceGroups,
+  withParts,
 } from "./project-sections";
 import {
   BackRow,
@@ -124,7 +126,7 @@ function SectionRows({
  * Daten and Ergebnisse. The left container shows one level at a time, as the settings do: the
  * parts, or the menu of the part that is open, which jumps to its sections and marks the one in
  * view (Ergebnisse: picks a wizard). On a phone the parts, a part's menu and the page take
- * turns. Plugins add sections to a part; each plugin's stand under its name.
+ * turns. Plugins add sections to a part, each plugin's under its name, and parts of their own.
  */
 export function ProjectPage() {
   const { group: param } = useParams();
@@ -142,21 +144,31 @@ export function ProjectPage() {
   // own menu again.
   const [upAt, setUpAt] = useState<string | null>(null);
   const group: SpaceGroupId | undefined = isSpaceGroup(param) ? param : undefined;
+  // A plugin's part: it draws itself, and says its menu.
+  const part = group ? undefined : plugins.spaceParts.find((p) => p.id === param);
+  const open = group ?? part?.id;
   // The folder in the top bar opens the space at its parts, with the first one beside them;
   // picking a part opens its menu.
   const atParts = (location.state as { parts?: boolean } | null)?.parts === true;
-  const entries = spaceGroups().map((g) => ({ ...g, to: `/space/${g.id}` }));
-  const entry = entries.find((e) => e.id === group);
+  const entries = withParts(spaceGroups(), plugins).map((g) => ({ ...g, to: `/space/${g.id}` }));
+  const entry = entries.find((e) => e.id === open);
   const show = params.get("show");
   // A phone: 0 the parts, 1 the part's menu, 2 the page.
-  const phone = !group ? 0 : show ? 2 : 1;
-  const level = narrow ? Math.min(phone, 1) : group && upAt !== group && !atParts ? 1 : 0;
+  const phone = !open ? 0 : show ? 2 : 1;
+  const level = narrow ? Math.min(phone, 1) : open && upAt !== open && !atParts ? 1 : 0;
   const levelStep = useStepDirection(level);
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
   const title = project ? project.brand.name?.trim() || project.name : t("nav.project");
 
-  const sections = group && group !== "results" ? projectSections(group, plugins) : [];
+  // Typography waits behind its switch.
+  const off = useFeature("typography") ? [] : ["typography"];
+  const partMenu = part ? (plugins.spaceMenus[part.id] ?? []) : [];
+  const sections = part
+    ? [{ plugin: null, label: null, sections: partMenu }]
+    : group && group !== "results"
+      ? projectSections(group, plugins, off)
+      : [];
   const added = group ? projectSections(group, plugins).filter((g) => g.plugin) : [];
   const anchors = [...sections, ...(group === "results" ? added : [])].flatMap((g) =>
     g.sections.map((s) => s.id),
@@ -252,14 +264,14 @@ export function ProjectPage() {
   const scrolled = useRef("");
   // biome-ignore lint/correctness/useExhaustiveDependencies: drawn sections arrive with the project and the plugins.
   useEffect(() => {
-    const key = `${group}#${target}`;
+    const key = `${open}#${target}`;
     if (target && scrolled.current !== key && document.getElementById(target)) {
       scrolled.current = key;
       requestAnimationFrame(() => scrollToSection(target, false));
     }
-  }, [group, target, project?.id, plugins.spaceSections]);
+  }, [open, target, project?.id, plugins.spaceSections, partMenu.length]);
 
-  if (!group) {
+  if (!open) {
     // The space was one page: `/space#documents` opens the part the section is in now.
     const id = hash.slice(1);
     const of = id ? groupOfSection(id, plugins) : null;
@@ -275,7 +287,8 @@ export function ProjectPage() {
         />
       );
     }
-    if (id && plugins.status !== "ready") {
+    // A plugin's part, or a plugin's section: known once the plugins are in.
+    if ((id || param) && plugins.status !== "ready") {
       return null;
     }
     // A phone starts at the parts.
@@ -293,7 +306,7 @@ export function ProjectPage() {
       navigate({ search: `?show=${id}` });
       return;
     }
-    scrolled.current = `${group}#${id}`;
+    scrolled.current = `${open}#${id}`;
     scrollToSection(id, true);
     navigate({ search: "", hash: id }, { replace: true });
   };
@@ -333,7 +346,7 @@ export function ProjectPage() {
             <LevelHead
               title={title}
               open={level === 1 ? (entry ?? null) : null}
-              onBack={() => (narrow ? navigate("/space") : setUpAt(group ?? null))}
+              onBack={() => (narrow ? navigate("/space") : setUpAt(open ?? null))}
             />
             <div key={level} className={cn(stepClass(levelStep))}>
               {level === 0 ? (
@@ -347,7 +360,7 @@ export function ProjectPage() {
               )}
             </div>
           </aside>
-          {group ? (
+          {open ? (
             <div
               className={cn(
                 "min-w-0",
@@ -359,7 +372,7 @@ export function ProjectPage() {
                 <div className="mb-3">
                   <BackRow
                     label={entry?.label ?? title}
-                    onBack={() => navigate(`/space/${group}`)}
+                    onBack={() => navigate(`/space/${open}`)}
                   />
                 </div>
               ) : null}
@@ -565,6 +578,13 @@ export function ProjectPage() {
                   )}
                   {group === "info" ? pluginSections(added) : null}
                 </ProjectSettings>
+              ) : null}
+              {project && part ? (
+                <PluginFrame of={part}>
+                  <SpacePartFrame key={project.id} part={part.id}>
+                    <part.component />
+                  </SpacePartFrame>
+                </PluginFrame>
               ) : null}
               {project && group === "data" ? (
                 <div className="flex flex-col gap-9 pb-20">

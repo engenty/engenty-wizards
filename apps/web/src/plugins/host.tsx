@@ -8,12 +8,22 @@ import type {
   StudioSettingsSection,
   StudioShareSection,
   StudioSpace,
+  StudioSpaceMenuEntry,
+  StudioSpacePart,
   StudioSpaceSection,
 } from "@engenty-wizards/plugin-sdk/studio";
 import * as sdk from "@engenty-wizards/plugin-sdk/studio";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
-import { Component, type ReactNode, useMemo, useSyncExternalStore } from "react";
+import {
+  Component,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import * as jsx from "react/jsx-runtime";
 import { createPortal, flushSync } from "react-dom";
 import {
@@ -38,8 +48,8 @@ import * as ui from "../ui";
 /**
  * The studio's side of plugins (docs/content/dev/plugins). After sign-in the studio asks the runtime
  * which plugins the tenant has, loads each one's built studio half and lets it register pages,
- * entries of the top bar, sections of the settings and of the space page, and cards of the space
- * assistant's chat.
+ * entries of the top bar, sections of the settings and of the space page, parts of the space page,
+ * and cards of the space assistant's chat.
  *
  * A plugin's script is built to take React, the router and the studio's own components from
  * here (`__WIZARDS_STUDIO__`), so what it draws is part of this app, not a second one beside it.
@@ -93,6 +103,9 @@ export interface StudioPlugins extends Listing {
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
   spaceSections: Of<StudioSpaceSection>[];
+  spaceParts: Of<StudioSpacePart>[];
+  /** The menus of the plugins' space parts, by part, as the drawn part says them. */
+  spaceMenus: Record<string, StudioSpaceMenuEntry[]>;
   shareSections: Of<StudioShareSection>[];
   cards: Of<StudioAssistantCard>[];
 }
@@ -107,6 +120,8 @@ let state: StudioPlugins = {
   nav: [],
   sections: [],
   spaceSections: [],
+  spaceParts: [],
+  spaceMenus: {},
   shareSections: [],
   cards: [],
 };
@@ -132,6 +147,8 @@ export function useStudioPlugins(): StudioPlugins {
 /** Addresses the studio keeps for itself, and the sections of its own settings. */
 const OWN_PAGES = new Set(["", "new", "edit", "settings", "space", "setup", "sign-in"]);
 const OWN_SECTIONS = new Set(["account", "project", "connectors", "models", "build", "plugins"]);
+/** The space page's own parts. */
+const OWN_PARTS = new Set(["info", "knowledge", "data", "results"]);
 
 interface Mounted {
   /** The built files this was loaded from; other files mean: load again. */
@@ -151,6 +168,7 @@ interface Draft {
   nav: Of<StudioNavEntry>[];
   sections: Of<StudioSettingsSection>[];
   spaceSections: Of<StudioSpaceSection>[];
+  spaceParts: Of<StudioSpacePart>[];
   shareSections: Of<StudioShareSection>[];
   cards: Of<StudioAssistantCard>[];
   disposers: (() => void)[];
@@ -162,7 +180,43 @@ function useSpace(): StudioSpace | null {
   const id = project?.id;
   const name = project?.name ?? "";
   const readOnly = project?.readOnly ?? false;
-  return useMemo(() => (id ? { id, name, readOnly } : null), [id, name, readOnly]);
+  const brand = JSON.stringify({
+    name: project?.brand.name ?? "",
+    colors: (project?.brand.colors ?? []).map(({ name, value }) => ({ name, value })),
+    fonts: (project?.brand.fonts ?? []).map(({ family, role, weights }) => ({
+      family,
+      role,
+      weights,
+    })),
+  });
+  return useMemo(
+    () => (id ? { id, name, readOnly, brand: JSON.parse(brand) } : null),
+    [id, name, readOnly, brand],
+  );
+}
+
+/** The space part a plugin's component is drawn in: where its `useSpaceMenu` goes. */
+const PartContext = createContext<string | null>(null);
+
+/** Draws a plugin's space part; what it says of its menu goes to the page's menu. */
+export function SpacePartFrame({ part, children }: { part: string; children: ReactNode }) {
+  return <PartContext.Provider value={part}>{children}</PartContext.Provider>;
+}
+
+function useSpaceMenu(entries: StudioSpaceMenuEntry[]) {
+  const part = useContext(PartContext);
+  const key = JSON.stringify(entries.map((e) => [e.id, e.label]));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the entries count by their ids and labels.
+  useEffect(() => {
+    if (!part) {
+      return;
+    }
+    set({ spaceMenus: { ...state.spaceMenus, [part]: entries } });
+    return () => {
+      const { [part]: _gone, ...rest } = state.spaceMenus;
+      set({ spaceMenus: rest });
+    };
+  }, [part, key]);
 }
 
 /** The studio's assistant on a plugin's page: told it is that page, and what to say there. */
@@ -208,6 +262,15 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
       }
       draft.spaceSections.push({ ...section, plugin: id, serial: ++serials });
     },
+    registerSpacePart(part) {
+      const taken = [...others(state.spaceParts), ...draft.spaceParts].some(
+        (p) => p.id === part.id,
+      );
+      if (!/^[a-z][a-z0-9-]{0,39}$/.test(part.id) || OWN_PARTS.has(part.id) || taken) {
+        throw new Error(`The space page has a part "${part.id}" already.`);
+      }
+      draft.spaceParts.push({ ...part, plugin: id, serial: ++serials });
+    },
     registerShareSection(section) {
       const taken = [...others(state.shareSections), ...draft.shareSections].some(
         (s) => s.runner === section.runner,
@@ -224,6 +287,7 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
       draft.cards.push({ ...card, plugin: id, serial: ++serials });
     },
     useSpace,
+    useSpaceMenu,
     useCrumbs,
     Assistant: (props) => <PluginAssistant plugin={id} {...props} />,
     useAssistantPage: (page) => useAssistantPage({ ...page, plugin: id }),
@@ -311,6 +375,7 @@ function unmount(id: string) {
     nav: state.nav.filter((n) => n.plugin !== id),
     sections: state.sections.filter((s) => s.plugin !== id),
     spaceSections: state.spaceSections.filter((s) => s.plugin !== id),
+    spaceParts: state.spaceParts.filter((s) => s.plugin !== id),
     shareSections: state.shareSections.filter((s) => s.plugin !== id),
     cards: state.cards.filter((c) => c.plugin !== id),
   });
@@ -327,6 +392,7 @@ async function mount(plugin: PluginInfo) {
     nav: [],
     sections: [],
     spaceSections: [],
+    spaceParts: [],
     shareSections: [],
     cards: [],
     disposers: [],
@@ -365,6 +431,7 @@ async function mount(plugin: PluginInfo) {
     nav: [...state.nav.filter((n) => n.plugin !== id), ...draft.nav],
     sections: [...state.sections.filter((s) => s.plugin !== id), ...draft.sections],
     spaceSections: [...state.spaceSections.filter((s) => s.plugin !== id), ...draft.spaceSections],
+    spaceParts: [...state.spaceParts.filter((s) => s.plugin !== id), ...draft.spaceParts],
     shareSections: [...state.shareSections.filter((s) => s.plugin !== id), ...draft.shareSections],
     cards: [...state.cards.filter((c) => c.plugin !== id), ...draft.cards],
   });

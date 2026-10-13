@@ -17,6 +17,7 @@ import {
   type BrandPattern,
   type BrandRule,
   type ColorSection,
+  fontLicenseWords,
   gradientCss,
   type LogoSection,
   type ProjectFact,
@@ -100,8 +101,8 @@ export function factLines(facts: ProjectFact[]): string {
 }
 
 /**
- * The colours as a model reads them; a section's after the standard ones, with when to use them.
- * A gradients section names its gradients as CSS.
+ * The colours as a model reads them; a section's after the standard ones. A gradients section
+ * names its gradients as CSS, each with what it is for.
  */
 export function colorLine(
   colors: BrandColor[],
@@ -114,30 +115,35 @@ export function colorLine(
   return [
     line(colors.filter((c) => !known(c))),
     ...sections.map((s) => {
-      const head = s.description ? `${s.title} (${s.description})` : s.title;
       if (s.kind === "gradients") {
         const own = gradients.filter((g) => g.section === s.id);
-        return own.length
-          ? `${head}: ${own.map((g) => `${g.name || "gradient"} ${gradientCss(g)}`).join("; ")}`
-          : "";
+        const one = (g: BrandGradient) =>
+          `${g.name || "gradient"}${g.description ? ` (${g.description})` : ""} ${gradientCss(g)}`;
+        return own.length ? `${s.title}: ${own.map(one).join("; ")}` : "";
       }
       const own = colors.filter((c) => c.section === s.id);
-      return own.length ? `${head}: ${line(own)}` : "";
+      return own.length ? `${s.title}: ${line(own)}` : "";
     }),
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
-/** The brand's type as a model reads it: its fonts, then its text styles. */
+/**
+ * The brand's type as a model reads it: its fonts with their licences, then its text styles. A
+ * licence that names its uses is binding.
+ */
 export function typeLines(fonts: BrandFont[] = [], styles: TextStyle[] = []): string {
   const families = fonts.map((f) => {
     const weights = f.weights.length ? `, weights ${f.weights.join("/")}` : "";
-    return `- ${f.family}${f.role ? ` (${f.role})` : ""}${weights}`;
+    return `- ${f.family}${f.role ? ` (${f.role})` : ""}${weights}${fontLicenseWords(f)}`;
   });
   const scale = styles.map((s) => `- ${s.name}: ${textStyleLine(s, fonts)}`);
   return [
     families.length ? `Fonts:\n${families.join("\n")}` : "",
+    fonts.some((f) => f.uses?.length)
+      ? "A font's licence is binding: use a font only for what it may be used for, and set anything else in a system font."
+      : "",
     scale.length ? `Text styles:\n${scale.join("\n")}` : "",
   ]
     .filter(Boolean)

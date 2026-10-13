@@ -22,12 +22,13 @@ import {
   RUNNER_ID,
 } from "@engenty-wizards/shared/runners";
 import { generateText, Output } from "ai";
+import { eq } from "drizzle-orm";
 import { createJiti } from "jiti";
 import { z } from "zod";
 import { readPage } from "../agents/website.js";
 import { packageRoot } from "../cli/home.js";
 import { pluginConnections } from "../connectors/plugin-connections.js";
-import { db, onTenantOpen } from "../db/client.js";
+import { db, onTenantOpen, schema } from "../db/client.js";
 import { parseDocument } from "../documents/parse.js";
 import { env } from "../env.js";
 import { currentFeatures } from "../features.js";
@@ -217,6 +218,22 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         remove: (space, key) => removeIndexEntries(source.id, space, key),
       },
       spaceData: originData(source.id),
+      spaces: {
+        async brand(space) {
+          const p = await db.query.project.findFirst({ where: eq(schema.project.id, space) });
+          return p
+            ? {
+                name: p.brand.name ?? "",
+                colors: (p.brand.colors ?? []).map(({ name, value }) => ({ name, value })),
+                fonts: (p.brand.fonts ?? []).map(({ family, role, weights }) => ({
+                  family,
+                  role,
+                  weights,
+                })),
+              }
+            : null;
+        },
+      },
       web: {
         fetch: (url, init) => safeFetch(url, init),
         read: (url, options) => readPage(url, options?.signal),
@@ -243,10 +260,29 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
             ? Object.assign(err, { name: "ModelUnavailableError", status: 503, code: "no_model" })
             : err;
         });
+        const files = request.files ?? [];
         const result = await generateText({
           model: resolved.model,
           system: request.system,
-          prompt: request.prompt,
+          // Pictures and PDFs go with the prompt as parts of one message.
+          ...(files.length
+            ? {
+                messages: [
+                  {
+                    role: "user" as const,
+                    content: [
+                      ...files.map((f) => ({
+                        type: "file" as const,
+                        data: f.data,
+                        mediaType: f.mediaType,
+                        ...(f.name ? { filename: f.name } : {}),
+                      })),
+                      { type: "text" as const, text: request.prompt },
+                    ],
+                  },
+                ],
+              }
+            : { prompt: request.prompt }),
           maxOutputTokens: request.maxOutputTokens,
           abortSignal: request.signal ?? AbortSignal.timeout(120_000),
           ...(request.schema ? { output: Output.object({ schema: request.schema }) } : {}),

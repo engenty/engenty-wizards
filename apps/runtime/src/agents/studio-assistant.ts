@@ -10,6 +10,7 @@ import {
   cleanAssetSections,
   cleanLogoSections,
   FACT_TYPES,
+  FONT_USES,
   factKey,
   gradientCss,
   PROJECT_FILE_KINDS,
@@ -27,6 +28,7 @@ import { knowsTools } from "../assistant/knows.js";
 import { PRIMER } from "../assistant/primer.js";
 import type { SessionUser } from "../auth/index.js";
 import type { AssistantCardRecord, AssistantToolCallRecord } from "../db/schema.js";
+import { currentFeatures } from "../features.js";
 import {
   attachTools,
   contextWindowOf,
@@ -140,7 +142,7 @@ THE SPACE
 - Colours: two to six, the main one first, each with a name that says what it is for ("Primär", "Hintergrund", "Text"). Take them from the stylesheet's variables or its most used colours, never from photos. set_colors replaces the list: pass all colours that should remain. Colours in no section are the standard ones; the first of them is the accent. Colour sections are optional like logo sections: only for a further palette a brand guide or the person names for its own use ("Illustration – drawings and charts"), never for the standard colours. A brand's gradients (set_gradients, as CSS) only where a brand guide or the site's stylesheet has them; patterns and background fills are pictures the person uploads.
 - Logos: save the best candidate (an SVG or a large PNG rather than a favicon); a second one only if it truly differs (for dark ground, a signet). A few images that show the business (header, team, products) may be saved as assets — a handful, never everything.
 - Logo sections and rules are optional, and most spaces need neither. Logos in no section are the standard ones; the first of them is the main logo. Add a section (set_logo_sections) only for further variants that a brand guide, a brand or press page or the person says are used elsewhere: the title names the variant ("Logomark", "Wordmark"), the description says when to use it ("Small spaces: app icons, favicons"). The standard logos never go into a section; one logo, or a light and a dark one whose descriptions already tell them apart, get no sections. Rules (set_rules, for the logos, the colours or the type) are short rows, one rule each, with a sign: do ("Keep clear space of the mark's height on all sides"), dont ("Place it on photos"), important, question (something to check with the person), number (steps in order), or none for a plain note (minimum size, file formats). Only what such a source or the person states; never invent rules and never write general advice a brand guide did not say.
-- Typography: the brand's fonts (set_typography), each with what it is for ("Headings", "Body text") and the weights it uses — from the website's stylesheet (read_website lists its fonts) or a brand guide; system and generic faces are no brand fonts. A type scale (text styles: name, size, weight, line height, letter spacing) only when a brand guide gives one.
+- Typography: the brand's fonts (set_typography), each with what it is for ("Headings", "Body text") and the weights it uses — from the website's stylesheet (read_website lists its fonts) or a brand guide; system and generic faces are no brand fonts. A font's licence and what it may be used for (web, documents, print, images, video) only where a brand guide, the font's own page or the person says so; the wizards keep to it. A type scale (text styles: name, size, weight, line height, letter spacing) only when a brand guide gives one.
 - Asset sections are optional too: tabs of one kind each ("Icons", "Background images"), made with set_asset_sections only when the space holds enough assets of clearly different kinds or the person asks; a handful of pictures stay in the general tab.
 - Files the person attached are stored already; the message names them. look_at_file shows you a picture or a document's text. Give a file a description with describe_file when it has none or the person says what it is. Take facts from a document when asked.
 - Wissen (German „Wissen“) is what the wizards' steps look things up in: pages, tables and files, kept apart by typed Kategorien. Documents the person attaches are read into Wissen by themselves: say so; do not copy their text into facts unless asked. A website, a sitemap or a folder whose entries should go into Wissen is a source: where a tool proposes sources, use it (the person takes the proposal on its card); where there is none, say that sources need the Sources plugin.
@@ -220,9 +222,8 @@ async function projectState(userId: string, projectId: string) {
     // Optional parts are only there when the space has them.
     ...(p.brand.colorSections?.length
       ? {
-          colorSections: p.brand.colorSections.map(({ title, description, kind }) => ({
+          colorSections: p.brand.colorSections.map(({ title, kind }) => ({
             title,
-            description,
             kind: kind ?? "colors",
           })),
         }
@@ -231,6 +232,7 @@ async function projectState(userId: string, projectId: string) {
       ? {
           gradients: p.brand.gradients.map((g) => ({
             name: g.name,
+            ...(g.description ? { description: g.description } : {}),
             section: p.brand.colorSections?.find((s) => s.id === g.section)?.title,
             css: gradientCss(g),
           })),
@@ -240,6 +242,7 @@ async function projectState(userId: string, projectId: string) {
       ? {
           patterns: p.brand.patterns.map((x) => ({
             name: x.name,
+            ...(x.description ? { description: x.description } : {}),
             section: p.brand.colorSections?.find((s) => s.id === x.section)?.title,
             tile: Boolean(x.tile),
           })),
@@ -260,7 +263,15 @@ async function projectState(userId: string, projectId: string) {
         }
       : {}),
     ...(p.brand.fonts?.length
-      ? { fonts: p.brand.fonts.map(({ family, role, weights }) => ({ family, role, weights })) }
+      ? {
+          fonts: p.brand.fonts.map(({ family, role, weights, license, uses }) => ({
+            family,
+            role,
+            weights,
+            ...(license ? { license } : {}),
+            ...(uses?.length ? { uses } : {}),
+          })),
+        }
       : {}),
     ...(p.brand.textStyles?.length
       ? {
@@ -285,7 +296,19 @@ async function projectState(userId: string, projectId: string) {
 }
 
 /** The space's own tools: what fills it in. */
-function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => void) {
+/** Parts of the brand that wait behind their switches: their tools are left out while off. */
+interface BrandSwitches {
+  brandSections: boolean;
+  brandRules: boolean;
+  typography: boolean;
+}
+
+function spaceTools(
+  input: AssistantInput,
+  project: ProjectRow,
+  wrote: () => void,
+  on: BrandSwitches,
+) {
   const { signal } = input;
   const userId = input.user.id;
   const projectId = project.id;
@@ -405,7 +428,7 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
     set_colors: createTool({
       id: "set_colors",
       description:
-        "Set the brand's colours — the whole list, the main colour first. Values as #rrggbb. Optional: `sections` for a further palette of its own use (title, when to use it), and on a colour the `section` title it belongs to; colours without one are the standard ones. Without `sections` the space keeps its sections.",
+        "Set the brand's colours — the whole list, the main colour first. Values as #rrggbb. Optional: `sections` for a further palette of its own use (its title), and on a colour the `section` title it belongs to; colours without one are the standard ones. Without `sections` the space keeps its sections.",
       inputSchema: z.object({
         colors: z
           .array(
@@ -417,7 +440,7 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
           )
           .max(PROJECT_LIMITS.colors),
         sections: z
-          .array(z.object({ title: z.string().min(1).max(80), description: z.string().max(400) }))
+          .array(z.object({ title: z.string().min(1).max(80) }))
           .max(PROJECT_LIMITS.logoSections)
           .optional(),
       }),
@@ -425,6 +448,11 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
         attempt(() =>
           inTurn(async () => {
             doing("set_colors");
+            if (!on.brandSections && (sections || colors.some((c) => c.section))) {
+              throw new Error(
+                "Colour sections are not available in this studio: pass the colours without them.",
+              );
+            }
             const p = await ownedProject(userId, projectId);
             const groups = sections
               ? sections.map((s) => ({
@@ -533,7 +561,7 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
     set_typography: createTool({
       id: "set_typography",
       description:
-        "Set the brand's fonts — the whole list, the main one first — each with what it is for and its weights. Optional: `textStyles`, the type scale a brand guide gives (name, font family, size px, weight, line height %, letter spacing %); without it the space keeps its text styles.",
+        "Set the brand's fonts — the whole list, the main one first — each with what it is for, its weights and, where a source says so, its licence and what it may be used for. Optional: `textStyles`, the type scale a brand guide gives (name, font family, size px, weight, line height %, letter spacing %); without it the space keeps its text styles.",
       inputSchema: z.object({
         fonts: z
           .array(
@@ -541,6 +569,15 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
               family: z.string().min(1).max(80),
               role: z.string().max(200).describe("What it is for, in the person's language"),
               weights: z.array(z.number().int().min(100).max(900)).max(9),
+              license: z
+                .string()
+                .max(200)
+                .optional()
+                .describe("The licence, only where a source names it: 'SIL Open Font License'"),
+              uses: z
+                .array(z.enum(FONT_USES))
+                .optional()
+                .describe("All the licence allows it for, only where a source says so"),
             }),
           )
           .max(PROJECT_LIMITS.fonts),
@@ -590,15 +627,20 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
     set_gradients: createTool({
       id: "set_gradients",
       description:
-        "Optional. Set the brand's gradients, as a brand guide or the site's stylesheet gives them: each with a name and its CSS (linear-, radial- or conic-gradient with hex stops). They go into a gradients section, made when there is none with that title. Replaces the gradients of that section.",
+        "Optional. Set the brand's gradients, as a brand guide or the site's stylesheet gives them: each with a name, when to use it where the source says so, and its CSS (linear-, radial- or conic-gradient with hex stops). They go into a gradients section, made when there is none with that title. Replaces the gradients of that section.",
       inputSchema: z.object({
         section: z.string().min(1).max(80).describe("The gradients section's title"),
-        description: z.string().max(400).optional().describe("When to use them"),
         gradients: z
-          .array(z.object({ name: z.string().min(1).max(80), css: z.string().max(1000) }))
+          .array(
+            z.object({
+              name: z.string().min(1).max(80),
+              description: z.string().max(400).optional().describe("When to use it"),
+              css: z.string().max(1000),
+            }),
+          )
           .max(PROJECT_LIMITS.gradients),
       }),
-      execute: ({ section, description, gradients }) =>
+      execute: ({ section, gradients }) =>
         attempt(() =>
           inTurn(async () => {
             doing("set_gradients");
@@ -614,16 +656,14 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
             await updateProject(userId, projectId, {
               brand: {
                 colorSections: found
-                  ? sections.map((s) => (s.id === id && description ? { ...s, description } : s))
-                  : [
-                      ...sections,
-                      { id, title: section, description: description ?? "", kind: "gradients" },
-                    ],
+                  ? sections
+                  : [...sections, { id, title: section, kind: "gradients" }],
                 gradients: [
                   ...(p.brand.gradients ?? []).filter((g) => g.section !== id),
                   ...parsed.map(({ g, read }) => ({
                     id: nanoid(10),
                     name: g.name,
+                    ...(g.description ? { description: g.description } : {}),
                     section: id,
                     ...(read as NonNullable<typeof read>),
                   })),
@@ -746,6 +786,16 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
       },
     }),
   };
+  if (!on.brandSections) {
+    delete tools.set_logo_sections;
+    delete tools.set_gradients;
+  }
+  if (!on.brandRules) {
+    delete tools.set_rules;
+  }
+  if (!on.typography) {
+    delete tools.set_typography;
+  }
   return tools;
 }
 
@@ -852,6 +902,12 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
   const cards: AssistantCardRecord[] = [];
   const { project } = input;
   const space = project && input.writable ? project : null;
+  const switches = await currentFeatures();
+  const brandOn: BrandSwitches = {
+    brandSections: switches.brandSections === true,
+    brandRules: switches.brandRules === true,
+    typography: switches.typography === true,
+  };
   const tools: Record<string, any> = {
     ...knowsTools({
       user: input.user,
@@ -866,7 +922,7 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
         input.onCard?.(card);
       },
     }),
-    ...(space ? spaceTools(input, space, wrote) : {}),
+    ...(space ? spaceTools(input, space, wrote, brandOn) : {}),
   };
   // What the tenant's plugins let the assistant do besides: a source of knowledge, say.
   if (space) {
@@ -946,6 +1002,15 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
         : "No space is open.",
     part === "knowledge"
       ? "The person talks to you from Wissen: they want the wizards to know something."
+      : "",
+    space && !(brandOn.brandSections && brandOn.brandRules && brandOn.typography)
+      ? `Not in this studio (no tools for it; never offer it): ${[
+          brandOn.brandSections ? "" : "sections of logos and colours, gradients and patterns",
+          brandOn.brandRules ? "" : "rules for logos, colours and type",
+          brandOn.typography ? "" : "typography (fonts, type scale)",
+        ]
+          .filter(Boolean)
+          .join("; ")}.`
       : "",
     input.message,
   ]

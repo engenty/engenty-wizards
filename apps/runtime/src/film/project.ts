@@ -153,7 +153,7 @@ export async function prepareFilmFolder(
   // The space's brand.
   const b = ctx.scope.brand;
   const logos: { file: string; section?: string; description?: string }[] = [];
-  const patterns: { file: string; name: string; tile: boolean }[] = [];
+  const patterns: { file: string; name: string; description?: string; tile: boolean }[] = [];
   for (const p of b.patterns ?? []) {
     const f = ctx.projectFiles.find((x) => x.id === p.file);
     try {
@@ -161,7 +161,12 @@ export async function prepareFilmFolder(
         const { data } = await projectFileContent(f.projectId, f.id);
         const name = `patterns/${safeName(f.name.replace(/\.[^.]+$/, ""))}.${extFor(f.mime) === "bin" ? (f.name.split(".").pop() ?? "bin") : extFor(f.mime)}`;
         await put(join(root, "brand"), name, data);
-        patterns.push({ file: name, name: p.name, tile: Boolean(p.tile) });
+        patterns.push({
+          file: name,
+          name: p.name,
+          ...(p.description ? { description: p.description } : {}),
+          tile: Boolean(p.tile),
+        });
       }
     } catch {
       // a pattern less
@@ -187,7 +192,7 @@ export async function prepareFilmFolder(
     "brand.json",
     JSON.stringify(
       {
-        note: "The space's brand. Colours are named by what they are for; the first is the accent. A logo's or a colour's section says when to use it; colorRules, logoRules and typeRules, where there are any, say how colours, logos and type may be used; text is set in the fonts.",
+        note: "The space's brand. Colours are named by what they are for; the first is the accent. A logo's section, a gradient's or a pattern's description says when to use it; colorRules, logoRules and typeRules, where there are any, say how colours, logos and type may be used; text is set in the fonts — a font with `uses` that leave out video is not used in a film: its text gets a system font.",
         name: b.name ?? "",
         about: b.about ?? "",
         colors: (b.colors ?? []).map((c) => {
@@ -198,6 +203,7 @@ export async function prepareFilmFolder(
           ? {
               gradients: b.gradients.map((g) => ({
                 name: g.name,
+                ...(g.description ? { description: g.description } : {}),
                 section: b.colorSections?.find((x) => x.id === g.section)?.title,
                 css: gradientCss(g),
               })),
@@ -208,7 +214,13 @@ export async function prepareFilmFolder(
         ...(b.colorRules?.length ? { colorRules: ruleLines(b.colorRules).split("\n") } : {}),
         ...(b.fonts?.length
           ? {
-              fonts: b.fonts.map(({ family, role, weights }) => ({ family, role, weights })),
+              fonts: b.fonts.map(({ family, role, weights, license, uses }) => ({
+                family,
+                role,
+                weights,
+                ...(license ? { license } : {}),
+                ...(uses?.length ? { uses } : {}),
+              })),
             }
           : {}),
         ...(b.textStyles?.length

@@ -64,9 +64,6 @@ function today(ctx: StepContext): string {
   });
 }
 
-const sectionTitle = (s: { title: string; description: string }) =>
-  s.description ? `${s.title} – ${s.description}` : s.title;
-
 function brandBlock(ctx: StepContext): string {
   const b = ctx.scope.brand;
   const parts = [
@@ -824,7 +821,7 @@ function placeableImages(step: GenerateStep, ctx: StepContext): { id: string; la
     if (file) {
       out.push({
         id: file.id,
-        label: `${p.tile ? "Pattern to tile" : "Background fill"}: ${p.name || file.name}${section ? ` (${sectionTitle(section)})` : ""}`,
+        label: `${p.tile ? "Pattern to tile" : "Background fill"}: ${p.name || file.name}${p.description ? ` – ${p.description}` : ""}${section ? ` (${section.title})` : ""}`,
       });
     }
   }
@@ -867,6 +864,8 @@ async function writeHtml(
     `Today is ${today(ctx)}.`,
     brandBlock(ctx),
     guide,
+    // What plugins hold for the space's look: a UI library, say.
+    ...(await spaceContextOf(ctx)).html,
     images.length
       ? `Images you can place with <img src="asset://ID">. Use those the brief asks for (a header image, a logo) and size them with CSS:\n${images.map((i) => `- asset://${i.id} — ${i.label}`).join("\n")}`
       : "",

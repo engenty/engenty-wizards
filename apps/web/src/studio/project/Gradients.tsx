@@ -7,12 +7,13 @@ import {
   gradientCss,
   parseGradient,
 } from "@engenty-wizards/shared/projects";
-import { Copy, Download, Grid2x2, Plus, Trash2 } from "lucide-react";
+import { Copy, Download, ImageUp, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import { Button, cn, Dialog, IconButton, Input, Label, Swatch } from "../../ui";
+import { Button, cn, Dialog, IconButton, Input, Label, Spinner, Swatch } from "../../ui";
 import { fileUrl } from "./data";
-import { InlineText } from "./Section";
+import { DropArea, InlineText } from "./Section";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -59,14 +60,21 @@ const TYPE_LABELS: Record<GradientType, Parameters<typeof t>[0]> = {
   conic: "project.gradientConic",
 };
 
-/** A gradient made or changed: its type, angle and colour stops, or its CSS pasted in. */
+/**
+ * A gradient made or changed: said in words for engenty to draw, or by its type, angle and colour
+ * stops, or its CSS pasted in.
+ */
 export function GradientEditor({
+  projectId,
   gradient,
+  isNew,
   brand,
   onSave,
   onClose,
 }: {
+  projectId: string;
   gradient: BrandGradient;
+  isNew: boolean;
   /** The brand's colours, one click from becoming a stop. */
   brand: BrandColor[];
   onSave: (g: BrandGradient) => void;
@@ -75,6 +83,11 @@ export function GradientEditor({
   const [g, setG] = useState(gradient);
   const [css, setCss] = useState(gradientCss(gradient));
   const [cssError, setCssError] = useState(false);
+  const [wish, setWish] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  // The first answer to a new gradient makes it; every later one changes what is there.
+  const [drawn, setDrawn] = useState(!isNew);
   const change = (next: BrandGradient) => {
     setG(next);
     setCss(gradientCss(next));
@@ -95,15 +108,69 @@ export function GradientEditor({
     }
     change({ ...g, stops: [...g.stops, { color: color ?? sorted[0]?.color ?? "#888888", at }] });
   };
+  const ask = async () => {
+    setAsking(true);
+    setAskError(null);
+    try {
+      const { gradient: answer } = await api.post<{
+        gradient: Pick<BrandGradient, "name" | "type" | "angle" | "stops">;
+      }>(`/api/studio/projects/${projectId}/gradients/describe`, {
+        text: wish.trim(),
+        ...(drawn
+          ? { gradient: { name: g.name, type: g.type, angle: g.angle, stops: g.stops } }
+          : {}),
+      });
+      change({ ...g, ...answer, name: g.name.trim() ? g.name : answer.name });
+      setWish("");
+      setDrawn(true);
+    } catch (err) {
+      setAskError((err as Error).message);
+    }
+    setAsking(false);
+  };
   return (
-    <Dialog open onClose={onClose} wide title={t("project.gradientEdit")}>
+    <Dialog
+      open
+      onClose={onClose}
+      wide
+      title={isNew ? t("project.gradientNew") : t("project.gradientEdit")}
+    >
       <div className="flex flex-col gap-5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (wish.trim() && !asking) {
+              void ask();
+            }
+          }}
+        >
+          <div className="flex gap-2">
+            <Input
+              data-autofocus={isNew || undefined}
+              value={wish}
+              maxLength={1000}
+              aria-label={t("project.gradientDescribe")}
+              placeholder={
+                drawn ? t("project.gradientDescribeChange") : t("project.gradientDescribeNew")
+              }
+              onChange={(e) => setWish(e.target.value)}
+              className="min-w-0 flex-1"
+            />
+            <Button type="submit" variant="secondary" busy={asking} disabled={!wish.trim()}>
+              <Sparkles className="size-4" />
+              {drawn ? t("project.gradientDescribeApply") : t("project.gradientDescribeMake")}
+            </Button>
+          </div>
+          <p className={cn("mt-1.5 text-[0.8125rem]", askError ? "text-rose" : "text-ink-3")}>
+            {askError ?? t("project.gradientDescribeHint")}
+          </p>
+        </form>
         <div
           className="h-40 rounded-lg ring-1 ring-border-soft"
           style={{ background: gradientCss(g) }}
         />
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          <div className="min-w-48 flex-1">
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <div>
             <Label>{t("project.gradientName")}</Label>
             <Input
               value={g.name}
@@ -112,6 +179,17 @@ export function GradientEditor({
               onChange={(e) => setG({ ...g, name: e.target.value })}
             />
           </div>
+          <div>
+            <Label>{t("project.fillUseLabel")}</Label>
+            <Input
+              value={g.description ?? ""}
+              maxLength={400}
+              placeholder={t("project.gradientUse")}
+              onChange={(e) => setG({ ...g, description: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
           <div>
             <Label>{t("project.gradientType")}</Label>
             <div className="flex gap-1 rounded-full bg-paper-2 p-0.5 ring-1 ring-border-soft">
@@ -257,51 +335,87 @@ export function GradientEditor({
   );
 }
 
-const hoverActions =
-  "flex shrink-0 opacity-0 transition focus-within:opacity-100 group-hover/card:opacity-100 coarse:opacity-100";
+/** A card's actions over its picture, top right, as on the asset tiles. */
+const overActions =
+  "absolute top-1.5 right-1.5 flex gap-1 opacity-0 transition focus-within:opacity-100 group-hover/card:opacity-100 coarse:opacity-100";
+const overButton = "size-8 bg-card shadow-soft hover:bg-card";
+
+/** A card's name and what it is for, written in place. */
+function CardText({
+  name,
+  namePlaceholder,
+  description,
+  usePlaceholder,
+  readOnly,
+  onChange,
+}: {
+  name: string;
+  namePlaceholder: string;
+  description?: string;
+  usePlaceholder: string;
+  readOnly?: boolean;
+  onChange: (patch: { name?: string; description?: string }) => void;
+}) {
+  if (readOnly) {
+    return (
+      <div className="min-w-0 px-0.5">
+        <p className="truncate text-[0.875rem]">{name || namePlaceholder}</p>
+        {description ? (
+          <p className="text-[0.8125rem] text-ink-3 leading-snug">{description}</p>
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <div className="min-w-0 px-0.5">
+      <InlineText
+        value={name}
+        label={t("project.gradientName")}
+        placeholder={namePlaceholder}
+        maxLength={80}
+        onChange={(v) => onChange({ name: v })}
+        className="font-medium text-[0.875rem]"
+      />
+      <InlineText
+        value={description ?? ""}
+        label={t("project.fillUseLabel")}
+        placeholder={usePlaceholder}
+        maxLength={400}
+        onChange={(v) => onChange({ description: v })}
+        className="text-[0.8125rem] text-ink-3"
+      />
+    </div>
+  );
+}
 
 /** A gradient as a card: drawn, named, its CSS to copy and a PNG to download. */
 export function GradientCard({
   gradient,
   readOnly,
   onEdit,
-  onRename,
+  onChange,
   onRemove,
 }: {
   gradient: BrandGradient;
   readOnly?: boolean;
   onEdit: () => void;
-  onRename: (name: string) => void;
+  onChange: (patch: Partial<BrandGradient>) => void;
   onRemove: () => void;
 }) {
   const css = gradientCss(gradient);
   const [copied, setCopied] = useState(false);
   return (
     <div className="group/card flex flex-col gap-2 rounded-lg bg-paper p-2 ring-1 ring-border-soft">
-      <button
-        type="button"
-        disabled={readOnly}
-        aria-label={t("project.gradientEdit")}
-        onClick={onEdit}
-        className="h-28 rounded-md ring-1 ring-border-soft transition enabled:hover:brightness-105"
-        style={{ background: css }}
-      />
-      <div className="flex items-center gap-1 px-0.5">
-        <div className="min-w-0 flex-1">
-          {readOnly ? (
-            <span className="text-[0.875rem]">{gradient.name}</span>
-          ) : (
-            <InlineText
-              value={gradient.name}
-              label={t("project.gradientName")}
-              placeholder={t("project.gradientName")}
-              maxLength={80}
-              onChange={onRename}
-              className="font-medium text-[0.875rem]"
-            />
-          )}
-        </div>
-        <div className={hoverActions}>
+      <div className="relative">
+        <button
+          type="button"
+          disabled={readOnly}
+          aria-label={t("project.gradientEdit")}
+          onClick={onEdit}
+          className="block h-28 w-full rounded-md ring-1 ring-border-soft transition enabled:hover:brightness-105"
+          style={{ background: css }}
+        />
+        <div className={overActions}>
           <IconButton
             label={copied ? t("project.gradientCopied") : t("project.gradientCopy")}
             onClick={() => {
@@ -309,14 +423,14 @@ export function GradientCard({
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
-            className="size-8"
+            className={overButton}
           >
             <Copy className="size-4" />
           </IconButton>
           <IconButton
             label={t("project.download")}
             onClick={() => void gradientPng(gradient, gradient.name)}
-            className="size-8"
+            className={overButton}
           >
             <Download className="size-4" />
           </IconButton>
@@ -324,15 +438,33 @@ export function GradientCard({
             <IconButton
               label={t("project.remove")}
               onClick={onRemove}
-              className="size-8 hover:text-rose"
+              className={cn(overButton, "hover:text-rose")}
             >
               <Trash2 className="size-4" />
             </IconButton>
           )}
         </div>
       </div>
+      <CardText
+        name={gradient.name}
+        namePlaceholder={t("project.gradientName")}
+        description={gradient.description}
+        usePlaceholder={t("project.gradientUse")}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
     </div>
   );
+}
+
+/** How a pattern's picture lies on an area: repeated as a tile, or filling it. */
+function patternLook(src: string, tile?: boolean) {
+  return {
+    backgroundImage: `url("${src}")`,
+    backgroundSize: tile ? "64px" : "cover",
+    backgroundRepeat: tile ? "repeat" : "no-repeat",
+    backgroundPosition: "center",
+  };
 }
 
 /** A pattern or a fill as a card: the picture, tiled or filling, to download. */
@@ -341,6 +473,7 @@ export function PatternCard({
   pattern,
   fileName,
   readOnly,
+  onEdit,
   onChange,
   onRemove,
 }: {
@@ -348,53 +481,32 @@ export function PatternCard({
   pattern: BrandPattern;
   fileName: string;
   readOnly?: boolean;
+  onEdit: () => void;
   onChange: (patch: Partial<BrandPattern>) => void;
   onRemove: () => void;
 }) {
   const src = fileUrl(projectId, pattern.file);
   return (
     <div className="group/card flex flex-col gap-2 rounded-lg bg-paper p-2 ring-1 ring-border-soft">
-      <div
-        className="h-28 rounded-md ring-1 ring-border-soft"
-        style={{
-          backgroundImage: `url("${src}")`,
-          backgroundSize: pattern.tile ? "64px" : "cover",
-          backgroundRepeat: pattern.tile ? "repeat" : "no-repeat",
-          backgroundPosition: "center",
-        }}
-      />
-      <div className="flex items-center gap-1 px-0.5">
-        <div className="min-w-0 flex-1">
-          {readOnly ? (
-            <span className="text-[0.875rem]">{pattern.name || fileName}</span>
-          ) : (
-            <InlineText
-              value={pattern.name}
-              label={t("project.patternName")}
-              placeholder={fileName}
-              maxLength={80}
-              onChange={(name) => onChange({ name })}
-              className="font-medium text-[0.875rem]"
-            />
-          )}
-        </div>
-        <div className={hoverActions}>
-          {readOnly ? null : (
-            <IconButton
-              label={pattern.tile ? t("project.patternFill") : t("project.patternTile")}
-              aria-pressed={Boolean(pattern.tile)}
-              onClick={() => onChange({ tile: !pattern.tile })}
-              className={cn("size-8", pattern.tile && "bg-paper-2 text-ink")}
-            >
-              <Grid2x2 className="size-4" />
-            </IconButton>
-          )}
+      <div className="relative">
+        <button
+          type="button"
+          disabled={readOnly}
+          aria-label={t("project.patternEdit")}
+          onClick={onEdit}
+          className="block h-28 w-full rounded-md ring-1 ring-border-soft transition enabled:hover:brightness-105"
+          style={patternLook(src, pattern.tile)}
+        />
+        <div className={overActions}>
           <a
             href={src}
             download={fileName}
             aria-label={t("project.download")}
             title={t("project.download")}
-            className="inline-flex size-8 items-center justify-center rounded-full text-ink-3 transition hover:bg-accent hover:text-ink"
+            className={cn(
+              "inline-flex items-center justify-center rounded-full text-ink-3 transition hover:text-ink",
+              overButton,
+            )}
           >
             <Download className="size-4" />
           </a>
@@ -402,13 +514,170 @@ export function PatternCard({
             <IconButton
               label={t("project.remove")}
               onClick={onRemove}
-              className="size-8 hover:text-rose"
+              className={cn(overButton, "hover:text-rose")}
             >
               <Trash2 className="size-4" />
             </IconButton>
           )}
         </div>
       </div>
+      <CardText
+        name={pattern.name}
+        namePlaceholder={fileName}
+        description={pattern.description}
+        usePlaceholder={t("project.patternUse")}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
     </div>
+  );
+}
+
+/**
+ * A pattern added or changed: its picture uploaded or replaced, its name, what it is for, and
+ * whether it is repeated as a tile or fills the area. A picture uploaded here and then not kept is
+ * removed again.
+ */
+export function PatternEditor({
+  projectId,
+  pattern,
+  isNew,
+  fileName,
+  busy,
+  error,
+  upload,
+  removeFile,
+  onSave,
+  onClose,
+}: {
+  projectId: string;
+  /** A new one has no `file` yet. */
+  pattern: BrandPattern;
+  isNew: boolean;
+  fileName: (id: string) => string;
+  busy: boolean;
+  /** Why the last upload was not taken. */
+  error: string | null;
+  /** Uploads a picture as a pattern file: its id and name, or null when it was not taken. */
+  upload: (file: File) => Promise<{ id: string; name: string } | null>;
+  removeFile: (id: string) => void;
+  onSave: (p: BrandPattern) => void;
+  onClose: () => void;
+}) {
+  const [p, setP] = useState(pattern);
+  const [uploaded, setUploaded] = useState<string[]>([]);
+  const take = async (files: File[]) => {
+    const file = files[0];
+    if (!file) {
+      return;
+    }
+    const taken = await upload(file);
+    if (taken) {
+      setUploaded((all) => [...all, taken.id]);
+      setP((x) => ({ ...x, file: taken.id, name: x.name || taken.name.replace(/\.[^.]+$/, "") }));
+    }
+  };
+  const cancel = () => {
+    for (const id of uploaded) {
+      removeFile(id);
+    }
+    onClose();
+  };
+  const save = () => {
+    for (const id of uploaded.filter((id) => id !== p.file)) {
+      removeFile(id);
+    }
+    if (pattern.file && pattern.file !== p.file) {
+      removeFile(pattern.file);
+    }
+    onSave({ ...p, name: p.name.trim(), description: p.description?.trim() || undefined });
+    onClose();
+  };
+  return (
+    <Dialog
+      open
+      onClose={cancel}
+      wide
+      title={isNew ? t("project.patternNew") : t("project.patternEdit")}
+    >
+      <div className="flex flex-col gap-5">
+        {p.file ? (
+          <div
+            className="relative h-40 rounded-lg ring-1 ring-border-soft"
+            style={patternLook(fileUrl(projectId, p.file), p.tile)}
+          >
+            <DropArea
+              accept="image/*"
+              multiple={false}
+              onFiles={(files) => void take(files)}
+              className="absolute right-2 bottom-2 h-9 border-solid bg-card px-3.5 text-ink-2 shadow-soft"
+            >
+              {busy ? <Spinner className="size-4" /> : <ImageUp className="size-4" />}
+              {t("project.patternReplace")}
+            </DropArea>
+          </div>
+        ) : (
+          <DropArea
+            accept="image/*"
+            multiple={false}
+            onFiles={(files) => void take(files)}
+            className="h-40 flex-col"
+          >
+            {busy ? <Spinner className="size-5" /> : <ImageUp className="size-5" />}
+            {t("project.patternPick")}
+          </DropArea>
+        )}
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <div>
+            <Label>{t("project.patternName")}</Label>
+            <Input
+              value={p.name}
+              maxLength={80}
+              placeholder={p.file ? fileName(p.file) : t("project.patternNamePlaceholder")}
+              onChange={(e) => setP({ ...p, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>{t("project.fillUseLabel")}</Label>
+            <Input
+              value={p.description ?? ""}
+              maxLength={400}
+              placeholder={t("project.patternUse")}
+              onChange={(e) => setP({ ...p, description: e.target.value })}
+            />
+          </div>
+        </div>
+        <div>
+          <Label>{t("project.patternShow")}</Label>
+          <div className="flex w-fit gap-1 rounded-full bg-paper-2 p-0.5 ring-1 ring-border-soft">
+            {[false, true].map((tile) => (
+              <button
+                key={String(tile)}
+                type="button"
+                aria-pressed={Boolean(p.tile) === tile}
+                onClick={() => setP({ ...p, tile: tile || undefined })}
+                className={cn(
+                  "h-9 rounded-full px-4 font-medium text-[0.875rem] transition",
+                  Boolean(p.tile) === tile
+                    ? "bg-card text-ink shadow-sm"
+                    : "text-ink-3 hover:text-ink-2",
+                )}
+              >
+                {tile ? t("project.patternTile") : t("project.patternFill")}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          {error ? <p className="mr-auto text-[0.8125rem] text-rose">{error}</p> : null}
+          <Button variant="ghost" onClick={cancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button disabled={!p.file || busy} onClick={save}>
+            {isNew ? t("project.add") : t("settings.save")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

@@ -1,7 +1,7 @@
 ---
 title: Space
 description: What your wizards share and produce — who you are, what they look things up in, and the results of their runs.
-version: 0.3.2
+version: 0.3.7
 ---
 
 The house in the app bar, after the space's tile, opens your space: what all your wizards share,
@@ -13,7 +13,7 @@ the top leads back. On a phone the parts, a part's sections and the page take tu
 
 | Part | Sections | Used for |
 |---|---|---|
-| Info & brand | Basics, Logos, Colours, Assets, Facts | Who you are and how you look |
+| Info & brand | Basics, Facts, Logos, Colours, Brand assets | Who you are and how you look |
 | Knowledge | All, then each Kategorie, then the sections plugins add | What every AI step looks things up in |
 | Data | All data, then each wizard | Tables and pages the wizards keep |
 | Results | All results, then each wizard | The runs that reached their result |
@@ -23,10 +23,10 @@ the top leads back. On a phone the parts, a part's sections and the page take tu
 | Section | Holds | Used for |
 |---|---|---|
 | Basics | Title and "About": what you do, for whom, and the tone you write in | Texts sound like you. People who run a wizard see the title too |
+| Facts | Labelled values: address, VAT id, opening hours | Steps use them as written |
 | Logos | One or several, each with a description of what it is for | People see the main logo. The description tells a step what a variant is for |
 | Colours | Named colours, each with a note on its use | The first colour is the accent of documents, dashboards and public pages |
-| Assets | Images, graphics, videos, each with a description | AI steps place them in documents and choose by the description |
-| Facts | Labelled values: address, VAT id, opening hours | Steps use them as written |
+| Brand assets | Images, graphics, videos, sound, PDFs, fonts, Lottie and 3D files, in tabs | AI steps place pictures in documents and choose by the description |
 
 ## Knowledge
 

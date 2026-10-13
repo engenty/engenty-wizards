@@ -1,5 +1,18 @@
 // The primitives live in the runner package, so a wizard's page and the studio are one look.
 export * from "@engenty-wizards/runner/ui";
+// The space page's pieces, for a plugin's own part of it (`registerSpacePart`).
+export { type SaveState, useAutosave } from "../studio/project/data";
+export {
+  type AddEntry,
+  AddMenu,
+  AddRow,
+  Anchor,
+  InlineText,
+  newId,
+  RuleRows,
+  Section,
+  useRuleRows,
+} from "../studio/project/Section";
 export {
   Composer,
   type ComposerHandle,

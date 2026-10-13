@@ -1,7 +1,7 @@
 ---
 title: Styles and components
 description: The studio's components, Tailwind against the studio's theme, and why a plugin's styles never leak.
-version: 0.3.2
+version: 0.3.7
 ---
 
 A plugin's page should look like the studio. Two things make that easy: the studio's components
@@ -34,6 +34,13 @@ and its theme.
 | `LinkedText` | A sentence with its web addresses as links, named by their host | `text` |
 | `cn(...)` | Joins class names, skipping what is false | |
 | `dateText(date, withWeekday?)` | A "YYYY-MM-DD" date in the studio's language: "Wed 14 Oct 2026" | |
+| `Anchor`, `Section` | A section of the space page and the spot the menu jumps to: the heading and its hint above the card | `id` on the anchor · `title`, `hint`, `save` (how the last save went), `action` (beside the heading), `plain` (the content draws its own cards) |
+| `InlineText` | Text edited where it stands, without a field's frame | `value`, `onChange`, `placeholder`, `label`, `maxLength`, `fit` (as wide as its text) |
+| `AddMenu` | The "Add" menu of a section's heading | `entries: { label, icon, onPick }[]` |
+| `AddRow` | A quiet "+ …" row at the end of a list | `label`, `onClick` |
+| `RuleRows`, `useRuleRows(saved)` | Rules as rows, each with its sign (bullet, do, don't, to check, important, numbered) | `rules` (what the hook gives), `placeholder`, `readOnly` |
+| `useAutosave(value, save)` | Saves a value a moment after it last changed; gives the state for a section's `save` | |
+| `newId()` | A short id for something new | |
 
 ```tsx
 import { Button, Card, Chip, Label, Input } from "@engenty-wizards/web/ui";

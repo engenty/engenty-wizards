@@ -1,7 +1,7 @@
 ---
 title: The studio half
 description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
-version: 0.3.4
+version: 0.3.7
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -123,7 +123,7 @@ space page, behind the house icon (Space) in the app bar, shows them in four par
 
 | Part | `group` | Holds |
 |---|---|---|
-| Info & brand | `info` | Basics, Logos, Colours, Assets, Facts |
+| Info & brand | `info` | Basics, Facts, Logos, Colours, Brand assets |
 | Knowledge | `knowledge` | Documents, pages, tables and files with their Kategorien: what every AI step looks things up in |
 | Data | `data` | What the wizards keep |
 | Results | `results` | The runs that reached their result |
@@ -157,12 +157,49 @@ studio.registerSpaceSection({
 - `id` is the section's anchor: `/studio/space/data#contacts` opens the page there, and so does
   `/studio/space#contacts`. In Knowledge a section is a page of its own:
   `/studio/space/knowledge?show=s:<id>`, where `#<id>` leads too. Ids are unique on the whole
-  page; the space's own are taken: `base`, `logos`, `colors`, `assets`, `documents`, `facts`.
-- `studio.useSpace()` is a hook: `{ id, name, readOnly }`, or `null` while there is none. A
-  component that calls it draws again when the person picks another space. `readOnly`: the
-  space came from a local install, or nothing is built on this runtime; show it, change nothing.
+  page; the space's own are taken: `base`, `facts`, `logos`, `colors`, `typography`, `assets`,
+  `documents`.
+- `studio.useSpace()` is a hook: `{ id, name, readOnly, brand }`, or `null` while there is none.
+  A component that calls it draws again when the person picks another space, or changes its
+  brand. `readOnly`: the space came from a local install, or nothing is built on this runtime;
+  show it, change nothing. `brand` is what Info & brand holds of the look: `name`, `colors`
+  (`{ name, value }`, the first is the accent) and `fonts` (`{ family, role, weights }`).
 - Every wizard belongs to a space: a [run event](./events.md) names it as
   `wizard.projectId`. Keep it with what the plugin stores to show a space's part of it.
+
+### A part of the plugin's own
+
+A plugin whose subject is as big as one of the parts adds a part of its own: an entry in the
+parts' menu, with a page at `/studio/space/<id>` that the plugin draws whole. The part's menu
+lists what the page holds; `studio.useSpaceMenu` fills it while the page is drawn.
+
+```tsx
+function Library() {
+  const space = studio.useSpace();
+  const sections = useSections(space?.id);
+  studio.useSpaceMenu(sections.map((s) => ({ id: s.id, label: s.title, icon: Component })));
+  return sections.map((s) => (
+    <Anchor key={s.id} id={s.id}>
+      <Section title={s.title}>…</Section>
+    </Anchor>
+  ));
+}
+
+studio.registerSpacePart({
+  id: "library",
+  label: () => t("title"),
+  icon: Blocks,
+  after: "info",
+  component: Library,
+});
+```
+
+- `id` is the address: `/studio/space/library`. The parts' own (`info`, `knowledge`, `data`,
+  `results`) are taken.
+- `after` is the part it follows in the menu: `info`, `knowledge` or `data` (default).
+- Each entry of `useSpaceMenu` jumps to the element with its `id` in what the part draws, and
+  the menu marks the one in view. `Anchor` and `Section` draw them as the space's own parts do.
+- The component is drawn again for another space: keep the space's data under its id.
 
 ## Words in two languages
 

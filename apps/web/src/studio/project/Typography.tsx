@@ -1,7 +1,9 @@
 import {
   type BrandFont,
   type BrandRule,
+  FONT_USES,
   FONT_WEIGHTS,
+  type FontUse,
   PROJECT_LIMITS,
   type TextStyle,
 } from "@engenty-wizards/shared/projects";
@@ -66,6 +68,14 @@ const mini =
   "h-8 rounded-md border border-input bg-card px-1.5 text-[0.8125rem] text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-focus-glow";
 
 /** A font as a card: the family drawn large, what it is for, the weights the brand uses. */
+const USE_LABELS: Record<FontUse, Parameters<typeof t>[0]> = {
+  web: "project.fontUseWeb",
+  documents: "project.fontUseDocuments",
+  print: "project.fontUsePrint",
+  images: "project.fontUseImages",
+  video: "project.fontUseVideo",
+};
+
 function FontCard({
   font,
   first,
@@ -144,6 +154,54 @@ function FontCard({
             </button>
           );
         })}
+      </div>
+      <div className="flex flex-col gap-1">
+        {readOnly ? (
+          font.license ? (
+            <p className="text-[0.8125rem] text-ink-3">{font.license}</p>
+          ) : null
+        ) : (
+          <InlineText
+            value={font.license ?? ""}
+            label={t("project.fontLicense")}
+            placeholder={t("project.fontLicensePlaceholder")}
+            maxLength={200}
+            onChange={(license) => onChange({ license })}
+            className="text-[0.8125rem] text-ink-3"
+          />
+        )}
+        {readOnly && !font.uses?.length ? null : (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-[0.8125rem] text-ink-3">{t("project.fontUses")}</span>
+            {FONT_USES.map((u) => {
+              const on = Boolean(font.uses?.includes(u));
+              return (
+                <button
+                  key={u}
+                  type="button"
+                  disabled={readOnly}
+                  aria-pressed={on}
+                  onClick={() => {
+                    const uses = on
+                      ? (font.uses ?? []).filter((x) => x !== u)
+                      : FONT_USES.filter((x) => x === u || font.uses?.includes(x));
+                    onChange({ uses: uses.length ? uses : undefined });
+                  }}
+                  className={cn(
+                    "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[0.8125rem] transition",
+                    on
+                      ? "bg-card text-ink ring-1 ring-border"
+                      : "bg-paper-2 text-ink-3 hover:text-ink",
+                    readOnly && !on && "hidden",
+                  )}
+                >
+                  {on ? <Check className="size-3.5" /> : null}
+                  {t(USE_LABELS[u])}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       {readOnly ? null : (
         <IconButton
@@ -439,13 +497,15 @@ function FoundFont({
 
 /**
  * The brand's type: its fonts, each with what it is for and the weights it uses; optionally a
- * type scale of named text styles, and rules for how type may be used.
+ * type scale of named text styles, and rules for how type may be used (behind the switch
+ * `brandRules`, as the other rules).
  */
 export function Typography({
   projectId,
   fonts: savedFonts,
   styles: savedStyles,
   rules: savedRules,
+  ruled,
   sample,
   save,
   readOnly,
@@ -454,6 +514,8 @@ export function Typography({
   fonts: BrandFont[];
   styles: TextStyle[];
   rules: BrandRule[];
+  /** Rules are shown and can be added. */
+  ruled: boolean;
   /** What the text styles show: the space's title, or a line of its own. */
   sample: string;
   save: (patch: {
@@ -514,7 +576,7 @@ export function Typography({
           },
         ]
       : []),
-    ...(rules.full
+    ...(!ruled || rules.full
       ? []
       : [
           {
@@ -578,11 +640,13 @@ export function Typography({
           </div>
         ) : null}
 
-        <RuleRows
-          rules={rules}
-          placeholder={t("project.typeRulePlaceholder")}
-          readOnly={readOnly}
-        />
+        {ruled ? (
+          <RuleRows
+            rules={rules}
+            placeholder={t("project.typeRulePlaceholder")}
+            readOnly={readOnly}
+          />
+        ) : null}
       </div>
       {fromUrl ? (
         <FontsFromUrl

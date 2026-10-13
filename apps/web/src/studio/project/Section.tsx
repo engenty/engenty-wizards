@@ -51,7 +51,7 @@ export function Section({
 }) {
   return (
     <section data-assist-section={title} className="flex flex-col gap-2.5">
-      <div className="flex items-end justify-between gap-4 px-1">
+      <div className="group/head flex items-end justify-between gap-4 px-1">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <h2 className="font-display font-semibold text-lg leading-tight">{title}</h2>
@@ -144,7 +144,7 @@ export function SearchField({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
-        className="h-9 w-full rounded-lg border border-input bg-card pr-3 pl-9 text-[0.875rem] text-ink outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow"
+        className="h-9 w-full rounded-full border border-input bg-card pr-3 pl-9 text-[0.875rem] text-ink outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow"
       />
       {busy ? (
         <Spinner className="-translate-y-1/2 absolute top-1/2 right-3 size-4 text-ink-3" />
@@ -217,6 +217,7 @@ export function InlineText({
   autoFocus,
   label,
   onEnter,
+  fit,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -226,10 +227,13 @@ export function InlineText({
   className?: string;
   autoFocus?: boolean;
   label: string;
+  /** As wide as its text, not as its row: something can stand right after it. */
+  fit?: boolean;
 }) {
-  return (
+  const field = (
     <input
       value={value}
+      size={fit ? 1 : undefined}
       aria-label={label}
       placeholder={placeholder}
       maxLength={maxLength}
@@ -243,9 +247,28 @@ export function InlineText({
       }}
       className={cn(
         "-mx-1 block w-[calc(100%+0.5rem)] rounded-md bg-transparent px-1 py-0.5 outline-none transition placeholder:text-ink-4 hover:bg-paper-2 focus:bg-card focus:text-ink focus:ring-1 focus:ring-border",
+        fit && "col-start-1 row-start-1 min-w-0",
         className,
       )}
     />
+  );
+  if (!fit) {
+    return field;
+  }
+  // The hidden copy of the text gives the grid cell its width; the field lies on top of it.
+  return (
+    <span className="inline-grid min-w-0 max-w-full">
+      <span
+        aria-hidden
+        className={cn(
+          "invisible col-start-1 row-start-1 overflow-hidden whitespace-pre",
+          className,
+        )}
+      >
+        {value || placeholder}
+      </span>
+      {field}
+    </span>
   );
 }
 
@@ -548,70 +571,113 @@ export function RuleRows({
         ))}
       </ul>
       {readOnly || rules.full ? null : (
-        <button
-          type="button"
-          onClick={() => rules.add()}
-          className="mt-1 inline-flex items-center gap-1.5 rounded-full py-1 pr-2 text-[0.875rem] text-ink-3 transition hover:text-ink"
-        >
-          <span className="grid size-7 place-items-center">
-            <Plus className="size-4" />
-          </span>
-          {t("project.ruleNew")}
-        </button>
+        <AddRow label={t("project.ruleNew")} onClick={() => rules.add()} className="mt-1" />
       )}
     </div>
   );
 }
 
-/** A sub-section's head: its title and when to use it, written in place; removed on hover. */
+/** "+ …" at the end of a list of rows: one more of them. */
+export function AddRow({
+  label,
+  onClick,
+  className,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 self-start rounded-full py-1 pr-2 text-[0.875rem] text-ink-3 transition hover:text-ink",
+        className,
+      )}
+    >
+      <span className="grid size-7 place-items-center">
+        <Plus className="size-4" />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/**
+ * A sub-section's head: its title and, where the section has one, when to use it, written in
+ * place; removed on hover. `kind`, an icon with its name, stands muted after the title.
+ */
 export function SubSectionHead({
   title,
   description,
   titlePlaceholder,
   descriptionPlaceholder,
+  kind,
   autoFocus,
   readOnly,
   onChange,
   onRemove,
 }: {
   title: string;
-  description: string;
+  /** None: the section has no description. */
+  description?: string;
   titlePlaceholder: string;
-  descriptionPlaceholder: string;
+  descriptionPlaceholder?: string;
+  kind?: { icon: ReactNode; label: string };
   autoFocus?: boolean;
   readOnly?: boolean;
   onChange: (patch: { title?: string; description?: string }) => void;
   onRemove: () => void;
 }) {
+  const muted = kind ? (
+    <span
+      role="img"
+      aria-label={kind.label}
+      title={kind.label}
+      className="shrink-0 self-center text-ink-4 [&>svg]:size-4"
+    >
+      {kind.icon}
+    </span>
+  ) : null;
   return (
     <div className="flex items-start gap-2">
       <div className="min-w-0 flex-1">
         {readOnly ? (
           <>
-            <h3 className="font-medium text-[0.9375rem]">{title}</h3>
+            <div className="flex items-baseline gap-2">
+              <h3 className="min-w-0 truncate font-medium text-[0.9375rem]">{title}</h3>
+              {muted}
+            </div>
             {description ? (
               <p className="text-[0.875rem] text-ink-3 leading-snug">{description}</p>
             ) : null}
           </>
         ) : (
           <>
-            <InlineText
-              value={title}
-              label={titlePlaceholder}
-              placeholder={titlePlaceholder}
-              maxLength={80}
-              autoFocus={autoFocus}
-              onChange={(v) => onChange({ title: v })}
-              className="font-medium text-[0.9375rem]"
-            />
-            <InlineText
-              value={description}
-              label={descriptionPlaceholder}
-              placeholder={descriptionPlaceholder}
-              maxLength={400}
-              onChange={(v) => onChange({ description: v })}
-              className="text-[0.875rem] text-ink-3"
-            />
+            <div className="flex items-baseline gap-2">
+              <InlineText
+                fit={Boolean(kind)}
+                value={title}
+                label={titlePlaceholder}
+                placeholder={titlePlaceholder}
+                maxLength={80}
+                autoFocus={autoFocus}
+                onChange={(v) => onChange({ title: v })}
+                className="font-medium text-[0.9375rem]"
+              />
+              {muted}
+            </div>
+            {descriptionPlaceholder === undefined ? null : (
+              <InlineText
+                value={description ?? ""}
+                label={descriptionPlaceholder}
+                placeholder={descriptionPlaceholder}
+                maxLength={400}
+                onChange={(v) => onChange({ description: v })}
+                className="text-[0.875rem] text-ink-3"
+              />
+            )}
           </>
         )}
       </div>

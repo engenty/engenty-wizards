@@ -14,30 +14,20 @@ import {
   Grid2x2,
   Link,
   ListChecks,
+  Palette,
   Plus,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import {
-  Button,
-  Chip,
-  cn,
-  Dialog,
-  IconButton,
-  Input,
-  Label,
-  Select,
-  Spinner,
-  Swatch,
-} from "../../ui";
+import { Button, Chip, cn, Dialog, IconButton, Input, Label, Swatch } from "../../ui";
 import { type ProjectFiles, useAutosave, useFileActions } from "./data";
-import { GradientCard, GradientEditor, PatternCard } from "./Gradients";
+import { GradientCard, GradientEditor, PatternCard, PatternEditor } from "./Gradients";
 import {
   type AddEntry,
   AddMenu,
-  DropArea,
+  AddRow,
   MoveButton,
   newId,
   RuleRows,
@@ -49,89 +39,6 @@ import {
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 type Row = BrandColor & { id: string };
-
-/** A new colour: its value, what it is for and, where there are sections, which one. */
-function AddColor({
-  sections,
-  onAdd,
-  onClose,
-}: {
-  sections: ColorSection[];
-  onAdd: (color: BrandColor) => void;
-  onClose: () => void;
-}) {
-  const [value, setValue] = useState("#e0531b");
-  const [name, setName] = useState("");
-  const [section, setSection] = useState("");
-  const valid = HEX.test(value);
-  return (
-    <Dialog open onClose={onClose} title={t("project.colorAddTitle")}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (valid) {
-            onAdd({
-              name: name.trim(),
-              value: value.toLowerCase(),
-              ...(section ? { section } : {}),
-            });
-            onClose();
-          }
-        }}
-        className="flex flex-col gap-5"
-      >
-        <div>
-          <Label>{t("project.colorValue")}</Label>
-          <div className="flex items-center gap-2">
-            <Swatch value={valid ? value : "#888888"} onChange={(e) => setValue(e.target.value)} />
-            <Input
-              value={value}
-              placeholder="#e0531b"
-              spellCheck={false}
-              onChange={(e) => setValue(e.target.value.trim())}
-              className="font-mono text-[0.875rem]"
-            />
-          </div>
-        </div>
-        <div>
-          <Label>{t("project.colorUseLabel")}</Label>
-          <Input
-            autoFocus
-            value={name}
-            maxLength={120}
-            placeholder={t("project.colorName")}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <p className="mt-1.5 text-[0.8125rem] text-ink-3">{t("project.colorUse")}</p>
-        </div>
-        {sections.length ? (
-          <div>
-            <Label>{t("project.colorSectionLabel")}</Label>
-            <Select
-              value={section}
-              onChange={setSection}
-              options={[
-                { value: "", label: t("project.sectionStandard") },
-                ...sections.map((s) => ({
-                  value: s.id,
-                  label: s.title || t("project.sectionUntitled"),
-                })),
-              ]}
-            />
-          </div>
-        ) : null}
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" disabled={!valid}>
-            {t("project.add")}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
 
 /** Colours read off a web page's stylesheet, to pick the brand's from. */
 function ColorsFromUrl({
@@ -259,7 +166,9 @@ function ColorsFromUrl({
 /**
  * The brand's colours by name. The standard ones come first; the first of them is the accent.
  * Two optional parts, as for the logos: sections for a further palette of its own use, and rules
- * for how the colours may be used.
+ * for how the colours may be used. They wait behind the switches `brandSections` (without it every
+ * colour stands with the standard ones, and gradients and patterns are not shown) and
+ * `brandRules`.
  */
 export function Colors({
   projectId,
@@ -269,6 +178,8 @@ export function Colors({
   gradients: savedGradients,
   patterns: savedPatterns,
   rules: savedRules,
+  sectioned,
+  ruled,
   save,
   readOnly,
 }: {
@@ -280,6 +191,10 @@ export function Colors({
   gradients: BrandGradient[];
   patterns: BrandPattern[];
   rules: BrandRule[];
+  /** Sections (gradients and patterns among them) are shown and can be added. */
+  sectioned: boolean;
+  /** Rules are shown and can be added. */
+  ruled: boolean;
   save: (patch: {
     colors: BrandColor[];
     colorSections: ColorSection[];
@@ -295,10 +210,12 @@ export function Colors({
   const [gradients, setGradients] = useState(savedGradients);
   const [patterns, setPatterns] = useState(savedPatterns);
   const [editing, setEditing] = useState<BrandGradient | null>(null);
+  const [tiling, setTiling] = useState<BrandPattern | null>(null);
   const actions = useFileActions(projectId, readOnly);
   const rules = useRuleRows(savedRules);
   const [titleFor, setTitleFor] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  /** The row just added: its name is where the cursor goes. */
+  const [fresh, setFresh] = useState<string | null>(null);
   const [fromUrl, setFromUrl] = useState(false);
   // A value still being typed is not a colour yet: it is saved once it is one.
   const status = useAutosave(
@@ -317,7 +234,8 @@ export function Colors({
     },
     save,
   );
-  const colourSections = sections.filter((s) => (s.kind ?? "colors") === "colors");
+  const shown = sectioned ? sections : [];
+  const colourSections = shown.filter((s) => (s.kind ?? "colors") === "colors");
   const known = (r: Row) => colourSections.some((s) => s.id === r.section);
   const standard = rows.filter((r) => !known(r));
   const accentId = (standard[0] ?? rows[0])?.id;
@@ -337,10 +255,7 @@ export function Colors({
   const newSection = (kind: ColorSection["kind"], title: string) => {
     const id = newId();
     setTitleFor(id);
-    setSections((all) => [
-      ...all,
-      { id, title, description: "", ...(kind === "colors" ? {} : { kind }) },
-    ]);
+    setSections((all) => [...all, { id, title, ...(kind === "colors" ? {} : { kind }) }]);
   };
   /** A first gradient from the brand's own colours. */
   const freshGradient = (section: string): BrandGradient => ({
@@ -354,18 +269,7 @@ export function Colors({
       { color: rows[1]?.value && HEX.test(rows[1].value) ? rows[1].value : "#ff6d1b", at: 100 },
     ],
   });
-  const uploadPatterns = async (section: string, picked: File[]) => {
-    const taken = await actions.upload("pattern", picked);
-    setPatterns((all) => [
-      ...all,
-      ...taken.map((f) => ({
-        id: newId(),
-        name: f.name.replace(/\.[^.]+$/, ""),
-        section,
-        file: f.id,
-      })),
-    ]);
-  };
+  const fileName = (id: string) => data.files.find((f) => f.id === id)?.name ?? "pattern";
 
   const add: AddEntry[] = [
     ...(rows.length < PROJECT_LIMITS.colors
@@ -373,7 +277,7 @@ export function Colors({
           {
             label: t("project.colorNew"),
             icon: <Plus className="size-4 shrink-0" />,
-            onPick: () => setAdding(true),
+            onPick: () => addRow(),
           },
           {
             label: t("project.colorsFromUrl"),
@@ -382,7 +286,7 @@ export function Colors({
           },
         ]
       : []),
-    ...(sections.length < PROJECT_LIMITS.logoSections
+    ...(sectioned && sections.length < PROJECT_LIMITS.logoSections
       ? [
           {
             label: t("project.colorSectionAdd"),
@@ -401,7 +305,7 @@ export function Colors({
           },
         ]
       : []),
-    ...(rules.full
+    ...(!ruled || rules.full
       ? []
       : [
           {
@@ -420,6 +324,7 @@ export function Colors({
       />
       <Input
         value={r.name}
+        autoFocus={r.id === fresh}
         placeholder={t("project.colorName")}
         maxLength={120}
         onChange={(e) => set(r.id, { name: e.target.value })}
@@ -448,7 +353,7 @@ export function Colors({
             <ArrowUp className="size-4" />
           </IconButton>
         )}
-        {readOnly || !sections.length ? null : (
+        {readOnly || !colourSections.length ? null : (
           <MoveButton
             options={moveOptions}
             value={known(r) ? (r.section ?? "") : ""}
@@ -468,6 +373,12 @@ export function Colors({
       </div>
     </div>
   );
+  /** A new row in place, its name to type; a section's when `section` is given. */
+  const addRow = (section?: string) => {
+    const id = newId();
+    setFresh(id);
+    setRows((all) => [...all, { id, name: "", value: "#888888", ...(section ? { section } : {}) }]);
+  };
 
   return (
     <Section
@@ -489,7 +400,7 @@ export function Colors({
           <p className="text-[0.875rem] text-ink-3">{t("project.colorsEmpty")}</p>
         )}
 
-        {sections.map((s) => {
+        {shown.map((s) => {
           const kind = s.kind ?? "colors";
           const own = rows.filter((r) => r.section === s.id);
           const fills = gradients.filter((g) => g.section === s.id);
@@ -500,7 +411,6 @@ export function Colors({
             <div key={s.id} className="group/section flex flex-col gap-3">
               <SubSectionHead
                 title={s.title}
-                description={s.description}
                 titlePlaceholder={t(
                   kind === "gradients"
                     ? "project.gradientSectionTitlePlaceholder"
@@ -508,7 +418,13 @@ export function Colors({
                       ? "project.patternSectionTitlePlaceholder"
                       : "project.colorSectionTitle",
                 )}
-                descriptionPlaceholder={t("project.colorSectionUse")}
+                kind={
+                  kind === "gradients"
+                    ? { icon: <Blend />, label: t("project.kindGradients") }
+                    : kind === "patterns"
+                      ? { icon: <Grid2x2 />, label: t("project.kindPatterns") }
+                      : { icon: <Palette />, label: t("project.kindColors") }
+                }
                 autoFocus={titleFor === s.id}
                 readOnly={readOnly}
                 onChange={(patch) =>
@@ -546,8 +462,10 @@ export function Colors({
                       gradient={g}
                       readOnly={readOnly}
                       onEdit={() => setEditing(g)}
-                      onRename={(name) =>
-                        setGradients((all) => all.map((x) => (x.id === g.id ? { ...x, name } : x)))
+                      onChange={(patch) =>
+                        setGradients((all) =>
+                          all.map((x) => (x.id === g.id ? { ...x, ...patch } : x)),
+                        )
                       }
                       onRemove={() => setGradients((all) => all.filter((x) => x.id !== g.id))}
                     />
@@ -570,8 +488,9 @@ export function Colors({
                       key={p.id}
                       projectId={projectId}
                       pattern={p}
-                      fileName={data.files.find((f) => f.id === p.file)?.name ?? "pattern"}
+                      fileName={fileName(p.file)}
                       readOnly={readOnly}
+                      onEdit={() => setTiling(p)}
                       onChange={(patch) =>
                         setPatterns((all) =>
                           all.map((x) => (x.id === p.id ? { ...x, ...patch } : x)),
@@ -583,41 +502,43 @@ export function Colors({
                       }}
                     />
                   ))}
-                  {readOnly ? null : (
-                    <DropArea
-                      accept="image/*"
-                      onFiles={(picked) => void uploadPatterns(s.id, picked)}
-                      className="min-h-28 flex-col p-3"
+                  {readOnly || patterns.length >= PROJECT_LIMITS.files.pattern ? null : (
+                    <button
+                      type="button"
+                      onClick={() => setTiling({ id: newId(), name: "", section: s.id, file: "" })}
+                      className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-input border-dashed text-[0.875rem] text-ink-3 transition hover:border-ink-4 hover:text-ink"
                     >
-                      {actions.busy ? <Spinner className="size-5" /> : <Plus className="size-5" />}
+                      <Plus className="size-5" />
                       {t("project.patternAdd")}
-                    </DropArea>
+                    </button>
                   )}
                 </div>
-              ) : own.length ? (
-                <div className="flex flex-col gap-2">{own.map(row)}</div>
-              ) : null}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {own.map(row)}
+                  {readOnly || rows.length >= PROJECT_LIMITS.colors ? null : (
+                    <AddRow label={t("project.colorAdd")} onClick={() => addRow(s.id)} />
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
 
-        <RuleRows
-          rules={rules}
-          placeholder={t("project.colorRulePlaceholder")}
-          readOnly={readOnly}
-        />
+        {ruled ? (
+          <RuleRows
+            rules={rules}
+            placeholder={t("project.colorRulePlaceholder")}
+            readOnly={readOnly}
+          />
+        ) : null}
       </div>
       {actions.error ? <p className="mt-3 text-[0.875rem] text-rose">{actions.error}</p> : null}
-      {adding ? (
-        <AddColor
-          sections={colourSections}
-          onClose={() => setAdding(false)}
-          onAdd={(c) => append([c])}
-        />
-      ) : null}
       {editing ? (
         <GradientEditor
+          projectId={projectId}
           gradient={editing}
+          isNew={!gradients.some((x) => x.id === editing.id)}
           brand={rows.filter((r) => HEX.test(r.value))}
           onClose={() => setEditing(null)}
           onSave={(g) =>
@@ -625,6 +546,26 @@ export function Colors({
               all.some((x) => x.id === g.id)
                 ? all.map((x) => (x.id === g.id ? g : x))
                 : [...all, g],
+            )
+          }
+        />
+      ) : null}
+      {tiling ? (
+        <PatternEditor
+          projectId={projectId}
+          pattern={tiling}
+          isNew={!patterns.some((x) => x.id === tiling.id)}
+          fileName={fileName}
+          busy={actions.busy}
+          error={actions.error}
+          upload={async (file) => (await actions.upload("pattern", [file]))[0] ?? null}
+          removeFile={(id) => void actions.remove(id)}
+          onClose={() => setTiling(null)}
+          onSave={(p) =>
+            setPatterns((all) =>
+              all.some((x) => x.id === p.id)
+                ? all.map((x) => (x.id === p.id ? p : x))
+                : [...all, p],
             )
           }
         />
