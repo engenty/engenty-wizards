@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.7",
+    "timestamp": 1791887854,
+    "commits": [
+      {
+        "id": "1a79f0d",
+        "message": "Info & Marke becomes a brand book – Fakten right after Basis, one \"Hinzufügen\" menu in each section's head and trash on hover; Logos: the standard logos first, optional sections with when to use them, a logo from a URL (a picture, or the logos found on a page to pick); Farben: sections of colours, gradients (linear, radial or conic, angle, colour stops, CSS read and written, PNG download) or patterns (pictures tiled or filling), colours read off a page's stylesheet (oklch and hsl too); Typografie: fonts with what they are for and their weights, previewed from Bunny Fonts, an optional type scale, fonts read off a page's CSS; Assets: sections as tabs with search and view beside them, from a URL or a page's pictures, and PDFs, fonts, Lottie and 3D models taken too; rules as rows with a sign (bullet, do, don't, to check, important, numbered) for logos, colours and type; the studio assistant fills all of it only where a source says so (set_logo_sections, set_asset_sections, set_typography, set_gradients, set_rules), and every AI step and the film step get it with the brand",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.6",
-    "timestamp": 1791884443,
+    "timestamp": 1791884448,
     "commits": [
       {
         "id": "f9e1456",

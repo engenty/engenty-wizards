@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.7] - 2026-10-13
+- ADDED **[studio]** Info & Marke becomes a brand book – Fakten right after Basis, one "Hinzufügen" menu in each section's head and trash on hover; Logos: the standard logos first, optional sections with when to use them, a logo from a URL (a picture, or the logos found on a page to pick); Farben: sections of colours, gradients (linear, radial or conic, angle, colour stops, CSS read and written, PNG download) or patterns (pictures tiled or filling), colours read off a page's stylesheet (oklch and hsl too); Typografie: fonts with what they are for and their weights, previewed from Bunny Fonts, an optional type scale, fonts read off a page's CSS; Assets: sections as tabs with search and view beside them, from a URL or a page's pictures, and PDFs, fonts, Lottie and 3D models taken too; rules as rows with a sign (bullet, do, don't, to check, important, numbered) for logos, colours and type; the studio assistant fills all of it only where a source says so (set_logo_sections, set_asset_sections, set_typography, set_gradients, set_rules), and every AI step and the film step get it with the brand
+
 ## [0.3.6] - 2026-10-13
 - ADDED **[studio]** "Veröffentlichen" is gone – the first share publishes (the dialog says "Beim Teilen veröffentlicht", or what to fix first), and later changes go live from "Änderungen live schalten" in the editor's top bar: a dialog with what changed since the version people run (the wizard, each step by its title and part, the order, the files), whether exactly this draft was tested, that runs under way keep their version, what a run costs now, then "Live schalten"; the runtime answers it at /wizards/:id/changes
 
