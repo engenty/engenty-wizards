@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.4.2",
+    "timestamp": 1791919583,
+    "commits": [
+      {
+        "id": "7cc53df",
+        "message": "WhatsApp, SMS and calls leave the open repository – modules/whatsapp, modules/sms and modules/calls and their tests are gone, the runtime's image no longer copies them and the plugin lists in the tests shrink; what they are built on stays in the runtime and the SDK (runners with problem and address, the thread door, server.speech.conversation(), registerShareSection). The plugin docs say what a messenger or call plugin does instead of naming the modules, \"Test and share\" describes WhatsApp, SMS and calls as channels of engenty.ai, and the two channel plans note the move",
+        "group": "Changed",
+        "scope": "modules",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.1",
-    "timestamp": 1791917449,
+    "timestamp": 1791917461,
     "commits": [
       {
         "id": "651cde7",

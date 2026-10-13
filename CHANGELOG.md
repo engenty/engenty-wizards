@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.2] - 2026-10-13
+- CHANGED **[modules]** WhatsApp, SMS and calls leave the open repository – modules/whatsapp, modules/sms and modules/calls and their tests are gone, the runtime's image no longer copies them and the plugin lists in the tests shrink; what they are built on stays in the runtime and the SDK (runners with problem and address, the thread door, server.speech.conversation(), registerShareSection). The plugin docs say what a messenger or call plugin does instead of naming the modules, "Test and share" describes WhatsApp, SMS and calls as channels of engenty.ai, and the two channel plans note the move
+
 ## [0.4.1] - 2026-10-13
 - ADDED **[studio]** A colour is added as a row in place, and the assets are "Brand Assets" with a round search field; plugins get a part of the space page of their own (registerSpacePart, useSpaceMenu), the space's brand (useSpace().brand, server.spaces.brand), a block for the steps that write documents and dashboards (registerSpaceContext steps: ["html"]), pictures and PDFs for generate (files), and the space page's pieces from @engenty-wizards/web/ui
 
