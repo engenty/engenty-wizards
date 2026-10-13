@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.4.3",
+    "timestamp": 1791920360,
+    "commits": [
+      {
+        "id": "5b66f17",
+        "message": "the wizard's live voice no longer interrupts itself – the microphone asks for echo cancellation, and the session filters input as far-field with a higher speech threshold (0.7) and 600 ms of silence to end a turn",
+        "group": "Fixed",
+        "scope": "runner",
+        "breaking": false
+      },
+      {
+        "id": "afe2e05",
+        "message": "live voice no longer hears itself – the recognition starts fresh when the voice ends, what sounds like the voice is ignored for 3 s after it, the echo check compares plain words and takes 75 % as a match, and the microphone asks for echo cancellation",
+        "group": "Fixed",
+        "scope": "assistant",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.2",
-    "timestamp": 1791919583,
+    "timestamp": 1791919585,
     "commits": [
       {
         "id": "7cc53df",

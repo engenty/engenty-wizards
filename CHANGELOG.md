@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.3] - 2026-10-13
+- FIXED **[runner]** The wizard's live voice no longer interrupts itself – the microphone asks for echo cancellation, and the session filters input as far-field with a higher speech threshold (0.7) and 600 ms of silence to end a turn
+- FIXED **[assistant]** Live voice no longer hears itself – the recognition starts fresh when the voice ends, what sounds like the voice is ignored for 3 s after it, the echo check compares plain words and takes 75 % as a match, and the microphone asks for echo cancellation
+
 ## [0.4.2] - 2026-10-13
 - CHANGED **[modules]** WhatsApp, SMS and calls leave the open repository – modules/whatsapp, modules/sms and modules/calls and their tests are gone, the runtime's image no longer copies them and the plugin lists in the tests shrink; what they are built on stays in the runtime and the SDK (runners with problem and address, the thread door, server.speech.conversation(), registerShareSection). The plugin docs say what a messenger or call plugin does instead of naming the modules, "Test and share" describes WhatsApp, SMS and calls as channels of engenty.ai, and the two channel plans note the move
 
