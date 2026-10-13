@@ -4,6 +4,11 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.0] - 2026-10-13
+- ADDED **[onboarding]** The account becomes the front door – a cloud studio's first visit is a wizard of four pages (the team's name, the website read into the space, first documents, the space explained), the setup on a computer starts with the account (a device code in the terminal, the panel and "engenty credits" as an engine on the setup page), install.sh --local and wizards account keep and name the install without one, the cloud home offers the computer with the install mail, and the docs start with "Create an account"
+- DOCS **[plans]** A plain sign-in lands in the studio as well – noted with the manage commit
+- DOCS **[plans]** After the sign-up the account pages send a new account to the studio – the plan's note on the landing is settled
+
 ## [0.3.8] - 2026-10-13
 - ADDED **[assistant]** The studio assistant is Goose and takes what is written while it works – Enter sends a message into the running answer, which reads it before its next step (or goes on with it after its answer), ⌘↩ queues it for after the answer, "Jetzt senden" stops and sends at once, Stop stands where Send does; the chat at the bottom moves by its grip, stays where it is put and snaps to the middle or the right near the bottom and into the sidebar near the right side, the handle on top sets the thread's height and folds it, ✕ closes it into the engenty at the lower right, which opens it where it stood (the small card is gone); "New chat" clears at once and writes the old chat's summary meanwhile, the next turn waits for it; developer mode (ASSISTANT_DEV here, the platform's admins when managed) shows each step's model, tokens, time and cost, the tools' arguments and results, the context window, and the turns' timeline, prompt and events to copy or download
 

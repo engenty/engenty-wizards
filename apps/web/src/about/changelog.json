@@ -1,7 +1,34 @@
 [
   {
+    "version": "v0.4.0",
+    "timestamp": 1791914721,
+    "commits": [
+      {
+        "id": "5fc08ba",
+        "message": "a plain sign-in lands in the studio as well – noted with the manage commit",
+        "group": "Docs",
+        "scope": "plans",
+        "breaking": false
+      },
+      {
+        "id": "7924be2",
+        "message": "after the sign-up the account pages send a new account to the studio – the plan's note on the landing is settled",
+        "group": "Docs",
+        "scope": "plans",
+        "breaking": false
+      },
+      {
+        "id": "377b9a9",
+        "message": "the account becomes the front door – a cloud studio's first visit is a wizard of four pages (the team's name, the website read into the space, first documents, the space explained), the setup on a computer starts with the account (a device code in the terminal, the panel and \"engenty credits\" as an engine on the setup page), install.sh --local and wizards account keep and name the install without one, the cloud home offers the computer with the install mail, and the docs start with \"Create an account\"",
+        "group": "Added",
+        "scope": "onboarding",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.8",
-    "timestamp": 1791899149,
+    "timestamp": 1791899167,
     "commits": [
       {
         "id": "e98284d",
