@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.3.5",
+    "timestamp": 1791872678,
+    "commits": [
+      {
+        "id": "c922964",
+        "message": "the share dialog starts over – who may open the wizard (anyone with the link, or only you), how others reach it by the channels it was made for, each with its own link or number to copy (SMS and WhatsApp show keyword and number from the runner's new `address`), and \"Link kopieren\"; QR code (any way's link, print, download), website (what it shows, where on the page, the tag; WordPress by plugin or as a package without an account), the gear (runs a day, each channel's keyword, a new link) and \"Ändern\" (the new-wizard page's channel list) open inside it with a way back; a draft, unpublished changes, a local install without an account and a cloud that lacks something say so on top; in the editor sharing stays at hand while there is something to publish",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "b297fb3",
+        "message": "on the new-wizard page pictures and files sit above the wish, as in a chat's input",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.4",
-    "timestamp": 1791867659,
+    "timestamp": 1791867663,
     "commits": [
       {
         "id": "f6818fd",

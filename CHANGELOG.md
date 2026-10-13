@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.5] - 2026-10-13
+- ADDED **[studio]** The share dialog starts over – who may open the wizard (anyone with the link, or only you), how others reach it by the channels it was made for, each with its own link or number to copy (SMS and WhatsApp show keyword and number from the runner's new `address`), and "Link kopieren"; QR code (any way's link, print, download), website (what it shows, where on the page, the tag; WordPress by plugin or as a package without an account), the gear (runs a day, each channel's keyword, a new link) and "Ändern" (the new-wizard page's channel list) open inside it with a way back; a draft, unpublished changes, a local install without an account and a cloud that lacks something say so on top; in the editor sharing stays at hand while there is something to publish
+- FIXED **[studio]** On the new-wizard page pictures and files sit above the wish, as in a chat's input
+
 ## [0.3.4] - 2026-10-13
 - ADDED **[studio]** The channel menu on the new-wizard page grows out of the button that opened it and fades in; still where motion is reduced
 - ADDED **[studio]** The new-wizard page asks how the wizard runs and shows what is there already – "Läuft als" above the wish picks the channels (in the browser: Wizard in Schritten, Chat, Live Voice, Video Call; on the phone: Anruf, WhatsApp; by message: SMS, WhatsApp; one stays on), saved as the wizard's runners and named in the first message, which the guide tells the assistant to build for; the box takes files (+, paste, drop; pictures as thumbnails, names made fit for the workspace), dictation and the build button; while the wish is typed, up to ten of the space's wizards and templates that come close are listed, Pro marked, the rest one line that searches the gallery; the example chips are gone
