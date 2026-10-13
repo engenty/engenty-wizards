@@ -1,6 +1,17 @@
 import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
-import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
+import type {
+  AssetSection,
+  BrandColor,
+  BrandFont,
+  BrandGradient,
+  BrandPattern,
+  BrandRule,
+  ColorSection,
+  LogoSection,
+  ProjectFact,
+  TextStyle,
+} from "@engenty-wizards/shared/projects";
 import type { AskAnswer, RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -40,6 +51,26 @@ export interface BrandConfig {
   about?: string;
   /** The first colour is the accent of documents, dashboards and public pages. */
   colors?: BrandColor[];
+  /** Optional: further colours, gradients or patterns grouped by use, each saying when to use it. */
+  colorSections?: ColorSection[];
+  /** In gradients sections. */
+  gradients?: BrandGradient[];
+  /** In patterns sections. */
+  patterns?: BrandPattern[];
+  /** Optional: how the colours may be used, one rule per row with its sign. */
+  colorRules?: BrandRule[];
+  /** The brand's typefaces, each with what it is for. */
+  fonts?: BrandFont[];
+  /** Optional: the type scale. */
+  textStyles?: TextStyle[];
+  /** Optional: how type may be used, one rule per row. */
+  typeRules?: BrandRule[];
+  /** Optional: assets of one kind each, shown as tabs. */
+  assetSections?: AssetSection[];
+  /** Optional: the logos grouped by use, each group saying when to use it. */
+  logoSections?: LogoSection[];
+  /** Optional: how the logos may be used, one rule per row with its sign. */
+  logoRules?: BrandRule[];
 }
 
 export const project = sqliteTable(
@@ -308,7 +339,7 @@ export const projectFile = sqliteTable(
     projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    kind: text("kind", { enum: ["logo", "asset", "document"] }).notNull(),
+    kind: text("kind", { enum: ["logo", "asset", "document", "pattern"] }).notNull(),
     name: text("name").notNull(),
     mime: text("mime").notNull(),
     size: integer("size").notNull(),

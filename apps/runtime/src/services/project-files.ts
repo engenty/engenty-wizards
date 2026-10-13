@@ -13,6 +13,7 @@ import { loadAsset, removeAsset, replaceAsset, saveAsset } from "../files/storag
 import { embeddingModel, textModel } from "../models.js";
 import { spaceFileChanged } from "../plugins/events.js";
 import { dropLinks, putLink } from "../tenants/control.js";
+import { safeFetch } from "../tools/net-guard.js";
 import { requireWritableProject } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
 import { convertDocument, fillCategories } from "./knowledge-model.js";
@@ -73,12 +74,18 @@ export async function projectFileContent(projectId: string, fileId: string) {
   return { row, data: found.data };
 }
 
+/**
+ * Assets are what wizards put into what they make: pictures, clips, recordings, and files to
+ * hand on as they are — PDFs, fonts, Lottie animations (JSON), 3D models.
+ */
+const ASSET_TYPES = /^((image|video|audio|font)\/|application\/(pdf|json)$|model\/gltf)/;
+
 function accepts(kind: ProjectFileKind, mime: string): boolean {
-  if (kind === "logo") {
+  if (kind === "logo" || kind === "pattern") {
     return mime.startsWith("image/");
   }
   if (kind === "asset") {
-    return /^(image|video|audio)\//.test(mime);
+    return ASSET_TYPES.test(mime);
   }
   return true;
 }
@@ -101,7 +108,9 @@ export async function addProjectFile(
       "invalid",
       input.kind === "logo"
         ? "Ein Logo ist ein Bild (PNG, SVG, JPEG, WebP)."
-        : "Hierher gehören Bilder, Grafiken, Videos und Audio. Anderes bitte zu den Dokumenten.",
+        : input.kind === "pattern"
+          ? "Ein Muster ist ein Bild (SVG, PNG, JPEG, WebP)."
+          : "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen bitte zu den Dokumenten.",
     );
   }
   const limit = projectFileLimit(input.kind, mime);
@@ -154,6 +163,58 @@ export async function addProjectFile(
     void prepare(row);
   }
   return row;
+}
+
+/**
+ * Fetches a file from a public web address into the project, as an upload of it would add it.
+ * A drawing a page holds inline comes as a `data:image/svg+xml` address. A web page where a
+ * picture was asked for is refused with the reason `page`.
+ */
+export async function addProjectFileFromUrl(
+  projectId: string,
+  input: { url: string; kind: ProjectFileKind; description?: string; signal?: AbortSignal },
+): Promise<ProjectFileRow> {
+  const { url, kind, signal } = input;
+  const inline = url.match(/^data:image\/svg\+xml;base64,([A-Za-z0-9+/=]+)$/);
+  if (inline) {
+    return addProjectFile(projectId, {
+      kind,
+      name: `${kind}.svg`,
+      mime: "image/svg+xml",
+      data: new Uint8Array(Buffer.from(inline[1], "base64")),
+      description: input.description,
+    });
+  }
+  const res = await safeFetch(url, {
+    headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
+    signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]),
+  }).catch(() => {
+    throw new ServiceError("invalid", "Die Adresse ist nicht erreichbar.");
+  });
+  if (!res.ok) {
+    throw new ServiceError("invalid", `Die Adresse antwortete ${res.status}.`);
+  }
+  const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  if (mime === "text/html" && kind !== "document") {
+    await res.body?.cancel();
+    throw new ServiceError("invalid", "Unter der Adresse steht eine Webseite, kein Bild.", {
+      reason: "page",
+      url: res.url,
+    });
+  }
+  if (Number(res.headers.get("content-length") ?? 0) > projectFileLimit(kind, mime)) {
+    throw new ServiceError("invalid", "Die Datei ist zu groß.");
+  }
+  const data = new Uint8Array(await res.arrayBuffer());
+  const name = decodeURIComponent(new URL(res.url).pathname.split("/").pop() || kind);
+  return addProjectFile(projectId, {
+    kind,
+    name,
+    mime,
+    data,
+    description: input.description,
+    source: res.url,
+  });
 }
 
 // --- reading, describing, indexing -------------------------------------------------

@@ -133,7 +133,7 @@ export interface PluginSpaceEvent {
 /** A file of a space: read and ready (a document is in the index then), or removed. */
 export interface PluginSpaceFileEvent {
   space: { id: string };
-  file: { id: string; name: string; kind: "logo" | "asset" | "document"; mime: string };
+  file: { id: string; name: string; kind: "logo" | "asset" | "document" | "pattern"; mime: string };
 }
 
 export interface PluginEvents {
@@ -332,7 +332,7 @@ export interface PluginSpaceFile {
   name: string;
   mime: string;
   size: number;
-  kind: "logo" | "asset" | "document";
+  kind: "logo" | "asset" | "document" | "pattern";
   updatedAt: string;
 }
 
@@ -380,7 +380,10 @@ export interface PluginSpaceData {
    */
   readPages(space: string, opts?: { parent?: string }): Promise<PluginSpacePage[]>;
   /** The space's files of a kind (`document` when left out), newest first. */
-  files(space: string, kind?: "logo" | "asset" | "document"): Promise<PluginSpaceFile[]>;
+  files(
+    space: string,
+    kind?: "logo" | "asset" | "document" | "pattern",
+  ): Promise<PluginSpaceFile[]>;
   /** One file of the space with its bytes: a price list someone dropped into Wissen. */
   readFile(space: string, fileId: string): Promise<PluginSpaceFile & { data: Uint8Array }>;
   /** Takes out one key, or every item of the plugin in the space; what a person changed stays. */

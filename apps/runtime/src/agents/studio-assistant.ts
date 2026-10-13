@@ -1,11 +1,16 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import type { AssistantPage, BrowserTool } from "@engenty-wizards/shared/assistant";
 import {
+  cleanAssetSections,
+  cleanLogoSections,
   FACT_TYPES,
   factKey,
+  gradientCss,
   PROJECT_FILE_KINDS,
   PROJECT_LIMITS,
-  projectFileLimit,
+  parseGradient,
+  RULE_MARKS,
+  textStyleLine,
 } from "@engenty-wizards/shared/projects";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
@@ -21,21 +26,15 @@ import type { ChatRow, TurnHistory } from "../services/assistant-chats.js";
 import { ServiceError } from "../services/errors.js";
 import { knowledgeCounts } from "../services/knowledge.js";
 import {
-  addProjectFile,
+  addProjectFileFromUrl,
   projectFileContent,
   projectFiles,
   updateProjectFile,
 } from "../services/project-files.js";
 import { documentText } from "../services/project-index.js";
-import {
-  brandColorSchema,
-  ownedProject,
-  type ProjectRow,
-  updateProject,
-} from "../services/projects.js";
+import { ownedProject, type ProjectRow, updateProject } from "../services/projects.js";
 import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
-import { safeFetch } from "../tools/net-guard.js";
 import { assistantPageOf, assistantToolsOf } from "../tools/plugin.js";
 import { readWebsite } from "./website.js";
 
@@ -106,8 +105,11 @@ THE SPACE
 - A website: read_website it first. You get the page's text, colours from its stylesheet, logo candidates and the links to imprint / contact / about. Read those pages too (at most four more) for address, VAT id, register number, phone, email, bank details, who runs it.
 - Facts: one fact per thing, a short label in the person's language ("Adresse", "UID", "Telefon"), the value on one line where it fits. Only what a source or the person states — never guess, never invent. Keep the facts that are there; a fact with a known label is updated.
 - About: two to five sentences — what they do, for whom, what sets them apart, the tone they write in. Rewrite it only when you learned something new or the person asks.
-- Colours: two to six, the main one first, each with a name that says what it is for ("Primär", "Hintergrund", "Text"). Take them from the stylesheet's variables or its most used colours, never from photos. set_colors replaces the list: pass all colours that should remain.
+- Colours: two to six, the main one first, each with a name that says what it is for ("Primär", "Hintergrund", "Text"). Take them from the stylesheet's variables or its most used colours, never from photos. set_colors replaces the list: pass all colours that should remain. Colours in no section are the standard ones; the first of them is the accent. Colour sections are optional like logo sections: only for a further palette a brand guide or the person names for its own use ("Illustration – drawings and charts"), never for the standard colours. A brand's gradients (set_gradients, as CSS) only where a brand guide or the site's stylesheet has them; patterns and background fills are pictures the person uploads.
 - Logos: save the best candidate (an SVG or a large PNG rather than a favicon); a second one only if it truly differs (for dark ground, a signet). A few images that show the business (header, team, products) may be saved as assets — a handful, never everything.
+- Logo sections and rules are optional, and most spaces need neither. Logos in no section are the standard ones; the first of them is the main logo. Add a section (set_logo_sections) only for further variants that a brand guide, a brand or press page or the person says are used elsewhere: the title names the variant ("Logomark", "Wordmark"), the description says when to use it ("Small spaces: app icons, favicons"). The standard logos never go into a section; one logo, or a light and a dark one whose descriptions already tell them apart, get no sections. Rules (set_rules, for the logos, the colours or the type) are short rows, one rule each, with a sign: do ("Keep clear space of the mark's height on all sides"), dont ("Place it on photos"), important, question (something to check with the person), number (steps in order), or none for a plain note (minimum size, file formats). Only what such a source or the person states; never invent rules and never write general advice a brand guide did not say.
+- Typography: the brand's fonts (set_typography), each with what it is for ("Headings", "Body text") and the weights it uses — from the website's stylesheet (read_website lists its fonts) or a brand guide; system and generic faces are no brand fonts. A type scale (text styles: name, size, weight, line height, letter spacing) only when a brand guide gives one.
+- Asset sections are optional too: tabs of one kind each ("Icons", "Background images"), made with set_asset_sections only when the space holds enough assets of clearly different kinds or the person asks; a handful of pictures stay in the general tab.
 - Files the person attached are stored already; the message names them. look_at_file shows you a picture or a document's text. Give a file a description with describe_file when it has none or the person says what it is. Take facts from a document when asked.
 - Wissen (German „Wissen“) is what the wizards' steps look things up in: pages, tables and files, kept apart by typed Kategorien. Documents the person attaches are read into Wissen by themselves: say so; do not copy their text into facts unless asked. A website, a sitemap or a folder whose entries should go into Wissen is a source: where a tool proposes sources, use it (the person takes the proposal on its card); where there is none, say that sources need the Sources plugin.
 - Talking from another page than Info & brand, change title, about, logos, colours and facts only when the person asks.
@@ -120,6 +122,11 @@ HOW YOU WORK
 const LABELS: Record<string, { de: string; en: string }> = {
   save_logo: { de: "Holt das Logo …", en: "Fetching the logo …" },
   save_file: { de: "Holt eine Datei …", en: "Fetching a file …" },
+  set_logo_sections: { de: "Ordnet die Logos …", en: "Grouping the logos …" },
+  set_asset_sections: { de: "Ordnet die Assets …", en: "Grouping the assets …" },
+  set_typography: { de: "Trägt die Schriften ein …", en: "Entering the fonts …" },
+  set_gradients: { de: "Trägt die Verläufe ein …", en: "Entering the gradients …" },
+  set_rules: { de: "Trägt Regeln ein …", en: "Entering rules …" },
   set_profile: { de: "Schreibt Titel und Beschreibung …", en: "Writing title and description …" },
   set_facts: { de: "Trägt Fakten ein …", en: "Entering facts …" },
   set_colors: { de: "Trägt die Farben ein …", en: "Entering the colours …" },
@@ -174,7 +181,66 @@ async function projectState(userId: string, projectId: string) {
     },
     title: p.brand.name ?? "",
     about: p.brand.about ?? "",
-    colors: p.brand.colors ?? [],
+    colors: (p.brand.colors ?? []).map(({ name, value, section }) => {
+      const s = p.brand.colorSections?.find((x) => x.id === section);
+      return { name, value, ...(s ? { section: s.title } : {}) };
+    }),
+    // Optional parts are only there when the space has them.
+    ...(p.brand.colorSections?.length
+      ? {
+          colorSections: p.brand.colorSections.map(({ title, description, kind }) => ({
+            title,
+            description,
+            kind: kind ?? "colors",
+          })),
+        }
+      : {}),
+    ...(p.brand.gradients?.length
+      ? {
+          gradients: p.brand.gradients.map((g) => ({
+            name: g.name,
+            section: p.brand.colorSections?.find((s) => s.id === g.section)?.title,
+            css: gradientCss(g),
+          })),
+        }
+      : {}),
+    ...(p.brand.patterns?.length
+      ? {
+          patterns: p.brand.patterns.map((x) => ({
+            name: x.name,
+            section: p.brand.colorSections?.find((s) => s.id === x.section)?.title,
+            tile: Boolean(x.tile),
+          })),
+        }
+      : {}),
+    ...(p.brand.logoSections?.length
+      ? {
+          logoSections: p.brand.logoSections.map(({ title, description, logos }) => ({
+            title,
+            description,
+            logos,
+          })),
+        }
+      : {}),
+    ...(p.brand.assetSections?.length
+      ? {
+          assetSections: p.brand.assetSections.map(({ title, assets }) => ({ title, assets })),
+        }
+      : {}),
+    ...(p.brand.fonts?.length
+      ? { fonts: p.brand.fonts.map(({ family, role, weights }) => ({ family, role, weights })) }
+      : {}),
+    ...(p.brand.textStyles?.length
+      ? {
+          textStyles: p.brand.textStyles.map((s) => ({
+            name: s.name,
+            style: textStyleLine(s, p.brand.fonts ?? []),
+          })),
+        }
+      : {}),
+    ...(p.brand.logoRules ? { logoRules: p.brand.logoRules } : {}),
+    ...(p.brand.colorRules ? { colorRules: p.brand.colorRules } : {}),
+    ...(p.brand.typeRules ? { typeRules: p.brand.typeRules } : {}),
     facts: p.facts.map(({ label, value }) => ({ label, value })),
     files: files.map((f) => ({
       id: f.id,
@@ -307,14 +373,265 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
     set_colors: createTool({
       id: "set_colors",
       description:
-        "Set the brand's colours — the whole list, the main colour first. Values as #rrggbb.",
-      inputSchema: z.object({ colors: z.array(brandColorSchema).max(PROJECT_LIMITS.colors) }),
-      execute: ({ colors }) =>
+        "Set the brand's colours — the whole list, the main colour first. Values as #rrggbb. Optional: `sections` for a further palette of its own use (title, when to use it), and on a colour the `section` title it belongs to; colours without one are the standard ones. Without `sections` the space keeps its sections.",
+      inputSchema: z.object({
+        colors: z
+          .array(
+            z.object({
+              name: z.string().max(120),
+              value: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+              section: z.string().max(80).optional().describe("A section's title"),
+            }),
+          )
+          .max(PROJECT_LIMITS.colors),
+        sections: z
+          .array(z.object({ title: z.string().min(1).max(80), description: z.string().max(400) }))
+          .max(PROJECT_LIMITS.logoSections)
+          .optional(),
+      }),
+      execute: ({ colors, sections }) =>
         attempt(() =>
           inTurn(async () => {
             doing("set_colors");
+            const p = await ownedProject(userId, projectId);
+            const groups = sections
+              ? sections.map((s) => ({
+                  id: p.brand.colorSections?.find((x) => x.title === s.title)?.id ?? nanoid(10),
+                  ...s,
+                }))
+              : (p.brand.colorSections ?? []);
+            const unknown = colors.filter(
+              (c) => c.section && !groups.some((s) => s.title === c.section),
+            );
+            if (unknown.length) {
+              throw new Error(
+                `No colour section named: ${unknown.map((c) => c.section).join(", ")}`,
+              );
+            }
             await updateProject(userId, projectId, {
-              brand: { colors: colors.map((c) => ({ ...c, value: c.value.toLowerCase() })) },
+              brand: {
+                colors: colors.map(({ section, ...c }) => {
+                  const id = groups.find((s) => s.title === section)?.id;
+                  return { ...c, value: c.value.toLowerCase(), ...(id ? { section: id } : {}) };
+                }),
+                colorSections: groups,
+              },
+            });
+            wrote();
+            return { ok: true };
+          }),
+        ),
+    }),
+    set_logo_sections: createTool({
+      id: "set_logo_sections",
+      description:
+        "Optional. Put further logo variants into sections, each with a title and when to use it (Logomark, Wordmark, Monochrome). Logos in no section are the standard ones and come first — never put those into a section. Use it only when a brand guide, a brand page or the person says a variant is used elsewhere — one logo or two plain variants need none. Replaces all sections: pass every section that should remain, an empty list removes them.",
+      inputSchema: z.object({
+        sections: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(80).describe("The variant: Logomark, Wordmark, …"),
+              description: z
+                .string()
+                .max(400)
+                .describe("When to use these logos, in the person's language"),
+              logos: z.array(z.string()).describe("Ids of the space's logo files, in order"),
+            }),
+          )
+          .max(PROJECT_LIMITS.logoSections),
+      }),
+      execute: ({ sections }) =>
+        attempt(() =>
+          inTurn(async () => {
+            doing("set_logo_sections");
+            const logos = (await projectFiles(projectId, "logo")).map((f) => f.id);
+            const unknown = sections.flatMap((s) => s.logos).filter((id) => !logos.includes(id));
+            if (unknown.length) {
+              throw new Error(`Not a logo of this space: ${unknown.join(", ")}`);
+            }
+            await updateProject(userId, projectId, {
+              brand: {
+                logoSections: cleanLogoSections(
+                  sections.map((s) => ({ ...s, id: nanoid(10) })),
+                  logos,
+                ),
+              },
+            });
+            wrote();
+            return { ok: true };
+          }),
+        ),
+    }),
+    set_asset_sections: createTool({
+      id: "set_asset_sections",
+      description:
+        "Optional. Sort the space's assets into sections, each shown as a tab named by its title (Icons, Background images, Team photos). Assets in no section stay in the general tab. Use it only when there are enough assets of clearly different kinds, or the person asks. Replaces all sections: pass every section that should remain, an empty list removes them.",
+      inputSchema: z.object({
+        sections: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(80),
+              assets: z.array(z.string()).describe("Ids of the space's asset files, in order"),
+            }),
+          )
+          .max(PROJECT_LIMITS.logoSections),
+      }),
+      execute: ({ sections }) =>
+        attempt(() =>
+          inTurn(async () => {
+            doing("set_asset_sections");
+            const assets = (await projectFiles(projectId, "asset")).map((f) => f.id);
+            const unknown = sections.flatMap((s) => s.assets).filter((id) => !assets.includes(id));
+            if (unknown.length) {
+              throw new Error(`Not an asset of this space: ${unknown.join(", ")}`);
+            }
+            await updateProject(userId, projectId, {
+              brand: {
+                assetSections: cleanAssetSections(
+                  sections.map((s) => ({ ...s, id: nanoid(10) })),
+                  assets,
+                ),
+              },
+            });
+            wrote();
+            return { ok: true };
+          }),
+        ),
+    }),
+    set_typography: createTool({
+      id: "set_typography",
+      description:
+        "Set the brand's fonts — the whole list, the main one first — each with what it is for and its weights. Optional: `textStyles`, the type scale a brand guide gives (name, font family, size px, weight, line height %, letter spacing %); without it the space keeps its text styles.",
+      inputSchema: z.object({
+        fonts: z
+          .array(
+            z.object({
+              family: z.string().min(1).max(80),
+              role: z.string().max(200).describe("What it is for, in the person's language"),
+              weights: z.array(z.number().int().min(100).max(900)).max(9),
+            }),
+          )
+          .max(PROJECT_LIMITS.fonts),
+        textStyles: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(60),
+              family: z.string().max(80).optional().describe("One of the fonts; none: the first"),
+              size: z.number().min(6).max(400),
+              weight: z.number().int().min(100).max(900),
+              lineHeight: z.number().min(50).max(300).describe("% of the size"),
+              tracking: z.number().min(-20).max(50).describe("Letter spacing, % of the size"),
+              uppercase: z.boolean().optional(),
+            }),
+          )
+          .max(PROJECT_LIMITS.textStyles)
+          .optional(),
+      }),
+      execute: ({ fonts, textStyles }) =>
+        attempt(() =>
+          inTurn(async () => {
+            doing("set_typography");
+            const p = await ownedProject(userId, projectId);
+            const faces = fonts.map((f) => ({
+              ...f,
+              id: p.brand.fonts?.find((x) => x.family === f.family)?.id ?? nanoid(10),
+            }));
+            await updateProject(userId, projectId, {
+              brand: {
+                fonts: faces,
+                ...(textStyles
+                  ? {
+                      textStyles: textStyles.map(({ family, ...s }) => ({
+                        ...s,
+                        id: nanoid(10),
+                        font: faces.find((f) => f.family === family)?.id,
+                      })),
+                    }
+                  : {}),
+              },
+            });
+            wrote();
+            return { ok: true };
+          }),
+        ),
+    }),
+    set_gradients: createTool({
+      id: "set_gradients",
+      description:
+        "Optional. Set the brand's gradients, as a brand guide or the site's stylesheet gives them: each with a name and its CSS (linear-, radial- or conic-gradient with hex stops). They go into a gradients section, made when there is none with that title. Replaces the gradients of that section.",
+      inputSchema: z.object({
+        section: z.string().min(1).max(80).describe("The gradients section's title"),
+        description: z.string().max(400).optional().describe("When to use them"),
+        gradients: z
+          .array(z.object({ name: z.string().min(1).max(80), css: z.string().max(1000) }))
+          .max(PROJECT_LIMITS.gradients),
+      }),
+      execute: ({ section, description, gradients }) =>
+        attempt(() =>
+          inTurn(async () => {
+            doing("set_gradients");
+            const p = await ownedProject(userId, projectId);
+            const sections = p.brand.colorSections ?? [];
+            const found = sections.find((s) => s.title === section && s.kind === "gradients");
+            const id = found?.id ?? nanoid(10);
+            const parsed = gradients.map((g) => ({ g, read: parseGradient(g.css) }));
+            const bad = parsed.filter((x) => !x.read).map((x) => x.g.name);
+            if (bad.length) {
+              throw new Error(`Not a gradient with hex stops: ${bad.join(", ")}`);
+            }
+            await updateProject(userId, projectId, {
+              brand: {
+                colorSections: found
+                  ? sections.map((s) => (s.id === id && description ? { ...s, description } : s))
+                  : [
+                      ...sections,
+                      { id, title: section, description: description ?? "", kind: "gradients" },
+                    ],
+                gradients: [
+                  ...(p.brand.gradients ?? []).filter((g) => g.section !== id),
+                  ...parsed.map(({ g, read }) => ({
+                    id: nanoid(10),
+                    name: g.name,
+                    section: id,
+                    ...(read as NonNullable<typeof read>),
+                  })),
+                ],
+              },
+            });
+            wrote();
+            return { ok: true };
+          }),
+        ),
+    }),
+    set_rules: createTool({
+      id: "set_rules",
+      description:
+        "Optional. Set how the logos, the colours or the type may be used: one short rule per row, with its sign (do, dont, important, question, number; none for a plain note). Only rules a brand guide, the website or the person states — never invented ones, never general advice. Replaces that list; an empty list removes it.",
+      inputSchema: z.object({
+        of: z.enum(["logos", "colors", "type"]),
+        rules: z
+          .array(
+            z.object({
+              text: z.string().min(1).max(200),
+              mark: z
+                .enum(RULE_MARKS)
+                .optional()
+                .describe("do, dont, important, question, number; none for a plain note"),
+            }),
+          )
+          .max(PROJECT_LIMITS.logoRules),
+      }),
+      execute: ({ of, rules }) =>
+        attempt(() =>
+          inTurn(async () => {
+            doing("set_rules");
+            await updateProject(userId, projectId, {
+              brand:
+                of === "logos"
+                  ? { logoRules: rules }
+                  : of === "colors"
+                    ? { colorRules: rules }
+                    : { typeRules: rules },
             });
             wrote();
             return { ok: true };
@@ -337,27 +654,7 @@ function spaceTools(input: AssistantInput, project: ProjectRow, wrote: () => voi
       execute: ({ url, kind, description }) =>
         attempt(async () => {
           doing("save_file", { kind });
-          const res = await safeFetch(url, {
-            headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
-            signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]),
-          });
-          if (!res.ok) {
-            throw new Error(`The address answered ${res.status}.`);
-          }
-          const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-          if (Number(res.headers.get("content-length") ?? 0) > projectFileLimit(kind, mime)) {
-            throw new Error("The file is too large.");
-          }
-          const data = new Uint8Array(await res.arrayBuffer());
-          const name = decodeURIComponent(new URL(res.url).pathname.split("/").pop() || kind);
-          const row = await addProjectFile(projectId, {
-            kind,
-            name,
-            mime: mime === "text/html" && kind !== "document" ? "" : mime,
-            data,
-            description,
-            source: res.url,
-          });
+          const row = await addProjectFileFromUrl(projectId, { url, kind, description, signal });
           wrote();
           return { ok: true, id: row.id, name: row.name, mime: row.mime, size: row.size };
         }),

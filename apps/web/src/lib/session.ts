@@ -3,7 +3,18 @@ import {
   TEXT_CLASSES,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
+import type {
+  AssetSection,
+  BrandColor,
+  BrandFont,
+  BrandGradient,
+  BrandPattern,
+  BrandRule,
+  ColorSection,
+  LogoSection,
+  ProjectFact,
+  TextStyle,
+} from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
@@ -183,7 +194,21 @@ export function useMe() {
 export interface Project {
   id: string;
   name: string;
-  brand: { name?: string; about?: string; colors?: BrandColor[] };
+  brand: {
+    name?: string;
+    about?: string;
+    colors?: BrandColor[];
+    colorSections?: ColorSection[];
+    gradients?: BrandGradient[];
+    patterns?: BrandPattern[];
+    colorRules?: BrandRule[];
+    logoSections?: LogoSection[];
+    assetSections?: AssetSection[];
+    fonts?: BrandFont[];
+    textStyles?: TextStyle[];
+    typeRules?: BrandRule[];
+    logoRules?: BrandRule[];
+  };
   facts: ProjectFact[];
   mcpServers: { id: string; name: string; url: string; headers?: Record<string, string> }[];
   wizardCount: number;

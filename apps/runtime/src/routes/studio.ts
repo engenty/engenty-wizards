@@ -26,6 +26,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { runStudioAssistant } from "../agents/studio-assistant.js";
 import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscription.js";
+import { scanColors, scanFonts, scanImages, scanLogos } from "../agents/website.js";
 import { answerBrowser, awaitBrowser } from "../assistant/browser.js";
 import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
@@ -130,6 +131,7 @@ import { exportWizard, importWizard } from "../services/package.js";
 import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
 import {
   addProjectFile,
+  addProjectFileFromUrl,
   fileView,
   orderProjectFiles,
   projectFile,
@@ -640,6 +642,40 @@ export const studio = new Hono<Vars>()
       data: new Uint8Array(await file.arrayBuffer()),
     });
     return c.json(fileView(row));
+  })
+  .post("/projects/:id/files/url", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const input = z
+      .object({ url: z.string().min(1).max(500_000), kind: z.enum(PROJECT_FILE_KINDS) })
+      .parse(await c.req.json());
+    const url = /^(https?:\/\/|data:)/i.test(input.url) ? input.url : `https://${input.url}`;
+    try {
+      return c.json({ file: fileView(await addProjectFileFromUrl(project.id, { ...input, url })) });
+    } catch (err) {
+      // A web page where a logo or an asset was asked for: its logos or pictures, to pick from.
+      if (err instanceof ServiceError && err.data.reason === "page") {
+        const page = String(err.data.url ?? url);
+        const scan = input.kind === "logo" ? scanLogos : scanImages;
+        return c.json({ candidates: await scan(page) });
+      }
+      throw err;
+    }
+  })
+  .post("/projects/:id/colors/scan", async (c) => {
+    await ownedProject(c.get("user").id, c.req.param("id"));
+    const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
+    const colors = await scanColors(url).catch(() => {
+      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+    });
+    return c.json({ colors });
+  })
+  .post("/projects/:id/fonts/scan", async (c) => {
+    await ownedProject(c.get("user").id, c.req.param("id"));
+    const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
+    const fonts = await scanFonts(url).catch(() => {
+      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+    });
+    return c.json({ fonts });
   })
   .put("/projects/:id/files/order", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));

@@ -1,5 +1,6 @@
 import type { StudioSpaceGroup } from "@engenty-wizards/plugin-sdk/studio";
 import {
+  ALargeSmall,
   BookOpen,
   Database,
   FileText,
@@ -56,10 +57,11 @@ export interface ProjectSectionGroup {
 /** The space's own sections, in the order the page shows them. A plugin cannot take their ids. */
 const OWN: { id: string; group: SpaceGroupId; label: Key; icon: LucideIcon }[] = [
   { id: "base", group: "info", label: "project.base", icon: Type },
+  { id: "facts", group: "info", label: "project.facts", icon: ListChecks },
   { id: "logos", group: "info", label: "project.logos", icon: Shapes },
   { id: "colors", group: "info", label: "project.colors", icon: Palette },
+  { id: "typography", group: "info", label: "project.typography", icon: ALargeSmall },
   { id: "assets", group: "info", label: "project.assets", icon: Images },
-  { id: "facts", group: "info", label: "project.facts", icon: ListChecks },
   { id: "documents", group: "knowledge", label: "project.documents", icon: FileText },
 ];
 

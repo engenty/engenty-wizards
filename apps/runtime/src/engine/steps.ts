@@ -10,6 +10,7 @@ import {
   templateRefs,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
+import { mainLogo, ruleLines } from "@engenty-wizards/shared/projects";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import {
   SURFACE_GUIDE,
@@ -43,11 +44,14 @@ import { prepareInputs } from "./prepare.js";
 import { runSurfaceStep } from "./surface.js";
 import {
   answersAsText,
+  assetSectionLine,
   colorLine,
   factLines,
+  logoSectionLine,
   renderTemplate,
   resolveRef,
   type TemplateScope,
+  typeLines,
 } from "./template.js";
 import { type StepContext, StepError } from "./types.js";
 
@@ -60,13 +64,28 @@ function today(ctx: StepContext): string {
   });
 }
 
+const sectionTitle = (s: { title: string; description: string }) =>
+  s.description ? `${s.title} – ${s.description}` : s.title;
+
 function brandBlock(ctx: StepContext): string {
   const b = ctx.scope.brand;
   const parts = [
     b.name,
     b.about,
     b.facts?.length ? `Facts:\n${factLines(b.facts)}` : "",
-    b.colors?.length ? `Colours (the first is the accent): ${colorLine(b.colors)}` : "",
+    b.colors?.length
+      ? `Colours (the first is the accent): ${colorLine(b.colors, b.colorSections, b.gradients)}`
+      : "",
+    b.colorRules?.length
+      ? `Rules for the colours, in the brand's words:\n${ruleLines(b.colorRules)}`
+      : "",
+    b.logoRules?.length
+      ? `Rules for the logo, in the brand's words:\n${ruleLines(b.logoRules)}`
+      : "",
+    b.fonts?.length || b.textStyles?.length
+      ? `Typography (set text in these fonts, with system fallbacks):\n${typeLines(b.fonts, b.textStyles)}`
+      : "",
+    b.typeRules?.length ? `Rules for type, in the brand's words:\n${ruleLines(b.typeRules)}` : "",
   ].filter(Boolean);
   return parts.length ? `# WHO THIS WIZARD BELONGS TO\n${parts.join("\n")}` : "";
 }
@@ -787,13 +806,35 @@ function placeableImages(step: GenerateStep, ctx: StepContext): { id: string; la
     }
   }
   const logos = ctx.projectFiles.filter((f) => f.kind === "logo");
-  for (const [i, f] of logos.entries()) {
-    const note = f.description ? `: ${f.description}` : "";
-    out.push({ id: f.id, label: `${i === 0 ? "Company logo" : "Logo variant"}${note}` });
+  const main = mainLogo(logos, ctx.scope.brand.logoSections);
+  for (const f of logos) {
+    const section = logoSectionLine(ctx.scope.brand.logoSections, f.id);
+    out.push({
+      id: f.id,
+      label: [
+        f === main ? "Company logo" : "Logo variant",
+        section ? ` — section ${section}` : "",
+        f.description ? `: ${f.description}` : "",
+      ].join(""),
+    });
+  }
+  for (const p of ctx.scope.brand.patterns ?? []) {
+    const file = ctx.projectFiles.find((f) => f.id === p.file);
+    const section = ctx.scope.brand.colorSections?.find((s) => s.id === p.section);
+    if (file) {
+      out.push({
+        id: file.id,
+        label: `${p.tile ? "Pattern to tile" : "Background fill"}: ${p.name || file.name}${section ? ` (${sectionTitle(section)})` : ""}`,
+      });
+    }
   }
   for (const f of ctx.projectFiles) {
     if (f.kind === "asset" && f.mime.startsWith("image/")) {
-      out.push({ id: f.id, label: `${f.description || f.name} (from the project's assets)` });
+      const section = assetSectionLine(ctx.scope.brand.assetSections, f.id);
+      out.push({
+        id: f.id,
+        label: `${f.description || f.name} (from the project's assets${section ? `, section ${section}` : ""})`,
+      });
     }
   }
   return out;
