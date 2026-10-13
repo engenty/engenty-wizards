@@ -4,8 +4,8 @@ import { useSyncExternalStore } from "react";
 
 const de = {
   ...RUNNER_TEXTS.de,
-  "brand.tagline": "Wünsch dir was. Wir bauen deinen Wizard.",
-  "brand.sub": "Er führt dich Schritt für Schritt zum Ergebnis. Die KI erledigt die Arbeit.",
+  "brand.tagline": "Wünsch dir was. Hol dir deinen Wizard.",
+  "brand.sub": "Er führt dich Schritt für Schritt. Die KI erledigt die Arbeit.",
   "auth.dev": "Dev-Login (lokal)",
   "auth.legal":
     "Kein Passwort, keine Registrierung – du meldest dich mit einem bestehenden Konto an.",
@@ -13,11 +13,10 @@ const de = {
   "auth.failed": "Die Anmeldung hat nicht geklappt. Bitte noch einmal versuchen.",
   "auth.localTitle": "Dieser Browser ist nicht angemeldet",
   "auth.localWhy":
-    "Das Studio läuft auf deinem Computer und lässt nur einen Browser herein, der seinen Link geöffnet hat. Hier fehlt diese Anmeldung – etwa weil die Cookies gelöscht wurden oder ein anderes Studio auf diesem Computer (eine andere Adresse auf localhost) sie ersetzt hat.",
-  "auth.localLink":
-    "Führe das in einem Terminal aus – es öffnet das Studio und meldet diesen Browser an:",
+    "Das Studio läuft auf deinem Computer und lässt nur Browser herein, die seinen Link geöffnet haben. Hier fehlt die Anmeldung – vielleicht wurden die Cookies gelöscht.",
+  "auth.localLink": "Starte eine neue Session:",
   "auth.localStartLink":
-    "Oder öffne den Link, den die App beim Start ausgegeben hat („Open the studio: …/api/local/enter?k=…“). Er gilt einmal pro Start.",
+    "Oder gib nur den Link aus, ohne einen Browser zu öffnen. Er gilt einmal, eine Minute lang:",
   "auth.wrongHost": "Das Studio läuft unter einer anderen Adresse",
   "auth.wrongHostWhy":
     "Die App auf diesem Computer antwortet nur unter ihrer eigenen Adresse – das schützt sie vor fremden Webseiten. Öffne das Studio dort:",
@@ -1799,19 +1798,18 @@ export type Key = keyof typeof de;
 
 const en: Record<Key, string> = {
   ...RUNNER_TEXTS.en,
-  "brand.tagline": "Build AI wizards, no code.",
-  "brand.sub":
-    "Describe a flow in your own words. engenty turns it into a wizard you share with a link.",
+  "brand.tagline": "Make a wish. Get your wizard.",
+  "brand.sub": "It guides you step by step. Let AI do the work.",
   "auth.dev": "Dev login (local)",
   "auth.legal": "No password, no sign-up form — you sign in with an account you already have.",
   "auth.signIn": "Sign in or create an account",
   "auth.failed": "Sign-in did not work. Please try again.",
   "auth.localTitle": "This browser is not signed in",
   "auth.localWhy":
-    "The studio runs on your computer and lets in only a browser that opened its link. That sign-in is missing here – maybe the cookies were cleared, or another studio on this computer (another address on localhost) replaced it.",
+    "The studio runs on your computer and lets in only browsers that opened its link. The sign-in is missing here – maybe the cookies were cleared.",
   "auth.localLink": "Run this in a terminal — it opens the studio and signs this browser in:",
   "auth.localStartLink":
-    "Or open the link the app printed at its start (“Open the studio: …/api/local/enter?k=…”). It works once per start.",
+    "Or print just the link, without opening a browser. It works once, for a minute:",
   "auth.wrongHost": "The studio runs at another address",
   "auth.wrongHostWhy":
     "The app on this computer answers only at its own address – that keeps other web pages out. Open the studio there:",

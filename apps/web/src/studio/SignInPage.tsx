@@ -1,11 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
+import { APP_VERSION } from "../about/AboutLinks";
 import { Mascot } from "../brand";
-import { EngentyWordmark } from "../engenty/logo";
+import { EngentyLogoMark, EngentyWordmark } from "../engenty/logo";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
+import { LangSwitch } from "./LangSwitch";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 const SIGNED_IN = /(?:^|;\s*)engenty_signed_in=1(?:;|$)/;
 
@@ -110,7 +113,19 @@ export function SignInPage() {
     config.error instanceof ApiError && config.error.body?.code === "host" ? config.error : null;
   const ownAddress = refusal ? String(refusal.body.appUrl ?? "") : null;
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-16">
+      <span className="absolute top-6 left-6 inline-flex items-center gap-2.5 sm:top-8 sm:left-10">
+        <EngentyLogoMark size={28} />
+        <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
+          engenty
+          <span className="mr-[0.09em] ml-[0.06em] text-ember-strong">.</span>
+          <span className="font-normal text-ink-2">wizards</span>
+        </span>
+      </span>
+      <span className="absolute top-6 right-6 flex items-center gap-2 sm:top-8 sm:right-10">
+        <ThemeSwitch tone="surface" />
+        <LangSwitch tone="surface" />
+      </span>
       <div className="flex w-full max-w-md animate-rise flex-col items-center text-center">
         <Mascot kind="round" size={local || config.isError ? 140 : 200} fluffy />
         <EngentyWordmark className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight" />
@@ -185,6 +200,9 @@ export function SignInPage() {
                 wizards open
               </code>
               <p className="mt-3 text-ink-3">{t("auth.localStartLink")}</p>
+              <code className="mt-1.5 block select-all rounded-lg bg-paper-2 px-3 py-2 font-mono text-[0.8125rem] text-ink">
+                wizards open --print
+              </code>
             </Note>
           ) : null}
         </div>
@@ -192,6 +210,9 @@ export function SignInPage() {
           <p className="mt-6 text-[0.8125rem] text-ink-3">{t("auth.legal")}</p>
         ) : null}
       </div>
+      <footer className="absolute inset-x-0 bottom-6 text-center text-[0.75rem] text-ink-3 sm:bottom-8">
+        © engenty · {t("about.version", { v: APP_VERSION })}
+      </footer>
     </div>
   );
 }
