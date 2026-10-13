@@ -95,6 +95,8 @@ export interface Me {
   account: {
     name: string;
     email: string;
+    /** The team the account's space belongs to; null while the Manage-App has not answered. */
+    team: string | null;
     credits: number | null;
     /** What of the credits ends on a date, the nearest first. */
     expiring: ExpiringCredits[];
@@ -112,6 +114,8 @@ export interface Me {
   subscriptions: "claude"[];
   /** A runtime that runs alone walks the person through its setup on first start. */
   setupDone: boolean;
+  /** The cloud studio's first visit: the short wizard that names the team and fills the space. */
+  onboarding: boolean;
   /** What answers the studio chat. */
   chatEngine: "models" | "claude";
   aiReady: boolean;

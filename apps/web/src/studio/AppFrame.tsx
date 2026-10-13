@@ -578,7 +578,7 @@ export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
     : [];
   return (
     <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-6 text-[0.75rem] text-ink-4 sm:px-6">
-      <span>© {new Date().getFullYear()} Thru The Heart Creative GmbH - Matthias Platzer</span>
+      <span>engenty</span>
       {links.map((link) => (
         <a
           key={link.href}

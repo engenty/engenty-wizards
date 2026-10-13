@@ -44,37 +44,50 @@ A wizard in use: it asks on one page, then on the next, and ends with the result
   <img src="docs/assets/wizard.png" alt="A wizard in use on a phone, three pictures: which week and how many children, what is on the table, and the finished weekly plan with PDF, PNG and sharing">
 </p>
 
-## Install
+## Get started
 
-On macOS or Linux, in a terminal:
+Create an account at [engenty.ai](https://engenty.ai): it is in a closed beta, so "Get started"
+takes your e-mail for an invitation, or your invitation code. Signed in, the studio asks who
+your team is, reads your website into your space, takes first documents, and you build your
+first wizard in the browser. Links run day and night on the team's credits.
+
+## Install it on your computer
+
+The same account on your own machine: it thinks with your Claude, ChatGPT, Gemini or Cursor
+subscription, reads your local files and browses for you, and what you publish keeps running in
+the cloud behind the same links. On macOS or Linux, in a terminal:
 
 ```bash
 curl -fsSL https://engenty.ai/install.sh | bash
 ```
 
-It needs nothing but `curl` and asks for no password. It brings its own Node.js (a Node you
-already have is left alone), installs engenty wizards into `~/.engenty/wizards` and then walks
-you through the rest:
+It needs nothing but `curl` and `tar` and asks for no password. It brings its own Node.js (a
+Node you already have is left alone), installs engenty wizards into `~/.engenty/wizards` and
+then walks you through the rest:
 
+- **Your engenty account.** A code and the browser for the sign-in; your team's space comes
+  down to this computer. "Later" skips it, `wizards account sign-in` does it any time.
+  `--local` leaves the account out: nothing leaves the computer, links answer on it only
+  ([local only](https://engenty.ai/docs/user/local-only)).
 - **Something to think with.** It looks for Codex, Claude Code, Gemini CLI and Cursor Agent and
   offers to install one if there is none — first the one whose app (Claude, ChatGPT, Cursor) is
   on your Mac, as its subscription is most likely yours already. The first page of the studio
-  installs them too. Or use an API key or [Ollama](https://ollama.com).
+  installs them too. Or use your account's credits, an API key or [Ollama](https://ollama.com).
 - **Google Chrome and ffmpeg** (optional): Chrome for PDF and PNG exports and for steps that use
   a browser, ffmpeg for MP4 videos of animated widgets.
 - **Start at login** (optional): engenty wizards starts in the background when you log in (a
   LaunchAgent on a Mac, a systemd user service on Linux). Links and AI clients then always
   reach it. `wizards autostart on` or `off` switches it later.
 
-Then it starts and the studio opens in your browser. Later, start it with:
+It starts nothing. Afterwards:
 
 ```bash
-wizards
+wizards start
 ```
 
-It runs while that terminal is open; Ctrl-C stops it. `wizards status` says what is
-installed and what runs, `wizards setup` runs the guided setup again, and
-`wizards --help` lists the rest.
+starts it and opens the studio; it runs while that terminal is open, Ctrl-C stops it.
+`wizards` opens a menu with all of it, `wizards status` says what is installed and what runs,
+`wizards setup` runs the guided setup again, and `wizards --help` lists the rest.
 
 **Install it as an app.** In Chrome or Edge the studio installs as an app: its own window, its
 own icon in the Dock or taskbar. The studio offers it in a banner at the top; or click the install
@@ -99,9 +112,10 @@ machine; a checkout brings its own sandbox, the installed version has none yet.
 
 ## First start
 
-The setup asks what engenty should think with. Pick an AI client that is installed on your
-computer — engenty uses your existing subscription and signs it in for you in a terminal right
-on the page — or enter your own keys. It stays until a test call works, then the studio opens.
+The setup shows your account at the top and asks what engenty should think with. Pick an AI
+client that is installed on your computer — engenty uses your existing subscription and signs
+it in for you in a terminal right on the page — your account's credits, or enter your own keys.
+It stays until a test call works, then the studio opens.
 
 Change it later under Settings.
 

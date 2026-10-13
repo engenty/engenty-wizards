@@ -92,6 +92,8 @@ export interface InstallNote {
   /** When the guided setup last ran to its end. */
   setupAt?: string;
   version?: string;
+  /** Set up with `--local`: no account, nothing leaves this computer. A sign-in clears it. */
+  local?: boolean;
 }
 
 export function readInstallNote(paths: Layout = layout()): InstallNote {

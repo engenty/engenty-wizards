@@ -60,7 +60,14 @@ import {
   subscribeTerminal,
   writeTerminal,
 } from "../harness/terminal.js";
-import { managed, tenantInfo, tenantMembers, userFeatures } from "../manage.js";
+import {
+  installMail,
+  managed,
+  renameTenant,
+  tenantInfo,
+  tenantMembers,
+  userFeatures,
+} from "../manage.js";
 import { seenApps } from "../mcp/seen.js";
 import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
 import { transcribeAudio } from "../media/transcribe.js";
@@ -86,6 +93,7 @@ import {
   mayBuild,
   mayCreate,
   projectWritable,
+  requireAdmin,
   requireWritable,
 } from "../services/access.js";
 import { architectTurn } from "../services/architect.js";
@@ -122,6 +130,7 @@ import {
   valueContents,
 } from "../services/knowledge.js";
 import { writeSummary } from "../services/knowledge-model.js";
+import { applyWebsite, finishOnboarding, needsOnboarding } from "../services/onboarding.js";
 import { exportWizard, importWizard } from "../services/package.js";
 import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
 import {
@@ -393,6 +402,8 @@ export const studio = new Hono<Vars>()
         ? {
             name: linked.name,
             email: linked.email,
+            /** The team the account's space belongs to, as the Manage-App names it. */
+            team: overview?.tenant.name ?? null,
             credits: overview?.tenant.balanceCredits ?? null,
             /** What of the credits ends on a date, the nearest first. */
             expiring: overview?.tenant.expiring ?? [],
@@ -410,6 +421,8 @@ export const studio = new Hono<Vars>()
       subscriptions: managed ? [] : await subscriptionClients(),
       /** A runtime that runs alone keeps its setup in front until a test call has worked on the chosen source and the way is still open. */
       setupDone: managed ? true : await setupDone(),
+      /** The cloud studio's first visit: the short wizard that names the team and fills the space (services/onboarding.ts). */
+      onboarding: await needsOnboarding(user),
       /** What answers the studio chat: a model of class `highest`, or the admin's own subscription. */
       chatEngine: managed ? "models" : await chatEngine(await hasTextModel()),
       aiReady: (await hasTextModel()) || (!managed && (await subscriptionClients()).length > 0),
@@ -1526,6 +1539,41 @@ export const studio = new Hono<Vars>()
   })
   // The address the system browser opens: the account's sign-in, or — for someone without an
   // account — its sign-up page with the invitation code, which then goes on to the sign-in.
+  // --- the first visit of a cloud studio: who the team is, its website, first documents -----
+  .put("/team", async (c) => {
+    if (!managed) {
+      return c.json({ error: "not_managed" }, 404);
+    }
+    await requireAdmin();
+    const { name } = z.object({ name: z.string().trim().min(1).max(80) }).parse(await c.req.json());
+    const info = await renameTenant(c.get("user").tenantId, name);
+    return c.json({ name: info.name });
+  })
+  .post("/onboarding/done", async (c) => {
+    if (!managed) {
+      return c.json({ error: "not_managed" }, 404);
+    }
+    await finishOnboarding(c.get("user").tenantId);
+    return c.json({ ok: true });
+  })
+  .post("/projects/:id/website", async (c) => {
+    const user = c.get("user");
+    const project = await ownedProject(user.id, c.req.param("id"));
+    const { url } = z.object({ url: z.string().trim().min(3).max(400) }).parse(await c.req.json());
+    return c.json(await applyWebsite(user.id, project.id, url));
+  })
+  // The install command and the first steps, mailed to the signed-in person by the Manage-App.
+  .post("/install-mail", async (c) => {
+    if (!managed) {
+      return c.json({ error: "not_managed" }, 404);
+    }
+    const { lang } = z
+      .object({ lang: z.enum(["de", "en"]).default("en") })
+      .parse(await c.req.json().catch(() => ({})));
+    await installMail(c.get("user").email, lang);
+    return c.json({ ok: true });
+  })
+
   .post("/account/link", async (c) => {
     if (managed) {
       return c.notFound();

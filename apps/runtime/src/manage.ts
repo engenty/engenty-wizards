@@ -236,6 +236,20 @@ export function forgetTenant(id: string) {
   tenants.delete(id);
 }
 
+/** Renames the team at the Manage-App; what it answers is the tenant as it stands now. */
+export async function renameTenant(id: string, name: string): Promise<TenantInfo> {
+  const value = await call<TenantInfo>("PATCH", `/v1/tenants/${encodeURIComponent(id)}`, {
+    name,
+  });
+  tenants.set(id, { at: Date.now(), value });
+  return value;
+}
+
+/** The Manage-App mails the install command and the first steps to one of the team's people. */
+export function installMail(email: string, lang: "de" | "en"): Promise<{ ok: boolean }> {
+  return call("POST", "/v1/install-mail", { email, lang });
+}
+
 export interface KeyInfo {
   valid: boolean;
   keyId?: string;

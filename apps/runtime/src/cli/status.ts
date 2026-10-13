@@ -1,5 +1,6 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { accountState, describeAccount } from "./account.js";
 import { autostartState, setAutostart } from "./autostart.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
@@ -12,11 +13,12 @@ import { bad, badge, cyan, dim, no, ok, tilde } from "./ui.js";
  */
 export async function status(paths: Layout, checks: boolean): Promise<number> {
   const { dataDir } = settings(paths);
-  const [running, clients, ffmpeg, atLogin] = await Promise.all([
+  const [running, clients, ffmpeg, atLogin, account] = await Promise.all([
     runningRuntime(dataDir),
     detectClients(paths),
     findFfmpeg(),
     autostartState(paths),
+    accountState(),
   ]);
   const chrome = findChrome();
   const row = (label: string, value: string) => console.log(`  ${label.padEnd(9)} ${value}`);
@@ -42,6 +44,7 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
       atLogin.on ? `${ok} starts ${dim(`(${atLogin.how})`)}` : `${no} does not start`,
     );
   }
+  row("Account", `${account.kind === "linked" ? ok : no} ${describeAccount(account)}`);
   for (const { client, path, version } of clients) {
     row(
       client.name.split(" ")[0],

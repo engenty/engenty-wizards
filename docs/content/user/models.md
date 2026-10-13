@@ -1,7 +1,7 @@
 ---
 title: Models and account
 description: Who does what your wizards ask for — an installed AI client, your own API keys, a local model, or credits.
-version: 0.3.2
+version: 0.3.4
 ---
 
 Settings → Models decides who does what your wizards ask for. On your computer it is yours; on
@@ -125,7 +125,8 @@ Text & reasoning) picks what builds your wizards in the editor's conversation:
 
 ## Account
 
-An account is optional. With it you
+An install normally signs in to your account during the setup ([Install](./install.md)); one
+without an account is [local only](./local-only.md). With an account you
 
 - use credits instead of your own keys (the editor's note about missing models says so where
   text, image or video models are missing),

@@ -336,7 +336,7 @@ export const authRoutes = new Hono()
     if (!managed) {
       // The linked account of a runtime that runs alone: the system browser lands here.
       if (!code) {
-        return c.html(closePage("Anmeldung abgebrochen. Du kannst dieses Fenster schließen."), 400);
+        return c.html(closePage("Sign-in cancelled. You can close this window."), 400);
       }
       try {
         await finishLink(code, rawState);
@@ -344,10 +344,10 @@ export const authRoutes = new Hono()
         void firstSync();
         // The Pro modules the account's plan includes.
         void refreshPro();
-        return c.html(closePage("Angemeldet. Du kannst dieses Fenster schließen."));
+        return c.html(closePage("Signed in. You can close this window."));
       } catch (err) {
         console.error("[account]", err);
-        return c.html(closePage("Anmeldung hat nicht geklappt. Bitte noch einmal versuchen."), 400);
+        return c.html(closePage("The sign-in did not work. Please try again."), 400);
       }
     }
     const state = unseal<LoginState>(getCookie(c, STATE_COOKIE) ?? "");
@@ -388,7 +388,7 @@ export const authRoutes = new Hono()
         } satisfies Handoff);
         const link = `engenty-wizards://signin?code=${encodeURIComponent(code)}`;
         return c.html(
-          `${closePage("Angemeldet. Kehre jetzt zu engenty wizards zurück.")}
+          `${closePage("Signed in. Go back to engenty wizards now.")}
 <script>location.href = ${JSON.stringify(link)};</script>`,
         );
       }

@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts";
 import type { Running } from "../running.js";
 import { type UpdateStatus, updateStatus } from "../update.js";
+import { type AccountState, accountMenu, accountState, describeAccount } from "./account.js";
 import { type Autostart, autostartState, setAutostart } from "./autostart.js";
 import { connectCommand } from "./connect.js";
 import { command, type Layout, packageVersion, readInstallNote } from "./home.js";
@@ -19,6 +20,7 @@ type Action =
   | "update"
   | "service"
   | "connect"
+  | "account"
   | "status"
   | "setup"
   | "help"
@@ -28,19 +30,21 @@ interface State {
   running: Running | null;
   atLogin: Autostart;
   release: UpdateStatus | null;
+  account: AccountState;
 }
 
 async function look(paths: Layout): Promise<State> {
   const { dataDir } = settings(paths);
-  const [running, atLogin, release] = await Promise.all([
+  const [running, atLogin, release, account] = await Promise.all([
     runningRuntime(dataDir),
     autostartState(paths),
     updateStatus().catch(() => null),
+    accountState(),
   ]);
-  return { running, atLogin, release };
+  return { running, atLogin, release, account };
 }
 
-function report({ running, atLogin, release }: State): string {
+function report({ running, atLogin, release, account }: State): string {
   const lines = [
     running
       ? `${ok} running  ${cyan(running.url)} ${dim(`pid ${running.pid}, since ${new Date(running.startedAt).toLocaleString()}`)}`
@@ -49,13 +53,18 @@ function report({ running, atLogin, release }: State): string {
   if (!("unavailable" in atLogin)) {
     lines.push(atLogin.on ? `${ok} starts at login` : `${no} does not start at login`);
   }
+  lines.push(
+    account.kind === "linked"
+      ? `${ok} signed in as ${describeAccount(account)}`
+      : `${no} ${describeAccount(account)}`,
+  );
   if (release?.newer) {
     lines.push(`${cyan("↑")} ${release.latest} is out ${dim(`(you have ${release.current})`)}`);
   }
   return lines.join("\n");
 }
 
-function choices({ running, atLogin, release }: State): p.Option<Action>[] {
+function choices({ running, atLogin, release, account }: State): p.Option<Action>[] {
   const options: p.Option<Action>[] = running
     ? [
         { value: "open", label: "Open the studio", hint: "in your browser" },
@@ -84,8 +93,16 @@ function choices({ running, atLogin, release }: State): p.Option<Action>[] {
   }
   options.push(
     { value: "connect", label: "Connect AI apps", hint: "your wizards in Claude, Cursor, Codex …" },
+    {
+      value: "account",
+      label: "Account",
+      hint:
+        account.kind === "linked"
+          ? `signed in as ${describeAccount(account)}`
+          : describeAccount(account),
+    },
     { value: "status", label: "Status", hint: "what is installed, and what is wrong" },
-    { value: "setup", label: "Setup", hint: "AI client, ffmpeg, start at login" },
+    { value: "setup", label: "Setup", hint: "account, AI client, ffmpeg, start at login" },
     { value: "help", label: "Help", hint: "every command" },
     { value: "quit", label: "Quit", hint: running ? "it keeps running" : undefined },
   );
@@ -190,6 +207,9 @@ export async function menu(
         break;
       case "connect":
         await connectCommand(paths, [], false);
+        break;
+      case "account":
+        await accountMenu(paths);
         break;
       case "status":
         await status(paths, true);

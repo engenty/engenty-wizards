@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Cloud, RefreshCw } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useNavigate } from "react-router";
 import { Mascot } from "../brand";
@@ -11,11 +11,13 @@ import {
   type AppleStatus,
   type HarnessStatus,
   type LocalModels,
+  useCurrentProject,
   useMe,
   withoutApple,
 } from "../lib/session";
 import { useGround, usePreferredTheme } from "../lib/theme";
 import { Button, cn } from "../ui";
+import { LinkStatus, useAccountLink } from "./Account";
 import { HarnessPanel, ModelTest } from "./Harness";
 import { LangSwitch } from "./LangSwitch";
 import { OwnModels, openExternal } from "./LocalRuntime";
@@ -320,6 +322,10 @@ export function SetupPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const config = useConfig();
+  const accountOn = useFeature("account");
+  const { project } = useCurrentProject();
+  // The account: signed in during the install, or here; its credits are a way to think too.
+  const linking = useAccountLink(Boolean(me.data?.account?.signedIn));
   const [picked, setPicked] = useState(ownPicked);
   // A narrow page shows the opened choice alone; the person goes back to the choices from there.
   const [listOpen, setListOpen] = useState(false);
@@ -384,7 +390,7 @@ export function SetupPage() {
       ? client.auth === "none"
         ? 0
         : 1
-      : selected === "apple" || hasKey
+      : selected === "apple" || selected === "account" || hasKey
         ? 1
         : 0;
   const heading = works
@@ -395,7 +401,7 @@ export function SetupPage() {
         : client.auth === "none"
           ? t("setup.h.signIn", { name: client.name })
           : t("setup.h.test")
-      : selected === "apple" || hasKey
+      : selected === "apple" || selected === "account" || hasKey
         ? t("setup.h.test")
         : t("setup.h.keys");
   const site = siteOn ? config.data?.site : null;
@@ -484,7 +490,74 @@ export function SetupPage() {
                 {t("setup.sub")}
               </p>
             </div>
+            {accountOn ? (
+              <div className="mt-5 flex items-center gap-3.5 rounded-2xl bg-(color:--panel) px-4 py-3.5 ring-(color:--panel-ring) ring-1">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(color:--pick) font-semibold text-(color:--pick-ink) text-[0.9375rem]">
+                  {me.data.account?.signedIn ? (
+                    (me.data.account.name || me.data.account.email).slice(0, 1).toUpperCase()
+                  ) : (
+                    <Cloud className="size-4.5" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  {me.data.account?.signedIn ? (
+                    <>
+                      <p className="font-medium text-[0.9375rem]">
+                        {t("setup.accountLinked", {
+                          name: me.data.account.name || me.data.account.email,
+                        })}
+                      </p>
+                      <p className="text-(color:--on)/75 text-[0.8125rem]">
+                        {[
+                          me.data.account.team,
+                          me.data.account.credits === null
+                            ? null
+                            : t("setup.accountCredits", {
+                                credits: me.data.account.credits.toLocaleString(),
+                              }),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-[0.9375rem]">{t("setup.account")}</p>
+                      <p className="text-(color:--on)/75 text-[0.8125rem] leading-snug">
+                        {t("setup.accountText")}
+                      </p>
+                      <LinkStatus {...linking} />
+                    </>
+                  )}
+                </div>
+                {me.data.account?.signedIn ? null : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    busy={linking.link.isPending}
+                    onClick={() => linking.link.mutate({})}
+                  >
+                    {t("account.signIn")}
+                  </Button>
+                )}
+              </div>
+            ) : null}
             <div className="mt-5 flex flex-col gap-2.5">
+              {me.data.account?.signedIn ? (
+                <Choice
+                  selected={marked === "account"}
+                  title={t("setup.creditsChoice")}
+                  description={t("setup.creditsDesc")}
+                  note={
+                    me.data.account.credits === null
+                      ? undefined
+                      : t("setup.accountCredits", {
+                          credits: me.data.account.credits.toLocaleString(),
+                        })
+                  }
+                  onPick={() => choose.mutate("account")}
+                />
+              ) : null}
               {clients.map((h, i) => (
                 <Choice
                   key={h.id}
@@ -556,7 +629,11 @@ export function SetupPage() {
                   <Stages
                     name={
                       client?.name ??
-                      (selected === "apple" ? t("models.optApple") : t("local.sourceOwn"))
+                      (selected === "apple"
+                        ? t("models.optApple")
+                        : selected === "account"
+                          ? t("setup.creditsChoice")
+                          : t("local.sourceOwn"))
                     }
                     at={stage}
                     done={works}
@@ -577,6 +654,13 @@ export function SetupPage() {
                         {keeps ? t("setup.appleHintKeeps", { way: keeps }) : t("setup.appleHint")}
                       </p>
                       <ModelTest auto={!works && apple?.available === true} />
+                    </div>
+                  ) : selected === "account" ? (
+                    <div className="flex flex-col gap-5">
+                      <p className="text-[0.875rem] text-ink-2 leading-relaxed">
+                        {t("setup.creditsDesc")}
+                      </p>
+                      <ModelTest auto={!works} />
                     </div>
                   ) : (
                     <div className="flex flex-col gap-5">
@@ -635,8 +719,13 @@ export function SetupPage() {
           a place, marked with the wordmark's dot at its own size, for what belongs there later. */}
       <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6 text-(color:--on)/55 text-[0.75rem] sm:pb-8">
         <span>
-          © {new Date().getFullYear()} Thru The Heart Creative GmbH - Matthias Platzer ·{" "}
-          {t("setup.local")}
+          engenty ·{" "}
+          {me.data.account?.signedIn
+            ? t("setup.thisComputer", {
+                space: project?.name ?? "",
+                team: me.data.account.team ?? me.data.account.name,
+              })
+            : t("setup.local")}
         </span>
         <span className="flex items-center gap-5">
           {site ? <FooterLink href={site}>{new URL(site).host}</FooterLink> : null}

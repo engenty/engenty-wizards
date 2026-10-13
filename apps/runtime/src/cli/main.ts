@@ -1,6 +1,9 @@
+import "./install-env.js";
+import { accountCommand } from "./account.js";
 import { apps, connectCommand } from "./connect.js";
 import { featuresCommand } from "./features.js";
 import { command, layout, packageVersion, readInstallNote } from "./home.js";
+import { startedIn } from "./install-env.js";
 import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { mcp } from "./mcp.js";
 import { menu } from "./menu.js";
@@ -17,7 +20,9 @@ const HELP = `engenty wizards ${packageVersion()}
                         (needs a terminal)
   ${command()} start      start it and open the studio; it runs in this terminal until Ctrl-C
   ${command()} studio     open the studio; when it does not run, it starts as a service first
-  ${command()} setup      guided setup: an AI client to think with, ffmpeg, start at login
+  ${command()} setup      guided setup: your engenty account, an AI client to think with, ffmpeg,
+                        start at login
+  ${command()} account    your engenty account: status, sign-in, sign-out
   ${command()} open       let this browser into the running studio (--print: only show the link)
   ${command()} status     what is installed and what runs
   ${command()} doctor     status, and what is wrong
@@ -38,6 +43,7 @@ const HELP = `engenty wizards ${packageVersion()}
                         checked on import
 
   --yes, -y          ask nothing and install nothing optional
+  --local            setup without an account: nothing leaves this computer
   --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
   --no-open          start without opening the browser
   --service, -s      start as a service, detached from this terminal; \`${command()} stop\` stops it
@@ -48,7 +54,7 @@ const HELP = `engenty wizards ${packageVersion()}
 
 interface Args {
   command: string;
-  /** What follows the command: \`autostart on\`. */
+  /** What follows the command: \`autostart on\`, \`account sign-in\`. */
   value: string;
   /** What follows \`connect\`, \`disconnect\` and \`features\`. */
   apps: string[];
@@ -56,6 +62,7 @@ interface Args {
   paths: string[];
   json: boolean;
   yes: boolean;
+  local: boolean;
   open: boolean;
   service: boolean;
   print: boolean;
@@ -70,6 +77,7 @@ function parse(argv: string[]): Args | string {
     paths: [],
     json: false,
     yes: false,
+    local: false,
     open: true,
     service: false,
     print: false,
@@ -79,6 +87,8 @@ function parse(argv: string[]): Args | string {
     const arg = argv[i];
     if (arg === "--yes" || arg === "-y") {
       args.yes = true;
+    } else if (arg === "--local") {
+      args.local = true;
     } else if (arg === "--no-open") {
       args.open = false;
     } else if (arg === "--service" || arg === "-s") {
@@ -99,7 +109,7 @@ function parse(argv: string[]): Args | string {
       args.command = "version";
     } else if (arg.startsWith("-")) {
       return `Unknown option ${arg}.`;
-    } else if ((args.command === "autostart" || args.command === "logs") && !args.value) {
+    } else if (["autostart", "logs", "account"].includes(args.command) && !args.value) {
       args.value = arg;
     } else if (["connect", "disconnect", "features"].includes(args.command)) {
       args.apps.push(arg);
@@ -121,7 +131,7 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
   const paths = layout();
-  const setupOptions = { yes: args.yes, clients: args.clients };
+  const setupOptions = { yes: args.yes, clients: args.clients, local: args.local };
   if (!args.command) {
     // Without a command: the menu, which needs a terminal. Starting is \`start\`.
     if (args.service || !args.open || args.print) {
@@ -174,6 +184,8 @@ async function main(argv: string[]): Promise<number> {
       return update(paths);
     case "autostart":
       return autostart(paths, args.value);
+    case "account":
+      return accountCommand(paths, args.value, { yes: args.yes });
     case "connect":
     case "disconnect":
       return connectCommand(paths, args.apps, args.command === "disconnect");
@@ -182,6 +194,8 @@ async function main(argv: string[]): Promise<number> {
     case "features":
       return featuresCommand(args.apps);
     case "validate":
+      // The paths are the person's, from where they typed the command (install-env.ts).
+      process.chdir(startedIn);
       return validateCommand(args.paths, args.json);
     default:
       console.error(`Unknown command ${args.command}.\n\n${HELP}`);

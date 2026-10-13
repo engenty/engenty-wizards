@@ -1,7 +1,7 @@
 ---
 title: Install
 description: One command on macOS or Linux. It brings its own Node.js and asks for no password.
-version: 0.3.2
+version: 0.3.4
 ---
 
 ## Install
@@ -18,6 +18,7 @@ command into `~/.local/bin` and then walks you through the rest:
 
 | Step | What it does |
 |---|---|
+| Your engenty account | Shows a code and opens the browser for the sign-in at account.engenty.ai (no account yet? the page takes an invitation code). Signed in, your team's space comes down to this computer, and what you publish here runs in the cloud too. "Later" skips it: `wizards account sign-in` does it any time. `--local` leaves the account out altogether: [Local only](./local-only.md) |
 | Something to think with | Looks for Codex, Claude Code, Gemini CLI and Cursor Agent and offers to install the ones that are missing. It proposes the one whose app (ChatGPT, Claude, Cursor) is on your Mac first, as that subscription is most likely yours already. You can also use an API key, [Ollama](https://ollama.com) or, on a Mac with Apple silicon and macOS 26, Apple Intelligence: the studio's [first page](./first-start.md) offers them |
 | A browser and ffmpeg | Names the browser for PDF and PNG exports and steps on websites: the first of Chrome, Edge and Chromium it finds (on a Mac also Brave). The app uses that one; [`CHROME_PATH`](./command-line.md#settings) picks another. Says whether there is ffmpeg for MP4 videos of animated widgets; with Homebrew it offers to install it |
 | Start at login (optional) | engenty wizards starts in the background when you log in, so links and AI clients always reach it. A LaunchAgent on a Mac, a systemd user service on Linux |
@@ -37,6 +38,7 @@ You install once; from then on you use the `wizards` command.
 | `wizards stop` | Stops it. Your data is kept |
 | `wizards status` | Whether it runs, and where |
 | `wizards restart` | Stops it and starts it again |
+| `wizards account` | How the install stands to your account; `sign-in` and `sign-out` |
 | `wizards` | A menu with all of it |
 
 The studio is at

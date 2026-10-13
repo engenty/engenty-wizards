@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import * as p from "@clack/prompts";
+import { accountStep } from "./account.js";
 import { autostartState, setAutostart } from "./autostart.js";
 import { installClient, installCommand } from "./clients.js";
 import { appStates, connectApps } from "./connect.js";
@@ -27,31 +28,20 @@ import {
   vendorApp,
 } from "./machine.js";
 import { runningRuntime, settings } from "./start.js";
-import { badge, cyan, dim, tilde } from "./ui.js";
+import { badge, busy, cyan, dim, tilde } from "./ui.js";
 
 export interface SetupOptions {
   /** Ask nothing and install nothing optional: say what is there and what is missing. */
   yes: boolean;
   /** Clients to install without asking (`--client codex`). */
   clients: string[];
+  /** No account: nothing leaves this computer (`--local`; the docs explain it). */
+  local: boolean;
 }
 
 /** The studio as an app of its own: Chrome (or Edge) installs it from the page. */
 const CHROME_APP =
   "Tip: in Chrome or Edge the studio installs as an app, in a window of its own with its own icon. The studio offers it at the top; or use the install icon in the address bar.";
-
-/** A spinner on a terminal; where nobody watches, only what came of it. */
-function busy(message: string) {
-  if (!process.stdout.isTTY) {
-    return { stop: (text: string) => p.log.step(text), fail: (text: string) => p.log.warn(text) };
-  }
-  const spinner = p.spinner();
-  spinner.start(message);
-  return {
-    stop: (text: string) => spinner.stop(text),
-    fail: (text: string) => spinner.error(text),
-  };
-}
 
 function cancelled<T>(value: T | symbol): value is symbol {
   if (p.isCancel(value)) {
@@ -362,9 +352,10 @@ async function howToUse(paths: Layout) {
 }
 
 /**
- * The guided setup: what this machine has, what is missing, and what to install — an AI client
- * to think with, ffmpeg, starting at login. It starts nothing; it ends with what runs and how to
- * start, stop and check it. Returns false when it was stopped.
+ * The guided setup: the account this computer joins, then what this machine has, what is
+ * missing, and what to install — an AI client to think with, ffmpeg, starting at login. It
+ * starts nothing; it ends with what runs and how to start, stop and check it. Returns false
+ * when it was stopped.
  */
 export async function setup(paths: Layout, options: SetupOptions): Promise<boolean> {
   const interactive = !options.yes && Boolean(process.stdin.isTTY && process.stdout.isTTY);
@@ -377,6 +368,9 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<boole
     ].join("\n"),
   );
 
+  if ((await accountStep(paths, options, interactive)) === "cancelled") {
+    return false;
+  }
   if ((await clientsStep(paths, options, interactive)) === "cancelled") {
     return false;
   }

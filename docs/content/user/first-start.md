@@ -1,7 +1,7 @@
 ---
 title: First start
 description: Choose what engenty wizards thinks with. The studio opens once a test call works.
-version: 0.3.2
+version: 0.3.4
 ---
 
 The first page of the studio is the setup, "Choose your Engine". It asks one thing: what should
@@ -9,10 +9,18 @@ engenty think with?
 
 ![The setup: choose the engine, an installed AI client or your own keys](../../assets/setup.png)
 
+## Your account
+
+Above the engines stands your account: signed in during the [install](./install.md), it shows
+your name, your team and your credits, and your team's space is on this computer. Not signed in
+yet, "Sign in" opens your browser for it; an install that is [local only](./local-only.md)
+shows nothing here.
+
 ## Choose your engine
 
 | Engine | Runs on | Needs |
 |---|---|---|
+| engenty credits | Your account's credits, like in the cloud | An account signed in. Shown only then |
 | Claude Code | Your Claude subscription | The client installed and signed in |
 | Codex | Your ChatGPT subscription | The client installed and signed in |
 | Gemini CLI | Your Google account | The client installed and signed in |
