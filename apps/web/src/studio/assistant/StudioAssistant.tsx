@@ -1116,6 +1116,9 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
   // as at the bottom, where it last stood – over the page, which keeps room for the engenty only.
   const small = where?.where === "avatar";
   const open = Boolean(state?.open);
+  const [focused, setFocused] = useState(false);
+  const active =
+    focused || open || state?.chat.phase !== "idle" || (state?.live.state ?? "off") !== "off";
   const reserve = small ? !open : docked;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `rest` is the engenty or the bar, by `small` and `open`
   useLayoutEffect(() => {
@@ -1245,37 +1248,47 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
         ) : null}
         <div
           ref={rest}
+          onFocusCapture={() => setFocused(true)}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setFocused(false);
+            }
+          }}
           className={cn(
             "relative w-full",
             docked && "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
           )}
         >
-          <div className="pointer-events-auto relative flex items-end gap-2">
-            {open || state.live.state !== "off" ? null : (
-              <button
-                type="button"
-                aria-label={t("assistant.open")}
-                title={`${t("assistant.open")} · ${t("assistant.move")}`}
-                onPointerDown={(e) =>
-                  startDockDrag(e, {
-                    column: () => column.current,
-                    frame: () => frame.current,
-                    sidebar: where.wide,
-                    onClick: () => state.setOpen(true),
-                    onDrop: dropped(state),
-                  })
+          <div className="pointer-events-auto relative">
+            {/* Goose perches on the bar while it is in use: focused, open, working or live. */}
+            <button
+              type="button"
+              aria-label={t("assistant.open")}
+              title={`${t("assistant.open")} · ${t("assistant.move")}`}
+              tabIndex={-1}
+              onPointerDown={(e) =>
+                startDockDrag(e, {
+                  column: () => column.current,
+                  frame: () => frame.current,
+                  sidebar: where.wide,
+                  onClick: () => state.setOpen(true),
+                  onDrop: dropped(state),
+                })
+              }
+              onClick={(e) => {
+                if (e.detail === 0) {
+                  state.setOpen(true);
                 }
-                // A press without a move opens it (above); the keyboard's Enter here.
-                onClick={(e) => {
-                  if (e.detail === 0) {
-                    state.setOpen(true);
-                  }
-                }}
-                className="mb-0.5 shrink-0 cursor-grab touch-none active:cursor-grabbing max-sm:hidden"
-              >
-                <Mascot kind="round" size={40} goggles interactive={false} />
-              </button>
-            )}
+              }}
+              className={cn(
+                "absolute bottom-full left-5 -mb-1.5 origin-bottom cursor-grab touch-none transition duration-300 ease-out active:cursor-grabbing max-sm:hidden",
+                active
+                  ? "translate-y-0 scale-100 opacity-100"
+                  : "pointer-events-none translate-y-3 scale-75 opacity-0",
+              )}
+            >
+              <Mascot kind="round" size={44} goggles interactive={active} />
+            </button>
             <div className="min-w-0 flex-1">
               <Bottom state={state} composer={composer} floating />
             </div>

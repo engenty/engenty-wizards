@@ -20,7 +20,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Link, useNavigate } from "react-router";
-import { AboutLinks } from "../about/AboutLinks";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
@@ -271,7 +270,7 @@ export function SpaceMenu({
   const row =
     "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
   return (
-    <div className={cn("shrink-0", lead && "flex items-center")} ref={ref}>
+    <div className={cn("shrink-0", Boolean(lead) && "flex items-center")} ref={ref}>
       {lead}
       <div className="relative">
         <button
@@ -566,39 +565,6 @@ export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
   );
 }
 
-/**
- * One quiet line at the foot of a page: the places around the account, for someone signed in.
- * `about`: in the studio it also says what this app is — version, changelog, open source.
- */
-export function Footer({ me, about }: { me?: Me | null; about?: boolean }) {
-  const base = me ? accountBase(me) : null;
-  const links = base
-    ? [
-        { href: `${base}/billing`, label: t("footer.billing") },
-        { href: `${base}/billing/usage`, label: t("footer.usage") },
-        { href: `${base}/billing/invoices`, label: t("footer.invoices") },
-        { href: `${base}/`, label: t("footer.account") },
-      ]
-    : [];
-  return (
-    <footer className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-6 text-[0.75rem] text-ink-4 sm:px-6">
-      <span>engenty</span>
-      {links.map((link) => (
-        <a
-          key={link.href}
-          href={link.href}
-          target="_blank"
-          rel="noreferrer"
-          className="transition hover:text-ink-2"
-        >
-          {link.label}
-        </a>
-      ))}
-      {about ? <AboutLinks me={me} /> : null}
-    </footer>
-  );
-}
-
 /** The studio's scroll container below the top bar; a page that watches the scroll asks for it. */
 export const SCROLL_ROOT_ID = "studio-scroll";
 
@@ -672,7 +638,6 @@ export function AppFrame({
                   >
                     {children}
                   </div>
-                  <Footer me={me} about />
                 </main>
                 <AssistantDock column={column} />
               </div>
