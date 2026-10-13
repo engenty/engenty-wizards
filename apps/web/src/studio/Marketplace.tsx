@@ -85,7 +85,7 @@ const FlowPreview = lazy(() => import("./FlowPreview"));
 type EntryDetail = MarketplaceEntry & WizardOutline;
 
 /** What a search answers: a page of entries, and whether the marketplace answered. */
-interface SearchPage extends MarketplacePage<MarketplaceEntry> {
+export interface SearchPage extends MarketplacePage<MarketplaceEntry> {
   offline: boolean;
   /** The capabilities this install has no model for. */
   unavailable: Capability[];
@@ -165,7 +165,7 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
 }
 
 /** An entry that needs the Pro plan: its wizard uses plugins that come with Pro. */
-function ProChip() {
+export function ProChip() {
   return (
     <Chip tone="ember" title={t("market.proHint")}>
       {t("market.pro")}
@@ -407,7 +407,7 @@ function FadeScroll({ className, children }: { className?: string; children: Rea
 }
 
 /** `fallback`: the entry as the list has it, shown until the marketplace has answered. */
-function EntryDialog({
+export function EntryDialog({
   id,
   fallback,
   onClose,
@@ -808,7 +808,7 @@ function FilterMenu({
 }
 
 /** A value once it has stopped changing for a moment: what is typed, when the typing pauses. */
-function useSettled<T>(value: T, ms: number): T {
+export function useSettled<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), ms);
@@ -923,14 +923,22 @@ export function MarketplaceBrowser({
   onUse,
   busy,
   open: opened,
+  search: searchFor,
 }: {
   /** Makes a wizard of an entry; left out where nothing is made, the entries are only shown. */
   onUse?: (entry: MarketplaceEntry) => void;
   busy?: boolean;
   /** An entry to open at once (a link from the gallery). */
   open?: string | null;
+  /** Words to search for, handed in from outside (the wish on the start page); each hand-in sets the field. */
+  search?: { text: string } | null;
 }) {
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (searchFor) {
+      setQuery(searchFor.text);
+    }
+  }, [searchFor]);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [starred, setStarred] = useState(false);
   const [picked, setPicked] = useState<string | null>(opened ?? null);

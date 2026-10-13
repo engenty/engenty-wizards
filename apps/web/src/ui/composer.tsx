@@ -26,7 +26,40 @@ export function pastedName(file: File, index: number): File {
   });
 }
 
-function Thumb({ url, label, children }: { url: string; label: string; children?: ReactNode }) {
+/**
+ * The file under a name a wizard's workspace takes (letters, digits, - _ .): umlauts spelled out,
+ * everything else a dash. "Tipps des Hauses.pdf" becomes "Tipps-des-Hauses.pdf".
+ */
+export function workspaceFile(file: File): File {
+  const ascii = (part: string) =>
+    part
+      .replace(/ä/g, "ae")
+      .replace(/ö/g, "oe")
+      .replace(/ü/g, "ue")
+      .replace(/Ä/g, "Ae")
+      .replace(/Ö/g, "Oe")
+      .replace(/Ü/g, "Ue")
+      .replace(/ß/g, "ss")
+      .normalize("NFKD")
+      .replace(/[^A-Za-z0-9_-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  const dot = file.name.lastIndexOf(".");
+  const stem = ascii(dot > 0 ? file.name.slice(0, dot) : file.name) || "file";
+  const ext = dot > 0 ? ascii(file.name.slice(dot + 1)) : "";
+  const name = ext ? `${stem}.${ext}` : stem;
+  return name === file.name ? file : new File([file], name, { type: file.type });
+}
+
+export function Thumb({
+  url,
+  label,
+  children,
+}: {
+  url: string;
+  label: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="group relative" title={label}>
       <img
@@ -293,13 +326,13 @@ export function Composer({
   );
 }
 
-type Speech = ReturnType<typeof useDictation>;
+export type Speech = ReturnType<typeof useDictation>;
 
 /**
  * The mic button and, beside it, its menu: which microphone, and whether the button records while
  * it is held (push to talk) or on and off with a click.
  */
-function DictationButton({ speech }: { speech: Speech }) {
+export function DictationButton({ speech }: { speech: Speech }) {
   const [prefs, setPrefs] = useDictationSettings();
   const mics = useMicrophones();
   const [menu, setMenu] = useState<{ bottom: number; right: number } | null>(null);
