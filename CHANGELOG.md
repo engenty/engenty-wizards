@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.4] - 2026-10-13
+- ADDED **[studio]** The channel menu on the new-wizard page grows out of the button that opened it and fades in; still where motion is reduced
+- ADDED **[studio]** The new-wizard page asks how the wizard runs and shows what is there already – "Läuft als" above the wish picks the channels (in the browser: Wizard in Schritten, Chat, Live Voice, Video Call; on the phone: Anruf, WhatsApp; by message: SMS, WhatsApp; one stays on), saved as the wizard's runners and named in the first message, which the guide tells the assistant to build for; the box takes files (+, paste, drop; pictures as thumbnails, names made fit for the workspace), dictation and the build button; while the wish is typed, up to ten of the space's wizards and templates that come close are listed, Pro marked, the rest one line that searches the gallery; the example chips are gone
+
 ## [0.3.3] - 2026-10-12
 - DOCS Every page checked against v0.3.2 – the wizards menu (Start as service, Service settings, an update that restarts what runs), the version line at the top of Settings → Account, the templates the assistant shows as cards, the wizard format's code under MIT, the server page's clone folder (wizards)
 
