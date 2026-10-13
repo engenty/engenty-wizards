@@ -139,6 +139,12 @@ const collect = (dir) => {
   }
 };
 collect("apps/runtime");
+// node-pty brings built binaries for macOS and Windows only; elsewhere npm compiles it, and
+// where that fails (no compiler) `npx wizards` still installs: the built-in terminal says it is
+// not available here.
+const OPTIONAL = ["node-pty"];
+const sorted = (names) =>
+  Object.fromEntries(names.sort((a, b) => a.localeCompare(b)).map((name) => [name, dependencies[name]]));
 
 writeFileSync(
   join(stage, "package.json"),
@@ -155,7 +161,8 @@ writeFileSync(
       bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,
       files: ["apps", "bin", "modules", "plugin"],
-      dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
+      dependencies: sorted(Object.keys(dependencies).filter((name) => !OPTIONAL.includes(name))),
+      optionalDependencies: sorted(OPTIONAL.filter((name) => name in dependencies)),
       bundleDependencies: bundled,
     },
     null,

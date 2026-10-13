@@ -12,9 +12,19 @@ In a terminal, on macOS or Linux (arm64 or x64; on Windows, in WSL):
 curl -fsSL https://engenty.ai/install.sh | bash
 ```
 
-It needs nothing but `curl` and `tar`. It brings its own Node.js (a Node you already have is left
-alone), installs engenty wizards into `~/.engenty/wizards` (about 650 MB), links the `wizards`
-command into `~/.local/bin` and then walks you through the rest:
+Or, with Node.js 20 or newer on the machine:
+
+```bash
+npx wizards
+```
+
+Both do the same. `npx wizards` runs the installer it brings along, then the setup, then the
+`wizards` menu, where "Start as service" starts it and opens the studio. Run again, it hands over
+to the installed `wizards`, and brings an older install up to its own version first.
+
+The installer needs nothing but `curl` and `tar`. It brings its own Node.js (a Node you already
+have is left alone), installs engenty wizards into `~/.engenty/wizards` (about 650 MB), links the
+`wizards` command into `~/.local/bin` and then walks you through the rest:
 
 | Step | What it does |
 |---|---|
@@ -56,7 +66,6 @@ the right of the address bar.
 
 | Way | For |
 |---|---|
-| `npx wizards` | Trying it on your own Node.js 24.11 or newer, without the installer |
 | [From source](https://github.com/engenty/wizards#from-source) | Working on the code |
 | [Docker](./server.md) | A server others can reach |
 
