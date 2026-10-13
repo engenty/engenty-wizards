@@ -1,7 +1,7 @@
 ---
 title: WordPress
 description: Put wizards on a WordPress site with the plugin "engenty wizards" — connect, read the site in, place a wizard, read results in the admin.
-version: 0.3.2
+version: 0.3.4
 ---
 
 The plugin **engenty wizards** puts the wizards of an engenty.ai account on a WordPress site and
@@ -89,11 +89,11 @@ then goes through three steps: the provider (with a test), the wizards, the webs
 
 | | |
 |---|---|
-| Wizards | The templates that ship with the plugin, picked from the gallery; or a package (`.wizard`) from a wizard's share dialog in the studio, taken in with **Import** on the **Wizards** page |
+| Wizards | The templates that ship with the plugin, picked from the gallery; or a package (`.wizard`) from a wizard's share dialog in the studio (Website → "Without an account: as a package"), taken in with **Import** on the **Wizards** page |
 | What runs | Pages and their fields; photos go to the provider where it takes images. Thinking steps, which read a web page or call a public API where the step names `web_fetch` or `http` (the site does that itself). Decisions, branches, reviews and surfaces. Documents and dashboards as HTML. Results as Markdown, text, CSV or JSON, HTML as a page to print, and a PDF of a written text made in the visitor's browser; a document's PDF is the browser's print |
 | What does not | Voice notes, sign-ins to connected accounts, picking an appointment time, list fields, a file a later step reads; web search, the browser, code and image tools, MCP servers and plugin steps (Contacts, Appointments and the like); widgets, films, images, video and voice made by a model; lists and the wizard's memory; Word, Excel and other downloads |
-| The check | The share dialog's WordPress section and, in the plugin, the gallery, the **Wizards** page and the import say per wizard whether it runs there as is, with less, or only with an account, and list what it lacks in the gallery's words ("not set up", "works without"). With less: a choice on a page that leads to something the site lacks is closed there ("Not available here right now"), a format falls away. The import refuses only a wizard that needs an account; one that needs a plugin only behind a choice runs with less, that choice closed |
-| Knowledge | The share dialog's **Take the knowledge along** puts the space's pages into the package as files (up to 2 MB, a page up to 60 000 characters): a snapshot of the day it was packed. On the site a thinking step gets the wizard's own text files first, then the pages that match the step best (its instructions and the answers so far), up to 60 000 characters in all |
+| The check | The share dialog's package view and, in the plugin, the gallery, the **Wizards** page and the import say per wizard whether it runs there as is, with less, or only with an account, and list what it lacks in the gallery's words ("not set up", "works without"). With less: a choice on a page that leads to something the site lacks is closed there ("Not available here right now"), a format falls away. The import refuses only a wizard that needs an account; one that needs a plugin only behind a choice runs with less, that choice closed |
+| Knowledge | The package view's **Take the knowledge along** puts the space's pages into the package as files (up to 2 MB, a page up to 60 000 characters): a snapshot of the day it was packed. On the site a thinking step gets the wizard's own text files first, then the pages that match the step best (its instructions and the answers so far), up to 60 000 characters in all |
 | From the account | On a connected site with a provider, a published wizard's drawer offers **Run here**: its published version comes over and runs on the site with the site's provider, without credits, and its results stay in WordPress. **Run through engenty.ai** switches back, **Reload** fetches the published version again |
 | Results | Kept in WordPress under **Results**, 90 days unless **Keep results** says otherwise; nothing goes to engenty.ai |
 | Limits | 6 runs an hour per visitor and 50 a day per wizard, a honeypot; 60 seconds per thinking step, up to 600 for a slow local model (the setting reaches the Ollama provider plugin's own limit too) |

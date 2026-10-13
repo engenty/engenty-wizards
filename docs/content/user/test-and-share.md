@@ -1,7 +1,7 @@
 ---
 title: Test and share
 description: Try the wizard, publish it, and hand out its link or put it on a website.
-version: 0.3.2
+version: 0.3.4
 ---
 
 ## Test
@@ -34,21 +34,20 @@ gives it one, and the arrow opens it here.
 
 ## Share
 
-"Share" says on top where the wizard runs, then gives its link:
+"Share" is its own step beside "Publish": it says who may open the wizard and how others reach
+it, and copies the link.
 
 | Part | Does |
 |---|---|
-| Link | The address people open. "Copy" puts it on the clipboard, "Open" opens it |
-| Website | The tag for a website (see below) |
-| QR code | The link as a QR code, and the wizard's ID for the mobile app |
-| Channels | The ways the wizard runs: the page, the chat, and what plugins add (see below) |
-| Settings | One line, "on · 50 a day", that folds out: |
-| · Link is active | Switch it off and the link stops answering |
-| · Runs per day | How many runs the link allows a day. 50 unless you change it |
-| · Create a new link | Replaces the address. The old link stops working, in the cloud too |
-| WordPress | "Get the plugin" for a site connected to your account, and the wizard as a package that runs on a WordPress site without an account, with what it lacks there: see [WordPress](./wordpress.md#without-an-account) |
+| Access | "Anyone with the link" can open and fill it in, up to the runs a day set under the gear. "Only you" switches the link off: everyone else sees a notice, you test in the studio |
+| How others reach it | The channels the wizard runs as (see below), by kind: in the browser, on the phone, by message. A browser channel has its own link, a message channel its keyword and number; each row copies its own. "Change" picks the channels, with the same list as a new wizard |
+| QR code | One of the links as a QR code, to download or print, and the wizard's ID for the mobile app |
+| Website | The tag for a website (see below), and for WordPress the plugin or the wizard as a package that runs without an account, with what it lacks there: see [WordPress](./wordpress.md#without-an-account) |
+| Copy link | The link people open. It opens the first browser channel, and the wizard offers the others on its first page |
+| The gear | Runs a day (50 unless you change it, with what that costs at most), each message channel's keyword, and "Create a new link": the old link and its QR code stop working, in the cloud too |
 
-Where the draft is not published as it is, the dialog says so first and publishes from there.
+Where the wizard is not published yet, or the draft has changes, the dialog says so on top and
+publishes from there.
 
 One visitor can start 6 runs an hour.
 
@@ -58,22 +57,19 @@ A wizard runs page by page, as a chat, as a live conversation on top of the chat
 call on a stage with the chat beside it (the person talks, the wizard talks back and sees the
 camera; both need an OpenAI API key under Models for now); a plugin can add further ways, a
 kiosk page or a messenger. A new wizard has the page and the chat switched on; the others are
-switched on per wizard. Each channel in the list says how far it gets with this wizard:
-
-| It says | Meaning |
-|---|---|
-| Everything in the channel | Every field, review and result works there |
-| Hands off to the page at: … | At those steps the person gets a link to the wizard's page, for a photo, a signature or a sign-in, and comes back after |
-| Not possible: … | A step nobody can hand off, for example one that takes minutes on a channel that cannot wait |
+switched on when the wizard is made, or later under "Change" in the share dialog. Where a channel
+cannot take a step, the step goes to the wizard's page: the person gets a link for a photo, a
+signature or a sign-in, and comes back after. A step nobody can hand off, for example one that
+takes minutes on a channel that cannot wait, shows "Not possible: …" under the channel's name.
+A channel that is not set up says "Not set up yet", with "Set up" to its settings.
 
 The home's cards show the channels that are on as small icons, the link's door first. A row of
 pills above the cards narrows them to one status (Draft, Local, Live, Not in the cloud) once
 two statuses are in play.
 
-The link opens the **default**; "Make default" moves it. What else is switched on answers under
-its own address (`/steps`, `/chat`, `/talk` for live voice, `/video` for the video call) and is
-offered on the wizard's first page: "Or: Chat". A switched-off address sends people to the link
-instead.
+The link opens the first browser channel that is on. The others answer under their own address
+(`/steps`, `/chat`, `/talk` for live voice, `/video` for the video call) and are offered on the
+wizard's first page: "Or: Chat". A switched-off address sends people to the link instead.
 
 ### WhatsApp
 
@@ -83,9 +79,10 @@ from your Meta app, then the webhook address and the verify token the page shows
 Meta app's WhatsApp configuration. Until a number is connected, the channel shows "not set up"
 in the list.
 
-Switch WhatsApp on for a wizard and its row folds out a **keyword**, the link that writes it
-(`wa.me/<number>?text=<keyword>`) and the link as a QR code. Whoever sends the keyword to the
-number starts the wizard; without a keyword, the number offers the wizards that are on.
+Switch WhatsApp on for a wizard and its row in the share dialog shows its **keyword** and the
+number; "Link" copies the link that writes it (`wa.me/<number>?text=<keyword>`), and the QR code
+view draws it. The keyword is changed under the gear. Whoever sends the keyword to the number
+starts the wizard; without a keyword, the number offers the wizards that are on.
 
 In the thread the wizard asks one field per message: buttons for up to three choices, a list
 for more, yes/no as buttons, a photo or a file sent in the chat, "send location" for a place, a
@@ -105,7 +102,8 @@ the person's next message.
 With the SMS module a wizard runs by text message, through a Twilio account and number of your
 own. Settings → SMS takes the Account SID, the auth token and the number; the webhook address
 the page shows goes into the number's "A message comes in" field in Twilio. Switch SMS on for a
-wizard and its row folds out the keyword, an `sms:` link that types it and the QR code.
+wizard and its row shows the keyword and the number; "Link" copies an `sms:` link that types it,
+and the QR code view draws it. The keyword is changed under the gear.
 
 Text only: one field per text, choices as numbered lines answered with the number (several
 numbers with commas for a multiple choice), yes or no, a place as a typed address. A page with
@@ -148,19 +146,17 @@ for anyone else. To let others run the wizard:
 Once an account is signed in under Settings → Account, every "Publish" sends the published
 version to engenty.ai. The avatar then carries a small cloud, and its menu says "Connected to
 engenty.ai" with the credits. The share dialog gives the wizard's address at engenty.ai, which
-stays the same when you publish again; "Test on this computer" at its foot opens the copy on
-your computer. On top it says:
+stays the same when you publish again. Where the cloud does not run this version, the dialog
+says so on top:
 
 | It shows | Means |
 |---|---|
-| "Live on engenty.ai · version 3" | The cloud runs this version |
 | "Version 3 does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
-| "What runs differently in the cloud" | A step works there with less, for example without a machine for code |
 | "Send again" | The last sending did not arrive, or the space changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
 
-Without an account the dialog says that the wizard runs only on this computer, and offers to
-sign in or create an account. "Website" and "QR code" are there too, marked with a cloud: they
-need an address everyone reaches, and say so.
+Without an account the dialog says that the wizard runs only on this computer ("Only on this
+computer" under Access), greys out the ways in and offers to sign in or create an account.
+"Website" still gives the WordPress package.
 
 What goes and what stays:
 
@@ -182,17 +178,17 @@ Deleting a wizard here removes its copy; switching its link off here switches it
 
 The share dialog gives a tag to paste into a page's HTML:
 
-| Looks | Shows |
+| What the website shows | Shows |
 |---|---|
-| Steps | The wizard page by page |
+| Step-by-step wizard | The wizard page by page |
 | Chat | The wizard as a chat, 640 px high (`data-height` changes that) |
 
-| Place | Shows |
+| Where on the page | Shows |
 |---|---|
-| Inline | The wizard in that place of the page, as tall as its content |
-| Button + modal | A button in that place that opens the wizard in a window over the page |
-| Chat button | The wizard's engenty in the lower right corner; the chat opens above it |
-| Bubble | Steps only: a round button at the bottom right of the page that opens the wizard in a window over the page, best put in the site's footer |
+| In the page | The wizard in that place of the page, as tall as its content |
+| Behind a button | A button in that place that opens the wizard in a window over the page |
+| As a chat button | The wizard's engenty in the lower right corner; the chat opens above it |
+| As a bubble | Steps only: a round button at the bottom right of the page that opens the wizard in a window over the page, best put in the site's footer |
 
 ```html
 <script async src="https://example.com/embed.js" data-wizard="TOKEN"></script>

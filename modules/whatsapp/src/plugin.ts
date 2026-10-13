@@ -184,6 +184,11 @@ export default definePlugin((wizards) => {
     },
     problem: async () =>
       (await getAccount(db())) ? null : "Keine Nummer verbunden (Einstellungen → WhatsApp)",
+    // The share dialog's row: the number, the keyword and the link that writes it.
+    address: async (wizard) => {
+      const b = await bindingView(wizard.id);
+      return b.number ? { number: `+${b.number}`, keyword: b.keyword, link: b.link } : null;
+    },
   });
 
   // Meta checks the address once, with the verify token the settings show.

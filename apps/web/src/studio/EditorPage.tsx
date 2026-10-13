@@ -471,17 +471,15 @@ export function EditorPage() {
             </Button>
           ) : w.readOnly ? null : (
             <>
-              {/* What the cloud would lack for the draft is said in the share dialog: with an
-                  account linked it stays at hand while there is something to publish. */}
-              {cloudLinked ? (
-                <IconButton
-                  label={t("editor.share")}
-                  className="max-sm:hidden"
-                  onClick={() => setShareOpen(true)}
-                >
-                  <Share2 className="size-4" />
-                </IconButton>
-              ) : null}
+              {/* Sharing is its own step and stays at hand while there is something to
+                  publish: the dialog says what keeps others out until then. */}
+              <IconButton
+                label={t("editor.share")}
+                className="max-sm:hidden"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="size-4" />
+              </IconButton>
               <Button
                 size="sm"
                 disabled={hasIssues || building}

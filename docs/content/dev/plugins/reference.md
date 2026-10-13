@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.3.2
+version: 0.3.4
 ---
 
 ## Server half
@@ -93,6 +93,14 @@ interface PluginRunner {
   };
   page?(request: PluginRunnerRequest): Response | Promise<Response>;
   problem?(): string | null | Promise<string | null>;  // why not usable in this tenant right now
+  address?(wizard: { id: string; title: string; token: string }):
+    | PluginRunnerAddress | null | Promise<PluginRunnerAddress | null>;  // where a person reaches the wizard
+}
+
+interface PluginRunnerAddress {
+  number?: string | null;   // the number people write to or call, with the country code
+  keyword?: string | null;  // the word that picks this wizard on that number
+  link?: string | null;     // opens the channel with the keyword written: copied, and as a QR code
 }
 
 interface PluginRunnerRequest {
@@ -229,7 +237,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerPage({ path, component, wide? })` | A page at `/studio<path>` |
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
-| `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own part of the share dialog, once it is switched on for a wizard. `component` gets `{ wizard: { id, title } }` |
+| `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own settings for a wizard (a keyword), under the share dialog's gear once it is switched on and set up. `component` gets `{ wizard: { id, title } }` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
 | `studio.useCrumbs(items)` | A hook: the trail in the top bar for the page shown, `{ label, to? }[]`, instead of a heading of the page's own |

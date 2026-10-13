@@ -1,7 +1,7 @@
 ---
 title: Plugins
 description: Add pages, settings and tools for steps to your install. What a plugin may do, and how to install one.
-version: 0.3.2
+version: 0.3.4
 ---
 
 A plugin adds to engenty wizards without changing it:
@@ -13,7 +13,7 @@ A plugin adds to engenty wizards without changing it:
 | A settings section | In the settings |
 | A section of the space page | In one of the space page's parts |
 | A template | First among the templates of a new wizard |
-| A channel a wizard runs through | In the share dialog's channels |
+| A channel a wizard runs through | In the channels of a new wizard, and in the share dialog's ways in |
 | Something that happens when a run ends, or again and again | Nowhere: it works in the background, for example posts a message |
 
 > A plugin runs with the app's full rights: it reads your wizards, your results, your settings

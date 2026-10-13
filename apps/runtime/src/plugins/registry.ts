@@ -39,6 +39,8 @@ export interface RegisteredRunner {
   page?: PluginRunner["page"];
   /** Why the runner cannot be used in the current tenant right now; asked where it is listed. */
   problem?: PluginRunner["problem"];
+  /** Where a person reaches a wizard through it: the number, the keyword, the link. */
+  address?: PluginRunner["address"];
 }
 
 /** A job of `server.every`. */

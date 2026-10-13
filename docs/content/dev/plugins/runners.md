@@ -1,14 +1,15 @@
 ---
 title: Runners
 description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
-version: 0.3.2
+version: 0.3.4
 ---
 
 A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the
 chat at `/w/<token>/chat`, live voice at `/w/<token>/talk` and the video call at
 `/w/<token>/video`; the last two only where a speech model is set up. A plugin adds more. The
-owner switches them on per wizard in the share dialog; the link opens the default, the others
-answer under their own address or from their own channel.
+owner picks them per wizard when it is made, and later under "Change" in the share dialog; the
+link opens the first page runner that is on, the others answer under their own address or from
+their own channel.
 
 ## Register a runner
 
@@ -36,7 +37,8 @@ server.registerRunner({
 | `kind` | `page`: the person opens an address. `channel`: the runner has an address of its own (a number, a bot) and drives runs from its webhooks |
 | `capabilities` | What the runner takes in and shows; see below |
 | `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in. A page runner without one throws when it is registered |
-| `problem` | `() => string \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. With a problem the owner cannot switch it on |
+| `problem` | `() => string \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. The share dialog shows a runner with a problem as not set up yet, with a way to its settings |
+| `address` | A channel runner: `(wizard: { id, title, token }) => { number?, keyword?, link? } \| null`, may be async. Where a person reaches that wizard: the number, the keyword that picks it there, and a link that opens the channel with the keyword written (`sms:…`, `https://wa.me/…`). The share dialog shows the keyword and number under the runner's name, copies the link (else the number) and offers the link as a QR code. Asked for each wizard that has the runner on; null while it is not set up |
 
 A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. From
 source, where Vite serves the pages, the same handler answers at
@@ -112,9 +114,9 @@ A refused command throws an error with a `status` and a `code` (`not_found`, `in
 
 ## The runner's part of the share dialog
 
-A channel has something to show per wizard: the keyword that starts it, the number, a link with
-its QR code. The studio half registers it, and the share dialog draws it under the runner's row
-once the owner switched the runner on:
+The row of a channel runner, with its number, keyword, link and QR code, comes from its
+`address`. What the owner changes per wizard, such as the keyword, the studio half registers as
+a section, and the share dialog draws it under its gear while the runner is on and set up:
 
 ```tsx
 studio.registerShareSection({ runner: "whatsapp", component: ShareSection });
@@ -124,7 +126,8 @@ function ShareSection({ wizard }: StudioShareSectionProps) {
 }
 ```
 
-One section per runner. The settings a channel needs once per tenant (the number, the token)
+One section per runner. After a change, invalidating the query `["wizard-runners", wizard.id]`
+redraws the row. The settings a channel needs once per tenant (the number, the token)
 go into a [settings section](./studio.md).
 
 ## A thread door from the SDK

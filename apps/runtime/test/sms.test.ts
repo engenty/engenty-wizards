@@ -194,6 +194,14 @@ describe("connecting the number", () => {
       link: "sms:+4366012345?body=schadensmeldung",
       number: "+4366012345",
     });
+    // The share dialog's row: where a person texts, and the link that writes the keyword.
+    const shared = await json(send("GET", `/api/studio/wizards/${damageId}/runners`));
+    expect(shared.runners.find((r: { id: string }) => r.id === "sms").address).toEqual({
+      number: "+4366012345",
+      keyword: "schadensmeldung",
+      link: "sms:+4366012345?body=schadensmeldung",
+    });
+    expect(shared.runners.find((r: { id: string }) => r.id === "steps").address).toBeNull();
   });
 
   it("only Twilio's own posts count", async () => {

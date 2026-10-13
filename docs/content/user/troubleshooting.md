@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: What to do when a link is no longer valid, a client shows as not signed in, or an export fails.
-version: 0.3.2
+version: 0.3.4
 ---
 
 `wizards doctor` checks the install and says what is wrong. Start there.
@@ -38,7 +38,7 @@ version: 0.3.2
 | PDF or PNG export, or a step on a website, fails | `wizards doctor` names the browser the app uses. Install Chrome, Edge or Chromium (on a Mac also Brave), or set `CHROME_PATH` to one; see [Settings](./command-line.md#settings) |
 | A widget offers no video | Install ffmpeg, or set `FFMPEG_PATH` |
 | "This wizard is not available right now" | The link is switched off, or the account the wizard runs on has no credits left. See [Test and share](./test-and-share.md) |
-| The wizard says its limit is reached for today | The link's runs for the day are used up; the day starts at midnight UTC. Raise "Runs per day" in the share dialog |
+| The wizard says its limit is reached for today | The link's runs for the day are used up; the day starts at midnight UTC. Raise the runs a day under the share dialog's gear |
 | "This wizard does not exist (anymore)" | It is not published, or its link was replaced by a new one |
 | Others cannot open the link | An install on your computer answers on `localhost` only. See [who can open the link](./test-and-share.md#who-can-open-the-link) |
 | The chat has no phone button, or "Join" stays grey | A live conversation needs "Live voice" or "Video call" switched on for the wizard (see [Channels](./test-and-share.md#channels); your own test run always has it) and an OpenAI API key under Settings → Models |

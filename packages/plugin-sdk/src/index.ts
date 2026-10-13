@@ -632,6 +632,20 @@ export interface PluginRunnerRequest {
 }
 
 /**
+ * Where a person reaches a wizard through a channel runner, as the share dialog shows it: the
+ * number with the keyword that picks the wizard there, and the link that opens the channel with
+ * the keyword written.
+ */
+export interface PluginRunnerAddress {
+  /** The number people write to or call, with the country code: `+43660…`. */
+  number?: string | null;
+  /** The word that picks this wizard on that number. */
+  keyword?: string | null;
+  /** Opens the channel with the keyword written (`sms:…`, `https://wa.me/…`): copied, and as a QR code. */
+  link?: string | null;
+}
+
+/**
  * A runner: a door a wizard runs through, beside the built-in page and chat. A `page` runner is
  * served at `/w/<token>/<id>` for every wizard that switched it on; a `channel` runner has an
  * address of its own (a number, a bot) and drives runs from its webhooks.
@@ -650,6 +664,15 @@ export interface PluginRunner {
    * studio lists the runners; a runner with a problem cannot be switched on.
    */
   problem?(): string | null | Promise<string | null>;
+  /**
+   * A channel runner: where a person reaches the wizard, for the share dialog; null while the
+   * runner is not set up. Asked inside the tenant for each wizard that has the runner on.
+   */
+  address?(wizard: {
+    id: string;
+    title: string;
+    token: string;
+  }): PluginRunnerAddress | null | Promise<PluginRunnerAddress | null>;
 }
 
 /** How a run answers a review: accept it, with edited texts where the review allows, or ask for one of the shown steps again. */

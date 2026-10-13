@@ -1,7 +1,7 @@
 ---
 title: Build a wizard
 description: Describe what the wizard should do, or start from a template. Then change it in the conversation or step by step.
-version: 0.3.2
+version: 0.3.4
 ---
 
 ## Start one
@@ -85,7 +85,7 @@ path needs it cannot start; if only one branch needs it, choose another path whe
 The download icon in the editor's top bar exports the wizard as a package (`.wizard`): its steps
 and its files. "Import a wizard package" on the "New wizard" page of any studio takes it in.
 
-The share dialog's WordPress section downloads a package too: the published version (the draft
-while there is none), for a WordPress site that runs it without an account; with "Take the
-knowledge along" the space's pages go with it as files. See
+The share dialog downloads a package too, under Website → "Without an account: as a package":
+the published version (the draft while there is none), for a WordPress site that runs it
+without an account; with "Take the knowledge along" the space's pages go with it as files. See
 [WordPress](./wordpress.md#without-an-account).

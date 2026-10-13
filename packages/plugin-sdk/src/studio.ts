@@ -70,8 +70,9 @@ export interface StudioShareSectionProps {
 }
 
 /**
- * A runner's own part of the share dialog, under the runner's row once it is switched on for
- * the wizard: the keyword, the number, the link and its QR code. One per runner.
+ * A runner's own settings for a wizard, in the share dialog's settings while the runner is on:
+ * the keyword that picks it, say. Its address and link the dialog shows itself, from the
+ * runner's `address`. One per runner.
  */
 export interface StudioShareSection {
   /** The runner's id, as the server half registered it. */

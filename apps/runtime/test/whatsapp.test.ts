@@ -280,6 +280,13 @@ describe("connecting the number", () => {
     });
     const changed = await json(send("PUT", plugin(`/binding/${damageId}`), { keyword: "Schaden" }));
     expect(changed.link).toBe("https://wa.me/4366012345?text=Schaden");
+    // The share dialog's row: the number with its plus, the keyword, the link that writes it.
+    const shared = await json(send("GET", `/api/studio/wizards/${damageId}/runners`));
+    expect(shared.runners.find((r: { id: string }) => r.id === "whatsapp").address).toEqual({
+      number: "+4366012345",
+      keyword: "Schaden",
+      link: "https://wa.me/4366012345?text=Schaden",
+    });
     expect((await send("PUT", plugin(`/binding/${damageId}`), { keyword: "???" })).status).toBe(400);
     const other = await json(send("GET", plugin(`/binding/${contractId}`)));
     expect(other.keyword).toBe("vertrag");
