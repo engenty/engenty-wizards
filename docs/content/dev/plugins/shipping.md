@@ -1,7 +1,7 @@
 ---
 title: Shipping
 description: Hand a plugin to someone else, put it into a server's image, and decide which tenant has it.
-version: 0.2.56
+version: 0.3.2
 ---
 
 ## To someone's install

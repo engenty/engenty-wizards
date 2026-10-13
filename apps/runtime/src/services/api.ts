@@ -66,7 +66,7 @@ export async function apiSpaceDetails(userId: string, spaceId?: string | null) {
     about: p.brand.about ?? "",
     colors: p.brand.colors ?? [],
     facts: p.facts.map(({ label, value }) => ({ label, value })),
-    logoUrl: logo ? `${env.appUrl}/api/public/logos/${logo}` : null,
+    logoUrl: logo ? `${env.publicUrl}/api/public/logos/${logo}` : null,
     knowledge: await knowledgeCounts(p.id),
     writable: await projectWritable(p),
     studioUrl: `${env.appUrl}/studio/space`,
@@ -124,7 +124,7 @@ export async function apiWizards(userId: string, spaceId?: string | null) {
         shareUrl: live ? shareUrl(w.shareToken) : null,
         shareEnabled: w.shareEnabled,
         iconUrl: live
-          ? `${env.appUrl}/api/public/wizards/${w.shareToken}/icons/icon-192.png`
+          ? `${env.publicUrl}/api/public/wizards/${w.shareToken}/icons/icon-192.png`
           : null,
         available: Boolean(live) && !reason,
         unavailableReason: reason && noteText(reason, wizardLang(def)),

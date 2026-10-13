@@ -1,3 +1,5 @@
+import type { MarketplaceEntry } from "@engenty-wizards/shared/marketplace";
+import type { WizardOutline } from "@engenty-wizards/shared/marketplace-entry";
 import { createTool } from "@mastra/core/tools";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -6,6 +8,7 @@ import type { SessionUser } from "../auth/index.js";
 import { authoringGuide } from "../authoring/guide.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
+import type { AssistantCardRecord } from "../db/schema.js";
 import { env } from "../env.js";
 import { detectHarnesses } from "../harness/index.js";
 import { type MonthlyUsage, managed, publicPlans, tenantInfo, tenantUsage } from "../manage.js";
@@ -30,6 +33,8 @@ export interface KnowsContext {
   /** The chat that is open: `chats_search` leaves it out where asked. */
   chatId: string;
   doing(label: string): void;
+  /** A card under the answer: the studio's own have no plugin. */
+  card(card: AssistantCardRecord): void;
 }
 
 /** Where the account lives: the runtime's Manage-App, or the account a local install links. */
@@ -58,6 +63,8 @@ const NOT_LINKED =
 
 export function knowsTools(ctx: KnowsContext): Record<string, any> {
   const { user } = ctx;
+  // The entries this turn's searches found, so show_templates needs no second request.
+  const found = new Map<string, MarketplaceEntry>();
   return {
     docs_search: createTool({
       id: "docs_search",
@@ -112,15 +119,18 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       execute: ({ query }) =>
         attempt(async () => {
           ctx.doing(ctx.lang === "de" ? "Sucht in der Galerie …" : "Searching the gallery …");
-          const found = await searchMarketplace({
+          const hits = await searchMarketplace({
             q: query ?? "",
             lang: asLang(ctx.lang),
             limit: 8,
           });
+          for (const e of hits.entries) {
+            found.set(e.id, e);
+          }
           return {
-            total: found.total,
-            offline: found.offline,
-            entries: found.entries.map((e) => ({
+            total: hits.total,
+            offline: hits.offline,
+            entries: hits.entries.map((e) => ({
               id: e.id,
               title: e.title,
               pitch: e.pitch,
@@ -140,12 +150,44 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({ id: z.string().min(1).max(120) }),
       execute: ({ id }) =>
         attempt(async () => {
-          const found = await marketplaceDetail(id, asLang(ctx.lang));
-          if (!found) {
+          const detail = await marketplaceDetail(id, asLang(ctx.lang));
+          if (!detail) {
             return { error: "No such template." };
           }
-          const { terms: _terms, hash: _hash, ...rest } = found;
+          const { terms: _terms, hash: _hash, ...rest } = detail;
           return rest;
+        }),
+    }),
+    show_templates: createTool({
+      id: "show_templates",
+      description:
+        "Show templates of the gallery as cards under your answer, in the order given. A card shows the title, the pitch, the time, the cost and what it makes; the person opens it to see the steps and make a wizard of it.",
+      inputSchema: z.object({ ids: z.array(z.string().min(1).max(120)).min(1).max(6) }),
+      execute: ({ ids }) =>
+        attempt(async () => {
+          const entries: Omit<MarketplaceEntry, "terms" | "hash">[] = [];
+          for (const id of new Set(ids)) {
+            const entry = found.get(id) ?? (await marketplaceDetail(id, asLang(ctx.lang)));
+            if (!entry) {
+              continue;
+            }
+            // The card needs the entry, not the outline the dialog loads by itself.
+            const {
+              terms: _terms,
+              hash: _hash,
+              description: _description,
+              outline: _outline,
+              results: _results,
+              files: _files,
+              ...shown
+            } = entry as MarketplaceEntry & Partial<WizardOutline>;
+            entries.push(shown);
+          }
+          if (!entries.length) {
+            return { error: "None of these templates is in the gallery." };
+          }
+          ctx.card({ plugin: "", tool: "templates", data: { entries } });
+          return { shown: entries.map((e) => e.title) };
         }),
     }),
     plans: createTool({

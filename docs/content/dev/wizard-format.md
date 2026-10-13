@@ -1,12 +1,16 @@
 ---
 title: The wizard format
 description: A wizard as JSON and as a .wizard file, its JSON Schema, and checking it with wizards validate.
-version: 0.2.56
+version: 0.3.2
 ---
 
 A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file,
 and imports one back. Both can be written by hand or by a tool, checked in your editor against a
 JSON Schema, and checked completely with `wizards validate`.
+
+The code that defines the format and checks it is also under the
+[MIT licence](https://github.com/engenty/wizards/blob/main/packages/shared/LICENSE-MIT), so any
+tool may read and write wizards.
 
 ## The definition
 

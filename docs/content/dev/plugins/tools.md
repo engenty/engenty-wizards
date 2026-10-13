@@ -1,7 +1,7 @@
 ---
 title: Tools
 description: A tool an AI step can call — how to register it, how a wizard lists it, and what the model sees.
-version: 0.2.56
+version: 0.3.2
 ---
 
 A tool is a function an AI step may call while it works. The model decides when, from the

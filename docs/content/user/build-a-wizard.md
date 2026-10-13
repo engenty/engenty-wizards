@@ -1,7 +1,7 @@
 ---
 title: Build a wizard
 description: Describe what the wizard should do, or start from a template. Then change it in the conversation or step by step.
-version: 0.2.56
+version: 0.3.2
 ---
 
 ## Start one

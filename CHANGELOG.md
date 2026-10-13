@@ -4,6 +4,29 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.3.4] - 2026-10-13
+- ADDED **[studio]** The channel menu on the new-wizard page grows out of the button that opened it and fades in; still where motion is reduced
+- ADDED **[studio]** The new-wizard page asks how the wizard runs and shows what is there already – "Läuft als" above the wish picks the channels (in the browser: Wizard in Schritten, Chat, Live Voice, Video Call; on the phone: Anruf, WhatsApp; by message: SMS, WhatsApp; one stays on), saved as the wizard's runners and named in the first message, which the guide tells the assistant to build for; the box takes files (+, paste, drop; pictures as thumbnails, names made fit for the workspace), dictation and the build button; while the wish is typed, up to ten of the space's wizards and templates that come close are listed, Pro marked, the rest one line that searches the gallery; the example chips are gone
+
+## [0.3.3] - 2026-10-12
+- DOCS Every page checked against v0.3.2 – the wizards menu (Start as service, Service settings, an update that restarts what runs), the version line at the top of Settings → Account, the templates the assistant shows as cards, the wizard format's code under MIT, the server page's clone folder (wizards)
+
+## [0.3.2] - 2026-10-12
+- ADDED **[assistant]** Templates the assistant recommends show as the gallery's cards under its answer – a new show_templates tool sends them as a card of the studio's own, kept with the chat; a card opens the gallery's dialog and makes a wizard of it in the space
+
+## [0.3.1] - 2026-10-12
+- FIXED **[cloud]** Studio, doors and runner share one /data volume – the tenant databases are files there while the Manage-App's TENANT_DB_PROVISIONER is none, so with a volume per role each process saw a tenant of its own: a wizard published in the studio was not found on the doors, and the runner never found the runs it claimed
+
+## [0.3.0] - 2026-10-12
+- ADDED **[runtime]** The web is cut into studio and doors – RUNTIME_ROLE studio serves the makers' half (sign-in, authoring, MCP, the sync API, the studio's pages), doors the customers' half (the wizards' pages, their API, shared results, the plugins' public routes, the app links); web is both, all adds the runner; the runs' API, the connect callback and the app's files serve both halves. PUBLIC_URL names the doors' origin when it is not APP_URL: wizard and result links, link previews, the embed script, public logos and icons, a plugin's public address and the AI app widget carry it, /api/config tells it and the studio's own link to a wizard uses it. compose.cloud.yaml runs runtime (studio), doors and runner from one image; docs/plans/runner-process.md says which paths go where
+
+## [0.2.61] - 2026-10-12
+- ADDED **[studio]** The account settings say the version on top – one line in the first card (Lokale Installation, the linked account or the cloud): the version, which opens the About dialog with what is new, and on a runtime that runs alone whether it is the newest, the newer one with Aktualisieren, and the check again; the About dialog and that line share about/UpdateCheck.tsx; no link to the GitHub release any more
+- FIXED **[runtime]** An update from the About dialog no longer ends on {"error":"Interner Fehler"} – packageVersion() reads package.json once, so a runtime still running the old code goes on saying its own version while the installer replaces its files, and the studio reloads only once the new one answers instead of into the old process whose index.html is gone
+
+## [0.2.60] - 2026-10-12
+- FIXED **[studio]** The opened assistant at the bottom no longer grows past the page – its dock covers the column, so the chat's max height has a height to measure against
+
 ## [0.2.59] - 2026-10-12
 - FIXED **[cli]** The menu tells what an update did – a runtime that runs restarts into the new version inside the update, and the menu ends with the commands used most instead of claiming `wizards` opens the new version; "Start" is "Start as service", and starting at login moved into "Service settings" with a yes/no question
 

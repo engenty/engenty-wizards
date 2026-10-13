@@ -68,7 +68,7 @@ function withoutBasePath(request: Request) {
 const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.host }, (info) => {
   console.log(`engenty wizards on :${info.port} — ${env.appUrl}`);
   const entry = localEntryUrl();
-  if (entry && !env.local.accessKey) {
+  if (entry && !env.local.accessKey && env.serves.studio) {
     console.log(`Open the studio: ${entry}`);
   }
   if (!managed) {
@@ -83,7 +83,7 @@ const server = serve({ fetch: withoutBasePath, port: env.port, hostname: env.hos
 });
 
 // A runner takes the runs in line, those a stopped process left behind first (RUNTIME_ROLE).
-if (env.role !== "web") {
+if (env.serves.runner) {
   await registerRunner();
   setInterval(() => void registerRunner().catch(() => undefined), 10_000).unref();
   startRunner();
@@ -115,7 +115,7 @@ if (!managed) {
 async function shutdown(code = 0) {
   clearRunning(env.dataDir);
   server.close();
-  if (env.role !== "web") {
+  if (env.serves.runner) {
     // The runs go back in line for another runner; their steps start afresh there.
     await stopRunner();
     await forgetRunner().catch(() => undefined);

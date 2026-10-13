@@ -1,14 +1,14 @@
 ---
 title: Command line
 description: The wizards command — start, setup, status, update — and the install's settings file.
-version: 0.2.56
+version: 0.3.2
 ---
 
 ## Commands
 
 | Command | Does |
 |---|---|
-| `wizards` | What runs, and a menu: start (in the background or in this terminal), open the studio, stop, restart, update, start at login, connect AI apps, status, setup, help. The first time, the setup runs first. Needs a terminal |
+| `wizards` | What runs, and a menu: open the studio, restart and stop while it runs, "Start as service" or "Start here" (in this terminal) while it does not; update, which restarts what runs into the new version; "Service settings" (start at login); connect AI apps, status, setup, help. The first time, the setup runs first. Needs a terminal |
 | `wizards start` | Starts it and opens the studio. It runs in that terminal; Ctrl-C stops it. The first time, the setup runs first |
 | `wizards studio` | Opens the studio in your browser. When it does not run, it starts as a service first |
 | `wizards setup` | The guided setup again: an AI client to think with, the browser and ffmpeg, start at login, your AI apps |

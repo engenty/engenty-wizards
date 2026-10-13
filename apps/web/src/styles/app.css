@@ -304,6 +304,17 @@ a,
   animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 }
 
+/* A menu that opens under its button: it grows out of the button and fades in. */
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.94);
+  }
+}
+.animate-unfold {
+  animation: unfold 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
 /* The project assistant, once its card is scrolled away: it comes in from the lower edge. */
 @keyframes dock {
   from {
@@ -422,6 +433,7 @@ dialog.media-sheet::backdrop {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
+  .animate-unfold,
   .animate-dock,
   .animate-settle,
   .animate-step-deeper,

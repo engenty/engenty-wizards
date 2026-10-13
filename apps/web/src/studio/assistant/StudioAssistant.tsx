@@ -1,3 +1,4 @@
+import type { MarketplaceEntry } from "@engenty-wizards/shared/marketplace";
 import {
   ArrowLeft,
   AudioLines,
@@ -14,8 +15,10 @@ import {
   X,
 } from "lucide-react";
 import {
+  lazy,
   type ReactNode,
   type RefObject,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -34,6 +37,11 @@ import { type AssistantState, useAssistant, useEarlierChats, useStoredChat } fro
 import { canLive } from "./live";
 import { type AssistantSuggestion, usePageAssistant } from "./page";
 import { openStudioLink, setHighlight, useHighlight } from "./tools";
+
+// The gallery's cards come with the gallery's code, loaded when an answer shows templates.
+const MarketplaceCards = lazy(() =>
+  import("../Marketplace").then((m) => ({ default: m.MarketplaceCards })),
+);
 
 /**
  * The studio assistant on every page but the editor: docked at the bottom (the default), as a
@@ -106,6 +114,7 @@ function callLabel(call: ChatToolCall): string | null {
       return t("assistant.tool.docs");
     case "gallery_search":
     case "gallery_detail":
+    case "show_templates":
       return t("assistant.tool.gallery");
     case "plans":
     case "account":
@@ -148,6 +157,19 @@ function Calls({ calls }: { calls?: ChatToolCall[] }) {
       ))}
     </div>
   );
+}
+
+/** A card under an answer: the studio's own templates, or a plugin's for what its tool returned. */
+function AnswerCard({ card, send }: { card: ChatCard; send: (message: string) => void }) {
+  if (!card.plugin && card.tool === "templates") {
+    const { entries } = card.data as { entries: MarketplaceEntry[] };
+    return (
+      <Suspense fallback={<Spinner className="m-2 size-4" />}>
+        <MarketplaceCards entries={entries} />
+      </Suspense>
+    );
+  }
+  return <PluginCard card={card} send={send} />;
 }
 
 /** A plugin's card for what its tool returned, drawn by the plugin's studio half. */
@@ -283,7 +305,7 @@ function ReadChat({ id }: { id: string }) {
         avatar="round"
         changedLabel={t("project.assistantChanged")}
         // Its cards show again with what their tools returned; nothing is sent from here.
-        card={(card) => <PluginCard card={card} send={() => undefined} />}
+        card={(card) => <AnswerCard card={card} send={() => undefined} />}
         calls={(m) => <Calls calls={m.toolCalls} />}
       />
     </div>
@@ -337,7 +359,7 @@ function Thread({
           chat={chat}
           avatar="round"
           changedLabel={t("project.assistantChanged")}
-          card={(card) => <PluginCard card={card} send={(message) => void chat.send(message)} />}
+          card={(card) => <AnswerCard card={card} send={(message) => void chat.send(message)} />}
           calls={(m) => <Calls calls={m.toolCalls} />}
         />
       ) : (
@@ -670,9 +692,9 @@ function DropZone({
 // --- the three places ----------------------------------------------------------------------
 
 /**
- * At the bottom of the page and small at its lower right: drawn over the page's column. The
- * height of what stays at rest is written to `--assistant-dock` on the column, so the page's
- * last section stays clear of it.
+ * At the bottom of the page and small at its lower right: drawn over the page's column, as high
+ * as it, so the opened chat never grows past it. The height of what stays at rest is written to
+ * `--assistant-dock` on the column, so the page's last section stays clear of it.
  */
 export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | null> }) {
   const state = useAssistant();
@@ -774,7 +796,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
     <DropZone
       composer={composer}
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center",
+        "pointer-events-none absolute inset-0 flex flex-col items-center justify-end",
         lifted ? "z-[61]" : "z-30",
       )}
     >
@@ -791,7 +813,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       ) : null}
       <div
         ref={rest}
-        className="relative w-full px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5"
+        className="relative w-full shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5"
       >
         <div
           aria-hidden
@@ -828,7 +850,7 @@ function LastTurn({ state }: { state: AssistantState }) {
     <button
       type="button"
       onClick={() => state.setOpen(true)}
-      className="pointer-events-auto mx-3 mb-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-2xl bg-card px-4 py-2 text-left text-[0.8125rem] text-ink-3 shadow-overlay ring-1 ring-border transition hover:text-ink"
+      className="pointer-events-auto mx-3 mb-2 flex w-[calc(100%-1.5rem)] shrink-0 items-center gap-2 rounded-2xl bg-card px-4 py-2 text-left text-[0.8125rem] text-ink-3 shadow-overlay ring-1 ring-border transition hover:text-ink"
       style={{ maxWidth: DOCK_WIDTH }}
     >
       {last?.pending ? (

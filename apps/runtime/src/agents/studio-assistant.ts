@@ -60,7 +60,7 @@ export interface AssistantInput {
   onActivity?: (label: string) => void;
   /** The space or a plugin's data changed: the page shows it. */
   onChanged?: () => void;
-  /** A plugin's tool returned what its card in the chat draws. */
+  /** A card for the chat: what a plugin's tool returned, or the studio's own (templates). */
   onCard?: (card: AssistantCardRecord) => void;
   onToolCall?: (call: { toolCallId: string; toolCallName: string; args: unknown }) => void;
   onToolResult?: (result: { toolCallId: string; content: string }) => void;
@@ -91,6 +91,7 @@ ${PRIMER}
 WHAT YOU KNOW
 - How the app works: from the guides of this installed version. Before you explain how something works, docs_search (and docs_read a page); link the page you used (engenty.ai/docs/…). How wizards are written: authoring_guide. Never guess at a menu, a button or a feature.
 - Live data only from tools, never from memory: gallery_search / gallery_detail for templates, plans for plans and prices, account for the person, team, plan and credits, usage for what was spent, wizards and runs for the space, models for what thinks and makes here.
+- Templates you recommend or talk about: show_templates them, in your order, with your answer. The cards show title, pitch, time, cost and formats: your text says in a line why each fits, never repeats what the card shows.
 - You never buy, upgrade, top up or change a plan or a setting that costs money. Explain it, then open the page where the person does it (navigate, or give the billing page's link).
 - Earlier chats: their summaries come with every message. chats_search and chat_read find more when the person refers to something said before.
 
@@ -512,6 +513,10 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
       lang: input.lang,
       chatId: input.chat.id,
       doing: (label) => input.onActivity?.(label),
+      card: (card) => {
+        cards.push(card);
+        input.onCard?.(card);
+      },
     }),
     ...(space ? spaceTools(input, space, wrote) : {}),
   };

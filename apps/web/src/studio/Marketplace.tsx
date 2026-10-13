@@ -72,6 +72,7 @@ import { Mascot } from "../brand";
 import { ENGENTY_FILL, ENGENTY_KIND_FILL, type EngentyKind } from "../engenty/colors";
 import { api } from "../lib/api";
 import { lang, t } from "../lib/i18n";
+import { useCurrentProject, useMayCreate } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import { Button, Card, Chip, cn, Dialog, Spinner } from "../ui";
 import { TYPE_TONE } from "./editor/meta";
@@ -84,7 +85,7 @@ const FlowPreview = lazy(() => import("./FlowPreview"));
 type EntryDetail = MarketplaceEntry & WizardOutline;
 
 /** What a search answers: a page of entries, and whether the marketplace answered. */
-interface SearchPage extends MarketplacePage<MarketplaceEntry> {
+export interface SearchPage extends MarketplacePage<MarketplaceEntry> {
   offline: boolean;
   /** The capabilities this install has no model for. */
   unavailable: Capability[];
@@ -164,7 +165,7 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
 }
 
 /** An entry that needs the Pro plan: its wizard uses plugins that come with Pro. */
-function ProChip() {
+export function ProChip() {
   return (
     <Chip tone="ember" title={t("market.proHint")}>
       {t("market.pro")}
@@ -406,7 +407,7 @@ function FadeScroll({ className, children }: { className?: string; children: Rea
 }
 
 /** `fallback`: the entry as the list has it, shown until the marketplace has answered. */
-function EntryDialog({
+export function EntryDialog({
   id,
   fallback,
   onClose,
@@ -807,7 +808,7 @@ function FilterMenu({
 }
 
 /** A value once it has stopped changing for a moment: what is typed, when the typing pauses. */
-function useSettled<T>(value: T, ms: number): T {
+export function useSettled<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), ms);
@@ -872,6 +873,48 @@ export function MarketplaceHits({
 }
 
 /**
+ * Templates the studio assistant shows under an answer: the gallery's cards, each opening as in
+ * the gallery; a wizard made of one opens in the editor.
+ */
+export function MarketplaceCards({ entries }: { entries: MarketplaceEntry[] }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { project } = useCurrentProject();
+  const mayCreate = useMayCreate() && Boolean(project) && !project?.readOnly;
+  const [picked, setPicked] = useState<string | null>(null);
+  const create = useMutation({
+    mutationFn: (starterId: string) =>
+      api.post<{ id: string }>("/api/studio/wizards", { projectId: project!.id, starterId, lang }),
+    onSuccess: async ({ id }) => {
+      await qc.invalidateQueries({ queryKey: ["projects"] });
+      await qc.invalidateQueries({ queryKey: ["wizards"] });
+      setPicked(null);
+      navigate(`/edit/${id}`);
+    },
+  });
+  return (
+    // Two side by side where the chat is wide enough, one under the other in the sidebar.
+    <div className="@container mt-3">
+      <div className="grid gap-4 @xl:grid-cols-2">
+        {entries.map((e) => (
+          <EntryCard key={e.id} entry={e} onOpen={() => setPicked(e.id)} />
+        ))}
+      </div>
+      {create.error ? (
+        <p className="mt-2 text-[0.8125rem] text-rose">{(create.error as Error).message}</p>
+      ) : null}
+      <EntryDialog
+        id={picked}
+        fallback={entries.find((e) => e.id === picked) ?? null}
+        onClose={() => setPicked(null)}
+        onUse={mayCreate ? (entry) => !create.isPending && create.mutate(entry.id) : undefined}
+        busy={create.isPending}
+      />
+    </div>
+  );
+}
+
+/**
  * The marketplace as a person browses it: a search the marketplace answers live, the ways to
  * narrow it, the starred entries, and a card per entry that opens with what the wizard makes,
  * needs and costs. Without a connection it shows what this machine keeps.
@@ -880,14 +923,22 @@ export function MarketplaceBrowser({
   onUse,
   busy,
   open: opened,
+  search: searchFor,
 }: {
   /** Makes a wizard of an entry; left out where nothing is made, the entries are only shown. */
   onUse?: (entry: MarketplaceEntry) => void;
   busy?: boolean;
   /** An entry to open at once (a link from the gallery). */
   open?: string | null;
+  /** Words to search for, handed in from outside (the wish on the start page); each hand-in sets the field. */
+  search?: { text: string } | null;
 }) {
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (searchFor) {
+      setQuery(searchFor.text);
+    }
+  }, [searchFor]);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [starred, setStarred] = useState(false);
   const [picked, setPicked] = useState<string | null>(opened ?? null);

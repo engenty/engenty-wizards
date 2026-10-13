@@ -1,7 +1,7 @@
 ---
 title: First start
 description: Choose what engenty wizards thinks with. The studio opens once a test call works.
-version: 0.2.56
+version: 0.3.2
 ---
 
 The first page of the studio is the setup, "Choose your Engine". It asks one thing: what should

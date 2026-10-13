@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: What to do when a link is no longer valid, a client shows as not signed in, or an export fails.
-version: 0.2.56
+version: 0.3.2
 ---
 
 `wizards doctor` checks the install and says what is wrong. Start there.

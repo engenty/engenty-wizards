@@ -1,7 +1,112 @@
 [
   {
+    "version": "v0.3.4",
+    "timestamp": 1791867659,
+    "commits": [
+      {
+        "id": "f6818fd",
+        "message": "the channel menu on the new-wizard page grows out of the button that opened it and fades in; still where motion is reduced",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "02e8330",
+        "message": "the new-wizard page asks how the wizard runs and shows what is there already – \"Läuft als\" above the wish picks the channels (in the browser: Wizard in Schritten, Chat, Live Voice, Video Call; on the phone: Anruf, WhatsApp; by message: SMS, WhatsApp; one stays on), saved as the wizard's runners and named in the first message, which the guide tells the assistant to build for; the box takes files (+, paste, drop; pictures as thumbnails, names made fit for the workspace), dictation and the build button; while the wish is typed, up to ten of the space's wizards and templates that come close are listed, Pro marked, the rest one line that searches the gallery; the example chips are gone",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.3.3",
+    "timestamp": 1791845668,
+    "commits": [
+      {
+        "id": "355cb97",
+        "message": "every page checked against v0.3.2 – the wizards menu (Start as service, Service settings, an update that restarts what runs), the version line at the top of Settings → Account, the templates the assistant shows as cards, the wizard format's code under MIT, the server page's clone folder (wizards)",
+        "group": "Docs",
+        "scope": null,
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.3.2",
+    "timestamp": 1791836815,
+    "commits": [
+      {
+        "id": "5aeddad",
+        "message": "templates the assistant recommends show as the gallery's cards under its answer – a new show_templates tool sends them as a card of the studio's own, kept with the chat; a card opens the gallery's dialog and makes a wizard of it in the space",
+        "group": "Added",
+        "scope": "assistant",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.3.1",
+    "timestamp": 1791812932,
+    "commits": [
+      {
+        "id": "efc3934",
+        "message": "studio, doors and runner share one /data volume – the tenant databases are files there while the Manage-App's TENANT_DB_PROVISIONER is none, so with a volume per role each process saw a tenant of its own: a wizard published in the studio was not found on the doors, and the runner never found the runs it claimed",
+        "group": "Fixed",
+        "scope": "cloud",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.3.0",
+    "timestamp": 1791811863,
+    "commits": [
+      {
+        "id": "ab35b50",
+        "message": "the web is cut into studio and doors – RUNTIME_ROLE studio serves the makers' half (sign-in, authoring, MCP, the sync API, the studio's pages), doors the customers' half (the wizards' pages, their API, shared results, the plugins' public routes, the app links); web is both, all adds the runner; the runs' API, the connect callback and the app's files serve both halves. PUBLIC_URL names the doors' origin when it is not APP_URL: wizard and result links, link previews, the embed script, public logos and icons, a plugin's public address and the AI app widget carry it, /api/config tells it and the studio's own link to a wizard uses it. compose.cloud.yaml runs runtime (studio), doors and runner from one image; docs/plans/runner-process.md says which paths go where",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.2.61",
+    "timestamp": 1791806444,
+    "commits": [
+      {
+        "id": "a7e01b4",
+        "message": "the account settings say the version on top – one line in the first card (Lokale Installation, the linked account or the cloud): the version, which opens the About dialog with what is new, and on a runtime that runs alone whether it is the newest, the newer one with Aktualisieren, and the check again; the About dialog and that line share about/UpdateCheck.tsx; no link to the GitHub release any more",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "542a901",
+        "message": "an update from the About dialog no longer ends on {\"error\":\"Interner Fehler\"} – packageVersion() reads package.json once, so a runtime still running the old code goes on saying its own version while the installer replaces its files, and the studio reloads only once the new one answers instead of into the old process whose index.html is gone",
+        "group": "Fixed",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
+    "version": "v0.2.60",
+    "timestamp": 1791802895,
+    "commits": [
+      {
+        "id": "ae9f070",
+        "message": "the opened assistant at the bottom no longer grows past the page – its dock covers the column, so the chat's max height has a height to measure against",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.2.59",
-    "timestamp": 1791802201,
+    "timestamp": 1791802205,
     "commits": [
       {
         "id": "ae940c1",

@@ -13,10 +13,11 @@ the runs.
 
 ## What holds now
 
-- **Roles.** `RUNTIME_ROLE` = `web`, `runner` or `all` (default). A local install stays one
-  process (`all`). The cloud compose runs `runtime` as `web` and `runner` as `runner`, from the
-  same image. A runner also listens on its port: the web forwards to it what only the process
-  holding the run can answer (the browser's screen, acting on its page).
+- **Roles.** `RUNTIME_ROLE` = `studio`, `doors`, `web` (both), `runner` or `all` (default). A
+  local install stays one process (`all`). The cloud compose runs `runtime` as `studio`, `doors`
+  as `doors` and `runner` as `runner`, from the same image. A runner also listens on its port:
+  the web forwards to it what only the process holding the run can answer (the browser's
+  screen, acting on its page).
 - **The queue is the control database.** `run_index` gained `owner` (the runner working on the
   run) and `seen` (its last heartbeat). Waking a run sets `active` and clears `owner`; a runner
   claims it in one statement that also counts the tenant's owned runs against its limit
@@ -44,6 +45,35 @@ the runs.
 - **Runners register.** Table `runner` (`id`, `url`, `seen`) in the control database. `RUNNER_URL`
   names where the web reaches a runner (compose: `http://runner:8891`); without it the web
   answers "not found" for the browser's screen of a run another process holds.
+
+## Studio and doors (2026-10-12)
+
+The web is two halves on one origin, cut along the makers / customers seam so each can run as
+its own process and a kitchen can run without the studio at all.
+
+| Studio only (`serves.studio`) | Doors only (`serves.doors`) | Both |
+|---|---|---|
+| sign-in and sessions (`/api/auth`, `/api/local/enter`), `/api/studio/*`, the authoring MCP (`/api/mcp`) and its OAuth discovery, `/api/v1` (sync from local installs), `/api/local/debug`, the Claude Code plugin, `/install.sh`, the studio's pages and `/` | `/api/public/*`, `/api/shares/*`, the plugins' public routes and webhooks, `/embed.js`, `/sw.js`, the app links under `/.well-known`, the pages `/w/<token>` and `/s/<token>` | `/api/health`, `/api/config`, `/api/log`, `/api/internal`, `/api/runs/*` (a maker's test run, a visitor's run, the AI app's widget — who may see a run is decided per request), `/api/connect` (the OAuth callback), the app's files below `/studio` (a wizard's page loads its scripts there) |
+
+The runner serves everything (it is internal; the web hands it a run's browser). The MCP bridge
+(`/api/mcp/bridge`) is served where runs execute.
+
+`PUBLIC_URL` names the doors' origin when it is not `APP_URL`: `shareUrl`, result links, link
+previews, the embed script, public logos and icons, a plugin's public address and the AI app
+widget's base carry it. `/api/config` answers it; the studio's own link to a wizard
+(`ownLink`) uses it. The connect callback posts its word to both origins. On engenty.ai both
+halves answer under one origin: Coolify routes `/w`, `/s`, `/api/public`, `/api/runs`,
+`/api/shares`, `/embed.js`, `/sw.js` and the app links to `doors`, the rest to `runtime`
+(longest path rule wins in Traefik), so `PUBLIC_URL` stays unset there.
+
+Not built: a kitchen on another server still reads wizards from the same tenant database; the
+studio → kitchen sync (the reverse of the local → cloud sync) is its own piece.
+
+Learned on the first deploy (v0.3.0, 2026-10-12): the cloud's tenant databases are files under
+`/data` (`TENANT_DB_PROVISIONER=none`), and every role had a volume of its own, so the studio,
+the doors and the runner each saw a tenant of their own — a wizard published in the studio was
+"not found" on the doors, and the v0.2.57 runner never found the runs it claimed. v0.3.1 gives
+the three roles one volume. The real answer is tenant databases on Turso (the provisioner).
 
 ## Ids across installs
 

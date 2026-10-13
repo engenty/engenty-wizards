@@ -1,7 +1,7 @@
 ---
 title: Run it on a server
 description: One Docker container behind an https proxy, so others can open your wizards' links.
-version: 0.2.56
+version: 0.3.2
 ---
 
 An install on your computer answers on `localhost` only. On a server with a public address,
@@ -13,7 +13,7 @@ You need Docker and an https proxy in front, such as Caddy or Traefik.
 
 ```bash
 git clone https://github.com/engenty/wizards.git
-cd engenty-wizards
+cd wizards
 cp .env.example .env
 ```
 

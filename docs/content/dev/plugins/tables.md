@@ -1,7 +1,7 @@
 ---
 title: Tables
 description: A plugin's own tables in every tenant's database — SQL files that run once, and Drizzle to read and write.
-version: 0.2.56
+version: 0.3.2
 ---
 
 Every tenant has a database of its own (libSQL, the SQLite dialect). A plugin's tables are made

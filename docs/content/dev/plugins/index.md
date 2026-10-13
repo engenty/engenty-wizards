@@ -1,7 +1,7 @@
 ---
 title: Plugins
 description: What a plugin is, what its two halves can add, and what it may touch.
-version: 0.2.56
+version: 0.3.2
 ---
 
 A plugin adds to a runtime without changing its code. The runtime finds plugins at start, loads

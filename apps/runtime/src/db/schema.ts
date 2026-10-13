@@ -611,6 +611,7 @@ export const spaceItemCategory = sqliteTable(
 // searched through `assistant_search` (FTS5 trigrams), which triggers keep in step.
 
 export interface AssistantCardRecord {
+  /** The plugin whose tool returned it; empty for the studio's own cards (`templates`). */
   plugin: string;
   tool: string;
   data: unknown;

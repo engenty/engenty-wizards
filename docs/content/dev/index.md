@@ -1,7 +1,7 @@
 ---
 title: Developer
 description: Extend engenty wizards with plugins — tools for AI steps, routes with their own tables, pages in the studio.
-version: 0.2.56
+version: 0.3.2
 ---
 
 engenty wizards is extended with **plugins**. A plugin adds to a runtime without changing its
