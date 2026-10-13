@@ -130,6 +130,8 @@ export function ChannelPicker({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  /** Where the list grows from: the middle of the button that opened it. */
+  const [origin, setOrigin] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) {
@@ -229,7 +231,11 @@ export function ChannelPicker({
             aria-haspopup="dialog"
             aria-expanded={open}
             aria-label={`${t(g.label)}: ${list.length ? list.join(", ") : t("new.off")}`}
-            onClick={() => setOpen((o) => !o)}
+            onClick={(e) => {
+              const button = e.currentTarget;
+              setOrigin(button.offsetLeft + button.offsetWidth / 2);
+              setOpen((o) => !o);
+            }}
             className={cn(
               "inline-flex h-9 items-center justify-center gap-1.5 rounded-full font-medium text-[0.8125rem] transition coarse:h-11",
               list.length
@@ -246,7 +252,8 @@ export function ChannelPicker({
         <div
           role="dialog"
           aria-label={t("new.where")}
-          className="absolute top-full left-0 z-20 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-2xl bg-card p-3 text-left shadow-overlay ring-1 ring-border"
+          style={{ transformOrigin: `${origin}px top` }}
+          className="absolute top-full left-0 z-20 mt-2 w-[min(32rem,calc(100vw-2rem))] animate-unfold rounded-2xl bg-card p-3 text-left shadow-overlay ring-1 ring-border"
         >
           <p className="px-2 pt-1 font-semibold text-[0.9375rem]">{t("new.where")}</p>
           <div className="grid gap-x-4 sm:grid-cols-2">
