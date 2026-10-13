@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.1] - 2026-10-13
+- ADDED **[studio]** A colour is added as a row in place, and the assets are "Brand Assets" with a round search field; plugins get a part of the space page of their own (registerSpacePart, useSpaceMenu), the space's brand (useSpace().brand, server.spaces.brand), a block for the steps that write documents and dashboards (registerSpaceContext steps: ["html"]), pictures and PDFs for generate (files), and the space page's pieces from @engenty-wizards/web/ui
+
 ## [0.4.0] - 2026-10-13
 - ADDED **[onboarding]** The account becomes the front door – a cloud studio's first visit is a wizard of four pages (the team's name, the website read into the space, first documents, the space explained), the setup on a computer starts with the account (a device code in the terminal, the panel and "engenty credits" as an engine on the setup page), install.sh --local and wizards account keep and name the install without one, the cloud home offers the computer with the install mail, and the docs start with "Create an account"
 - DOCS **[plans]** A plain sign-in lands in the studio as well – noted with the manage commit
