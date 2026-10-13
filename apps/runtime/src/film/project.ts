@@ -3,8 +3,9 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { dataRef, FILM_SIZES, type FilmStep } from "@engenty-wizards/shared/definition";
+import { gradientCss, ruleLines, textStyleLine } from "@engenty-wizards/shared/projects";
 import { unzipSync } from "fflate";
-import { renderTemplate, resolveRef } from "../engine/template.js";
+import { logoSectionLine, renderTemplate, resolveRef } from "../engine/template.js";
 import type { StepContext } from "../engine/types.js";
 import { env } from "../env.js";
 import { getBlob } from "../files/blobs.js";
@@ -151,13 +152,32 @@ export async function prepareFilmFolder(
 
   // The space's brand.
   const b = ctx.scope.brand;
-  const logos: string[] = [];
+  const logos: { file: string; section?: string; description?: string }[] = [];
+  const patterns: { file: string; name: string; tile: boolean }[] = [];
+  for (const p of b.patterns ?? []) {
+    const f = ctx.projectFiles.find((x) => x.id === p.file);
+    try {
+      if (f) {
+        const { data } = await projectFileContent(f.projectId, f.id);
+        const name = `patterns/${safeName(f.name.replace(/\.[^.]+$/, ""))}.${extFor(f.mime) === "bin" ? (f.name.split(".").pop() ?? "bin") : extFor(f.mime)}`;
+        await put(join(root, "brand"), name, data);
+        patterns.push({ file: name, name: p.name, tile: Boolean(p.tile) });
+      }
+    } catch {
+      // a pattern less
+    }
+  }
   for (const f of ctx.projectFiles.filter((p) => p.kind === "logo")) {
     try {
       const { data } = await projectFileContent(f.projectId, f.id);
       const name = `logos/${safeName(f.name.replace(/\.[^.]+$/, ""))}.${extFor(f.mime) === "bin" ? (f.name.split(".").pop() ?? "bin") : extFor(f.mime)}`;
       await put(join(root, "brand"), name, data);
-      logos.push(name);
+      const section = logoSectionLine(b.logoSections, f.id);
+      logos.push({
+        file: name,
+        ...(section ? { section } : {}),
+        ...(f.description ? { description: f.description } : {}),
+      });
     } catch {
       // a logo less
     }
@@ -167,11 +187,40 @@ export async function prepareFilmFolder(
     "brand.json",
     JSON.stringify(
       {
-        note: "The space's brand. Colours are named by what they are for; the first is the accent.",
+        note: "The space's brand. Colours are named by what they are for; the first is the accent. A logo's or a colour's section says when to use it; colorRules, logoRules and typeRules, where there are any, say how colours, logos and type may be used; text is set in the fonts.",
         name: b.name ?? "",
         about: b.about ?? "",
-        colors: (b.colors ?? []).map((c) => ({ name: c.name, value: c.value })),
+        colors: (b.colors ?? []).map((c) => {
+          const s = b.colorSections?.find((x) => x.id === c.section);
+          return { name: c.name, value: c.value, ...(s ? { section: s.title } : {}) };
+        }),
+        ...(b.gradients?.length
+          ? {
+              gradients: b.gradients.map((g) => ({
+                name: g.name,
+                section: b.colorSections?.find((x) => x.id === g.section)?.title,
+                css: gradientCss(g),
+              })),
+            }
+          : {}),
+        ...(patterns.length ? { patterns } : {}),
         logos,
+        ...(b.colorRules?.length ? { colorRules: ruleLines(b.colorRules).split("\n") } : {}),
+        ...(b.fonts?.length
+          ? {
+              fonts: b.fonts.map(({ family, role, weights }) => ({ family, role, weights })),
+            }
+          : {}),
+        ...(b.textStyles?.length
+          ? {
+              textStyles: b.textStyles.map((s) => ({
+                name: s.name,
+                style: textStyleLine(s, b.fonts ?? []),
+              })),
+            }
+          : {}),
+        ...(b.typeRules?.length ? { typeRules: ruleLines(b.typeRules).split("\n") } : {}),
+        ...(b.logoRules?.length ? { logoRules: ruleLines(b.logoRules).split("\n") } : {}),
         facts: (b.facts ?? []).map((f) => `${f.label}: ${f.value}`),
       },
       null,

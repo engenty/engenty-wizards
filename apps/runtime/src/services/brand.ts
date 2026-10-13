@@ -1,14 +1,17 @@
+import { mainLogo } from "@engenty-wizards/shared/projects";
 import type { BrandView } from "@engenty-wizards/shared/run";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 
-/** The project's first logo: the one end users, documents and widgets get. */
+/** The project's main logo, the first standard one: what end users, documents and widgets get. */
 export async function mainLogoId(projectId: string): Promise<string | null> {
-  const logo = await db.query.projectFile.findFirst({
+  const p = await db.query.project.findFirst({ where: eq(schema.project.id, projectId) });
+  const logos = await db.query.projectFile.findMany({
+    columns: { id: true },
     where: and(eq(schema.projectFile.projectId, projectId), eq(schema.projectFile.kind, "logo")),
     orderBy: [asc(schema.projectFile.position), asc(schema.projectFile.createdAt)],
   });
-  return logo?.id ?? null;
+  return mainLogo(logos, p?.brand.logoSections)?.id ?? null;
 }
 
 /** What end users see of the project: its title, accent and logo — never the project name. */

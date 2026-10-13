@@ -339,28 +339,8 @@ export function NewWizardPage() {
             add(Array.from(e.dataTransfer.files).map(pastedName));
           }}
         >
-          <Textarea
-            autoFocus
-            minRows={4}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onPaste={(e) => {
-              const pasted = Array.from(e.clipboardData.files);
-              if (pasted.length) {
-                e.preventDefault();
-                add(pasted.map(pastedName));
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                submit();
-              }
-            }}
-            placeholder={speech.listening ? t("editor.listening") : t("new.placeholder")}
-            className="border-0 bg-transparent text-[1rem] shadow-none focus:ring-0"
-          />
           {files.length ? (
-            <div className="flex flex-wrap items-center gap-2 px-2 pt-1 pb-2">
+            <div className="flex flex-wrap items-center gap-2 px-2 pt-2 pb-1">
               {files.map((f, i) => {
                 const url = thumbs.get(f);
                 const drop = () => setFiles((all) => all.filter((_, j) => j !== i));
@@ -381,6 +361,26 @@ export function NewWizardPage() {
               })}
             </div>
           ) : null}
+          <Textarea
+            autoFocus
+            minRows={4}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onPaste={(e) => {
+              const pasted = Array.from(e.clipboardData.files);
+              if (pasted.length) {
+                e.preventDefault();
+                add(pasted.map(pastedName));
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                submit();
+              }
+            }}
+            placeholder={speech.listening ? t("editor.listening") : t("new.placeholder")}
+            className="border-0 bg-transparent text-[1rem] shadow-none focus:ring-0"
+          />
           <div className="flex items-center gap-2 px-1 pb-1">
             <button
               type="button"

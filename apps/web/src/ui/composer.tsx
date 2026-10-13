@@ -85,15 +85,25 @@ export interface ComposerHandle {
 /** Taller than this the field scrolls. */
 const MAX_HEIGHT = 200;
 
+/** The keys that send a message for after the running answer: ⌘↩ on a Mac, Ctrl+↩ elsewhere. */
+export const LATER_KEYS =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? "⌘↩"
+    : "Ctrl+↩";
+
 /**
  * The field a message is written in: text (typed or spoken), files (picked, pasted or handed in
  * through `ref`), and the send button. One line, it is a pill; the buttons stay level with the
  * text, and on the last line once it grows. `floating` lifts it off the page for a composer that
- * stands at the lower edge of the window.
+ * stands at the lower edge of the window. With `onStop`, an answer under way (`busy`) does not
+ * lock it: Enter sends on, ⌘↩ (Ctrl+↩) for after the answer, and an empty field offers Stop.
  */
 export function Composer({
   placeholder,
   disabled,
+  busy,
+  onStop,
   onSend,
   attach = true,
   floating,
@@ -105,8 +115,15 @@ export function Composer({
   placeholder?: string;
   /** Typing goes on; sending waits, e.g. while the answer to the last message comes in. */
   disabled?: boolean;
-  /** False keeps the draft, e.g. when sending failed. */
-  onSend: (text: string, files: File[]) => boolean | Promise<boolean>;
+  /** An answer is under way; with `onStop` sending goes on. */
+  busy?: boolean;
+  /** Stops the answer under way: its button stands where Send does while the field is empty. */
+  onStop?: () => void;
+  /**
+   * False keeps the draft, e.g. when sending failed. `later`: sent with ⌘↩ (Ctrl+↩), for after
+   * the answer under way.
+   */
+  onSend: (text: string, files: File[], later?: boolean) => boolean | Promise<boolean>;
   attach?: boolean;
   floating?: boolean;
   autoFocus?: boolean;
@@ -176,8 +193,9 @@ export function Composer({
     };
   }, [files]);
 
-  const ready = Boolean(text.trim() || files.length > 0) && !disabled;
-  const submit = async () => {
+  const typed = Boolean(text.trim() || files.length > 0);
+  const ready = typed && !disabled;
+  const submit = async (later = false) => {
     if (!ready) {
       return;
     }
@@ -187,7 +205,7 @@ export function Composer({
     const draft = { text, files };
     setText("");
     setFiles([]);
-    if (!(await onSend(draft.text.trim(), draft.files))) {
+    if (!(await onSend(draft.text.trim(), draft.files, later))) {
       setText(draft.text);
       setFiles(draft.files);
     }
@@ -281,7 +299,7 @@ export function Composer({
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                void submit();
+                void submit(e.metaKey || e.ctrlKey);
               }
             }}
             placeholder={speech.listening ? t("editor.listening") : placeholder}
@@ -291,7 +309,17 @@ export function Composer({
             )}
           />
           {speech.supported ? <DictationButton speech={speech} /> : null}
-          {onTalk && !(text.trim() || files.length || speech.listening) ? (
+          {busy && onStop && !typed ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition coarse:size-11"
+              aria-label={t("composer.stop")}
+              title={t("composer.stop")}
+            >
+              <Square className="size-3 fill-current" />
+            </button>
+          ) : onTalk && !(text.trim() || files.length || speech.listening) ? (
             <button
               type="button"
               onClick={onTalk}
@@ -311,6 +339,7 @@ export function Composer({
                 ready ? "bg-primary text-primary-foreground" : "bg-paper-2 text-ink-4",
               )}
               aria-label={t("composer.send")}
+              title={busy && onStop ? t("composer.sendBusy", { keys: LATER_KEYS }) : undefined}
             >
               <ArrowUp className="size-4" />
             </button>

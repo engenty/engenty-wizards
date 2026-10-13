@@ -3,7 +3,18 @@ import {
   TEXT_CLASSES,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
+import type {
+  AssetSection,
+  BrandColor,
+  BrandFont,
+  BrandGradient,
+  BrandPattern,
+  BrandRule,
+  ColorSection,
+  LogoSection,
+  ProjectFact,
+  TextStyle,
+} from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
@@ -85,6 +96,8 @@ export interface Me {
   };
   /** The plan's feature switches; alone, everything is on. `ownKeys`: own API keys here. */
   features: Record<string, boolean>;
+  /** The studio assistant's developer mode may be switched on (ASSISTANT_DEV; platform admins when managed). */
+  assistantDev?: boolean;
   /** `managed`: signed in at the Manage-App. `local`: this runtime runs alone (desktop app, own machine). */
   mode: "managed" | "local";
   /** The tenant's balance; null where no credits are involved. */
@@ -187,7 +200,21 @@ export function useMe() {
 export interface Project {
   id: string;
   name: string;
-  brand: { name?: string; about?: string; colors?: BrandColor[] };
+  brand: {
+    name?: string;
+    about?: string;
+    colors?: BrandColor[];
+    colorSections?: ColorSection[];
+    gradients?: BrandGradient[];
+    patterns?: BrandPattern[];
+    colorRules?: BrandRule[];
+    logoSections?: LogoSection[];
+    assetSections?: AssetSection[];
+    fonts?: BrandFont[];
+    textStyles?: TextStyle[];
+    typeRules?: BrandRule[];
+    logoRules?: BrandRule[];
+  };
   facts: ProjectFact[];
   mcpServers: { id: string; name: string; url: string; headers?: Record<string, string> }[];
   wizardCount: number;

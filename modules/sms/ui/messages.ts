@@ -27,7 +27,6 @@ export const messages = {
     keyword: "Stichwort",
     keywordHint:
       "Wer dieses Wort an die Nummer schreibt, startet den Wizard. Der Link und der QR-Code tippen es vor.",
-    link: "Link",
     error_bad_keyword:
       "Ein Stichwort besteht aus Buchstaben, Ziffern, Leerzeichen und Bindestrichen, bis zu 40.",
     error_keyword_taken: "Ein anderer Wizard hat dieses Stichwort schon.",
@@ -62,7 +61,6 @@ export const messages = {
     keyword: "Keyword",
     keywordHint:
       "Whoever texts this word to the number starts the wizard. The link and the QR code type it for them.",
-    link: "Link",
     error_bad_keyword: "A keyword is letters, digits, spaces and dashes, up to 40.",
     error_keyword_taken: "Another wizard has this keyword already.",
     error_no_token: "An auth token is needed.",

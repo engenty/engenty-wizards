@@ -672,7 +672,7 @@ export function AppFrame({
                 </main>
                 <AssistantDock column={column} />
               </div>
-              <AssistantSidebar />
+              <AssistantSidebar column={column} />
               <HighlightLayer />
             </div>
           )}

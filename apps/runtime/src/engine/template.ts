@@ -9,15 +9,43 @@ import {
   type WizardDefinition,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
+import {
+  type AssetSection,
+  type BrandColor,
+  type BrandFont,
+  type BrandGradient,
+  type BrandPattern,
+  type BrandRule,
+  type ColorSection,
+  gradientCss,
+  type LogoSection,
+  type ProjectFact,
+  type TextStyle,
+  textStyleLine,
+} from "@engenty-wizards/shared/projects";
 import type { RunState } from "@engenty-wizards/shared/run";
 import { type ListDef, type ListRow, listAsMarkdown } from "@engenty-wizards/shared/store";
 
 export interface TemplateScope {
   def: WizardDefinition;
   state: RunState;
-  /** The project the wizard belongs to: who it is, its colours and its facts. */
-  brand: { name?: string; about?: string; colors?: BrandColor[]; facts?: ProjectFact[] };
+  /** The project the wizard belongs to: who it is, its colours, how its logos are used, its facts. */
+  brand: {
+    name?: string;
+    about?: string;
+    colors?: BrandColor[];
+    colorSections?: ColorSection[];
+    gradients?: BrandGradient[];
+    patterns?: BrandPattern[];
+    colorRules?: BrandRule[];
+    logoSections?: LogoSection[];
+    assetSections?: AssetSection[];
+    fonts?: BrandFont[];
+    textStyles?: TextStyle[];
+    typeRules?: BrandRule[];
+    logoRules?: BrandRule[];
+    facts?: ProjectFact[];
+  };
   /** The wizard's stored lists as they are when the step starts. */
   lists?: Record<string, { def: ListDef; rows: ListRow[] }>;
   /** A generate step with `each`: the entry this result is made for. */
@@ -71,8 +99,62 @@ export function factLines(facts: ProjectFact[]): string {
   return facts.map((f) => `${f.label}: ${f.value}`).join("\n");
 }
 
-export function colorLine(colors: BrandColor[]): string {
-  return colors.map((c) => (c.name ? `${c.name} ${c.value}` : c.value)).join(", ");
+/**
+ * The colours as a model reads them; a section's after the standard ones, with when to use them.
+ * A gradients section names its gradients as CSS.
+ */
+export function colorLine(
+  colors: BrandColor[],
+  sections: ColorSection[] = [],
+  gradients: BrandGradient[] = [],
+): string {
+  const line = (list: BrandColor[]) =>
+    list.map((c) => (c.name ? `${c.name} ${c.value}` : c.value)).join(", ");
+  const known = (c: BrandColor) => sections.some((s) => s.id === c.section);
+  return [
+    line(colors.filter((c) => !known(c))),
+    ...sections.map((s) => {
+      const head = s.description ? `${s.title} (${s.description})` : s.title;
+      if (s.kind === "gradients") {
+        const own = gradients.filter((g) => g.section === s.id);
+        return own.length
+          ? `${head}: ${own.map((g) => `${g.name || "gradient"} ${gradientCss(g)}`).join("; ")}`
+          : "";
+      }
+      const own = colors.filter((c) => c.section === s.id);
+      return own.length ? `${head}: ${line(own)}` : "";
+    }),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The brand's type as a model reads it: its fonts, then its text styles. */
+export function typeLines(fonts: BrandFont[] = [], styles: TextStyle[] = []): string {
+  const families = fonts.map((f) => {
+    const weights = f.weights.length ? `, weights ${f.weights.join("/")}` : "";
+    return `- ${f.family}${f.role ? ` (${f.role})` : ""}${weights}`;
+  });
+  const scale = styles.map((s) => `- ${s.name}: ${textStyleLine(s, fonts)}`);
+  return [
+    families.length ? `Fonts:\n${families.join("\n")}` : "",
+    scale.length ? `Text styles:\n${scale.join("\n")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+const sectionWords = (s: { title: string; description: string } | undefined) =>
+  !s ? "" : s.description ? `${s.title} (${s.description})` : s.title;
+
+/** The logo's section in words — "Logomark (small spaces, app icons)" — or "" where it has none. */
+export function logoSectionLine(sections: LogoSection[] | undefined, fileId: string): string {
+  return sectionWords(sections?.find((x) => x.logos.includes(fileId)));
+}
+
+/** The title of the asset's section — "Icons" — or "" where it has none. */
+export function assetSectionLine(sections: AssetSection[] | undefined, fileId: string): string {
+  return sections?.find((x) => x.assets.includes(fileId))?.title ?? "";
 }
 
 function brandRef(brand: TemplateScope["brand"], key: string): unknown {
@@ -87,7 +169,9 @@ function brandRef(brand: TemplateScope["brand"], key: string): unknown {
     case "accent":
       return brand.colors?.[0]?.value ?? "";
     case "colors":
-      return colorLine(brand.colors ?? []);
+      return colorLine(brand.colors ?? [], brand.colorSections, brand.gradients);
+    case "fonts":
+      return typeLines(brand.fonts, brand.textStyles);
     default:
       return "";
   }

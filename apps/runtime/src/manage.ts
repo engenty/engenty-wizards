@@ -193,20 +193,24 @@ export function tenantMembers(id: string): Promise<TenantMembers> {
   return call<TenantMembers>("GET", `/v1/tenants/${encodeURIComponent(id)}/members`);
 }
 
-const users = new Map<string, { at: number; value: Record<string, boolean> }>();
+export interface UserInfo {
+  /** The person's own feature switches, as an admin set them at the Manage-App. */
+  features: Record<string, boolean>;
+  /** The person runs the platform (an admin of the Manage-App). */
+  admin: boolean;
+}
 
-/** A person's own feature switches, as an admin set them at the Manage-App; cached a minute. */
-export async function userFeatures(userId: string): Promise<Record<string, boolean>> {
+const users = new Map<string, { at: number; value: UserInfo }>();
+
+/** What the Manage-App says of a person beyond their token; cached a minute. */
+export async function userInfo(userId: string): Promise<UserInfo> {
   const hit = users.get(userId);
   if (hit && Date.now() - hit.at < 60_000) {
     return hit.value;
   }
-  const value = await call<{ features?: Record<string, boolean> }>(
-    "GET",
-    `/v1/users/${encodeURIComponent(userId)}`,
-  )
-    .then((u) => u.features ?? {})
-    .catch(() => hit?.value ?? {});
+  const value = await call<Partial<UserInfo>>("GET", `/v1/users/${encodeURIComponent(userId)}`)
+    .then((u) => ({ features: u.features ?? {}, admin: u.admin === true }))
+    .catch(() => hit?.value ?? { features: {}, admin: false });
   users.set(userId, { at: Date.now(), value });
   return value;
 }

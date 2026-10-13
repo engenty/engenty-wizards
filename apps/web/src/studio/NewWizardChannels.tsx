@@ -34,9 +34,10 @@ export type ChannelId =
   | "wacall"
   | "sms"
   | "whatsapp";
-type Group = "web" | "phone" | "message";
+export type ChannelGroup = "web" | "phone" | "message";
+type Group = ChannelGroup;
 
-interface Channel {
+export interface Channel {
   id: ChannelId;
   group: Group;
   /** The runner that serves it. */
@@ -56,7 +57,7 @@ const CHANNELS: Channel[] = [
   { id: "whatsapp", group: "message", runner: "whatsapp", label: "new.ch.whatsapp", icon: null },
 ];
 
-const GROUPS: { id: Group; label: Key; icon: LucideIcon }[] = [
+export const CHANNEL_GROUPS: { id: Group; label: Key; icon: LucideIcon }[] = [
   { id: "web", label: "new.web", icon: Globe },
   { id: "phone", label: "new.phone", icon: Phone },
   { id: "message", label: "new.messages", icon: MessageSquareText },
@@ -84,10 +85,23 @@ export function runnerSettingsOf(ids: ChannelId[]): RunnerSettings {
 
 const names = (chosen: Channel[]) => chosen.map((c) => t(c.label));
 
+/**
+ * The channel a runner stands for, in the studio's words: its group, its name, its icon. A
+ * call runner takes WhatsApp calls too; it is the phone call here.
+ */
+export function channelOfRunner(runner: string): Channel | undefined {
+  return CHANNELS.find((c) => c.runner === runner);
+}
+
+/** The channels the runners switched on stand for: one per runner, a call is the phone call. */
+export function channelsOfRunners(enabled: string[]): ChannelId[] {
+  return CHANNELS.filter((c) => c.id !== "wacall" && enabled.includes(c.runner)).map((c) => c.id);
+}
+
 /** The choice as a line of the first message, so the assistant builds for these channels. */
 export function channelLine(ids: ChannelId[]): string {
   const chosen = picked(ids);
-  const parts = GROUPS.flatMap((g) => {
+  const parts = CHANNEL_GROUPS.flatMap((g) => {
     const inGroup = names(chosen.filter((c) => c.group === g.id));
     if (!inGroup.length) {
       return [];
@@ -102,14 +116,112 @@ function summary(list: string[]): string {
   return list.length <= 2 ? list.join(", ") : `${list.slice(0, 2).join(", ")} +${list.length - 2}`;
 }
 
-function ChannelIcon({ channel }: { channel: Channel }) {
+/** A channel's icon; WhatsApp, which lucide has none for, as its initials. */
+export function ChannelIcon({ channel, className }: { channel: Channel; className?: string }) {
   const Icon = channel.icon;
   return Icon ? (
-    <Icon className="size-4" />
+    <Icon className={className ?? "size-4"} />
   ) : (
     <span aria-hidden="true" className="font-semibold text-[0.625rem] tracking-wide">
       WA
     </span>
+  );
+}
+
+/** The channels the tenant's runners serve; until the runners are known, the browser's own. */
+function offeredOf(runners: RunnerInfo[] | undefined): Channel[] {
+  const have = new Set(runners?.map((r) => r.id) ?? ["steps", "chat", "talk", "video"]);
+  return CHANNELS.filter((c) => have.has(c.runner));
+}
+
+/**
+ * The channels to tick, by kind: the browser's in one column, the phone's and the messages' in
+ * the other. One always stays on.
+ */
+export function ChannelList({
+  value,
+  onChange,
+  runners,
+  without,
+  disabled,
+}: {
+  value: ChannelId[];
+  onChange: (ids: ChannelId[]) => void;
+  runners: RunnerInfo[] | undefined;
+  /** Channels not offered here. */
+  without?: ChannelId[];
+  disabled?: boolean;
+}) {
+  const offered = offeredOf(runners).filter((c) => !without?.includes(c.id));
+  const on = (c: Channel) => value.includes(c.id);
+  // One channel always stays on: a wizard nobody can reach is no choice.
+  const toggle = (c: Channel) => {
+    if (disabled || (on(c) && value.length === 1)) {
+      return;
+    }
+    onChange(on(c) ? value.filter((id) => id !== c.id) : [...value, c.id]);
+  };
+
+  const column = (group: Group) => {
+    const meta = CHANNEL_GROUPS.find((g) => g.id === group);
+    const rows = offered.filter((c) => c.group === group);
+    if (!(meta && rows.length)) {
+      return null;
+    }
+    const GroupIcon = meta.icon;
+    return (
+      <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
+        <legend className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-[0.75rem] text-ink-3">
+          <GroupIcon className="size-3.5" /> {t(meta.label)}
+        </legend>
+        {rows.map((c) => (
+          <div key={c.id}>
+            <label
+              className={cn(
+                "flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[0.875rem] transition hover:bg-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus coarse:h-11",
+                on(c) && "bg-paper-2",
+              )}
+            >
+              <span className="flex w-5 justify-center text-ink-3">
+                <ChannelIcon channel={c} />
+              </span>
+              <span className="flex-1">{t(c.label)}</span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                aria-label={t(c.label)}
+                checked={on(c)}
+                disabled={disabled}
+                aria-disabled={on(c) && value.length === 1}
+                onChange={() => toggle(c)}
+              />
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "flex size-[1.125rem] items-center justify-center rounded-md ring-1",
+                  on(c) ? "bg-ink text-paper ring-ink" : "ring-border",
+                )}
+              >
+                {on(c) ? <Check className="size-3" strokeWidth={3} /> : null}
+              </span>
+            </label>
+            {c.id === "call" && on(c) ? (
+              <p className="px-2 pb-1.5 pl-9 text-[0.75rem] text-ink-3">{t("new.callHandoff")}</p>
+            ) : null}
+          </div>
+        ))}
+      </fieldset>
+    );
+  };
+
+  return (
+    <div className="grid gap-x-4 sm:grid-cols-2">
+      {column("web")}
+      <div className="flex flex-col">
+        {column("phone")}
+        {column("message")}
+      </div>
+    </div>
   );
 }
 
@@ -155,68 +267,9 @@ export function ChannelPicker({
     };
   }, [open]);
 
-  const have = new Set(runners?.map((r) => r.id) ?? ["steps", "chat", "talk", "video"]);
-  const offered = CHANNELS.filter((c) => have.has(c.runner));
-  const groups = GROUPS.filter((g) => offered.some((c) => c.group === g.id));
+  const offered = offeredOf(runners);
+  const groups = CHANNEL_GROUPS.filter((g) => offered.some((c) => c.group === g.id));
   const on = (c: Channel) => value.includes(c.id);
-  // One channel always stays on: a wizard nobody can reach is no choice.
-  const toggle = (c: Channel) => {
-    if (on(c) && value.length === 1) {
-      return;
-    }
-    onChange(on(c) ? value.filter((id) => id !== c.id) : [...value, c.id]);
-  };
-
-  const column = (group: Group) => {
-    const meta = GROUPS.find((g) => g.id === group);
-    const rows = offered.filter((c) => c.group === group);
-    if (!(meta && rows.length)) {
-      return null;
-    }
-    const GroupIcon = meta.icon;
-    return (
-      <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
-        <legend className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-[0.75rem] text-ink-3">
-          <GroupIcon className="size-3.5" /> {t(meta.label)}
-        </legend>
-        {rows.map((c) => (
-          <div key={c.id}>
-            <label
-              className={cn(
-                "flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[0.875rem] transition hover:bg-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus coarse:h-11",
-                on(c) && "bg-paper-2",
-              )}
-            >
-              <span className="flex w-5 justify-center text-ink-3">
-                <ChannelIcon channel={c} />
-              </span>
-              <span className="flex-1">{t(c.label)}</span>
-              <input
-                type="checkbox"
-                className="sr-only"
-                aria-label={t(c.label)}
-                checked={on(c)}
-                aria-disabled={on(c) && value.length === 1}
-                onChange={() => toggle(c)}
-              />
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "flex size-[1.125rem] items-center justify-center rounded-md ring-1",
-                  on(c) ? "bg-ink text-paper ring-ink" : "ring-border",
-                )}
-              >
-                {on(c) ? <Check className="size-3" strokeWidth={3} /> : null}
-              </span>
-            </label>
-            {c.id === "call" && on(c) ? (
-              <p className="px-2 pb-1.5 pl-9 text-[0.75rem] text-ink-3">{t("new.callHandoff")}</p>
-            ) : null}
-          </div>
-        ))}
-      </fieldset>
-    );
-  };
 
   return (
     <div ref={box} className={cn("relative flex flex-wrap items-center gap-1.5", className)}>
@@ -256,13 +309,7 @@ export function ChannelPicker({
           className="absolute top-full left-0 z-20 mt-2 w-[min(32rem,calc(100vw-2rem))] animate-unfold rounded-2xl bg-card p-3 text-left shadow-overlay ring-1 ring-border"
         >
           <p className="px-2 pt-1 font-semibold text-[0.9375rem]">{t("new.where")}</p>
-          <div className="grid gap-x-4 sm:grid-cols-2">
-            {column("web")}
-            <div className="flex flex-col">
-              {column("phone")}
-              {column("message")}
-            </div>
-          </div>
+          <ChannelList value={value} onChange={onChange} runners={runners} />
         </div>
       ) : null}
     </div>

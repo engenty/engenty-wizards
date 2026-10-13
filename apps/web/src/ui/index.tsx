@@ -4,6 +4,7 @@ export {
   Composer,
   type ComposerHandle,
   DictationButton,
+  LATER_KEYS,
   pastedName,
   type Speech,
   Thumb,

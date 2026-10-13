@@ -31,6 +31,7 @@ import { ChatPanel, useArchitectChat, Working } from "./editor/ChatPanel";
 import { FilesPanel } from "./editor/FilesPanel";
 import { currentDecisions, FlowDiagram } from "./editor/FlowDiagram";
 import { Inspector } from "./editor/Inspector";
+import { LiveDialog } from "./editor/LiveDialog";
 import { MemoryPanel } from "./editor/MemoryPanel";
 import { RunsPanel } from "./editor/RunsPanel";
 import { ShareDialog } from "./editor/ShareDialog";
@@ -238,6 +239,7 @@ export function EditorPage() {
   const pane = usePaneWidth();
   const sheet = useSheetHeight();
   const [shareOpen, setShareOpen] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
   const [look, setLook] = useRunLook();
   const [activeStep, setActiveStep] = useState<string | null>(null);
@@ -293,8 +295,8 @@ export function EditorPage() {
   const publish = useMutation({
     mutationFn: () => api.post<PublishResult>(`/api/studio/wizards/${id}/publish`),
     onSuccess: async ({ cloud }) => {
-      // With an account linked the version went on to its cloud. How that went comes along: the
-      // share dialog opens with it, and says first when the cloud did not take the version.
+      // With an account linked the version went on to its cloud: how that went comes along, and
+      // the dialog that published says so.
       if (cloud) {
         qc.setQueryData(["cloud", id], { linked: true, ...cloud });
       }
@@ -303,7 +305,6 @@ export function EditorPage() {
         qc.invalidateQueries({ queryKey: ["cloud", id] }),
         qc.invalidateQueries({ queryKey: ["wizards"] }),
       ]);
-      setShareOpen(true);
     },
   });
 
@@ -328,6 +329,15 @@ export function EditorPage() {
   // A first build covers the diagram; a step asked for in place is shown in its place instead.
   const building = chat.phase !== "idle" && w.blank && !adding;
   const hasIssues = w.issues.length > 0;
+  /** Asks the assistant to mend the draft's issues, in the chat. */
+  const fixIssues = () => {
+    setShareOpen(false);
+    setLiveOpen(false);
+    setTab("chat");
+    void chat.send(
+      `Bitte behebe diese Probleme im Wizard:\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
+    );
+  };
   // Read-only for one of two reasons: the wizard is a local install's, or nothing is built here.
   // Its project says which. A project that is not in the list was made here by a tenant that
   // builds nothing here any more.
@@ -428,15 +438,11 @@ export function EditorPage() {
         </button>
         <span className="hidden sm:inline-flex">
           {w.published ? (
-            w.dirty ? (
-              <Chip tone="warn">{t("editor.unpublishedChanges")}</Chip>
-            ) : (
-              <WhereChip
-                where={whereItRuns(w, me.data, cloudLinked ? cloud.data : null)}
-                me={me.data}
-                version={w.publishedVersion}
-              />
-            )
+            <WhereChip
+              where={whereItRuns(w, me.data, cloudLinked ? cloud.data : null)}
+              me={me.data}
+              version={w.publishedVersion}
+            />
           ) : (
             <Chip>{t("editor.notPublished")}</Chip>
           )}
@@ -465,33 +471,17 @@ export function EditorPage() {
           >
             <Play className="size-3.5" /> {t("editor.test")}
           </Button>
-          {w.published && (!w.dirty || w.readOnly) ? (
-            <Button size="sm" onClick={() => setShareOpen(true)}>
-              <Share2 className="size-3.5" /> {t("editor.share")}
+          {/* The first version goes live by sharing; every later one by its own dialog. */}
+          {w.published && w.dirty && !w.readOnly ? (
+            <Button variant="secondary" size="sm" onClick={() => setLiveOpen(true)}>
+              <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+              <span className="max-sm:hidden">{t("live.open")}</span>
+              <span className="sm:hidden">{t("live.openShort")}</span>
             </Button>
-          ) : w.readOnly ? null : (
-            <>
-              {/* What the cloud would lack for the draft is said in the share dialog: with an
-                  account linked it stays at hand while there is something to publish. */}
-              {cloudLinked ? (
-                <IconButton
-                  label={t("editor.share")}
-                  className="max-sm:hidden"
-                  onClick={() => setShareOpen(true)}
-                >
-                  <Share2 className="size-4" />
-                </IconButton>
-              ) : null}
-              <Button
-                size="sm"
-                disabled={hasIssues || building}
-                busy={publish.isPending}
-                onClick={() => publish.mutate()}
-              >
-                {t("editor.publish")}
-              </Button>
-            </>
-          )}
+          ) : null}
+          <Button size="sm" onClick={() => setShareOpen(true)}>
+            <Share2 className="size-3.5" /> {t("editor.share")}
+          </Button>
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
           </span>
@@ -514,12 +504,7 @@ export function EditorPage() {
                   variant="quiet"
                   className="mt-3"
                   disabled={chat.phase !== "idle"}
-                  onClick={() => {
-                    setTab("chat");
-                    void chat.send(
-                      `Bitte behebe diese Probleme im Wizard:\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
-                    );
-                  }}
+                  onClick={fixIssues}
                 >
                   {t("editor.fixWithChat")}
                 </Button>
@@ -753,12 +738,43 @@ export function EditorPage() {
           w.readOnly
             ? undefined
             : {
-                run: () => publish.mutate(),
+                run: () => publish.mutateAsync(),
                 busy: publish.isPending,
                 disabled: hasIssues || building,
+                fix: fixIssues,
+                goLive: () => {
+                  setShareOpen(false);
+                  setLiveOpen(true);
+                },
               }
         }
       />
+      {w.readOnly ? null : (
+        <LiveDialog
+          wizard={w}
+          open={liveOpen}
+          onClose={() => setLiveOpen(false)}
+          cloud={cloudLinked}
+          actions={{
+            publish: () => publish.mutateAsync(),
+            busy: publish.isPending,
+            disabled: hasIssues || building,
+            test: () => {
+              setLiveOpen(false);
+              testRun.mutate();
+            },
+            openRun: (runId) => {
+              setLiveOpen(false);
+              setDrawerRun(runId);
+            },
+            fix: fixIssues,
+            share: () => {
+              setLiveOpen(false);
+              setShareOpen(true);
+            },
+          }}
+        />
+      )}
     </div>
   );
 }

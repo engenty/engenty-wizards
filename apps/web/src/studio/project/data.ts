@@ -49,15 +49,37 @@ export function useFileActions(projectId: string, readOnly = false) {
     busy,
     error,
     readOnly,
+    /** Resolves with the files that were taken, in order. */
     upload: async (kind: ProjectFileKind, files: File[]) => {
       setBusy(true);
+      const taken: ProjectFileView[] = [];
       await run(async () => {
         for (const file of files) {
-          await api.upload(`/api/studio/projects/${projectId}/files?kind=${kind}`, file);
+          taken.push(
+            await api.upload<ProjectFileView>(
+              `/api/studio/projects/${projectId}/files?kind=${kind}`,
+              file,
+            ),
+          );
           await refresh();
         }
       });
       setBusy(false);
+      return taken;
+    },
+    /**
+     * Fetches a file from a web address. A logo's address that is a web page gives the logos on
+     * it instead, to pick from. Errors are the caller's to show.
+     */
+    fromUrl: async (kind: ProjectFileKind, url: string) => {
+      const answer = await api.post<{
+        file?: ProjectFileView;
+        candidates?: { url: string; hint: string }[];
+      }>(`/api/studio/projects/${projectId}/files/url`, { kind, url });
+      if (answer.file) {
+        await refresh();
+      }
+      return answer;
     },
     describe: (fileId: string, description: string) =>
       run(() => api.patch(`/api/studio/projects/${projectId}/files/${fileId}`, { description })),

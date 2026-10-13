@@ -186,7 +186,12 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         if (info.kind === "page" && typeof runner.page !== "function") {
           throw new Error(`Runner "${info.id}": a page runner needs a page.`);
         }
-        record.runners.set(info.id, { info, page: runner.page, problem: runner.problem });
+        record.runners.set(info.id, {
+          info,
+          page: runner.page,
+          problem: runner.problem,
+          address: runner.address,
+        });
       },
       publicUrl: (path) => publicUrlOf(source.id, path),
       runs: runsApiFor(source.id),

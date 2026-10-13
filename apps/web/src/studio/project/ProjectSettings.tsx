@@ -1,4 +1,15 @@
-import type { BrandColor, ProjectFact } from "@engenty-wizards/shared/projects";
+import type {
+  AssetSection,
+  BrandColor,
+  BrandFont,
+  BrandGradient,
+  BrandPattern,
+  BrandRule,
+  ColorSection,
+  LogoSection,
+  ProjectFact,
+  TextStyle,
+} from "@engenty-wizards/shared/projects";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { api } from "../../lib/api";
@@ -7,15 +18,31 @@ import { type Project, useIsAdmin, useManyProjects } from "../../lib/session";
 import { Button, Input, Label, Textarea } from "../../ui";
 import { useAssistantPage } from "../assistant/page";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
+import { Assets } from "./Assets";
 import { Colors } from "./Colors";
 import { useAutosave, useProjectFiles } from "./data";
 import { Facts } from "./Facts";
-import { Assets, Logos } from "./Files";
+import { Logos } from "./Logos";
 import { Anchor, Section } from "./Section";
+import { Typography } from "./Typography";
 
 type Patch = {
   name?: string;
-  brand?: { name?: string; about?: string; colors?: BrandColor[] };
+  brand?: {
+    name?: string;
+    about?: string;
+    colors?: BrandColor[];
+    colorSections?: ColorSection[];
+    gradients?: BrandGradient[];
+    patterns?: BrandPattern[];
+    colorRules?: BrandRule[];
+    logoSections?: LogoSection[];
+    assetSections?: AssetSection[];
+    fonts?: BrandFont[];
+    textStyles?: TextStyle[];
+    typeRules?: BrandRule[];
+    logoRules?: BrandRule[];
+  };
   facts?: ProjectFact[];
 };
 
@@ -123,26 +150,59 @@ export function ProjectSettings({
           <Anchor id="base">
             <Base key={`base:${key}`} project={project} save={save} />
           </Anchor>
-          <Anchor id="logos">
-            <Logos projectId={project.id} data={data} readOnly={readOnly} />
-          </Anchor>
-          <Anchor id="colors">
-            <Colors
-              key={`colors:${key}`}
-              colors={project.brand.colors ?? []}
-              save={(colors) => save({ brand: { colors } })}
-              readOnly={readOnly}
-            />
-          </Anchor>
-          <Anchor id="assets">
-            <Assets projectId={project.id} data={data} readOnly={readOnly} />
-          </Anchor>
           <Anchor id="facts">
             <Facts
               key={`facts:${key}`}
               facts={project.facts}
               save={(facts) => save({ facts })}
               readOnly={readOnly}
+            />
+          </Anchor>
+          <Anchor id="logos">
+            <Logos
+              key={`logos:${key}`}
+              projectId={project.id}
+              data={data}
+              readOnly={readOnly}
+              sections={project.brand.logoSections ?? []}
+              rules={project.brand.logoRules ?? []}
+              save={(brand) => save({ brand })}
+            />
+          </Anchor>
+          <Anchor id="colors">
+            <Colors
+              key={`colors:${key}`}
+              projectId={project.id}
+              data={data}
+              colors={project.brand.colors ?? []}
+              sections={project.brand.colorSections ?? []}
+              gradients={project.brand.gradients ?? []}
+              patterns={project.brand.patterns ?? []}
+              rules={project.brand.colorRules ?? []}
+              save={(brand) => save({ brand })}
+              readOnly={readOnly}
+            />
+          </Anchor>
+          <Anchor id="typography">
+            <Typography
+              key={`typography:${key}`}
+              projectId={project.id}
+              fonts={project.brand.fonts ?? []}
+              styles={project.brand.textStyles ?? []}
+              rules={project.brand.typeRules ?? []}
+              sample={project.brand.name || t("project.typeSample")}
+              save={(brand) => save({ brand })}
+              readOnly={readOnly}
+            />
+          </Anchor>
+          <Anchor id="assets">
+            <Assets
+              key={`assets:${key}`}
+              projectId={project.id}
+              data={data}
+              readOnly={readOnly}
+              sections={project.brand.assetSections ?? []}
+              save={(brand) => save({ brand })}
             />
           </Anchor>
         </>

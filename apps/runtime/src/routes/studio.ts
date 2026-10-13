@@ -4,9 +4,15 @@ import {
   ASSISTANT_LAYOUTS,
   ASSISTANT_PAGE_BYTES,
   type AssistantEvents,
+  type AssistantSignal,
+  assistantSignalSchema,
   assistantTurnSchema,
 } from "@engenty-wizards/shared/assistant";
-import { MODEL_CLASSES, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import {
+  MODEL_CLASSES,
+  TEXT_CLASSES,
+  type WizardDefinition,
+} from "@engenty-wizards/shared/definition";
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
@@ -20,9 +26,11 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { runStudioAssistant } from "../agents/studio-assistant.js";
+import { type AnswerPart, runStudioAssistant, signalText } from "../agents/studio-assistant.js";
 import { chatEngine, setChatEngine, subscriptionClients } from "../agents/subscription.js";
+import { scanColors, scanFonts, scanImages, scanLogos } from "../agents/website.js";
 import { answerBrowser, awaitBrowser } from "../assistant/browser.js";
+import { endRun, signalRun, startRun, takeSignals } from "../assistant/runs.js";
 import { accountOverview, linkedAccount, startLink, unlink } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
 import { createLocalKey, deleteLocalKey, listLocalKeys } from "../auth/keys.js";
@@ -66,7 +74,7 @@ import {
   renameTenant,
   tenantInfo,
   tenantMembers,
-  userFeatures,
+  userInfo,
 } from "../manage.js";
 import { seenApps } from "../mcp/seen.js";
 import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
@@ -135,6 +143,7 @@ import { exportWizard, importWizard } from "../services/package.js";
 import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
 import {
   addProjectFile,
+  addProjectFileFromUrl,
   fileView,
   orderProjectFiles,
   projectFile,
@@ -189,6 +198,7 @@ import { draftWidgetPreview } from "../services/widgets.js";
 import {
   createWizard,
   deleteWizard,
+  draftChanges,
   duplicateWizard,
   listWizards,
   ownedWizard,
@@ -366,6 +376,11 @@ async function testClass(
 }
 
 /** The size of an inline terminal, as the page lays it out. */
+/** Whether the studio assistant's developer mode is offered to this person. */
+async function assistantDevFor(user: SessionUser): Promise<boolean> {
+  return managed ? (await userInfo(user.id)).admin : env.assistantDev;
+}
+
 const terminalSize = z.object({
   cols: z.number().int().min(10).max(500).optional(),
   rows: z.number().int().min(4).max(200).optional(),
@@ -380,7 +395,7 @@ export const studio = new Hono<Vars>()
     const profile = await userProfile(user);
     // What the Manage-App says of the tenant: its plan and feature switches; and of the person.
     const info = managed ? await tenantInfo(user.tenantId).catch(() => null) : null;
-    const own = managed ? await userFeatures(user.id) : null;
+    const person = managed ? await userInfo(user.id) : null;
     return c.json({
       user: { id: user.id, name: profile.name, email: profile.email, image: user.image ?? null },
       /** What the person says about themselves; name and e-mail are the account's when managed. */
@@ -392,7 +407,11 @@ export const studio = new Hono<Vars>()
         plan: info?.plan ?? null,
       },
       /** The feature switches: the code's defaults, what the Manage-App says of the team and the person, this install's file. */
-      features: features(managed ? { ...info?.features, ...own } : overview?.tenant.features),
+      features: features(
+        managed ? { ...info?.features, ...person?.features } : overview?.tenant.features,
+      ),
+      /** The studio assistant's developer mode may be switched on: ASSISTANT_DEV here, the platform's admins when managed. */
+      assistantDev: await assistantDevFor(user),
       mode: managed ? "managed" : "local",
       /** The tenant's balance; null where the runtime resolves models itself. */
       credits: managed ? await balanceCredits() : null,
@@ -508,6 +527,12 @@ export const studio = new Hono<Vars>()
     const voice = await generateSpeechMedia({ text, abortSignal: c.req.raw.signal });
     return c.body(new Uint8Array(voice.bytes), 200, { "content-type": voice.mime });
   })
+  // A message written while a turn runs: the turn takes it before its next step or after its answer.
+  .post("/assistant/run/:runId/signal", async (c) => {
+    const body = assistantSignalSchema.parse(await c.req.json());
+    const taken = signalRun(c.get("user").id, c.req.param("runId"), body);
+    return c.json({ ok: taken }, taken ? 200 : 404);
+  })
   // A browser tool's result: the turn that waits for it goes on.
   .post("/assistant/tool/:callId", async (c) => {
     const body = z.object({ result: z.unknown() }).parse(await c.req.json());
@@ -530,54 +555,101 @@ export const studio = new Hono<Vars>()
         ? { route: body.page.route, title: body.page.title, view: body.page.view }
         : (body.page ?? null);
     const chat = await openChat(user);
-    const history = await turnHistory(user, chat);
+    const debug = Boolean(body.debug) && (await assistantDevFor(user));
+    let history = await turnHistory(user, chat);
     const runId = nanoid(10);
     const userMessageId = await addMessage(chat.id, {
       role: "user",
       content: body.message,
       page: page ? { route: page.route, title: page.title } : null,
     });
+    startRun(runId, user.id);
     return streamSSE(c, async (stream) => {
       const abort = new AbortController();
       stream.onAbort(() => abort.abort());
       const send = <K extends keyof AssistantEvents>(event: K, data: AssistantEvents[K]) =>
         stream.writeSSE({ event, data: JSON.stringify(data) });
-      const messageId = nanoid(14);
+      let messageId = nanoid(14);
       await send("run_started", { threadId: chat.id, runId, messageId: userMessageId });
+      // The answer's text since the last message written meanwhile.
       let reply = "";
+      let changed = false;
+      let steps = 0;
+      /** What the answer said and did up to messages written meanwhile; null when nothing. */
+      const storePart = async (before: AnswerPart) => {
+        changed ||= before.changed;
+        return before.reply || before.toolCalls.length || before.cards.length
+          ? await addMessage(chat.id, { role: "assistant", content: before.reply, ...before })
+          : null;
+      };
+      /** The messages written meanwhile, after the part of the answer before them. */
+      const storeSignals = async (taken: AssistantSignal[], answerId: string | null) => {
+        for (const [i, s] of taken.entries()) {
+          const stored = await addMessage(chat.id, { role: "user", content: s.message });
+          await send("signal", {
+            ref: s.ref,
+            messageId: stored,
+            content: s.message,
+            answerId: i === 0 ? answerId : null,
+          });
+        }
+        reply = "";
+        messageId = nanoid(14);
+      };
       try {
-        const result = await runStudioAssistant({
-          user,
-          chat,
-          history,
-          project,
-          writable,
-          message: body.message,
-          page,
-          browserTools: body.tools,
-          lang: body.lang,
-          signal: abort.signal,
-          onText: (delta) => {
-            reply += delta;
-            void send("text", { messageId, delta });
-          },
-          onActivity: (label) => void send("activity", { label }),
-          onChanged: () => void send("changed", {}),
-          onCard: (card) => void send("card", card),
-          onToolCall: (call) => void send("tool_call", call),
-          onToolResult: (result) => void send("tool_result", result),
-          callBrowser: (call) => awaitBrowser(user.id, call.toolCallId, abort.signal),
-        });
-        reply =
-          result.reply || (result.changed ? (body.lang === "de" ? "Erledigt." : "Done.") : "");
-        const stored = await addMessage(chat.id, {
-          role: "assistant",
-          content: reply,
-          cards: result.cards,
-          toolCalls: result.toolCalls,
-          changed: result.changed,
-        });
-        await send("done", { messageId: stored, reply, changed: result.changed });
+        let message = body.message;
+        for (;;) {
+          const result = await runStudioAssistant({
+            user,
+            chat,
+            history,
+            project,
+            writable,
+            message,
+            page,
+            browserTools: body.tools,
+            lang: body.lang,
+            signal: abort.signal,
+            onText: (delta) => {
+              reply += delta;
+              void send("text", { messageId, delta });
+            },
+            onActivity: (label) => void send("activity", { label }),
+            onChanged: () => void send("changed", {}),
+            onCard: (card) => void send("card", card),
+            onToolCall: (call) => void send("tool_call", call),
+            onToolResult: (result) => void send("tool_result", result),
+            callBrowser: (call) => awaitBrowser(user.id, call.toolCallId, abort.signal),
+            takeSignals: () => takeSignals(runId),
+            onSignal: async (taken, before) => storeSignals(taken, await storePart(before)),
+            ...(debug
+              ? {
+                  onPrompt: (prompt) => void send("prompt", prompt),
+                  onStep: (step) => void send("step", { ...step, step: ++steps }),
+                }
+              : {}),
+          });
+          // Written after the answer's last step: the turn goes on with it.
+          const left = takeSignals(runId);
+          if (!left.length || abort.signal.aborted) {
+            changed ||= result.changed;
+            reply = result.reply || (changed ? (body.lang === "de" ? "Erledigt." : "Done.") : "");
+            const stored = await addMessage(chat.id, {
+              role: "assistant",
+              content: reply,
+              cards: result.cards,
+              toolCalls: result.toolCalls,
+              changed: result.changed,
+            });
+            await send("done", { messageId: stored, reply, changed });
+            break;
+          }
+          // The next answer knows this one: it is stored before the history is read again.
+          const answerId = await storePart(result);
+          history = await turnHistory(user, chat);
+          await storeSignals(left, answerId);
+          message = signalText(left);
+        }
       } catch (err) {
         console.error("[studio-assistant]", err);
         if (reply.trim()) {
@@ -592,6 +664,7 @@ export const studio = new Hono<Vars>()
                 : "Something went wrong. Please try again.",
         });
       }
+      endRun(runId);
       // Older messages fold into the chat's running summary once enough have piled up.
       void foldChat(chat.id).catch((err) => console.error("[studio-assistant] fold:", err));
     });
@@ -648,6 +721,40 @@ export const studio = new Hono<Vars>()
       data: new Uint8Array(await file.arrayBuffer()),
     });
     return c.json(fileView(row));
+  })
+  .post("/projects/:id/files/url", async (c) => {
+    const project = await ownedProject(c.get("user").id, c.req.param("id"));
+    const input = z
+      .object({ url: z.string().min(1).max(500_000), kind: z.enum(PROJECT_FILE_KINDS) })
+      .parse(await c.req.json());
+    const url = /^(https?:\/\/|data:)/i.test(input.url) ? input.url : `https://${input.url}`;
+    try {
+      return c.json({ file: fileView(await addProjectFileFromUrl(project.id, { ...input, url })) });
+    } catch (err) {
+      // A web page where a logo or an asset was asked for: its logos or pictures, to pick from.
+      if (err instanceof ServiceError && err.data.reason === "page") {
+        const page = String(err.data.url ?? url);
+        const scan = input.kind === "logo" ? scanLogos : scanImages;
+        return c.json({ candidates: await scan(page) });
+      }
+      throw err;
+    }
+  })
+  .post("/projects/:id/colors/scan", async (c) => {
+    await ownedProject(c.get("user").id, c.req.param("id"));
+    const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
+    const colors = await scanColors(url).catch(() => {
+      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+    });
+    return c.json({ colors });
+  })
+  .post("/projects/:id/fonts/scan", async (c) => {
+    await ownedProject(c.get("user").id, c.req.param("id"));
+    const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
+    const fonts = await scanFonts(url).catch(() => {
+      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+    });
+    return c.json({ fonts });
   })
   .put("/projects/:id/files/order", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));
@@ -1124,6 +1231,21 @@ export const studio = new Hono<Vars>()
   .post("/wizards/:id/publish", async (c) =>
     c.json(await publishAndSync(c.get("user").id, c.req.param("id"))),
   )
+  // What publishing the draft would change: the steps and files, its last test, the cost of a run before and after.
+  .get("/wizards/:id/changes", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    const { published, ...found } = await draftChanges(w);
+    const cost = async (def: WizardDefinition) =>
+      estimateRun(w.id, null, def, await stepsWithoutModel(def));
+    const [before, after] = published ? await Promise.all([cost(published), cost(w.draft)]) : [];
+    return c.json({
+      ...found,
+      cost:
+        before?.available && after?.available
+          ? { before: before.credits, after: after.credits }
+          : null,
+    });
+  })
   // What a run of the draft is expected to cost, per step and in total.
   .get("/wizards/:id/estimate", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));

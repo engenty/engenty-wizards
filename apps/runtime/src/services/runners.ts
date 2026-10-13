@@ -1,4 +1,4 @@
-import type { PluginRunnerRequest } from "@engenty-wizards/plugin-sdk";
+import type { PluginRunnerAddress, PluginRunnerRequest } from "@engenty-wizards/plugin-sdk";
 import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
 import type { PublicWizard } from "@engenty-wizards/shared/run";
 import {
@@ -89,15 +89,45 @@ export async function checkRunnerSettings(settings: RunnerSettings): Promise<Run
   return { default: settings.default, enabled };
 }
 
-/** The runners with how each fits the draft, and how the wizard is offered. */
+/**
+ * Where a person reaches the wizard through each channel that is on, by runner id: the number,
+ * the keyword and the link, as the runner's plugin knows them. A runner that cannot say is left
+ * out.
+ */
+async function addressesOf(
+  w: WizardRow,
+  enabled: string[],
+): Promise<Map<string, PluginRunnerAddress>> {
+  const wizard = { id: w.id, title: w.draft.title, token: w.shareToken };
+  const runners = (await pluginsOf(currentTenant())).flatMap((p) => [...p.runners.values()]);
+  const found = await Promise.all(
+    runners
+      .filter((r) => r.address && enabled.includes(r.info.id))
+      .map(async (r) => {
+        const address = await Promise.resolve()
+          .then(() => r.address?.(wizard) ?? null)
+          .catch(() => null);
+        return address ? ([r.info.id, address] as const) : null;
+      }),
+  );
+  return new Map(found.filter((entry) => entry !== null));
+}
+
+/** The runners with how each fits the draft and where it is reached, and how the wizard is offered. */
 export async function wizardRunners(w: WizardRow): Promise<{
-  runners: (RunnerInfo & { fit: RunnerFit })[];
+  runners: (RunnerInfo & { fit: RunnerFit; address: PluginRunnerAddress | null })[];
   settings: RunnerSettings;
 }> {
   const available = await runnersOf();
+  const settings = runnerSettingsOf(w, available);
+  const addresses = await addressesOf(w, settings.enabled);
   return {
-    runners: available.map((r) => ({ ...r, fit: runnerFit(w.draft, r) })),
-    settings: runnerSettingsOf(w, available),
+    runners: available.map((r) => ({
+      ...r,
+      fit: runnerFit(w.draft, r),
+      address: addresses.get(r.id) ?? null,
+    })),
+    settings,
   };
 }
 

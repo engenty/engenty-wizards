@@ -167,6 +167,11 @@ export const env = {
   /** Encrypts connected accounts and kept browser sessions; falls back to the app secret. */
   storeKey: str("STORE_ENC_KEY"),
   devLogin: process.env.NODE_ENV !== "production" && str("DEV_LOGIN") === "1",
+  /**
+   * `1`: the studio assistant's developer mode may be switched on here (steps, tools, prompt,
+   * the turns' events). A managed runtime offers it to the platform's admins instead.
+   */
+  assistantDev: str("ASSISTANT_DEV") === "1",
 
   /**
    * The Manage-App this runtime belongs to. Set = people sign in there, tenants come from its

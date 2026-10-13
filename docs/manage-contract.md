@@ -58,7 +58,7 @@ Errors: `{ "error": string, "code": string }`.
 | `GET /v1/tenants/:id/usage?months=` | → `{ months: [{ month: "2026-10", credits, runs: [{ runId, credits }] }] }` · what the tenant spent per calendar month (UTC), the newest first, `months` 1–12 (3 when left out), each with its 20 costliest runs; the studio assistant names the wizards behind the runs |
 | `PATCH /v1/tenants/:id` | `{ name }` → the same answer as `GET /v1/tenants/:id` · renames the team; the studio's first visit asks for the name ([content/user/create-account.md](content/user/create-account.md)) · `name` 1–80 characters |
 | `POST /v1/install-mail` | `{ email, lang: "de" \| "en" }` → `{ ok: true }` · the Manage-App mails its install mail (the command and the first steps) to `email`, which must belong to a person of a tenant this runtime serves (`404` otherwise); 3 a day per address (`429`) · "Mail me the command" on the cloud studio's start page |
-| `GET /v1/users/:id` | → `{ id, name, email, image }` |
+| `GET /v1/users/:id` | → `{ id, name, email, image, features, admin }` · `features`: the person's own switches, laid over the team's · `admin`: the person runs the platform; the studio offers them the assistant's developer mode |
 | `POST /v1/push` | `{ tenantId, device: { token, platform: "ios" \| "android" }, title, body, data: { runId, kind } }` → `{ ok: true }` · a push to the mobile app (the apps repo engenty-wizards-apps) on one device: `token` is the raw APNs or FCM token the app gave the run (`POST /api/runs/:id/notify`); the Manage-App holds the APNs and FCM keys · `kind`: `done`, `failed`, `waiting` or `asks` · a token APNs or FCM no longer takes is not an error |
 
 Free balance = balance − open reservations. A reservation's hold shrinks by what its run has
