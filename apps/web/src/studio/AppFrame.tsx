@@ -23,7 +23,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, useNavigate } from "react-router";
 import { api } from "../lib/api";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { useFeature } from "../lib/features";
@@ -97,8 +97,6 @@ export function useTrail(): Crumb[] {
 
 function Trail() {
   const trail = useTrail();
-  // With the sidebar open the space's name stands there: the trail starts without a slash.
-  const nameBeside = !useSpaceSidebarShown();
   if (!trail.length) {
     return null;
   }
@@ -111,9 +109,7 @@ function Trail() {
         <Fragment key={`${i}:${crumb.label}`}>
           {/* The first follows the space's name as the others follow each other: the bar's gap
               and the name's own padding are taken back, so every slash stands alike. */}
-          {i > 0 || nameBeside ? (
-            <span className={cn("mr-2 text-ink-4", i === 0 ? "-ml-1 sm:-ml-2" : "ml-2")}>/</span>
-          ) : null}
+          <span className={cn("mr-2 text-ink-4", i === 0 ? "-ml-1 sm:-ml-2" : "ml-2")}>/</span>
           {crumb.to && i < trail.length - 1 ? (
             <Link to={crumb.to} className="truncate text-ink-3 transition hover:text-ink">
               {crumb.label}
@@ -267,18 +263,26 @@ export function SpaceMenu({
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const [at, setAt] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, open, () => setOpen(false));
   const limit = me.limits.projects;
   const full = limit !== null && projects.length >= limit;
   const row =
     "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
+  // What the menu does, beside the spaces: a line glyph and a word, as in the person's menu.
+  const action =
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.875rem] text-ink-2 transition hover:bg-accent hover:text-ink";
   return (
     <div className="shrink-0" ref={ref}>
       <div className="relative">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setAt({ top: r.bottom + 6, left: r.left });
+            setOpen((o) => !o);
+          }}
           aria-expanded={open}
           aria-haspopup="menu"
           aria-label={label}
@@ -290,9 +294,13 @@ export function SpaceMenu({
         {open ? (
           <div
             role="menu"
+            // Below a name it stands fixed under it: the sidebar it may sit in clips what overflows.
+            style={placement === "below" ? { position: "fixed", ...at } : undefined}
             className={cn(
-              "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
-              placementClass(placement, position, "top-10 left-0"),
+              "z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
+              placement === "below"
+                ? null
+                : cn("absolute", placementClass(placement, position, "top-10 left-0")),
             )}
           >
             {projects.map((p) => {
@@ -341,18 +349,14 @@ export function SpaceMenu({
                   key={entry.to}
                   type="button"
                   role="menuitem"
-                  className={row}
+                  className={action}
                   onClick={() => {
                     setOpen(false);
                     navigate(entry.to);
                   }}
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
-                    <entry.icon className="size-4" />
-                  </span>
-                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
-                    {entry.label}
-                  </span>
+                  <entry.icon className="size-4 shrink-0 text-ink-3" />
+                  <span className="truncate">{entry.label}</span>
                 </button>
               ))}
             {project && !project.readOnly ? (
@@ -361,18 +365,14 @@ export function SpaceMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  className={row}
+                  className={action}
                   onClick={() => {
                     setOpen(false);
                     setRenaming(true);
                   }}
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
-                    <Pencil className="size-4" />
-                  </span>
-                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
-                    {t("nav.renameSpace")}
-                  </span>
+                  <Pencil className="size-4 shrink-0 text-ink-3" />
+                  <span className="truncate">{t("nav.renameSpace")}</span>
                 </button>
               </>
             ) : null}
@@ -383,19 +383,15 @@ export function SpaceMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  className={row}
+                  className={action}
                   onClick={() => {
                     setOpen(false);
                     setCreating(true);
                   }}
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
-                    <Plus className="size-4" />
-                  </span>
+                  <Plus className="size-4 shrink-0 text-ink-3" />
                   <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                    <span className="truncate font-medium text-[0.875rem] text-ink-2">
-                      {t("nav.addSpace")}
-                    </span>
+                    <span className="truncate">{t("nav.addSpace")}</span>
                   </span>
                 </button>
               </>
@@ -702,11 +698,6 @@ function useSpaceSidebarPick(): boolean {
   );
 }
 
-/** The space page's areas have a menu of their own: there it is the only one, and no toggle shows. */
-function useInArea(): boolean {
-  return useLocation().pathname.startsWith("/space");
-}
-
 /** Whether the sidebar stands beside the page: picked, and not in an area. */
 function useSpaceSidebar(): boolean {
   return useSpaceSidebarPick();
@@ -745,6 +736,44 @@ function setAreaSlot(el: HTMLElement | null) {
       listener();
     }
   }
+}
+
+// The pages with a menu of their own that stand now: while one does, the sidebar holds its menu.
+let sideMenus = 0;
+const sideMenuListeners = new Set<() => void>();
+
+function useHasSideMenu(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      sideMenuListeners.add(listener);
+      return () => sideMenuListeners.delete(listener);
+    },
+    () => sideMenus > 0,
+    () => false,
+  );
+}
+
+/**
+ * For a page with a menu of its own (the space's areas, the settings, a plugin's page): where to
+ * draw that menu – the sidebar's slot while the sidebar is open, else `null`, and the page draws
+ * it at its own left as before. One menu stands at the left, never two.
+ */
+export function useSideMenuSlot(): HTMLElement | null {
+  useEffect(() => {
+    sideMenus += 1;
+    for (const listener of sideMenuListeners) {
+      listener();
+    }
+    return () => {
+      sideMenus -= 1;
+      for (const listener of sideMenuListeners) {
+        listener();
+      }
+    };
+  }, []);
+  const slot = useAreaSlot();
+  const shown = useSpaceSidebarShown();
+  return shown ? slot : null;
 }
 
 /** Where an area's menu goes while the sidebar is open; `null` while there is none. */
@@ -787,9 +816,9 @@ type SidebarRow = {
 };
 
 /** The space's menu beside the page: its wizards, a new one, and the parts of its page. */
-function SpaceSidebar({ me }: { me: Me }) {
+function SpaceSidebar() {
   const open = useSpaceSidebar();
-  const inArea = useInArea();
+  const inArea = useHasSideMenu();
   const { project } = useCurrentProject();
   const plugins = useStudioPlugins();
   const mayCreate = useMayCreate();
@@ -840,16 +869,10 @@ function SpaceSidebar({ me }: { me: Me }) {
       )}
     >
       <div className="flex h-full w-64 flex-col overflow-y-auto px-4 pb-4">
-        {/* The toggle stands where it stood in the top bar, the space's name beside it. */}
-        <div className="flex h-12 shrink-0 items-center gap-2 pl-1 coarse:h-14 sm:gap-3">
-          <SpaceSidebarToggle />
-          <SpaceName me={me} />
-        </div>
         {/* In an area its own menu stands here (the page draws it in); else the space's. */}
-        {inArea ? (
-          <div key="area" ref={setAreaSlot} className="mt-6 animate-rise" />
-        ) : (
-          <div key="space" className="mt-6 animate-rise">
+        <div ref={setAreaSlot} className={inArea ? "pt-4 animate-rise sm:pt-6" : "hidden"} />
+        {inArea ? null : (
+          <div className="pt-4 animate-rise sm:pt-6">
             {list(wizards)}
             <p className="mt-5 mb-1 px-2 font-medium text-[0.6875rem] text-ink-4 uppercase tracking-[0.12em]">
               {t("nav.project")}
@@ -868,15 +891,10 @@ function SpaceSidebar({ me }: { me: Me }) {
  * space's name; the rest stands in its app bar along the bottom.
  */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
-  // Open, the sidebar holds the toggle and the space's name; below `lg` it is closed and the
-  // toggle hidden, so the name stays here.
-  const sidebar = useSpaceSidebar();
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
-      {sidebar ? null : <SpaceSidebarToggle />}
-      <span className={cn("flex min-w-0 items-center", sidebar && "lg:hidden")}>
-        <SpaceName me={me} />
-      </span>
+      <SpaceSidebarToggle />
+      <SpaceName me={me} />
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />
         {children}
@@ -939,32 +957,35 @@ export function AppFrame({
               {children}
             </main>
           ) : (
-            <div className="flex min-h-0 flex-1">
-              <SpaceSidebar me={me} />
-              <div ref={column} className="relative flex min-w-0 flex-1 flex-col">
-                <TopBar me={me} />
-                {/* `relative`: what a page places out of flow without a positioned parent (a
+            // The top bar runs across, over the sidebar and the page, open or closed.
+            <div className="flex min-h-0 flex-1 flex-col">
+              <TopBar me={me} />
+              <div className="flex min-h-0 flex-1">
+                <SpaceSidebar />
+                <div ref={column} className="relative flex min-w-0 flex-1 flex-col">
+                  {/* `relative`: what a page places out of flow without a positioned parent (a
                     hidden file field) stays in the page's own scroll, not in a frame around it,
                     which a jump to a section would scroll as well. The assistant's dock keeps
                     its height free below the last section (`--assistant-dock`). */}
-                <main
-                  id={SCROLL_ROOT_ID}
-                  className="relative min-h-0 flex-1 overflow-y-auto"
-                  style={{ paddingBottom: "var(--assistant-dock, 0px)" }}
-                >
-                  <div
-                    className={cn(
-                      "mx-auto w-full px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
-                      wide ? "max-w-[88rem]" : "max-w-5xl",
-                    )}
+                  <main
+                    id={SCROLL_ROOT_ID}
+                    className="relative min-h-0 flex-1 overflow-y-auto"
+                    style={{ paddingBottom: "var(--assistant-dock, 0px)" }}
                   >
-                    {children}
-                  </div>
-                </main>
-                <AssistantDock column={column} />
+                    <div
+                      className={cn(
+                        "mx-auto w-full px-3 pt-4 pb-12 sm:px-6 sm:pt-6",
+                        wide ? "max-w-[88rem]" : "max-w-5xl",
+                      )}
+                    >
+                      {children}
+                    </div>
+                  </main>
+                  <AssistantDock column={column} />
+                </div>
+                <AssistantSidebar column={column} />
+                <HighlightLayer />
               </div>
-              <AssistantSidebar column={column} />
-              <HighlightLayer />
             </div>
           )}
         </div>

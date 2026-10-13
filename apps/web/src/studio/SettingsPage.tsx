@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -10,7 +11,7 @@ import { PluginsSection } from "../plugins/PluginsSection";
 import { ProModulesSection } from "../plugins/ProModulesSection";
 import { Button, Card, cn, Empty, IconButton, Input } from "../ui";
 import { Account } from "./Account";
-import { useCrumbs } from "./AppFrame";
+import { useCrumbs, useSideMenuSlot } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
 import { Connectors } from "./Connectors";
 import { ProjectSwitcher } from "./HomePage";
@@ -186,6 +187,8 @@ export function SettingsPage() {
   useEffect(() => setKey(project?.id), [project?.id]);
   const plugins = useStudioPlugins();
   const narrow = useNarrow();
+  const sideSlot = useSideMenuSlot();
+  const inSidebar = Boolean(sideSlot) && !narrow;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   // Back up to the sections on a wide page, while the section's page stays; another section
@@ -261,34 +264,49 @@ export function SettingsPage() {
   }
   // Connectors belong to a project: with several, the switcher stands above them.
   const scoped = current?.id === "connectors" && many;
+  // The settings' menu: in the sidebar while that is open, else at the page's left.
+  const menuBody = (
+    <>
+      <LevelHead
+        title={t("settings.title")}
+        open={level === 1 ? (entry ?? null) : null}
+        onBack={() => (narrow ? navigate("/settings") : setUpAt(section ?? null))}
+      />
+      <div key={level} className={cn(stepClass(levelStep))}>
+        {level === 0 ? (
+          <LevelList
+            entries={entries}
+            current={narrow ? undefined : entry}
+            onPick={() => setUpAt(null)}
+          />
+        ) : (
+          <div ref={setSlot} />
+        )}
+      </div>
+    </>
+  );
   return (
     <SettingsMenuContext.Provider value={menu}>
+      {inSidebar && sideSlot ? createPortal(menuBody, sideSlot) : null}
       <div className="animate-rise">
-        <div className="grid gap-6 md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
-          <aside
-            className={cn(
-              "min-w-0 md:sticky md:top-6 md:self-start",
-              narrow && phone === 2 && "hidden",
-              narrow && pageStep === "back" && stepClass("back"),
-            )}
-          >
-            <LevelHead
-              title={t("settings.title")}
-              open={level === 1 ? (entry ?? null) : null}
-              onBack={() => (narrow ? navigate("/settings") : setUpAt(section ?? null))}
-            />
-            <div key={level} className={cn(stepClass(levelStep))}>
-              {level === 0 ? (
-                <LevelList
-                  entries={entries}
-                  current={narrow ? undefined : entry}
-                  onPick={() => setUpAt(null)}
-                />
-              ) : (
-                <div ref={setSlot} />
+        <div
+          className={cn(
+            "grid gap-6",
+            !inSidebar &&
+              "md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10",
+          )}
+        >
+          {inSidebar ? null : (
+            <aside
+              className={cn(
+                "min-w-0 md:sticky md:top-6 md:self-start",
+                narrow && phone === 2 && "hidden",
+                narrow && pageStep === "back" && stepClass("back"),
               )}
-            </div>
-          </aside>
+            >
+              {menuBody}
+            </aside>
+          )}
           {current ? (
             <div
               className={cn(

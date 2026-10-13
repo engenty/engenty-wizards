@@ -24,5 +24,5 @@ export {
   workspaceFile,
 } from "./composer";
 export { DatePicker, DateRangePicker, dateText } from "./date-picker";
-export { PageMenu, type PageMenuEntry } from "./page-menu";
+export { MenuPage, PageMenu, type PageMenuEntry } from "./page-menu";
 export { TimePicker } from "./time-picker";

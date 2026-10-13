@@ -7,7 +7,7 @@ import { t } from "../lib/i18n";
 import { useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, SpacePartFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
-import { scrollRoot, useAreaSlot, useCrumbs, useSpaceSidebarShown } from "./AppFrame";
+import { scrollRoot, useCrumbs, useSideMenuSlot } from "./AppFrame";
 import { useAssistantPage } from "./assistant/page";
 import { CATEGORY_ICON, CategoryView, useValue, ValueView } from "./project/Categories";
 import { FileView } from "./project/Documents";
@@ -161,9 +161,8 @@ export function ProjectPage() {
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
   const title = project ? project.brand.name?.trim() || project.name : t("nav.project");
-  const areaSlot = useAreaSlot();
-  const sidebarShown = useSpaceSidebarShown();
-  const inSidebar = sidebarShown && Boolean(areaSlot) && !narrow;
+  const areaSlot = useSideMenuSlot();
+  const inSidebar = Boolean(areaSlot) && !narrow;
 
   // Typography waits behind its switch.
   const off = useFeature("typography") ? [] : ["typography"];
