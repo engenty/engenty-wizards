@@ -13,6 +13,7 @@ import {
   MessageSquare,
   MessageSquareText,
   Phone,
+  Plus,
   Video,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -170,7 +171,7 @@ export function ChannelList({
     }
     const GroupIcon = meta.icon;
     return (
-      <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
+      <fieldset className="m-0 flex min-w-0 flex-col gap-0.5 border-0 p-0">
         <legend className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-[0.75rem] text-ink-3">
           <GroupIcon className="size-3.5" /> {t(meta.label)}
         </legend>
@@ -301,6 +302,20 @@ export function ChannelPicker({
           </button>
         );
       })}
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={t("new.where")}
+        onClick={(e) => {
+          const button = e.currentTarget;
+          setOrigin(button.offsetLeft + button.offsetWidth / 2);
+          setOpen((o) => !o);
+        }}
+        className="inline-flex size-9 items-center justify-center rounded-full text-ink-3 ring-1 ring-border transition hover:text-ink coarse:size-11"
+      >
+        <Plus className="size-4" />
+      </button>
       {open ? (
         <div
           role="dialog"

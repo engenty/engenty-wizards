@@ -20,7 +20,7 @@
       // Before first paint, so a dark visitor never sees the light page flash.
       try {
         const pick = localStorage.getItem("wizards.theme");
-        if (pick === "dark" || (!pick && matchMedia("(prefers-color-scheme: dark)").matches)) {
+        if (pick === "dark" || !pick || (pick === "system" && matchMedia("(prefers-color-scheme: dark)").matches)) {
           document.documentElement.classList.add("dark");
           document.querySelector('meta[name="theme-color"]').content = "#1c2a63";
         }

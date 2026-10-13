@@ -7,19 +7,23 @@ const KEY = "wizards.theme";
 const listeners = new Set<() => void>();
 const system = window.matchMedia("(prefers-color-scheme: dark)");
 
+/** The visitor's pick: `null` is "follow the OS", chosen on purpose; with no pick at all it is dark. */
 function stored(): Theme | null {
   try {
     const value = localStorage.getItem(KEY);
-    return value === "light" || value === "dark" ? value : null;
+    if (value === "system") {
+      return null;
+    }
+    return value === "light" ? "light" : "dark";
   } catch {
-    return null;
+    return "dark";
   }
 }
 
 /** Pages shown right now that stand on a vivid ground of their own, whatever the theme. */
 let grounded = 0;
 
-/** The visitor's pick, else the OS setting; a page on its own ground is always dark. */
+/** The visitor's pick (dark until there is one, or the OS setting if asked); a page on its own ground is always dark. */
 function current(): Theme {
   if (grounded > 0) {
     return "dark";
@@ -58,14 +62,10 @@ function apply() {
 system.addEventListener("change", apply);
 apply();
 
-/** The visitor's pick; `null` leaves it to the OS setting again. */
+/** The visitor's pick; `null` leaves it to the OS setting. */
 export function setTheme(theme: Theme | null) {
   try {
-    if (theme) {
-      localStorage.setItem(KEY, theme);
-    } else {
-      localStorage.removeItem(KEY);
-    }
+    localStorage.setItem(KEY, theme ?? "system");
   } catch {
     // the pick only lasts this page then
     document.documentElement.classList.toggle("dark", (theme ?? current()) === "dark");
@@ -74,7 +74,7 @@ export function setTheme(theme: Theme | null) {
   apply();
 }
 
-/** What the visitor picked, if anything: `null` follows the OS. */
+/** What the visitor picked, dark until then: `null` follows the OS. */
 export function useThemePick(): Theme | null {
   return useSyncExternalStore((listener) => {
     listeners.add(listener);
@@ -82,7 +82,7 @@ export function useThemePick(): Theme | null {
   }, stored);
 }
 
-/** The visitor's pick, else the OS setting — also while a page on its own ground shows dark. */
+/** The visitor's pick, dark until there is one — also while a page on its own ground shows dark. */
 export function usePreferredTheme(): Theme {
   return useSyncExternalStore(
     (listener) => {

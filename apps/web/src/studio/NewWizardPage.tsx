@@ -34,7 +34,6 @@ import {
   type ChannelId,
   ChannelPicker,
   channelLine,
-  DEFAULT_CHANNELS,
   isDefaultChoice,
   runnerSettingsOf,
 } from "./NewWizardChannels";
@@ -215,7 +214,7 @@ export function NewWizardPage() {
   // A link from the gallery names the template to open; one from the home's search brings the wish.
   const [params] = useSearchParams();
   const [prompt, setPrompt] = useState(params.get("wish") ?? "");
-  const [channels, setChannels] = useState<ChannelId[]>(DEFAULT_CHANNELS);
+  const [channels, setChannels] = useState<ChannelId[]>(["steps"]);
   const [files, setFiles] = useState<File[]>([]);
   const [dropping, setDropping] = useState(false);
   const [gallerySearch, setGallerySearch] = useState<{ text: string } | null>(null);
@@ -312,7 +311,6 @@ export function NewWizardPage() {
           <h1 className="mt-2 font-display font-semibold text-[2rem] leading-tight tracking-tight sm:text-[2.375rem]">
             {t("new.title")}
           </h1>
-          <p className="mt-2 text-[0.9375rem] text-ink-3">{t("new.hint")}</p>
         </div>
 
         <ChannelPicker
@@ -416,6 +414,7 @@ export function NewWizardPage() {
             </Button>
           </div>
         </div>
+        <p className="mt-3 text-center text-[0.875rem] text-ink-3">{t("new.hint")}</p>
         {speech.error ? (
           <p className="mt-2 px-3 text-[0.75rem] text-rose">
             {speech.error === "denied" ? t("editor.micDenied") : speech.error}

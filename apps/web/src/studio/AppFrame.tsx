@@ -21,7 +21,6 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router";
 import { AboutLinks } from "../about/AboutLinks";
-import { Logo } from "../brand";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
@@ -243,12 +242,15 @@ export function SpaceMenu({
   me,
   placement,
   label,
+  lead,
   className,
   children,
 }: {
   me: Me;
   placement: MenuPlacement;
   label?: string;
+  /** Stands before the button, inside the menu's box: the menu opens under it. */
+  lead?: ReactNode;
   className: string | ((open: boolean) => string);
   children: ReactNode;
 }) {
@@ -265,7 +267,8 @@ export function SpaceMenu({
   const row =
     "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className={cn("relative shrink-0", lead && "flex items-center")} ref={ref}>
+      {lead}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -367,10 +370,15 @@ function SpaceName({ me }: { me: Me }) {
     <SpaceMenu
       me={me}
       placement="below"
-      className="-ml-1 flex h-8 max-w-[16rem] items-center gap-1 rounded-lg px-2 font-medium text-[0.9375rem] text-ink transition hover:bg-accent"
+      label={t("nav.switchSpace")}
+      lead={
+        <span className="max-w-[16rem] truncate px-1 font-medium text-[0.9375rem] text-ink">
+          {project.name}
+        </span>
+      }
+      className="flex size-8 items-center justify-center rounded-lg text-ink-4 transition hover:bg-accent hover:text-ink"
     >
-      <span className="truncate">{project.name}</span>
-      <ChevronDown className="size-4 shrink-0 text-ink-4" />
+      <ChevronDown className="size-4 shrink-0" />
     </SpaceMenu>
   );
 }
@@ -541,17 +549,13 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
 }
 
 /**
- * The row at the top of the page: the wordmark (the mark stands in the app bar), the space's
- * name, which switches between spaces, then the trail and the credits. A phone starts at the
+ * The row at the top of the page: the space's name, which switches between spaces, then the
+ * trail and the credits. No wordmark: the mark stands in the app bar. A phone starts at the
  * space's name; the rest stands in its app bar along the bottom.
  */
 export function TopBar({ me, children }: { me: Me; children?: ReactNode }) {
-  const navigate = useNavigate();
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:gap-3 sm:px-4 md:px-5">
-      <span className="max-md:hidden">
-        <Logo mark={false} onClick={() => navigate("/")} />
-      </span>
       <SpaceName me={me} />
       <div className="flex min-w-0 flex-1 items-center">
         <Trail />

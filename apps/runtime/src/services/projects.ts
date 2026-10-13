@@ -199,9 +199,11 @@ async function ensureProject(): Promise<void> {
   const any = await db.query.project.findFirst({ where: madeHere() });
   if (!any) {
     const id = nanoid(12);
-    await db
-      .insert(schema.project)
-      .values({ id, tenantId: currentTenant(), name: "Meine Wizards" });
+    await db.insert(schema.project).values({
+      id,
+      tenantId: currentTenant(),
+      name: env.manage.url ? "Meine Wizards" : "Local Space",
+    });
     spaceChanged("space.created", id);
   }
 }
