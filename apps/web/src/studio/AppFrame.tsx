@@ -234,7 +234,7 @@ export function SpaceFace({
 
 /**
  * The spaces, listed as Slack lists its workspaces: the one shown first (its row opens its
- * wizards; its page is behind the home in the bar), the others to switch to, and a row that adds one — greyed at the plan's limit. The
+ * wizards; its page is behind the home in the bar), the others to switch to, and a row that adds one — not there at the plan's limit. The
  * trigger is the caller's: the space's tile in the app bar, its name in the top bar. `label`:
  * the trigger's name for a screen reader where it shows no text.
  */
@@ -264,98 +264,98 @@ export function SpaceMenu({
   useDismiss(ref, open, () => setOpen(false));
   const limit = me.limits.projects;
   const full = limit !== null && projects.length >= limit;
+  // With a name beside it and nothing to switch to or add, there is no button to show.
+  if (lead && projects.length <= 1 && !(mayCreate && !full)) {
+    return lead;
+  }
   const row =
     "flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent";
   return (
-    <div className={cn("relative shrink-0", lead && "flex items-center")} ref={ref}>
+    <div className={cn("shrink-0", lead && "flex items-center")} ref={ref}>
       {lead}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={label}
-        title={t("nav.switchSpace")}
-        className={typeof className === "function" ? className(open) : className}
-      >
-        {children}
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className={cn(
-            "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
-            placementClass(placement, position, "top-10 left-0"),
-          )}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label={label}
+          title={t("nav.switchSpace")}
+          className={typeof className === "function" ? className(open) : className}
         >
-          {projects.map((p) => {
-            const current = p.id === project?.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="menuitem"
-                className={row}
-                onClick={() => {
-                  setOpen(false);
-                  if (current) {
-                    navigate("/");
-                  } else {
-                    select(p.id);
-                  }
-                }}
-              >
-                <SpaceFace project={p} size="sm" />
-                <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <span
-                    className={cn(
-                      "truncate text-[0.875rem]",
-                      current ? "font-semibold text-ink" : "font-medium text-ink-2",
-                    )}
-                  >
-                    {p.name}
-                  </span>
-                  <span className="truncate text-[0.75rem] text-ink-4">
-                    {t("nav.wizardCount", { n: p.wizardCount })}
-                  </span>
-                </span>
-                {current ? <Check className="size-4 shrink-0 text-ember-strong" /> : null}
-              </button>
-            );
-          })}
-          {/* A tenant that builds nothing here makes no space here either; nor does a member. */}
-          {mayCreate ? (
-            <>
-              <div className="mx-2 my-1.5 h-px bg-border-soft" />
-              <button
-                type="button"
-                role="menuitem"
-                disabled={full}
-                className={cn(row, full && "cursor-default opacity-60 hover:bg-transparent")}
-                onClick={() => {
-                  setOpen(false);
-                  setCreating(true);
-                }}
-              >
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
-                  <Plus className="size-4" />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <span className="truncate font-medium text-[0.875rem] text-ink-2">
-                    {t("nav.addSpace")}
-                  </span>
-                  {full ? (
-                    <span className="truncate text-[0.75rem] text-ink-4">
-                      {t("home.projectLimit", { n: limit })}
+          {children}
+        </button>
+        {open ? (
+          <div
+            role="menu"
+            className={cn(
+              "absolute z-50 w-72 animate-rise rounded-xl bg-card p-1.5 shadow-overlay ring-1 ring-border-soft",
+              placementClass(placement, position, "top-10 left-0"),
+            )}
+          >
+            {projects.map((p) => {
+              const current = p.id === project?.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="menuitem"
+                  className={row}
+                  onClick={() => {
+                    setOpen(false);
+                    if (current) {
+                      navigate("/");
+                    } else {
+                      select(p.id);
+                    }
+                  }}
+                >
+                  <SpaceFace project={p} size="sm" />
+                  <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                    <span
+                      className={cn(
+                        "truncate text-[0.875rem]",
+                        current ? "font-semibold text-ink" : "font-medium text-ink-2",
+                      )}
+                    >
+                      {p.name}
                     </span>
-                  ) : null}
-                </span>
-              </button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
-      <NewSpaceDialog open={creating} onClose={() => setCreating(false)} />
+                    <span className="truncate text-[0.75rem] text-ink-4">
+                      {t("nav.wizardCount", { n: p.wizardCount })}
+                    </span>
+                  </span>
+                  {current ? <Check className="size-4 shrink-0 text-ember-strong" /> : null}
+                </button>
+              );
+            })}
+            {/* A tenant that builds nothing here makes no space here either; nor does a member; at the limit there is nothing to offer. */}
+            {mayCreate && !full ? (
+              <>
+                <div className="mx-2 my-1.5 h-px bg-border-soft" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={row}
+                  onClick={() => {
+                    setOpen(false);
+                    setCreating(true);
+                  }}
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-paper-2 text-ink-3">
+                    <Plus className="size-4" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                    <span className="truncate font-medium text-[0.875rem] text-ink-2">
+                      {t("nav.addSpace")}
+                    </span>
+                  </span>
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        <NewSpaceDialog open={creating} onClose={() => setCreating(false)} />
+      </div>
     </div>
   );
 }
