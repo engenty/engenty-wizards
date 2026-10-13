@@ -1,7 +1,7 @@
 ---
 title: Runners
 description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
-version: 0.3.4
+version: 0.4.0
 ---
 
 A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the
@@ -163,10 +163,9 @@ const door = new ThreadDoor({ runs: server.runs, surface, offered, watch, unwatc
 | `watch(thread)`, `unwatch(runId)` | Hear the run (`runs.subscribe`) and call `door.resume` when it moves; the plugin keeps the subscriptions |
 | `Thread` | `{ id, name, runId, state, lastInboundAt, lastMessageId }`: the plugin keeps it in a table per person and hands it to the door before and after |
 
-The WhatsApp module in `modules/whatsapp` and the SMS module in `modules/sms` are two surfaces
-of this door: the webhook on a public route, the keyword table, the number in the settings and
-the keyword in the share dialog are theirs; buttons and lists, the location request and files
-through the Cloud API are WhatsApp's surface, numbered lines and links are SMS's.
+A messenger plugin is a surface of this door: the webhook on a public route, the keyword table,
+the number and the keyword in the share dialog are the plugin's; buttons and lists, or numbered
+lines and links, are its surface.
 
 ## A call
 
@@ -179,13 +178,11 @@ const { apiKey, model } = await server.speech.conversation();
 // Throws with the status 503 and the code `no_model` while no OpenAI key is set under Models.
 ```
 
-The calls module in `modules/calls` is the whole of it: Twilio carries the call (a WhatsApp
-call arrives over Meta's SIP on a Twilio SIP domain, a phone call on a Twilio number) and asks
-the plugin for TwiML, which hands the call to the tenant's OpenAI project over SIP with a token
-in a header; OpenAI posts the incoming call to the plugin's public route, the plugin accepts it
-with the wizard's rules and tools and answers the model's tool calls over a WebSocket, driving
-the run with `server.runs`. The audio never touches the runtime. What a voice cannot take is
-texted as a link.
+A call plugin keeps the audio out of the runtime: the telephony provider hands the call to the
+speech model's SIP endpoint with a token in a header, the model's provider posts the incoming
+call to the plugin's public route, and the plugin accepts it with the wizard's rules and tools
+and answers the model's tool calls over a WebSocket, driving the run with `server.runs`. What a
+voice cannot take goes out as a link.
 
 ## Not there yet
 

@@ -1,7 +1,7 @@
 ---
 title: While it runs
 description: Save a file and the plugin loads again — what reloads, what survives, and how to work on a plugin.
-version: 0.3.2
+version: 0.4.0
 ---
 
 A runtime that runs alone watches its plugins. You do not restart it while you write one.
@@ -67,8 +67,8 @@ A loop that needs no restart, from a checkout:
 4. Open the plugin's page in the studio and edit. The server half reloads on save; the page
    updates when the build finished.
 
-The runtime's log names the plugins it loaded at start, the ones that ship with it first
-(`plugins: calls, sms, whatsapp, contacts, workdays`), and prints why one did not load.
+The runtime's log names the plugins it loaded at start (`plugins: contacts, workdays`), and
+prints why one did not load.
 
 ## On engenty.ai
 

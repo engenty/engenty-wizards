@@ -1,5 +1,11 @@
 # Plan: runners, channels and the plugin hooks they need
 
+Since 2026-10-13: WhatsApp, SMS and calls are no longer part of the open repository. The
+modules `modules/whatsapp`, `modules/sms` and `modules/calls` named below shipped up to v0.4.0;
+from then on these channels run on engenty.ai only. The open runtime keeps everything they are
+built on: the runners with `problem` and `address`, the SDK's thread door and
+`server.speech.conversation()`.
+
 Status: phase 1 is on the branch; phase 2 built on 2026-10-08 (branch
 `claude/wizards-vs-bot-ui-1044fe`, off main): the run report lists a page's shown fields, the
 runner registry with capabilities and `runnersFor`, the share dialog's Channels list, sub-paths

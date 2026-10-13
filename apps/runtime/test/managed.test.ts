@@ -282,11 +282,8 @@ describe("a runtime of a Manage-App", () => {
     expect(plugins.status).toBe(200);
     expect(((await plugins.json()) as { plugins: { id: string }[] }).plugins.map((p) => p.id).sort()).toEqual([
       "basics",
-      "calls",
-      "sms",
       "spaces",
       "teams",
-      "whatsapp",
     ]);
     expect((await app.fetch(new Request(`${RUNTIME}/api/internal/plugins`))).status).toBe(401);
   });

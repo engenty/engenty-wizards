@@ -1,7 +1,7 @@
 ---
 title: Test and share
 description: Try the wizard, publish it, and hand out its link or put it on a website.
-version: 0.3.4
+version: 0.4.0
 ---
 
 ## Test
@@ -81,65 +81,29 @@ The link opens the first browser channel that is on. The others answer under the
 (`/steps`, `/chat`, `/talk` for live voice, `/video` for the video call) and are offered on the
 wizard's first page: "Or: Chat". A switched-off address sends people to the link instead.
 
-### WhatsApp
+### WhatsApp, SMS and calls
 
-With the WhatsApp module a wizard runs in a WhatsApp thread on your own business number. Set
-the number up once under Settings → WhatsApp: the phone number ID and a permanent access token
-from your Meta app, then the webhook address and the verify token the page shows go into the
-Meta app's WhatsApp configuration. Until a number is connected, the channel shows "not set up"
-in the list.
+On engenty.ai a wizard can also run in a WhatsApp thread, by text message and as a phone call,
+where the team's plan includes them. These channels are not part of the open runtime: a local
+install has them through its account in the cloud.
 
-Switch WhatsApp on for a wizard and its row in the share dialog shows its **keyword** and the
-number; "Link" copies the link that writes it (`wa.me/<number>?text=<keyword>`), and the QR code
-view draws it. The keyword is changed under the gear. Whoever sends the keyword to the number
-starts the wizard; without a keyword, the number offers the wizards that are on.
-
-In the thread the wizard asks one field per message: buttons for up to three choices, a list
-for more, yes/no as buttons, a photo or a file sent in the chat, "send location" for a place, a
-voice message for a text field where a listener is set up under Models. A page with a field only
-the screen can take (a signature, a sign-in) arrives as a link to the wizard's page; the thread
-goes on by itself once it was filled there. A review is the text with "Looks good" and "New
-version"; the result arrives as text, pictures and documents, a widget or dashboard as a picture,
-and a link to everything. "stop" ends a run, the keyword starts a new one.
-
-What WhatsApp allows: a free message within 24 hours of the person's last one. A wizard that
-finishes later can only reach back with an approved utility template with one placeholder; its
-name goes into the settings, the link into the placeholder. Without one, the result waits for
-the person's next message.
-
-### SMS
-
-With the SMS module a wizard runs by text message, through a Twilio account and number of your
-own. Settings → SMS takes the Account SID, the auth token and the number; the webhook address
-the page shows goes into the number's "A message comes in" field in Twilio. Switch SMS on for a
-wizard and its row shows the keyword and the number; "Link" copies an `sms:` link that types it,
+Switch one on for a wizard and its row in the share dialog shows the number and the **keyword**:
+whoever sends the keyword to the number starts the wizard. "Link" copies a link that writes it,
 and the QR code view draws it. The keyword is changed under the gear.
 
-Text only: one field per text, choices as numbered lines answered with the number (several
-numbers with commas for a multiple choice), yes or no, a place as a typed address. A page with
-a photo, a file or a signature arrives as a link to the wizard's page and the texts go on once it
-was filled there. Long texts come as their gist; every picture, document and the whole result
-are links. Each text costs what Twilio charges; there is no window, a wizard that finishes
-later still texts.
+- **WhatsApp**: one field per message, buttons for up to three choices, a list for more, a photo
+  or a file sent in the chat, "send location" for a place, a voice message for a text field. A
+  free message goes out within 24 hours of the person's last one; a wizard that finishes later
+  reaches back with an approved template, or waits for the person's next message.
+- **SMS**: text only, choices as numbered lines answered with the number, a place as a typed
+  address; long texts come as their gist, every picture, document and the whole result as links.
+- **Calls**: the speech model talks, as the chat's live voice does: one field at a time, choices
+  read out, e-mail addresses and numbers read back. With several wizards on for calls, the call
+  asks which one first.
 
-### Calls
-
-With the calls module a wizard runs as a conversation on the phone: a WhatsApp call to your
-business number, or a phone call to a Twilio number. Twilio carries the call and the speech
-model of your OpenAI account (Settings → Models) speaks, as the chat's live voice does, so the
-same rules apply: one field at a time, choices read out, e-mail addresses and numbers read back.
-
-Settings → Calls takes the Twilio account, a Twilio number that can text, the OpenAI project ID,
-the webhook secret of a webhook you add in the OpenAI dashboard for incoming calls and the
-region (EU or US), and shows what to enter where: the voice webhook for Twilio's SIP domain and
-phone number, the OpenAI webhook, and for WhatsApp the SIP server to set on the number in Meta's
-calling settings (the Twilio SIP domain, port 5061). Switch "Call" on for a wizard; with several
-on, the wizard asks which one at the start of the call. A WhatsApp call button or deep link whose
-payload is a wizard's link token picks that wizard.
-
-What a voice cannot take (a photo, a file, a signature) is texted as a link to the wizard's page,
-and the call goes on once it was filled there. At the end the result is texted as a link too.
-Each minute costs what OpenAI and Twilio charge.
+What a channel cannot take (a signature, a sign-in; by text and on the phone also a photo or a
+file) arrives as a link to the wizard's page, and the conversation goes on once it was filled
+there. "stop" ends a run in a thread, the keyword starts a new one.
 
 ### Who can open the link
 
