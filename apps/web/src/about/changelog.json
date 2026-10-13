@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.3.8",
+    "timestamp": 1791899149,
+    "commits": [
+      {
+        "id": "e98284d",
+        "message": "the studio assistant is Goose and takes what is written while it works – Enter sends a message into the running answer, which reads it before its next step (or goes on with it after its answer), ⌘↩ queues it for after the answer, \"Jetzt senden\" stops and sends at once, Stop stands where Send does; the chat at the bottom moves by its grip, stays where it is put and snaps to the middle or the right near the bottom and into the sidebar near the right side, the handle on top sets the thread's height and folds it, ✕ closes it into the engenty at the lower right, which opens it where it stood (the small card is gone); \"New chat\" clears at once and writes the old chat's summary meanwhile, the next turn waits for it; developer mode (ASSISTANT_DEV here, the platform's admins when managed) shows each step's model, tokens, time and cost, the tools' arguments and results, the context window, and the turns' timeline, prompt and events to copy or download",
+        "group": "Added",
+        "scope": "assistant",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.3.7",
-    "timestamp": 1791887854,
+    "timestamp": 1791887859,
     "commits": [
       {
         "id": "1a79f0d",
