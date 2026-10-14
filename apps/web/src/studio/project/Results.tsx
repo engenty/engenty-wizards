@@ -169,7 +169,11 @@ export function Results({
                     {r.assets}
                   </span>
                 ) : null}
-                {r.mode === "test" ? <Chip>Test</Chip> : <Chip tone="live">Live v{r.version}</Chip>}
+                {r.mode === "test" ? (
+                  <Chip>{t("run.testChip")}</Chip>
+                ) : (
+                  <Chip tone="live">Live v{r.version}</Chip>
+                )}
               </button>
             ))}
           </Card>
@@ -191,7 +195,7 @@ export function Results({
                 {titleOf(open.wizardId)}
               </span>
               {open.mode === "test" ? (
-                <Chip>Test</Chip>
+                <Chip>{t("run.testChip")}</Chip>
               ) : (
                 <Chip tone="live">Live v{open.version}</Chip>
               )}

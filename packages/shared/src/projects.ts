@@ -90,7 +90,7 @@ export const BASIC_FACTS: { key: string; de: string; en: string }[] = [
   { key: "adresse", de: "Adresse", en: "Address" },
   { key: "plz", de: "PLZ", en: "Postcode" },
   { key: "ort", de: "Ort", en: "City" },
-  { key: "uid", de: "UID", en: "VAT id" },
+  { key: "uid", de: "UID", en: "VAT ID" },
   { key: "telefon", de: "Telefon", en: "Phone" },
   { key: "e_mail", de: "E-Mail", en: "Email" },
   { key: "website", de: "Website", en: "Website" },

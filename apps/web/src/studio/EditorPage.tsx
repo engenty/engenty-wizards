@@ -689,7 +689,7 @@ export function EditorPage() {
 
       {drawerRun ? (
         <RunDrawer
-          header={<Chip>Test</Chip>}
+          header={<Chip>{t("run.testChip")}</Chip>}
           actions={
             <>
               <LookSwitch look={look} onChange={setLook} />
