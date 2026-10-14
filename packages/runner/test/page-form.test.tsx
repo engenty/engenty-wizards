@@ -79,7 +79,10 @@ function inputOf(container: HTMLElement, id: string): HTMLInputElement {
 
 function errorOf(container: HTMLElement, id: string): string | null {
   const input = inputOf(container, id);
-  const described = input.getAttribute("aria-describedby");
+  const described = input
+    .getAttribute("aria-describedby")
+    ?.split(" ")
+    .find((id) => id.endsWith("-error"));
   return described ? (container.querySelector(`[id="${described}"]`)?.textContent ?? null) : null;
 }
 
@@ -117,6 +120,12 @@ describe("the page's form checks answers itself", () => {
     expect(errorOf(container, "site")).toBeNull();
     // The first field that is wrong takes the focus.
     expect(document.activeElement).toBe(inputOf(container, "name"));
+
+    // Called missing on submit, the message stays when focus passes by without a word.
+    await act(async () => {
+      inputOf(container, "name").dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(errorOf(container, "name")).toBe("Please fill this in.");
   });
 
   it("checks a field when focus leaves it and keeps a bare domain as https://", async () => {

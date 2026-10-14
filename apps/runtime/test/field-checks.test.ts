@@ -5,6 +5,7 @@ import {
   checkDate,
   fieldError,
   isUrl,
+  normalizeDate,
   normalizeUrl,
   parseNumber,
 } from "@engenty-wizards/shared/field-checks";
@@ -94,6 +95,20 @@ describe("the shared checks of an answer", () => {
     expect(checkAnswer(field("date"), "2026-13-01")).toEqual({ code: "date" });
   });
 
+  it("reads the unambiguous forms of a day an API caller or an AI sends", () => {
+    expect(normalizeDate("14.10.2026")).toBe("2026-10-14");
+    expect(normalizeDate("4. 3. 2026")).toBe("2026-03-04");
+    expect(normalizeDate("2026-10-14T23:30:00Z")).toBe("2026-10-14");
+    expect(normalizeDate(" 2026-10-14 ")).toBe("2026-10-14");
+    expect(normalizeDate("10/14/2026")).toBe("10/14/2026");
+    expect(normalizeDate("morgen")).toBe("morgen");
+  });
+
+  it("takes a host with a trailing dot and a scheme-relative link", () => {
+    expect(isUrl("orf.at.")).toBe(true);
+    expect(normalizeUrl("//orf.at/x")).toBe("https://orf.at/x");
+  });
+
   it("gives every problem a German text for clients that read only the message", () => {
     expect(fieldError("f", { code: "required" })).toEqual({
       field: "f",
@@ -130,5 +145,13 @@ describe("the runtime reads a page with the same checks", () => {
       ["day", "date"],
     ]);
     expect(bad.errors[0].message).toBe("Keine gültige URL");
+  });
+
+  it("keeps a day sent as 14.10.2026 or with a time as YYYY-MM-DD", () => {
+    expect(readPageInput(page, { site: "orf.at", day: "14.10.2026" }).values.day).toBe("2026-10-14");
+    expect(readPageInput(page, { site: "orf.at", day: "2026-10-14T08:00:00+02:00" }).values.day).toBe(
+      "2026-10-14",
+    );
+    expect(readPageInput(page, { site: "orf.at", day: "31.02.2026" }).errors[0]?.code).toBe("date");
   });
 });

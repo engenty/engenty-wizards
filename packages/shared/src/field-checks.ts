@@ -67,7 +67,8 @@ const SCHEME = /^[a-z][a-z0-9+.-]*:(?!\d)/i;
 /** A link as it is kept: one typed without its scheme (`orf.at`) gets `https://`. */
 export function normalizeUrl(raw: string): string {
   const s = raw.trim();
-  return s && !SCHEME.test(s) ? `https://${s}` : s;
+  // `//orf.at` (scheme-relative) takes the scheme alone, not a second pair of slashes.
+  return s && !SCHEME.test(s) ? `https://${s.replace(/^\/\//, "")}` : s;
 }
 
 /** Schemes that name no host but are links all the same. */
@@ -89,7 +90,7 @@ export function isUrl(raw: string): boolean {
     const url = new URL(s);
     if (url.protocol === "http:" || url.protocol === "https:") {
       const host = url.hostname;
-      return host === "localhost" || host.startsWith("[") || /^[^.]+(\.[^.]+)+$/.test(host);
+      return host === "localhost" || host.startsWith("[") || /^[^.]+(\.[^.]+)+\.?$/.test(host);
     }
     return !UNSAFE.has(url.protocol) && (OPAQUE.has(url.protocol) || url.host !== "");
   } catch {
@@ -121,6 +122,21 @@ export interface DateBounds {
 }
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * A day as it is kept (YYYY-MM-DD) from the unambiguous forms an API caller, an AI or a voice
+ * may send instead: an ISO date with a time (`2026-10-14T10:00:00Z` → its day as written) and
+ * the German `14.10.2026`. Anything else comes back trimmed, for the check to turn down.
+ */
+export function normalizeDate(raw: string): string {
+  const s = raw.trim();
+  const iso = /^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}/.exec(s);
+  if (iso) {
+    return iso[1];
+  }
+  const de = /^(\d{1,2})\.\s?(\d{1,2})\.\s?(\d{4})$/.exec(s);
+  return de ? `${de[3]}-${de[2].padStart(2, "0")}-${de[1].padStart(2, "0")}` : s;
+}
 
 function isDay(s: string): boolean {
   const m = DAY.exec(s);
