@@ -284,7 +284,7 @@ async function describeImage(row: ProjectFileRow, data: Uint8Array): Promise<str
     maxOutputTokens: 300,
     system: [
       "You catalogue the files of a project. Describe the picture in ONE sentence of at most 25 words: what it shows, its style and colours, and what it suits (a logo on dark ground, a header image, a team photo, a product shot).",
-      "Write in the language of the project's description; if unclear, German. No preamble, no quotes.",
+      "Write in the language of the project's description; if unclear, English. No preamble, no quotes.",
     ].join("\n"),
     messages: [
       {
