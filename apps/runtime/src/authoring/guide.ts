@@ -149,7 +149,8 @@ type AgentStep = {
   working?: string              // shown while it runs ("Recherchiert im Web …")
 }
 // Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
-//   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once);
+//   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once)
+//   — on an installed client only where there is something to read: tools or connections, uploads, lists or kept files;
 //   and where the space has Wissen: project_search (a question, "where" on its typed Kategorien, hits checked for relevance),
 //   project_list (by Kategorien), page_read / table_read / project_document (an item whole, by its path).
 // "pages" brings: page_read / page_write — Markdown pages of the space the wizard keeps for every run (notes, a log
