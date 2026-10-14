@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.2",
+    "timestamp": 1792012348,
+    "commits": [
+      {
+        "id": "8abf854",
+        "message": "on a phone the sheet opens over the whole room, and the tab Ablauf folds it to the diagram – a drag near the top takes all of it, the tabs scroll sideways where they do not fit",
+        "group": "Added",
+        "scope": "editor",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.1",
-    "timestamp": 1792011394,
+    "timestamp": 1792011399,
     "commits": [
       {
         "id": "c3e81a2",

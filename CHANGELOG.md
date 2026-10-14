@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.2] - 2026-10-14
+- ADDED **[editor]** On a phone the sheet opens over the whole room, and the tab Ablauf folds it to the diagram – a drag near the top takes all of it, the tabs scroll sideways where they do not fit
+
 ## [0.5.1] - 2026-10-14
 - ADDED **[plugins]** Keys a plugin holds across tenants – server.claims takes, puts, drops and finds keys of the plugin's own, each for one tenant at a time (control table plugin_claim, migration 0009): a keyword on a number every tenant shares, who last wrote to it, a number a tenant connected; holder gives the tenant's ref for a shared route's inTenant. channels.book takes whatsapp, by message sent. Documented in the server, routes and reference pages and the manage contract; managed.test.ts covers two tenants holding one key
 - ADDED **[studio]** A copy style guide, with every word people read brought to it (#23)
