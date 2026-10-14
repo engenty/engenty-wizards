@@ -1745,7 +1745,7 @@ const de: Record<Key, string> = {
   "project.removeConfirm": "„{name}“ entfernen?",
   "project.facts": "Fakten",
   "project.factsHint":
-    "Was Wizards wissen sollen: Adresse, UID, Öffnungszeiten – alles, was passt.",
+    "Was Wizards wissen sollen: Adresse, USt-IdNr., Öffnungszeiten – alles, was passt.",
   "project.factLabel": "Bezeichnung",
   "project.factValue": "Wert",
   "project.factAdd": "Eintrag",

@@ -155,6 +155,9 @@ the text must not.
 
 ## German mechanics
 
+- **Standard German** as written in Germany: Januar, not Jänner; USt-IdNr., not UID on its own;
+  Kassierer, not Kassier. Dates and numbers use `de-DE` (5. Januar 2026, 1.234,50 €). Sample data
+  may stay Austrian; formats and words may not.
 - **du**, always. No *Sie*, and no *ihr*/*euch* for the reader.
 - **Dash**: spaced Gedankenstrich ` – `, at most one per string. If the second part stands on
   its own, use a full stop.

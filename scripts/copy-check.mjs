@@ -67,6 +67,7 @@ const RULES = {
     ["Sie-Form", /\b(Ihnen|Ihre[mnrs]?)\b|[a-zäöü,] Sie\b/],
     ["ihr/euch für die Lesenden: du verwenden", /\b(euch|eure[mnrs]?)\b/i],
     ["Ausrufezeichen", /!/],
+    ["österreichisch: Standarddeutsch verwenden (Januar, USt-IdNr., Kassierer)", /\b(Jänner|Feber|heuer|Kassier|Obfrau|Bankomat|Sackerl)\b|\bUID\b(?! ?\/)/],
     [
       "generisches Maskulinum: neutral umformulieren oder Doppelpunkt (Kund:innen)",
       /\b(Besucher|Kunden?|Bewerber|Nutzer|Teilnehmer|Mitarbeiter|Endnutzer|Anwender|Händler|Interessent|Patient|Empfänger|Absender|Leser|Betreiber|Inhaber|Kollege|Handwerker|Antragsteller|Käufer|Verkäufer|Lieferant|Mieter|Vermieter|Eigentümer|Auftraggeber|Wettbewerber)(?!:in)(n|en|s)?\b/,
