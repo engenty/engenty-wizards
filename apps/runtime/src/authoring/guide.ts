@@ -14,6 +14,7 @@ type Wizard = {
   description: string           // one sentence
   avatar: "round"|"drop"|"dome"|"flame"|"oval"|"bean"|"pebble"|"sprout"|"tower"|"wedge"  // the engenty mascot shown to end users
   intro?: string                // one friendly sentence above the first page
+  lang?: "en"|"de"              // the language the wizard's texts are in — ALWAYS set it to the language you write them in
   lists?: List[]                // tabular data the wizard KEEPS between runs — separately for each person who runs it, or for all with "shared"
   connections?: Connection[]    // accounts the PERSON connects during a run (their mailbox); kept for their next run
   steps: Step[]                 // run top to bottom; the LAST step is always a "result"

@@ -707,6 +707,11 @@ export const wizardSchema = z.object({
   avatar: z.enum(ENGENTY_KINDS).default("round"),
   /** Shown on the first page above the first question. */
   intro: z.string().optional(),
+  /**
+   * The language the wizard speaks to people: its texts, the runner's words, its numbers and
+   * dates. Without one it is read from the wizard's own words (`wizardLang`).
+   */
+  lang: z.enum(["de", "en"]).optional(),
   /** Tabular data the wizard keeps between runs, per person — or for all runs (`shared`). */
   lists: z.array(listSchema).max(12).optional(),
   /** Accounts the person connects; kept between runs, per person. */
@@ -1878,10 +1883,13 @@ const GERMAN =
 const ENGLISH = /\b(and|the|is|not|for|with|a|an|your|you|we|what|how|or|to|of)\b/gi;
 
 /**
- * The language a wizard speaks to people, read from its own words (titles, labels, intro).
- * A definition carries none; English where it is not clearly German.
+ * The language a wizard speaks to people: the one it names, else read from its own words
+ * (titles, labels, intro) — English where they are not clearly German.
  */
 export function wizardLang(def: WizardDefinition): "de" | "en" {
+  if (def.lang) {
+    return def.lang;
+  }
   const text = [
     def.title,
     def.description,

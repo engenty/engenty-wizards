@@ -9,6 +9,7 @@ export const EXAMPLE_WIZARD: WizardDefinition = {
   title: "X post with an image",
   description: "Turns a topic into a finished post with an image.",
   avatar: "flame",
+  lang: "en",
   intro: "Tell me briefly what it is about – I write the post and draw the image for it.",
   steps: [
     {

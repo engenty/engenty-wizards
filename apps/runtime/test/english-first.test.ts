@@ -64,6 +64,10 @@ describe("English first", () => {
       ({ version: 1, title, description: "", steps: [] }) as unknown as WizardDefinition;
     expect(wizardLang(wizard(""))).toBe("en");
     expect(wizardLang(wizard("Angebot für die Küche und das Bad"))).toBe("de");
+    // Nouns alone say nothing; the language a wizard names decides.
+    expect(wizardLang(wizard("Vertrag"))).toBe("en");
+    expect(wizardLang({ ...wizard("Vertrag"), lang: "de" })).toBe("de");
+    expect(wizardLang({ ...wizard("Angebot für die Küche und das Bad"), lang: "en" })).toBe("en");
     expect(slotText("2026-10-13T10:30:00+02:00")).toBe("Tue 13/10/2026, 10:30");
   });
 });

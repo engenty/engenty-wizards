@@ -1102,6 +1102,18 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
             onChange={(e) => update({ ...def, intro: e.target.value || undefined })}
           />
         </div>
+        <div>
+          <Label hint={t("inspector.langHint")}>{t("inspector.lang")}</Label>
+          <Select
+            value={def.lang ?? ""}
+            onChange={(v) => update({ ...def, lang: v === "de" || v === "en" ? v : undefined })}
+            options={[
+              { value: "", label: t("inspector.langAuto") },
+              { value: "en", label: "English" },
+              { value: "de", label: "Deutsch" },
+            ]}
+          />
+        </div>
       </Section>
       <Section title="Avatar">
         <div className="grid grid-cols-5 gap-2">

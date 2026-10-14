@@ -33,21 +33,33 @@ export type WizardRow = typeof schema.wizard.$inferSelect;
 /** Who wrote: the studio, or an admin's own MCP client (named after its API key). */
 export type Writer = { source: "studio" } | { source: "mcp"; client: string };
 
-const BLANK: WizardDefinition = {
-  version: 1,
-  title: "Neuer Wizard",
-  description: "",
-  avatar: "round",
-  steps: [
-    {
-      id: "start",
-      type: "page",
-      title: "Los geht's",
-      fields: [{ id: "input", label: "Worum geht es?", kind: "textarea", required: true }],
-    },
-    { id: "done", type: "result", title: "Fertig", deliverables: [] },
-  ],
-};
+/** The wizard a new one starts as, in the language of whoever makes it. */
+function blankWizard(lang: "de" | "en"): WizardDefinition {
+  const de = lang === "de";
+  return {
+    version: 1,
+    title: de ? "Neuer Wizard" : "New wizard",
+    description: "",
+    avatar: "round",
+    lang,
+    steps: [
+      {
+        id: "start",
+        type: "page",
+        title: de ? "Los geht's" : "Let's start",
+        fields: [
+          {
+            id: "input",
+            label: de ? "Worum geht es?" : "What is it about?",
+            kind: "textarea",
+            required: true,
+          },
+        ],
+      },
+      { id: "done", type: "result", title: de ? "Fertig" : "Done", deliverables: [] },
+    ],
+  };
+}
 
 export const studioUrl = (wizardId: string) => `${env.appUrl}/studio/edit/${wizardId}`;
 export const shareUrl = (token: string) => `${env.publicUrl}/w/${token}`;
@@ -296,10 +308,17 @@ export async function createWizard(
   if (input.starterId && !starter) {
     throw new ServiceError("invalid", `There is no starter "${input.starterId}".`);
   }
+  const maker = input.lang?.toLowerCase().startsWith("de") ? "de" : "en";
   const { draft, issues } =
     input.definition !== undefined
       ? parseDraft(input.definition)
-      : { draft: starter?.definition ?? structuredClone(BLANK), issues: [] };
+      : starter
+        ? // A starter names the language it is written in, where its definition does not.
+          {
+            draft: { ...starter.definition, lang: starter.definition.lang ?? starter.language },
+            issues: [],
+          }
+        : { draft: blankWizard(maker), issues: [] };
   const fromStarter = input.definition === undefined ? starter : undefined;
   const id = nanoid(12);
   const shareToken = newShareToken();

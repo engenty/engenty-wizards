@@ -1272,6 +1272,10 @@ const de: Record<Key, string> = {
   "inspector.description": "Beschreibung",
   "inspector.intro": "Begrüßung",
   "inspector.introHint": "Steht über der ersten Seite.",
+  "inspector.lang": "Sprache",
+  "inspector.langHint":
+    "In dieser Sprache spricht der Wizard mit den Leuten: seine Meldungen, Zahlen und Daten.",
+  "inspector.langAuto": "Automatisch, aus den Texten",
   "inspector.remembers": "Merkt sich für jede Person",
   "inspector.remembersHint":
     "Bleibt zwischen den Durchläufen erhalten – getrennt für jede Person, die den Wizard nutzt. Ändern kannst du das im Gespräch.",
@@ -3132,6 +3136,10 @@ const en = {
   "inspector.description": "Description",
   "inspector.intro": "Greeting",
   "inspector.introHint": "Shown above the first page.",
+  "inspector.lang": "Language",
+  "inspector.langHint":
+    "The language the wizard speaks to people in: its messages, numbers and dates.",
+  "inspector.langAuto": "Automatic, from its texts",
   "inspector.remembers": "Remembers for each person",
   "inspector.remembersHint":
     "Kept between runs – separately for each person who uses the wizard. You can change this in the chat.",
