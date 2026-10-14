@@ -32,7 +32,6 @@ import {
   validateSurface,
 } from "@engenty-wizards/shared/surface";
 import { Agent } from "@mastra/core/agent";
-import type { MastraModelConfig } from "@mastra/core/llm";
 import { generateText, type JSONSchema7, jsonSchema, Output, parsePartialJson } from "ai";
 import type { z } from "zod";
 import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
@@ -46,7 +45,15 @@ import {
   type MediaReference,
 } from "../media/generate.js";
 import { type AiOrigin, markMedia } from "../media/marking.js";
-import { attachTools, costOf, isHarnessVendor, type ResolvedModel, textModel } from "../models.js";
+import {
+  agentModel,
+  attachTools,
+  costOf,
+  isHarnessVendor,
+  type ResolvedModel,
+  textModel,
+  totalUsage,
+} from "../models.js";
 import { knowledgeBlock } from "../services/knowledge.js";
 import { buildStepTools } from "../tools/index.js";
 import { callPluginTool, spaceContextOf } from "../tools/plugin.js";
@@ -641,7 +648,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       id: `step-${step.id}`,
       name: step.title,
       instructions: system,
-      model: resolved.model as unknown as MastraModelConfig,
+      model: agentModel(resolved),
       tools,
     });
     // Working through a mailbox or a row of portals takes many small tool calls.
@@ -674,7 +681,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       step.output.format === "json"
         ? await streamWithProgress(agent, message, { maxSteps, abortSignal: ctx.signal }, step, ctx)
         : await agent.generate(message, { maxSteps, abortSignal: ctx.signal });
-    await ctx.chargeUsd(costOf(resolved, (result as any).totalUsage ?? result.usage));
+    await ctx.chargeUsd(costOf(resolved, await totalUsage(result)));
     // `result.text` strings together what the model said between tool calls ("I open the page …").
     // A written result is its last message; structuring keeps everything, numbers may sit anywhere.
     const closing = String((result as any).steps?.at?.(-1)?.text ?? "").trim();

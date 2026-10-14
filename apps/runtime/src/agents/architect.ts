@@ -3,7 +3,6 @@ import type { Lang } from "@engenty-wizards/shared/definition";
 import { SURFACE_GUIDE } from "@engenty-wizards/shared/surface";
 import { isTextMime } from "@engenty-wizards/shared/workspace";
 import { Agent } from "@mastra/core/agent";
-import type { MastraModelConfig } from "@mastra/core/llm";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
@@ -20,7 +19,15 @@ import {
 } from "../authoring/guide.js";
 import { wizardOpSchema } from "../authoring/ops.js";
 import { importFromRegistry, listConnectors, searchRegistry } from "../connectors/external.js";
-import { attachTools, costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
+import {
+  agentModel,
+  attachTools,
+  costOf,
+  gatewayTools,
+  type ResolvedModel,
+  textModel,
+  totalUsage,
+} from "../models.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { htmlToMarkdown } from "../render/convert.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
@@ -29,7 +36,7 @@ import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { type ServerKey, serverText } from "../texts.js";
 import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
-import { attempt as attemptTool } from "../tools/shared.js";
+import { attempt as attemptTool, imageOutput } from "../tools/shared.js";
 import { runScript } from "../widgets/script.js";
 import { thoughtLine } from "./thought.js";
 
@@ -390,19 +397,7 @@ function buildTools(input: ArchitectInput, resolved: ResolvedModel<unknown>, wro
             screenshot: Buffer.from(r.png).toString("base64"),
           };
         }),
-      toModelOutput: (out: any) => {
-        if (!out || out.error || !out.screenshot) {
-          return { type: "json", value: out };
-        }
-        const { screenshot, ...rest } = out;
-        return {
-          type: "content",
-          value: [
-            { type: "text", text: JSON.stringify(rest) },
-            { type: "image-data", data: screenshot, mediaType: "image/png" },
-          ],
-        };
-      },
+      toModelOutput: imageOutput("screenshot"),
     }),
   };
   if (resolved.vendor === "anthropic") {
@@ -437,7 +432,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
       ),
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
-    model: resolved.model as unknown as MastraModelConfig,
+    model: agentModel(resolved),
     tools,
   });
   const context = [
@@ -538,7 +533,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
       throw payload.error ?? new Error("architect stream error");
     }
   }
-  const usage: any = (await (stream as any).totalUsage) ?? (await stream.usage);
+  const usage = await totalUsage(stream);
   return {
     reply: reply.trim(),
     changed,

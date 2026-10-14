@@ -25,6 +25,7 @@ import {
 } from "@engenty-wizards/shared/providers";
 import type { RunNote, RunNoteCode, Said } from "@engenty-wizards/shared/run";
 import { note, saidText } from "@engenty-wizards/shared/run";
+import type { MastraModelConfig } from "@mastra/core/llm";
 import {
   type EmbeddingModel,
   type experimental_generateVideo,
@@ -1326,6 +1327,20 @@ export function usageOf(u: any): TokenUsage {
     outputTokens: u?.outputTokens ?? 0,
     cachedInputTokens: u?.cachedInputTokens ?? u?.inputTokenDetails?.cacheReadTokens ?? 0,
   };
+}
+
+/** A class's model as Mastra's `Agent` takes it: the AI SDK's model, typed by Mastra's own copy of it. */
+export function agentModel(resolved: ResolvedModel<unknown>): MastraModelConfig {
+  return resolved.model as unknown as MastraModelConfig;
+}
+
+/**
+ * What an agent's call used over all its steps: `totalUsage` where Mastra's result has it, else
+ * `usage`. Takes a stream's promises and a finished call's values alike.
+ */
+export async function totalUsage(out: object): Promise<unknown> {
+  const result = out as { totalUsage?: unknown; usage?: unknown };
+  return (await result.totalUsage) ?? (await result.usage);
 }
 
 /** Provider cost of a text call a runtime that runs alone made; the gateway books the others itself. */

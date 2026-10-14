@@ -31,6 +31,30 @@ export async function attempt<T>(
 }
 
 /**
+ * A tool's `toModelOutput` for a result that carries a picture: the base64 under `key` goes to the
+ * model as an image (of `mime`, else PNG), the rest as text beside it – as JSON, or as `text`
+ * makes it. A result without the picture, a failure among them, goes as JSON.
+ */
+export function imageOutput(
+  key: string,
+  text: (rest: Record<string, unknown>) => string = (rest) => JSON.stringify(rest),
+) {
+  return (out: any) => {
+    if (!out || out.error || typeof out[key] !== "string" || !out[key]) {
+      return { type: "json", value: out };
+    }
+    const { [key]: data, mime, ...rest } = out;
+    return {
+      type: "content",
+      value: [
+        { type: "text", text: text(rest) },
+        { type: "image-data", data, mediaType: mime ?? "image/png" },
+      ],
+    };
+  };
+}
+
+/**
  * Files a step collects go two places: the wizard's store (kept for next time) and the step's
  * result (this run's download). One keeper per step, so a file saved twice is one result.
  */
