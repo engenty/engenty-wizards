@@ -105,6 +105,11 @@ jobs:
         if: matrix.check == 'build'
         run: pnpm build
 
+      # Every page names the release it describes, none a newer one (docs/development.md).
+      - name: Docs versions
+        if: matrix.check == 'docs'
+        run: pnpm docs:check
+
       # The docs site (apps/docs, docs/content) is not part of the product's build.
       - name: Docs
         if: matrix.check == 'docs'
