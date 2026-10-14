@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.4.6",
+    "timestamp": 1791985908,
+    "commits": [
+      {
+        "id": "5a26b60",
+        "message": "a channel is set up inside the share dialog – a runner's problem may say its kind (setup, waiting, plan) with the row's note and the plan that has it, so a row says \"Nummer angefragt\" without a button or \"Ab Pro\" with \"Pro ansehen\" instead of \"Noch nicht eingerichtet\"; studio.registerShareSetup gives a plugin the view \"Einrichten\" opens, inside the dialog at its height with a back arrow, its buttons at the dialog's foot (Actions) and done(banner) back to the rows, and a banner of the runner's news above them (notice); QrCode for a plugin's studio half; channels say whether the plan has a number of its own (allowed). Documented in the runners, studio, server and reference pages and the manage contract; plugins.test.ts covers the problem kinds",
+        "group": "Added",
+        "scope": "share",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.5",
-    "timestamp": 1791977851,
+    "timestamp": 1791977859,
     "commits": [
       {
         "id": "7a8ccbb",

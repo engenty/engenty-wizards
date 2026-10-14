@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.6] - 2026-10-14
+- ADDED **[share]** A channel is set up inside the share dialog – a runner's problem may say its kind (setup, waiting, plan) with the row's note and the plan that has it, so a row says "Nummer angefragt" without a button or "Ab Pro" with "Pro ansehen" instead of "Noch nicht eingerichtet"; studio.registerShareSetup gives a plugin the view "Einrichten" opens, inside the dialog at its height with a back arrow, its buttons at the dialog's foot (Actions) and done(banner) back to the rows, and a banner of the runner's news above them (notice); QrCode for a plugin's studio half; channels say whether the plan has a number of its own (allowed). Documented in the runners, studio, server and reference pages and the manage contract; plugins.test.ts covers the problem kinds
+
 ## [0.4.5] - 2026-10-14
 - ADDED **[studio]** Keep the picked language with the person and share it with the account pages (#5)
 - ADDED **[i18n]** English is the base language everywhere; the studio follows the picked language, not the browser's (#4)
