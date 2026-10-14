@@ -77,13 +77,22 @@ import {
   tokenOfCode,
   visitorOverLimit,
 } from "../tenants/control.js";
-import { byteRange, uploadLimit, wizardManifest } from "./delivery.js";
+import {
+  bareMime,
+  byteRange,
+  inlineSafe,
+  uploadLimit,
+  uploadMime,
+  wizardManifest,
+} from "./delivery.js";
 import { inLang, notFoundAnswer, requestLang } from "./lang.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
 /** Kept files a review shows inline. */
 const INLINE_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
+/** Assets whose bytes and type someone outside the wizard chose: uploads and collected files. */
+const FOREIGN_KINDS = new Set(["upload", "upload-image", "file"]);
 
 export function clientIp(c: Context): string | null {
   const fwd = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
@@ -689,8 +698,10 @@ export const runRoutes = new Hono()
     }
     const form = await c.req.formData();
     const file = form.get("file");
-    // A recorder names its type with codecs ("audio/webm;codecs=opus"); the bare type is kept.
-    const mime = file instanceof File ? file.type.split(";")[0].trim().toLowerCase() : "";
+    // A recorder names its type with codecs ("audio/webm;codecs=opus"); the bare type is kept,
+    // and only when it is one a wizard takes. The browser's word is the sender's: anything else
+    // is kept as plain bytes, so it can never come back as a page on this origin.
+    const mime = uploadMime(file instanceof File ? file.type : "");
     const limit = uploadLimit(mime);
     if (!(file instanceof File) || file.size > limit) {
       return refuse(
@@ -702,7 +713,7 @@ export const runRoutes = new Hono()
     const ref = await saveAsset({
       runId: run.id,
       kind: mime.startsWith("image/") ? "upload-image" : "upload",
-      mime: mime || "application/octet-stream",
+      mime,
       name: file.name.slice(0, 120),
       data: new Uint8Array(await file.arrayBuffer()),
     });
@@ -1233,22 +1244,25 @@ async function serveAsset(c: Context, run: RunRow, assetId: string) {
   if (!found || found.row.runId !== run.id) {
     return c.notFound();
   }
+  // The stored type is sent only as a bare `type/subtype`: "text/html,x" reads as HTML to a browser.
+  const mime = bareMime(found.row.mime) ?? "application/octet-stream";
+  // What a person or a plugin uploaded, and files a step collected from mail and the web.
+  const foreign = FOREIGN_KINDS.has(found.row.kind);
   const headers: Record<string, string> = {
-    "content-type": found.row.mime,
+    "content-type": mime,
     "cache-control": "private, max-age=3600",
     "x-content-type-options": "nosniff",
+    // Nothing opened on its own runs scripts with this origin (an SVG, an XML document, a page).
+    // A PDF is left to the browser's own viewer, which a sandbox would keep from starting.
+    ...(mime === "application/pdf" ? {} : { "content-security-policy": "sandbox" }),
   };
-  // Files a step collected come from mail and the web: they are downloads, never pages of ours.
-  if (found.row.kind === "file") {
+  // Foreign files are downloads, never pages of ours: only photos, sound, film and PDFs show in place.
+  if (foreign && !inlineSafe(mime)) {
     headers["content-disposition"] =
       `attachment; filename="${found.row.name.replace(/["\\\r\n]/g, "")}"`;
   }
-  // An SVG or XML document opened on its own could run scripts with this origin.
-  if (/svg|xml/.test(found.row.mime)) {
-    headers["content-security-policy"] = "sandbox";
-  }
   // Generated HTML runs its scripts in an opaque origin and can reach nothing.
-  if (found.row.mime === "text/html") {
+  if (mime === "text/html" && !foreign) {
     const html = await stepHtml({
       assets: [{ id: assetId, kind: found.row.kind, mime: found.row.mime, name: "" }],
       at: "",
@@ -1257,7 +1271,7 @@ async function serveAsset(c: Context, run: RunRow, assetId: string) {
     headers["content-security-policy"] = HTML_RESPONSE_CSP;
     return c.body(new TextEncoder().encode(html ?? ""), 200, headers);
   }
-  if (/^(audio|video)\//.test(found.row.mime)) {
+  if (/^(audio|video)\//.test(mime)) {
     headers["accept-ranges"] = "bytes";
     const size = found.data.byteLength;
     const range = byteRange(c.req.header("range"), size);

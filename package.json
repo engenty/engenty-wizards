@@ -36,7 +36,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@engenty-wizards/shared": "workspace:*",
-    "concurrently": "^10.0.5",
+    "concurrently": "^10.0.6",
     "fflate": "0.8.3",
     "git-cliff": "^2.14.2",
     "tsx": "^4.23.15",
