@@ -2,6 +2,8 @@ import {
   AskPanel,
   DownloadButtons,
   FieldInput,
+  type FieldIssue,
+  fieldErrorText,
   initialValues,
   isTouch,
   ListCheck,
@@ -25,6 +27,7 @@ import {
   type ReviewStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
+import { checkAnswer, type FieldCode, normalizeUrl } from "@engenty-wizards/shared/field-checks";
 import type { RunEvent, RunNoteCode, RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowUp,
@@ -59,7 +62,7 @@ import { createPortal } from "react-dom";
 import { withBase } from "@/lib/base";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
-import { eventText, lang, t } from "../lib/i18n";
+import { eventText, type Key, lang, t } from "../lib/i18n";
 import { canSpeak, useReadAloud, useReadLines } from "../lib/read-aloud";
 import { useDictation } from "../lib/speech";
 import { ShareResultButton } from "../share/ShareSheet";
@@ -521,6 +524,8 @@ function Composer({
   return (
     <form
       className="pb-3"
+      // The answer is checked by the page (`problem`), in its own words, not by the browser.
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         send();
@@ -635,25 +640,25 @@ function wayOf(field: Field): Way {
 const isEmpty = (v: unknown) =>
   v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 
-/** What the runtime would turn down, said before the page goes there. */
+/** The chat's own words for what it asks most; the rest as the page's form says it. */
+const CHAT_WORDS: Partial<Record<FieldCode, Key>> = {
+  required: "chat.required",
+  email: "chat.badEmail",
+  url: "chat.badUrl",
+  number: "chat.badNumber",
+};
+
+/** A problem with an answer, as the chat says it: by its code, a plain text as it came. */
+function issueText(issue: FieldIssue): string {
+  const words = typeof issue === "string" ? undefined : CHAT_WORDS[issue.code as FieldCode];
+  return words ? t(words) : fieldErrorText(issue);
+}
+
+/** What the runtime would turn down, said before the page goes there: the shared checks. */
 function problem(field: Field, v: unknown): string | null {
-  const free = field.kind === "toggle" || field.kind === "connection" || field.kind === "list";
-  if (isEmpty(v)) {
-    return field.required && !free ? t("chat.required") : null;
-  }
-  const s = String(v).trim();
-  if (field.kind === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
-    return t("chat.badEmail");
-  }
-  if (field.kind === "url") {
-    try {
-      new URL(s);
-    } catch {
-      return t("chat.badUrl");
-    }
-  }
-  if (field.kind === "number" && !Number.isFinite(Number(s.replace(",", ".")))) {
-    return t("chat.badNumber");
+  const found = checkAnswer(field, v);
+  if (found) {
+    return issueText(found);
   }
   if (Array.isArray(v) && field.multiple && field.min && v.length < field.min) {
     return t("run.filesMin", { n: v.length, min: field.min });
@@ -667,7 +672,7 @@ function typedValue(field: Field, text: string): string | undefined {
   if (!s) {
     return undefined;
   }
-  return field.kind === "url" && !/^[a-z][a-z0-9+.-]*:/i.test(s) ? `https://${s}` : s;
+  return field.kind === "url" ? normalizeUrl(s) : s;
 }
 
 function FieldAsk({ field }: { field: Field }) {
@@ -902,7 +907,9 @@ function PageTurn({
     const i = now.findIndex((f) => ids.includes(f.id));
     if (i >= 0) {
       setDone(now.slice(0, i).map((f) => f.id));
-      setErrors(run.fieldErrors);
+      setErrors(
+        Object.fromEntries(Object.entries(run.fieldErrors).map(([id, e]) => [id, issueText(e)])),
+      );
     }
   }, [run.fieldErrors]);
 

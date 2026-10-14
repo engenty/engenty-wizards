@@ -81,7 +81,7 @@ export function IconButton({
 }
 
 const fieldBase =
-  "rounded-lg border border-input bg-card px-3.5 text-[0.9375rem] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60";
+  "rounded-lg border border-input bg-card px-3.5 text-[0.9375rem] text-ink shadow-[inset_0_1px_0_oklch(0%_0_0/0.02)] outline-none transition placeholder:text-ink-4 focus:border-focus focus:ring-4 focus:ring-focus-glow disabled:opacity-60 aria-invalid:border-rose";
 
 /** A field fills its row unless the caller gives it a width. */
 function fieldWidth(className?: string) {
@@ -363,16 +363,24 @@ export function Label({
   children,
   hint,
   required,
+  id,
 }: {
   children: ReactNode;
   hint?: ReactNode;
   required?: boolean;
+  /** For the control to name itself by (`aria-labelledby`). */
+  id?: string;
 }) {
   return (
     <div className="mb-2">
-      <div className="font-medium text-[0.875rem] text-ink">
+      <div id={id} className="font-medium text-[0.875rem] text-ink">
         {children}
-        {required ? <span className="ml-1 text-ember">*</span> : null}
+        {/* The control says it with aria-required; the star is for the eye. */}
+        {required ? (
+          <span aria-hidden="true" className="ml-1 text-ember">
+            *
+          </span>
+        ) : null}
       </div>
       {hint ? <div className="mt-0.5 text-[0.8125rem] text-ink-3">{hint}</div> : null}
     </div>

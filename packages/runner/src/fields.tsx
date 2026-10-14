@@ -20,11 +20,11 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
 import { canUseMedia, isTouch } from "./device";
 import { api, runBase, withBase } from "./env.js";
-import { lang, t } from "./i18n.js";
+import { type FieldIssue, fieldErrorText, lang, t } from "./i18n.js";
 import { LocationField } from "./location";
 import { ScanDialog } from "./scan";
 import { SignatureField } from "./signature";
@@ -506,15 +506,18 @@ function ScanInput({
   field,
   value,
   onChange,
+  aria,
 }: {
   field: Field;
   value: string;
   onChange: (v: string) => void;
+  aria?: React.AriaAttributes & { "aria-labelledby"?: string };
 }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex gap-2">
       <Input
+        {...aria}
         value={value}
         placeholder={field.placeholder}
         autoCapitalize="off"
@@ -740,6 +743,7 @@ export function FieldInput({
   onBusy,
   error,
   closed,
+  onBlur,
 }: {
   field: Field;
   value: unknown;
@@ -752,15 +756,33 @@ export function FieldInput({
   onChange: (v: unknown) => void;
   /** The field is uploading or recording: the page waits with going on. */
   onBusy?: (busy: boolean) => void;
-  error?: string;
+  /** What is wrong with the answer: a code from the shared checks, or a plain text. */
+  error?: FieldIssue;
+  /** Focus left the field: the page checks it now. */
+  onBlur?: () => void;
 }) {
   const str = value === undefined || value === null ? "" : String(value);
   const shut = new Set(closed?.values.map(String));
+  const id = useId();
+  const labelId = `${id}-label`;
+  const errorId = `${id}-error`;
+  const errorText = error ? fieldErrorText(error) : "";
+  // A text control names itself by the label, says it is required, and reads the error with it.
+  const aria = {
+    "aria-labelledby": labelId,
+    "aria-required": field.required || undefined,
+    "aria-invalid": errorText ? true : undefined,
+    "aria-describedby": errorText ? errorId : undefined,
+  } as const;
+  // Controls of their own (choices, uploads, a map) stand in a group that carries the same names.
+  let grouped = true;
   let control: React.ReactNode;
   switch (field.kind) {
     case "textarea":
+      grouped = false;
       control = (
         <Textarea
+          {...aria}
           value={str}
           placeholder={field.placeholder}
           autoCapitalize="sentences"
@@ -770,8 +792,10 @@ export function FieldInput({
       );
       break;
     case "number":
+      grouped = false;
       control = (
         <Input
+          {...aria}
           inputMode="decimal"
           autoComplete="off"
           value={str}
@@ -838,8 +862,10 @@ export function FieldInput({
       break;
     }
     case "date":
+      grouped = false;
       control = (
         <Input
+          {...aria}
           type="date"
           value={str}
           onChange={(e) => onChange(e.target.value)}
@@ -848,8 +874,10 @@ export function FieldInput({
       );
       break;
     case "email":
+      grouped = false;
       control = (
         <Input
+          {...aria}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -862,10 +890,12 @@ export function FieldInput({
         />
       );
       break;
+    // Not type="url": the browser turns down `orf.at`, which the page keeps as https://orf.at.
     case "url":
+      grouped = false;
       control = (
         <Input
-          type="url"
+          {...aria}
           inputMode="url"
           autoComplete="url"
           autoCapitalize="off"
@@ -877,7 +907,9 @@ export function FieldInput({
         />
       );
       break;
+    // The switch names itself; it is never required.
     case "toggle":
+      grouped = false;
       control = (
         <Switch
           checked={value === true}
@@ -954,10 +986,12 @@ export function FieldInput({
       );
       break;
     default:
+      grouped = false;
       control = field.scan ? (
-        <ScanInput field={field} value={str} onChange={onChange} />
+        <ScanInput field={field} value={str} onChange={onChange} aria={aria} />
       ) : (
         <Input
+          {...aria}
           {...textHints(field)}
           value={str}
           placeholder={field.placeholder}
@@ -965,16 +999,41 @@ export function FieldInput({
         />
       );
   }
+  if (grouped && control) {
+    control = (
+      <fieldset
+        className="m-0 min-w-0 border-0 p-0"
+        aria-labelledby={labelId}
+        aria-describedby={aria["aria-describedby"]}
+      >
+        {control}
+      </fieldset>
+    );
+  }
   return (
-    <div>
+    <div
+      data-field={field.id}
+      onBlur={
+        onBlur
+          ? (e) => {
+              // Only when focus leaves the whole field, not between its own controls.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                onBlur();
+              }
+            }
+          : undefined
+      }
+    >
       {field.kind === "toggle" ? (
         <div className="flex items-start justify-between gap-6">
-          <Label hint={field.help}>{field.label}</Label>
+          <Label hint={field.help} id={labelId}>
+            {field.label}
+          </Label>
           {control}
         </div>
       ) : (
         <>
-          <Label hint={field.help} required={field.required}>
+          <Label hint={field.help} required={field.required} id={labelId}>
             {field.label}
           </Label>
           {control}
@@ -987,7 +1046,11 @@ export function FieldInput({
           })}
         </div>
       ) : null}
-      {error ? <div className="mt-1.5 text-[0.8125rem] text-rose">{error}</div> : null}
+      {errorText ? (
+        <div id={errorId} className="mt-1.5 text-[0.8125rem] text-rose">
+          {errorText}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -29,6 +29,8 @@ export {
 export { FieldInput, textHints, type Values } from "./fields.js";
 export {
   eventText,
+  type FieldIssue,
+  fieldErrorText,
   type Lang,
   RUNNER_TEXTS,
   type RunnerKey,

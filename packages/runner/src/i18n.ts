@@ -1,3 +1,4 @@
+import type { FieldProblem } from "@engenty-wizards/shared/field-checks";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
@@ -8,6 +9,20 @@ import { useSyncExternalStore } from "react";
 const de = {
   "share.copied": "Kopiert",
   "run.closed": "Hier gerade nicht verfügbar, dafür fehlt: {list}",
+  "field.required": "Bitte ausfüllen.",
+  "field.number": "Bitte eine Zahl eingeben, z. B. 12 oder 3,5.",
+  "field.email": "Das ist keine gültige E-Mail-Adresse.",
+  "field.url": "Das ist keine gültige Adresse, z. B. beispiel.at.",
+  "field.date": "Bitte ein gültiges Datum wählen.",
+  "field.dateMin": "Frühestens am {min}.",
+  "field.dateMax": "Spätestens am {max}.",
+  "field.filesMin": "Bitte mindestens {min} auswählen.",
+  "field.filesMax": "Höchstens {max} – bitte einige entfernen.",
+  "field.select": "Bitte eine der angebotenen Möglichkeiten wählen.",
+  "field.slot": "Dieser Termin wird nicht angeboten.",
+  "field.unavailable": "Das ist hier gerade nicht verfügbar.",
+  "field.fileMissing": "Die Datei wurde nicht gefunden – bitte noch einmal hochladen.",
+  "field.connect": "Bitte zuerst verbinden.",
   "slot.later": "Spätere Termine zeigen",
   "slot.none": "Gerade sind keine Termine frei.",
   "cards.open": "Details",
@@ -189,6 +204,20 @@ export type RunnerKey = keyof typeof de;
 const en: Record<RunnerKey, string> = {
   "share.copied": "Copied",
   "run.closed": "Not available here right now, it needs: {list}",
+  "field.required": "Please fill this in.",
+  "field.number": "Please enter a number, e.g. 12 or 3.5.",
+  "field.email": "That isn't a valid email address.",
+  "field.url": "That isn't a valid address, e.g. example.com.",
+  "field.date": "Please pick a valid date.",
+  "field.dateMin": "{min} at the earliest.",
+  "field.dateMax": "{max} at the latest.",
+  "field.filesMin": "Please pick at least {min}.",
+  "field.filesMax": "At most {max} – please remove some.",
+  "field.select": "Please pick one of the options offered.",
+  "field.slot": "This time is not offered.",
+  "field.unavailable": "This is not available here right now.",
+  "field.fileMissing": "The file was not found – please upload it again.",
+  "field.connect": "Please connect first.",
   "slot.later": "Show later times",
   "slot.none": "No times are free right now.",
   "cards.open": "Details",
@@ -398,6 +427,34 @@ export function useRunnerLang(): Lang {
 /** What a run reports, in the language the person reads: its note where it has one. */
 export function eventText(ev: { message: string; note?: RunNote | null }): string {
   return (ev.note && noteText(ev.note, lang)) || ev.message;
+}
+
+/** A problem with an answer as a host hands it over: a code with its numbers, or a plain text. */
+export type FieldIssue =
+  | string
+  | { code?: string; params?: FieldProblem["params"]; message?: string };
+
+/**
+ * A field's problem in the language the person reads: worded by its code, a day in the local
+ * form. A plain text, or a code this runner does not know (a newer runtime), shows as it came.
+ */
+export function fieldErrorText(issue: FieldIssue): string {
+  if (typeof issue === "string") {
+    return issue;
+  }
+  const key = `field.${issue.code}`;
+  if (!issue.code || !(key in de)) {
+    return issue.message ?? "";
+  }
+  const vars = Object.fromEntries(
+    Object.entries(issue.params ?? {}).map(([k, v]) => [
+      k,
+      typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)
+        ? new Date(`${v}T00:00:00`).toLocaleDateString(lang)
+        : v,
+    ]),
+  );
+  return t(key as RunnerKey, vars);
 }
 
 export function t(key: RunnerKey, vars?: Record<string, string | number>): string {

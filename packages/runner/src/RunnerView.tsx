@@ -1,10 +1,17 @@
 import {
+  type Field,
   isDecidedField,
   type PageStep,
   type ResultStep,
   type ReviewStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
+import {
+  checkAnswer,
+  type FieldProblem,
+  isUrl,
+  normalizeUrl,
+} from "@engenty-wizards/shared/field-checks";
 import type { RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowLeft,
@@ -29,7 +36,7 @@ import {
 } from "./device";
 import { runBase, runnerEnv, withBase } from "./env.js";
 import { FieldInput, type Values } from "./fields";
-import { eventText, t } from "./i18n.js";
+import { eventText, type FieldIssue, t } from "./i18n.js";
 import { DownloadButtons, OutputView } from "./outputs";
 import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
 import { Button, Card, cn, LinkedText, Spinner, Textarea } from "./ui.js";
@@ -43,7 +50,8 @@ export interface RunSource {
   notFound: boolean;
   error: string | null;
   busy: boolean;
-  fieldErrors: Record<string, string>;
+  /** What the runtime turned down, by field: its code and numbers, or (from an older host) a text. */
+  fieldErrors: Record<string, FieldIssue>;
   submitPage(stepId: string, values: Record<string, unknown>): Promise<boolean>;
   accept(stepId: string, edits?: Record<string, string>): Promise<boolean>;
   regenerate(stepId: string, target: string, note: string, items?: number[]): Promise<boolean>;
@@ -127,7 +135,91 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
     [step.fields, view.options, view.decidedFields],
   );
   const shown = shownFields(fields, view.known ?? {}, values);
-  const submit = () => void run.submitPage(step.id, values);
+  // What the page's own checks found; the runtime's answer stands where there is none.
+  const [problems, setProblems] = useState<Record<string, FieldProblem>>({});
+  // Fields the person typed into: one passed by without a word is not called missing on blur.
+  const edited = useRef(new Set<string>());
+  // Fields changed since the runtime answered: what it said there may no longer hold.
+  const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
+  const focusField = (id: string) => {
+    const box = form.current?.querySelector<HTMLElement>(`[data-field="${id}"]`);
+    const target = box?.querySelector<HTMLElement>(
+      'input:not([type="hidden"], [disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
+    );
+    if (target) {
+      target.focus();
+    } else {
+      box?.scrollIntoView({ block: "center" });
+    }
+  };
+  const setProblem = (id: string, problem: FieldProblem | null) =>
+    setProblems((prev) => {
+      if (!problem) {
+        if (!(id in prev)) {
+          return prev;
+        }
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: problem };
+    });
+
+  // The runtime turned something down: its messages show again, the first field takes focus.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the runtime answers
+  useEffect(() => {
+    setChanged(new Set());
+    const bad = shown.find((f) => run.fieldErrors[f.id]);
+    if (bad) {
+      focusField(bad.id);
+    }
+  }, [run.fieldErrors]);
+
+  const change = (field: Field, v: unknown) => {
+    setValues((prev) => ({ ...prev, [field.id]: v }));
+    edited.current.add(field.id);
+    setChanged((prev) => (prev.has(field.id) ? prev : new Set(prev).add(field.id)));
+    // A message already shown goes as soon as the answer is right.
+    if (problems[field.id]) {
+      setProblem(field.id, checkAnswer(field, v));
+    }
+  };
+  const blur = (field: Field) => {
+    let v = valuesRef.current[field.id];
+    // A link typed without its scheme shows as it will be kept.
+    if (field.kind === "url" && typeof v === "string" && isUrl(v) && normalizeUrl(v) !== v) {
+      v = normalizeUrl(v);
+      setValues((prev) => ({ ...prev, [field.id]: v }));
+    }
+    const problem = checkAnswer(field, v);
+    setProblem(
+      field.id,
+      problem?.code === "required" && !edited.current.has(field.id) ? null : problem,
+    );
+  };
+  const submit = () => {
+    const found: Record<string, FieldProblem> = {};
+    const sending: Values = { ...values };
+    for (const f of shown) {
+      const v = values[f.id];
+      const problem = checkAnswer(f, v);
+      if (problem) {
+        found[f.id] = problem;
+      } else if (f.kind === "url" && typeof v === "string") {
+        sending[f.id] = normalizeUrl(v);
+      }
+    }
+    setProblems(found);
+    const bad = shown.find((f) => found[f.id]);
+    if (bad) {
+      focusField(bad.id);
+      return;
+    }
+    setValues(sending);
+    void run.submitPage(step.id, sending);
+  };
 
   // The keyboard's action key says what it does: "next" between fields, "go" on the last one.
   useEffect(() => {
@@ -146,6 +238,8 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
   return (
     <form
       ref={form}
+      // The page checks its answers itself, in the person's language, under each field.
+      noValidate
       className="animate-rise"
       onSubmit={(e) => {
         e.preventDefault();
@@ -187,9 +281,10 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
             values={values}
             runId={view.id}
             view={view}
-            error={run.fieldErrors[f.id]}
+            error={problems[f.id] ?? (changed.has(f.id) ? undefined : run.fieldErrors[f.id])}
             closed={view.closed?.[f.id]}
-            onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
+            onChange={(v) => change(f, v)}
+            onBlur={() => blur(f)}
             onBusy={(busy) =>
               setPending((prev) => {
                 if (prev.has(f.id) === busy) {

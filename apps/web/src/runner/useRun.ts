@@ -1,3 +1,4 @@
+import type { FieldError } from "@engenty-wizards/shared/field-checks";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { useCallback, useEffect, useState } from "react";
 import { withBase } from "@/lib/base";
@@ -13,7 +14,7 @@ export function useRun(runId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, FieldError>>({});
 
   useEffect(() => {
     setView(null);
@@ -128,11 +129,8 @@ export function useRun(runId: string | null) {
         return true;
       } catch (err) {
         if (err instanceof ApiError && err.status === 422 && Array.isArray(err.body?.fields)) {
-          setFieldErrors(
-            Object.fromEntries(
-              err.body.fields.map((f: { field: string; message: string }) => [f.field, f.message]),
-            ),
-          );
+          // With its code, so the runner says it in the person's language.
+          setFieldErrors(Object.fromEntries(err.body.fields.map((f: FieldError) => [f.field, f])));
         }
         setError((err as Error).message);
         return false;

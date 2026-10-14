@@ -4,5 +4,5 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: { conditions: ["wizards-source"] },
   ssr: { resolve: { conditions: ["wizards-source"] } },
-  test: { root: ".", include: ["test/**/*.test.ts"], environment: "node" },
+  test: { root: ".", include: ["test/**/*.test.{ts,tsx}"], environment: "node" },
 });
