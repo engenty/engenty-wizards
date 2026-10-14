@@ -304,11 +304,17 @@ export function NewWizardPage() {
   const error = create.error ?? fromStarter.error;
 
   return (
-    <div className="animate-rise pt-4">
+    <div className="animate-rise md:pt-4">
       <div className="mx-auto max-w-2xl">
         <div className="flex flex-col items-center text-center">
-          <Mascot kind="sprout" size={150} fluffy />
-          <h1 className="mt-2 font-display font-semibold text-[2rem] leading-tight tracking-tight sm:text-[2.375rem]">
+          {/* On a phone the same engenty at a little over half its size: scaled, so it stays
+            the fluffy one (Mascot draws a flat one below 120). */}
+          <div className="size-[84px] md:size-auto">
+            <div className="origin-top-left scale-[0.56] md:scale-100">
+              <Mascot kind="sprout" size={150} fluffy />
+            </div>
+          </div>
+          <h1 className="mt-1 font-display font-semibold text-[1.5rem] leading-tight tracking-tight md:mt-2 md:text-[2.375rem]">
             {t("new.title")}
           </h1>
         </div>
@@ -317,7 +323,7 @@ export function NewWizardPage() {
           value={channels}
           onChange={setChannels}
           runners={runners.data}
-          className="mt-8 px-1"
+          className="mt-4 px-1 md:mt-8"
         />
         <div
           className={cn(
