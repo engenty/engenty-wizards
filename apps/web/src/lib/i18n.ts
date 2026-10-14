@@ -350,10 +350,11 @@ const de: Record<Key, string> = {
   "cloud.noticeNotRunnable":
     "Hier veröffentlicht. In der Cloud läuft diese Version nicht – mehr dazu unten.",
   "readonly.wizard":
-    "Dieser Wizard kommt aus deiner lokalen Installation und wird dort geändert. Hier läuft, was du dort veröffentlichst.",
-  "readonly.project": "Dieser Space kommt aus deiner lokalen Installation und wird dort geändert.",
+    "Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Wizard dort – was du dort veröffentlichst, läuft hier.",
+  "readonly.project":
+    "Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Space dort.",
   "readonly.server":
-    "Auf diesem Server wird nichts gebaut. Hier laufen die Wizards, die deine lokale Installation veröffentlicht.",
+    "Schreibgeschützt: Dieser Server führt nur die Wizards aus, die deine lokale Installation veröffentlicht. Gebaut und bearbeitet wird dort.",
   "nav.wizards": "Wizards",
   "nav.spaceMenu": "Menü des Spaces",
   "nav.renameSpace": "Space-Namen bearbeiten",
@@ -2240,10 +2241,10 @@ const en = {
   "cloud.noticeError": "Published here. This version did not arrive in the cloud — see below.",
   "cloud.noticeNotRunnable": "Published here. This version does not run in the cloud — see below.",
   "readonly.wizard":
-    "This wizard comes from your local install and is changed there. What you publish there runs here.",
-  "readonly.project": "This space comes from your local install and is changed there.",
+    "Synced, read-only copy from your local install. Edit this wizard there – what you publish there runs here.",
+  "readonly.project": "Synced, read-only copy from your local install. Edit this space there.",
   "readonly.server":
-    "Nothing is built on this server. The wizards your local install publishes run here.",
+    "Read-only: this server only runs the wizards your local install publishes. Build and edit them there.",
   "nav.wizards": "Wizards",
   "nav.spaceMenu": "Space menu",
   "nav.renameSpace": "Edit space name",
