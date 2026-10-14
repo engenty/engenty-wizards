@@ -58,15 +58,15 @@ const SYSTEM = (wizardId: string) =>
 
 const BUILDING = /edit_wizard|write_wizard|write_file|delete_file|create_wizard/;
 
-const ACTIVITY: [RegExp, string][] = [
-  [/get_authoring_guide/, "Liest die Bauanleitung"],
-  [/get_starter|list_starters/, "Sieht sich eine Vorlage an"],
-  [/get_wizard|list_files|read_file/, "Liest den Wizard"],
-  [/write_file|delete_file/, "Schreibt Dateien"],
-  [/edit_wizard|write_wizard/, "Baut den Wizard um"],
-  [/check_widget|preview/, "Prüft das Widget"],
-  [/start_test_run|get_test_run/, "Testet den Wizard"],
-  [/find_connectors|import_connector/, "Sucht einen Dienst"],
+const ACTIVITY: [RegExp, { de: string; en: string }][] = [
+  [/get_authoring_guide/, { de: "Liest die Bauanleitung", en: "Reading the building guide" }],
+  [/get_starter|list_starters/, { de: "Sieht sich eine Vorlage an", en: "Looking at a template" }],
+  [/get_wizard|list_files|read_file/, { de: "Liest den Wizard", en: "Reading the wizard" }],
+  [/write_file|delete_file/, { de: "Schreibt Dateien", en: "Writing files" }],
+  [/edit_wizard|write_wizard/, { de: "Baut den Wizard um", en: "Rebuilding the wizard" }],
+  [/check_widget|preview/, { de: "Prüft das Widget", en: "Checking the widget" }],
+  [/start_test_run|get_test_run/, { de: "Testet den Wizard", en: "Testing the wizard" }],
+  [/find_connectors|import_connector/, { de: "Sucht einen Dienst", en: "Looking for a service" }],
 ];
 
 export interface SubscriptionTurn {
@@ -78,11 +78,14 @@ export interface SubscriptionTurn {
   onThought?: (line: string) => void;
   onBuilding: () => void;
   images?: ChatImage[];
+  /** The language the admin reads the lines about its work in. */
+  lang?: "de" | "en";
 }
 
 /** The activity for one tool call, naming the file or service it is about when it says. */
-function activity(name: string, args: Record<string, unknown>): string {
-  const label = ACTIVITY.find(([re]) => re.test(name))?.[1] ?? "Arbeitet";
+function activity(name: string, args: Record<string, unknown>, lang: "de" | "en" = "en"): string {
+  const label =
+    ACTIVITY.find(([re]) => re.test(name))?.[1][lang] ?? (lang === "de" ? "Arbeitet" : "Working");
   const about = [args.path, args.query].find((v) => typeof v === "string" && v.trim());
   return about ? `${label}: ${String(about)} …` : `${label} …`;
 }
@@ -167,7 +170,7 @@ export async function subscriptionTurn(
     if (event.type === "stream_event") {
       const e = event.event ?? {};
       if (e.type === "content_block_start" && e.content_block?.type === "tool_use") {
-        input.onActivity(activity(String(e.content_block.name ?? ""), {}));
+        input.onActivity(activity(String(e.content_block.name ?? ""), {}, input.lang));
       } else if (e.type === "content_block_start" && e.content_block?.type === "thinking") {
         thinking = "";
       } else if (e.type === "content_block_delta" && e.delta?.type === "thinking_delta") {
@@ -190,7 +193,7 @@ export async function subscriptionTurn(
             changed = true;
             input.onBuilding();
           }
-          input.onActivity(activity(name, block.input ?? {}));
+          input.onActivity(activity(name, block.input ?? {}, input.lang));
         }
       }
     } else if (event.type === "result") {

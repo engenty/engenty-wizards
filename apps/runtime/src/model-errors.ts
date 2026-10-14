@@ -1,14 +1,15 @@
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 
 /**
- * A failure the person reads, given as a note of `RUN_NOTES` where it has one: a run shows it in
- * the wizard's language, the message keeps the German line for the log. Free text has no note.
+ * A failure the person reads, given as a note of `RUN_NOTES` (or `bilingual` words) where it has
+ * one: a run shows it in the wizard's language, a response in the asker's, and the message keeps
+ * the English line for the log. Free text has no note.
  */
 export class NotedError extends Error {
   readonly note: RunNote | null;
 
   constructor(said: string | RunNote) {
-    super(typeof said === "string" ? said : noteText(said, "de"));
+    super(typeof said === "string" ? said : noteText(said, "en"));
     this.note = typeof said === "string" ? null : said;
   }
 }
@@ -19,6 +20,11 @@ export class ModelUnavailableError extends NotedError {}
 /** The note a failure carries, or null. */
 export function noteOf(err: unknown): RunNote | null {
   return err instanceof NotedError ? err.note : null;
+}
+
+/** What a failure says, to pass on: its note where it has one, else its message. */
+export function saidOf(err: unknown): string | RunNote {
+  return noteOf(err) ?? (err as Error)?.message ?? String(err);
 }
 
 /** A failure in a language: its note where it has one, else its message as it is. */

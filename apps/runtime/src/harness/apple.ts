@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { release } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { noteText, type RunNote } from "@engenty-wizards/shared/run";
+import type { RunNote } from "@engenty-wizards/shared/run";
 import type { TranscriptionModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
@@ -147,11 +147,6 @@ export function appleUnavailableNote(status: AppleStatus): RunNote {
     default:
       return { code: "appleDevice" };
   }
-}
-
-/** What to tell the person when Apple Intelligence cannot answer, in German (the settings). */
-export function appleUnavailable(status: AppleStatus): string {
-  return noteText(appleUnavailableNote(status), "de");
 }
 
 /**

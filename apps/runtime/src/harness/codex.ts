@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Effort, TextClass } from "@engenty-wizards/shared/definition";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { resolveEnv, run } from "./env.js";
 import {
   failureOf,
@@ -267,6 +268,8 @@ export const codex: Harness = {
   login: { args: ["login"], interactive: false },
   model: (alias: string, effort?: Effort) => new CodexModel(codex, alias || "default", effort),
   image: { alias: "image", model: (alias: string) => new CodexImageModel(codex, alias || "image") },
-  exhausted:
+  exhausted: bilingual(
     "Das Kontingent des ChatGPT-Kontos, mit dem Codex angemeldet ist, ist aufgebraucht. Später noch einmal versuchen oder einen anderen Client wählen.",
+    "The quota of the ChatGPT account Codex is signed in with is used up. Try again later or pick another client.",
+  ),
 };

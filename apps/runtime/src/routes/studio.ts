@@ -16,6 +16,7 @@ import {
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
+import { bilingual } from "@engenty-wizards/shared/run";
 import {
   PACKAGE_EXTENSION,
   PACKAGE_MAX_BYTES,
@@ -79,6 +80,7 @@ import {
 import { seenApps } from "../mcp/seen.js";
 import { generateImageMedia, generateSpeechMedia, generateVideoMedia } from "../media/generate.js";
 import { transcribeAudio } from "../media/transcribe.js";
+import { errorText, saidOf } from "../model-errors.js";
 import {
   checkKey,
   classProblem,
@@ -216,6 +218,7 @@ import { codeOf } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { applyUpdate, updateStatus } from "../update.js";
 import { byteRange } from "./delivery.js";
+import { inLang, requestLang } from "./lang.js";
 
 type Vars = { Variables: { user: SessionUser } };
 
@@ -521,10 +524,16 @@ export const studio = new Hono<Vars>()
   .post("/assistant/speak", async (c) => {
     const { text } = z.object({ text: z.string().min(1).max(4000) }).parse(await c.req.json());
     if ((await classWays()).speech.kind === "none") {
-      throw new ServiceError("refused", "Hier spricht kein Sprachmodell.");
+      throw new ServiceError(
+        "refused",
+        bilingual("Hier spricht kein Sprachmodell.", "No language model speaks here."),
+      );
     }
     if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     const voice = await generateSpeechMedia({ text, abortSignal: c.req.raw.signal });
     return c.body(new Uint8Array(voice.bytes), 200, { "content-type": voice.mime });
@@ -544,10 +553,13 @@ export const studio = new Hono<Vars>()
   .post("/assistant/turn", async (c) => {
     const user = c.get("user");
     const body = assistantTurnSchema
-      .extend({ lang: z.enum(["de", "en"]).default("de") })
+      .extend({ lang: z.enum(["de", "en"]).default("en") })
       .parse(await c.req.json());
     if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     const project = body.projectId ? await ownedProject(user.id, body.projectId) : null;
     const writable = project ? await projectWritable(project) : false;
@@ -660,7 +672,7 @@ export const studio = new Hono<Vars>()
         await send("error", {
           message:
             err instanceof ServiceError || err instanceof ModelUnavailableError
-              ? err.message
+              ? errorText(err, body.lang)
               : body.lang === "de"
                 ? "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen."
                 : "Something went wrong. Please try again.",
@@ -714,7 +726,10 @@ export const studio = new Hono<Vars>()
     const kind = z.enum(PROJECT_FILE_KINDS).parse(c.req.query("kind"));
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File)) {
-      throw new ServiceError("invalid", "Bitte eine Datei wählen.");
+      throw new ServiceError(
+        "invalid",
+        bilingual("Bitte eine Datei wählen.", "Please choose a file."),
+      );
     }
     const row = await addProjectFile(project.id, {
       kind,
@@ -746,7 +761,10 @@ export const studio = new Hono<Vars>()
     await ownedProject(c.get("user").id, c.req.param("id"));
     const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
     const colors = await scanColors(url).catch(() => {
-      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+      throw new ServiceError(
+        "invalid",
+        bilingual("Die Seite ist nicht erreichbar.", "The page cannot be reached."),
+      );
     });
     return c.json({ colors });
   })
@@ -762,7 +780,10 @@ export const studio = new Hono<Vars>()
       })
       .parse(await c.req.json());
     if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     try {
       return c.json({
@@ -770,7 +791,7 @@ export const studio = new Hono<Vars>()
       });
     } catch (err) {
       if (err instanceof ModelUnavailableError) {
-        throw new ServiceError("refused", err.message);
+        throw new ServiceError("refused", saidOf(err));
       }
       throw err;
     }
@@ -779,7 +800,10 @@ export const studio = new Hono<Vars>()
     await ownedProject(c.get("user").id, c.req.param("id"));
     const { url } = z.object({ url: z.string().min(1).max(2000) }).parse(await c.req.json());
     const fonts = await scanFonts(url).catch(() => {
-      throw new ServiceError("invalid", "Die Seite ist nicht erreichbar.");
+      throw new ServiceError(
+        "invalid",
+        bilingual("Die Seite ist nicht erreichbar.", "The page cannot be reached."),
+      );
     });
     return c.json({ fonts });
   })
@@ -1059,7 +1083,7 @@ export const studio = new Hono<Vars>()
         format: z.enum(["faq"]).nullish(),
       })
       .parse(await c.req.json());
-    return c.json(await createTable(c.get("user").id, c.req.param("id"), body));
+    return c.json(await createTable(c.get("user").id, c.req.param("id"), body, requestLang(c)));
   })
   .get("/tables/:id", async (c) => c.json(await getTable(c.get("user").id, c.req.param("id"))))
   .patch("/tables/:id", async (c) => {
@@ -1159,7 +1183,13 @@ export const studio = new Hono<Vars>()
   .post("/projects/:id/wizards/import", async (c) => {
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File) || !file.size || file.size > PACKAGE_MAX_BYTES) {
-      throw new ServiceError("invalid", `Bitte ein Wizard-Paket (${PACKAGE_EXTENSION}) bis 30 MB.`);
+      throw new ServiceError(
+        "invalid",
+        bilingual(
+          `Bitte ein Wizard-Paket (${PACKAGE_EXTENSION}) bis 30 MB.`,
+          `Please a wizard package (${PACKAGE_EXTENSION}) of up to 30 MB.`,
+        ),
+      );
     }
     return c.json(
       await importWizard(
@@ -1167,6 +1197,7 @@ export const studio = new Hono<Vars>()
         c.req.param("id"),
         new Uint8Array(await file.arrayBuffer()),
         file.name,
+        requestLang(c),
       ),
     );
   })
@@ -1176,7 +1207,16 @@ export const studio = new Hono<Vars>()
       knowledge: c.req.query("knowledge") === "1",
     });
     if (!found) {
-      return c.json({ error: "Der Wizard ist noch nicht veröffentlicht." }, 404);
+      return c.json(
+        {
+          error: inLang(
+            c,
+            "Der Wizard ist noch nicht veröffentlicht.",
+            "The wizard is not published yet.",
+          ),
+        },
+        404,
+      );
     }
     const { name, zip } = found;
     return c.body(new Uint8Array(zip), 200, {
@@ -1288,7 +1328,7 @@ export const studio = new Hono<Vars>()
   // The models the draft needs that this runtime cannot serve, by class, with the steps that call them.
   .get("/wizards/:id/models", async (c) => {
     const w = await ownedWizard(c.get("user").id, c.req.param("id"));
-    return c.json({ missing: await missingModels(w.draft) });
+    return c.json({ missing: await missingModels(w.draft, requestLang(c)) });
   })
   // A runtime that runs alone: the wizard's copy in the cloud of the linked account.
   .get("/wizards/:id/cloud", async (c) => {
@@ -1335,13 +1375,16 @@ export const studio = new Hono<Vars>()
       .parse(await c.req.json());
     await writableWizard(user.id, wizardId);
     if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     return streamSSE(c, async (stream) => {
       const abort = new AbortController();
       stream.onAbort(() => abort.abort());
       try {
-        const result = await architectTurn(user.id, wizardId, message, {
+        const result = await architectTurn(user.id, wizardId, message, requestLang(c), {
           signal: abort.signal,
           onText: (delta) => {
             void stream.writeSSE({ event: "text", data: JSON.stringify(delta) });
@@ -1364,8 +1407,12 @@ export const studio = new Hono<Vars>()
           data: JSON.stringify({
             message:
               err instanceof ServiceError
-                ? err.message
-                : "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen.",
+                ? errorText(err, requestLang(c))
+                : inLang(
+                    c,
+                    "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen.",
+                    "Something went wrong. Please try again.",
+                  ),
           }),
         });
       }
@@ -1375,10 +1422,16 @@ export const studio = new Hono<Vars>()
   .post("/transcribe", async (c) => {
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File) || !file.size || file.size > 10_000_000) {
-      throw new ServiceError("invalid", "Bitte eine Aufnahme bis 10 MB.");
+      throw new ServiceError(
+        "invalid",
+        bilingual("Bitte eine Aufnahme bis 10 MB.", "Please a recording of up to 10 MB."),
+      );
     }
     if (!(await canSpend())) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     try {
       const { text } = await transcribeAudio({
@@ -1388,7 +1441,7 @@ export const studio = new Hono<Vars>()
       return c.json({ text });
     } catch (err) {
       if (err instanceof ModelUnavailableError) {
-        throw new ServiceError("refused", err.message);
+        throw new ServiceError("refused", saidOf(err));
       }
       throw err;
     }
@@ -1483,7 +1536,7 @@ export const studio = new Hono<Vars>()
   })
   // --- models: where each class runs, own API keys, the credits behind them -----------------
   // Alone for this machine; on a Manage-App's runtime for the team, whose admins change it.
-  .get("/models", async (c) => c.json(await modelSettings()))
+  .get("/models", async (c) => c.json(await modelSettings(requestLang(c))))
   .put("/models", async (c) => {
     if (!mayChangeModels(c.get("user"))) {
       return c.json({ error: "Only an admin of the team changes its models." }, 403);
@@ -1507,7 +1560,11 @@ export const studio = new Hono<Vars>()
       if (own && info && !feature("ownKeys", info.features)) {
         return c.json(
           {
-            error: `Eigene API Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,
+            error: inLang(
+              c,
+              `Eigene API Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,
+              `Own API keys are not part of the ${info.plan?.name ?? "team's"} plan.`,
+            ),
             code: "plan",
           },
           403,
@@ -1515,7 +1572,7 @@ export const studio = new Hono<Vars>()
       }
     }
     await saveModels(input);
-    return c.json(await modelSettings());
+    return c.json(await modelSettings(requestLang(c)));
   })
   // Whether a provider takes a key — the one typed, or the one stored. Nothing is generated.
   .post("/models/keys/:provider/check", async (c) => {
@@ -1527,7 +1584,7 @@ export const studio = new Hono<Vars>()
     if (!value) {
       return c.json({ ok: false, message: "Kein API Key hinterlegt." });
     }
-    return c.json(await checkKey(provider, value));
+    return c.json(await checkKey(provider, value, requestLang(c)));
   })
   // One call on a class, as a run makes it: text answers a word, an image, a voice or a short
   // clip comes back to look at, a voice note comes back as text. Paid like any call.
@@ -1536,7 +1593,7 @@ export const studio = new Hono<Vars>()
       return c.json({ error: "Only an admin of the team tests its models." }, 403);
     }
     const { cls, lang } = z
-      .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(["de", "en"]).default("de") })
+      .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(["de", "en"]).default("en") })
       .parse(await c.req.json());
     return c.json(await testClass(cls, lang));
   })

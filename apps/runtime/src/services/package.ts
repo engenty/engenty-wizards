@@ -174,6 +174,8 @@ export async function importWizard(
   projectId: string,
   data: Uint8Array,
   name?: string,
+  /** The language the admin reads the import's note in. */
+  lang: "de" | "en" = "en",
 ) {
   await requireAdmin();
   const { manifest, files } = readPackage(data);
@@ -183,10 +185,15 @@ export async function importWizard(
     files.map((f) => f.path),
   );
   const lacks = await missing(userId, projectId, draft, manifest);
+  const de = lang === "de";
   const note = [
-    `Importiert${name ? ` aus „${name}“` : ""}: ${draft.steps.length} Schritte, ${files.length} ${files.length === 1 ? "Datei" : "Dateien"}.`,
+    de
+      ? `Importiert${name ? ` aus „${name}“` : ""}: ${draft.steps.length} Schritte, ${files.length} ${files.length === 1 ? "Datei" : "Dateien"}.`
+      : `Imported${name ? ` from “${name}”` : ""}: ${draft.steps.length} steps, ${files.length} ${files.length === 1 ? "file" : "files"}.`,
     lacks.length
-      ? `Diesem Projekt fehlt noch: ${lacks.join(", ")} – in den Einstellungen unter „Connectors“ hinzufügen.`
+      ? de
+        ? `Diesem Projekt fehlt noch: ${lacks.join(", ")} – in den Einstellungen unter „Connectors“ hinzufügen.`
+        : `This project still lacks: ${lacks.join(", ")} – add it under “Connectors” in the settings.`
       : "",
   ]
     .filter(Boolean)

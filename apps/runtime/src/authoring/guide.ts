@@ -14,6 +14,7 @@ type Wizard = {
   description: string           // one sentence
   avatar: "round"|"drop"|"dome"|"flame"|"oval"|"bean"|"pebble"|"sprout"|"tower"|"wedge"  // the engenty mascot shown to end users
   intro?: string                // one friendly sentence above the first page
+  lang?: "en"|"de"              // the language the wizard's texts are in — ALWAYS set it to the language you write them in
   lists?: List[]                // tabular data the wizard KEEPS between runs — separately for each person who runs it, or for all with "shared"
   connections?: Connection[]    // accounts the PERSON connects during a run (their mailbox); kept for their next run
   steps: Step[]                 // run top to bottom; the LAST step is always a "result"
@@ -251,7 +252,7 @@ A template may only use fields asked and steps run EARLIER.`;
 
 export const PRINCIPLES = `
 How good wizards look:
-- For non-technical end users. Plain words, friendly titles phrased as questions ("Wofür ist der Post?").
+- For non-technical end users. Plain words, friendly titles phrased as questions ("What is the post for?").
 - A page whose fields depend on an earlier answer uses "when" on its fields, never one copy of the page per answer and a branch to each copy. Choices that depend on what an earlier step found use "optionsFrom", never one page per possible result.
 - Few pages, 1–5 fields each, one theme per page. Only ask what the result really needs; prefer selects with sensible defaults.
 - Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.

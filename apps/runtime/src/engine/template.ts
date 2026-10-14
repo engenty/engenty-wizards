@@ -68,7 +68,7 @@ export function itemsAsMarkdown(
   field: Field,
   value: unknown,
   values: Record<string, unknown>,
-  lang: "de" | "en" = "de",
+  lang: "de" | "en" = "en",
 ): string {
   const locale = LOCALES[lang];
   const totals = itemsTotals(field, value, values);

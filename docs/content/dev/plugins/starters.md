@@ -27,7 +27,7 @@ server.registerStarter({
 | `id` | Lower case, digits and `-`, starting with a letter, at most 40 characters. Unique in the plugin |
 | `title` | What the list of templates calls it |
 | `description` | What it makes, in one or two sentences. Shown under the title |
-| `language` | `"de"` or `"en"`, the language its texts are in. Default: `"de"` |
+| `language` | `"de"` or `"en"`, the language its texts are in. Default: `"en"` |
 | `definition` | A complete wizard definition: the JSON the studio keeps and `get_authoring_guide` describes |
 | `files` | Files of the wizard's workspace by path: widgets, sample data. A string is written as UTF-8, a `Uint8Array` as it is |
 

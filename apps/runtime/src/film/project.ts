@@ -293,7 +293,7 @@ export async function prepareFilmFolder(
     { cwd: root, signal: ctx.signal, timeoutMs: 5 * 60_000 },
   );
   if (init.code !== 0 || !existsSync(join(root, "film"))) {
-    throw new Error(`Das Filmprojekt konnte nicht angelegt werden: ${init.out.slice(-300)}`);
+    throw new Error(`The film project could not be set up: ${init.out.slice(-300)}`);
   }
   await put(root, ".engenty/inputs", stamp);
   return { root, brief };

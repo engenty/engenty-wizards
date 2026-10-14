@@ -1,4 +1,5 @@
 import type { Effort, TextClass } from "@engenty-wizards/shared/definition";
+import type { RunNote } from "@engenty-wizards/shared/run";
 import type { HarnessImageModel, HarnessModel } from "./model.js";
 
 /**
@@ -42,5 +43,5 @@ export interface Harness extends EnvSpec {
    */
   image?: { alias: string; model(alias: string): HarnessImageModel };
   /** What to tell the person when the signed-in account cannot pay for the call. */
-  exhausted?: string;
+  exhausted?: RunNote;
 }

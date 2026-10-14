@@ -19,6 +19,7 @@ import {
   RULE_MARKS,
   type TextStyle,
 } from "@engenty-wizards/shared/projects";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -273,7 +274,9 @@ export async function createProject(_userId: string, name: string): Promise<{ id
   if (n >= limit) {
     throw new ServiceError(
       "refused",
-      limit === 1 ? "Hier gibt es ein Projekt." : `Höchstens ${limit} Projekte.`,
+      limit === 1
+        ? bilingual("Hier gibt es ein Projekt.", "There is one project here.")
+        : bilingual(`Höchstens ${limit} Projekte.`, `At most ${limit} projects.`),
     );
   }
   const id = nanoid(12);
@@ -305,7 +308,10 @@ export async function updateProject(
     return { ...s, headers };
   });
   if (patch.facts && new Set(patch.facts.map((f) => f.key)).size !== patch.facts.length) {
-    throw new ServiceError("invalid", "Zwei Einträge haben denselben Schlüssel.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Zwei Einträge haben denselben Schlüssel.", "Two entries have the same key."),
+    );
   }
   await db
     .update(schema.project)
@@ -471,7 +477,10 @@ export async function deleteProject(userId: string, projectId: string) {
   await requireAdmin();
   const all = await db.query.project.findMany({ where: madeHere() });
   if (all.length <= 1) {
-    throw new ServiceError("refused", "Das letzte Projekt bleibt.");
+    throw new ServiceError(
+      "refused",
+      bilingual("Das letzte Projekt bleibt.", "The last project stays."),
+    );
   }
   await removeProject(projectId);
 }

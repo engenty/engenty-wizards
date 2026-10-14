@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { generateText, Output } from "ai";
 import PostalMime from "postal-mime";
 import { z } from "zod";
@@ -16,6 +17,7 @@ import { splitMarkdownByPageBreaks } from "../engenty/doc-converter/page-break.j
 import { LocalProvider } from "../engenty/doc-converter/providers/local/index.js";
 import { invoiceSchema, receiptSchema } from "../engenty/document-scanner/schemas/index.js";
 import { env } from "../env.js";
+import { NotedError } from "../model-errors.js";
 import { type CallMeta, costOf, textModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
 
@@ -27,7 +29,7 @@ export interface ParsedDocument {
   via: "text" | "vision" | "table" | "mail";
 }
 
-export class UnreadableDocument extends Error {}
+export class UnreadableDocument extends NotedError {}
 
 /** Model calls made while reading are charged to whoever asked. */
 export type Charge = (usd: number) => Promise<void>;
@@ -210,7 +212,10 @@ async function read(
   if (mime.startsWith("image/")) {
     if (!vision.canConvert(mime)) {
       throw new UnreadableDocument(
-        `Bilder vom Typ ${mime} kann ich nicht lesen (PNG, JPEG, WebP gehen).`,
+        bilingual(
+          `Bilder vom Typ ${mime} kann ich nicht lesen (PNG, JPEG, WebP gehen).`,
+          `I cannot read images of type ${mime} (PNG, JPEG and WebP work).`,
+        ),
       );
     }
     const result = await vision.convert(data, name, mime);
@@ -255,7 +260,9 @@ async function read(
   if (mime === "application/json" || mime.startsWith("text/")) {
     return { markdown: text(), pages: null, via: "text" };
   }
-  throw new UnreadableDocument(`„${name}“ (${mime}) kann ich nicht lesen.`);
+  throw new UnreadableDocument(
+    bilingual(`„${name}“ (${mime}) kann ich nicht lesen.`, `I cannot read “${name}” (${mime}).`),
+  );
 }
 
 // --- structured extraction -----------------------------------------------------

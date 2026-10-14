@@ -6,6 +6,7 @@ import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk } from "../engine/asks.js";
 import { watchRun } from "../engine/events.js";
+import { fieldErrorsIn } from "../engine/input.js";
 import {
   cancel,
   createRun,
@@ -104,7 +105,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
           if (!(err instanceof RunInputError)) {
             throw err;
           }
-          refused = err.errors;
+          refused = fieldErrorsIn(err.errors, "en");
         }
       }
       return { runId, ticket: runTicket(runId), refused };

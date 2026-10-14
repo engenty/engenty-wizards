@@ -3,6 +3,7 @@ import type { AskInput, AssetRef, RunNote, RunState } from "@engenty-wizards/sha
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import type { schema } from "../db/client.js";
 import type { SaveAssetInput } from "../files/storage.js";
+import { NotedError } from "../model-errors.js";
 import type { CallMeta } from "../models.js";
 import type { StoreScope } from "../store/index.js";
 import type { AskResult } from "./asks.js";
@@ -47,4 +48,4 @@ export interface StepContext {
 }
 
 /** A step failure the person can read. */
-export class StepError extends Error {}
+export class StepError extends NotedError {}

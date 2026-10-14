@@ -6,6 +6,7 @@ import {
   mainLogo,
 } from "@engenty-wizards/shared/projects";
 import type { BrandView } from "@engenty-wizards/shared/run";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { generateText, Output } from "ai";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -84,7 +85,10 @@ export async function describeGradient(
   } catch {
     throw new ServiceError(
       "invalid",
-      "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
+      bilingual(
+        "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
+        "No gradient could be made from that. Please describe it differently.",
+      ),
     );
   }
   const stops = answer.stops
@@ -94,7 +98,10 @@ export async function describeGradient(
   if (stops.length < 2) {
     throw new ServiceError(
       "invalid",
-      "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
+      bilingual(
+        "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
+        "No gradient could be made from that. Please describe it differently.",
+      ),
     );
   }
   return {
