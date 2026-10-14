@@ -68,7 +68,7 @@ jobs:
       - name: Install
         run: >-
           pnpm install --frozen-lockfile
-          --filter "${{ matrix.check == 'docs' && '' || '!' }}@engenty-wizards/docs"
+          --filter "${{ matrix.check != 'docs' && '!' || '' }}@engenty-wizards/docs"
 
       # How long each test file took last time: vitest starts the longest first, so
       # apps/runtime/test/sandbox.test.ts (half a minute) runs beside the others instead of
