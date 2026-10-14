@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { api } from "../lib/api";
+import { copyText } from "../lib/clipboard";
 import { useFeature } from "../lib/features";
 import { type Key, lang, t } from "../lib/i18n";
 import {
@@ -152,17 +153,12 @@ function CopyLink({ url }: { url: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        // "Copied" only once it is: without the clipboard (a denied permission, an address that
-        // is not secure) the link is handed over to copy by hand.
-        Promise.resolve()
-          .then(() => navigator.clipboard.writeText(url))
-          .then(
-            () => {
-              setDone(true);
-              setTimeout(() => setDone(false), 1500);
-            },
-            () => window.prompt(t("share.copyFailed"), url),
-          );
+        void copyText(url, t("share.copyFailed")).then((ok) => {
+          if (ok) {
+            setDone(true);
+            setTimeout(() => setDone(false), 1500);
+          }
+        });
       }}
       className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-3 hover:bg-accent hover:text-ink"
     >
@@ -432,9 +428,12 @@ function FromLocal() {
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      void navigator.clipboard.writeText(INSTALL);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1500);
+                      void copyText(INSTALL).then((ok) => {
+                        if (ok) {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 1500);
+                        }
+                      });
                     }}
                   >
                     {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -480,9 +479,12 @@ function OnYourComputer({ me }: { me: Me }) {
             type="button"
             aria-label={t("share.copy")}
             onClick={() => {
-              void navigator.clipboard.writeText(INSTALL);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+              void copyText(INSTALL).then((ok) => {
+                if (ok) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              });
             }}
             className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white/15 transition hover:bg-white/25"
           >

@@ -2,6 +2,7 @@ import { Check, Copy, Link2, Mail, Share2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { appCall, appCan } from "../lib/app";
+import { copyText } from "../lib/clipboard";
 import { lang, t } from "../lib/i18n";
 import { Button, Dialog, Spinner } from "../ui";
 
@@ -76,9 +77,12 @@ export function ShareResultButton({
     if (!shared) {
       return;
     }
-    void navigator.clipboard.writeText(shared.url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    void copyText(shared.url, t("share.copyFailed")).then((ok) => {
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }
+    });
   };
   const canNativeShare =
     appCan("share") || (typeof navigator !== "undefined" && "share" in navigator);

@@ -21,6 +21,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api } from "../lib/api";
+import { copyText } from "../lib/clipboard";
 import { type Key, t } from "../lib/i18n";
 import { type Me, useCurrentProject, useMe, type WizardSummary } from "../lib/session";
 import { Button, Card, Chip, cn, IconButton } from "../ui";
@@ -117,9 +118,10 @@ export function CopyLine({ text, muted }: { text: string; muted?: boolean }) {
       <IconButton
         label={copied ? t("settings.copied") : t("settings.copy")}
         onClick={async () => {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
+          if (await copyText(text)) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }
         }}
       >
         {copied ? <Check className="size-4" /> : <Copy className="size-4" />}

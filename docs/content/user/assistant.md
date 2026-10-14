@@ -1,7 +1,7 @@
 ---
 title: Goose, the assistant
 description: The chat on every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
-version: 0.3.7
+version: 0.4.4
 ---
 
 Goose, the assistant, stands on every page of the studio but the editor, which has a

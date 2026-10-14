@@ -10,6 +10,7 @@ import {
 import { Copy, Download, ImageUp, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
+import { copyText } from "../../lib/clipboard";
 import { t } from "../../lib/i18n";
 import { Button, cn, Dialog, IconButton, Input, Label, Spinner, Swatch } from "../../ui";
 import { fileUrl } from "./data";
@@ -419,9 +420,12 @@ export function GradientCard({
           <IconButton
             label={copied ? t("project.gradientCopied") : t("project.gradientCopy")}
             onClick={() => {
-              void navigator.clipboard.writeText(`background: ${css};`);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+              void copyText(`background: ${css};`).then((ok) => {
+                if (ok) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              });
             }}
             className={overButton}
           >

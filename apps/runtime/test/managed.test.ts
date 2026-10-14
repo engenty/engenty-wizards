@@ -263,6 +263,12 @@ describe("a runtime of a Manage-App", () => {
   let b = "";
   let wizardOfA = "";
 
+  it("names no sign-in address of its own: people sign in at the Manage-App", async () => {
+    const config = await (await app.fetch(new Request(`${RUNTIME}/api/config`))).json();
+    expect(config.mode).toBe("managed");
+    expect(config.appUrl).toBeNull();
+  });
+
   it("signs people in there and takes user, tenant and role from the token", async () => {
     a = await signIn("code-a");
     b = await signIn("code-b");

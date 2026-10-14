@@ -94,9 +94,9 @@ function useWhere(state: AssistantState) {
     where = "bottom";
   }
   // The bar stands on the home page only; elsewhere, and on a page of full-height tables, the
-  // assistant stays small at the lower right until opened.
-  const compact = where === "bottom" && (Boolean(page.compact) || pathname !== "/");
-  if (compact) {
+  // assistant stays small at the lower right until opened – and offers no bar it could not show.
+  const compact = Boolean(page.compact) || pathname !== "/";
+  if (where === "bottom" && compact) {
     where = "avatar";
   }
   return { where, wide: wide && !phone, phone, compact };
@@ -1169,6 +1169,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
             <div className="flex items-center gap-1 rounded-full bg-card p-1 pr-1.5 shadow-overlay ring-1 ring-border">
               <button
                 type="button"
+                aria-label={t("assistant.ask")}
                 onClick={() => state.setOpen(true)}
                 className="flex items-center gap-2 rounded-full py-0.5 pr-2 pl-0.5 text-[0.875rem] text-ink-2 transition hover:text-ink"
               >
