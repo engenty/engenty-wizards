@@ -19,12 +19,12 @@
     "./ui": {
       "wizards-source": "./src/ui.tsx",
       "types": "./dist/ui.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/ui.js"
     },
     "./i18n": {
       "wizards-source": "./src/i18n.ts",
       "types": "./dist/i18n.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/i18n.js"
     },
     "./theme.css": "./src/theme.css",
     "./runner.css": "./dist/runner.css"
