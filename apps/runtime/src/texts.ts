@@ -101,6 +101,7 @@ const EN = {
   notFound: "This doesn’t exist or was deleted.",
   ownKeysNotInPlan: "Your own API keys aren’t part of the {plan} plan.",
   ownKeysNotInTeamPlan: "Your own API keys aren’t part of the team’s plan.",
+  planUnavailable: "The team’s plan can’t be checked right now. Try again later.",
 } as const satisfies Record<string, Line>;
 export type ServerKey = keyof typeof EN;
 
@@ -201,6 +202,8 @@ const DE: Partial<Record<ServerKey, Line>> = {
   notFound: "Das gibt es nicht oder nicht mehr.",
   ownKeysNotInPlan: "Eigene API-Keys gibt es nicht im Paket {plan}.",
   ownKeysNotInTeamPlan: "Eigene API-Keys gibt es nicht im Paket des Teams.",
+  planUnavailable:
+    "Das Paket des Teams lässt sich gerade nicht prüfen. Versuch es später noch einmal.",
 };
 
 export const SERVER_TEXTS: Texts<ServerKey> = { en: EN, de: DE };

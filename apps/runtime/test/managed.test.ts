@@ -16,6 +16,8 @@ const balances: Record<string, number> = { "tenant-a": 500, "tenant-b": 0 };
 const reservations: { tenantId: string; runId: string; credits: number }[] = [];
 const numberRequests: { tenantId: string; body: any }[] = [];
 const channelUsage: { tenantId: string; body: any }[] = [];
+// The Manage-App fails on tenant B's plan while this is set.
+let tenantBDown = false;
 let issuer = "";
 
 function token(claims: Record<string, unknown>, aud: string) {
@@ -111,6 +113,9 @@ const manage: Server = createServer(async (req, res) => {
   }
   const tenant = url.pathname.match(/^\/v1\/tenants\/([^/]+)$/)?.[1];
   if (tenant) {
+    if (tenantBDown && tenant === "tenant-b") {
+      return json({ error: "down", code: "unavailable" }, 503);
+    }
     return json({
       id: tenant,
       name: tenant,
@@ -345,6 +350,19 @@ describe("a runtime of a Manage-App", () => {
     expect(await withKey.json()).toMatchObject({ code: "plan" });
     // Tenant B's plan says nothing about keys: it keeps them.
     expect((await put({ keys: { openai: "sk-test" } }, b)).status).toBe(200);
+    // When the Manage-App can't say what tenant B's plan holds, own keys wait; the rest is saved.
+    const { forgetTenant } = await import("../src/manage");
+    tenantBDown = true;
+    forgetTenant("tenant-b");
+    try {
+      const unchecked = await put({ keys: { openai: "sk-test" } }, b);
+      expect(unchecked.status).toBe(503);
+      expect(await unchecked.json()).toMatchObject({ code: "manage_unavailable" });
+      expect((await put({}, b)).status).toBe(200);
+    } finally {
+      tenantBDown = false;
+      forgetTenant("tenant-b");
+    }
     const plugins = await app.fetch(
       new Request(`${RUNTIME}/api/internal/plugins`, { headers: { authorization: `Bearer ${SERVICE_KEY}` } }),
     );

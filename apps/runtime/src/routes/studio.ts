@@ -1549,12 +1549,25 @@ export const studio = new Hono<Vars>()
       );
     }
     // Own keys and bindings to a provider's model are a feature of the team's plan.
-    if (managed) {
-      const info = await tenantInfo(c.get("user").tenantId).catch(() => null);
-      const own =
-        Object.values(input.keys ?? {}).some((key) => key?.trim()) ||
-        Object.values(input.bindings ?? {}).some((ref) => ref && !isCreditsRef(ref));
-      if (own && info && !feature("ownKeys", info.features)) {
+    // When the Manage-App can't say what the plan holds, own keys wait: nothing is taken unchecked.
+    const own =
+      Object.values(input.keys ?? {}).some((key) => key?.trim()) ||
+      Object.values(input.bindings ?? {}).some((ref) => ref && !isCreditsRef(ref));
+    if (managed && own) {
+      const info = await tenantInfo(c.get("user").tenantId).catch((err) => {
+        console.error("[models] plan of the tenant:", err);
+        return null;
+      });
+      if (!info) {
+        return c.json(
+          {
+            error: say(c, "planUnavailable"),
+            code: "manage_unavailable",
+          },
+          503,
+        );
+      }
+      if (!feature("ownKeys", info.features)) {
         return c.json(
           {
             error: info.plan?.name
