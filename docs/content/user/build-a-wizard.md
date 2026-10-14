@@ -12,7 +12,7 @@ version: 0.3.4
 |---|---|
 | Describe it | Answer "What should your wizard do?" in your own words and press "Build wizard" |
 | A template | Pick one below the text field. Search, or narrow by industry, result and capability |
-| A package | "Import a wizard package", at the foot of the page, takes a `.wizard` file someone exported |
+| A package | "Import a wizard file", at the foot of the page, takes a `.wizard` file someone exported |
 
 A description that works says who enters what, what the wizard does with it, and what comes out:
 
@@ -83,7 +83,7 @@ path needs it cannot start; if only one branch needs it, choose another path whe
 ## Take it with you
 
 The download icon in the editor's top bar exports the wizard as a package (`.wizard`): its steps
-and its files. "Import a wizard package" on the "New wizard" page of any studio takes it in.
+and its files. "Import a wizard file" on the "New wizard" page of any studio takes it in.
 
 The share dialog downloads a package too, under Website → "Without an account: as a package":
 the published version (the draft while there is none), for a WordPress site that runs it

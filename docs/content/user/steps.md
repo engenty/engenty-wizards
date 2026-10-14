@@ -211,6 +211,6 @@ The person sees and deletes all of it under "What this wizard remembers". See
 ## AI media
 
 Images, clips, voice-overs and films a model made or changed carry a marking in their file, and
-every page lays an "AI generated" or "AI modified" label over them (EU AI Act, Art. 50). Nothing
+every page lays an "AI-generated" or "AI-modified" label over them (EU AI Act, Art. 50). Nothing
 is drawn into an image. A film shows the label in the picture, since it leaves the page as a
 video file.

@@ -8,7 +8,7 @@ version: 0.3.2
 
 ## From the link to the result
 
-1. The link opens the wizard. "Let's go" starts a run.
+1. The link opens the wizard. "Let’s go" starts a run.
 2. Pages ask their questions. "Continue" goes on, "Back" returns.
 3. While an AI step works, the page says what it is doing. The screen stays on.
 4. A review shows what was made: "Looks good" accepts it, "New version" asks for another with a
@@ -51,7 +51,7 @@ leave. The chat sits beside the stage, under it on a phone, and is the screen th
 on: the questions and answers as they go, a photo field filled from the camera, a signature or a
 file where only the screen can take it, the result at the end.
 
-"Let's go" starts the run, "Join" starts the call: the browser asks for the microphone and the
+"Let’s go" starts the run, "Join" starts the call: the browser asks for the microphone and the
 camera then. The conversation is the same as the chat's live voice, with the camera on from the
 start. Needs an OpenAI API key under Models for now.
 
@@ -71,15 +71,15 @@ The browser asks before it uses the camera, the microphone or the location. If o
 allow it in the browser's site settings (the lock icon in the address bar), or use the fallback
 the field offers: choose a photo, type the address, pick an audio file.
 
-"Tell me when it is done" lets you switch apps during a long step: a notification, a sound or a
+"Tell me when it’s done" lets you switch apps during a long step: a notification, a sound or a
 buzz brings you back. "Add to home screen" puts the wizard on the phone like an app.
 
 ## When the wizard needs you
 
 | It shows | Because | You |
 |---|---|---|
-| A website live, with a sign-in | A step met a login, a captcha or "continue with Google" | Fill the fields shown, or click and type in the live page itself, then "Sign in" or "I am signed in". What you enter goes straight into the page; the AI never sees it. "Remember this sign-in for next time" stores it encrypted. "Skip" goes on without the site |
-| "The wizard wants to run this in …" | A step wants to change something in a service you connected | "Allow", "Allow for the rest of this run" or "Don't allow". Reading does not ask; deleting always does |
+| A website live, with a sign-in | A step met a login, a captcha or "continue with Google" | Fill the fields shown, or click and type in the live page itself, then "Sign in" or "I’m signed in". What you enter goes straight into the page; the AI never sees it. "Remember this sign-in for next time" stores it encrypted. "Skip" goes on without the site |
+| "The wizard wants to run this in …" | A step wants to change something in a service you connected | "Allow", "Allow for the rest of this run" or "Don’t allow". Reading does not ask; deleting always does |
 | "Connect" | The wizard works with your own account of a service | Sign in to the service in a new tab. The connection is kept for your next run |
 
 ## What this wizard remembers
@@ -93,5 +93,5 @@ everything on request. What nobody used for 400 days is deleted by itself.
 "Share" on the result page makes a link to the result, sends it by e-mail or hands it to
 another app. The result and its link are kept for 7 days. "Withdraw link" ends the link earlier.
 
-Media a model made carries an "AI generated" label. Whoever publishes it has to label it as
+Media a model made carries an "AI-generated" label. Whoever publishes it has to label it as
 AI-generated; the file already carries the marking.

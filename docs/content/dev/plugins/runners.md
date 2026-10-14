@@ -107,7 +107,7 @@ A refused command throws an error with a `status` and a `code` (`not_found`, `in
 
 ## What the person sees
 
-- The wizard's first page offers the runners that are on beside "Let's go".
+- The wizard's first page offers the runners that are on beside "Let’s go".
 - A hand-off is a link to the same run; nothing is asked twice. The run page knows the
   door's person through the run, and "What this wizard remembers" is theirs there too.
 - The space's results carry the door a run came through.

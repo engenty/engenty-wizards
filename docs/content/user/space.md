@@ -49,7 +49,7 @@ exactly what a step can find. Drop documents on the page, or add a page or a tab
   writes on request ("Write the overview"). The search finds the overview like a page.
 - **Two spellings of one value** ("Graz-Süd", "Graz Süd") are offered for merging on the
   Kategorie's page. A Kategorie a source proposes stands as "Proposed" until you take it.
-- **"Try a search …"** searches the way a step does: the filters first, then words and meaning,
+- **"Try a search…"** searches the way a step does: the filters first, then words and meaning,
   then a classifier asks of each hit whether it answers the question and keeps those that do,
   with how sure it is. Without a classifier the hits stay unchecked; it needs a Vercel AI Gateway
   or TypeSafe key, or an account. Searching by meaning needs an AI Gateway or OpenAI key, or an

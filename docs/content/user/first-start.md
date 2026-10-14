@@ -4,7 +4,7 @@ description: Choose what engenty wizards thinks with. The studio opens once a te
 version: 0.3.4
 ---
 
-The first page of the studio is the setup, "Choose your Engine". It asks one thing: what should
+The first page of the studio is the setup, "Choose how the AI runs". It asks one thing: what should
 engenty think with?
 
 ![The setup: choose the engine, an installed AI client or your own keys](../../assets/setup.png)

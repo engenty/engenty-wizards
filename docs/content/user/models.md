@@ -115,7 +115,7 @@ account. Otherwise the Classifier class decides.
 
 ## The editor's chat
 
-Where Claude Code is installed on this computer, "The studio chat answers on" (on the page of
+Where Claude Code is installed on this computer, "The studio chat uses" (on the page of
 Text & reasoning) picks what builds your wizards in the editor's conversation:
 
 | Choice | Means |

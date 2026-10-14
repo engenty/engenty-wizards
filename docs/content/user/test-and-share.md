@@ -19,7 +19,7 @@ A wizard goes live the first time you share it: "Share" publishes the draft as v
 dialog opens (nobody has the link yet, and "Only you" under Access keeps it closed). A draft with
 issues is not published; the dialog lists what to fix first, with "Let the assistant fix it".
 
-After that the editor's top bar has "Make changes live" whenever the draft differs from the
+After that the editor's top bar has "Publish changes" whenever the draft differs from the
 version people run. It opens a dialog that says:
 
 | Part | Says |
@@ -28,7 +28,7 @@ version people run. It opens a dialog that says:
 | Tested | Whether a test run used exactly this draft: "Tested 4 minutes ago – with these changes" and "See the run", or "Not tested with these changes yet" with "Test now" |
 | Notes | Anyone in the middle of a run carries on with the version they started; what a run costs now where that changed; with an account, that the version goes to the cloud too |
 
-"Go live" makes the draft the next version; the link stays the same. Issues stop it, as on the
+"Publish" makes the draft the next version; the link stays the same. Issues stop it, as on the
 first share. The editor's top bar and the wizard's card on the start page say where it runs:
 
 | It says | Means |
@@ -57,7 +57,7 @@ gives it one, and the arrow opens it here.
 | Copy link | The link people open. It opens the first browser channel, and the wizard offers the others on its first page |
 | The gear | Runs a day (50 unless you change it, with what that costs at most), each message channel's keyword, and "Create a new link": the old link and its QR code stop working, in the cloud too |
 
-Where the draft has changes, the dialog says so on top and leads to "Make changes live".
+Where the draft has changes, the dialog says so on top and leads to "Publish changes".
 
 One visitor can start 6 runs an hour.
 
@@ -112,7 +112,7 @@ for anyone else. To let others run the wizard:
 
 | Way | How |
 |---|---|
-| The cloud | With an [account](./models.md#account) signed in, every version that goes live (the first share, and each "Go live") also goes to engenty.ai. Its link there runs on the account's credits, also while your computer is off |
+| The cloud | With an [account](./models.md#account) signed in, every version that goes live (the first share, and each "Publish") also goes to engenty.ai. Its link there runs on the account's credits, also while your computer is off |
 | Your own server | [Run engenty wizards on a server](./server.md) with a public https address |
 
 ### In the cloud

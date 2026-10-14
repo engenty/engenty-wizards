@@ -11,9 +11,9 @@ version: 0.3.4
 | What you see | Do |
 |---|---|
 | "This link is no longer valid" | The link works once. `wizards open` gives this browser a new one |
-| "The app is not answering" | It stopped or is restarting. `wizards status` says whether it runs; `wizards start` starts it |
+| "engenty wizards isn’t answering" | It stopped or is restarting. `wizards status` says whether it runs; `wizards start` starts it |
 | `wizards`: command not found | Open a new terminal, or run `~/.local/bin/wizards` |
-| "This browser is not signed in" | The browser has no sign-in for the install, for example after clearing cookies. Run `wizards open` |
+| "This browser isn’t signed in" | The browser has no sign-in for the install, for example after clearing cookies. Run `wizards open` |
 | "The studio runs at another address" | Open the address the page names, or set `APP_URL` in `~/.engenty/wizards/.env` to the address you open |
 | Port 24368 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env` |
 
@@ -51,7 +51,7 @@ version: 0.3.4
 | What you see | Do |
 |---|---|
 | "The update failed" | The reason is in `~/.engenty/wizards/logs/update.log`. Run `wizards update` in a terminal to see it live |
-| A template "Needs a newer app" | Update: `wizards update` |
+| A template "Needs a newer version" | Update: `wizards update` |
 
 ## Still stuck
 

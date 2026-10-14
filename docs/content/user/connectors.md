@@ -49,7 +49,7 @@ Any other service comes from the [integrations.sh](https://integrations.sh) regi
    once an account is connected; "Reload actions" asks the service again.
 
 A service that needs an OAuth client of your own says so: remove it and import it again with
-"Own OAuth client".
+"Your own OAuth client".
 
 The editor's chat does the same while it builds a wizard: ask it to work with a service, and it
 finds and imports the connector. So does an [AI app](./ai-apps.md) connected to engenty wizards.
