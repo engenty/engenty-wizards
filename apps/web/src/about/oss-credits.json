@@ -105,7 +105,7 @@
         },
         {
           "name": "@executor-js/plugin-openapi",
-          "version": "1.6.8",
+          "version": "1.6.10",
           "license": "MIT",
           "homepage": "https://github.com/UsefulSoftwareCo/executor/tree/main/packages/plugins/openapi"
         },
@@ -123,7 +123,7 @@
         },
         {
           "name": "@mastra/core",
-          "version": "1.74.0",
+          "version": "1.77.0",
           "license": "Apache-2.0",
           "homepage": "https://mastra.ai"
         },
@@ -135,7 +135,7 @@
         },
         {
           "name": "@mastra/mcp",
-          "version": "2.1.2",
+          "version": "2.4.0",
           "license": "Apache-2.0",
           "homepage": "https://mastra.ai"
         },
@@ -264,6 +264,12 @@
           "version": "7.2.4",
           "license": "MIT",
           "homepage": "https://github.com/mixmark-io/turndown#readme"
+        },
+        {
+          "name": "undici",
+          "version": "8.11.2",
+          "license": "MIT",
+          "homepage": "https://undici.nodejs.org"
         }
       ]
     },

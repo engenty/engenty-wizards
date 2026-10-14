@@ -4,6 +4,14 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.1] - 2026-10-14
+- ADDED **[plugins]** Keys a plugin holds across tenants – server.claims takes, puts, drops and finds keys of the plugin's own, each for one tenant at a time (control table plugin_claim, migration 0009): a keyword on a number every tenant shares, who last wrote to it, a number a tenant connected; holder gives the tenant's ref for a shared route's inTenant. channels.book takes whatsapp, by message sent. Documented in the server, routes and reference pages and the manage contract; managed.test.ts covers two tenants holding one key
+- ADDED **[studio]** A copy style guide, with every word people read brought to it (#23)
+- FIXED **[deps]** Patch vulnerable dependencies from pnpm audit (#22)
+- FIXED **[runtime]** One SSRF range check, pinned connections, closed DevTools origins (#21)
+- FIXED **[runtime]** Keep run uploads to allowlisted types and never serve them as pages (#20)
+- FIXED **[release]** Commit the regenerated COPYRIGHTS.md with the release (#18)
+
 ## [0.5.0] - 2026-10-14
 - ADDED **[studio]** Mark spaces synced from a local install (#17)
 - CHANGED **[knowledge]** English names in the source for Wissen and its parts; packages keep pages under files/knowledge/ (#13) **[breaking]**

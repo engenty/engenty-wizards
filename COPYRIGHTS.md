@@ -60,7 +60,7 @@ Declared by two or more of the workspaces below:
 | [fumadocs-mdx](https://fumadocs.dev) | 15.4.1 | MIT |
 | [fumadocs-ui](https://fumadocs.dev) | 16.15.11 | MIT |
 | [mermaid](https://github.com/mermaid-js/mermaid#readme) | 11.17.2 | MIT |
-| [next](https://nextjs.org) | 16.3.5 | MIT |
+| [next](https://nextjs.org) | 16.3.8 | MIT |
 | [next-themes](https://github.com/pacocoursey/next-themes#readme) | 0.4.6 | MIT |
 
 ### runtime (apps/runtime)
@@ -75,12 +75,12 @@ Declared by two or more of the workspaces below:
 | [@ai-sdk/openai](https://ai-sdk.dev/docs) | 4.0.67 | Apache-2.0 |
 | [@ai-sdk/replicate](https://ai-sdk.dev/docs) | 3.0.42 | Apache-2.0 |
 | [@clack/prompts](https://github.com/bombshell-dev/clack/tree/main/packages/prompts#readme) | 1.8.1 | MIT |
-| [@executor-js/plugin-openapi](https://github.com/UsefulSoftwareCo/executor/tree/main/packages/plugins/openapi) | 1.6.8 | MIT |
+| [@executor-js/plugin-openapi](https://github.com/UsefulSoftwareCo/executor/tree/main/packages/plugins/openapi) | 1.6.10 | MIT |
 | [@hono/node-server](https://github.com/honojs/node-server) | 2.1.3 | MIT |
 | [@libsql/client](https://github.com/tursodatabase/libsql-client-ts#readme) | 0.18.0 | MIT |
-| [@mastra/core](https://mastra.ai) | 1.74.0 | Apache-2.0 |
+| [@mastra/core](https://mastra.ai) | 1.77.0 | Apache-2.0 |
 | [@mastra/docker](https://mastra.ai) | 0.8.0 | Apache-2.0 |
-| [@mastra/mcp](https://mastra.ai) | 2.1.2 | Apache-2.0 |
+| [@mastra/mcp](https://mastra.ai) | 2.4.0 | Apache-2.0 |
 | [@modelcontextprotocol/server](https://modelcontextprotocol.io) | 2.2.0 | MIT |
 | [@napi-rs/canvas](https://github.com/Brooooooklyn/canvas#readme) | 0.1.80 | MIT |
 | [@turbodocx/html-to-docx](https://github.com/TurboDocx/html-to-docx#readme) | 1.23.1 | MIT |
@@ -102,6 +102,7 @@ Declared by two or more of the workspaces below:
 | [postal-mime](https://postal-mime.postalsys.com) | 4.0.2 | MIT-0 |
 | [rfc6902](https://github.com/chbrown/rfc6902) | 5.3.0 | MIT |
 | [turndown](https://github.com/mixmark-io/turndown#readme) | 7.2.4 | MIT |
+| [undici](https://undici.nodejs.org) | 8.11.2 | MIT |
 
 ### web (apps/web)
 
@@ -141,7 +142,7 @@ Used to build, check and test; not part of what people run:
 | [@types/turndown](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/turndown) | 5.0.6 | MIT |
 | [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme) | 6.1.1 | MIT |
 | [ajv](https://ajv.js.org) | 8.20.0 | MIT |
-| [concurrently](https://github.com/open-cli-tools/concurrently#readme) | 10.0.5 | MIT |
+| [concurrently](https://github.com/open-cli-tools/concurrently#readme) | 10.0.6 | MIT |
 | [drizzle-kit](https://orm.drizzle.team) | 0.31.11 | MIT |
 | [git-cliff](https://github.com/orhun/git-cliff#readme) | 2.14.2 | MIT OR Apache-2.0 |
 | [postcss](https://postcss.org/) | 8.5.28 | MIT |

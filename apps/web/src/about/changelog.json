@@ -1,7 +1,55 @@
 [
   {
+    "version": "v0.5.1",
+    "timestamp": 1792011394,
+    "commits": [
+      {
+        "id": "c3e81a2",
+        "message": "keys a plugin holds across tenants – server.claims takes, puts, drops and finds keys of the plugin's own, each for one tenant at a time (control table plugin_claim, migration 0009): a keyword on a number every tenant shares, who last wrote to it, a number a tenant connected; holder gives the tenant's ref for a shared route's inTenant. channels.book takes whatsapp, by message sent. Documented in the server, routes and reference pages and the manage contract; managed.test.ts covers two tenants holding one key",
+        "group": "Added",
+        "scope": "plugins",
+        "breaking": false
+      },
+      {
+        "id": "88bb270",
+        "message": "a copy style guide, with every word people read brought to it (#23)",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "73f59e7",
+        "message": "patch vulnerable dependencies from pnpm audit (#22)",
+        "group": "Fixed",
+        "scope": "deps",
+        "breaking": false
+      },
+      {
+        "id": "f34acbd",
+        "message": "one SSRF range check, pinned connections, closed DevTools origins (#21)",
+        "group": "Fixed",
+        "scope": "runtime",
+        "breaking": false
+      },
+      {
+        "id": "0aed1cc",
+        "message": "keep run uploads to allowlisted types and never serve them as pages (#20)",
+        "group": "Fixed",
+        "scope": "runtime",
+        "breaking": false
+      },
+      {
+        "id": "e80770d",
+        "message": "commit the regenerated COPYRIGHTS.md with the release (#18)",
+        "group": "Fixed",
+        "scope": "release",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.0",
-    "timestamp": 1791995058,
+    "timestamp": 1791995088,
     "commits": [
       {
         "id": "ed997dd",
