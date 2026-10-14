@@ -23,7 +23,24 @@ export function settings(paths: Layout, env: NodeJS.ProcessEnv = process.env) {
     dataDir: value("DATA_DIR") ? resolve(paths.home, value("DATA_DIR")) : paths.data,
     port: Number(value("API_PORT")) || null,
     appUrl: value("APP_URL").replace(/\/$/, ""),
+    appSecret: value("APP_SECRET"),
   };
+}
+
+/**
+ * The secret the runtime signs with, read the way it reads it (env.ts): APP_SECRET, else the one
+ * it keeps in the data folder. Null before it made one.
+ */
+export function readSecret(paths: Layout, env: NodeJS.ProcessEnv = process.env): string | null {
+  const { appSecret, dataDir } = settings(paths, env);
+  if (appSecret) {
+    return appSecret;
+  }
+  try {
+    return readFileSync(join(dataDir, "secret"), "utf8").trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function healthy(port: number): Promise<boolean> {
@@ -61,15 +78,15 @@ export async function runningRuntime(dataDir: string): Promise<Running | null> {
   return running && (await healthy(running.port)) ? running : null;
 }
 
-/** A link that lets this browser into a running runtime: a ticket signed with the data folder's secret. */
-export function entryUrl(running: Pick<Running, "url">, dataDir: string): string {
-  try {
-    const secret = readFileSync(join(dataDir, "secret"), "utf8").trim();
-    return `${running.url}/api/local/enter?t=${mintLocalTicket(secret)}`;
-  } catch {
-    // APP_SECRET is set elsewhere: the browser gets in if it was let in before.
-    return `${running.url}/`;
-  }
+/** A link that lets this browser into a running runtime: a ticket signed with the runtime's secret. */
+export function entryUrl(
+  running: Pick<Running, "url">,
+  paths: Layout,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const secret = readSecret(paths, env);
+  // No secret to be read here: the browser gets in if it was let in before.
+  return secret ? `${running.url}/api/local/enter?t=${mintLocalTicket(secret)}` : `${running.url}/`;
 }
 
 /** Opens an address in the person's browser; false when this machine has none to open it with. */
@@ -158,7 +175,7 @@ export async function start(
 
   const running = await runningRuntime(dataDir);
   if (running) {
-    show(running.url, entryUrl(running, dataDir), options.open);
+    show(running.url, entryUrl(running, paths), options.open);
     console.log(dim(`    It was already running. To stop it: ${cmd("stop")}`));
     return 0;
   }
@@ -171,7 +188,7 @@ export async function start(
       );
       return 1;
     }
-    show(started.url, entryUrl(started, dataDir), options.open);
+    show(started.url, entryUrl(started, paths), options.open);
     console.log(dim(`    It’s running in the background. To stop it: ${cmd("stop")}`));
     console.log(dim(`    Its log is in ${tilde(join(paths.logs, "runtime.log"))}.`));
     return 0;
@@ -244,7 +261,7 @@ export async function studio(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
   if (running) {
-    show(running.url, entryUrl(running, dataDir), true);
+    show(running.url, entryUrl(running, paths), true);
     return 0;
   }
   return start(paths, { open: true, background: true });
@@ -258,7 +275,7 @@ export async function open(paths: Layout, print: boolean): Promise<number> {
     console.error(`engenty wizards isn’t running. To start it: ${cmd("start")}`);
     return 1;
   }
-  const entry = entryUrl(running, dataDir);
+  const entry = entryUrl(running, paths);
   if (print || !openBrowser(entry)) {
     console.log(entry);
   }

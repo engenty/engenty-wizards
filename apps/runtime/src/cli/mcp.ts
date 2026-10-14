@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { LOCAL_CLIENT_HEADER, LOCAL_MCP_HEADER, mintLocalTicket } from "../auth/local-ticket.js";
 import type { Running } from "../running.js";
 import type { Layout } from "./home.js";
-import { runningRuntime, settings, startInBackground } from "./start.js";
+import { readSecret, runningRuntime, settings, startInBackground } from "./start.js";
 import { tilde } from "./ui.js";
 
 /**
@@ -48,18 +47,6 @@ export function messagesOf(contentType: string, body: string): Message[] {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
-function readSecret(paths: Layout, dataDir: string): string | null {
-  const given = process.env.APP_SECRET?.trim() || settings(paths).fileEnv.APP_SECRET?.trim();
-  if (given) {
-    return given;
-  }
-  try {
-    return readFileSync(join(dataDir, "secret"), "utf8").trim();
-  } catch {
-    return null;
-  }
-}
-
 export async function mcp(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
   let running: Promise<Running> | null = null;
@@ -89,7 +76,7 @@ export async function mcp(paths: Layout): Promise<number> {
 
   const post = async (message: Message): Promise<Message[]> => {
     const at = await runtime();
-    const secret = readSecret(paths, dataDir);
+    const secret = readSecret(paths);
     if (!secret) {
       throw new Error("No secret in the data folder yet. Start engenty wizards once first.");
     }

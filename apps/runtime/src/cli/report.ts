@@ -1,9 +1,8 @@
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LOCAL_MCP_HEADER, mintLocalTicket } from "../auth/local-ticket.js";
 import type { LogLine } from "../log.js";
 import type { Layout } from "./home.js";
-import { runningRuntime, settings } from "./start.js";
+import { readSecret, runningRuntime, settings } from "./start.js";
 import { bad, cmd, dim, ok, tilde } from "./ui.js";
 
 /**
@@ -12,18 +11,6 @@ import { bad, cmd, dim, ok, tilde } from "./ui.js";
  * (docs/plans/remote-debug.md). Both talk to the running process, signed with the data folder's
  * secret as `wizards mcp` does; neither sends anything by itself.
  */
-
-function readSecret(paths: Layout, dataDir: string): string | null {
-  const given = process.env.APP_SECRET?.trim() || settings(paths).fileEnv.APP_SECRET?.trim();
-  if (given) {
-    return given;
-  }
-  try {
-    return readFileSync(join(dataDir, "secret"), "utf8").trim();
-  } catch {
-    return null;
-  }
-}
 
 async function ask(
   paths: Layout,
@@ -35,7 +22,7 @@ async function ask(
   if (!running) {
     return `engenty wizards isn’t running. To start it: ${cmd("start")}`;
   }
-  const secret = readSecret(paths, dataDir);
+  const secret = readSecret(paths);
   if (!secret) {
     return `Couldn’t read the data folder’s secret (${tilde(join(dataDir, "secret"))}).`;
   }

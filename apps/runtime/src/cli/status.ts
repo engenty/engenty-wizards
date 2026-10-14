@@ -157,7 +157,7 @@ export async function restart(paths: Layout): Promise<number> {
     `${ok} ${running ? "Restarted" : "Started"}: ${cyan(started.url)} ${dim(`pid ${started.pid}, in the background`)}`,
   );
   if (!running) {
-    console.log(`  Open the studio: ${cyan(entryUrl(started, dataDir))}`);
+    console.log(`  Open the studio: ${cyan(entryUrl(started, paths))}`);
   }
   return 0;
 }
