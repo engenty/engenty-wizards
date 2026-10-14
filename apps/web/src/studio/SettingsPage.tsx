@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -182,8 +182,6 @@ export function SettingsPage() {
   const me = useMe();
   const { project, loading } = useCurrentProject();
   const many = useManyProjects();
-  const [key, setKey] = useState(project?.id);
-  useEffect(() => setKey(project?.id), [project?.id]);
   const plugins = useStudioPlugins();
   const narrow = useNarrow();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -311,13 +309,15 @@ export function SettingsPage() {
                   <ProjectSwitcher />
                 </div>
               ) : null}
+              {/* One key for both cards, so a switch of project starts them afresh: two siblings
+                  with the same key would be duplicated on every render. */}
               {current.id === "connectors" && project ? (
-                <div className="flex flex-col gap-6">
+                <div key={project.id} className="flex flex-col gap-6">
                   {project.readOnly ? (
                     <ReadOnlyNote>{projectReadOnlyText(project)}</ReadOnlyNote>
                   ) : null}
-                  <Connectors key={key} projectId={project.id} readOnly={project.readOnly} />
-                  <McpServers key={key} project={project} />
+                  <Connectors projectId={project.id} readOnly={project.readOnly} />
+                  <McpServers project={project} />
                 </div>
               ) : null}
               {/* No project yet: nothing is built here, and no local install has sent one. */}
