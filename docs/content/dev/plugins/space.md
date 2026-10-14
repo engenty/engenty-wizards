@@ -146,9 +146,8 @@ The studio’s assistant, Goose, stands on every page of the studio except the e
 space is open and the person may change it, the assistant fills the space in from what the person
 says, a website or files. A plugin gives it tools:
 
-> Goose is behind the release switch `goose`, which is off by default. Until it is on, the studio
-> shows no assistant, so nobody sees the tools, cards and page hooks below. To try them, put
-> `goose=on` into the `.features` file (a checkout’s root, or `~/.engenty/wizards/.features`).
+> Goose is still being tried out and doesn’t show in every studio yet. Where it doesn’t, nobody
+> sees the tools, cards and page hooks below.
 
 ```ts
 server.registerAssistantTool({

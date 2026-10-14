@@ -48,7 +48,6 @@ running, `wizards start` opens the running one instead of starting a second.
 | `~/.engenty/wizards` | Everything engenty wizards installed. `ENGENTY_HOME` moves `~/.engenty` |
 | `~/.engenty/wizards/data` | Your wizards, results and files. See [Your data](./data.md) |
 | `~/.engenty/wizards/.env` | The settings file |
-| `~/.engenty/wizards/.features` | Feature switches, such as `account` when it is set up [without an account](./local-only.md) |
 | `~/.engenty/wizards/plugins` | [Plugins](./plugins.md) on this computer |
 | `~/.engenty/wizards/logs` | Logs: `install.log`, `update.log`, `runtime.log` when it runs in the background, `autostart.log` when a Mac starts it at login |
 | `~/.engenty/wizards/tools`, `runtime` | Its own Node.js, and engenty wizards itself |
