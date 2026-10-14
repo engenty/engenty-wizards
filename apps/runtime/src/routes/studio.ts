@@ -143,7 +143,13 @@ import {
 import { writeSummary } from "../services/knowledge-model.js";
 import { applyWebsite, finishOnboarding, needsOnboarding } from "../services/onboarding.js";
 import { exportWizard, importWizard } from "../services/package.js";
-import { profileSchema, saveProfile, userProfile } from "../services/profile.js";
+import {
+  profileSchema,
+  saveProfile,
+  saveUserLang,
+  userLang,
+  userProfile,
+} from "../services/profile.js";
 import {
   addProjectFile,
   addProjectFileFromUrl,
@@ -405,6 +411,8 @@ export const studio = new Hono<Vars>()
       user: { id: user.id, name: profile.name, email: profile.email, image: user.image ?? null },
       /** What the person says about themselves; name and e-mail are the account's when managed. */
       profile,
+      /** The language the person picked, wherever they picked it; null until they do. */
+      lang: await userLang(user),
       tenant: {
         id: user.tenantId,
         role: user.role,
@@ -503,6 +511,11 @@ export const studio = new Hono<Vars>()
   .put("/profile", async (c) =>
     c.json(await saveProfile(c.get("user"), profileSchema.parse(await c.req.json()))),
   )
+  .put("/lang", async (c) => {
+    const { lang } = z.object({ lang: z.enum(["de", "en"]) }).parse(await c.req.json());
+    await saveUserLang(c.get("user"), lang);
+    return c.json({ lang });
+  })
 
   // --- the studio's assistant -------------------------------------------------
   // One open chat per person and tenant, on every page; turns stream as SSE events shaped like

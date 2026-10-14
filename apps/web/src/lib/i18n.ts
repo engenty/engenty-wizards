@@ -3737,7 +3737,8 @@ export type Lang = "de" | "en";
 
 const LANG_KEY = "wizards.lang";
 
-function storedLang(): Lang | null {
+/** The language this browser kept from the person's last pick; null where they never picked. */
+export function storedLang(): Lang | null {
   try {
     const pick = localStorage.getItem(LANG_KEY);
     return pick === "de" || pick === "en" ? pick : null;
