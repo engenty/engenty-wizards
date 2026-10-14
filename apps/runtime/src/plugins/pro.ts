@@ -383,10 +383,3 @@ export async function proState() {
     modules,
   };
 }
-
-/** For tests: forget what the account said. */
-export function resetProForTests() {
-  listing = null;
-  lastError = null;
-  setEntitlement(null);
-}

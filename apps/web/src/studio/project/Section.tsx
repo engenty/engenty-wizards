@@ -4,11 +4,11 @@ import {
   RULE_MARKS,
   type RuleMark,
 } from "@engenty-wizards/shared/projects";
-import { Check, FolderInput, LayoutGrid, List, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, FolderInput, Plus, Search, Trash2, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type Key, t } from "../../lib/i18n";
 import { Button, Card, cn, IconButton, Spinner } from "../../ui";
-import type { Layout, SaveState } from "./data";
+import type { SaveState } from "./data";
 
 /**
  * Where the sections menu jumps to (`projectSections`): the section's heading lands at the top
@@ -87,37 +87,6 @@ export function Section({
         </Card>
       )}
     </section>
-  );
-}
-
-/**
- * The row above a list: a search field, and one icon that switches between list and cards (it
- * shows the other layout).
- */
-export function ListControls({
-  children,
-  layout,
-  onToggle,
-}: {
-  children: ReactNode;
-  layout: Layout;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="mb-3 flex items-start gap-2">
-      {/* The search is small until it is used: it grows with the focus and stays so while it holds a question. */}
-      <div className="min-w-0 flex-1">
-        <div className="w-56 max-w-full transition-[width] duration-200 focus-within:w-full has-[input:not(:placeholder-shown)]:w-full">
-          {children}
-        </div>
-      </div>
-      <IconButton
-        label={layout === "list" ? t("project.viewCards") : t("project.viewList")}
-        onClick={onToggle}
-      >
-        {layout === "list" ? <LayoutGrid className="size-4" /> : <List className="size-4" />}
-      </IconButton>
-    </div>
   );
 }
 
