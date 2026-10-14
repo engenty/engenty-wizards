@@ -85,7 +85,7 @@ import {
   uploadMime,
   wizardManifest,
 } from "./delivery.js";
-import { requestLang } from "./lang.js";
+import { inLang, notFoundAnswer, requestLang } from "./lang.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -208,7 +208,7 @@ function tenantFrom(find: (c: Context) => Promise<string | null>): MiddlewareHan
   return async (c, next) => {
     const tenant = await find(c);
     if (!tenant) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     if ((await tenantStatus(tenant)) === "suspended") {
       return refuse(c, { code: "wizardUnavailable" }, 403);
@@ -252,7 +252,7 @@ async function pageRunner(c: Context, rest: string): Promise<Response> {
     where: eq(schema.wizard.shareToken, c.req.param("token") ?? ""),
   });
   if (!w || w.publishedVersion === null) {
-    return c.json({ error: "not found" }, 404);
+    return c.json(notFoundAnswer(c), 404);
   }
   const version = await db.query.wizardVersion.findFirst({
     where: and(
@@ -263,7 +263,7 @@ async function pageRunner(c: Context, rest: string): Promise<Response> {
   const served = version
     ? await servePageRunner(w, version.definition, c.req.param("runner") ?? "", rest, c.req.raw)
     : null;
-  return served ?? c.json({ error: "not found" }, 404);
+  return served ?? c.json(notFoundAnswer(c), 404);
 }
 
 export const publicRoutes = new Hono()
@@ -271,12 +271,22 @@ export const publicRoutes = new Hono()
   .get("/codes/:code", async (c) => {
     const ip = clientIp(c);
     if (codeLookupBlocked(ip)) {
-      return c.json({ error: "too many tries" }, 429);
+      return c.json(
+        {
+          error: inLang(
+            c,
+            "Zu viele Versuche. Warte kurz und versuch es noch einmal.",
+            "Too many tries. Wait a moment and try again.",
+          ),
+          code: "too_many_tries",
+        },
+        429,
+      );
     }
     const found = await tokenOfCode(c.req.param("code"));
     if (!found || (await tenantStatus(found.tenantId)) === "suspended") {
       codeMissed(ip);
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return c.json({ token: found.token, url: `${env.publicUrl}/w/${found.token}` });
   })
@@ -288,7 +298,7 @@ export const publicRoutes = new Hono()
       where: eq(schema.wizard.shareToken, c.req.param("token")),
     });
     if (!w || w.publishedVersion === null) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const version = await db.query.wizardVersion.findFirst({
       where: and(
@@ -317,7 +327,7 @@ export const publicRoutes = new Hono()
       where: eq(schema.wizard.shareToken, c.req.param("token")),
     });
     if (!w || w.publishedVersion === null) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const reason = await wizardUnavailable(w);
     if (reason) {
@@ -465,7 +475,7 @@ export const runRoutes = new Hono()
   .get("/:id", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return c.json(await viewOf(run));
   })
@@ -473,7 +483,7 @@ export const runRoutes = new Hono()
     const id = c.req.param("id");
     const first = await accessibleRun(c, id);
     if (!first) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return streamSSE(c, async (stream) => {
       let pending = false;
@@ -525,7 +535,7 @@ export const runRoutes = new Hono()
   .post("/:id/device", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const offer = z
       .object({
@@ -544,7 +554,7 @@ export const runRoutes = new Hono()
   .post("/:id/device/:reqId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const answer = z
       .object({ text: z.string().max(200_000).optional(), error: z.string().max(500).optional() })
@@ -554,7 +564,7 @@ export const runRoutes = new Hono()
   .post("/:id/pages/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const { values } = z
       .object({ values: z.record(z.string(), z.unknown()) })
@@ -569,7 +579,7 @@ export const runRoutes = new Hono()
   .post("/:id/reviews/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const action = z
       .discriminatedUnion("type", [
@@ -592,7 +602,7 @@ export const runRoutes = new Hono()
   .post("/:id/back", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     try {
       await goBack(run.id);
@@ -604,7 +614,7 @@ export const runRoutes = new Hono()
   .post("/:id/retry", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     try {
       await retry(run.id);
@@ -616,7 +626,7 @@ export const runRoutes = new Hono()
   .post("/:id/cancel", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await cancel(run.id);
     return c.json({ ok: true });
@@ -625,7 +635,7 @@ export const runRoutes = new Hono()
   .post("/:id/talk", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
       return refuse(c, { code: "runOver" }, 409);
@@ -651,7 +661,7 @@ export const runRoutes = new Hono()
   .post("/:id/transcribe", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
       return refuse(c, { code: "runOver" }, 409);
@@ -684,7 +694,7 @@ export const runRoutes = new Hono()
   .post("/:id/uploads", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const form = await c.req.formData();
     const file = form.get("file");
@@ -713,7 +723,7 @@ export const runRoutes = new Hono()
   .post("/:id/geocode", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const { lat, lng, language } = z
       .object({
@@ -742,7 +752,7 @@ export const runRoutes = new Hono()
   .post("/:id/ask/:askId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const answer = z
       .discriminatedUnion("type", [
@@ -766,7 +776,7 @@ export const runRoutes = new Hono()
     const resources = run?.status === "running" ? liveResources(run.id) : null;
     if (!resources?.openPage()) {
       // The run may work in another process: its runner answers.
-      return (run && (await fromOwner(c, run.id))) || c.json({ error: "not found" }, 404);
+      return (run && (await fromOwner(c, run.id))) || c.json(notFoundAnswer(c), 404);
     }
     return c.json({ seat: resources.seatHolder() });
   })
@@ -920,7 +930,7 @@ export const runRoutes = new Hono()
       (x) => x.id === c.req.param("connectionId"),
     );
     if (!run || !connection) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     try {
       const url = await startOAuth(
@@ -945,7 +955,7 @@ export const runRoutes = new Hono()
       (x) => x.id === c.req.param("connectionId"),
     );
     if (!run || !connection) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const { values } = z
       .object({ values: z.record(z.string(), z.string().max(500)) })
@@ -970,7 +980,7 @@ export const runRoutes = new Hono()
   .delete("/:id/connections/:connectionId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await disconnect(scopeOf(run), c.req.param("connectionId"));
     signalChanged(run.id);
@@ -982,7 +992,7 @@ export const runRoutes = new Hono()
     // A shared list is every run's: the person never sees it.
     const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const { cells } = z
       .object({ cells: z.record(z.string(), z.unknown()) })
@@ -1000,14 +1010,14 @@ export const runRoutes = new Hono()
     // A shared list is every run's: the person never sees it.
     const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const { cells } = z
       .object({ cells: z.record(z.string(), z.unknown()) })
       .parse(await c.req.json());
     try {
       if (!(await updateRow(scopeOf(run), def, c.req.param("rowId"), cells))) {
-        return c.json({ error: "not found" }, 404);
+        return c.json(notFoundAnswer(c), 404);
       }
     } catch (err) {
       return listError(c, err);
@@ -1020,7 +1030,7 @@ export const runRoutes = new Hono()
     // A shared list is every run's: the person never sees it.
     const def = run?.definition.lists?.find((l) => l.id === c.req.param("list") && !l.shared);
     if (!run || !def) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await deleteRows(scopeOf(run), def, [c.req.param("rowId")]);
     signalChanged(run.id);
@@ -1050,7 +1060,7 @@ export const runRoutes = new Hono()
   .get("/:id/store", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const scope = scopeOf(run);
     const lists = await Promise.all(
@@ -1104,7 +1114,7 @@ export const runRoutes = new Hono()
   .delete("/:id/store", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await clearStore(scopeOf(run));
     signalChanged(run.id);
@@ -1114,7 +1124,7 @@ export const runRoutes = new Hono()
   .post("/:id/notify", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     const body = z
       .object({
@@ -1129,7 +1139,7 @@ export const runRoutes = new Hono()
   .delete("/:id/notify", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await setPushDevice(run.id, null);
     return c.json({ ok: true });
@@ -1137,7 +1147,7 @@ export const runRoutes = new Hono()
   .post("/:id/share", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     try {
       return c.json(await shareRun(run));
@@ -1151,7 +1161,7 @@ export const runRoutes = new Hono()
   .delete("/:id/share", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
-      return c.json({ error: "not found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     await unshareRun(run);
     return c.json({ ok: true });

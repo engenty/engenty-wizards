@@ -180,7 +180,7 @@ describe("Categories", () => {
       ofTitles("Tagesbericht 14.03.2026", "Fotos"),
     );
     await expect(local(() => filterItems(spaceId, { Gewerk: "Maurer" }))).rejects.toThrow(
-      /No category "Gewerk"\. There are: Baustelle \(choice\)/,
+      /No category “Gewerk”\. There are: Baustelle \(choice\)/,
     );
   });
 

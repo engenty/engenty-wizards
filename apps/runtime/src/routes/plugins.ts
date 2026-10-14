@@ -14,6 +14,7 @@ import {
   pluginIdsOf,
   pluginsOf,
 } from "../plugins/registry.js";
+import { notFoundAnswer } from "./lang.js";
 
 /**
  * Plugins, as the studio sees them (docs/content/dev/plugins). Below `/api/studio/plugins`, so every
@@ -79,7 +80,7 @@ export async function dispatchAs(c: Context, user: Principal): Promise<Response>
   const id = c.req.param("id") ?? "";
   const plugin = (await pluginIdsOf(user.tenantId)).has(id) ? loadedPlugin(id) : undefined;
   if (!plugin) {
-    return c.json({ error: "not found", code: "not_found" }, 404);
+    return c.json(notFoundAnswer(c), 404);
   }
   const url = new URL(c.req.url);
   const path = url.pathname.slice(url.pathname.indexOf(`/plugins/${id}`) + `/plugins/${id}`.length);
@@ -89,7 +90,7 @@ export async function dispatchAs(c: Context, user: Principal): Promise<Response>
       continue;
     }
     if (route.role === "admin" && !admin(user)) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     const request: PluginRequest = {
       request: c.req.raw,
@@ -120,7 +121,7 @@ export async function dispatchAs(c: Context, user: Principal): Promise<Response>
       return c.json({ error: "The plugin failed.", code: "plugin_failed" }, 500);
     }
   }
-  return c.json({ error: "not found", code: "not_found" }, 404);
+  return c.json(notFoundAnswer(c), 404);
 }
 
 const dispatch = (c: Ctx) => dispatchAs(c, c.get("user"));
@@ -150,7 +151,7 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
     const plugin = (await pluginIdsOf(user.tenantId)).has(id) ? loadedPlugin(id) : undefined;
     const asset = plugin && kind ? pluginAsset(plugin, kind.kind) : null;
     if (!asset || !kind) {
-      return c.json({ error: "not found", code: "not_found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return c.body(new Uint8Array(await readFile(asset.file)), 200, {
       "content-type": kind.type,
@@ -162,7 +163,7 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
   // Says when a plugin loaded again, so an open studio takes the new one without a page load.
   .get("/-/events", (c) => {
     if (managed) {
-      return c.json({ error: "not found", code: "not_found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return streamSSE(c, async (stream) => {
       let closed = false;
@@ -185,7 +186,7 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
 
   .post("/-/reload", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     await rescanPlugins();
     return c.json({ plugins: (await pluginsOf(c.get("user").tenantId)).map(view) });
@@ -193,25 +194,23 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
 
   .post("/-/reload/:id", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     const plugin = await reloadPlugin(c.req.param("id"));
-    return plugin
-      ? c.json({ plugin: view(plugin) })
-      : c.json({ error: "not found", code: "not_found" }, 404);
+    return plugin ? c.json({ plugin: view(plugin) }) : c.json(notFoundAnswer(c), 404);
   })
 
   // Pro modules: the closed plugins the linked account's plan includes (plugins/pro.ts).
   .get("/-/pro", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "not found", code: "not_found" }, 404);
+      return c.json(notFoundAnswer(c), 404);
     }
     return c.json(await proState());
   })
 
   .post("/-/pro/refresh", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     await refreshPro();
     return c.json(await proState());
@@ -219,7 +218,7 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
 
   .post("/-/pro/:id", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     try {
       await installPro(c.req.param("id"));
@@ -235,7 +234,7 @@ export const pluginRoutes = new Hono<{ Variables: { user: Principal } }>()
 
   .delete("/-/pro/:id", async (c) => {
     if (!canReload(c.get("user"))) {
-      return c.json({ error: "forbidden", code: "forbidden" }, 403);
+      return c.json({ error: "This isn’t allowed here.", code: "forbidden" }, 403);
     }
     try {
       await removePro(c.req.param("id"));

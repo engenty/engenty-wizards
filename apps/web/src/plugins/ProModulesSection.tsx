@@ -45,7 +45,7 @@ const HELD: Record<HeldBack, Key> = {
 };
 
 const day = (iso: string) =>
-  new Date(iso).toLocaleDateString(lang === "de" ? "de-AT" : "en-GB", {
+  new Date(iso).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", {
     day: "numeric",
     month: "long",
   });

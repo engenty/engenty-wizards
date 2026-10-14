@@ -192,18 +192,24 @@ const madeHere = () =>
 const synced = () =>
   and(eq(schema.project.tenantId, currentTenant()), eq(schema.project.origin, "local"));
 
+/** What the first space is called, in the language of whoever first opens the studio. */
+const FIRST_SPACE = {
+  cloud: { de: "Meine Wizards", en: "My wizards" },
+  local: { de: "Mein Computer", en: "My computer" },
+} as const;
+
 /**
  * A tenant that builds here always has a project of its own: the first one is made when its
- * studio is first opened.
+ * studio is first opened, named in that request's language.
  */
-async function ensureProject(): Promise<void> {
+async function ensureProject(lang: "de" | "en" = "en"): Promise<void> {
   const any = await db.query.project.findFirst({ where: madeHere() });
   if (!any) {
     const id = nanoid(12);
     await db.insert(schema.project).values({
       id,
       tenantId: currentTenant(),
-      name: env.manage.url ? "Meine Wizards" : "Local Space",
+      name: FIRST_SPACE[env.manage.url ? "cloud" : "local"][lang],
     });
     spaceChanged("space.created", id);
   }
@@ -232,10 +238,10 @@ export async function defaultProject(_userId: string): Promise<ProjectRow> {
  * The projects the studio shows. A tenant that builds here: its own and the synced ones, up to
  * its number. One that does not: only what its local install synced — possibly nothing yet.
  */
-export async function listProjects(_userId: string) {
+export async function listProjects(_userId: string, lang?: "de" | "en") {
   const build = await mayBuild();
   if (build) {
-    await ensureProject();
+    await ensureProject(lang);
   }
   // The oldest come first: with a limit of one, that is the project everything lands in.
   const limit = await projectLimit();
@@ -277,8 +283,11 @@ export async function createProject(_userId: string, name: string): Promise<{ id
     throw new ServiceError(
       "refused",
       limit === 1
-        ? bilingual("Hier gibt es ein Projekt.", "There is one project here.")
-        : bilingual(`Höchstens ${limit} Projekte.`, `At most ${limit} projects.`),
+        ? bilingual("Hier ist nur ein Space möglich.", "Only one space is allowed here.")
+        : bilingual(
+            `Hier sind höchstens ${limit} Spaces möglich.`,
+            `You can have at most ${limit} spaces here.`,
+          ),
     );
   }
   const id = nanoid(12);
@@ -481,7 +490,7 @@ export async function deleteProject(userId: string, projectId: string) {
   if (all.length <= 1) {
     throw new ServiceError(
       "refused",
-      bilingual("Das letzte Projekt bleibt.", "The last project stays."),
+      bilingual("Der letzte Space lässt sich nicht löschen.", "You can’t delete the last space."),
     );
   }
   await removeProject(projectId);

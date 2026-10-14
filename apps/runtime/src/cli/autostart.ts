@@ -97,16 +97,18 @@ async function systemdHere(): Promise<boolean> {
 
 export async function autostartState(paths: Layout): Promise<Autostart> {
   if (process.platform !== "darwin" && process.platform !== "linux") {
-    return { unavailable: `not on ${process.platform}` };
+    return {
+      unavailable: process.platform === "win32" ? "not on Windows" : `not on ${process.platform}`,
+    };
   }
   if (!installedByScript(paths)) {
-    return { unavailable: "only for an install made by install.sh" };
+    return { unavailable: "only for installs made with the install script" };
   }
   if (process.platform === "darwin") {
     return { on: existsSync(LOGIN_ITEM), how: MAC_HOW };
   }
   if (!(await systemdHere())) {
-    return { unavailable: "this Linux has no systemd user session" };
+    return { unavailable: "this system has no systemd user session" };
   }
   try {
     await run("systemctl", ["--user", "is-enabled", "--quiet", UNIT], { timeout: 10_000 });

@@ -32,7 +32,7 @@ describe("the setup's --local", () => {
   });
 
   it("is told in one line", () => {
-    expect(cli.describeAccount({ kind: "local" })).toBe("local only");
+    expect(cli.describeAccount({ kind: "local" })).toBe("only on this computer, no account");
     expect(cli.describeAccount({ kind: "none" })).toBe("not signed in");
   });
 

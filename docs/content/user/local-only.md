@@ -1,11 +1,11 @@
 ---
 title: Local only
-description: An install without an account. Nothing leaves the computer; links answer on it only. The flag, what it means, and how to connect an account later.
-version: 0.3.4
+description: engenty wizards on your computer without an account. Nothing leaves your computer, and links work only there. The flag, what it means, and how to connect an account later.
+version: 0.5.0
 ---
 
-An install normally signs in to your account during the setup: your team's space comes down to
-the computer, and what you publish runs in the cloud too. An install can also stay alone.
+During the setup, engenty wizards on your computer normally signs in to your account. What you
+publish then runs in the cloud too. You can also keep it on your computer alone.
 
 ## The flag
 
@@ -13,19 +13,21 @@ the computer, and what you publish runs in the cloud too. An install can also st
 curl -fsSL https://engenty.ai/install.sh | bash -s -- --local
 ```
 
-`--local` skips the account step of the setup and switches the account off for this install.
-On an install that is there already: `wizards setup --local`.
+`--local` skips the account step of the setup and switches the account off on this computer.
+If engenty wizards is already installed, run `wizards setup --local`.
 
 ## What it means
 
-- No account, nothing leaves this computer. Wizards, the space and results stay in
-  `~/.engenty/wizards/data` ([Your data](./data.md)).
-- Links answer on this computer only: `http://localhost:24368/w/…`. For others to open them,
-  run it [on a server](./server.md) of your own.
-- It thinks with your AI clients, your own keys, Ollama or Apple Intelligence
-  ([First start](./first-start.md)). Without an account, video and voice need a key of your own.
-- The studio shows no account surfaces: no sign-in offer, no credits, no cloud copy. The feature
-  switch `account` is off in the install's `.features` file; `wizards features` lists it.
+- There is no account, and nothing leaves this computer. Your wizards, your space and results
+  stay in `~/.engenty/wizards/data` ([Your data](./data.md)).
+- Links work on this computer only: `http://localhost:24368/w/…`. If others should open them,
+  run engenty wizards [on a server](./server.md) of your own.
+- It runs on your AI clients, your own API keys, Ollama or Apple Intelligence
+  ([First start](./first-start.md)). Without an account, video and voice need your own API key.
+- The studio shows nothing about an account: no sign-in, no credits, no copy in the cloud. The
+  feature switch `account` is off in the `.features` file in `~/.engenty/wizards`, and
+  `wizards features` lists it.
+- `wizards status` and the `wizards` menu say “only on this computer, no account”.
 
 ## Connect an account later
 
@@ -33,6 +35,8 @@ On an install that is there already: `wizards setup --local`.
 wizards account sign-in
 ```
 
-The command shows a code and opens the browser for the sign-in; afterwards the install is
-connected, and the switch is on again. `wizards account` says how the install stands,
-`wizards account sign-out` disconnects it. Settings → Account in the studio does the same.
+The command shows a link and a code and opens your browser for the sign-in. After that,
+engenty wizards is connected to the account and the switch is on again. `wizards account` shows
+where it stands, and `wizards account sign-out` disconnects it. As long as the account is
+switched off, the studio offers no sign-in, so you use the command. Once you are connected,
+Settings → Account in the studio shows the account and can sign you out too.

@@ -426,7 +426,7 @@ export async function putCategory(
       "refused",
       bilingual(
         `Ein Space hat höchstens ${MAX_CATEGORIES} Kategorien.`,
-        `A space has at most ${MAX_CATEGORIES} categories.`,
+        `A space can have at most ${MAX_CATEGORIES} categories.`,
       ),
     );
   }
@@ -585,7 +585,10 @@ export async function addCategoryValue(categoryId: string, value: string) {
   if (category.type !== "choice") {
     throw new ServiceError(
       "invalid",
-      bilingual("Nur eine Auswahl hat Werte.", "Only a choice has values."),
+      bilingual(
+        "Werte gibt es nur bei Kategorien vom Typ Auswahl.",
+        "Only choice categories have values.",
+      ),
     );
   }
   const ids = await addValues(category.id, [value]);
@@ -950,7 +953,7 @@ function condition(category: CategoryRow, w: WhereValue, valueIds: Map<string, s
   const bad = () =>
     new ServiceError(
       "invalid",
-      `„${category.name}“ is a ${category.type}: ${
+      `“${category.name}” is a ${category.type}: ${
         {
           choice: "give a value, a list of values or { atLeast }",
           text: "give a text, a list or { contains }",
@@ -1068,7 +1071,7 @@ export async function filterItems(
     if (!category) {
       throw new ServiceError(
         "invalid",
-        `No category "${name}". There are: ${rows.map((c) => `${c.name} (${c.type})`).join(", ") || "none"}.`,
+        `No category “${name}”. There are: ${rows.map((c) => `${c.name} (${c.type})`).join(", ") || "none"}.`,
       );
     }
     const valueIds = new Map(

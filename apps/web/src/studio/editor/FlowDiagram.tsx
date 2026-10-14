@@ -434,18 +434,28 @@ function ZoomBar() {
     "inline-flex size-8 items-center justify-center rounded-full text-ink-3 hover:bg-accent hover:text-ink";
   return (
     <div className="absolute bottom-4 left-4 z-10 flex items-center gap-0.5 rounded-full bg-card p-1 shadow-soft ring-1 ring-border-soft">
-      <button type="button" className={btn} onClick={() => rf.zoomOut()} aria-label="Zoom out">
+      <button
+        type="button"
+        className={btn}
+        onClick={() => rf.zoomOut()}
+        aria-label={t("editor.zoomOut")}
+      >
         <Minus className="size-4" />
       </button>
       <button
         type="button"
         className={btn}
         onClick={() => rf.fitView({ padding: 0.2, duration: 300 })}
-        aria-label="Fit"
+        aria-label={t("editor.zoomFit")}
       >
         <Scan className="size-4" />
       </button>
-      <button type="button" className={btn} onClick={() => rf.zoomIn()} aria-label="Zoom in">
+      <button
+        type="button"
+        className={btn}
+        onClick={() => rf.zoomIn()}
+        aria-label={t("editor.zoomIn")}
+      >
         <Plus className="size-4" />
       </button>
     </div>

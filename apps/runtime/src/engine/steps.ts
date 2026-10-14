@@ -672,10 +672,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
     if (step.output.format !== "json") {
       if (!text && !assets.length) {
         throw new StepError(
-          bilingual(
-            "Der Schritt hat kein Ergebnis geliefert.",
-            "The step did not deliver a result.",
-          ),
+          bilingual("Der Schritt hat kein Ergebnis geliefert.", "The step didn’t return a result."),
         );
       }
       return { text, assets: assets.length ? assets : undefined, at: new Date().toISOString() };
@@ -906,7 +903,7 @@ async function writeHtml(
     .trim();
   if (!/<html|<!doctype/i.test(html)) {
     throw new StepError(
-      bilingual("Das Dokument konnte nicht erstellt werden.", "The document could not be made."),
+      bilingual("Das Dokument konnte nicht erstellt werden.", "The document couldn’t be created."),
     );
   }
   // On screen (preview, PNG) a print document needs the margin its @page rule gives it on paper.

@@ -261,7 +261,7 @@ export async function finishOAuth(
 ): Promise<OAuthState> {
   const state = unseal<OAuthState>(rawState);
   if (!state || state.exp < Date.now()) {
-    throw new Error("The sign-in has expired. Please connect again.");
+    throw new Error("The sign-in has expired. Connect again.");
   }
   const run = await db.query.run.findFirst({ where: eq(schema.run.id, state.runId) });
   const connection = run?.definition.connections?.find((c) => c.id === state.connectionId);
@@ -350,26 +350,26 @@ function connectFailure(err: unknown): RunNote {
   if (e.authenticationFailed) {
     const answer = e.responseText?.slice(0, 160);
     return bilingual(
-      `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Bei Gmail und Google Workspace braucht es ein App-Passwort und aktiviertes IMAP.${answer ? ` Antwort des Servers: ${answer}` : ""}`,
-      `Sign-in refused${host}. Are the address and (app) password right? Gmail and Google Workspace need an app password and IMAP switched on.${answer ? ` The server answered: ${answer}` : ""}`,
+      `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Gmail und Google Workspace brauchen ein App-Passwort und eingeschaltetes IMAP.${answer ? ` Antwort des Servers: ${answer}` : ""}`,
+      `The sign-in was refused${host}. Are the address and (app) password right? Gmail and Google Workspace need an app password and IMAP turned on.${answer ? ` The server said: ${answer}` : ""}`,
     );
   }
   if (e.code === "ENOTFOUND") {
     return bilingual(
-      `Den Mail-Server${host} gibt es nicht. Bitte den IMAP-Server eintragen, bei Gmail und Google Workspace imap.gmail.com.`,
-      `The mail server${host} does not exist. Please enter the IMAP server; for Gmail and Google Workspace it is imap.gmail.com.`,
+      `Den Mail-Server${host} gibt es nicht. Trag den IMAP-Server ein, bei Gmail und Google Workspace imap.gmail.com.`,
+      `The mail server${host} doesn’t exist. Enter the IMAP server. For Gmail and Google Workspace, it’s imap.gmail.com.`,
     );
   }
   if (e.code === "ETIMEDOUT" || e.code === "ETIMEOUT" || e.code === "ECONNREFUSED") {
     return bilingual(
-      `Der Mail-Server${host} antwortet nicht. Bitte IMAP-Server und Port prüfen.`,
-      `The mail server${host} does not answer. Please check the IMAP server and port.`,
+      `Der Mail-Server${host} antwortet nicht. Prüf IMAP-Server und Port.`,
+      `The mail server${host} isn’t responding. Check the IMAP server and port.`,
     );
   }
   const detail = String(e.message ?? err).slice(0, 200);
   return bilingual(
     `Verbinden hat nicht geklappt${host}: ${detail}`,
-    `Connecting did not work${host}: ${detail}`,
+    `Connecting didn’t work${host}: ${detail}`,
   );
 }
 

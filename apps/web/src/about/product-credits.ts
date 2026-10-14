@@ -24,7 +24,7 @@ export const ENGENTY_CREDITS: ProductCredit[] = [
   {
     name: "engenty",
     description: {
-      de: "Konnektoren, Datentabellen, Suche und die Engenties stammen aus dem engenty-Framework.",
+      de: "Connectors, Datentabellen, Suche und die Engenties stammen aus dem engenty-Framework.",
       en: "Connectors, data tables, search and the engenties come from the engenty framework.",
     },
     homepage: "https://github.com/engenty/engenty",

@@ -103,7 +103,7 @@ function Trail() {
   }
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t("nav.breadcrumb")}
       className="flex min-w-0 items-center text-[0.9375rem] max-sm:hidden"
     >
       {trail.map((crumb, i) => (

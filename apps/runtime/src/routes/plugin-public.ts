@@ -4,6 +4,7 @@ import { withTenant } from "../db/client.js";
 import { SHARED, tenantOfAddress } from "../plugins/public.js";
 import { loadedPlugin, pluginIdsOf } from "../plugins/registry.js";
 import { tenantStatus } from "../tenants/control.js";
+import { notFoundAnswer } from "./lang.js";
 import { answerOf } from "./plugins.js";
 
 /**
@@ -13,7 +14,7 @@ import { answerOf } from "./plugins.js";
  * every tenant; their handler enters a tenant by the ref the call carries.
  */
 
-const notFound = (c: Context) => c.json({ error: "not found", code: "not_found" }, 404);
+const notFound = (c: Context) => c.json(notFoundAnswer(c), 404);
 
 /** What a handler threw, as the answer: its status and code, or a 500. */
 function failed(c: Context, id: string, what: string, err: unknown): Response {

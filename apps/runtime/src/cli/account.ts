@@ -11,10 +11,10 @@ import { DeviceSignInError, requestDeviceCode, waitForDeviceSignIn } from "../au
 import { migrateControlDb } from "../db/client.js";
 import { env } from "../env.js";
 import { featuresFile, fileFeatures, writeFeature } from "../features.js";
-import { command, type Layout, readInstallNote, writeInstallNote } from "./home.js";
+import { type Layout, readInstallNote, writeInstallNote } from "./home.js";
 import type { SetupOptions } from "./setup.js";
 import { openBrowser, runningRuntime, settings } from "./start.js";
-import { bold, busy, cyan, dim, tilde } from "./ui.js";
+import { bold, busy, cmd, cyan, dim, tilde } from "./ui.js";
 
 /**
  * The account of this install, from the terminal. `wizards account` says where it stands,
@@ -101,7 +101,7 @@ export function described(
 export function describeAccount(state: AccountState): string {
   switch (state.kind) {
     case "local":
-      return "local only";
+      return "only on this computer, no account";
     case "none":
       return "not signed in";
     default:
@@ -117,19 +117,21 @@ async function status(): Promise<number> {
   const state = await accountState();
   if (state.kind === "local") {
     console.log(
-      `Local only (no account). ${dim(`\`${command()} account sign-in\` connects one.`)}`,
+      `Only on this computer, no account. ${dim(`To connect one: ${cmd("account sign-in")}`)}`,
     );
     return 0;
   }
   if (state.kind === "none") {
-    console.log(`Not signed in. ${dim(`\`${command()} account sign-in\``)}`);
+    console.log(`Not signed in. ${dim(`To sign in: ${cmd("account sign-in")}`)}`);
     return 0;
   }
   const overview = await accountOverview();
   const team = overview?.tenant ?? state.team;
   console.log(
     `Signed in as ${described(state.account, team)} · ${host()}${
-      overview ? "" : dim(`  (${host()} did not answer${team ? "; this is from last time" : ""})`)
+      overview
+        ? ""
+        : dim(`  (${host()} didn’t respond${team ? ", so this is from last time" : ""})`)
     }`,
   );
   return 0;
@@ -148,21 +150,21 @@ async function deviceSignIn(): Promise<LinkedAccount | null> {
     return null;
   }
   const link = code.verificationUriComplete ?? code.verificationUri;
-  p.log.message(`Open ${cyan(link)} and type ${bold(code.userCode)}`);
+  p.log.message(`Open ${cyan(link)} and enter the code ${bold(code.userCode)}.`);
   if (openBrowser(link)) {
     p.log.message(dim("The page opens in your browser."));
   }
-  const spinner = busy("Waiting for you to allow it in the browser");
+  const spinner = busy("Waiting for you to confirm in the browser…");
   try {
     const account = await waitForDeviceSignIn(code);
     const overview = await accountOverview();
-    spinner.stop(`Signed in as ${described(account, overview?.tenant ?? null)}`);
+    spinner.stop(`Signed in as ${described(account, overview?.tenant ?? null)}.`);
     return account;
   } catch (err) {
     spinner.fail(
       err instanceof DeviceSignInError
         ? err.message
-        : `The sign-in did not work. ${(err as Error).message}`,
+        : `The sign-in didn’t work. ${(err as Error).message}`,
     );
     return null;
   }
@@ -177,17 +179,16 @@ async function pickUp(paths: Layout, interactive: boolean, why: string): Promise
   if (!(await runningRuntime(settings(paths).dataDir))) {
     return;
   }
-  const how = `${command()} restart`;
   if (!interactive) {
-    p.log.info(`The studio that runs ${why} after ${cyan(how)}.`);
+    p.log.info(`Run ${cmd("restart")} so ${why}.`);
     return;
   }
   const answer = await p.confirm({
-    message: `Restart the studio that runs, so it ${why}?`,
+    message: `Restart engenty wizards now, so ${why}?`,
     initialValue: true,
   });
   if (p.isCancel(answer) || !answer) {
-    p.log.info(dim(`Later: ${how}`));
+    p.log.info(dim(`To do it later: ${cmd("restart")}`));
     return;
   }
   // status.ts shows the account; loaded here when needed, so neither module waits on the other.
@@ -195,7 +196,7 @@ async function pickUp(paths: Layout, interactive: boolean, why: string): Promise
   await restart(paths);
 }
 
-const SIGNED_IN = "fetches the Pro modules of your plan and sends what is published to the cloud";
+const SIGNED_IN = "your plan’s Pro modules load and your published wizards arrive in the cloud";
 
 async function signIn(paths: Layout, interactive: boolean): Promise<number> {
   await ready();
@@ -203,7 +204,7 @@ async function signIn(paths: Layout, interactive: boolean): Promise<number> {
   if (linked) {
     p.log.info(
       `Already signed in as ${described(linked, await knownTeam(), false)}. ${dim(
-        `To switch: \`${command()} account sign-out\` first.`,
+        `To switch accounts, run ${cmd("account sign-out")} first.`,
       )}`,
     );
     return 0;
@@ -222,11 +223,13 @@ async function signOut(paths: Layout, interactive: boolean): Promise<number> {
   const state = await accountState();
   if (state.kind !== "linked") {
     console.log(
-      state.kind === "local" ? "Local only: there is no account to sign out." : "Not signed in.",
+      state.kind === "local"
+        ? "No account is connected, so there’s nothing to sign out of."
+        : "Not signed in.",
     );
     return 0;
   }
-  const spinner = busy(`Signing out ${state.account.name || state.account.email}`);
+  const spinner = busy(`Signing out ${state.account.name || state.account.email}…`);
   await unlink();
   // The same as the studio's sign-out (DELETE /api/studio/account): what was sent to the cloud
   // is forgotten, the entitlement goes with the account's plan, and models that ran on its
@@ -244,7 +247,7 @@ async function signOut(paths: Layout, interactive: boolean): Promise<number> {
     await models.saveLocalModels({ source: "own" });
   }
   spinner.stop("Signed out. Your wizards and results stay on this computer.");
-  await pickUp(paths, interactive, "lets go of the account");
+  await pickUp(paths, interactive, "it disconnects from the account");
   return 0;
 }
 
@@ -267,7 +270,7 @@ export async function accountCommand(
     case "logout":
       return signOut(paths, interactive);
     default:
-      console.error(`${command()} account [sign-in|sign-out]`);
+      console.error(`Usage: ${cmd("account [sign-in|sign-out]")}`);
       return 2;
   }
 }
@@ -308,38 +311,40 @@ export async function accountStep(
   if (options.local) {
     localOnly(paths);
     p.log.warn(
-      `Local only. No account, nothing leaves this computer. Wizards, the space and results stay in ${tilde(settings(paths).dataDir)}. Links answer on this computer only.`,
+      `No account: nothing leaves this computer. Your wizards, your space and results stay in ${tilde(settings(paths).dataDir)}. Links work only on this computer.`,
     );
-    p.log.message(dim(`Connect an account any time: ${command()} account`));
+    p.log.message(dim(`To connect an account any time: ${cmd("account sign-in")}`));
     return;
   }
   const state = await accountState();
   if (state.kind === "local") {
-    p.log.info(`Local only (no account). ${dim(`\`${command()} account sign-in\` connects one.`)}`);
+    p.log.info(
+      `Only on this computer, no account. ${dim(`To connect one: ${cmd("account sign-in")}`)}`,
+    );
     return;
   }
   if (state.kind === "linked") {
     const overview = await accountOverview();
-    p.log.success(`Signed in as ${described(state.account, overview?.tenant ?? state.team)}`);
+    p.log.success(`Signed in as ${described(state.account, overview?.tenant ?? state.team)}.`);
     return;
   }
   p.note(INTRO, "Your engenty account");
   if (!interactive) {
-    p.log.info(dim(`Sign in later: ${command()} account sign-in`));
+    p.log.info(dim(`To sign in later: ${cmd("account sign-in")}`));
     return;
   }
   const answer = await p.confirm({ message: "Sign in now?", initialValue: true });
   if (p.isCancel(answer)) {
-    p.cancel(`Setup stopped. Run it again with \`${command()} setup\`.`);
+    p.cancel(`Setup stopped. To run it again: ${cmd("setup")}`);
     return "cancelled";
   }
   if (!answer) {
-    p.log.info(dim(`Later: ${command()} account`));
+    p.log.info(dim(`To sign in later: ${cmd("account sign-in")}`));
     return;
   }
   const account = await deviceSignIn();
   if (!account) {
-    p.log.info(dim(`Later: ${command()} account sign-in`));
+    p.log.info(dim(`To sign in later: ${cmd("account sign-in")}`));
     return;
   }
   joinedAccount(paths);

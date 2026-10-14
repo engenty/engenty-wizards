@@ -193,10 +193,7 @@ export function readPageInput(
       if (field.min && v.length < field.min) {
         errors.push({
           field: field.id,
-          message: bilingual(
-            `Bitte mindestens ${field.min} auswählen`,
-            `Please choose at least ${field.min}`,
-          ),
+          message: bilingual(`Wähl mindestens ${field.min} aus`, `Choose at least ${field.min}`),
         });
         continue;
       }
@@ -204,8 +201,8 @@ export function readPageInput(
         errors.push({
           field: field.id,
           message: bilingual(
-            `Höchstens ${field.max} – bitte einige entfernen`,
-            `At most ${field.max} – please remove some`,
+            `Höchstens ${field.max} – entferne einige`,
+            `At most ${field.max} – remove some`,
           ),
         });
         continue;
@@ -214,7 +211,7 @@ export function readPageInput(
     if (field.kind === "number" && Number.isNaN(v)) {
       errors.push({
         field: field.id,
-        message: bilingual("Bitte eine Zahl eingeben", "Please enter a number"),
+        message: bilingual("Gib eine Zahl ein", "Enter a number"),
       });
       continue;
     }
@@ -225,7 +222,7 @@ export function readPageInput(
     if (field.kind === "slot" && !empty(v) && !field.options?.includes(String(v))) {
       errors.push({
         field: field.id,
-        message: bilingual("Dieser Termin wird nicht angeboten", "This time is not offered"),
+        message: bilingual("Dieser Termin wird nicht angeboten", "This time isn’t offered"),
       });
       continue;
     }

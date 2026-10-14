@@ -38,7 +38,7 @@ describe("RUNTIME_ROLE=doors", () => {
     expect(links.status).toBe(200);
     expect(JSON.stringify(await links.json())).toContain("/w/*");
     expect((await get("/api/public/codes/000000")).status).toBe(404);
-    expect(await (await get("/api/runs/nope")).json()).toEqual({ error: "not found" });
+    expect(await (await get("/api/runs/nope")).json()).toEqual({ error: "This doesn’t exist or was deleted.", code: "not_found" });
   });
 
   it("serves the app's files, not the studio's pages", async () => {

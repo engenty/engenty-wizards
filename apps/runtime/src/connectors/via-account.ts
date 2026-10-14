@@ -36,8 +36,8 @@ async function call<T>(path: string, body: unknown): Promise<T> {
   if (!token) {
     throw new AccountConnectError(
       bilingual(
-        "Verbinde zuerst dein engenty-Konto (Einstellungen → Konto), dann lässt sich Google hier verbinden.",
-        "Connect your engenty account first (Settings → Account); then Google can be connected here.",
+        "Verbinde zuerst dein engenty-Konto (Einstellungen → Konto). Dann kannst du Google hier verbinden.",
+        "Connect your engenty account first (Settings → Account). Then you can connect Google here.",
       ),
     );
   }
@@ -50,8 +50,8 @@ async function call<T>(path: string, body: unknown): Promise<T> {
   if (!res) {
     throw new AccountConnectError(
       bilingual(
-        "Dein engenty-Konto ist gerade nicht erreichbar. Bitte später noch einmal.",
-        "Your engenty account cannot be reached right now. Please try again later.",
+        "Dein engenty-Konto ist gerade nicht erreichbar. Versuch es später noch einmal.",
+        "Your engenty account can’t be reached right now. Try again later.",
       ),
     );
   }
@@ -60,17 +60,17 @@ async function call<T>(path: string, body: unknown): Promise<T> {
     throw new AccountConnectError(
       data.code === "invalid_grant"
         ? bilingual(
-            "Google nimmt diese Verbindung nicht mehr an. Bitte das Konto neu verbinden.",
-            "Google no longer accepts this connection. Please connect the account again.",
+            "Google nimmt diese Verbindung nicht mehr an. Verbinde das Konto neu.",
+            "Google no longer accepts this connection. Connect the account again.",
           )
         : data.code === "not_configured"
           ? bilingual(
               "Google lässt sich über dein engenty-Konto gerade nicht verbinden.",
-              "Google cannot be connected through your engenty account right now.",
+              "Google can’t be connected through your engenty account right now.",
             )
           : bilingual(
               `Verbinden über dein engenty-Konto hat nicht geklappt (${data.code ?? res.status}).`,
-              `Connecting through your engenty account did not work (${data.code ?? res.status}).`,
+              `Connecting through your engenty account didn’t work (${data.code ?? res.status}).`,
             ),
     );
   }

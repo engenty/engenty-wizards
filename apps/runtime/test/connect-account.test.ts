@@ -161,7 +161,7 @@ describe("Google on a local install without its own Google client", () => {
     expect(ctx?.ctx.accessToken).toBe("ya29.second");
     expect(seen.at(-1)?.path).toBe("/v1/connect/google/refresh");
 
-    await expect(refreshThroughAccount("1//gone")).rejects.toThrow(/connect the account again/);
+    await expect(refreshThroughAccount("1//gone")).rejects.toThrow(/Connect the account again/);
   });
 
 });

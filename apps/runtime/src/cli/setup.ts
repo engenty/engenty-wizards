@@ -28,7 +28,7 @@ import {
   vendorApp,
 } from "./machine.js";
 import { runningRuntime, settings } from "./start.js";
-import { badge, busy, cyan, dim, tilde } from "./ui.js";
+import { badge, busy, cmd, cyan, dim, tilde } from "./ui.js";
 
 export interface SetupOptions {
   /** Ask nothing and install nothing optional: say what is there and what is missing. */
@@ -41,11 +41,11 @@ export interface SetupOptions {
 
 /** The studio as an app of its own: Chrome (or Edge) installs it from the page. */
 const CHROME_APP =
-  "Tip: in Chrome or Edge the studio installs as an app, in a window of its own with its own icon. The studio offers it at the top; or use the install icon in the address bar.";
+  "Tip: in Chrome or Edge you can install the studio as an app, with its own window and icon. Use the offer at the top of the studio, or the install icon in the address bar.";
 
 function cancelled<T>(value: T | symbol): value is symbol {
   if (p.isCancel(value)) {
-    p.cancel(`Setup stopped. Run it again with \`${command()} setup\`.`);
+    p.cancel(`Setup stopped. To run it again: ${cmd("setup")}`);
     return true;
   }
   return false;
@@ -61,7 +61,7 @@ async function install(client: Client, paths: Layout): Promise<boolean> {
     return true;
   }
   task.error(
-    `${client.name} was not installed${code === 0 ? ": its command is not on the PATH" : ""}. ${tail.split("\n").pop() ?? ""}`,
+    `${client.name} didn’t install${code === 0 ? ": its command isn’t on the PATH" : ""}. ${tail.split("\n").pop() ?? ""}`,
   );
   return false;
 }
@@ -71,18 +71,20 @@ async function clientsStep(
   options: SetupOptions,
   interactive: boolean,
 ): Promise<boolean | "cancelled"> {
-  const spinner = busy("Looking for AI clients on this machine");
+  const spinner = busy("Looking for AI clients on this computer…");
   const found = await detectClients(paths);
   const installed = found.filter((state) => state.path);
   const missing = found.filter((state) => !state.path);
   spinner.stop(
     installed.length
-      ? `Thinks with: ${installed.map((s) => `${s.client.name} ${s.version}`).join(", ")}`
-      : "No AI client on this machine yet",
+      ? `Found AI clients: ${installed.map((s) => `${s.client.name} ${s.version}`).join(", ")}.`
+      : "No AI client on this computer yet.",
   );
 
   if (!installed.length) {
-    p.log.message(dim("engenty wizards thinks with one, on the subscription you already have."));
+    p.log.message(
+      dim("engenty wizards uses an AI client to think, on a subscription you already have."),
+    );
   }
 
   let wanted: ClientState[] = missing.filter((s) => options.clients.includes(s.client.id));
@@ -94,8 +96,8 @@ async function clientsStep(
     );
     const answer = await p.multiselect({
       message: installed.length
-        ? "Install another AI client? (space to pick, enter to go on)"
-        : "Which one shall I install?",
+        ? "Install another AI client? (space to choose, enter to continue)"
+        : "Which AI client should be installed?",
       options: offered.map(({ client }) => {
         const app = vendorApp(client);
         return {
@@ -123,11 +125,11 @@ async function clientsStep(
     any = (await install(client, paths)) || any;
   }
   if (any) {
-    p.log.info("You sign the client in on the first page of the studio.");
+    p.log.info("Sign in to the AI client on the first page of the studio.");
   } else {
     p.log.warn(
-      `No AI client yet: the first page of the studio installs one, or takes an API key (Vercel AI Gateway, OpenAI, Anthropic) or a local model (Ollama).\n${dim(
-        `Or here, later: ${CLIENTS.map((c) => c.name).join(", ")} with \`${command()} setup\`.`,
+      `No AI client yet. The first page of the studio can install one, or you can use an API key (Vercel AI Gateway, OpenAI, Anthropic) or a local model (Ollama).\n${dim(
+        `To install ${CLIENTS.map((c) => c.name).join(", ")} here later: ${cmd("setup")}`,
       )}`,
     );
   }
@@ -140,7 +142,7 @@ async function toolsStep(interactive: boolean): Promise<"cancelled" | undefined>
     p.log.success(`Browser for PDF and PNG: ${dim(tilde(chrome))}`);
   } else {
     p.log.warn(
-      "No Chrome, Edge or Chromium: PDF and PNG exports and browser steps need one.\nhttps://www.google.com/chrome",
+      "No Chrome, Edge or Chromium found. PDF and PNG exports and browser steps need one.\nhttps://www.google.com/chrome",
     );
   }
   const ffmpeg = await findFfmpeg();
@@ -151,7 +153,7 @@ async function toolsStep(interactive: boolean): Promise<"cancelled" | undefined>
   const brew = findOnPath("brew", process.env.PATH ?? "");
   if (!interactive || !brew) {
     p.log.warn(
-      `No ffmpeg: MP4 videos of animated widgets need it.${brew ? `\n${dim("brew install ffmpeg")}` : ""}`,
+      `No ffmpeg found. MP4 videos of animated widgets need it.${brew ? `\n${dim(`To install it: ${cyan("brew install ffmpeg")}`)}` : ""}`,
     );
     return;
   }
@@ -170,7 +172,7 @@ async function toolsStep(interactive: boolean): Promise<"cancelled" | undefined>
     if (code === 0) {
       task.success("ffmpeg installed");
     } else {
-      task.error(`ffmpeg was not installed. ${tail.split("\n").pop() ?? ""}`);
+      task.error(`ffmpeg didn’t install. ${tail.split("\n").pop() ?? ""}`);
     }
   }
 }
@@ -192,19 +194,19 @@ async function autostartStep(
     return;
   }
   if (!interactive) {
-    p.log.info(dim(`To start it at login: \`${command()} autostart on\``));
+    p.log.info(dim(`To start it when you log in: ${cmd("autostart on")}`));
     return;
   }
   const answer = await p.confirm({
     message:
-      "Start engenty wizards when you log in? It keeps running in the background, so links and AI clients always reach it.",
+      "Start engenty wizards when you log in? It keeps running in the background, so links and your AI apps can always reach it.",
     initialValue: true,
   });
   if (cancelled(answer)) {
     return "cancelled";
   }
   if (!answer) {
-    p.log.info(dim(`Later: \`${command()} autostart on\``));
+    p.log.info(dim(`To do it later: ${cmd("autostart on")}`));
     return;
   }
   try {
@@ -212,10 +214,10 @@ async function autostartStep(
     if ("on" in after && after.on) {
       p.log.success(`Starts at login: ${dim(after.how)}`);
     } else {
-      p.log.warn("Starting at login could not be switched on.");
+      p.log.warn("Couldn’t turn on start at login.");
     }
   } catch (error) {
-    p.log.warn(`Starting at login could not be switched on. ${(error as Error).message}`);
+    p.log.warn(`Couldn’t turn on start at login. ${(error as Error).message}`);
   }
 }
 
@@ -235,18 +237,16 @@ async function appsStep(paths: Layout, interactive: boolean): Promise<"cancelled
   }
   if (!interactive) {
     p.log.info(
-      dim(
-        `To use your wizards in ${offered.map((s) => s.name).join(", ")}: \`${command()} connect\``,
-      ),
+      dim(`To use your wizards in ${offered.map((s) => s.name).join(", ")}: ${cmd("connect")}`),
     );
     return;
   }
   const answer = await p.multiselect({
-    message: "Use your wizards in these AI apps? (space to pick, enter to go on)",
+    message: "Use your wizards in these AI apps? (space to choose, enter to continue)",
     options: offered.map((s) => ({
       value: s.id,
       label: s.name,
-      hint: s.widgets ? "shows runs as a widget" : "as text",
+      hint: s.widgets ? "shows runs as a widget" : "shows runs as text",
     })),
     initialValues: offered.map((s) => s.id),
     required: false,
@@ -255,12 +255,12 @@ async function appsStep(paths: Layout, interactive: boolean): Promise<"cancelled
     return "cancelled";
   }
   if (!answer.length) {
-    p.log.info(dim(`Later: \`${command()} connect\``));
+    p.log.info(dim(`To do it later: ${cmd("connect")}`));
     return;
   }
   for (const { app, outcome } of await connectApps(paths, answer)) {
     if (outcome.ok) {
-      p.log.success(`${app.name}: ${dim(tilde(outcome.message))}`);
+      p.log.success(`${app.name}: ${dim(outcome.message)}`);
     } else {
       p.log.warn(`${app.name}: ${outcome.message}${outcome.snippet ? `\n${outcome.snippet}` : ""}`);
     }
@@ -293,16 +293,18 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
   }
   const { file, line } = pathLine();
   if (existsSync(file) && readFileSync(file, "utf8").includes(".local/bin")) {
-    p.log.info(`Open a new terminal to use the \`wizards\` command.`);
+    p.log.info(`Open a new terminal to use the ${cyan("wizards")} command.`);
     return;
   }
-  const hint = `Until then: ${tilde(join(local, "wizards"))}`;
+  const hint = `Until then, use ${cyan(tilde(join(local, "wizards")))}`;
   if (!interactive) {
-    p.log.warn(`~/.local/bin is not on your PATH. Add to ${tilde(file)}:\n${line}\n${dim(hint)}`);
+    p.log.warn(
+      `~/.local/bin isn’t on your PATH. Add this to ${tilde(file)}:\n${line}\n${dim(hint)}`,
+    );
     return;
   }
   const answer = await p.confirm({
-    message: `The \`wizards\` command is in ~/.local/bin, which is not on your PATH. Add it in ${tilde(file)}?`,
+    message: `The wizards command is in ~/.local/bin, which isn’t on your PATH. Add it in ${tilde(file)}?`,
     initialValue: true,
   });
   if (cancelled(answer)) {
@@ -310,7 +312,7 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
   }
   if (answer) {
     appendFileSync(file, `\n# engenty wizards\n${line}\n`);
-    p.log.success(`Added to ${tilde(file)}. It works in a new terminal.\n${dim(hint)}`);
+    p.log.success(`Added to ${tilde(file)}. Open a new terminal to use it.\n${dim(hint)}`);
   } else {
     p.log.info(hint);
   }
@@ -327,8 +329,12 @@ async function howToUse(paths: Layout) {
     `${what.padEnd(9)}${cyan(cmd.padEnd(wizards.length + 12))}${note ? dim(note) : ""}`;
   p.log.message(
     [
-      running ? `It runs now: ${cyan(running.url)}` : "It does not run yet. Nothing was started.",
-      "unavailable" in atLogin || !atLogin.on ? "" : dim("It starts by itself when you log in."),
+      running
+        ? `engenty wizards is running: ${cyan(running.url)}`
+        : "engenty wizards isn’t running yet.",
+      "unavailable" in atLogin || !atLogin.on
+        ? ""
+        : dim("It starts automatically when you log in."),
     ]
       .filter(Boolean)
       .join("\n"),
@@ -338,15 +344,15 @@ async function howToUse(paths: Layout) {
       "From now on, in a terminal:",
       "",
       row("Start", `${wizards} start`, "runs in this terminal; Ctrl-C stops it"),
-      row("", `${wizards} start -s`, "runs as a service; the terminal stays free"),
-      row("Studio", `${wizards} studio`, "opens the studio; starts it first if needed"),
+      row("", `${wizards} start -s`, "runs in the background; the terminal stays free"),
+      row("Studio", `${wizards} studio`, "opens the studio, starting it first if needed"),
       row("Stop", `${wizards} stop`, "your data is kept"),
-      row("Check", `${wizards} status`, "what runs and where"),
+      row("Check", `${wizards} status`, "shows what’s running and where"),
       row("Restart", `${wizards} restart`),
-      row("All", wizards, "a menu with all of it"),
+      row("Menu", wizards, "everything in one menu"),
       "",
-      dim("No need to run the installer again: it is installed. To update: ") +
-        cyan(`${wizards} update`),
+      dim("It’s installed, so there’s no need to run the installer again. To update: ") +
+        cmd("update"),
     ].join("\n"),
   );
 }

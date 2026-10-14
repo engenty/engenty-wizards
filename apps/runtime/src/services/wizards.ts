@@ -168,7 +168,7 @@ async function pluginIssues(draft: WizardDefinition) {
       if (!known.has(id)) {
         issues.push({
           stepId: step.id,
-          message: `Step "${step.id}": tool "${id}" is not available here — the plugin "${named.plugin}" is not installed or has no such tool.`,
+          message: `Step “${step.id}”: the tool “${id}” isn’t available here – the plugin “${named.plugin}” isn’t installed or has no such tool.`,
         });
       }
     }
@@ -276,7 +276,7 @@ export function parseDraft(
 ): { draft: WizardDefinition; issues: ValidationIssue[] } {
   const parsed = wizardSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new ServiceError("invalid", "The wizard does not match the schema.", {
+    throw new ServiceError("invalid", "The wizard doesn’t match the schema.", {
       issues: shapeIssues(parsed.error, raw),
     });
   }
@@ -306,7 +306,13 @@ export async function createWizard(
     ? await marketplaceWizard(input.starterId, asLang(input.lang))
     : undefined;
   if (input.starterId && !starter) {
-    throw new ServiceError("invalid", `There is no starter "${input.starterId}".`);
+    throw new ServiceError(
+      "invalid",
+      bilingual(
+        `Die Vorlage „${input.starterId}“ gibt es nicht.`,
+        `There’s no template “${input.starterId}”.`,
+      ),
+    );
   }
   const maker = input.lang?.toLowerCase().startsWith("de") ? "de" : "en";
   const { draft, issues } =
@@ -384,10 +390,7 @@ export async function writeDraft(
     const current = await ownedWizard(userId, wizardId);
     throw new ServiceError(
       "revision_conflict",
-      bilingual(
-        "Der Wizard wurde inzwischen geändert.",
-        "The wizard has been changed in the meantime.",
-      ),
+      bilingual("Der Wizard wurde inzwischen geändert.", "The wizard was changed in the meantime."),
       {
         revision: current.revision,
       },
@@ -418,10 +421,7 @@ export async function editWizard(
   if (w.revision !== input.baseRevision) {
     throw new ServiceError(
       "revision_conflict",
-      bilingual(
-        "Der Wizard wurde inzwischen geändert.",
-        "The wizard has been changed in the meantime.",
-      ),
+      bilingual("Der Wizard wurde inzwischen geändert.", "The wizard was changed in the meantime."),
       {
         revision: w.revision,
       },

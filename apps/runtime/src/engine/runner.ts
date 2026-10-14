@@ -107,8 +107,8 @@ export class NoCreditsError extends NotedError {
   constructor() {
     super(
       bilingual(
-        "Dieser Wizard hat gerade kein Guthaben mehr. Bitte später erneut versuchen.",
-        "This wizard has no credits left right now. Please try again later.",
+        "Dieser Wizard hat gerade kein Guthaben mehr. Versuch es später noch einmal.",
+        "This wizard has run out of credits for now. Try again later.",
       ),
     );
   }
@@ -191,20 +191,20 @@ function friendly(err: unknown): Said {
   // A runtime that runs alone pays its provider itself: its admin can top the account up.
   if (!managed && /minimum balance|insufficient_funds|top up your credits/i.test(msg)) {
     return bilingual(
-      "Das Guthaben beim Modell-Anbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Bitte dort aufladen und noch einmal versuchen.",
-      "The credit with the model provider is not enough for this (videos need a minimum balance there). Please top up there and try again.",
+      "Das Guthaben beim Modellanbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Lade dort auf und versuch es noch einmal.",
+      "Your credit with the model provider isn’t enough for this (videos need a minimum balance there). Top up there and try again.",
     );
   }
   if (/rate.?limit|429/i.test(msg)) {
     return bilingual(
-      "Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.",
-      "The AI service is busy right now. Please try again in a moment.",
+      "Der KI-Dienst ist gerade ausgelastet. Versuch es gleich noch einmal.",
+      "The AI service is busy right now. Try again in a moment.",
     );
   }
   if (/timeout|timed out/i.test(msg)) {
     return bilingual(
-      "Der Schritt hat zu lange gedauert. Bitte noch einmal versuchen.",
-      "The step took too long. Please try again.",
+      "Der Schritt hat zu lange gedauert. Versuch es noch einmal.",
+      "The step took too long. Try again.",
     );
   }
   // The platform's own provider account (budget, quota, key): nothing the person can fix.
@@ -212,12 +212,12 @@ function friendly(err: unknown): Said {
     /budget|quota|insufficient|billing|credit balance|api key|unauthori[sz]ed|401|403/i.test(msg)
   ) {
     return bilingual(
-      "Der KI-Dienst ist gerade nicht erreichbar. Bitte später noch einmal versuchen.",
-      "The AI service cannot be reached right now. Please try again later.",
+      "Der KI-Dienst ist gerade nicht erreichbar. Versuch es später noch einmal.",
+      "The AI service can’t be reached right now. Try again later.",
     );
   }
   return bilingual(
-    `Dieser Schritt ist fehlgeschlagen: ${msg.slice(0, 300)}`,
+    `Dieser Schritt hat nicht geklappt: ${msg.slice(0, 300)}`,
     `This step failed: ${msg.slice(0, 300)}`,
   );
 }
@@ -809,7 +809,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
         field: id,
         message: bilingual(
           "Das ist hier gerade nicht verfügbar.",
-          "That is not available here right now.",
+          "That isn’t available here right now.",
         ),
       });
     }
@@ -844,7 +844,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
         values[field.id] = account.label;
       } else if (field.required) {
         throw new RunInputError([
-          { field: field.id, message: bilingual("Bitte zuerst verbinden", "Please connect first") },
+          { field: field.id, message: bilingual("Verbinde zuerst", "Connect first") },
         ]);
       }
     }

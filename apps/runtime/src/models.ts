@@ -376,16 +376,16 @@ function missingText(cfg: ModelConfig, cls: ModelClass): RunNote {
   const bound = cfg.settings.bindings[cls];
   if (isCreditsRef(bound)) {
     return bilingual(
-      "Dafür ist das Guthaben gewählt, aber kein Konto angemeldet.",
-      "The credits are picked for this, but no account is signed in.",
+      "Dafür sind Credits gewählt, aber du bist mit keinem Konto angemeldet.",
+      "This is set to run on credits, but you’re not signed in to an account.",
     );
   }
   const makes = MAKES[cls];
   const provider = bound ? providerInfo(providerOfRef(bound) ?? "") : null;
   if (provider) {
     return bilingual(
-      `Für ${makes.de} ist ${provider.name} gewählt, aber kein API Key hinterlegt.`,
-      `${provider.name} is picked for ${makes.en}, but no API key is set.`,
+      `Für ${makes.de} ist ${provider.name} gewählt, aber kein API-Key hinterlegt.`,
+      `${provider.name} is chosen for ${makes.en}, but no API key is set.`,
     );
   }
   return bilingual(
@@ -420,8 +420,8 @@ async function creditAccess(cfg: ModelConfig, chosen: boolean): Promise<GatewayA
     if (chosen) {
       throw new ModelUnavailableError(
         bilingual(
-          "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
-          "The account is no longer signed in. Please sign in again in the settings.",
+          "Das Konto ist nicht mehr angemeldet. Melde dich unter Einstellungen → Konto neu an.",
+          "The account is no longer signed in. Sign in again under Settings → Account.",
         ),
       );
     }
@@ -462,7 +462,7 @@ function need(cfg: ModelConfig, name: LocalKey): string {
   if (!key) {
     throw new ModelUnavailableError(
       bilingual(
-        `Für ${providerInfo(name)?.name ?? name} ist kein API Key hinterlegt.`,
+        `Für ${providerInfo(name)?.name ?? name} ist kein API-Key hinterlegt.`,
         `No API key is set for ${providerInfo(name)?.name ?? name}.`,
       ),
     );
@@ -615,8 +615,8 @@ async function ownLanguageModel(
   }
   throw new ModelUnavailableError(
     bilingual(
-      `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen API Key hinterlegen oder ein Konto anmelden.`,
-      `There is no access set up for the model "${ref}". Please add an API key or sign in to an account in the settings.`,
+      `Das Modell „${ref}“ lässt sich noch nicht nutzen. Hinterleg unter Einstellungen → Modelle einen API-Key oder melde dich mit einem Konto an.`,
+      `The model “${ref}” can’t be used yet. Add an API key under Settings → Models, or sign in to an account.`,
     ),
   );
 }
@@ -969,8 +969,8 @@ export function freeTierRefusal(err: unknown): string | null {
 /** What the person reads when Vercel's free tier leaves a model out, and how to fix it. */
 export function freeTierText(model: string): RunNote {
   return bilingual(
-    `Dein AI Gateway Key ist bei Vercel im kostenlosen Tarif, und der schließt ${model ? `„${model}“` : "dieses Modell"} aus. Abhilfe: bei Vercel Guthaben aufladen (${GATEWAY_TOP_UP}) oder unter Einstellungen → Modelle dafür einen anderen Weg wählen.`,
-    `Your AI Gateway key is on Vercel's free tier, which leaves out ${model ? `“${model}”` : "this model"}. To fix it: top up at Vercel (${GATEWAY_TOP_UP}) or pick another way for it under Settings → Models.`,
+    `Dein AI-Gateway-Key nutzt bei Vercel die kostenlose Stufe, und die schließt ${model ? `„${model}“` : "dieses Modell"} aus. Lade bei Vercel Guthaben auf (${GATEWAY_TOP_UP}) oder wähle unter Einstellungen → Modelle ein anderes Modell.`,
+    `Your AI Gateway key is on Vercel’s free tier, which doesn’t include ${model ? `“${model}”` : "this model"}. Top up at Vercel (${GATEWAY_TOP_UP}) or choose another model under Settings → Models.`,
   );
 }
 
@@ -1031,7 +1031,7 @@ export async function conversationAccess(): Promise<{ apiKey: string; model: str
   if (!cfg.keys.openai) {
     throw new ModelUnavailableError(
       bilingual(
-        "Für Sprachgespräche ist kein OpenAI API Key hinterlegt (Einstellungen → Modelle).",
+        "Für Sprachgespräche ist kein OpenAI-API-Key hinterlegt (Einstellungen → Modelle).",
         "No OpenAI API key is set for voice conversations (Settings → Models).",
       ),
     );
@@ -1075,13 +1075,16 @@ export async function classProblem(cls: ModelClass): Promise<Said | null> {
       const named = creditsModelOf((await config()).settings.bindings[cls]);
       if (named) {
         return catalog?.models && !catalog.models.some((m) => m.id === named)
-          ? bilingual("Dieses Modell gibt es beim Konto nicht.", "The account has no such model.")
+          ? bilingual(
+              "Dieses Modell gibt es mit deinem Konto nicht.",
+              "This model isn’t available with your account.",
+            )
           : null;
       }
       return catalog?.classes && !catalog.classes[cls]
         ? bilingual(
-            "Dafür ist beim Konto kein Modell eingerichtet.",
-            "The account has no model set up for this.",
+            "Dafür ist bei deinem Konto kein Modell eingerichtet.",
+            "Your account has no model set up for this.",
           )
         : null;
     }
@@ -1113,8 +1116,8 @@ export async function filmClient(
   if (!client || !FILM_CLIENTS.has(client.id)) {
     return {
       problem: bilingual(
-        "Filme macht Claude Code auf diesem Computer mit deinem Abo. Richte es unter „Modelle“ als KI-Abo ein.",
-        "Films are made by Claude Code on this computer with your subscription. Set it up as an AI subscription under “Models”.",
+        "Filme macht Claude Code auf diesem Computer mit deinem Abo. Richte es unter Einstellungen → Modelle als KI-Abo ein.",
+        "Claude Code makes films on this computer, using your subscription. Set it up as an AI subscription under Settings → Models.",
       ),
     };
   }
@@ -1218,8 +1221,8 @@ async function appleProblem(cls: ModelClass): Promise<Said | null> {
   return (await hasFfmpeg())
     ? null
     : bilingual(
-        "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf; Safari und die App brauchen es nicht. ffmpeg installieren, z. B. mit „brew install ffmpeg“.",
-        "Recordings from Chrome or Firefox (WebM, Ogg) need ffmpeg before this Mac can write them down; Safari and the app do not. Install ffmpeg, e.g. with “brew install ffmpeg”.",
+        "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf. Safari und die App brauchen es nicht. Installiere ffmpeg, z. B. mit „brew install ffmpeg“.",
+        "This Mac needs ffmpeg to transcribe recordings from Chrome or Firefox (WebM, Ogg). Safari and the app don’t. Install ffmpeg, e.g. with “brew install ffmpeg”.",
       );
 }
 
@@ -1307,11 +1310,11 @@ export async function checkKey(
       message:
         res.status === 401
           ? de
-            ? "Der Anbieter kennt diesen Key nicht."
-            : "The provider does not know this key."
+            ? "Der Anbieter kennt diesen API-Key nicht."
+            : "The provider doesn’t recognise this key."
           : de
-            ? `Der Anbieter antwortet mit ${res.status}.`
-            : `The provider answers with ${res.status}.`,
+            ? `Der Anbieter antwortet mit Fehler ${res.status}.`
+            : `The provider answered with error ${res.status}.`,
     };
   } catch {
     return {

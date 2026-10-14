@@ -48,7 +48,7 @@ async function toolOf(id: string, ctx: StepContext): Promise<{ plugin: string; t
     throw new StepError(
       bilingual(
         `Dieser Schritt braucht das Werkzeug „${id}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
-        `This step needs the tool “${id}”. The plugin “${plugin}” is not installed here.`,
+        `This step needs the tool “${id}”. The plugin “${plugin}” isn’t installed here.`,
       ),
     );
   }

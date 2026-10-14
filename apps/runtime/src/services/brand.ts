@@ -86,8 +86,8 @@ export async function describeGradient(
     throw new ServiceError(
       "invalid",
       bilingual(
-        "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
-        "No gradient could be made from that. Please describe it differently.",
+        "Daraus ließ sich kein Verlauf machen. Beschreib ihn anders.",
+        "Couldn’t make a gradient from that. Try describing it differently.",
       ),
     );
   }
@@ -99,8 +99,8 @@ export async function describeGradient(
     throw new ServiceError(
       "invalid",
       bilingual(
-        "Daraus ließ sich kein Verlauf machen. Beschreib ihn bitte anders.",
-        "No gradient could be made from that. Please describe it differently.",
+        "Daraus ließ sich kein Verlauf machen. Beschreib ihn anders.",
+        "Couldn’t make a gradient from that. Try describing it differently.",
       ),
     );
   }

@@ -491,7 +491,7 @@ describe("a plugin's tools", () => {
       return wizards.draftIssues(await wizards.ownedWizard("local", created.id));
     });
     expect(issues.map((i) => i.message).filter((m) => m.includes("plugin"))).toEqual([
-      expect.stringContaining('"crm.lookup"'),
+      expect.stringContaining("“crm.lookup”"),
     ]);
   });
 });

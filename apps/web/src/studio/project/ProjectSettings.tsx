@@ -16,7 +16,7 @@ import { api } from "../../lib/api";
 import { useFeature } from "../../lib/features";
 import { t } from "../../lib/i18n";
 import { type Project, useIsAdmin, useManyProjects } from "../../lib/session";
-import { Button, Input, Label, Textarea } from "../../ui";
+import { Button, Dialog, Input, Label, Textarea } from "../../ui";
 import { useAssistantPage } from "../assistant/page";
 import { projectReadOnlyText, ReadOnlyNote } from "../ReadOnly";
 import { Assets } from "./Assets";
@@ -96,6 +96,7 @@ export function ProjectSettings({
   const qc = useQueryClient();
   const files = useProjectFiles(project.id);
   const [rev, setRev] = useState(0);
+  const [asking, setAsking] = useState(false);
   const save = async (patch: Patch) => {
     await api.patch(`/api/studio/projects/${project.id}`, patch);
     await qc.invalidateQueries({ queryKey: ["projects"] });
@@ -222,16 +223,27 @@ export function ProjectSettings({
       {children}
       {group === "info" && many && !readOnly && admin ? (
         <div>
-          <Button
-            variant="danger"
-            busy={remove.isPending}
-            onClick={() => confirm(`${t("settings.delete")}?`) && remove.mutate()}
-          >
+          <Button variant="danger" onClick={() => setAsking(true)}>
             {t("settings.delete")}
           </Button>
-          {remove.error ? (
-            <p className="mt-2 text-[0.875rem] text-rose">{(remove.error as Error).message}</p>
-          ) : null}
+          <Dialog
+            open={asking}
+            onClose={() => setAsking(false)}
+            title={t("settings.deleteTitle", { name: project.name })}
+          >
+            <p className="-mt-2 text-[0.875rem] text-ink-2">{t("settings.deleteBody")}</p>
+            {remove.error ? (
+              <p className="mt-3 text-[0.8125rem] text-rose">{(remove.error as Error).message}</p>
+            ) : null}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setAsking(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button variant="danger" busy={remove.isPending} onClick={() => remove.mutate()}>
+                {t("common.delete")}
+              </Button>
+            </div>
+          </Dialog>
         </div>
       ) : null}
     </div>

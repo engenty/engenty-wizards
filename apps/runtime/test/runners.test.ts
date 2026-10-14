@@ -181,7 +181,7 @@ describe("how a wizard is offered", () => {
           runners: { default: "chat", enabled: ["steps"] },
         }),
       ),
-    ).rejects.toThrow(/switched on/);
+    ).rejects.toThrow(/turned on/);
   });
 
   it("the studio sees every runner with its fit, and the settings as they stand", async () => {

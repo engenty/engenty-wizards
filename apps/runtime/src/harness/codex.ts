@@ -269,7 +269,7 @@ export const codex: Harness = {
   model: (alias: string, effort?: Effort) => new CodexModel(codex, alias || "default", effort),
   image: { alias: "image", model: (alias: string) => new CodexImageModel(codex, alias || "image") },
   exhausted: bilingual(
-    "Das Kontingent des ChatGPT-Kontos, mit dem Codex angemeldet ist, ist aufgebraucht. Später noch einmal versuchen oder einen anderen Client wählen.",
-    "The quota of the ChatGPT account Codex is signed in with is used up. Try again later or pick another client.",
+    "Das Kontingent des ChatGPT-Kontos, mit dem Codex angemeldet ist, ist aufgebraucht. Versuch es später noch einmal oder wähle einen anderen Client.",
+    "The ChatGPT account Codex is signed in with has used up its quota. Try again later or choose another client.",
   ),
 };

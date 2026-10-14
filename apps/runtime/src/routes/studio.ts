@@ -476,7 +476,13 @@ export const studio = new Hono<Vars>()
   // The team as the Manage-App keeps it: its people, who is invited, the places the plan gives.
   .get("/team", async (c) => {
     if (!managed) {
-      return c.json({ error: "not_managed" }, 404);
+      return c.json(
+        {
+          error: inLang(c, "Das gibt es nur in der Cloud.", "This is only available in the cloud."),
+          code: "not_managed",
+        },
+        404,
+      );
     }
     const user = c.get("user");
     const [info, team] = await Promise.all([
@@ -497,12 +503,32 @@ export const studio = new Hono<Vars>()
   // `?fresh=1` asks GitHub now instead of within the hour.
   .get("/update", async (c) =>
     managed
-      ? c.json({ error: "not_local" }, 404)
+      ? c.json(
+          {
+            error: inLang(
+              c,
+              "Das gibt es nur auf deinem Computer.",
+              "This is only available on your computer.",
+            ),
+            code: "not_local",
+          },
+          404,
+        )
       : c.json(await updateStatus(c.req.query("fresh") === "1")),
   )
   .post("/update", async (c) => {
     if (managed) {
-      return c.json({ error: "not_local" }, 404);
+      return c.json(
+        {
+          error: inLang(
+            c,
+            "Das gibt es nur auf deinem Computer.",
+            "This is only available on your computer.",
+          ),
+          code: "not_local",
+        },
+        404,
+      );
     }
     applyUpdate();
     return c.json(await updateStatus());
@@ -539,7 +565,7 @@ export const studio = new Hono<Vars>()
     if ((await classWays()).speech.kind === "none") {
       throw new ServiceError(
         "refused",
-        bilingual("Hier spricht kein Sprachmodell.", "No language model speaks here."),
+        bilingual("Hier ist kein Sprachmodell eingerichtet.", "No language model is set up here."),
       );
     }
     if (!(await canSpend())) {
@@ -687,8 +713,8 @@ export const studio = new Hono<Vars>()
             err instanceof ServiceError || err instanceof ModelUnavailableError
               ? errorText(err, body.lang)
               : body.lang === "de"
-                ? "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen."
-                : "Something went wrong. Please try again.",
+                ? "Da ist etwas schiefgelaufen. Versuch es noch einmal."
+                : "Something went wrong. Try again.",
         });
       }
       endRun(runId);
@@ -699,7 +725,7 @@ export const studio = new Hono<Vars>()
 
   // --- projects --------------------------------------------------------------
   .get("/projects", async (c) => {
-    const projects = await listProjects(c.get("user").id);
+    const projects = await listProjects(c.get("user").id, requestLang(c));
     const build = await mayBuild();
     return c.json(
       projects.map((p) => ({
@@ -739,10 +765,7 @@ export const studio = new Hono<Vars>()
     const kind = z.enum(PROJECT_FILE_KINDS).parse(c.req.query("kind"));
     const file = (await c.req.formData()).get("file");
     if (!(file instanceof File)) {
-      throw new ServiceError(
-        "invalid",
-        bilingual("Bitte eine Datei wählen.", "Please choose a file."),
-      );
+      throw new ServiceError("invalid", bilingual("Wähl eine Datei.", "Choose a file."));
     }
     const row = await addProjectFile(project.id, {
       kind,
@@ -776,7 +799,7 @@ export const studio = new Hono<Vars>()
     const colors = await scanColors(url).catch(() => {
       throw new ServiceError(
         "invalid",
-        bilingual("Die Seite ist nicht erreichbar.", "The page cannot be reached."),
+        bilingual("Die Seite ist nicht erreichbar.", "The page can’t be reached."),
       );
     });
     return c.json({ colors });
@@ -815,7 +838,7 @@ export const studio = new Hono<Vars>()
     const fonts = await scanFonts(url).catch(() => {
       throw new ServiceError(
         "invalid",
-        bilingual("Die Seite ist nicht erreichbar.", "The page cannot be reached."),
+        bilingual("Die Seite ist nicht erreichbar.", "The page can’t be reached."),
       );
     });
     return c.json({ fonts });
@@ -1072,7 +1095,7 @@ export const studio = new Hono<Vars>()
               ? { fileId: id }
               : null;
     if (!ref || key[1] !== ":") {
-      throw new ServiceError("invalid", "Unbekannter Eintrag.");
+      throw new ServiceError("invalid", bilingual("Unbekannter Eintrag.", "Unknown entry."));
     }
     const { values } = z
       .object({ values: z.array(z.union([z.string().max(300), z.number(), z.boolean()])).max(50) })
@@ -1199,8 +1222,8 @@ export const studio = new Hono<Vars>()
       throw new ServiceError(
         "invalid",
         bilingual(
-          `Bitte ein Wizard-Paket (${PACKAGE_EXTENSION}) bis 30 MB.`,
-          `Please a wizard package (${PACKAGE_EXTENSION}) of up to 30 MB.`,
+          `Wähl eine Wizard-Datei (${PACKAGE_EXTENSION}) bis 30 MB.`,
+          `Choose a wizard file (${PACKAGE_EXTENSION}) of 30 MB or less.`,
         ),
       );
     }
@@ -1423,8 +1446,8 @@ export const studio = new Hono<Vars>()
                 ? errorText(err, requestLang(c))
                 : inLang(
                     c,
-                    "Da ist etwas schiefgelaufen. Bitte noch einmal versuchen.",
-                    "Something went wrong. Please try again.",
+                    "Da ist etwas schiefgelaufen. Versuch es noch einmal.",
+                    "Something went wrong. Try again.",
                   ),
           }),
         });
@@ -1437,7 +1460,10 @@ export const studio = new Hono<Vars>()
     if (!(file instanceof File) || !file.size || file.size > 10_000_000) {
       throw new ServiceError(
         "invalid",
-        bilingual("Bitte eine Aufnahme bis 10 MB.", "Please a recording of up to 10 MB."),
+        bilingual(
+          "Die Aufnahme darf höchstens 10 MB groß sein.",
+          "The recording can be 10 MB at most.",
+        ),
       );
     }
     if (!(await canSpend())) {
@@ -1532,7 +1558,10 @@ export const studio = new Hono<Vars>()
     const { connect } = z.object({ connect: z.boolean() }).parse(await c.req.json());
     const [done] = await connectApps(layout(), [c.req.param("id")], !connect);
     if (!done) {
-      return c.json({ error: "Unknown app" }, 404);
+      return c.json(
+        { error: inLang(c, "Diese App gibt es nicht.", "Unknown app."), code: "not_found" },
+        404,
+      );
     }
     // Not done is an answer too: the app's file is no plain JSON, here is what to paste.
     return c.json(done.outcome);
@@ -1552,7 +1581,17 @@ export const studio = new Hono<Vars>()
   .get("/models", async (c) => c.json(await modelSettings(requestLang(c))))
   .put("/models", async (c) => {
     if (!mayChangeModels(c.get("user"))) {
-      return c.json({ error: "Only an admin of the team changes its models." }, 403);
+      return c.json(
+        {
+          error: inLang(
+            c,
+            "Nur Admins des Teams ändern seine Modelle.",
+            "Only team admins can change its models.",
+          ),
+          code: "forbidden",
+        },
+        403,
+      );
     }
     const input = modelsInput.parse(await c.req.json());
     // In the cloud nothing runs on a machine's client or local model.
@@ -1562,7 +1601,13 @@ export const studio = new Hono<Vars>()
         input.ollamaUrl ||
         Object.values(input.bindings ?? {}).some((ref) => ref && !cloudBinding(ref)))
     ) {
-      return c.json({ error: "Not available in the cloud." }, 400);
+      return c.json(
+        {
+          error: inLang(c, "Das gibt es nicht in der Cloud.", "This isn’t available in the cloud."),
+          code: "not_local",
+        },
+        400,
+      );
     }
     // Own keys and bindings to a provider's model are a feature of the team's plan.
     if (managed) {
@@ -1575,8 +1620,8 @@ export const studio = new Hono<Vars>()
           {
             error: inLang(
               c,
-              `Eigene API Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,
-              `Own API keys are not part of the ${info.plan?.name ?? "team's"} plan.`,
+              `Eigene API-Keys gibt es nicht im Paket ${info.plan?.name ?? "des Teams"}.`,
+              `Your own API keys aren’t part of the ${info.plan?.name ?? "team’s"} plan.`,
             ),
             code: "plan",
           },
@@ -1595,7 +1640,10 @@ export const studio = new Hono<Vars>()
       .parse(await c.req.json().catch(() => ({})));
     const value = key?.trim() || (await storedKey(provider));
     if (!value) {
-      return c.json({ ok: false, message: "Kein API Key hinterlegt." });
+      return c.json({
+        ok: false,
+        message: inLang(c, "Kein API-Key hinterlegt.", "No API key is set."),
+      });
     }
     return c.json(await checkKey(provider, value, requestLang(c)));
   })
@@ -1603,7 +1651,17 @@ export const studio = new Hono<Vars>()
   // clip comes back to look at, a voice note comes back as text. Paid like any call.
   .post("/models/test", async (c) => {
     if (!mayChangeModels(c.get("user"))) {
-      return c.json({ error: "Only an admin of the team tests its models." }, 403);
+      return c.json(
+        {
+          error: inLang(
+            c,
+            "Nur Admins des Teams testen seine Modelle.",
+            "Only team admins can test its models.",
+          ),
+          code: "forbidden",
+        },
+        403,
+      );
     }
     const { cls, lang } = z
       .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(["de", "en"]).default("en") })
@@ -1761,7 +1819,13 @@ export const studio = new Hono<Vars>()
   // --- the first visit of a cloud studio: who the team is, its website, first documents -----
   .put("/team", async (c) => {
     if (!managed) {
-      return c.json({ error: "not_managed" }, 404);
+      return c.json(
+        {
+          error: inLang(c, "Das gibt es nur in der Cloud.", "This is only available in the cloud."),
+          code: "not_managed",
+        },
+        404,
+      );
     }
     await requireAdmin();
     const { name } = z.object({ name: z.string().trim().min(1).max(80) }).parse(await c.req.json());
@@ -1770,7 +1834,13 @@ export const studio = new Hono<Vars>()
   })
   .post("/onboarding/done", async (c) => {
     if (!managed) {
-      return c.json({ error: "not_managed" }, 404);
+      return c.json(
+        {
+          error: inLang(c, "Das gibt es nur in der Cloud.", "This is only available in the cloud."),
+          code: "not_managed",
+        },
+        404,
+      );
     }
     await finishOnboarding(c.get("user").tenantId);
     return c.json({ ok: true });
@@ -1784,7 +1854,13 @@ export const studio = new Hono<Vars>()
   // The install command and the first steps, mailed to the signed-in person by the Manage-App.
   .post("/install-mail", async (c) => {
     if (!managed) {
-      return c.json({ error: "not_managed" }, 404);
+      return c.json(
+        {
+          error: inLang(c, "Das gibt es nur in der Cloud.", "This is only available in the cloud."),
+          code: "not_managed",
+        },
+        404,
+      );
     }
     const { lang } = z
       .object({ lang: z.enum(["de", "en"]).default("en") })

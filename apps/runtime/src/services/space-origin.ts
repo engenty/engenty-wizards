@@ -93,7 +93,7 @@ export function originData(origin: string): PluginSpaceData {
       const id = await putOriginFile(origin, { ...input, categories: undefined });
       const file = await db.query.projectFile.findFirst({ where: eq(schema.projectFile.id, id) });
       if (!file) {
-        throw new ServiceError("not_found", "The document went while it was read.");
+        throw new ServiceError("not_found", "The document was removed while it was being read.");
       }
       const path = (await filePaths(input.space)).get(id) ?? "";
       const kept =

@@ -11,46 +11,62 @@ import { logsCommand, reportCommand } from "./report.js";
 import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
+import { cmd, cyan, tilde } from "./ui.js";
 import { update } from "./update.js";
 import { validateCommand } from "./validate.js";
 
+/** One line of the help: the name padded, then coloured, so the columns stay straight. */
+const line = (name: string, what: string) => `  ${cyan(name.padEnd(command().length + 12))}${what}`;
+const more = (what: string) => `  ${" ".repeat(command().length + 12)}${what}`;
+
 const HELP = `engenty wizards ${packageVersion()}
+engenty wizards runs the studio and your wizards on this computer. Below, “it” means engenty wizards.
 
-  ${command()}            what runs, and a menu: start, stop, update …; the first time, the setup runs first
-                        (needs a terminal)
-  ${command()} start      start it and open the studio; it runs in this terminal until Ctrl-C
-  ${command()} studio     open the studio; when it does not run, it starts as a service first
-  ${command()} setup      guided setup: your engenty account, an AI client to think with, ffmpeg,
-                        start at login
-  ${command()} account    your engenty account: status, sign-in, sign-out
-  ${command()} open       let this browser into the running studio (--print: only show the link)
-  ${command()} status     what is installed and what runs
-  ${command()} doctor     status, and what is wrong
-  ${command()} logs       the last lines it printed (\`logs 500\` for more)
-  ${command()} report     send status, model settings and the last log lines to your account, for support
-  ${command()} stop       stop it; the data is kept
-  ${command()} restart    stop it and start it again (after an update: the new version)
-  ${command()} update     the newest version
-  ${command()} autostart  start it at login: on, off (macOS: a LaunchAgent; Linux: a systemd service)
-  ${command()} connect    your wizards in your AI apps: every app found, or name them —
-                        ${apps(layout())
-                          .map((app) => app.id)
-                          .join(", ")}
-  ${command()} disconnect take them out again (same names)
-  ${command()} mcp        the MCP server over stdio, as the AI apps start it
-  ${command()} validate   check wizards without the studio: .wizard files, unpacked packages, wizard JSON
-                        (--json for the issues as JSON); a project's connectors and plugins are
-                        checked on import
+Usage
+  ${command()} [command] [options]
 
-  --yes, -y          ask nothing and install nothing optional
-  --local            setup without an account: nothing leaves this computer
-  --client <name>    install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
-  --no-open          start without opening the browser
-  --service, -s      start as a service, detached from this terminal; \`${command()} stop\` stops it
-  --version, --help
+Commands
+${line(command(), "show the status and a menu (start, stop, update…); runs the setup the first time")}
+${more("(needs a terminal)")}
+${line(`${command()} start`, "start it in this terminal and open the studio (Ctrl-C stops it)")}
+${line(`${command()} studio`, "open the studio, starting it in the background if needed")}
+${line(`${command()} setup`, "set up your engenty account, an AI client, ffmpeg and start at login")}
+${line(`${command()} account`, "show your engenty account; add sign-in or sign-out to change it")}
+${line(`${command()} open`, "sign this browser in to the running studio (--print: only print the link)")}
+${line(`${command()} status`, "show what’s installed and running")}
+${line(`${command()} doctor`, "show the status and check for problems")}
+${line(`${command()} logs`, `print the last log lines (${command()} logs 500 for more)`)}
+${line(`${command()} report`, "send the status, model settings and last log lines to your account for support")}
+${line(`${command()} stop`, "stop it (your data is kept)")}
+${line(`${command()} restart`, "restart it, e.g. to switch to a newly installed version")}
+${line(`${command()} update`, "install the latest version")}
+${line(`${command()} autostart`, "start it when you log in: add on or off")}
+${more("(macOS: a LaunchAgent; Linux: a systemd user service)")}
+${line(`${command()} connect`, "add your wizards to your AI apps: every app found, or the ones you name:")}
+${more(
+  apps(layout())
+    .map((app) => app.id)
+    .join(", "),
+)}
+${line(`${command()} disconnect`, "remove your wizards from those apps (same names)")}
+${line(`${command()} mcp`, "run the MCP server over stdio (AI apps start this)")}
+${line(`${command()} validate`, "check wizards without the studio: .wizard files, unpacked packages, wizard JSON")}
+${more("--json prints the issues as JSON. A space’s connectors and plugins are checked on import.")}
 
-  Everything lives in ~/.engenty/wizards (ENGENTY_HOME moves it); settings go into its .env.
+Options
+  --yes, -y           don’t ask; skip everything optional
+  --local             set up without an account; nothing leaves this computer
+  --client <name>     install this AI client without asking: ${CLIENTS.map((c) => c.id).join(", ")}
+  --no-open           start without opening the browser
+  --background, -s    start in the background, detached from this terminal (${command()} stop stops it)
+  --version, -v       print the version
+  --help, -h          print this help
+
+Everything lives in ${tilde(layout().home)} (ENGENTY_HOME moves it). Settings go in its .env file.
 `;
+
+/** After a mistake on the command line: one line, not the whole help. */
+const SEE_HELP = `Run ${cmd("help")} to see every command.`;
 
 interface Args {
   command: string;
@@ -91,7 +107,7 @@ function parse(argv: string[]): Args | string {
       args.local = true;
     } else if (arg === "--no-open") {
       args.open = false;
-    } else if (arg === "--service" || arg === "-s") {
+    } else if (arg === "--background" || arg === "--service" || arg === "-s") {
       args.service = true;
     } else if (arg === "--print") {
       args.print = true;
@@ -100,7 +116,7 @@ function parse(argv: string[]): Args | string {
     } else if (arg === "--client") {
       const id = argv[++i];
       if (!CLIENTS.some((client) => client.id === id)) {
-        return `--client takes one of: ${CLIENTS.map((c) => c.id).join(", ")}`;
+        return `--client takes one of these: ${CLIENTS.map((c) => c.id).join(", ")}.`;
       }
       args.clients.push(id);
     } else if (arg === "--help" || arg === "-h") {
@@ -116,7 +132,7 @@ function parse(argv: string[]): Args | string {
     } else if (args.command === "validate") {
       args.paths.push(arg);
     } else if (args.command) {
-      return `Unexpected argument ${arg}.`;
+      return `Unexpected argument “${arg}”.`;
     } else {
       args.command = arg;
     }
@@ -127,7 +143,7 @@ function parse(argv: string[]): Args | string {
 async function main(argv: string[]): Promise<number> {
   const args = parse(argv);
   if (typeof args === "string") {
-    console.error(`${args}\n\n${HELP}`);
+    console.error(`${args} ${SEE_HELP}`);
     return 2;
   }
   const paths = layout();
@@ -135,11 +151,13 @@ async function main(argv: string[]): Promise<number> {
   if (!args.command) {
     // Without a command: the menu, which needs a terminal. Starting is \`start\`.
     if (args.service || !args.open || args.print) {
-      console.error(`Options to start it go with start: ${command()} start ${argv.join(" ")}`);
+      console.error(`Those options belong to start: ${cmd(`start ${argv.join(" ")}`)}`);
       return 2;
     }
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      console.error(`The menu needs a terminal. To start it: ${command()} start\n\n${HELP}`);
+      console.error(
+        `The menu needs a terminal. To start engenty wizards: ${cmd("start")}\n\n${HELP}`,
+      );
       return 2;
     }
     return menu(paths, setupOptions, HELP);
@@ -198,13 +216,13 @@ async function main(argv: string[]): Promise<number> {
       process.chdir(startedIn);
       return validateCommand(args.paths, args.json);
     default:
-      console.error(`Unknown command ${args.command}.\n\n${HELP}`);
+      console.error(`Unknown command “${args.command}”. ${SEE_HELP}`);
       return 2;
   }
 }
 
 if (!nodeIsCurrent()) {
-  console.error(`engenty wizards needs Node.js 24.11 or newer; this is ${process.version}.`);
+  console.error(`engenty wizards needs Node.js 24.11 or newer. This is ${process.version}.`);
   process.exit(1);
 }
 process.exitCode = await main(process.argv.slice(2));

@@ -940,7 +940,7 @@ function StepBody({
             ) : null}
             {step.asset === "image" || step.asset === "video" ? (
               <>
-                <Label>Format</Label>
+                <Label>{t("inspector.aspectRatio")}</Label>
                 <Segmented
                   value={step.options?.aspectRatio ?? ""}
                   options={[...ASPECT_RATIOS]}
@@ -1030,7 +1030,7 @@ function StepBody({
               onChange={(e) => set({ ...step, message: e.target.value || undefined })}
             />
           </Section>
-          <Section title="Downloads">
+          <Section title={t("inspector.downloads")}>
             {earlierProducers.map((s) => {
               const d = step.deliverables.find((x) => x.from === s.id);
               const possible = formatsFor(s);
@@ -1115,7 +1115,7 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
           />
         </div>
       </Section>
-      <Section title="Avatar">
+      <Section title={t("inspector.avatar")}>
         <div className="grid grid-cols-5 gap-2">
           {ENGENTY_KINDS.map((k) => (
             <button

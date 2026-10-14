@@ -10,6 +10,7 @@ import {
   PACKAGE_MANIFEST,
 } from "@engenty-wizards/shared/wizard-package";
 import { strFromU8, unzipSync } from "fflate";
+import { t } from "./i18n.js";
 
 /**
  * The check a host runs on a `.wizard` package before it keeps it: the definition read, its
@@ -73,7 +74,7 @@ function json(data: Uint8Array): unknown {
   try {
     return JSON.parse(strFromU8(data));
   } catch {
-    throw new PackageError("This is not a wizard package: wizard.json is not valid JSON.");
+    throw new PackageError(t("package.badJson"));
   }
 }
 
@@ -96,11 +97,11 @@ export function readPackage(data: Uint8Array): { definition: unknown; files: Pac
         !file.name.endsWith("/") && !file.name.startsWith("__MACOSX/") && !/\/\./.test(file.name),
     });
   } catch {
-    throw new PackageError("The wizard package cannot be opened.");
+    throw new PackageError(t("package.unreadable"));
   }
   const manifest = entries[PACKAGE_MANIFEST];
   if (!manifest) {
-    throw new PackageError("This is not a wizard package: wizard.json is missing.");
+    throw new PackageError(t("package.noManifest"));
   }
   const files = Object.entries(entries)
     .filter(([name]) => name.startsWith(PACKAGE_FILES))
@@ -120,10 +121,7 @@ export function checkPackage(data: Uint8Array): CheckedPackage {
     files.map((f) => f.path),
   );
   if (!parsed.ok) {
-    throw new PackageError(
-      "This wizard package comes from a newer version, or it is damaged.",
-      parsed.issues,
-    );
+    throw new PackageError(t("package.newer"), parsed.issues);
   }
   return {
     definition: parsed.wizard,

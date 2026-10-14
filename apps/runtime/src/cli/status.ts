@@ -5,7 +5,7 @@ import { autostartState, setAutostart } from "./autostart.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
 import { entryUrl, runningRuntime, settings, startInBackground } from "./start.js";
-import { bad, badge, cyan, dim, no, ok, tilde } from "./ui.js";
+import { bad, badge, cmd, cyan, dim, no, ok, tilde } from "./ui.js";
 
 /**
  * What is installed and what runs. With `checks` (`doctor`) it also says what is wrong and
@@ -35,14 +35,11 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
   row(
     "Running",
     running
-      ? `${ok} ${cyan(running.url)} ${dim(`pid ${running.pid}, since ${running.startedAt}`)}`
+      ? `${ok} ${cyan(running.url)} ${dim(`pid ${running.pid}, since ${new Date(running.startedAt).toLocaleString()}`)}`
       : `${no} not running`,
   );
   if (!("unavailable" in atLogin)) {
-    row(
-      "At login",
-      atLogin.on ? `${ok} starts ${dim(`(${atLogin.how})`)}` : `${no} does not start`,
-    );
+    row("At login", atLogin.on ? `${ok} starts ${dim(`(${atLogin.how})`)}` : `${no} doesn’t start`);
   }
   row("Account", `${account.kind === "linked" ? ok : no} ${describeAccount(account)}`);
   for (const { client, path, version } of clients) {
@@ -51,8 +48,11 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
       path ? `${ok} ${version} ${dim(tilde(path))}` : `${no} not installed`,
     );
   }
-  row("Browser", chrome ? `${ok} ${dim(tilde(chrome))}` : `${no} none for PDF and PNG`);
-  row("ffmpeg", ffmpeg.path ? `${ok} ${ffmpeg.version ?? ""}` : `${no} none for MP4`);
+  row(
+    "Browser",
+    chrome ? `${ok} ${dim(tilde(chrome))}` : `${no} not found (needed for PDF and PNG)`,
+  );
+  row("ffmpeg", ffmpeg.path ? `${ok} ${ffmpeg.version ?? ""}` : `${no} not found (needed for MP4)`);
   console.log("");
   if (!checks) {
     return 0;
@@ -60,7 +60,7 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
 
   const problems: string[] = [];
   if (!nodeIsCurrent()) {
-    problems.push(`Node ${process.version} is too old: 24.11 or newer is needed.`);
+    problems.push(`Node ${process.version} is too old. engenty wizards needs 24.11 or newer.`);
   }
   for (const part of ["apps/runtime/dist/index.js", "apps/web/dist/index.html", "plugin"]) {
     if (!existsSync(join(packageRoot, part))) {
@@ -71,18 +71,18 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
     mkdirSync(paths.home, { recursive: true });
     accessSync(paths.home, constants.W_OK);
   } catch {
-    problems.push(`${tilde(paths.home)} cannot be written to.`);
+    problems.push(`${tilde(paths.home)} can’t be written to.`);
   }
   if (!clients.some((state) => state.path)) {
     console.log(
-      `  ${no} No AI client: the studio needs an API key, Ollama or Apple Intelligence (a Mac) instead. ${dim("`setup` installs one.")}`,
+      `  ${no} No AI client. The studio needs an API key, Ollama or Apple Intelligence (Mac only) instead. ${dim(`To install one: ${cmd("setup")}`)}`,
     );
   }
   for (const problem of problems) {
     console.log(`  ${bad} ${problem}`);
   }
   if (!problems.length) {
-    console.log(`  ${ok} Nothing wrong with this install.`);
+    console.log(`  ${ok} No problems found.`);
   }
   console.log("");
   return problems.length ? 1 : 0;
@@ -106,7 +106,7 @@ export async function stop(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
   if (!running) {
-    console.log("engenty wizards is not running.");
+    console.log("engenty wizards isn’t running.");
     return 0;
   }
   process.kill(running.pid, "SIGTERM");
@@ -114,7 +114,7 @@ export async function stop(paths: Layout): Promise<number> {
     console.log(`Stopped (pid ${running.pid}). Your data is kept.`);
     return 0;
   }
-  console.error(`The runtime (pid ${running.pid}) did not stop within 8 seconds.`);
+  console.error(`engenty wizards (pid ${running.pid}) didn’t stop within 8 seconds.`);
   return 1;
 }
 
@@ -136,26 +136,28 @@ export async function restart(paths: Layout): Promise<number> {
         return 0;
       }
     }
-    console.error("engenty wizards did not start again within a minute.");
+    console.error("engenty wizards didn’t restart within a minute.");
     return 1;
   }
   if (running) {
     process.kill(running.pid, "SIGTERM");
     if (!(await ended(running.pid, 8000))) {
-      console.error(`The runtime (pid ${running.pid}) did not stop within 8 seconds.`);
+      console.error(`engenty wizards (pid ${running.pid}) didn’t stop within 8 seconds.`);
       return 1;
     }
   }
   const started = await startInBackground(paths);
   if (!started) {
-    console.error(`engenty wizards did not start; see ${join(paths.logs, "runtime.log")}.`);
+    console.error(
+      `engenty wizards didn’t start. Its log is in ${tilde(join(paths.logs, "runtime.log"))}.`,
+    );
     return 1;
   }
   console.log(
     `${ok} ${running ? "Restarted" : "Started"}: ${cyan(started.url)} ${dim(`pid ${started.pid}, in the background`)}`,
   );
   if (!running) {
-    console.log(`  Open the studio: ${entryUrl(started, dataDir)}`);
+    console.log(`  Open the studio: ${cyan(entryUrl(started, dataDir))}`);
   }
   return 0;
 }
@@ -163,7 +165,7 @@ export async function restart(paths: Layout): Promise<number> {
 /** `autostart [on|off]`: whether it starts at login, and the switch. */
 export async function autostart(paths: Layout, value: string): Promise<number> {
   if (value && value !== "on" && value !== "off") {
-    console.error("autostart takes on or off.");
+    console.error(`Use ${cmd("autostart on")} or ${cmd("autostart off")}.`);
     return 2;
   }
   let state = await autostartState(paths);
@@ -171,23 +173,21 @@ export async function autostart(paths: Layout, value: string): Promise<number> {
     try {
       state = await setAutostart(paths, value === "on");
     } catch (error) {
-      console.error(
-        `Starting at login could not be switched ${value}: ${(error as Error).message}`,
-      );
+      console.error(`Couldn’t turn start at login ${value}: ${(error as Error).message}`);
       return 1;
     }
   }
   if ("unavailable" in state) {
-    console.error(`Starting at login is not possible here: ${state.unavailable}.`);
+    console.error(`Start at login isn’t available here: ${state.unavailable}.`);
     return value ? 1 : 0;
   }
   console.log(
     state.on
       ? `${ok} engenty wizards starts at login: ${state.how}.`
-      : `${no} engenty wizards does not start at login. ${dim("`autostart on` switches it on.")}`,
+      : `${no} engenty wizards doesn’t start at login. ${dim(`To turn it on: ${cmd("autostart on")}`)}`,
   );
   if (state.on && process.platform === "linux") {
-    console.log(dim("  Before anybody logs in, too: loginctl enable-linger"));
+    console.log(dim(`  To start it even before anyone logs in: ${cyan("loginctl enable-linger")}`));
   }
   return value && state.on !== (value === "on") ? 1 : 0;
 }

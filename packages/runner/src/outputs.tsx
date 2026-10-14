@@ -74,7 +74,7 @@ export function HtmlFrame({
       {html?.src === src ? (
         <iframe
           key={src}
-          title="preview"
+          title={t("output.preview")}
           srcDoc={html.text}
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           className="absolute top-0 left-0 origin-top-left border-0"

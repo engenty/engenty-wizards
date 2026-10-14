@@ -73,7 +73,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
       if (await visitorOverLimit(visitorId, null)) {
         throw new ServiceError(
           "refused",
-          "This person started many runs lately. Try again in an hour.",
+          noteText({ code: "tooManyRuns" }, wizardLang(version.definition)),
         );
       }
       const runId = await createRun({
@@ -89,7 +89,12 @@ export function runsApiFor(pluginId: string): PluginRuns {
           throw new ServiceError("refused", errorText(err, wizardLang(version.definition)));
         }
         if (err instanceof NoCreditsError) {
-          throw new ServiceError("no_credits", "The wizard's credits are used up.");
+          throw new ServiceError(
+            "no_credits",
+            wizardLang(version.definition) === "de"
+              ? "Dieser Wizard hat gerade kein Guthaben mehr. Versuch es später noch einmal."
+              : "This wizard has run out of credits for now. Try again later.",
+          );
         }
         throw err;
       });
@@ -158,11 +163,14 @@ export function runsApiFor(pluginId: string): PluginRuns {
       await reviewStep(runId, stepId, action).catch(refusedInput);
     },
     async answerAsk(runId, askId, answer) {
-      await pluginRun(runId);
+      const run = await pluginRun(runId);
       if (
         !(await answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" }))
       ) {
-        throw new ServiceError("refused", "This question is no longer open.");
+        throw new ServiceError(
+          "refused",
+          noteText({ code: "askClosed" }, wizardLang(run.definition)),
+        );
       }
     },
     async control(runId, action) {
@@ -221,11 +229,17 @@ export function runsApiFor(pluginId: string): PluginRuns {
     async transcribe(runId, file) {
       const run = await pluginRun(runId);
       if (run.status === "done" || run.status === "cancelled" || run.status === "failed") {
-        throw new ServiceError("refused", "The run is over.");
+        throw new ServiceError(
+          "refused",
+          noteText({ code: "runOver" }, wizardLang(run.definition)),
+        );
       }
       const bytes = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
       if (!bytes.length || bytes.length > 10_000_000) {
-        throw new ServiceError("invalid", "A recording of up to 10 MB.");
+        throw new ServiceError(
+          "invalid",
+          noteText({ code: "recordingTooLarge" }, wizardLang(run.definition)),
+        );
       }
       const { text } = await transcribeAudio({
         bytes,

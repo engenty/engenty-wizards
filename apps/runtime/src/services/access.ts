@@ -42,8 +42,8 @@ export function currentRole(): Role {
 export const isAdminRole = (role: Role): boolean => role === "owner" || role === "admin";
 
 export const MEMBERS_EDIT_ONLY = bilingual(
-  "Das dürfen nur Admins des Teams. Als Mitglied bearbeitest du die Wizards, die es gibt.",
-  "Only the team's admins may do that. As a member you edit the wizards that are there.",
+  "Das dürfen nur Admins des Teams. Als Mitglied bearbeitest du die Wizards, die es schon gibt.",
+  "Only team admins can do that. As a member, you can edit the wizards that already exist.",
 );
 
 /** Refuses a member: making and deleting is for the owner and the admins of the team. */
@@ -70,12 +70,12 @@ export async function mayBuild(): Promise<boolean> {
 }
 
 export const READ_ONLY_PROJECT = bilingual(
-  "Dieses Projekt kommt aus einer lokalen Installation und wird dort geändert.",
-  "This project comes from a local install and is changed there.",
+  "Diesen Space bearbeitest du in engenty wizards auf deinem Computer, nicht hier.",
+  "You edit this space in engenty wizards on your computer, not here.",
 );
 export const READ_ONLY_TENANT = bilingual(
-  "Hier wird nichts gebaut: Auf diesem Server laufen die Wizards, die deine lokale Installation veröffentlicht.",
-  "Nothing is built here: this server runs the wizards your local install publishes.",
+  "Hier laufen die Wizards, die du in engenty wizards auf deinem Computer veröffentlichst. Gebaut und bearbeitet wird dort.",
+  "Wizards run here once you publish them in engenty wizards on your computer. You build and edit them there.",
 );
 
 /** Refuses when the tenant builds nothing here. */

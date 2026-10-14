@@ -87,6 +87,11 @@ jobs:
         if: matrix.check == 'typecheck'
         run: pnpm lint
 
+      # The words people read: the mechanical rules of docs/copy-style.md.
+      - name: Copy
+        if: matrix.check == 'typecheck'
+        run: pnpm copy:check --strict
+
       # The docs site is type-checked in its own check, where its packages are installed.
       - name: Typecheck
         if: matrix.check == 'typecheck'

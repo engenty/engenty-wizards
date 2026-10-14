@@ -6,7 +6,7 @@ import { safeFetch } from "../tools/net-guard.js";
 
 /**
  * A web page as the project assistant needs it: its text, and what it says about the brand —
- * colours from its stylesheets, logo candidates, and the pages that carry address and VAT id.
+ * colours from its stylesheets, logo candidates, and the pages that carry address and VAT ID.
  */
 export interface WebsiteReading {
   url: string;

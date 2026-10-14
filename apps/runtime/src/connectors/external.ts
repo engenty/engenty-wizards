@@ -6,6 +6,7 @@ import type {
   RegistryService,
   SourcePreview,
 } from "@engenty-wizards/shared/connectors";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db/client.js";
@@ -349,7 +350,13 @@ export async function importConnector(
   await requireWritableProject(projectId);
   await requireAdmin();
   if (await load(projectId, input.id)) {
-    throw new ServiceError("invalid", `Connector "${input.id}" already exists in this project.`);
+    throw new ServiceError(
+      "invalid",
+      bilingual(
+        `Den Connector „${input.id}“ gibt es in diesem Space schon.`,
+        `The connector “${input.id}” already exists in this space.`,
+      ),
+    );
   }
   try {
     const { discover, surface, prepared } = await prepare(input);
@@ -440,7 +447,10 @@ export async function refreshConnector(
   await requireWritableProject(projectId);
   const record = await load(projectId, id);
   if (!record) {
-    throw new ServiceError("not_found", "No such connector.");
+    throw new ServiceError(
+      "not_found",
+      bilingual("Diesen Connector gibt es nicht.", "This connector doesn’t exist."),
+    );
   }
   try {
     const { surface } = record.registry_surface_slug
