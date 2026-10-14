@@ -1,5 +1,6 @@
 import type { AssetRef } from "@engenty-wizards/shared/run";
 import type { StepContext } from "../engine/types.js";
+import { ServiceError } from "../services/errors.js";
 import { type StoreScope, writeStoreFile } from "../store/index.js";
 
 export const TEXT_LIMIT = 8000;
@@ -8,12 +9,24 @@ export function clip(s: string, limit = TEXT_LIMIT): string {
   return s.length > limit ? `${s.slice(0, limit)}\n…[truncated ${s.length - limit} chars]` : s;
 }
 
-/** A tool failure is something the model reads and reacts to, never a crashed step. */
-export async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string }> {
+/** What a tool answers when it failed: the message, and what a service's refusal says beside it. */
+export type ToolError = { error: string } & Record<string, unknown>;
+
+/**
+ * A tool failure is something the model reads and reacts to, never a crashed step or turn. A
+ * service's refusal brings its data along (`issues`, `fields`, `column`), so the model can fix
+ * what it sent. The message is clipped to `limit` characters (400): a site or an API can answer
+ * with a whole page; the studio's agents, whose failures are the runtime's own, pass `Infinity`.
+ */
+export async function attempt<T>(
+  run: () => Promise<T>,
+  { limit = 400 }: { limit?: number } = {},
+): Promise<T | ToolError> {
   try {
     return await run();
   } catch (err) {
-    return { error: String((err as Error)?.message ?? err).slice(0, 400) };
+    const error = String((err as Error)?.message ?? err).slice(0, limit);
+    return err instanceof ServiceError ? { error, ...err.data } : { error };
   }
 }
 

@@ -39,7 +39,6 @@ import {
   usageOf,
 } from "../models.js";
 import type { ChatRow, TurnHistory } from "../services/assistant-chats.js";
-import { ServiceError } from "../services/errors.js";
 import { knowledgeCounts } from "../services/knowledge.js";
 import {
   addProjectFileFromUrl,
@@ -53,6 +52,7 @@ import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { type ServerKey, serverText } from "../texts.js";
 import { assistantPageOf, assistantToolsOf } from "../tools/plugin.js";
+import { attempt as attemptTool } from "../tools/shared.js";
 import { readWebsite } from "./website.js";
 
 export interface AssistantInput {
@@ -194,13 +194,8 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang): stri
   return LABELS[key] ? serverText(lang, LABELS[key]) : null;
 }
 
-async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string }> {
-  try {
-    return await run();
-  } catch (err) {
-    return { error: err instanceof ServiceError ? err.message : (err as Error).message };
-  }
-}
+/** A tool failure the model can read and fix, instead of a crashed turn: the whole message. */
+const attempt = <T>(run: () => Promise<T>) => attemptTool(run, { limit: Number.POSITIVE_INFINITY });
 
 async function projectState(userId: string, projectId: string) {
   const p = await ownedProject(userId, projectId);

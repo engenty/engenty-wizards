@@ -23,13 +23,13 @@ import { importFromRegistry, listConnectors, searchRegistry } from "../connector
 import { attachTools, costOf, gatewayTools, type ResolvedModel, textModel } from "../models.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { htmlToMarkdown } from "../render/convert.js";
-import { ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFileText, writeFile } from "../services/files.js";
 import { checkDraftWidget } from "../services/widgets.js";
 import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { type ServerKey, serverText } from "../texts.js";
 import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
+import { attempt as attemptTool } from "../tools/shared.js";
 import { runScript } from "../widgets/script.js";
 import { thoughtLine } from "./thought.js";
 
@@ -149,17 +149,8 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang = "en"
   }
 }
 
-/** A tool failure the model can read and fix, instead of a crashed turn. */
-async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string; issues?: unknown }> {
-  try {
-    return await run();
-  } catch (err) {
-    if (err instanceof ServiceError) {
-      return { error: err.message, ...err.data };
-    }
-    return { error: (err as Error).message };
-  }
-}
+/** A tool failure the model can read and fix, instead of a crashed turn: the whole message. */
+const attempt = <T>(run: () => Promise<T>) => attemptTool(run, { limit: Number.POSITIVE_INFINITY });
 
 function buildTools(input: ArchitectInput, resolved: ResolvedModel<unknown>, wrote: () => void) {
   const { userId, wizardId } = input;
