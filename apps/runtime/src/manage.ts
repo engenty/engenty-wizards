@@ -407,7 +407,12 @@ export async function withdrawChannelRequest(id: string) {
 /** What a tenant's channel used, priced by the Manage-App: texts by segment, calls by minute. */
 export function bookChannelUsage(
   id: string,
-  input: { kind: "sms" | "call"; quantity: number; runId?: string; idempotencyKey: string },
+  input: {
+    kind: "sms" | "call" | "whatsapp";
+    quantity: number;
+    runId?: string;
+    idempotencyKey: string;
+  },
 ) {
   return call<{ credits: number }>(
     "POST",

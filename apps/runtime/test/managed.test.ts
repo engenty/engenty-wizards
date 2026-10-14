@@ -187,6 +187,15 @@ writeFileSync(
     path: "/channels/book",
     handler: () => server.channels.book({ kind: "sms", quantity: 2, key: "SM1", runId: "run-1" }),
   });
+  server.registerHttpRoute({
+    method: "POST",
+    path: "/claims/:how",
+    handler: async ({ params, json }: any) => {
+      const { key } = await json();
+      const done = await server.claims[params.how](key);
+      return { done: done ?? null, mine: await server.claims.mine(key), holder: await server.claims.holder(key) };
+    },
+  });
   server.registerSharedRoute({
     method: "POST",
     path: "/hook",
@@ -416,6 +425,22 @@ describe("a runtime of a Manage-App", () => {
     expect(unknown.status).toBe(404);
     expect(await unknown.json()).toMatchObject({ code: "not_found" });
     expect((await app.fetch(new Request(`${RUNTIME}/api/public/plugins/basics/shared/other`, { method: "POST" }))).status).toBe(404);
+  });
+
+  it("lets a plugin hold keys across tenants, each for one at a time", async () => {
+    const claim = async (cookie: string, how: string, key: string) =>
+      (await (await post(`/api/studio/plugins/basics/claims/${how}`, cookie, { key })).json()) as any;
+    const refA = ((await (await get("/api/studio/plugins/basics/channels", a)).json()) as any).ref;
+    const refB = ((await (await get("/api/studio/plugins/basics/channels", b)).json()) as any).ref;
+    // Taken: the first one keeps it.
+    expect(await claim(a, "take", "kw:zähler")).toEqual({ done: true, mine: true, holder: refA });
+    expect(await claim(b, "take", "kw:zähler")).toEqual({ done: false, mine: false, holder: refA });
+    // Put: the last one has it. Dropped only by the one that holds it.
+    expect(await claim(b, "put", "sender:4366012345")).toMatchObject({ mine: true, holder: refB });
+    expect(await claim(a, "put", "sender:4366012345")).toMatchObject({ mine: true, holder: refA });
+    expect(await claim(b, "drop", "sender:4366012345")).toMatchObject({ holder: refA });
+    expect(await claim(a, "drop", "sender:4366012345")).toMatchObject({ holder: null, mine: false });
+    expect((await post("/api/studio/plugins/basics/claims/take", a, { key: "" })).status).toBe(400);
   });
 
   it("refuses a test run without credits and reserves credits with them", async () => {

@@ -164,6 +164,9 @@ server.sharedUrl("/incoming");
   `404` / `not_found`.
 - `publicRef()` is the part of `publicUrl` that names the tenant; it is the same every time.
 - A body is taken up to 4 MB, as on a public route.
+- Where the call does not carry a ref (a keyword written to a number every tenant shares),
+  [`server.claims`](./server.md#keys-across-tenants) finds it: `holder(key)` is the ref of the
+  tenant that holds the key.
 
 ## From the studio half
 

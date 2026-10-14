@@ -956,6 +956,24 @@ export interface PluginServerApi {
   publicRef(): Promise<string>;
   /** A route for every tenant at once (one webhook of a service for all of them). */
   registerSharedRoute(route: PluginSharedRoute): void;
+  /**
+   * Keys the plugin holds across the runtime's tenants, each for one tenant at a time: a keyword
+   * on a number every tenant shares, who writes to it, a number a tenant connected. A shared
+   * route finds its tenant with `holder` and enters it with `inTenant`. Keys are the plugin's
+   * own, 1 to 200 characters.
+   */
+  claims: {
+    /** Takes `key` for the current tenant; false when another tenant holds it. */
+    take(key: string): Promise<boolean>;
+    /** Gives `key` to the current tenant, whoever held it. */
+    put(key: string): Promise<void>;
+    /** Gives up the current tenant's `key`; nothing when another tenant holds it. */
+    drop(key: string): Promise<void>;
+    /** The ref of the tenant that holds `key` (for `inTenant`), or null. Asked outside a tenant too. */
+    holder(key: string): Promise<string | null>;
+    /** Whether the current tenant holds `key`. */
+    mine(key: string): Promise<boolean>;
+  };
   /** The full address of a shared route, the same for every tenant. */
   sharedUrl(path: string): string;
   /**
@@ -981,10 +999,11 @@ export interface PluginServerApi {
     withdraw(): Promise<boolean>;
     /**
      * Books what the tenant's number carried, at the Manage-App's prices: `sms` by segment
-     * (sent or received), `call` by started minute. The same `key` twice books once.
+     * (sent or received), `call` by started minute, `whatsapp` by message sent. The same `key`
+     * twice books once.
      */
     book(input: {
-      kind: "sms" | "call";
+      kind: "sms" | "call" | "whatsapp";
       quantity: number;
       key: string;
       runId?: string | null;

@@ -151,3 +151,22 @@ export const pluginAddress = sqliteTable(
   },
   (t) => [uniqueIndex("plugin_address_tenant").on(t.tenantId, t.plugin)],
 );
+
+/**
+ * Keys a plugin holds across tenants (`server.claims`), each for one tenant at a time: a keyword
+ * on a number every tenant shares, who writes to it, a number a tenant connected. What a shared
+ * route asks to find the tenant of a call.
+ */
+export const pluginClaim = sqliteTable(
+  "plugin_claim",
+  {
+    plugin: text("plugin").notNull(),
+    key: text("key").notNull(),
+    tenantId: text("tenant_id").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(now),
+  },
+  (t) => [
+    primaryKey({ columns: [t.plugin, t.key] }),
+    index("plugin_claim_tenant").on(t.tenantId, t.plugin),
+  ],
+);

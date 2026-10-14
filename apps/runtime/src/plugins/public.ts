@@ -28,9 +28,8 @@ export function sharedUrlOf(plugin: string, path: string): string {
   return `${env.publicUrl}/api/public/plugins/${plugin}/${SHARED}${rest(path)}`;
 }
 
-/** The ref of the current tenant's public address for a plugin, made the first time. */
-export async function publicRefOf(plugin: string): Promise<string> {
-  const tenantId = currentTenant();
+/** The ref of a tenant's public address for a plugin (the current tenant's by default), made the first time. */
+export async function publicRefOf(plugin: string, tenantId = currentTenant()): Promise<string> {
   const where = and(
     eq(control.pluginAddress.tenantId, tenantId),
     eq(control.pluginAddress.plugin, plugin),

@@ -46,6 +46,7 @@ export default definePlugin((wizards) => {
 | `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
 | `registerSharedRoute(route)`, `sharedUrl(path)`, `publicRef()` | One route for every tenant, and the ref that names one | [Routes](./routes.md#shared-routes) |
 | `channels.get()`, `request`, `withdraw`, `book` | The numbers the Manage-App gives the tenant | below |
+| `claims.take(key)`, `put`, `drop`, `holder`, `mine` | Keys held across tenants, one tenant each | below |
 | `registerRunner(runner)` | A door a wizard runs through, beside the page and the chat | [Runners](./runners.md) |
 | `runs.start(…)`, `report`, `answerPage`, … | Drives runs from the plugin’s own door | [Runners](./runners.md#drive-a-run) |
 | `speech.conversation()` | The tenant’s realtime speech model, for a call | [Runners](./runners.md#a-call) |
@@ -126,10 +127,41 @@ await server.channels.book({ kind: "sms", quantity: segments, key: messageSid, r
 - `get` is kept for a minute; `request` and `withdraw` forget it.
 - `request` throws `403` / `plan` on a plan without a number and `409` / `has_number` when
   the team has one. Asking again gives the open request.
-- `book`: `sms` by segment, sent or received, `call` by started minute. The same `key` books
-  once.
+- `book`: `sms` by segment, sent or received, `call` by started minute, `whatsapp` by
+  message sent. The same `key` books once.
 - A runtime without a Manage-App has no numbers: `get` gives `null`, `request` and `withdraw`
   throw `404` / `not_managed`, `book` books nothing.
+
+## Keys across tenants
+
+What a [shared route](./routes.md#shared-routes) needs to find its tenant: a keyword on a number
+every tenant shares, who last wrote to it, a number a tenant connected. `server.claims` holds
+such keys, each for one tenant at a time, in the runtime’s own database:
+
+```ts
+// In the tenant: the keyword is this tenant's, unless another one has it.
+if (!(await server.claims.take(`kw:${keyword.toLowerCase()}`))) {
+  throw Object.assign(new Error("Taken."), { status: 409, code: "keyword_taken" });
+}
+await server.claims.put(`sender:${waId}`); // the last tenant they wrote to has them
+
+// In the shared route: whose is it?
+const ref = await server.claims.holder(`kw:${text.toLowerCase()}`);
+if (ref) {
+  await inTenant(ref, () => handle(message));
+}
+```
+
+| | |
+|---|---|
+| `take(key)` | The current tenant takes the key; `false` when another tenant holds it |
+| `put(key)` | The current tenant gets the key, whoever held it |
+| `drop(key)` | The current tenant gives the key up; a key another tenant holds stays |
+| `holder(key)` | The ref of the tenant that holds the key, for `inTenant`; `null` for none. Also outside a tenant |
+| `mine(key)` | Whether the current tenant holds the key |
+
+Keys are 1 to 200 characters and the plugin’s own: another plugin’s key of the same name is
+another key. They stay when a tenant loses the plugin; `inTenant` then answers `404`.
 
 ## Asking a model
 

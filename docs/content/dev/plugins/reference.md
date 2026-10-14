@@ -44,7 +44,8 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `publicRef(): Promise<string>` | [Routes](./routes.md#shared-routes). The part of `publicUrl` that names the current tenant |
 | `registerSharedRoute(route: PluginSharedRoute)` | [Routes](./routes.md#shared-routes). One route for every tenant; `handler({ request, path, params, query, inTenant })` |
 | `sharedUrl(path): string` | The full address of a shared route, the same for every tenant |
-| `channels.get()`, `.request({ userId, country, wish?, lang })`, `.withdraw()`, `.book({ kind, quantity, key, runId? })` | [Numbers of the Manage-App](./server.md#numbers-of-the-manage-app). `get`: `{ number, request, shared, allowed }` or `null` without a Manage-App |
+| `claims.take(key)`, `.put(key)`, `.drop(key)`, `.holder(key)`, `.mine(key)` | [Keys across tenants](./server.md#keys-across-tenants). Each key for one tenant at a time; `holder` gives the tenant’s ref for `inTenant` |
+| `channels.get()`, `.request({ userId, country, wish?, lang })`, `.withdraw()`, `.book({ kind: "sms" \| "call" \| "whatsapp", quantity, key, runId? })` | [Numbers of the Manage-App](./server.md#numbers-of-the-manage-app). `get`: `{ number, request, shared, allowed }` or `null` without a Manage-App |
 | `registerMigrations(folder: string)` | [Tables](./tables.md). The folder is relative to the plugin’s |
 | `on(event, listener)` | [Events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"`, `"space.created"`, `"space.updated"`, `"space.deleted"`, `"space.file.ready"`, `"space.file.removed"` |
 | `every(name, everyMs, handler)` | [Jobs](./server.md#jobs). Per tenant that has the plugin, at most once per `everyMs` (a minute at least). `handler({ tenantId, lastRun, signal })` |

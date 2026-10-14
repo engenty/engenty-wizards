@@ -39,6 +39,7 @@ import { putIndexEntry, removeIndexEntries } from "../services/project-index.js"
 import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
 import { channelsApi } from "./channels.js";
+import { claimsApiFor } from "./claims.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
 import { proModulesDir, proSources } from "./pro-state.js";
@@ -202,6 +203,7 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
       },
       sharedUrl: (path) => sharedUrlOf(source.id, path),
       channels: channelsApi,
+      claims: claimsApiFor(source.id),
       runs: runsApiFor(source.id),
       speech: {
         async conversation() {
