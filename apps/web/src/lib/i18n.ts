@@ -1272,7 +1272,7 @@ const de: Record<Key, string> = {
   "inspector.tools": "Werkzeuge",
   "inspector.personAccounts": "Konten der Person",
   "inspector.personAccountsHint":
-    "Konten, die die Person im Lauf verbindet. Der Schritt liest darin, er schreibt nie.",
+    "Konten, die die Person im Lauf verbindet. Lesen darf der Schritt frei, Änderungen erst nach ihrem Ja.",
   "inspector.systems": "Verbundene Systeme",
   "inspector.systemsHint": "Nur freigegebene Systeme sind in diesem Schritt erreichbar.",
   "inspector.output": "Ergebnis",
@@ -1333,7 +1333,7 @@ const de: Record<Key, string> = {
   "connectors.imported": "Aus dem Verzeichnis",
   "connectors.noneImported": "Hier ist kein Connector aus dem Verzeichnis importiert.",
   "connectors.notSetUp": "nicht eingerichtet",
-  "connectors.setup": "Auf dem Server fehlen:",
+  "connectors.setup": "Es fehlen noch diese Einstellungen:",
   "connectors.search": "Dienst suchen, z. B. Notion, Stripe, GitHub",
   "connectors.find": "Suchen",
   "connectors.none": "Nichts gefunden.",
@@ -1634,8 +1634,7 @@ const de: Record<Key, string> = {
   "know.title": "Wissen",
   "know.hint":
     "Was die Schritte deiner Wizards nachschlagen. Dokumente werden beim Hochladen zu Seiten und Tabellen. Kategorien halten die Einträge auseinander.",
-  "know.empty":
-    "Noch nichts da. Lad Dokumente hoch, leg eine Seite an oder gib Goose eine Website.",
+  "know.empty": "Noch nichts da. Lad Dokumente hoch oder leg eine Seite an.",
   "know.drop": "Dokumente hierher ziehen oder",
   "know.pick": "auswählen",
   "know.page": "Seite",
@@ -1653,7 +1652,7 @@ const de: Record<Key, string> = {
   "know.searchStats": "{candidates} Kandidaten geprüft, {hits} relevant",
   "know.searchUnchecked": "{hits} Treffer, ungeprüft",
   "know.unchecked":
-    "Ohne Classifier bleiben Treffer ungeprüft. Er braucht einen API-Key für AI Gateway oder TypeSafe oder ein Konto.",
+    "Das Classifier-Modell prüft die Treffer. Mit einem API-Key für AI Gateway oder TypeSafe oder mit einem Konto übernimmt das ein Entscheidungsmodell.",
   "know.keywordsOnly": "Ohne Embedding-Modell findet die Suche nach Wörtern, nicht nach Bedeutung.",
   "know.clear": "Zurücksetzen",
   "know.sub": "{n} Unterseiten",
@@ -2514,7 +2513,7 @@ const en = {
   "editor.dropToAttach": "Drop to attach to your message",
   "editor.memory": "Memory",
   "memory.explain":
-    "What the wizard knows across all its runs. AI steps with the “pages” tool read and add notes here, and its shared lists keep their tables here. The same data is under Data in your space.",
+    "What the wizard knows across all its runs. AI steps with the “Pages” tool read and add notes here, and its shared lists keep their tables here. The same data is under Data in your space.",
   "memory.unused":
     "No step uses the memory yet. Ask the assistant to have an AI step remember something.",
   "memory.none": "Nothing remembered yet.",
@@ -3175,7 +3174,7 @@ const en = {
   "inspector.tools": "Tools",
   "inspector.personAccounts": "The person’s accounts",
   "inspector.personAccountsHint":
-    "Accounts the person connects during the run. The step only reads from them and never writes.",
+    "Accounts the person connects during the run. The step reads from them freely; anything it changes waits for the person’s yes.",
   "inspector.systems": "Connected systems",
   "inspector.systemsHint": "This step can only reach the systems allowed here.",
   "inspector.output": "Result",
@@ -3236,7 +3235,7 @@ const en = {
   "connectors.imported": "From the registry",
   "connectors.noneImported": "No connectors imported from the registry yet.",
   "connectors.notSetUp": "not set up",
-  "connectors.setup": "The server still needs:",
+  "connectors.setup": "Still needs these settings:",
   "connectors.search": "Find a service, e.g. Notion, Stripe, GitHub",
   "connectors.find": "Search",
   "connectors.none": "No matches.",
@@ -3530,7 +3529,7 @@ const en = {
   "know.title": "Knowledge",
   "know.hint":
     "What your wizards’ steps look things up in. Documents become pages and tables when they arrive; categories keep the items apart.",
-  "know.empty": "No knowledge yet. Upload documents, add a page or give Goose a website.",
+  "know.empty": "No knowledge yet. Upload documents or add a page.",
   "know.drop": "Drop documents here or",
   "know.pick": "choose",
   "know.page": "Page",
@@ -3548,7 +3547,7 @@ const en = {
   "know.searchStats": "{candidates} candidates checked, {hits} relevant",
   "know.searchUnchecked": "{hits} hits, unchecked",
   "know.unchecked":
-    "Without a classifier, hits stay unchecked. That needs an AI Gateway or TypeSafe key, or an account.",
+    "The Classifier model checks hits. With an AI Gateway or TypeSafe key, or an account, a decision model does it instead.",
   "know.keywordsOnly": "Without an embedding model the search finds words, not meaning.",
   "know.clear": "Reset",
   "know.sub": "{n} sub-pages",

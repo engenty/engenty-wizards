@@ -1310,11 +1310,11 @@ export async function checkKey(
       message:
         res.status === 401
           ? de
-            ? "Der Anbieter kennt diesen Key nicht."
-            : "The provider does not know this key."
+            ? "Der Anbieter kennt diesen API-Key nicht."
+            : "The provider doesn’t recognise this key."
           : de
-            ? `Der Anbieter antwortet mit ${res.status}.`
-            : `The provider answers with ${res.status}.`,
+            ? `Der Anbieter antwortet mit Fehler ${res.status}.`
+            : `The provider answered with error ${res.status}.`,
     };
   } catch {
     return {

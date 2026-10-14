@@ -168,7 +168,7 @@ async function pluginIssues(draft: WizardDefinition) {
       if (!known.has(id)) {
         issues.push({
           stepId: step.id,
-          message: `Step "${step.id}": tool "${id}" is not available here — the plugin "${named.plugin}" is not installed or has no such tool.`,
+          message: `Step “${step.id}”: the tool “${id}” isn’t available here – the plugin “${named.plugin}” isn’t installed or has no such tool.`,
         });
       }
     }
