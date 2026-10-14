@@ -63,7 +63,15 @@ function addMonths(day: Ymd, n: number): Ymd {
   return { y, m, d: Math.min(day.d, daysIn(y, m)) };
 }
 
-function clamp(day: Ymd, bounds: DateBounds): Ymd {
+/** Without a bound of its own, the calendar keeps to years of four digits, as a day is kept. */
+const FIRST_DAY = "1000-01-01";
+const LAST_DAY = "9999-12-31";
+
+function clamp(day: Ymd, given: DateBounds): Ymd {
+  const bounds = { min: given.min ?? FIRST_DAY, max: given.max ?? LAST_DAY };
+  if (day.y > 9999) {
+    return fromIso(bounds.max) ?? day;
+  }
   const s = toIso(day);
   if (bounds.min && bounds.max && bounds.min > bounds.max) {
     return day;
@@ -79,7 +87,10 @@ function clamp(day: Ymd, bounds: DateBounds): Ymd {
 
 /** Whether no day from `first` to `last` (YYYY-MM-DD) can be picked. */
 function outside(first: string, last: string, bounds: DateBounds): boolean {
-  return Boolean((bounds.min && last < bounds.min) || (bounds.max && first > bounds.max));
+  const min = bounds.min ?? FIRST_DAY;
+  const max = bounds.max ?? LAST_DAY;
+  // A year of five digits is past the last one, though "10000" sorts before "9999".
+  return last < min || first > max || first.length > 10;
 }
 
 function todayOf(): Ymd {

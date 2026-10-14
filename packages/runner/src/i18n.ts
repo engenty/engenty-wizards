@@ -477,7 +477,12 @@ export function fieldErrorText(issue: FieldIssue): string {
     Object.entries(issue.params ?? {}).map(([k, v]) => [
       k,
       typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)
-        ? new Date(`${v}T00:00:00`).toLocaleDateString(LOCALES[lang])
+        ? // As the date field shows a day: 03.04.1985, 03/04/1985.
+          new Intl.DateTimeFormat(LOCALES[lang], {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }).format(new Date(`${v}T00:00:00`))
         : v,
     ]),
   );

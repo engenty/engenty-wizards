@@ -6,7 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDay, parseDay } from "../src/date";
-import { setRunnerLang } from "../src/i18n";
+import { fieldErrorText, setRunnerLang } from "../src/i18n";
 import { RunnerBody, type RunSource } from "../src/RunnerView";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -223,6 +223,25 @@ describe("the date field", () => {
     expect(button("Earlier years").disabled).toBe(true);
   });
 
+  it("keeps to years of four digits without bounds", async () => {
+    const field: Field = { id: "born", label: "Day", kind: "date", startView: "years" };
+    await act(async () => root.render(<RunnerBody run={source(field, vi.fn())} />));
+    await click(button("Open calendar"));
+    const page = () => container.querySelector("fieldset") as HTMLElement;
+    for (let i = 0; i < 60; i++) {
+      await act(async () => press(page().querySelector('[tabindex="0"]') as HTMLElement, "PageUp"));
+    }
+    expect(page().getAttribute("aria-label")).toBe("1000 – 1019");
+    expect(button("Earlier years").disabled).toBe(true);
+    for (let i = 0; i < 500; i++) {
+      await act(async () =>
+        press(page().querySelector('[tabindex="0"]') as HTMLElement, "PageDown"),
+      );
+    }
+    expect(page().getAttribute("aria-label")).toBe("9980 – 9999");
+    expect(button("Later years").disabled).toBe(true);
+  });
+
   it("shuts the days after today when the latest day is today", async () => {
     const field: Field = { ...born, startView: undefined, startYear: undefined };
     await act(async () => root.render(<RunnerBody run={source(field, vi.fn())} />));
@@ -265,5 +284,14 @@ describe("parseDay", () => {
     expect(parseDay("3. April 1985", "de")).toBeNull();
     expect(parseDay("123.4.1985", "de")).toBeNull();
     expect(parseDay("3.4.985", "de")).toBeNull();
+  });
+});
+
+describe("a bound in an error", () => {
+  it("reads as the field shows a day", () => {
+    setRunnerLang("de");
+    expect(fieldErrorText({ code: "dateMin", params: { min: "1900-01-05" } })).toBe(
+      "Frühestens am 05.01.1900.",
+    );
   });
 });

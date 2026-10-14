@@ -678,7 +678,7 @@ function typedValue(field: Field, text: string): string | undefined {
   if (!s) {
     return undefined;
   }
-  return field.kind === "url" ? normalizeUrl(s) : field.kind === "date" ? normalizeDate(s) : s;
+  return field.kind === "url" ? normalizeUrl(s) : s;
 }
 
 function FieldAsk({ field }: { field: Field }) {

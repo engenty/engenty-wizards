@@ -58,6 +58,9 @@ interface RunField {
   help?: string;
   default?: unknown;
   value?: unknown;
+  /** date: the earliest and latest day it takes, YYYY-MM-DD. */
+  earliest?: string;
+  latest?: string;
   inChat: boolean;
 }
 
@@ -852,6 +855,8 @@ function FieldControl({
           }
           value={text}
           placeholder={field.placeholder}
+          min={field.kind === "date" ? field.earliest : undefined}
+          max={field.kind === "date" ? field.latest : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       );
