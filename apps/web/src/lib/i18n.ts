@@ -2,6 +2,8 @@ import { RUNNER_TEXTS, setRunnerLang } from "@engenty-wizards/runner/i18n";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
+// Wording: docs/copy-style.md (voice, glossary, EN/DE mechanics). Write each language as its
+// own sentence, not a word-for-word copy of the other. Check with `pnpm copy:check`.
 const de: Record<Key, string> = {
   ...RUNNER_TEXTS.de,
   "brand.tagline": "Wünsch dir was. Hol dir deinen Wizard.",

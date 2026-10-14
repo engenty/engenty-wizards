@@ -160,6 +160,10 @@ node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to
 # { "$file": "path" } as a value uploads that file; API=http://127.0.0.1:<port> names another server
 ```
 
+**Copy.** Every word a person reads follows [copy-style.md](copy-style.md): the voice, a
+glossary in English and German, and the mechanics of each language. `pnpm copy:check` lists the
+strings that break its mechanical rules (`--strict` fails on them).
+
 `apps/runtime/test/tenants.test.ts` is the leak test: two tenants, two databases, nothing of one
 visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
 Manage-App.

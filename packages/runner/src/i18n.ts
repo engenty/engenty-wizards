@@ -1,6 +1,8 @@
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
+// Wording: docs/copy-style.md (voice, glossary, EN/DE mechanics). Write each language as its
+// own sentence, not a word-for-word copy of the other. Check with `pnpm copy:check`.
 /**
  * What the runner says to the person running a wizard, in German and English. The studio spreads
  * these into its own dictionary; a host without one (the WordPress plugin) uses them as they are.
