@@ -284,7 +284,7 @@ async function describeImage(row: ProjectFileRow, data: Uint8Array): Promise<str
     maxOutputTokens: 300,
     system: [
       "You catalogue the files of a project. Describe the picture in ONE sentence of at most 25 words: what it shows, its style and colours, and what it suits (a logo on dark ground, a header image, a team photo, a product shot).",
-      "Write in the language of the project's description; if unclear, German. No preamble, no quotes.",
+      "Write in the language of the project's description; if unclear, English. No preamble, no quotes.",
     ].join("\n"),
     messages: [
       {
@@ -317,7 +317,7 @@ async function describeDocument(row: ProjectFileRow, text: string): Promise<stri
 }
 
 /**
- * What a document became gets its Kategorien from a model, where the space has some: the first
+ * What a document became gets its categories from a model, where the space has some: the first
  * page or table it was read into, else the file itself.
  */
 async function categorize(row: ProjectFileRow, items: string[], text: string) {
@@ -329,7 +329,7 @@ async function categorize(row: ProjectFileRow, items: string[], text: string) {
       : { fileId: row.id };
   const changed = await fillCategories(row.projectId, ref, text || row.description, row.name).catch(
     (err) => {
-      console.error("[project-file] Kategorien", row.name, err);
+      console.error("[project-file] categories", row.name, err);
       return false;
     },
   );
@@ -339,7 +339,7 @@ async function categorize(row: ProjectFileRow, items: string[], text: string) {
 }
 
 /**
- * Reads a new file. A document is read into Wissen — a page, a page with sub-pages, a table per
+ * Reads a new file. A document is read into Knowledge — a page, a page with sub-pages, a table per
  * sheet — and stays as the original behind it; one that reads into nothing stays a file, found
  * by its name and description. A file nobody described is described.
  */
@@ -470,7 +470,7 @@ export async function removeProjectFiles(projectId: string) {
 // --- what plugins keep as files ----------------------------------------------------
 
 /**
- * A plugin's file of Wissen (`server.spaceData.putFile`, or the original of a page it wrote):
+ * A plugin's file of Knowledge (`server.spaceData.putFile`, or the original of a page it wrote):
  * a document of the space under the plugin's key. The same key again replaces it. `text`: what
  * a step reads of it; without one only its name and description are found.
  */

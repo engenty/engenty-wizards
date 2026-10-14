@@ -43,7 +43,7 @@ export interface SpacePartEntry {
   icon: ComponentType<{ className?: string }>;
 }
 
-/** The parts with the plugins' among them: each after the part it names, else after Daten. */
+/** The parts with the plugins' among them: each after the part it names, else after Data. */
 export function withParts(own: SpaceGroup[], plugins: StudioPlugins): SpacePartEntry[] {
   const out: SpacePartEntry[] = [...own];
   for (const part of plugins.spaceParts) {

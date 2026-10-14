@@ -25,7 +25,7 @@ type List = {
   key?: columnId                // rows are matched on this column: saving a row with a known key updates that row
   shared?: true                 // ONE list for every run (leads, sign-ups, bookings, a log) instead of one per person.
                                 //   The person running the wizard never sees it: no list field, review or deliverable of it;
-                                //   the admin sees and edits it in the studio under Space → Daten
+                                //   the admin sees and edits it in the studio under Space → Data
   check?: { file?: columnId, status?: columnId }
                                 // a review that shows the list lets the person go through it ROW BY ROW on a split screen:
                                 //   "file" = a text column holding the path of a kept file (PDF, photo), previewed beside the row;
@@ -152,10 +152,10 @@ type AgentStep = {
 // Every agent step also has, without listing them: list_read / list_write (the wizard's lists), files_list,
 //   read_document (PDF, scans and photos, Word, Excel, CSV, saved mails) and scan_documents (invoice / receipt fields, many at once)
 //   — on an installed client only where there is something to read: tools or connections, uploads, lists or kept files;
-//   and where the space has Wissen: project_search (a question, "where" on its typed Kategorien, hits checked for relevance),
-//   project_list (by Kategorien), page_read / table_read / project_document (an item whole, by its path).
+//   and where the space has Knowledge: project_search (a question, "where" on its typed categories, hits checked for relevance),
+//   project_list (by categories), page_read / table_read / project_document (an item whole, by its path).
 // "pages" brings: page_read / page_write — Markdown pages of the space the wizard keeps for every run (notes, a log
-//   that grows with append), shown to the admin under Space → Daten; page_read also reads Wissen by path.
+//   that grows with append), shown to the admin under Space → Data; page_read also reads Knowledge by path.
 // "browser" brings: browser_open/read/click/type/select/scroll/press/back/wait, browser_screenshot (the model looks at the page),
 //   browser_run_fast (a decision model clicks through a page's mechanical part, where one is reached),
 //   browser_request_credentials (the PERSON types a login into the page — the model never sees it; sign-ins can be remembered),
@@ -245,8 +245,8 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{today}}
   · the project (its settings): {{brand.name}} {{brand.about}} {{brand.colors}} · {{facts.key}} (one fact: address, VAT id, …) · {{facts}} (all facts)
-    — every AI step already knows them, name one only where the text must carry it; agent steps also search the space's Wissen
-      and are told its Kategorien: say in a step's instructions which Kategorie to filter by when the task names one
+    — every AI step already knows them, name one only where the text must carry it; agent steps also search the space's Knowledge
+      and are told its categories: say in a step's instructions which category to filter by when the task names one
   · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)
   · {{locationField}} {{locationField.lat|lng|accuracy|label|map}} · {{audioField}} (the transcript) · {{signatureField}} (asset://ID)
 A template may only use fields asked and steps run EARLIER.`;
@@ -263,7 +263,7 @@ How good wizards look:
 - Writing into other systems (CRM, database, spreadsheet, website): an agent step with the matching mcp server, http, or browser tool, preceded by a review step.
 ${sandboxGuideLine()}
 - Remembering between runs ("merke dir", "führe eine Liste"): declare a list and let an agent step save into it with list_write; a later run reads it as {{lists.id}} or list_read. Give it a key column so known rows are updated, not duplicated. Never make the person re-upload last time's result.
-- Collecting from everyone who runs the wizard (requests, leads, sign-ups, feedback): a list with "shared": true, saved with list_write. It is the admin's, under Space → Daten; never show one person's rows to another. Longer text for every run (a running summary, a log): the "pages" tool.
+- Collecting from everyone who runs the wizard (requests, leads, sign-ups, feedback): a list with "shared": true, saved with list_write. It is the admin's, under Space → Data; never show one person's rows to another. Longer text for every run (a running summary, a log): the "pages" tool.
 - The person's mail: one connection of kind "mail", a page field of kind "connection" early in the wizard, and the agent step lists it in "connections". Do not ask for the provider or the address in other fields — the connect field does that.
 - Working in a service for the person (read their Notion, create an issue, look up a customer): import the service as a connector, declare a connection with "connector", put a page field of kind "connection" before the step, and list the connection in the step's "connections". Prefer a connector over the browser whenever the service has one.
 - Logins on websites: never ask for passwords in page fields. An agent step with the browser tool asks the person at the moment it meets the login (browser_request_credentials); write that into its instructions, and that it must go on without the site when the person skips.

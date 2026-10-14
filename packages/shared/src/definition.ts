@@ -677,7 +677,7 @@ export const listSchema = z.object({
   check: z.object({ file: z.string().optional(), status: z.string().optional() }).optional(),
   /**
    * The list is the wizard's, not one person's: every run reads and writes the same rows, and
-   * the studio shows it under Space → Daten. It is never shown to the person running the wizard,
+   * the studio shows it under Space → Data. It is never shown to the person running the wizard,
    * who would see what others gave.
    */
   shared: z.boolean().optional(),

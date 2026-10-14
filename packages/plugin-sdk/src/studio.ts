@@ -65,8 +65,8 @@ export interface StudioSpaceSection {
 }
 
 /**
- * A part of the space page of the plugin's own, beside Info & Marke, Wissen, Daten and
- * Ergebnisse: an entry in the parts' menu and a page at `/space/<id>`. The component draws the
+ * A part of the space page of the plugin's own, beside Info & brand, Knowledge, Data and
+ * Results: an entry in the parts' menu and a page at `/space/<id>`. The component draws the
  * whole part; `useSpaceMenu` fills the part's menu with what it draws.
  */
 export interface StudioSpacePart {
@@ -162,7 +162,7 @@ export interface StudioAssistantCard {
   component: ComponentType<StudioAssistantCardProps<any>>;
 }
 
-/** A space's brand as Info & Marke has it: what a plugin draws in its look. */
+/** A space's brand as Info & brand has it: what a plugin draws in its look. */
 export interface StudioBrand {
   /** The title end users see. */
   name: string;

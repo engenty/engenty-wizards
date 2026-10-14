@@ -117,7 +117,7 @@ function FilterBar({
 }
 
 /**
- * Ergebnisse: the runs of the space's wizards that reached their result, newest first. A run is
+ * Results: the runs of the space's wizards that reached their result, newest first. A run is
  * opened beside the list as the person saw it, with its files.
  */
 export function Results({

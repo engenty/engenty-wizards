@@ -282,7 +282,7 @@ describe("the API a website's plugin calls", () => {
     expect((await call("wz_free", `/api/v1/runs/${runId}`)).status).toBe(404);
   });
 
-  it("reads a website into the space: details where it has none, pages into Wissen", async () => {
+  it("reads a website into the space: details where it has none, pages into Knowledge", async () => {
     const started = await call("wz_pro", "/api/v1/space/site", {
       method: "POST",
       body: {

@@ -78,7 +78,7 @@ function Base({ project, save }: { project: Project; save: (patch: Patch) => Pro
 
 /**
  * What a project gives all its wizards, in two parts of the space page: `info` — who it is, its
- * logos and colours, assets and facts — and `knowledge` — Wissen, drawn by the caller as
+ * logos and colours, assets and facts — and `knowledge` — Knowledge, drawn by the caller as
  * `children`. Every section saves by itself; the studio's assistant fills them in from a
  * description, a website or files, and this tells it what to say here. A read-only project (a
  * local install's, or on a server where nothing is built) shows the same sections with a note.

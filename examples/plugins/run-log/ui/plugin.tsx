@@ -21,7 +21,7 @@ interface Log {
 const TONE = { done: "live", failed: "warn", cancelled: "neutral" } as const;
 
 /**
- * The studio half of the example: a section of the space page under Ergebnisse, which leads to
+ * The studio half of the example: a section of the space page under Results, which leads to
  * a page of the whole log, and a section of the settings. All read the plugin's own routes.
  */
 export default defineStudioPlugin((studio) => {

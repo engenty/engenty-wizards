@@ -12,7 +12,7 @@ import { putCategory, setItemCategories } from "./space-categories.js";
 import { listOrigin, putOriginPage, putOriginTable, removeOrigin } from "./space-data.js";
 
 /**
- * `server.spaceData` of a plugin: Wissen it writes under keys of its own, with Kategorien. The
+ * `server.spaceData` of a plugin: Knowledge it writes under keys of its own, with categories. The
  * plugin's id is the origin of everything it writes; a person who changes an item keeps it.
  */
 export function originData(origin: string): PluginSpaceData {
@@ -66,7 +66,7 @@ export function originData(origin: string): PluginSpaceData {
           input.markdown,
           input.title,
         ).catch((err) => {
-          console.error(`[plugin ${origin}] Kategorien`, err);
+          console.error(`[plugin ${origin}] categories`, err);
           return false;
         });
         if (changed) {
@@ -163,7 +163,7 @@ export function originData(origin: string): PluginSpaceData {
       }
       if (input.fill) {
         await fillCategories(input.space, ref, converted.text, input.name).catch((err) => {
-          console.error(`[plugin ${origin}] Kategorien`, err);
+          console.error(`[plugin ${origin}] categories`, err);
           return false;
         });
       }

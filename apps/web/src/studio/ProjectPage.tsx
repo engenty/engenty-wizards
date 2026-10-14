@@ -124,10 +124,10 @@ function SectionRows({
 }
 
 /**
- * The space at /space/<part>: what all its wizards share, in four parts — Info & Marke, Wissen,
- * Daten and Ergebnisse. The left container shows one level at a time, as the settings do: the
+ * The space at /space/<part>: what all its wizards share, in four parts — Info & brand, Knowledge,
+ * Data and Results. The left container shows one level at a time, as the settings do: the
  * parts, or the menu of the part that is open, which jumps to its sections and marks the one in
- * view (Ergebnisse: picks a wizard). On a phone the parts, a part's menu and the page take
+ * view (Results: picks a wizard). On a phone the parts, a part's menu and the page take
  * turns. Plugins add sections to a part, each plugin's under its name, and parts of their own.
  */
 export function ProjectPage() {
@@ -178,14 +178,14 @@ export function ProjectPage() {
     g.sections.map((s) => s.id),
   );
   const inView = useSectionInView(anchors);
-  // Ergebnisse: of one wizard (`?show=<id>`), or of all.
+  // Results: of one wizard (`?show=<id>`), or of all.
   const wizardId = group === "results" && show && show !== "all" ? show : null;
   const [filter, setFilter] = useState<ResultsFilter>(NO_FILTER);
   const results = useResults(group === "results" ? project?.id : undefined, wizardId, filter);
   const wizardTitle = results.data?.wizards.find((w) => w.id === wizardId)?.title;
-  // Daten: a table (`?show=t:<id>`) or a page (`p:<id>`), or all of them. Wissen: also a file
-  // (`f:`), a Kategorie (`c:`), one of its values (`v:`) or a plugin's section (`s:`), which in
-  // Wissen is a page of its own; a plain `show` is a section's anchor.
+  // Data: a table (`?show=t:<id>`) or a page (`p:<id>`), or all of them. Knowledge: also a file
+  // (`f:`), a category (`c:`), one of its values (`v:`) or a plugin's section (`s:`), which in
+  // Knowledge is a page of its own; a plain `show` is a section's anchor.
   const picked =
     group === "data" && show && show !== "all"
       ? show
@@ -195,7 +195,7 @@ export function ProjectPage() {
   const pickedSection = picked?.startsWith("s:")
     ? plugins.spaceSections.find((x) => x.id === picked.slice(2))
     : undefined;
-  // Wissen: a page, a table or a file, opened.
+  // Knowledge: a page, a table or a file, opened.
   const item = group === "knowledge" && picked && /^[ptf]:/.test(picked) ? picked : null;
   const spaceData = useSpaceData(group === "data" ? project?.id : undefined);
   const knowledge = useKnowledge(group === "knowledge" ? project?.id : undefined);
@@ -230,8 +230,8 @@ export function ProjectPage() {
     p: "page",
     t: "table",
     f: "file",
-    c: "kategorie",
-    v: "kategorie value",
+    c: "category",
+    v: "category value",
     s: "plugin section",
   };
   useAssistantPage({
@@ -279,7 +279,7 @@ export function ProjectPage() {
     // The space was one page: `/space#documents` opens the part the section is in now.
     const id = hash.slice(1);
     const of = id ? groupOfSection(id, plugins) : null;
-    // A plugin's section of Wissen is a page of its own.
+    // A plugin's section of Knowledge is a page of its own.
     if (of === "knowledge" && plugins.spaceSections.some((x) => x.id === id)) {
       return <Navigate to={`/space/knowledge?show=s:${id}`} replace />;
     }
@@ -314,7 +314,7 @@ export function ProjectPage() {
     scrollToSection(id, true);
     navigate({ search: "", hash: id }, { replace: true });
   };
-  // Ergebnisse and Daten pick what the page shows: on a phone a step deeper, beside the menu in place.
+  // Results and Data pick what the page shows: on a phone a step deeper, beside the menu in place.
   const pick = (id: string) =>
     narrow
       ? setParams({ show: id })
