@@ -99,9 +99,9 @@ It enters what it finds: title, description, logo, colours and facts. You correc
 
 ## One space
 
-A local install has one space. On engenty.ai the team's plan says how many it may have: the
-space's name in the top bar switches between them, and "Add space" adds one. With one space and
-no room for another, the name is only a name. A team's first space shows its title from Info &
-brand ("My wizards" until it has one); a space you named or renamed keeps its name. Each space has its
-own wizards, Info & brand, Knowledge, Data, connectors and results; the account, the models and
-the plugins are the same for every space.
+A local install has one space. On engenty.ai the team's plan says how many it may have: the space's
+name in the top bar switches between them, and "Add space" adds one. Where the plan holds no more
+spaces, "Add space" is greyed and says how many it holds. A team's first space shows its title from
+Info & brand ("My wizards" until it has one); a space you named or renamed keeps its name. Each
+space has its own wizards, Info & brand, Knowledge, Data, connectors and results; the account, the
+models and the plugins are the same for every space.

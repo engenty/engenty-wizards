@@ -360,8 +360,9 @@ export function SpaceMenu({
 }
 
 /**
- * The space's name in the top bar: the one place that switches between spaces and adds one. With
- * nothing to switch to or add, it is only the name.
+ * The space's name in the top bar: the one place that switches between spaces and adds one. At the
+ * plan's limit its menu still shows "Add space" greyed with the limit; only a member alone in one
+ * space, who may add none, sees just the name.
  */
 function SpaceName({ me }: { me: Me }) {
   const { project } = useCurrentProject();

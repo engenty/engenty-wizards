@@ -325,16 +325,14 @@ export function useCurrentProject() {
 }
 
 /**
- * Whether there is anything to pick among the spaces: another one to switch to, or room for one
- * this person may add. A single space at the plan's limit offers nothing, so no switcher shows.
+ * Whether the space's name opens the spaces' menu: another space to switch to, or a person who
+ * may add one. At the plan's limit the menu still shows its greyed "Add space" with the limit, so
+ * the way to more spaces stays in sight; only a member alone in one space sees just the name.
  */
 export function useSwitchable(): boolean {
-  const me = useMe().data;
   const { projects } = useCurrentProject();
   const mayCreate = useMayCreate();
-  // Null: as many as wanted.
-  const limit = me ? me.limits.projects : 1;
-  return projects.length > 1 || (mayCreate && (limit === null || projects.length < limit));
+  return projects.length > 1 || mayCreate;
 }
 
 export interface WizardSummary {

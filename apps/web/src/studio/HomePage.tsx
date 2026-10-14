@@ -32,7 +32,6 @@ import {
   useMayBuild,
   useMayCreate,
   useMe,
-  useSwitchable,
   type WizardSummary,
 } from "../lib/session";
 import { Button, Card, Chip, cn, Dialog, Empty, IconButton, Input, Select } from "../ui";
@@ -111,8 +110,8 @@ export function NewSpaceDialog({ open, onClose }: { open: boolean; onClose: () =
 }
 
 /**
- * Picks the project the studio looks at. Nothing where there is nothing to pick: one project, and
- * no room or no right to add another.
+ * Picks the project the studio looks at. Nothing where the plan holds one project and there is
+ * one: the top bar's menu names the limit then.
  */
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
@@ -120,9 +119,8 @@ export function ProjectSwitcher() {
   // Null: as many as wanted.
   const limit = limits ? limits.projects : 1;
   const mayCreate = useMayCreate();
-  const switchable = useSwitchable();
   const [open, setOpen] = useState(false);
-  if (!project || !switchable) {
+  if (!project || (limit !== null && limit <= 1 && projects.length <= 1)) {
     return null;
   }
   return (
