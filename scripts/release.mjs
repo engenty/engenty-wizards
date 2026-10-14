@@ -31,6 +31,7 @@ const RELEASE_FILES = [
   "changelog.json",
   "apps/web/src/about/changelog.json",
   "apps/web/src/about/oss-credits.json",
+  "COPYRIGHTS.md",
 ];
 
 // ── a small terminal UI ──────────────────────────────────────────────────────
