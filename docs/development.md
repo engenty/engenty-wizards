@@ -164,8 +164,13 @@ node scripts/e2e-starter.mjs invoice '<answers json>'   # drive a starter end to
 visible to the other. `apps/runtime/test/managed.test.ts` runs the runtime against a stand-in
 Manage-App.
 
-GitHub runs lint, typecheck, test, build and the docs' build on every push to `main`, every
-pull request and every release tag (`.github/workflows/ci.yml`).
+GitHub runs lint and typecheck, test, build and the docs' build side by side on every push to
+`main`, every pull request and every release tag (`.github/workflows/ci.yml`).
+
+The packages type-check and compile with TypeScript 7. Two stay on TypeScript 6, because a
+tool there calls the compiler's JavaScript API, which TypeScript 7 no longer has: `apps/docs`
+(Next.js checks types in its build) and `packages/runner` (`vite-plugin-dts` writes its
+declaration files).
 
 ## Releases and changelog
 
