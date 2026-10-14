@@ -115,9 +115,9 @@ describe("what the runtime answers a visitor, in the language their browser asks
     const started = await post(`/api/public/wizards/${tokens.en}/runs`, {}, "en");
     expect(started.status).toBe(403);
     expect(await started.json()).toEqual({ error: "This wizard is not available right now." });
-    // Without a language the runner starts in German, and so does the answer.
+    // Without a language the runner starts in English, and so does the answer.
     const bare = await (await get(`/api/public/wizards/${tokens.en}`)).json();
-    expect(bare.unavailableReason).toBe("Dieser Wizard ist gerade nicht verfügbar.");
+    expect(bare.unavailableReason).toBe("This wizard is not available right now.");
     await settings("en", { shareEnabled: true });
   });
 
@@ -160,12 +160,12 @@ describe("what the runtime answers a visitor, in the language their browser asks
 });
 
 describe("Apple Intelligence's failures as notes", () => {
-  it("carry a note that reads in both languages; the message keeps the German line", async () => {
+  it("carry a note that reads in both languages; the message keeps the English line", async () => {
     const { appleFailure } = await import("../src/harness/apple");
     const { errorText, ModelUnavailableError, noteOf } = await import("../src/model-errors");
     const tooLong = appleFailure({ kind: "contextWindow", message: "" });
     expect(noteOf(tooLong)).toEqual({ code: "appleTooLong" });
-    expect(tooLong.message).toContain("zu lang");
+    expect(tooLong.message).toContain("the text is too long");
     expect(errorText(tooLong, "en")).toContain("the text is too long for the model on this Mac");
     expect(errorText(tooLong, "de")).toContain("Der Text ist zu lang");
 
@@ -206,7 +206,7 @@ describe("Apple Intelligence's failures as notes", () => {
         expect(run?.error).toMatch(error);
         const failed = (await recentEvents(runId)).find((e) => e.type === "error");
         expect(failed?.note).toEqual({ code: "appleTooLong" });
-        expect(failed?.message).toContain("Der Text ist zu lang");
+        expect(failed?.message).toContain("the text is too long");
       });
     }
   });

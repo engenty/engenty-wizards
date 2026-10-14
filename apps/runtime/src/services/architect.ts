@@ -40,6 +40,8 @@ export async function architectTurn(
   userId: string,
   wizardId: string,
   message: string,
+  /** The language the admin reads: the lines about what it does, and its stock replies. */
+  lang: "de" | "en",
   io: {
     signal: AbortSignal;
     onText: (delta: string) => void;
@@ -69,6 +71,7 @@ export async function architectTurn(
               onThought: io.onThought,
               onBuilding: io.onBuilding,
               images,
+              lang,
             })),
             unfinished: false,
           }
@@ -85,13 +88,23 @@ export async function architectTurn(
             onThought: io.onThought,
             onBuilding: io.onBuilding,
             images,
+            lang,
           });
+    const de = lang === "de";
     const reply = result.unfinished
-      ? `${result.reply ? `${result.reply}\n\n` : ""}Ich bin noch nicht ganz fertig geworden. Schreib „weiter“, dann mache ich genau dort weiter.`
+      ? `${result.reply ? `${result.reply}\n\n` : ""}${
+          de
+            ? "Ich bin noch nicht ganz fertig geworden. Schreib „weiter“, dann mache ich genau dort weiter."
+            : "I have not quite finished. Write “continue” and I will carry on right there."
+        }`
       : result.reply ||
         (result.changed
-          ? "Erledigt."
-          : "Das habe ich nicht verstanden – magst du es anders formulieren?");
+          ? de
+            ? "Erledigt."
+            : "Done."
+          : de
+            ? "Das habe ich nicht verstanden – magst du es anders formulieren?"
+            : "I did not understand that – could you put it differently?");
     await addMessage(w.id, { role: "assistant", content: reply, changed: result.changed });
     const after = await ownedWizard(userId, wizardId);
     return {

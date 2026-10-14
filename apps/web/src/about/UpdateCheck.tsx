@@ -1,5 +1,5 @@
 import { Download, RefreshCw } from "lucide-react";
-import { t } from "../lib/i18n";
+import { lang, t } from "../lib/i18n";
 import type { Me } from "../lib/session";
 import { useUpdate } from "../lib/update";
 import { Button, cn, IconButton, Spinner } from "../ui";
@@ -19,7 +19,7 @@ export function UpdateCheck({
 }) {
   const { status, data, latest, check, apply, busy, progress } = useUpdate(enabled);
   const checkedAt = data?.checkedAt
-    ? new Date(data.checkedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    ? new Date(data.checkedAt).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })
     : null;
   const centre = align === "center";
   return (

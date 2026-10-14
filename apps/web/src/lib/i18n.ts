@@ -2,7 +2,7 @@ import { RUNNER_TEXTS, setRunnerLang } from "@engenty-wizards/runner/i18n";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
-const de = {
+const de: Record<Key, string> = {
   ...RUNNER_TEXTS.de,
   "brand.tagline": "Wünsch dir was. Wir bauen deinen Wizard.",
   "brand.sub": "Er führt dich Schritt für Schritt zum Ergebnis. Die KI erledigt die Arbeit.",
@@ -1203,6 +1203,96 @@ const de = {
   "editor.viaClient": "Über {client}",
   "editor.changedVia": "Geändert über {client}",
   "editor.merged": "Mit Änderungen von außen zusammengeführt",
+  "common.remove": "Entfernen",
+  "common.back": "Zurück",
+  "editor.fixIssuesAsk": "Bitte behebe diese Probleme im Wizard:",
+  "runs.status.waiting_input": "wartet",
+  "runs.status.running": "läuft",
+  "runs.status.done": "fertig",
+  "runs.status.failed": "Fehler",
+  "runs.status.cancelled": "abgebrochen",
+  "step.new.page": "Neue Seite",
+  "step.new.question": "Neue Frage",
+  "step.new.agent": "KI-Schritt",
+  "step.new.agentTask": "Beschreibe die Aufgabe …",
+  "step.new.image": "Bild erzeugen",
+  "step.new.imagePrompt": "Beschreibe das Bild …",
+  "inspector.kind.text": "Kurzer Text",
+  "inspector.kind.textarea": "Langer Text",
+  "inspector.kind.number": "Zahl",
+  "inspector.kind.select": "Auswahl",
+  "inspector.kind.multiselect": "Mehrfachauswahl",
+  "inspector.kind.date": "Datum",
+  "inspector.kind.email": "E-Mail",
+  "inspector.kind.url": "Link",
+  "inspector.kind.toggle": "Ja/Nein",
+  "inspector.kind.color": "Farbe",
+  "inspector.kind.image": "Bild-Upload",
+  "inspector.kind.file": "Datei-Upload",
+  "inspector.kind.items": "Positionen (Tabelle)",
+  "inspector.kind.connection": "Konto verbinden",
+  "inspector.kind.list": "Gespeicherte Liste",
+  "inspector.kind.location": "Standort",
+  "inspector.kind.audio": "Sprachnotiz",
+  "inspector.kind.signature": "Unterschrift",
+  "inspector.kind.slot": "Termin",
+  "inspector.whichAccount": "Welches Konto?",
+  "inspector.whichList": "Welche Liste?",
+  "inspector.multipleFiles": "Mehrere Dateien",
+  "inspector.howMany": "Wie viele?",
+  "inspector.atLeast": "Mindestens",
+  "inspector.atMost": "Höchstens",
+  "inspector.camera": "Auch mit der Kamera aufnehmen",
+  "inspector.cameraVideo": "Kamera nimmt auch kurze Videos auf",
+  "inspector.scan": "QR- oder Barcode scannen",
+  "inspector.placeholder": "Platzhalter",
+  "inspector.help": "Hilfetext",
+  "inspector.widgetPreview": "Vorschau mit Beispieldaten",
+  "inspector.htmlFile": "HTML-Datei",
+  "inspector.sample": "Beispieldaten",
+  "inspector.none": "keine",
+  "inspector.size": "Größe",
+  "inspector.widgetData": "Daten für das Widget",
+  "inspector.value": "Wert",
+  "inspector.questions": "Fragen",
+  "inspector.addQuestion": "Frage hinzufügen",
+  "inspector.task": "Auftrag",
+  "inspector.insertAnswers": "Antworten einsetzen mit",
+  "inspector.insertField": "feld",
+  "inspector.insertResults": ", frühere Ergebnisse mit",
+  "inspector.tools": "Werkzeuge",
+  "inspector.personAccounts": "Konten der Person",
+  "inspector.personAccountsHint":
+    "Konten, die die Person im Durchlauf verbindet. Der Schritt liest darin, er schreibt nie.",
+  "inspector.systems": "Verbundene Systeme",
+  "inspector.systemsHint": "Nur freigegebene Systeme sind in diesem Schritt erreichbar.",
+  "inspector.output": "Ergebnis",
+  "inspector.working": "Text während der Arbeit, z. B. „Recherchiert …“",
+  "inspector.whatMade": "Was wird erzeugt?",
+  "inspector.options": "Optionen",
+  "inspector.style": "Stil, z. B. „helle Fotografie, minimalistisch“",
+  "inspector.duration": "Länge (Sekunden)",
+  "inspector.resolution": "Auflösung",
+  "inspector.template": "Vorlage",
+  "inspector.whatShown": "Was wird gezeigt?",
+  "inspector.editable": "Text direkt bearbeitbar",
+  "inspector.redo": "Neue Variante anfordern",
+  "inspector.ending": "Abschluss",
+  "inspector.endMessage": "Nachricht am Ende",
+  "inspector.title": "Titel",
+  "inspector.description": "Beschreibung",
+  "inspector.intro": "Begrüßung",
+  "inspector.introHint": "Steht über der ersten Seite.",
+  "inspector.lang": "Sprache",
+  "inspector.langHint":
+    "In dieser Sprache spricht der Wizard mit den Leuten: seine Meldungen, Zahlen und Daten.",
+  "inspector.langAuto": "Automatisch, aus den Texten",
+  "inspector.remembers": "Merkt sich für jede Person",
+  "inspector.remembersHint":
+    "Bleibt zwischen den Durchläufen erhalten – getrennt für jede Person, die den Wizard nutzt. Ändern kannst du das im Gespräch.",
+  "inspector.account": "Konto",
+  "inspector.list": "Liste",
+  "inspector.stepDescription": "Erklärung unter dem Titel (optional)",
   "browser.takeOver": "Übernehmen",
   "browser.handBack": "Zurückgeben",
   "browser.driving": "Du steuerst den Browser – klick und tipp in die Seite. Der Wizard wartet.",
@@ -1806,9 +1896,10 @@ const de = {
   "flowApp.failed": "Das hat nicht geklappt: {error}",
 };
 
-export type Key = keyof typeof de;
+/** English is the base: its keys are the app's, and what German lacks is said in English. */
+export type Key = keyof typeof en;
 
-const en: Record<Key, string> = {
+const en = {
   ...RUNNER_TEXTS.en,
   "brand.tagline": "Build AI wizards, no code.",
   "brand.sub":
@@ -2987,6 +3078,96 @@ const en: Record<Key, string> = {
   "editor.viaClient": "Via {client}",
   "editor.changedVia": "Changed via {client}",
   "editor.merged": "Merged with changes from elsewhere",
+  "common.remove": "Remove",
+  "common.back": "Back",
+  "editor.fixIssuesAsk": "Please fix these problems in the wizard:",
+  "runs.status.waiting_input": "waiting",
+  "runs.status.running": "running",
+  "runs.status.done": "done",
+  "runs.status.failed": "failed",
+  "runs.status.cancelled": "cancelled",
+  "step.new.page": "New page",
+  "step.new.question": "New question",
+  "step.new.agent": "AI step",
+  "step.new.agentTask": "Describe the task …",
+  "step.new.image": "Make an image",
+  "step.new.imagePrompt": "Describe the image …",
+  "inspector.kind.text": "Short text",
+  "inspector.kind.textarea": "Long text",
+  "inspector.kind.number": "Number",
+  "inspector.kind.select": "Choice",
+  "inspector.kind.multiselect": "Multiple choice",
+  "inspector.kind.date": "Date",
+  "inspector.kind.email": "Email",
+  "inspector.kind.url": "Link",
+  "inspector.kind.toggle": "Yes/No",
+  "inspector.kind.color": "Color",
+  "inspector.kind.image": "Image upload",
+  "inspector.kind.file": "File upload",
+  "inspector.kind.items": "Line items (table)",
+  "inspector.kind.connection": "Connect an account",
+  "inspector.kind.list": "Saved list",
+  "inspector.kind.location": "Location",
+  "inspector.kind.audio": "Voice note",
+  "inspector.kind.signature": "Signature",
+  "inspector.kind.slot": "Appointment",
+  "inspector.whichAccount": "Which account?",
+  "inspector.whichList": "Which list?",
+  "inspector.multipleFiles": "Several files",
+  "inspector.howMany": "How many?",
+  "inspector.atLeast": "At least",
+  "inspector.atMost": "At most",
+  "inspector.camera": "Also record with the camera",
+  "inspector.cameraVideo": "Camera also records short videos",
+  "inspector.scan": "Scan a QR code or barcode",
+  "inspector.placeholder": "Placeholder",
+  "inspector.help": "Help text",
+  "inspector.widgetPreview": "Preview with sample data",
+  "inspector.htmlFile": "HTML file",
+  "inspector.sample": "Sample data",
+  "inspector.none": "none",
+  "inspector.size": "Size",
+  "inspector.widgetData": "Data for the widget",
+  "inspector.value": "Value",
+  "inspector.questions": "Questions",
+  "inspector.addQuestion": "Add question",
+  "inspector.task": "Instructions",
+  "inspector.insertAnswers": "Insert answers with",
+  "inspector.insertField": "field",
+  "inspector.insertResults": ", earlier results with",
+  "inspector.tools": "Tools",
+  "inspector.personAccounts": "The person's accounts",
+  "inspector.personAccountsHint":
+    "Accounts the person connects during the run. The step reads from them, it never writes.",
+  "inspector.systems": "Connected systems",
+  "inspector.systemsHint": "Only the systems allowed here can be reached in this step.",
+  "inspector.output": "Result",
+  "inspector.working": "Text while it works, e.g. “Researching …”",
+  "inspector.whatMade": "What is made?",
+  "inspector.options": "Options",
+  "inspector.style": "Style, e.g. “bright photography, minimalist”",
+  "inspector.duration": "Length (seconds)",
+  "inspector.resolution": "Resolution",
+  "inspector.template": "Template",
+  "inspector.whatShown": "What is shown?",
+  "inspector.editable": "Text can be edited directly",
+  "inspector.redo": "Ask for a new variant",
+  "inspector.ending": "Ending",
+  "inspector.endMessage": "Message at the end",
+  "inspector.title": "Title",
+  "inspector.description": "Description",
+  "inspector.intro": "Greeting",
+  "inspector.introHint": "Shown above the first page.",
+  "inspector.lang": "Language",
+  "inspector.langHint":
+    "The language the wizard speaks to people in: its messages, numbers and dates.",
+  "inspector.langAuto": "Automatic, from its texts",
+  "inspector.remembers": "Remembers for each person",
+  "inspector.remembersHint":
+    "Kept between runs – separately for each person who uses the wizard. You can change this in the chat.",
+  "inspector.account": "Account",
+  "inspector.list": "List",
+  "inspector.stepDescription": "Explanation under the title (optional)",
   "browser.takeOver": "Take over",
   "browser.handBack": "Hand back",
   "browser.driving": "You are driving the browser – click and type in the page. The wizard waits.",
@@ -3578,7 +3759,42 @@ export type Lang = "de" | "en";
 
 const LANG_KEY = "wizards.lang";
 
-function storedLang(): Lang | null {
+/**
+ * The language engenty's other pages read and keep — the account pages and the mails their
+ * server sends: a readable cookie on the site's parent domain holding "de" or "en"
+ * (engenty-wizards-manage, apps/server/src/mails/lang.ts).
+ */
+const SHARED_COOKIE = "engenty_lang";
+
+function sharedLang(): Lang | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const raw = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${SHARED_COOKIE}=`))
+    ?.slice(SHARED_COOKIE.length + 1);
+  return raw === "de" || raw === "en" ? raw : null;
+}
+
+function shareLang(next: Lang) {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const host = window.location.hostname;
+  const labels = host.split(".");
+  // app.engenty.ai → engenty.ai, engenty.ai stays itself: one cookie the account pages share.
+  // localhost and plain addresses keep the host.
+  const named = labels.length > 1 && !/^\d+$/.test(labels[labels.length - 1]);
+  const parent = named ? (labels.length > 2 ? labels.slice(1).join(".") : host) : "";
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  // biome-ignore lint/suspicious/noDocumentCookie: the Cookie Store API is missing in Safari and Firefox
+  document.cookie = `${SHARED_COOKIE}=${next}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax${parent ? `; Domain=${parent}` : ""}${secure}`;
+}
+
+/** The language this browser kept from the person's last pick; null where they never picked. */
+export function storedLang(): Lang | null {
   try {
     const pick = localStorage.getItem(LANG_KEY);
     return pick === "de" || pick === "en" ? pick : null;
@@ -3594,9 +3810,10 @@ function storedLang(): Lang | null {
  */
 export let lang: Lang =
   storedLang() ??
-  (typeof navigator !== "undefined" && !navigator.language.toLowerCase().startsWith("de")
-    ? "en"
-    : "de");
+  sharedLang() ??
+  (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("de")
+    ? "de"
+    : "en");
 
 let dict = lang === "de" ? de : en;
 
@@ -3604,6 +3821,7 @@ const listeners = new Set<() => void>();
 
 /** Switches the language in place and keeps the pick: the app renders again, nothing reloads. */
 export function setLang(next: Lang) {
+  shareLang(next);
   if (next === lang) {
     return;
   }
@@ -3639,7 +3857,7 @@ export function eventText(ev: { message: string; note?: RunNote | null }): strin
 }
 
 export function t(key: Key, vars?: Record<string, string | number>): string {
-  let s: string = dict[key] ?? de[key] ?? key;
+  let s: string = dict[key] ?? en[key] ?? key;
   for (const [k, v] of Object.entries(vars ?? {})) {
     s = s.replace(`{${k}}`, String(v));
   }

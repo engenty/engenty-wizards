@@ -24,7 +24,7 @@ import {
 import { AlertCircle, Check, Minus, Plus, Scan, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Mascot } from "../../brand";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import { cn, Spinner } from "../../ui";
 import type { Adding } from "./AddStep";
 import { useEstimate } from "./estimate";
@@ -94,7 +94,7 @@ function StepNode({ data }: NodeProps<Node<StepData>>) {
             {t("nav.credits", {
               n:
                 cost < 10
-                  ? cost.toLocaleString(undefined, { maximumFractionDigits: 1 })
+                  ? cost.toLocaleString(lang, { maximumFractionDigits: 1 })
                   : Math.round(cost),
             })}
           </span>

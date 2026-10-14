@@ -1048,8 +1048,8 @@ function SettingsView({
           {perDay !== null && estimate.data ? (
             <p className="text-[0.8125rem] text-ink-3 tabular-nums">
               {t("estimate.share", {
-                run: Math.round(estimate.data.credits).toLocaleString(),
-                day: perDay.toLocaleString(),
+                run: Math.round(estimate.data.credits).toLocaleString(lang),
+                day: perDay.toLocaleString(lang),
               })}
             </p>
           ) : null}

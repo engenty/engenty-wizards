@@ -1,3 +1,4 @@
+import { bilingual } from "@engenty-wizards/shared/run";
 import { PACKAGE_MIME } from "@engenty-wizards/shared/wizard-package";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -33,6 +34,7 @@ import {
 } from "../services/spaces.js";
 import { createWizard, ownedWizard, publishWizard, writeDraft } from "../services/wizards.js";
 import { codeOf, tenantStatus } from "../tenants/control.js";
+import { inLang } from "./lang.js";
 import { dispatchAs } from "./plugins.js";
 
 const importSchema = z.object({
@@ -90,7 +92,14 @@ function withinSyncLimit(c: Context, who: Principal): Response | null {
   return allowed(`sync:${who.tenantId}`, 240, HOUR)
     ? null
     : c.json(
-        { error: "Zu viele Übertragungen. Bitte später noch einmal.", code: "rate_limited" },
+        {
+          error: inLang(
+            c,
+            "Zu viele Übertragungen. Bitte später noch einmal.",
+            "Too many transfers. Please try again later.",
+          ),
+          code: "rate_limited",
+        },
         429,
       );
 }
@@ -110,7 +119,11 @@ async function pluginCall(c: Context): Promise<Response> {
     return loadedPlugin(id) || PRO_PLUGINS.includes(id)
       ? c.json(
           {
-            error: "Dieses Plugin gehört nicht zu deinem Paket. Mit Pro ist es dabei.",
+            error: inLang(
+              c,
+              "Dieses Plugin gehört nicht zu deinem Paket. Mit Pro ist es dabei.",
+              "This plugin is not part of your plan. It comes with Pro.",
+            ),
             code: "plugin",
             plugin: id,
           },
@@ -208,7 +221,14 @@ export const apiRoutes = new Hono()
       });
       if (!found) {
         return c.json(
-          { error: "Der Wizard ist noch nicht veröffentlicht.", code: "not_found" },
+          {
+            error: inLang(
+              c,
+              "Der Wizard ist noch nicht veröffentlicht.",
+              "The wizard is not published yet.",
+            ),
+            code: "not_found",
+          },
           404,
         );
       }
@@ -331,7 +351,14 @@ export const apiRoutes = new Hono()
     }
     if (!allowed(`site:${who.tenantId}`, 20, HOUR)) {
       return c.json(
-        { error: "Zu oft hintereinander. Bitte später noch einmal.", code: "rate_limited" },
+        {
+          error: inLang(
+            c,
+            "Zu oft hintereinander. Bitte später noch einmal.",
+            "Too often in a row. Please try again later.",
+          ),
+          code: "rate_limited",
+        },
         429,
       );
     }
@@ -486,10 +513,14 @@ export const apiRoutes = new Hono()
         return c.json({ wizardId, revision: written.revision, issues: written.issues });
       }
       if (written.issues.length) {
-        throw new ServiceError("has_issues", "Der Wizard hat noch Fehler.", {
-          issues: written.issues,
-          wizardId,
-        });
+        throw new ServiceError(
+          "has_issues",
+          bilingual("Der Wizard hat noch Fehler.", "The wizard still has errors."),
+          {
+            issues: written.issues,
+            wizardId,
+          },
+        );
       }
       const published = await publishWizard(who.userId, wizardId);
       // The ID the mobile app takes.

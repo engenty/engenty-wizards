@@ -136,9 +136,49 @@ describe("an installed AI client as a model", () => {
     const { ModelUnavailableError } = await import("../src/model-errors");
     const h = { id: "codex" as const, name: "Codex", install: "npm i -g @openai/codex" };
     expect(failureOf(h, "Not logged in")).toBeInstanceOf(ModelUnavailableError);
-    expect(failureOf(h, "Not logged in").message).toContain("nicht angemeldet");
-    expect(failureOf(h, "usage limit reached").message).toContain("Kontingent");
+    expect(failureOf(h, "Not logged in").message).toContain("not signed in");
+    expect(failureOf(h, "usage limit reached").message).toContain("no credit or quota left");
+    const { errorText } = await import("../src/model-errors");
+    expect(errorText(failureOf(h, "Not logged in"), "de")).toContain("nicht angemeldet");
     expect(failureOf(h, "boom")).not.toBeInstanceOf(ModelUnavailableError);
+  });
+
+  it("opens the MCP bridge only for a call with tools the client runs", async () => {
+    const { HarnessModel } = await import("../src/harness/model");
+    const seen: (string | null)[] = [];
+    class Probe extends HarnessModel {
+      readonly provider = "probe";
+      protected async invoke(call: { bridgeUrl: string | null }) {
+        seen.push(call.bridgeUrl);
+        return { text: "ok" };
+      }
+    }
+    const model = new Probe({ id: "probe", name: "Probe" }, "default");
+    model.attach({ add: { id: "add", execute: async () => 3 } });
+    const prompt = [{ role: "user" as const, content: [{ type: "text" as const, text: "Hi" }] }];
+    const tool = (name: string) => ({
+      type: "function" as const,
+      name,
+      inputSchema: { type: "object" as const, properties: {} },
+    });
+    await model.doGenerate({ prompt });
+    await model.doGenerate({ prompt, tools: [] });
+    // The client searches with its own tool: naming it needs no bridge either.
+    await model.doGenerate({ prompt, tools: [tool("web_search")] });
+    await model.doGenerate({ prompt, tools: [tool("add")] });
+    expect(seen.slice(0, 3)).toEqual([null, null, null]);
+    expect(seen[3]).toMatch(/^http/);
+  });
+
+  it("leaves the store's tools out of a step that has no use for them", async () => {
+    const { storeIdle } = await import("../src/tools/index");
+    expect(storeIdle({ tools: [] }, 0, 0)).toBe(true);
+    expect(storeIdle({ tools: [], connections: [] }, 0, 0)).toBe(true);
+    // Tools of its own, the wizard's lists, uploads or a connection: the store's tools stay.
+    expect(storeIdle({ tools: ["web_search"] }, 0, 0)).toBe(false);
+    expect(storeIdle({ tools: [] }, 1, 0)).toBe(false);
+    expect(storeIdle({ tools: [] }, 0, 1)).toBe(false);
+    expect(storeIdle({ tools: [], connections: ["mail"] }, 0, 0)).toBe(false);
   });
 
   it("serves a call's tools to the client over MCP and closes them with the call", async () => {

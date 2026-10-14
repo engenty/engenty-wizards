@@ -12,7 +12,7 @@ import type { AssistantCardRecord } from "../db/schema.js";
 import { env } from "../env.js";
 import { detectHarnesses } from "../harness/index.js";
 import { type MonthlyUsage, managed, publicPlans, tenantInfo, tenantUsage } from "../manage.js";
-import { classWays } from "../models.js";
+import { classWays, waysIn } from "../models.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { earlierChats, readChat, searchChats } from "../services/assistant-chats.js";
 import { asLang, marketplaceDetail, searchMarketplace } from "../services/marketplace.js";
@@ -364,7 +364,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
         attempt(async () => {
           ctx.doing(ctx.lang === "de" ? "Sieht die Modelle nach …" : "Looking up the models …");
           return {
-            classes: await classWays(),
+            classes: waysIn(await classWays(), "en"),
             clients: managed
               ? []
               : (await detectHarnesses()).map((h) => ({

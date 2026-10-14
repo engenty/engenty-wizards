@@ -613,9 +613,15 @@ export interface PluginConnections {
    * The provider's sign-in page of an `oauth2` connector. Open it in a window: when the person
    * is done, the window posts `{ type: "wizards:connected", ok }` to the studio and closes.
    * `actions` are the connector's actions the plugin will call; only the rights they need are
-   * asked for.
+   * asked for. `lang` is the language the person reads; the page they come back to speaks it,
+   * else their browser's.
    */
-  start(input: { space: string; connector: string; actions: string[] }): Promise<{ url: string }>;
+  start(input: {
+    space: string;
+    connector: string;
+    actions: string[];
+    lang?: "de" | "en";
+  }): Promise<{ url: string }>;
   /**
    * Connects an `api_key` connector with the keys the person typed (`fields` of the offer, by
    * key). The connector tries them once first; keys it refuses throw an error with the status
@@ -656,7 +662,7 @@ export interface PluginStarter {
   title: string;
   /** What it makes, in one or two sentences. */
   description: string;
-  /** The language its texts are in. Default: German. */
+  /** The language its texts are in. Default: English. */
   language?: "de" | "en";
   /** A complete wizard definition. Checked when it is registered. */
   definition: unknown;
@@ -857,7 +863,7 @@ export interface PluginRuns {
     runId: string;
     /** Opens the run's own routes (`/api/runs/<id>?rt=…`); `handoffUrl` carries it. */
     ticket: string;
-    /** `code` names the problem (`required`, `number`, `url` …); `message` is a German text. */
+    /** `code` names the problem (`required`, `number`, `url` …); `message` is its English text. */
     refused: { field: string; code?: string; message: string }[] | null;
   }>;
   /**

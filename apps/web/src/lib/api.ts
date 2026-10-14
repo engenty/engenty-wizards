@@ -1,5 +1,6 @@
 import { ApiError, createApi, isOffline } from "@engenty-wizards/runner";
 import { withBase } from "./base";
+import { lang } from "./i18n";
 import { report } from "./report";
 
 export { ApiError, isOffline };
@@ -25,7 +26,7 @@ export async function postStream(
   const res = await fetch(withBase(path), {
     method: "POST",
     credentials: "include",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "accept-language": lang },
     body: JSON.stringify(body),
     signal,
   });

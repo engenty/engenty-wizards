@@ -21,7 +21,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api } from "../lib/api";
-import { type Key, t } from "../lib/i18n";
+import { type Key, lang, t } from "../lib/i18n";
 import { type Me, useCurrentProject, useMe, type WizardSummary } from "../lib/session";
 import { Button, Card, Chip, cn, IconButton } from "../ui";
 import { LinkStatus, useAccountLink } from "./Account";
@@ -342,7 +342,7 @@ function KeyList() {
               <div className="font-mono text-[0.6875rem] text-ink-4">
                 {k.start}… ·{" "}
                 {k.lastRequest
-                  ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString() })
+                  ? t("settings.lastUsed", { when: new Date(k.lastRequest).toLocaleString(lang) })
                   : t("settings.neverUsed")}
               </div>
             </div>

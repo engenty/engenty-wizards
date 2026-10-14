@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { type Lang, setLang, t, useLang } from "../lib/i18n";
+import { type Lang, t, useLang } from "../lib/i18n";
+import { usePickLang } from "../lib/session";
 import { cn } from "../ui";
 
 const NAMES: Record<Lang, string> = { en: "English", de: "Deutsch" };
@@ -36,6 +37,7 @@ export function LangSwitch({
   ink?: string;
 }) {
   const lang = useLang();
+  const pickLang = usePickLang();
   const narrow = useNarrow();
   const probes = useRef<Record<string, HTMLSpanElement | null>>({});
   const [sizes, setSizes] = useState<Record<string, number> | null>(null);
@@ -103,7 +105,7 @@ export function LangSwitch({
             key={code}
             lang={code}
             onClick={() => {
-              setLang(code);
+              pickLang(code);
             }}
             style={{
               width: width(code),

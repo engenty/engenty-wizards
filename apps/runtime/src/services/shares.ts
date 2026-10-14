@@ -1,4 +1,5 @@
 import type { ShareView } from "@engenty-wizards/shared/run";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, eq, isNotNull, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
@@ -23,7 +24,13 @@ export const shareUrlFor = (token: string) => `${env.publicUrl}/s/${token}`;
 /** Shares a finished run. Idempotent: the same run keeps the same link. */
 export async function shareRun(run: RunRow) {
   if (run.status !== "done") {
-    throw new ServiceError("refused", "Nur fertige Ergebnisse lassen sich teilen.");
+    throw new ServiceError(
+      "refused",
+      bilingual(
+        "Nur fertige Ergebnisse lassen sich teilen.",
+        "Only finished results can be shared.",
+      ),
+    );
   }
   let token = run.shareToken;
   if (!token) {

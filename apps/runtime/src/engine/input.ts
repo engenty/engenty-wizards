@@ -13,7 +13,7 @@ import {
 import {
   checkAnswer,
   dateBounds,
-  type FieldError,
+  type FieldRefusal,
   fieldError,
   isBlank,
   normalizeDate,
@@ -22,8 +22,10 @@ import {
   todayAnywhere,
 } from "@engenty-wizards/shared/field-checks";
 
-/** A refused answer: the field, a code the client words, and a German text for older clients. */
-export type InputError = FieldError;
+/** A refused answer: the field, a code the client words, and the text in both languages. */
+export type InputError = FieldRefusal;
+
+export { fieldErrorsIn } from "@engenty-wizards/shared/field-checks";
 
 function coerce(field: Field, raw: unknown): unknown {
   if (raw === undefined || raw === null) {

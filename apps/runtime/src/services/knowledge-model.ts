@@ -1,5 +1,6 @@
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import { type CategoryInput, dayOf, slugOf } from "@engenty-wizards/shared/knowledge";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { columnIdOf } from "@engenty-wizards/shared/space-data";
 import { generateText, Output } from "ai";
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -269,7 +270,7 @@ function titleOf(markdown: string, name: string): string {
 function reviewOf(parsed: ParsedDocument, markdown: string): string | null {
   const illegible = (markdown.match(/\[unleserlich\]/gi) ?? []).length;
   if (parsed.via === "vision" && (illegible >= 3 || markdown.replace(/\s/g, "").length < 200)) {
-    return "Schwer lesbar: bitte mit dem Original vergleichen.";
+    return "Hard to read: please compare with the original.";
   }
   return null;
 }
@@ -605,7 +606,10 @@ export async function writeSummary(valueId: string): Promise<string> {
     where: eq(schema.spaceCategoryValue.id, valueId),
   });
   if (!value) {
-    throw new ServiceError("not_found", "Diesen Wert gibt es nicht.");
+    throw new ServiceError(
+      "not_found",
+      bilingual("Diesen Wert gibt es nicht.", "There is no such value."),
+    );
   }
   const category = await categoryRow(value.categoryId);
   const { items, total } = await itemsOfValue(value.id);

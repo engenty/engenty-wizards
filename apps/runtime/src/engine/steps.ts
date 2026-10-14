@@ -12,6 +12,7 @@ import {
 } from "@engenty-wizards/shared/definition";
 import { mainLogo, ruleLines } from "@engenty-wizards/shared/projects";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
+import { bilingual } from "@engenty-wizards/shared/run";
 import {
   SURFACE_GUIDE,
   type Surface,
@@ -466,7 +467,12 @@ function agentEntries(step: AgentStep, ctx: StepContext): unknown[] {
 async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutput> {
   const entries = agentEntries(step, ctx);
   if (!entries.length) {
-    throw new StepError("Es gibt keine Einträge, für die dieser Schritt arbeiten könnte.");
+    throw new StepError(
+      bilingual(
+        "Es gibt keine Einträge, für die dieser Schritt arbeiten könnte.",
+        "There are no entries for this step to work on.",
+      ),
+    );
   }
   // The view, if any, is composed once over the table of all entries.
   const single: AgentStep = {
@@ -665,7 +671,12 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
 
     if (step.output.format !== "json") {
       if (!text && !assets.length) {
-        throw new StepError("Der Schritt hat kein Ergebnis geliefert.");
+        throw new StepError(
+          bilingual(
+            "Der Schritt hat kein Ergebnis geliefert.",
+            "The step did not deliver a result.",
+          ),
+        );
       }
       return { text, assets: assets.length ? assets : undefined, at: new Date().toISOString() };
     }
@@ -894,7 +905,9 @@ async function writeHtml(
     .replace(/```\s*$/, "")
     .trim();
   if (!/<html|<!doctype/i.test(html)) {
-    throw new StepError("Das Dokument konnte nicht erstellt werden.");
+    throw new StepError(
+      bilingual("Das Dokument konnte nicht erstellt werden.", "The document could not be made."),
+    );
   }
   // On screen (preview, PNG) a print document needs the margin its @page rule gives it on paper.
   return kind === "document"
@@ -958,7 +971,12 @@ async function runMediaStep(
 ): Promise<StepOutput> {
   const entries = entriesOf(step, ctx);
   if (!entries.length) {
-    throw new StepError("Für diesen Schritt fehlen die Vorlagen (Bilder oder Szenen).");
+    throw new StepError(
+      bilingual(
+        "Für diesen Schritt fehlen die Vorlagen (Bilder oder Szenen).",
+        "This step is missing its sources (images or scenes).",
+      ),
+    );
   }
   const previous = ctx.state.outputs[step.id];
   const before = previous?.assets?.filter((a) => a.kind === asset) ?? [];
@@ -1068,7 +1086,9 @@ export async function runGenerateStep(step: GenerateStep, ctx: StepContext): Pro
     case "voice": {
       const text = renderTemplate(step.prompt, ctx.scope).trim().slice(0, 4000);
       if (!text) {
-        throw new StepError("Es gibt keinen Text zum Vorlesen.");
+        throw new StepError(
+          bilingual("Es gibt keinen Text zum Vorlesen.", "There is no text to read aloud."),
+        );
       }
       const note = ctx.state.notes[step.id];
       const media = await generateSpeechMedia({

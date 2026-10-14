@@ -51,7 +51,7 @@ async function putFile(wizardId: string, file: File) {
     {
       method: "PUT",
       credentials: "include",
-      headers: { "content-type": file.type || "application/octet-stream" },
+      headers: { "content-type": file.type || "application/octet-stream", "accept-language": lang },
       body: file,
     },
   );

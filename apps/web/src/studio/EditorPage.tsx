@@ -335,7 +335,7 @@ export function EditorPage() {
     setLiveOpen(false);
     setTab("chat");
     void chat.send(
-      `Bitte behebe diese Probleme im Wizard:\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
+      `${t("editor.fixIssuesAsk")}\n${w.issues.map((i) => `- ${i.message}`).join("\n")}`,
     );
   };
   // Read-only for one of two reasons: the wizard is a local install's, or nothing is built here.
@@ -424,7 +424,7 @@ export function EditorPage() {
         </div>
       ) : null}
       <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:px-4">
-        <IconButton label="Zurück" onClick={() => navigate("/")}>
+        <IconButton label={t("common.back")} onClick={() => navigate("/")}>
           <ArrowLeft className="size-5" />
         </IconButton>
         <button
