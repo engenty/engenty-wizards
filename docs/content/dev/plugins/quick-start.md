@@ -11,7 +11,7 @@ You write one file. The running app finds it, and every AI step can use the tool
 | You run | The folder |
 |---|---|
 | engenty wizards on your computer (`wizards`) | `~/.engenty/wizards/plugins` |
-| A checkout (`pnpm dev`) | The folders that `PLUGINS_DIR` names in `.env.local`, for example `PLUGINS_DIR=../my-plugins`. A relative path starts at the checkout's root |
+| A checkout (`pnpm dev`) | The folders that `PLUGINS_DIR` names in `.env.local`, for example `PLUGINS_DIR=../my-plugins`. A relative path starts at the checkout’s root |
 
 Start the app. It creates the folder if it is missing and watches it while it runs.
 
@@ -48,9 +48,9 @@ export default definePlugin((wizards) => {
 });
 ```
 
-- The file's name is the plugin's id: `workdays`.
-- The tool's full id is `workdays.count`.
-- `@engenty-wizards/plugin-sdk` and `zod` come from the app, so you don't install anything.
+- The file’s name is the plugin’s id: `workdays`.
+- The tool’s full id is `workdays.count`.
+- `@engenty-wizards/plugin-sdk` and `zod` come from the app, so you don’t install anything.
 
 ## 3. See it
 
@@ -60,10 +60,10 @@ The app loaded the file the moment you saved it.
 - **In the editor**, open an AI step: `workdays.count` is in its list of tools, beside
   `web_search` and the other built-in ones. The line below the list says “workdays.count =
   Working days”.
-- **In the editor's chat**, ask for it: “Add a step that counts the working days between the
+- **In the editor’s chat**, ask for it: “Add a step that counts the working days between the
   two dates.” The assistant knows the tool from its description.
 
-In a wizard's definition the step lists the tool by its full id:
+In a wizard’s definition the step lists the tool by its full id:
 
 ```json
 {

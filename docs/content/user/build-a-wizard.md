@@ -29,21 +29,21 @@ You can change everything afterwards in the chat.
   and lists the other channels this studio offers, for example “Chat”, “Live voice” or “Video
   call”. One channel always stays on. The assistant builds the wizard for what you chose.
 - **Files.** Attach examples, price lists or screenshots with the + in the text field, or paste
-  or drop them there. They go into the wizard's files, and the assistant looks at them.
+  or drop them there. They go into the wizard’s files, and the assistant looks at them.
 - **Dictation.** The microphone button lets you speak instead of type.
 - **Similar wizards.** While you type, the page lists up to ten of your own wizards and templates
   that come close. “Open” opens one of yours, and “Use” starts from a template. This way you
-  don't build again what is already there.
+  don’t build again what is already there.
 
 ### Templates
 
 - A template shows how the wizard runs, how long a run takes, what it costs and what it needs
   before you start from it with “Start with this template”.
-- “Not set up here” names a model that isn't set up on this computer yet, for example for video.
+- “Not set up here” names a model that isn’t set up on this computer yet, for example for video.
   Set it up under [Models and account](./models.md), or choose another template.
 - A template marked “Pro” needs plugins that come with Pro on engenty.ai.
 - A star keeps a template on this computer, so you can use it without a connection.
-- A wizard started from a template is your copy. Later changes to the template don't touch it.
+- A wizard started from a template is your copy. Later changes to the template don’t touch it.
 
 ## The editor
 
@@ -59,12 +59,12 @@ You can change everything afterwards in the chat.
 On a phone or a narrow window the panels sit in a sheet over the bottom of the diagram. Drag its handle to make it taller, or tap
 it to fold it away.
 
-A click on the wizard's name in the top bar opens its own settings: its title, description and
+A click on the wizard’s name in the top bar opens its own settings: its title, description and
 greeting, its avatar, and the language it speaks to people in. With “Automatic, from its texts”
 the wizard speaks the language its texts are written in.
 
 The ⋯ button in the top bar (“More”) duplicates the wizard, exports it, or deletes it. Only
-whoever manages the team can delete a wizard. The same menu is on the wizard's card in the list.
+whoever manages the team can delete a wizard. The same menu is on the wizard’s card in the list.
 
 ### In the chat
 
@@ -87,11 +87,11 @@ in the chat. “Insert empty” adds a blank step of the kind you choose, for yo
 ## When the wizard needs fixes
 
 A draft may be incomplete while you work on it. Before you test or share, the editor lists what
-is missing, for example a step that uses an answer that is only asked later, or a tool that isn't
+is missing, for example a step that uses an answer that is only asked later, or a tool that isn’t
 installed here. “Let the assistant fix it” hands that list to the chat.
 
-If a step needs a model that isn't set up here, the editor names the step and the model, and
-“Set up models” takes you there. If every path of the wizard needs that model, the wizard can't
+If a step needs a model that isn’t set up here, the editor names the step and the model, and
+“Set up models” takes you there. If every path of the wizard needs that model, the wizard can’t
 start. If only one branch needs it, choose another path when you test.
 
 ## What makes a good wizard
@@ -107,10 +107,10 @@ start. If only one branch needs it, choose another path when you test.
 
 ## Take it with you
 
-“Export as a wizard file (.wizard)” in the wizard's ⋯ menu downloads its steps and its files as
+“Export as a wizard file (.wizard)” in the wizard’s ⋯ menu downloads its steps and its files as
 one file. “Import a wizard file” on the “New wizard” page of any studio takes it in.
 
 The share dialog downloads a wizard file too, under “Website” → “Without an account: as a
 package”. It holds the published version, or the draft while there is none, for a WordPress site
-that runs it without an account. With “Take the knowledge along”, the space's pages go with it
+that runs it without an account. With “Take the knowledge along”, the space’s pages go with it
 as files. See [WordPress](./wordpress.md#without-an-account).

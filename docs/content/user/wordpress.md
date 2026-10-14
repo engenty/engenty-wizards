@@ -1,6 +1,6 @@
 ---
 title: WordPress
-description: Put wizards on a WordPress site with the plugin "engenty wizards" – connect, read the site in, place a wizard, read results in the admin.
+description: Put wizards on a WordPress site with the plugin “engenty wizards” – connect, read the site in, place a wizard, read results in the admin.
 version: 0.5.0
 ---
 
@@ -19,7 +19,7 @@ on the site itself, with the site’s own AI provider and no account ([below](#w
 ## Install
 
 Download `engenty-wizards.zip`, either in the studio under Settings → Integrate → WordPress
-("Download engenty-wizards.zip") or from the
+(“Download engenty-wizards.zip”) or from the
 [releases](https://github.com/engenty/engenty-wizards-wp-plugin/releases/latest). Upload it in
 WordPress under **Plugins → Add New → Upload Plugin** and activate it. The menu **engenty** then
 opens.
@@ -29,7 +29,7 @@ opens.
 On **engenty → Overview** you have two ways in:
 
 - **Create your own AI** offers a free account on engenty.ai: **Create a free account**.
-- **Sign in**, under "Already have an engenty account?", uses an account you already have.
+- **Sign in**, under “Already have an engenty account?”, uses an account you already have.
 
 engenty.ai asks you to allow the site access and sends you back. Your WordPress email address
 goes along as a suggestion. The site is then connected as you: **Settings → Connection** shows
@@ -38,7 +38,7 @@ the account, team and plan, and **Disconnect** ends the connection and revokes t
 **By hand:** for your own engenty server, or where signing in through the browser doesn’t work,
 enter an **Address** and an **API key** under **Settings → Connect by hand**. On engenty.ai you
 create the key under Account. On your own server you create it under Settings → Integrate, with
-an app’s "Connect with the address and an API key" (see
+an app’s “Connect with the address and an API key” (see
 [AI apps](./ai-apps.md#an-app-on-another-computer)).
 
 The plugin connects to an account on engenty.ai, not to engenty wizards on your computer. If you
@@ -63,7 +63,7 @@ show up in WordPress.
 
 | Way | |
 |---|---|
-| Block **engenty Wizard** | Choose the wizard and how it shows: **In the text**, **Button + window** or **Bubble bottom right**, with a label, a line beside the bubble and a colour. With "In the text", the editor shows a wizard from the account itself |
+| Block **engenty Wizard** | Choose the wizard and how it shows: **In the text**, **Button + window** or **Bubble bottom right**, with a label, a line beside the bubble and a colour. With “In the text”, the editor shows a wizard from the account itself |
 | Shortcode | `[engenty_wizard id="ID" mode="modal" label="Start a request"]`. `id` is the wizard’s ID or the token of its link; `mode` is `inline`, `modal` or `bubble`; `text` and `color` work as in the block |
 | Elementor | The widget **engenty Wizard**, with the block’s choices |
 | PHP | `<?php engenty_wizard( 'ID', [ 'mode' => 'inline' ] ); ?>` in a theme template |
@@ -97,10 +97,10 @@ and the website.
 
 | | |
 |---|---|
-| Wizards | The templates that come with the plugin, chosen from the gallery, or a wizard file (`.wizard`) from a wizard’s share dialog in the studio ("Website" → "Without an account: as a package"). You take it in with **Import** on the **Wizards** page |
+| Wizards | The templates that come with the plugin, chosen from the gallery, or a wizard file (`.wizard`) from a wizard’s share dialog in the studio (“Website” → “Without an account: as a package”). You take it in with **Import** on the **Wizards** page |
 | What runs | Pages and their fields; photos go to the provider where it takes images. AI steps, which can also read a web page or call a public API where the step names `web_fetch` or `http` (the site does that itself). Decisions, branches, reviews and views. Documents and dashboards as HTML. Results as Markdown, text, CSV or JSON, HTML as a page to print, and a PDF of a written text, made in the visitor’s browser. A document’s PDF comes from the browser’s print |
 | What doesn’t | Voice notes, sign-ins to connected accounts, choosing an appointment time, list fields, and a file a later step reads. Web search, the browser, code and image tools, connected systems (MCP servers) and plugin steps (Contacts, Appointments and the like). Widgets, films, and images, video and voice made by a model. Lists and the wizard’s memory. Word, Excel and other downloads |
-| The check | The share dialog’s package view and, in the plugin, the gallery, the **Wizards** page and the import say for each wizard whether it "Runs there as is", "Runs with less" or "Needs an account". They list what it lacks in the gallery’s words ("not set up", "works without"). With less, a choice on a page that leads to something the site lacks is closed there ("Not available here right now"), and a format falls away. The import refuses only a wizard that needs an account. A wizard that needs a plugin only behind a choice runs with less, with that choice closed |
+| The check | The share dialog’s package view and, in the plugin, the gallery, the **Wizards** page and the import say for each wizard whether it “Runs there as is”, “Runs with less” or “Needs an account”. They list what it lacks in the gallery’s words (“not set up”, “works without”). With less, a choice on a page that leads to something the site lacks is closed there (“Not available here right now”), and a format falls away. The import refuses only a wizard that needs an account. A wizard that needs a plugin only behind a choice runs with less, with that choice closed |
 | Knowledge | In the package view, **Take the knowledge along** puts the space’s pages into the package as files (up to 2 MB, each page up to 60,000 characters). It is a snapshot of the day it was packed. On the site, an AI step first gets the wizard’s own text files, then the pages that match the step best (its instructions and the answers so far), up to 60,000 characters in all |
 | From the account | On a connected site with a provider, a published wizard’s drawer offers **Run here**. Its published version comes over and runs on the site with the site’s provider, without credits, and its results stay in WordPress. **Run through engenty.ai** switches back, and **Reload** fetches the published version again |
 | Results | Kept in WordPress under **Results**, for 90 days unless **Keep results** says otherwise. Nothing goes to engenty.ai |

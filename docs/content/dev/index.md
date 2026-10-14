@@ -25,8 +25,8 @@ describes the format, the JSON Schema for your editor and `wizards validate`.
 
 - engenty wizards on your computer, or a checkout of
   [engenty/wizards](https://github.com/engenty/wizards).
-- TypeScript. The runtime reads a plugin's server half as TypeScript, without a build.
-- A checkout, if your plugin draws in the studio: you build its studio half with the studio's
+- TypeScript. The runtime reads a plugin’s server half as TypeScript, without a build.
+- A checkout, if your plugin draws in the studio: you build its studio half with the studio’s
   own tools.
 
 ## Working on engenty wizards itself

@@ -4,23 +4,21 @@ description: Choose how the AI runs on your computer. The studio opens once a te
 version: 0.5.0
 ---
 
-The first page of the studio on your computer is the setup, "Choose how the AI runs". It asks
+The first page of the studio on your computer is the setup, “Choose how the AI runs”. It asks
 one thing: what should engenty wizards run on?
-
-![The setup: choose how the AI runs – an installed AI client or your own keys](../../assets/setup.png)
 
 ## Your account
 
 Your account stands above the choices. If you signed in during the [install](./install.md), it
-shows your name, your team and your credits. If you aren't signed in yet, "Your engenty account"
-has a "Sign in" button that opens your browser for it. If you set engenty wizards up
+shows your name, your team and your credits. If you aren’t signed in yet, “Your engenty account”
+has a “Sign in” button that opens your browser for it. If you set engenty wizards up
 [only for this computer](./local-only.md), the page shows nothing here.
 
 ## Choose how the AI runs
 
 | Choice | Runs on | Needs |
 |---|---|---|
-| engenty credits | Your account's credits, as in the cloud | An account signed in. Shown only then |
+| engenty credits | Your account’s credits, as in the cloud | An account signed in. Shown only then |
 | Claude Code | Your Claude subscription | The client installed and signed in |
 | Codex | Your ChatGPT subscription | The client installed and signed in |
 | Gemini CLI | Your Google account | The client installed and signed in |
@@ -30,10 +28,10 @@ has a "Sign in" button that opens your browser for it. If you set engenty wizard
 
 - **An AI client that is not installed** installs right on the page, in a terminal shown there.
   It takes about a minute.
-- **Signing in** happens in the same terminal, with the client's own sign-in. Your browser opens
+- **Signing in** happens in the same terminal, with the client’s own sign-in. Your browser opens
   for it, and the terminal closes once you are signed in.
 - **A client signed in with an API key from your shell** does not run on your subscription.
-  Click "Sign in here" on the page to change that.
+  Click “Sign in here” on the page to change that.
 - **Apple Intelligence** has nothing to connect: the test runs once it is switched on (System
   Settings → Apple Intelligence & Siri). It handles short texts and decisions on this Mac.
   Research, long documents and code stay with a client you chose before it, or you add another
@@ -42,7 +40,7 @@ has a "Sign in" button that opens your browser for it. If you set engenty wizard
 ## The test
 
 After you connect, one short call checks that the model can be reached. The setup stays until
-that call works. Then "Open the studio" takes you in.
+that call works. Then “Open the studio” takes you in.
 
 ## What an AI client does not cover
 

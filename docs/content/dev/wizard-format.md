@@ -27,14 +27,14 @@ tool may read and write wizards.
 ```
 
 `steps` run from top to bottom, and the last one is always a `result` step. The schema below
-lists the step types and their fields. The studio's MCP tool `get_authoring_guide` explains them
+lists the step types and their fields. The studio’s MCP tool `get_authoring_guide` explains them
 with a complete example.
 
-`lang` is the language the wizard speaks to people: `de` or `en`. It sets the runner's own words
-and how numbers and dates are written. Without it, the language is read from the wizard's own
+`lang` is the language the wizard speaks to people: `de` or `en`. It sets the runner’s own words
+and how numbers and dates are written. Without it, the language is read from the wizard’s own
 words, and English is the default where they are not clearly German.
 
-`version` is the definition's version. It changes only with a breaking change; the schemas of
+`version` is the definition’s version. It changes only with a breaking change; the schemas of
 each version stay online in their own folder (`/schema/v1/`, `/schema/v2/`, …).
 
 ## The `.wizard` file
@@ -44,8 +44,8 @@ The file is a zip with two things in it:
 | Path | What it holds |
 |---|---|
 | `wizard.json` | The manifest: the definition, plus what the wizard needs from its space |
-| `files/…` | The wizard's workspace: widget pages, templates, images. At most 200 files and 25 MB |
-| `files/knowledge/…` | Only when the export was asked for it: the space's Knowledge pages as Markdown files, one per page, with its title in front. A website runs the wizard with them, without the space |
+| `files/…` | The wizard’s workspace: widget pages, templates, images. At most 200 files and 25 MB |
+| `files/knowledge/…` | Only when the export was asked for it: the space’s Knowledge pages as Markdown files, one per page, with its title in front. A website runs the wizard with them, without the space |
 
 ```json
 {
@@ -58,16 +58,16 @@ The file is a zip with two things in it:
 }
 ```
 
-`connectors` and `mcpServers` (the space's connected systems) name what the wizard's steps use
+`connectors` and `mcpServers` (the space’s connected systems) name what the wizard’s steps use
 from its space, without addresses or credentials. When the space you import into lacks one, the
 import says so.
 
-`knowledge` (`{ "pages": 12, "truncated": false }`) is there when the export took the space's
+`knowledge` (`{ "pages": 12, "truncated": false }`) is there when the export took the space’s
 pages along. It says how many there are and whether the cap of about 2 MB left some out. The
-share dialog's website package does this with “Take the knowledge along”.
+share dialog’s website package does this with “Take the knowledge along”.
 
 The import also takes a `wizard.json` on its own, or a definition on its own.
-The file's media type is `application/vnd.engenty.wizard+zip`.
+The file’s media type is `application/vnd.engenty.wizard+zip`.
 
 ## JSON Schema
 
@@ -77,7 +77,7 @@ The file's media type is `application/vnd.engenty.wizard+zip`.
 | `wizard.json` in a package | [`https://engenty.ai/schema/v1/wizard-package.json`](https://engenty.ai/schema/v1/wizard-package.json) |
 
 Put the address under `"$schema"`, and editors such as VS Code complete keys and mark mistakes
-as you type. The studio's export writes it into every `wizard.json`.
+as you type. The studio’s export writes it into every `wizard.json`.
 
 The schemas are written from the code that reads wizards, so they match it. They are stricter
 in one way: a key the app does not know is an error. The app would drop such a key without a
@@ -92,7 +92,7 @@ to each other, templates that name answers that exist by then, and files in the 
 wizards validate invoice.wizard
 ```
 
-It checks a wizard the way the studio's import does, without a running studio and without an
+It checks a wizard the way the studio’s import does, without a running studio and without an
 account. It takes any number of paths:
 
 | Path | Read as |
@@ -116,4 +116,4 @@ npx wizards validate wizards/*.wizard
 ```
 
 The import checks what belongs to the space, because only the space has it: its connectors and
-their actions, its connected systems (MCP servers) and its plugins' tools.
+their actions, its connected systems (MCP servers) and its plugins’ tools.

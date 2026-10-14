@@ -42,8 +42,8 @@ export default plugin;
 
 | It shows | |
 |---|---|
-| A plugin of one file | Its id is the file's name |
-| A setting | `NOTIFY_URL` in the install's `.env`, read at load time |
+| A plugin of one file | Its id is the file’s name |
+| A setting | `NOTIFY_URL` in the install’s `.env`, read at load time |
 | A listener | Test runs left out, a time limit on the call |
 
 ## run-log: both halves
@@ -59,7 +59,7 @@ keeps a line for every run that ended and shows them in the studio.
 | `src/schema.ts` | The same table for Drizzle |
 | `src/plugin.ts` | A listener on the three run events (`run.done`, `run.failed`, `run.cancelled`), two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
 | `ui/messages.ts` | Its texts in English and German |
-| `ui/plugin.tsx` | A section of the space page under Results with the space's last runs, a page with the whole log, and a settings section that empties the log |
+| `ui/plugin.tsx` | A section of the space page under Results with the space’s last runs, a page with the whole log, and a settings section that empties the log |
 | `package.json` | A workspace package whose `build` script builds the studio half |
 
 Build its studio half once, or on every save:
@@ -75,9 +75,9 @@ node scripts/build-plugin.mjs examples/plugins/run-log --watch
 Then, in the studio:
 
 1. Test a wizard to its end.
-2. Open the space's Results: choose “Results” under Space in the sidebar, or open the space's
+2. Open the space’s Results: choose “Results” under Space in the sidebar, or open the space’s
    page with the house icon in the app bar and go to Results. “Runs” stands below the results
-   and shows the last five runs of the space's wizards. Its last line, “All … runs”, opens the
+   and shows the last five runs of the space’s wizards. Its last line, “All … runs”, opens the
    page with the whole log.
 3. Settings → Runs shows how many lines are kept, and “Delete all” deletes them.
 4. An AI step can list the tool “Run log” and tell how the last runs ended.

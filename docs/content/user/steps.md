@@ -12,7 +12,7 @@ A wizard runs its steps from top to bottom. The last step is always the result.
 | AI step | Does a task with tools: research, read documents, call an API, work in a connected service |
 | Generate | Makes one thing: an image, a video, a voice-over, a document or a dashboard |
 | Widget | Shows an interactive view built once for this wizard: a map, a timeline, a calculator, a film |
-| View | Shows the results in the wizard's own look: key figures, facts, a list, a chart |
+| View | Shows the results in the wizard’s own look: key figures, facts, a list, a chart |
 | Film | Has the AI client on your computer make a film as code, rendered to an MP4 |
 | Review | Shows what earlier steps made. The person accepts it, edits it or asks for a new version |
 | Result | The last page: what the person can download or share |
@@ -51,7 +51,7 @@ of a list the wizard keeps. The fixed choices stand in while that data is empty.
 can show as a card with a picture, a line or two of text and “Details” to open its page.
 
 An appointment field takes its times the same way, usually from an AI step that looked up the
-free times in a calendar. The times show in the calendar's own time zone, grouped by day.
+free times in a calendar. The times show in the calendar’s own time zone, grouped by day.
 
 A field can also be left to the AI. The AI reads what was answered and found so far, and shows
 the field when it finds a statement true (“The complaint is about a damaged article”). Fields
@@ -71,18 +71,18 @@ An AI step has instructions and the tools you allow it:
 | Code & shell | run code in a sandbox, where engenty wizards has one |
 | Images | make images while it works |
 | API | call an HTTP API |
-| Pages | write pages of the wizard in Markdown, kept for every later run, and read them and the pages of the space's Knowledge |
+| Pages | write pages of the wizard in Markdown, kept for every later run, and read them and the pages of the space’s Knowledge |
 
-Every AI step can also read and write the wizard's lists, list its files and read documents:
+Every AI step can also read and write the wizard’s lists, list its files and read documents:
 PDFs, scans and photos, Word, Excel, CSV and saved mails. Where the space has Knowledge, the step
-searches it too. Every AI step also knows the space's Info & brand: its title, what it says
+searches it too. Every AI step also knows the space’s Info & brand: its title, what it says
 about itself, its facts and colours.
 
 Further tools come from three places:
 
-- **The person's accounts**: connectors the wizard uses, where the person connects their own
-  account during the run. The step gets the service's actions as tools. Reading is free; before
-  anything changes in the person's account, they are asked. See [Connectors](./connectors.md).
+- **The person’s accounts**: connectors the wizard uses, where the person connects their own
+  account during the run. The step gets the service’s actions as tools. Reading is free; before
+  anything changes in the person’s account, they are asked. See [Connectors](./connectors.md).
 - **Connected systems** (MCP servers) of the space, where you allow them on the step.
 - **Plugins** installed in engenty wizards. See [Plugins](./plugins.md).
 
@@ -107,7 +107,7 @@ the model puts in. Leave it on “Automatic” unless a step is clearly trivial 
 
 ### What a step hands on
 
-A step's output is text, Markdown or structured data with named fields: a text, a number, a
+A step’s output is text, Markdown or structured data with named fields: a text, a number, a
 list, a table, a yes/no answer, a choice or a score on a scale (“low, medium, high”). Later
 steps use these, and branches decide on them.
 
@@ -127,7 +127,7 @@ made again.
 
 ## Views
 
-A view shows what the run found in the wizard's own look, on any screen: key figures, a list of
+A view shows what the run found in the wizard’s own look, on any screen: key figures, a list of
 facts, a list of results with pictures, a table or a simple chart (bars, a line, a ring). It is
 built from a fixed set of parts that the assistant writes once, and every run brings new data.
 It costs nothing to show.
@@ -140,14 +140,14 @@ For anything the parts cannot show, such as a map or an animation, use a widget.
 
 ## Widgets
 
-A widget is an interactive HTML view written once into the wizard's files. Every run only brings
+A widget is an interactive HTML view written once into the wizard’s files. Every run only brings
 new data, so it costs nothing to show and looks the same every time. A widget can also be a
 film: its timeline is then rendered to an MP4 with sound. Ask the assistant for one in the chat.
 
 ## Films
 
-A film step hands a brief, the run's material (voice-overs, pictures, uploads, texts) and the
-space's brand to the AI client installed on your computer (Claude Code). The client writes the
+A film step hands a brief, the run’s material (voice-overs, pictures, uploads, texts) and the
+space’s brand to the AI client installed on your computer (Claude Code). The client writes the
 film as code, looks at its frames and fixes them. engenty wizards then renders the MP4: 16:9,
 9:16 or square. A film step runs only where Claude Code is set up with your subscription, never
 on credits or in the cloud, and it takes 10 to 40 minutes. The voice comes from a generate step
@@ -185,7 +185,7 @@ A step can send the run somewhere else when a condition holds: a field is or is 
 one of several, is filled in or empty, is greater or less than a number, or contains a value. A
 condition can also read what an AI step found, how sure the AI was of a decision, or how many
 rows a list the wizard keeps has. Several conditions on one branch must all hold. The first
-branch that matches wins; otherwise the step's “otherwise” branch, or else the next step,
+branch that matches wins; otherwise the step’s “otherwise” branch, or else the next step,
 follows. The diagram shows the branches with their conditions.
 
 A branch can also be decided by the AI: instead of a condition it has a statement (“The person
@@ -207,7 +207,7 @@ row of a list the wizard keeps, at most 20 rows. Its results come together in on
 - **Shared lists** hold one set of rows for every run: requests, sign-ups, a log. The person
   running the wizard never sees them; you find them under Space → Data, below the wizard, and
   in the editor under “Memory”.
-- **Connected accounts and sign-ins** are kept for the person's next run.
+- **Connected accounts and sign-ins** are kept for the person’s next run.
 
 The person sees and deletes all of it under “What this wizard remembers”. See
 [Run a wizard](./run.md).

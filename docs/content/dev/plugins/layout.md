@@ -22,18 +22,18 @@ In such a folder:
 
 | Entry | Is |
 |---|---|
-| `notify.ts`, `notify.js` | A plugin of one file. Its id is the file's name |
+| `notify.ts`, `notify.js` | A plugin of one file. Its id is the file’s name |
 | `contacts/engenty.plugin.json` | A plugin with a manifest |
-| `hello/index.ts`, `hello/index.js` | A plugin without a manifest. Its id is the folder's name |
+| `hello/index.ts`, `hello/index.js` | A plugin without a manifest. Its id is the folder’s name |
 | `node_modules/<package>`, `node_modules/@scope/<package>` | Installed packages that carry a manifest |
 
 - The runtime skips names that begin with `.` or `_`.
-- It doesn't read `.mjs` files: Node keeps such a file once it is imported, so it could not load
+- It doesn’t read `.mjs` files: Node keeps such a file once it is imported, so it could not load
   again.
 - Of two plugins with the same id, the first one found stays. The other shows under “Not a
   plugin” in Settings → Plugins, as does a manifest that cannot be read.
 
-## A plugin's folder
+## A plugin’s folder
 
 ```
 contacts/
@@ -56,7 +56,7 @@ Only the manifest is required. A plugin with a studio half must be a folder with
 ## The manifest
 
 `engenty.plugin.json` is the same file an engenty module has. The runtime keeps fields it
-doesn't know as they are.
+doesn’t know as they are.
 
 ```json
 {
@@ -69,21 +69,21 @@ doesn't know as they are.
 
 | Field | | Default |
 |---|---|---|
-| `id` | Lower case, digits and `-`, starting with a letter, at most 40 characters. Part of the plugin's addresses and of its tools' ids | required |
+| `id` | Lower case, digits and `-`, starting with a letter, at most 40 characters. Part of the plugin’s addresses and of its tools’ ids | required |
 | `name` | Shown in the settings | required |
 | `version` | Shown in the settings | `0.0.0` |
 | `description` | Shown in the settings | |
-| `server` | The server half, from the plugin's folder | `src/plugin.ts`, then `src/plugin.js`, then `dist/plugin.js` |
+| `server` | The server half, from the plugin’s folder | `src/plugin.ts`, then `src/plugin.js`, then `dist/plugin.js` |
 | `studio` | The built studio half | `dist/client.js` |
-| `styles` | The built studio half's styles | `dist/client.css` |
+| `styles` | The built studio half’s styles | `dist/client.css` |
 
-A path in the manifest must stay inside the plugin's folder.
+A path in the manifest must stay inside the plugin’s folder.
 
 ## Dependencies
 
 | The plugin imports | It comes from |
 |---|---|
-| `@engenty-wizards/plugin-sdk`, `@engenty-wizards/plugin-sdk/thread`, `zod`, `drizzle-orm`, `drizzle-orm/sqlite-core` | The runtime's own copies, wherever the plugin's file is |
+| `@engenty-wizards/plugin-sdk`, `@engenty-wizards/plugin-sdk/thread`, `zod`, `drizzle-orm`, `drizzle-orm/sqlite-core` | The runtime’s own copies, wherever the plugin’s file is |
 | Its own files | Beside it, as TypeScript |
 | Anything else | A `node_modules` the plugin brings beside it |
 

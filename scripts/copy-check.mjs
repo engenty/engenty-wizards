@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Checks the UI's strings against the mechanical rules of docs/copy-style.md: dashes, quotes,
-// ellipses, spelling, the address and the glossary's "not" column. Lists what it finds;
+// Checks the UI's strings and the docs' prose against the mechanical rules of docs/copy-style.md:
+// dashes, quotes, ellipses, spelling, the address and the glossary's "not" column. Lists what it finds;
 // `--strict` also fails on it. The voice itself is for people to check.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -97,5 +97,70 @@ for (const lang of ["en", "de"]) {
     if (hits.length > 8) console.log(`  … ${hits.length - 8} more`);
   }
 }
-console.log(total ? `\n${total} strings break a rule of docs/copy-style.md.` : "Copy checks out.");
+// The docs: their prose, without frontmatter, code, HTML and link targets.
+const DOC_RULES = [
+  ["em dash: use a spaced en dash –", /—/],
+  ["straight quotes: use “ ”", /"/],
+  ["straight apostrophe: use ’", /\w'\w/],
+  ["American spelling", /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|canceled)\b/i],
+  ["please", /\bplease\b/i],
+];
+const USER_DOC_RULES = [
+  ["glossary: local install / this machine → your computer", /\blocal install\b|\bthis machine\b/i],
+  ["glossary: E-mail → email", /\be-mail\b/i],
+];
+
+/** A page's lines as a reader sees them, each with its line number; code and markup left out. */
+function prose(src) {
+  const lines = src.split("\n");
+  let start = 0;
+  if (lines[0] === "---") start = lines.indexOf("---", 1) + 1;
+  const out = [];
+  let fence = null;
+  for (let i = start; i < lines.length; i++) {
+    const trimmed = lines[i].trimStart();
+    const mark = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
+    if (fence) {
+      if (mark && trimmed.startsWith(fence)) fence = null;
+      continue;
+    }
+    if (mark) {
+      fence = mark;
+      continue;
+    }
+    const text = lines[i]
+      .replace(/(`+).*?\1/g, "")
+      .replace(/`[^`]*$/, "")
+      .replace(/^[^`]*`/, "")
+      .replace(/<[^>\n]+>/g, "")
+      .replace(/\]\([^)\n]*\)/g, "]");
+    out.push([i + 1, text]);
+  }
+  return out;
+}
+
+const pages = (dir) =>
+  readdirSync(root + dir, { recursive: true })
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => `${dir}/${f}`);
+const docs = [...pages("docs/content"), "README.md"];
+for (const [rule, pattern, userOnly] of [
+  ...DOC_RULES,
+  ...USER_DOC_RULES.map(([rule, pattern]) => [rule, pattern, true]),
+]) {
+  const hits = [];
+  for (const file of docs) {
+    if (userOnly && file.startsWith("docs/content/dev")) continue;
+    for (const [n, text] of prose(readFileSync(root + file, "utf8"))) {
+      if (pattern.test(text)) hits.push(`${file}:${n}: ${text.trim().slice(0, 100)}`);
+    }
+  }
+  if (!hits.length) continue;
+  total += hits.length;
+  console.log(`\nDocs · ${rule} (${hits.length})`);
+  for (const hit of hits.slice(0, 8)) console.log(`  ${hit}`);
+  if (hits.length > 8) console.log(`  … ${hits.length - 8} more`);
+}
+
+console.log(total ? `\n${total} places break a rule of docs/copy-style.md.` : "Copy checks out.");
 process.exitCode = strict && total ? 1 : 0;

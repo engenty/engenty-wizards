@@ -27,7 +27,7 @@ If engenty wizards is already installed, run `wizards setup --local`.
 - The studio shows nothing about an account: no sign-in, no credits, no copy in the cloud. The
   feature switch `account` is off in the `.features` file in `~/.engenty/wizards`, and
   `wizards features` lists it.
-- `wizards status` and the `wizards` menu say "only on this computer, no account".
+- `wizards status` and the `wizards` menu say “only on this computer, no account”.
 
 ## Connect an account later
 

@@ -6,16 +6,16 @@ version: 0.5.0
 
 A space holds what all its wizards share: a name, its brand (logos, colours, fonts), facts, and
 Knowledge – pages, tables and files with their categories. A plugin can write Knowledge and add to
-what the space's AI steps know, to what its search finds and to what its assistant can do. The
-runtime's own tables call a space a project: `wizard.projectId` in a [run event](./events.md) is
-a space's id.
+what the space’s AI steps know, to what its search finds and to what its assistant can do. The
+runtime’s own tables call a space a project: `wizard.projectId` in a [run event](./events.md) is
+a space’s id.
 
 ## Knowledge a plugin writes
 
-`server.spaceData` writes pages, tables and files into a space's Knowledge under keys of the
-plugin's own, with their categories. Every write is indexed: `project_search` finds it a moment
+`server.spaceData` writes pages, tables and files into a space’s Knowledge under keys of the
+plugin’s own, with their categories. Every write is indexed: `project_search` finds it a moment
 later, filtered by its categories and checked like everything else in Knowledge. `space` is the
-space's id.
+space’s id.
 
 ```ts
 // The source's categories, once. `proposed: true` shows them to the person to confirm first.
@@ -45,19 +45,19 @@ const doc = await server.spaceData.putDocument({ space, key, label, name, mime, 
 
 | `server.spaceData.` | Does |
 |---|---|
-| `putCategories({ space, categories, proposed? })` | Adds categories, or values to known ones. Types: `choice` (with `values`, `multiple`, `ordered`), `date`, `number` (with `unit`), `text`, `boolean`. `column: { table, column }` takes a category's values from a column of a table the plugin wrote |
+| `putCategories({ space, categories, proposed? })` | Adds categories, or values to known ones. Types: `choice` (with `values`, `multiple`, `ordered`), `date`, `number` (with `unit`), `text`, `boolean`. `column: { table, column }` takes a category’s values from a column of a table the plugin wrote |
 | `putPage(input)` | A page: `title`, `markdown`, `parent` (the key of a page to stand under), `original` (the file it was read from), `categories`, `fill`, `review` (why a person should look) |
 | `putTable(input)` | A table: typed `columns`, `rows` (cells by column id, they replace the rows the key had), `format: "faq"` |
 | `putFile(input)` | A file that is not a page. It is found by its name, `description` and categories; `text` is what a step reads of it |
 | `putDocument(input)` | A file, read the way an upload is. Returns what it became: `items` (pages, tables), and `review` when it was hard to read or could not be read |
-| `readPages(space, { parent? })` | The space's own pages, whoever wrote them, with their Markdown: `{ id, title, path, parentId, markdown, origin, originKey, updatedAt }` |
-| `files(space, kind?)`, `readFile(space, id)` | The space's files of a kind (`document`, `logo`, `asset`, `pattern`; `document` when none is named), newest first, and one file with its bytes, such as a price list someone dropped into Knowledge |
+| `readPages(space, { parent? })` | The space’s own pages, whoever wrote them, with their Markdown: `{ id, title, path, parentId, markdown, origin, originKey, updatedAt }` |
+| `files(space, kind?)`, `readFile(space, id)` | The space’s files of a kind (`document`, `logo`, `asset`, `pattern`; `document` when none is named), newest first, and one file with its bytes, such as a price list someone dropped into Knowledge |
 | `list(space)` | Everything the plugin wrote, by key, with its path and `state` |
 | `remove(space, key?)` | Takes out one key, or everything the plugin wrote in the space. Returns how many items it removed |
 | `summarize(space, category?, value?)` | Writes the “Overview” of one value, or of every value with three items or more. Each costs a model call. Returns how many it wrote |
 
 - `label` is what the person knows the source as. Knowledge shows it beside the item.
-- When a person changes an item, it is theirs: the plugin's next write returns `state: "kept"`
+- When a person changes an item, it is theirs: the plugin’s next write returns `state: "kept"`
   and changes nothing, and `remove` leaves it.
 - What a step reads of an item is its path: `pages/…`, `tables/…`, `files/…`.
 
@@ -82,24 +82,24 @@ server.registerSpaceContext({
 });
 ```
 
-- Every agent step of the space's wizards gets the block in its instructions, after what the
+- Every agent step of the space’s wizards gets the block in its instructions, after what the
   space says about itself and its documents, and gets the tools with it. No step lists them.
 - `block` is called once per step. If it returns `null` or an empty text, the step gets neither
   the block nor the tools.
 - A block is cut at 8,000 characters. A block that throws is logged, and the step runs without
   it.
 - The tools are [tools](./tools.md) like the ones a step lists; the model sees
-  `<plugin>_<name>`. Their names and the names of the plugin's other tools are one list.
+  `<plugin>_<name>`. Their names and the names of the plugin’s other tools are one list.
 - A model on the device calls no tools. That is Apple Intelligence on a Mac, or on the phone a
   run is followed on, which answers only steps that list no tools themselves. Such a step gets
   the block without the tools.
 - `steps` says which steps get the block: `["agent"]` when left out. `"html"` stands for the
   steps that write a document or a dashboard as HTML. They get the block without the tools,
-  after the space's brand – a good place to say how the brand's elements look.
+  after the space’s brand – a good place to say how the brand’s elements look.
 
-## The space's brand
+## The space’s brand
 
-`server.spaces.brand(space)` reads what Info & brand holds of the space's look, for a block, a
+`server.spaces.brand(space)` reads what Info & brand holds of the space’s look, for a block, a
 page or a model call in it:
 
 ```ts
@@ -108,7 +108,7 @@ const brand = await server.spaces.brand(space.id);
 //   fonts: [{ family: "Fraunces", role: "Headings", weights: [600] }, …] }
 ```
 
-- The first colour is the accent. A font's `role` is what it is for, in the person's words.
+- The first colour is the accent. A font’s `role` is what it is for, in the person’s words.
 - It returns `null` for a space the tenant does not have. The studio half gets the same from
   `studio.useSpace().brand`.
 
@@ -137,18 +137,18 @@ await server.index.remove(space.id); // every text of the plugin in the space
   model set up, it also searches by meaning. A classifier then judges each candidate.
 - Such a text has no categories, so a search with a filter leaves it out. Write Knowledge with
   `server.spaceData` when it should be filtered.
-- A step gets `project_search` as soon as the space has Knowledge or a plugin's text.
+- A step gets `project_search` as soon as the space has Knowledge or a plugin’s text.
 - A tenant without the plugin does not find its texts. They are deleted with the space.
 
 ## Tools of the space assistant
 
-The studio's assistant, Goose, stands on every page of the studio except the editor. Where a
+The studio’s assistant, Goose, stands on every page of the studio except the editor. Where a
 space is open and the person may change it, the assistant fills the space in from what the person
 says, a website or files. A plugin gives it tools:
 
 > Goose is behind the release switch `goose`, which is off by default. Until it is on, the studio
 > shows no assistant, so nobody sees the tools, cards and page hooks below. To try them, put
-> `goose=on` into the `.features` file (a checkout's root, or `~/.engenty/wizards/.features`).
+> `goose=on` into the `.features` file (a checkout’s root, or `~/.engenty/wizards/.features`).
 
 ```ts
 server.registerAssistantTool({
@@ -172,9 +172,9 @@ server.registerAssistantTool({
 | `emit(message)` | The line the chat shows while the assistant works |
 | `changed()` | The tool changed what the space page shows: the page draws it again |
 
-- The model sees the tool as `<plugin>_<name>`, beside the assistant's own tools.
-- The assistant doesn't keep a tool's result from one message to the next. Keep what a later
-  message needs in the plugin's tables.
+- The model sees the tool as `<plugin>_<name>`, beside the assistant’s own tools.
+- The assistant doesn’t keep a tool’s result from one message to the next. Keep what a later
+  message needs in the plugin’s tables.
 
 ### A card in the chat
 
@@ -196,8 +196,8 @@ studio.registerAssistantCard({
 });
 ```
 
-- `tool` is the name the server half registered, without the plugin's prefix.
-- The card stands below the assistant's answer. Without a card for the tool, nothing shows.
+- `tool` is the name the server half registered, without the plugin’s prefix.
+- The card stands below the assistant’s answer. Without a card for the tool, nothing shows.
 - `data` is what `execute` returned, sent as it is: keep it small.
 - `send(message)` sends a message to the assistant as if the person typed it.
 
@@ -206,11 +206,11 @@ studio.registerAssistantCard({
 `space.created`, `space.updated`, `space.deleted`, `space.file.ready` and `space.file.removed`
 say what changed. See [Events](./events.md).
 
-## The assistant on the plugin's own page
+## The assistant on the plugin’s own page
 
-The assistant stands on the plugin's pages too, as on every page of the studio. A page tells it
+The assistant stands on the plugin’s pages too, as on every page of the studio. A page tells it
 what to say there, and what it shows; the assistant is told what the page holds and uses the
-plugin's assistant tools first.
+plugin’s assistant tools first.
 
 ```tsx
 const Assistant = studio.Assistant;
@@ -237,16 +237,16 @@ server.registerAssistantContext({
   greet the person before the first message, and up to three `suggestions` stand under them. A
   click sends a suggestion at once (its `message`, or the label). With `fill: true` it goes into
   the field instead, for the person to finish.
-- `block` is called once per message, and only when the person writes from the plugin's page. A
+- `block` is called once per message, and only when the person writes from the plugin’s page. A
   block is cut at 8,000 characters. One that throws is logged and left out.
-- Where the person may not change the space, the assistant gets neither the space's tools nor
-  the plugins'. That is a space published from engenty wizards on a computer, or a person who
+- Where the person may not change the space, the assistant gets neither the space’s tools nor
+  the plugins’. That is a space published from engenty wizards on a computer, or a person who
   may not build here.
 
 ### What the page shows
 
 `studio.useAssistantPage` tells the assistant what the person sees: an open item, a selection,
-a line on what the page holds, its fields. It is sent with every message, beside the page's
+a line on what the page holds, its fields. It is sent with every message, beside the page’s
 address and the trail of the top bar.
 
 ```tsx
@@ -269,9 +269,9 @@ studio.useAssistantPage({
 
 `studio.useAssistantTool` gives the assistant a tool that runs in the browser while the page is
 shown: it filters a list, opens an item, picks a tab. The model sees it as `<plugin>_<name>`
-(a `-` in the plugin's id becomes `_`). `run` gets the arguments and returns what the assistant
+(a `-` in the plugin’s id becomes `_`). `run` gets the arguments and returns what the assistant
 learns. Such a tool changes what the page shows and never saves: saving stays with the server
-half's tools.
+half’s tools.
 
 ```tsx
 studio.useAssistantTool(
@@ -293,6 +293,6 @@ studio.useAssistantTool(
 );
 ```
 
-Besides a page's tools, the assistant can open a studio page, point at an element, read what is
+Besides a page’s tools, the assistant can open a studio page, point at an element, read what is
 on the screen, fill a field and scroll. It finds elements by their headings, labels and
 buttons. `data-assist="<id>"` on an element names it for the assistant.

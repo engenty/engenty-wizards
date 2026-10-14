@@ -10,10 +10,6 @@
   Let AI do the work.
 </p>
 
-<p align="center">
-  <img src="docs/assets/setup.png" alt="The first start of engenty wizards: choose how the AI runs – Codex, Claude Code, Gemini CLI, Cursor Agent or your own keys">
-</p>
-
 ## What it does
 
 - **Describe it, get a wizard.** Say in plain words what you do again and again – a post with
@@ -32,7 +28,7 @@
 
 ## How it looks
 
-The studio: a wizard's steps as a flow with its branches, next to the conversation that changes them.
+The studio: a wizard’s steps as a flow with its branches, next to the conversation that changes them.
 
 <p align="center">
   <img src="docs/assets/studio.png" alt="The studio of engenty wizards: the flow of a wizard that collects a month's receipts for bookkeeping – two pages of questions, AI steps that branch to the inbox and to customer portals, a review and the result – with the conversation beside it">
@@ -46,10 +42,10 @@ A wizard in use: it asks on one page, then on the next, and ends with the result
 
 ## Get started
 
-Create an account at [engenty.ai](https://engenty.ai): it is in a closed beta, so "Get started"
+Create an account at [engenty.ai](https://engenty.ai): it is in a closed beta, so “Get started”
 takes your email for an invitation, or your invitation code. Signed in, the studio asks who
 your team is, reads your website into your space, takes first documents, and you build your
-first wizard in the browser. Links run day and night on the team's credits.
+first wizard in the browser. Links run day and night on the team’s credits.
 
 ## Install it on your computer
 
@@ -65,7 +61,7 @@ It needs nothing but `curl` and `tar` and asks for no password. It brings its ow
 Node you already have is left alone), installs engenty wizards into `~/.engenty/wizards` and
 then walks you through the rest:
 
-- **Your engenty account.** "Sign in now?": a code and the browser for the sign-in; what you
+- **Your engenty account.** “Sign in now?”: a code and the browser for the sign-in; what you
   publish on this computer then runs in the cloud too. Say no, and `wizards account sign-in`
   does it any time.
   `--local` leaves the account out: nothing leaves the computer, links answer on it only
@@ -73,7 +69,7 @@ then walks you through the rest:
 - **An AI client.** It looks for Codex, Claude Code, Gemini CLI and Cursor Agent and
   offers to install the missing ones – first the one whose app (Claude, ChatGPT, Cursor) is
   on your Mac, as its subscription is most likely yours already. The first page of the studio
-  installs them too. Or use your account's credits, an API key, [Ollama](https://ollama.com) or,
+  installs them too. Or use your account’s credits, an API key, [Ollama](https://ollama.com) or,
   on a Mac with Apple silicon and macOS 26, Apple Intelligence.
 - **A browser and ffmpeg** (optional): Chrome, Edge or Chromium (on a Mac also Brave) for PDF
   and PNG exports and for steps that use a browser, ffmpeg for MP4 videos of animated widgets.
@@ -110,7 +106,7 @@ pnpm build
 pnpm wizards
 ```
 
-pnpm may list "Ignored build scripts" – that's expected, nothing to do.
+pnpm may list “Ignored build scripts” – that’s expected, nothing to do.
 
 Code steps (shell, Node, Python) run in a sandbox when Docker and the sandbox image are on the
 machine; a checkout brings its own sandbox, the installed version has none yet.
@@ -119,7 +115,7 @@ machine; a checkout brings its own sandbox, the installed version has none yet.
 
 The setup shows your account at the top and asks how the AI should run. Pick an AI
 client that is installed on your computer – engenty uses your existing subscription and signs
-it in for you in a terminal right on the page – your account's credits, Apple Intelligence on a
+it in for you in a terminal right on the page – your account’s credits, Apple Intelligence on a
 Mac that has it, or your own keys.
 It stays until a test call works, then the studio opens.
 
@@ -127,7 +123,7 @@ Change it later under Settings → Models.
 
 ## Using it
 
-- **Make a wizard:** describe it in the studio's chat, or start from one of the templates.
+- **Make a wizard:** describe it in the studio’s chat, or start from one of the templates.
   You see the steps as a diagram and can change any of them.
 - **Run and share:** try it yourself, then share the link. Shared results are kept for 7 days
   for people without an account.
@@ -177,16 +173,16 @@ docker compose logs     # shows the link to open once
 ```
 
 Point the proxy at port 8891. On a server, engenty uses your keys or Ollama; the
-AI clients' subscriptions live on your own computer. The code sandbox is off in this image.
+AI clients’ subscriptions live on your own computer. The code sandbox is off in this image.
 
 ## Troubleshooting
 
 | | |
 |---|---|
-| "This link is no longer valid" | The link works once. `wizards open` gives this browser a new one. |
+| “This link is no longer valid” | The link works once. `wizards open` gives this browser a new one. |
 | `wizards`: command not found | Open a new terminal, or run `~/.local/bin/wizards`. |
 | You open it under another address | Set `APP_URL` in `~/.engenty/wizards/.env` to the address you open. |
-| An AI client shows as not signed in | Sign it in on the setup page, or in your own terminal (e.g. `claude`, `codex login`), then "Check again". |
+| An AI client shows as not signed in | Sign it in on the setup page, or in your own terminal (e.g. `claude`, `codex login`), then “Check again”. |
 | PDF or PNG export fails | Install Chrome, Edge or Chromium (on a Mac also Brave), or set `CHROME_PATH` to one. |
 | Port 24368 is taken | The next free port is used. To fix one, set `API_PORT` in `~/.engenty/wizards/.env`. |
 | Something else | `wizards doctor` checks the install. |
@@ -206,7 +202,7 @@ and is a site of its own: `pnpm dev:docs`.
 
 ## License
 
-[FSL-1.1-MIT](LICENSE): use it for yourself and your company, run it, change it – just don't
+[FSL-1.1-MIT](LICENSE): use it for yourself and your company, run it, change it – just don’t
 offer it to others as a competing product or service. Each release becomes MIT two years
 after it is published. [COPYRIGHTS.md](COPYRIGHTS.md) names the owner, the marks, what is not ours and the
 third-party software with its licences.

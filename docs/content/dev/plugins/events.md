@@ -35,7 +35,7 @@ server.on("run.done", async ({ run, wizard, values }) => {
 
 | Event | A space | Gets |
 |---|---|---|
-| `space.created` | was made here, or arrived from engenty wizards on someone's computer | `{ space: { id } }` |
+| `space.created` | was made here, or arrived from engenty wizards on someone’s computer | `{ space: { id } }` |
 | `space.updated` | changed its name, its brand (Info & brand), its facts or its connected systems, or arrived again from a computer | `{ space: { id } }` |
 | `space.deleted` | was deleted | `{ space: { id } }` |
 | `space.file.ready` | has a file that was read: a document is in the index now | `{ space: { id }, file: { id, name, kind, mime } }` |
@@ -60,7 +60,7 @@ listeners are done.
 | | |
 |---|---|
 | `run.id`, `run.wizardId` | The run and its wizard |
-| `run.mode` | `"live"`: a real run, over the wizard's link or from an AI app. `"test"`: a test run |
+| `run.mode` | `"live"`: a real run, over the wizard’s link or from an AI app. `"test"`: a test run |
 | `run.status` | `"done"`, `"failed"` or `"cancelled"` |
 | `wizard` | `{ id, title, projectId }` |
 | `values` | What the person answered, by field id |
@@ -71,12 +71,12 @@ nothing when it is missing. Check the type of every value you use.
 
 ## Rules a listener runs under
 
-- **It runs inside the run's tenant.** `server.getTenantDb()` is that tenant's database.
+- **It runs inside the run’s tenant.** `server.getTenantDb()` is that tenant’s database.
 - **It runs after the run ended.** A listener cannot change the run or its result.
-- **It cannot fail the run.** A listener that throws is logged with the plugin's id.
+- **It cannot fail the run.** A listener that throws is logged with the plugin’s id.
 - **It can be called twice.** A finished run that is redone and ends again fires the event
   again. Write listeners so that a second call does no harm: update a row instead of adding one,
-  or remember the run's id.
+  or remember the run’s id.
 - **Nothing waits for it.** Give outside calls a time limit:
 
   ```ts

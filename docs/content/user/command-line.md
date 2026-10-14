@@ -8,24 +8,24 @@ version: 0.5.0
 
 | Command | What it does |
 |---|---|
-| `wizards` | Shows what is running, and a menu. While it runs, you can open the studio, restart or stop it; while it doesn't, "Start in the background" or "Start here" (in this terminal). Then "Update", which restarts it into the new version, "Start at login", "Connect AI apps", "Account", "Status", "Setup" and "Help". The first time, the setup runs first. It needs a terminal |
+| `wizards` | Shows what is running, and a menu. While it runs, you can open the studio, restart or stop it; while it doesn’t, “Start in the background” or “Start here” (in this terminal). Then “Update”, which restarts it into the new version, “Start at login”, “Connect AI apps”, “Account”, “Status”, “Setup” and “Help”. The first time, the setup runs first. It needs a terminal |
 | `wizards start` | Starts it and opens the studio. It runs in that terminal, and Ctrl-C stops it. The first time, the setup runs first |
-| `wizards studio` | Opens the studio in your browser. If it isn't running, it starts in the background first |
+| `wizards studio` | Opens the studio in your browser. If it isn’t running, it starts in the background first |
 | `wizards setup` | Runs the guided setup again: your account, an AI client, the browser and ffmpeg, start at login, your AI apps. `--local` leaves the account out ([Local only](./local-only.md)) |
 | `wizards account` | Shows the account this computer is signed in to: who, which team, the credits. `sign-in` shows a link and a code and opens your browser; `sign-out` disconnects this computer |
 | `wizards open` | Signs this browser in to the running studio. `--print` only prints the link; it works once, within a minute |
 | `wizards status` | Shows what is installed and running, with the browser it uses for PDF, PNG and websites |
 | `wizards doctor` | Shows the status and checks for problems |
 | `wizards logs [n]` | Prints the last lines engenty wizards printed while running (100, or `n` up to 2000). Keys and tokens are taken out |
-| `wizards report` | Sends the status, the model settings (never a key) and the last 500 log lines to your [account](./models.md#account), so support can see what went wrong. Nothing is sent unless you run it. The command names the report's ID. If this computer isn't signed in, it tells you to sign in under Settings → Account or with `wizards account sign-in` |
+| `wizards report` | Sends the status, the model settings (never a key) and the last 500 log lines to your [account](./models.md#account), so support can see what went wrong. Nothing is sent unless you run it. The command names the report’s ID. If this computer isn’t signed in, it tells you to sign in under Settings → Account or with `wizards account sign-in` |
 | `wizards stop` | Stops it. Your data is kept |
-| `wizards restart` | Stops it and starts it again; after an update, that is the new version. If it isn't running, it starts in the background |
+| `wizards restart` | Stops it and starts it again; after an update, that is the new version. If it isn’t running, it starts in the background |
 | `wizards update` | Installs the latest version |
 | `wizards autostart on` / `off` | Starts it when you log in, or stops doing so. It is a LaunchAgent on macOS and a systemd user service on Linux |
 | `wizards connect [app …]` | Adds your wizards to your [AI apps](./ai-apps.md): every app found, or the ones you name |
 | `wizards disconnect [app …]` | Takes them out again |
-| `wizards mcp` | Runs the MCP server over stdio. AI apps start it; you don't |
-| `wizards validate <path …>` | Checks wizards without the studio: `.wizard` files, unpacked wizard files, or a wizard's JSON. `--json` prints the problems as JSON. A space's connectors and plugins are checked when you import it |
+| `wizards mcp` | Runs the MCP server over stdio. AI apps start it; you don’t |
+| `wizards validate <path …>` | Checks wizards without the studio: `.wizard` files, unpacked wizard files, or a wizard’s JSON. `--json` prints the problems as JSON. A space’s connectors and plugins are checked when you import it |
 
 | Option | What it does |
 |---|---|
@@ -57,7 +57,7 @@ running, `wizards start` opens the running one instead of starting a second.
 ## Settings
 
 You change most settings in the studio. The settings file `~/.engenty/wizards/.env` holds what
-the studio doesn't: one `NAME=value` per line. Restart engenty wizards after a change.
+the studio doesn’t: one `NAME=value` per line. Restart engenty wizards after a change.
 
 | Setting | What it does | Default |
 |---|---|---|
@@ -71,13 +71,13 @@ the studio doesn't: one `NAME=value` per line. Restart engenty wizards after a c
 | `GEOCODER_URL` | Finds the place of a location (street, town). If it is not set, a location is only coordinates, and no position leaves your computer | not set |
 | `LIMIT_DEFAULT_DAILY_RUNS` | How many runs a day a shared link allows, unless the wizard sets its own limit | `50` |
 | `LIMIT_VISITOR_RUNS_PER_HOUR` | How many runs one visitor can start in an hour | `6` |
-| `RESULT_TTL_DAYS` | How many days the result of a run over a wizard's link is kept | `7` |
+| `RESULT_TTL_DAYS` | How many days the result of a run over a wizard’s link is kept | `7` |
 | `STORE_TTL_DAYS` | How many days what a wizard keeps for a person stays when nobody uses it | `400` |
 
 The OAuth clients of the built-in connectors go here too: see [Connectors](./connectors.md).
 Every setting, with what it is for, is in
 [.env.example](https://github.com/engenty/wizards/blob/main/.env.example).
 
-The command passes engenty wizards only a short list of your terminal's variables. A key your
-shell exports for another project doesn't reach it: put it into the settings file, or enter it
+The command passes engenty wizards only a short list of your terminal’s variables. A key your
+shell exports for another project doesn’t reach it: put it into the settings file, or enter it
 in the studio.

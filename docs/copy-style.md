@@ -1,13 +1,14 @@
 # Copy style
 
 How engenty wizards talks to people, in English and German. It covers every word a person reads:
-the studio, the runner, the CLI, error messages from the server, emails, the site. Read it before
-you add or change a string in `apps/web/src/lib/i18n.ts`, `packages/runner/src/i18n.ts` or
-`apps/runtime/src/cli/`; `pnpm copy:check` checks the mechanical rules.
+the studio, the runner, the CLI, error messages from the server, emails, the site and the docs.
+Read it before you add or change a string in `apps/web/src/lib/i18n.ts`,
+`packages/runner/src/i18n.ts` or `apps/runtime/src/cli/`, or a page in `docs/content`;
+`pnpm copy:check` checks the mechanical rules.
 
-This guide is about UI copy. Code comments and these docs use a compressed style of their own
-("A try is made again by itself when the cloud was the trouble."). Don't carry that style into
-the UI.
+Code comments and the developer notes in `docs/*.md` use a compressed style of their own ("A try
+is made again by itself when the cloud was the trouble."). That style is fine there, but don't
+carry it into the UI or the docs pages.
 
 ## The voice in one sentence
 
@@ -208,6 +209,23 @@ The CLI uses the same voice and is English only.
 - A run note, a connector error and an import error follow the same error pattern: what
   happened, then what to do.
 
+## The docs
+
+The pages in `docs/content` and the README follow this guide too.
+
+- **User pages** (`docs/content/user`, the README) talk to the reader as *you*, in full sentences
+  with a subject and a verb. They use the glossary and the English mechanics: spaced en dash,
+  curly quotes and apostrophes, British spelling.
+- **Developer pages** (`docs/content/dev`) use the same mechanics and glossary. API names,
+  options and technical terms are fine there.
+- **Quote the UI exactly.** A label in quotes is exactly what the app shows today: “Publish”,
+  not “Go live”. When you rename a label, search the docs for the old one. Inline code is for
+  commands, paths, options and code: `wizards start`, `--background`.
+- **Check the page against the code** when you change it, and set its `version` to the current
+  release (see [development.md](development.md#documentation)).
+- **No screenshots for now.** They go stale without anyone noticing, and pages describe each
+  screen in words. The README keeps two pictures until screenshots are made automatically.
+
 ## Before you commit a string
 
 1. Does each sentence have a subject and a verb?
@@ -215,6 +233,7 @@ The CLI uses the same voice and is English only.
 3. Are the words from the glossary?
 4. Read the English and the German aloud. Is each one what a native speaker would say?
 5. Run `pnpm copy:check`.
+6. If you renamed a label, search `docs/content` for the old one.
 
 ## Before and after
 
