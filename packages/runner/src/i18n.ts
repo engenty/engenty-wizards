@@ -219,7 +219,7 @@ const en = {
   "run.regenerateAll": "Applies to all. Tap a number to redo just that one.",
   "check.progress": "{done} of {total} checked",
   "check.onlyOpen": "Open only",
-  "check.noFile": "There's no file for this row.",
+  "check.noFile": "There’s no file for this row.",
   "check.noPreview": "This file has no preview – open it with the link above.",
   "check.reopen": "Open again",
   "run.feedbackPlaceholder": "Something not right? Write what should be different…",
@@ -234,7 +234,7 @@ const en = {
   "run.again": "Start over",
   "run.copy": "Copy text",
   "run.failed": "Something went wrong.",
-  "run.notFound": "This wizard doesn't exist or was deleted.",
+  "run.notFound": "This wizard doesn’t exist or was deleted.",
   "run.working": "One moment…",
   "run.elapsed": "{s} s",
   "run.cancelled": "Cancelled.",
@@ -252,7 +252,7 @@ const en = {
   "camera.shoot": "Capture",
   "camera.done": "Done",
   "camera.denied":
-    "The camera isn't allowed for this page. Allow it in your browser's site settings (the lock icon in the address bar) – or take the photo with your camera app.",
+    "The camera isn’t allowed for this page. Allow it in your browser’s site settings (the lock icon in the address bar) – or take the photo with your camera app.",
   "connect.go": "Connect",
   "connect.connected": "Connected through {name}",
   "connect.disconnect": "Disconnect",
@@ -270,12 +270,12 @@ const en = {
   "ask.private":
     "What you enter goes straight into the page. The AI never sees it. Remembered sign-ins are stored encrypted.",
   "ask.skip": "Skip",
-  "ask.done": "I'm signed in",
+  "ask.done": "I’m signed in",
   "ask.signIn": "Sign in",
   "ask.wants": "The wizard wants to run this in {service}:",
   "ask.allowRest": "Allow for the rest of this run",
   "ask.allow": "Allow",
-  "ask.deny": "Don't allow",
+  "ask.deny": "Don’t allow",
   "store.open": "What this wizard remembers",
   "store.title": "Kept for you",
   "store.explain":
@@ -318,7 +318,7 @@ const en = {
   "scan.title": "Scan a code",
   "scan.asking": "Your browser is about to ask for the camera – it only reads the code.",
   "scan.hint": "Hold the QR code or barcode inside the frame.",
-  "scan.hintQr": "Hold the QR code inside the frame. This device doesn't read barcodes here.",
+  "scan.hintQr": "Hold the QR code inside the frame. This device doesn’t read barcodes here.",
   "scan.miss": "No code was found in the photo. Try closer and sharper.",
   "scan.fromPhoto": "Choose a photo of the code",
   "scan.typeInstead": "Type it instead",
@@ -329,9 +329,9 @@ const en = {
   "location.map": "Map",
   "location.remove": "Remove location",
   "location.why":
-    "Your browser asks for your location. It's only used for this wizard. You can also just type the address.",
+    "Your browser asks for your location. It’s only used for this wizard. You can also just type the address.",
   "location.denied":
-    "Location isn't allowed for this page. Allow it in your browser's site settings (the lock icon in the address bar) – or type the address below.",
+    "Location isn’t allowed for this page. Allow it in your browser’s site settings (the lock icon in the address bar) – or type the address below.",
   "location.manual": "Type an address or place",
   "location.label": "Address or description of the place",
   "voice.start": "Record a voice note",
@@ -344,9 +344,9 @@ const en = {
   "voice.why":
     "Your browser asks for the microphone. The recording is turned into text afterwards.",
   "voice.denied":
-    "The microphone isn't allowed for this page. Allow it in your browser's site settings – or record the note with your voice memo app and choose the file.",
+    "The microphone isn’t allowed for this page. Allow it in your browser’s site settings – or record the note with your voice memo app and choose the file.",
   "voice.noRecorder":
-    "This browser can't record here. Record the note with your voice memo app and choose the file.",
+    "This browser can’t record here. Record the note with your voice memo app and choose the file.",
   "sign.open": "Sign here",
   "sign.hint": "Sign with your finger",
   "sign.pad": "Signature pad",
@@ -354,29 +354,29 @@ const en = {
   "sign.accept": "Use it",
   "sign.again": "Sign again",
   "sign.remove": "Remove signature",
-  "notify.ask": "Tell me when it's done",
-  "notify.on": "We'll let you know",
+  "notify.ask": "Tell me when it’s done",
+  "notify.on": "We’ll let you know",
   "notify.why": "With a sound, a buzz or a notification. Your browser asks once for permission.",
   "notify.onHint": "You can switch apps – a notification brings you back.",
   "notify.quiet": "With a sound and a buzz while this page is open.",
   "notify.blocked":
-    "Notifications are blocked for this page – you get a sound and a buzz while it's open. You can allow them in your browser's site settings.",
+    "Notifications are blocked for this page – you get a sound and a buzz while it’s open. You can allow them in your browser’s site settings.",
   "notify.done": "Your result is ready.",
   "notify.next": "The next step is ready – have a look.",
   "notify.needsYou": "The wizard needs you for a moment.",
   "common.offline": "No connection. Check your network and try again.",
   "common.retry": "Try again",
   "common.cancel": "Cancel",
-  "run.start": "Let's go",
-  "run.unavailable": "This wizard isn't available right now.",
+  "run.start": "Let’s go",
+  "run.unavailable": "This wizard isn’t available right now.",
   "run.resume": "Continue your last run",
   "output.preview": "Preview",
   "package.newer":
-    "This wizard file comes from a newer version, or it's damaged. Update engenty wizards or export the wizard again.",
-  "package.badJson": "This isn't a wizard file: its wizard.json can't be read.",
+    "This wizard file comes from a newer version, or it’s damaged. Update engenty wizards or export the wizard again.",
+  "package.badJson": "This isn’t a wizard file: its wizard.json can’t be read.",
   "package.unreadable":
-    "The wizard file can't be opened. Export the wizard again and try once more.",
-  "package.noManifest": "This isn't a wizard file: wizard.json is missing.",
+    "The wizard file can’t be opened. Export the wizard again and try once more.",
+  "package.noManifest": "This isn’t a wizard file: wizard.json is missing.",
 };
 
 export const RUNNER_TEXTS = { de, en } as const;

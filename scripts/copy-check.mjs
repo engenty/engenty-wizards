@@ -45,6 +45,7 @@ const RULES = {
     ["three dots: use …", /\.\.\./],
     ["space before …", / …/],
     ["straight quotes: use “ ”", /"/],
+    ["straight apostrophe: use ’", /\w'\w|s' /],
     ["American spelling", /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|center|canceled)\b/i],
     ["exclamation mark", /!/],
     ["please", /\bplease\b/i, AI_FACING],
