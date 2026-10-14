@@ -29,6 +29,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router";
 import { Mascot } from "../../brand";
 import { t } from "../../lib/i18n";
 import { spokenText } from "../../lib/read-aloud";
@@ -85,14 +86,16 @@ function useWindowWidth(): number {
 function useWhere(state: AssistantState) {
   const width = useWindowWidth();
   const page = usePageAssistant();
+  const { pathname } = useLocation();
   const wide = width >= SIDEBAR_FROM;
   const phone = width < PHONE_BELOW;
   let where = state.layout;
   if (where === "sidebar" && (!wide || phone)) {
     where = "bottom";
   }
-  // A page of full-height tables keeps the assistant small, at the lower right.
-  const compact = where === "bottom" && Boolean(page.compact);
+  // The bar stands on the home page only; elsewhere, and on a page of full-height tables, the
+  // assistant stays small at the lower right until opened.
+  const compact = where === "bottom" && (Boolean(page.compact) || pathname !== "/");
   if (compact) {
     where = "avatar";
   }
@@ -1117,9 +1120,11 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
   const small = where?.where === "avatar";
   const open = Boolean(state?.open);
   const reserve = small ? !open : docked;
+  const banner = useTurnBanner(state);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `rest` is the engenty or the bar, by `small` and `open`
   useLayoutEffect(() => {
-    const el = rest.current;
+    // Folded at the bottom, the line about the last turn above the bar is kept free as well.
+    const el = small || open ? rest.current : frame.current;
     const host = column.current;
     if (!(el && host && visible && reserve)) {
       host?.style.setProperty("--assistant-dock", "0px");
@@ -1133,7 +1138,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       observer.disconnect();
       host.style.setProperty("--assistant-dock", "0px");
     };
-  }, [column, visible, reserve, small, open]);
+  }, [column, visible, reserve, small, open, banner]);
   // Escape folds the opened chat away.
   useEffect(() => {
     if (!state?.open) {
@@ -1240,7 +1245,7 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
               <Thread state={state} composer={composer} />
             </div>
           </div>
-        ) : state.chat.messages.length || state.chat.error ? (
+        ) : banner ? (
           <LastTurn state={state} />
         ) : null}
         <div
@@ -1284,6 +1289,27 @@ export function AssistantDock({ column }: { column: RefObject<HTMLDivElement | n
       </DockFrame>
     </DropZone>
   );
+}
+
+/** The last turn and the page it ran on; kept outside the dock, which every route mounts anew. */
+let lastTurn = { key: "", page: "" };
+
+/**
+ * Whether the line about the last turn stands above the folded bar: on the page the turn ran on,
+ * and anywhere while it runs. Moving to another page clears it; the next turn brings it back.
+ */
+function useTurnBanner(state: AssistantState | null): boolean {
+  const { pathname } = useLocation();
+  const last = state?.chat.messages.at(-1);
+  const error = state?.chat.error ?? null;
+  if (!(last || error)) {
+    return false;
+  }
+  const key = `${last?.id ?? ""}|${last?.pending ? 1 : 0}|${error ?? ""}`;
+  if (key !== lastTurn.key) {
+    lastTurn = { key, page: pathname };
+  }
+  return Boolean(last?.pending) || lastTurn.page === pathname;
 }
 
 /** Folded, one line about the last turn stands above the bar; it opens the chat. */

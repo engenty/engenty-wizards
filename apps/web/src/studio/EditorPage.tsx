@@ -110,8 +110,8 @@ function usePaneWidth() {
 }
 
 const SHEET_KEY = "wizards.editor.sheet";
-/** Percent of the room below the header. */
-const SHEET_DEFAULT = 55;
+/** Percent of the room below the header: under half, so the diagram keeps the larger part. */
+const SHEET_DEFAULT = 45;
 /** The folded sheet: its handle and tabs. */
 const SHEET_MIN = 76;
 /** Room the diagram keeps above the sheet. */

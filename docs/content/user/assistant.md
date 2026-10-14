@@ -1,11 +1,12 @@
 ---
 title: Goose, the assistant
-description: The chat at the bottom of every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
+description: The chat on every studio page. It knows the app, sees the page you are on, shows you where things are and fills the space in.
 version: 0.3.7
 ---
 
-Goose, the assistant, stands at the bottom of every page of the studio but the editor, which has a
-conversation of its own. It thinks on the High class of Text & reasoning: your subscription,
+Goose, the assistant, stands on every page of the studio but the editor, which has a
+conversation of its own: at the bottom of the home page, as the engenty at the lower right
+elsewhere. It thinks on the High class of Text & reasoning: your subscription,
 your keys or credits ([Models and account](./models.md)).
 
 | Ask it | It |
@@ -25,8 +26,8 @@ a value into a field for you; you check it and save. It does not press buttons.
 
 | | |
 |---|---|
-| At the bottom | The default. Click the field or the engenty, and the chat rises above it |
-| Closed | ✕ in the header: the engenty at the lower right; a click opens the chat where it last stood. Data and Results start closed |
+| At the bottom | The default, on the home page. Click the field or the engenty, and the chat rises above it. The line about its last answer stays on the page you asked on |
+| Closed | ✕ in the header: the engenty at the lower right; a click opens the chat where it last stood. Every page but the home page starts closed |
 | Sidebar | Beside the page, on a window 1,520 pixels wide or more |
 
 The buttons in the chat's header switch between them; the studio remembers your choice.
