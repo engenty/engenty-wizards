@@ -1,7 +1,7 @@
 ---
 title: The server half
 description: The function a plugin exports, what it is handed, and the rules it runs under.
-version: 0.3.7
+version: 0.4.3
 ---
 
 The server half is a file whose default export is a function. The runtime calls it once when the
@@ -43,6 +43,8 @@ export default definePlugin((wizards) => {
 | `index.put(entry)`, `index.remove(space, key?)` | Texts in the space's search index | [The space](./space.md#the-search-index) |
 | `registerHttpRoute(route)` | A route below `/api/studio/plugins/<id>` | [Routes](./routes.md) |
 | `registerPublicRoute(route)`, `publicUrl(path)` | A route anyone may call, and its address | [Routes](./routes.md#public-routes) |
+| `registerSharedRoute(route)`, `sharedUrl(path)`, `publicRef()` | One route for every tenant, and the ref that names one | [Routes](./routes.md#shared-routes) |
+| `channels.get()`, `request`, `withdraw`, `book` | The numbers the Manage-App gives the tenant | below |
 | `registerRunner(runner)` | A door a wizard runs through, beside the page and the chat | [Runners](./runners.md) |
 | `runs.start(…)`, `report`, `answerPage`, … | Drives runs from the plugin's own door | [Runners](./runners.md#drive-a-run) |
 | `speech.conversation()` | The tenant's realtime speech model, for a call | [Runners](./runners.md#a-call) |
@@ -84,6 +86,30 @@ Either way a plugin never names a tenant:
   time: at load time there is no tenant.
 - State kept in a variable of the module is shared by all tenants. Keep per-tenant state in a
   table.
+
+## Numbers of the Manage-App
+
+On engenty.ai a team gets its number for texts and calls from engenty: it asks for one, an
+admin assigns it. `server.channels` reads it for the current tenant and books what it carries;
+the prices are the Manage-App's ([manage contract](https://github.com/engenty/wizards/blob/main/docs/manage-contract.md#numbers-of-a-tenant)).
+
+```ts
+const channels = await server.channels.get();
+// { number: { number: "+43…", country: "AT", kinds: ["sms", "call"], providerRef: "PN…" } | null,
+//   request: { id, country, wish, createdAt } | null,
+//   shared: [{ number, country, kinds }] }
+
+await server.channels.request({ userId: request.user.id, country: "AT", lang: "de" });
+await server.channels.book({ kind: "sms", quantity: segments, key: messageSid, runId });
+```
+
+- `get` is kept for a minute; `request` and `withdraw` forget it.
+- `request` throws `403` / `plan` on a plan without a number and `409` / `has_number` when
+  the team has one. Asking again answers the open request.
+- `book`: `sms` by segment, sent or received, `call` by started minute. The same `key` books
+  once.
+- A runtime without a Manage-App has no numbers: `get` gives `null`, `request` and `withdraw`
+  throw `404` / `not_managed`, `book` books nothing.
 
 ## Asking a model
 

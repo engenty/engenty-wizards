@@ -780,7 +780,7 @@ function TryIt({ cap, disabled }: { cap: ModelCapability; disabled?: boolean }) 
 
 /** A price in credits, by what it is counted in. */
 function creditPrice(price: Omit<ClassPrice, "model"> | undefined | null): string {
-  const n = (x: number) => (x < 10 ? Math.round(x * 10) / 10 : Math.ceil(x)).toLocaleString();
+  const n = (x: number) => (x < 10 ? Math.round(x * 10) / 10 : Math.ceil(x)).toLocaleString(lang);
   if (price?.creditsPerImage) {
     return t("models.notePerImage", { n: n(price.creditsPerImage) });
   }
@@ -1520,7 +1520,7 @@ function CreditsPanel({
         status={
           place.balance !== null ? (
             <span className="font-display font-semibold text-[1.25rem] tabular-nums">
-              {t("nav.credits", { n: Math.floor(place.balance).toLocaleString() })}
+              {t("nav.credits", { n: Math.floor(place.balance).toLocaleString(lang) })}
             </span>
           ) : undefined
         }
@@ -1735,7 +1735,7 @@ export function Models() {
             badge={
               place.balance !== null ? (
                 <span className="text-[0.75rem] text-ink-3 tabular-nums">
-                  {Math.floor(place.balance).toLocaleString()}
+                  {Math.floor(place.balance).toLocaleString(lang)}
                 </span>
               ) : null
             }

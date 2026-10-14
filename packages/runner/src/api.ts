@@ -1,4 +1,4 @@
-import { t } from "./i18n.js";
+import { lang, t } from "./i18n.js";
 
 export class ApiError extends Error {
   constructor(
@@ -47,6 +47,8 @@ export function createApi(
       method,
       credentials: "include",
       headers: {
+        // The server answers in the language the person picked, not the browser's.
+        "accept-language": lang,
         ...headers,
         ...(body !== undefined && !(body instanceof FormData)
           ? { "content-type": "application/json" }

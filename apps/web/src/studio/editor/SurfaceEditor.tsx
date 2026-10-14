@@ -9,7 +9,7 @@ import {
 import type { SurfaceComponent } from "@engenty-wizards/shared/surface";
 import { Code2, Eye } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import { cn, IconButton } from "../../ui";
 
 type SurfaceStep = Extract<Step, { type: "surface" }>;
@@ -63,7 +63,7 @@ export function sampleData(
       );
     }
     if (ref === "today") {
-      return new Date().toLocaleDateString();
+      return new Date().toLocaleDateString(lang);
     }
     if (ref.startsWith("brand.")) {
       return t("surface.sampleBrand");

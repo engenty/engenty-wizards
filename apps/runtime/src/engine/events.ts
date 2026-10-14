@@ -18,7 +18,7 @@ export async function emitEvent(
   asset?: string | null,
 ): Promise<void> {
   const note = typeof said === "string" ? null : said;
-  const message = note ? noteText(note, "de") : (said as string);
+  const message = note ? noteText(note, "en") : (said as string);
   const [row] = await db
     .insert(schema.runEvent)
     .values({

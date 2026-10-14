@@ -6,7 +6,7 @@ import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { useConfig, useFeature } from "../lib/features";
-import { t } from "../lib/i18n";
+import { lang, t } from "../lib/i18n";
 import {
   type AppleStatus,
   type HarnessStatus,
@@ -513,7 +513,7 @@ export function SetupPage() {
                           me.data.account.credits === null
                             ? null
                             : t("setup.accountCredits", {
-                                credits: me.data.account.credits.toLocaleString(),
+                                credits: me.data.account.credits.toLocaleString(lang),
                               }),
                         ]
                           .filter(Boolean)
@@ -552,7 +552,7 @@ export function SetupPage() {
                     me.data.account.credits === null
                       ? undefined
                       : t("setup.accountCredits", {
-                          credits: me.data.account.credits.toLocaleString(),
+                          credits: me.data.account.credits.toLocaleString(lang),
                         })
                   }
                   onPick={() => choose.mutate("account")}

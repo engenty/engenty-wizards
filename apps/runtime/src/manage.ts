@@ -339,6 +339,81 @@ export function bookUsage(input: {
   return call<{ credits: number }>("POST", "/v1/usage", input);
 }
 
+/** The tenant's numbers at the Manage-App, as `GET /v1/tenants/:id/channels` answers. */
+export interface TenantChannels {
+  /** The tenant's own number for texts and calls; null while it has none. */
+  number: {
+    number: string;
+    country: string;
+    kinds: ("sms" | "call" | "whatsapp")[];
+    /** The provider's id of the number (Twilio's `PN…`); null when none was entered. */
+    providerRef: string | null;
+    since: string | null;
+  } | null;
+  /** The tenant's open request for a number, and who asked; null for none. */
+  request: {
+    id: string;
+    country: string;
+    wish: string | null;
+    email: string;
+    createdAt: string;
+  } | null;
+  /** The numbers every tenant shares (WhatsApp, a keyword per wizard). */
+  shared: { number: string; country: string; kinds: ("sms" | "call" | "whatsapp")[] }[];
+}
+
+const channels = new Map<string, { at: number; value: TenantChannels }>();
+
+/** The tenant's numbers, cached for a minute. */
+export async function tenantChannels(id: string): Promise<TenantChannels> {
+  const hit = channels.get(id);
+  if (hit && Date.now() - hit.at < 60_000) {
+    return hit.value;
+  }
+  const value = await call<TenantChannels>("GET", `/v1/tenants/${encodeURIComponent(id)}/channels`);
+  channels.set(id, { at: Date.now(), value });
+  return value;
+}
+
+/** Forgets what the Manage-App said of the tenant's numbers: the next `tenantChannels` asks. */
+export function forgetChannels(id: string) {
+  channels.delete(id);
+}
+
+/** A person of the tenant asks for its number; what the Manage-App answers with is the request. */
+export async function requestChannelNumber(
+  id: string,
+  input: { userId: string; country: string; wish?: string | null; lang: "de" | "en" },
+) {
+  channels.delete(id);
+  return call<{ request: NonNullable<TenantChannels["request"]> }>(
+    "POST",
+    `/v1/tenants/${encodeURIComponent(id)}/channels/requests`,
+    input,
+  );
+}
+
+/** The tenant takes its open request back. */
+export async function withdrawChannelRequest(id: string) {
+  channels.delete(id);
+  return call<{ withdrawn: boolean }>(
+    "DELETE",
+    `/v1/tenants/${encodeURIComponent(id)}/channels/requests`,
+  );
+}
+
+/** What a tenant's channel used, priced by the Manage-App: texts by segment, calls by minute. */
+export function bookChannelUsage(
+  id: string,
+  input: { kind: "sms" | "call"; quantity: number; runId?: string; idempotencyKey: string },
+) {
+  return call<{ credits: number }>(
+    "POST",
+    `/v1/tenants/${encodeURIComponent(id)}/channels/usage`,
+    input,
+  );
+}
+
 /** A push to the mobile app on one device; the Manage-App holds the APNs and FCM keys. */
 export function pushToDevice(input: {
   tenantId: string;

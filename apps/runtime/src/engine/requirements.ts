@@ -20,7 +20,8 @@ import {
   unavoidableSteps,
 } from "@engenty-wizards/shared/fit";
 import type { Capability } from "@engenty-wizards/shared/marketplace";
-import type { ClosedChoice, MissingModel } from "@engenty-wizards/shared/run";
+import type { ClosedChoice, MissingModel, RunNote, Said } from "@engenty-wizards/shared/run";
+import { bilingual, saidText } from "@engenty-wizards/shared/run";
 import { classProblem, filmClient } from "../models.js";
 
 // The steps every run passes through, and the choices that lead around a missing model, are
@@ -267,8 +268,19 @@ export async function stepsWithoutModel(def: WizardDefinition): Promise<Set<stri
   );
 }
 
+/** A missing class whose problem is said in both languages, until it is read in one. */
+export type MissingModelSaid = Omit<MissingModel, "problem"> & { problem: Said };
+
+/** The classes this wizard needs that this runtime cannot serve, in a language; empty = every step can run. */
+export async function missingModels(
+  def: WizardDefinition,
+  lang: "de" | "en" = "en",
+): Promise<MissingModel[]> {
+  return (await missingModelsSaid(def)).map((m) => ({ ...m, problem: saidText(m.problem, lang) }));
+}
+
 /** The classes this wizard needs that this runtime cannot serve; empty = every step can run. */
-export async function missingModels(def: WizardDefinition): Promise<MissingModel[]> {
+export async function missingModelsSaid(def: WizardDefinition): Promise<MissingModelSaid[]> {
   const unavoidable = unavoidableSteps(def);
   const needs = new Map<ModelClass, { step: Step; required: boolean }[]>();
   for (const step of def.steps) {
@@ -279,7 +291,7 @@ export async function missingModels(def: WizardDefinition): Promise<MissingModel
       needs.set(cls, [...(needs.get(cls) ?? []), { step, required: false }]);
     }
   }
-  const missing: MissingModel[] = [];
+  const missing: MissingModelSaid[] = [];
   // A film runs on an installed client only, whatever serves its class otherwise.
   for (const step of def.steps) {
     if (step.type !== "film") {
@@ -311,14 +323,19 @@ export async function missingModels(def: WizardDefinition): Promise<MissingModel
 }
 
 /** The message a run that cannot start gives, naming the steps and why. */
-export function blockingMessage(missing: MissingModel[]): string | null {
+export function blockingMessage(missing: MissingModelSaid[]): RunNote | null {
   const blocking = missing.filter((m) => m.blocking);
   if (!blocking.length) {
     return null;
   }
-  return blocking
-    .map((m) => `${m.steps.map((s) => `„${s.title}“`).join(", ")}: ${m.problem}`)
-    .join(" ");
+  const line = (lang: "de" | "en") =>
+    blocking
+      .map((m) => {
+        const steps = m.steps.map((s) => (lang === "de" ? `„${s.title}“` : `“${s.title}”`));
+        return `${steps.join(", ")}: ${saidText(m.problem, lang)}`;
+      })
+      .join(" ");
+  return bilingual(line("de"), line("en"));
 }
 
 /** The class a marketplace capability stands for; the rest need no model of their own. */

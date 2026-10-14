@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.4.4] - 2026-10-14
+- ADDED **[plugins]** Numbers of the Manage-App and routes for every tenant – server.channels gives a plugin the tenant's numbers (get, request, withdraw) and books what they carry (book: SMS segments, call minutes, priced by the Manage-App) through the runtime's service key; registerSharedRoute, sharedUrl and publicRef give a service that posts to one webhook for all tenants one address (/api/public/plugins/<id>/shared/…), whose handler enters a tenant by the ref the call carries (inTenant). The calls GET/POST/DELETE /v1/tenants/:id/channels(/requests) and POST /v1/tenants/:id/channels/usage are in docs/manage-contract.md, the SDK in the plugin docs; managed.test.ts covers both
+
 ## [0.4.3] - 2026-10-13
 - FIXED **[runner]** The wizard's live voice no longer interrupts itself – the microphone asks for echo cancellation, and the session filters input as far-field with a higher speech threshold (0.7) and 600 ms of silence to end a turn
 - FIXED **[assistant]** Live voice no longer hears itself – the recognition starts fresh when the voice ends, what sounds like the voice is ignored for 3 s after it, the echo check compares plain words and takes 75 % as a match, and the microphone asks for echo cancellation

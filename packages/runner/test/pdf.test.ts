@@ -66,7 +66,7 @@ describe("a written output as pdfmake content", () => {
       (key) => (key === "rows" ? "Positionen" : key),
     );
     expect(content[0]).toEqual({ text: "ok", style: "label" });
-    expect(content[1]).toEqual({ text: "Ja", style: "p" });
+    expect(content[1]).toEqual({ text: "Yes", style: "p" });
     expect(content[3]).toEqual({ text: "Hallo\nWelt", style: "p" });
     expect(content[5]).toEqual({ ul: ["a", "b"], style: "list" });
     expect(content[6]).toEqual({ text: "Positionen", style: "label" });

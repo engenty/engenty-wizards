@@ -83,6 +83,20 @@ settings); `member` edits the wizards there are, tests and publishes them. A mem
 answers `403 { code: "forbidden" }`, whichever way it came in (studio, API, MCP). A runtime that
 runs alone has one person, who does everything.
 
+## Numbers of a tenant
+
+A team on engenty.ai gets one number for texts and calls from engenty, for all its spaces: it
+asks for one, an admin of the Manage-App assigns it. WhatsApp runs on numbers every team shares.
+Plugins reach these through `server.channels` ([content/dev/plugins/server.md](content/dev/plugins/server.md#numbers-of-the-manage-app));
+the runtime asks with its service key and keeps the answer of `GET` a minute.
+
+| Call | Body → answer |
+|---|---|
+| `GET /v1/tenants/:id/channels` | → `{ number: { id, number, country, kinds, providerRef, since } \| null, request: { id, country, wish, email, createdAt } \| null, shared: [{ number, country, kinds }] }` · `number`: the team's own, E.164 (`+43…`), `kinds` of `sms`, `call`, `whatsapp`, `providerRef` the provider's id of it (Twilio's `PN…`) or null · `request`: its open request for one · `shared`: the numbers every team shares |
+| `POST /v1/tenants/:id/channels/requests` | `{ userId, country, wish?, lang }` → `{ request: { id, country, wish, email, createdAt } }` · a member of the tenant asks for its number; `country` ISO 3166 (`AT`) · `403 plan`: a plan without a number · `409 has_number`: it has one · `403 not_member` · asking again answers the open request · the person gets a mail when it is assigned or declined |
+| `DELETE /v1/tenants/:id/channels/requests` | → `{ withdrawn }` · takes the open request back |
+| `POST /v1/tenants/:id/channels/usage` | `{ kind: "sms" \| "call", quantity, idempotencyKey, runId? }` → `{ credits }` · what the number carried, booked at the Manage-App's prices: `sms` by segment, sent or received, `call` by started minute · the same key books once · the number's monthly price the Manage-App books itself |
+
 ## Manage-App → runtime
 
 `Authorization: Bearer <service key of the runtime>`.

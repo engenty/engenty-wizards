@@ -122,7 +122,7 @@ function McpServers({ project }: { project: Project }) {
               <span />
             ) : (
               <IconButton
-                label="Entfernen"
+                label={t("common.remove")}
                 onClick={() => setServers((all) => all.filter((_, j) => j !== i))}
                 className="hover:text-rose"
               >

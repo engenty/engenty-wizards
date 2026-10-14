@@ -1,6 +1,7 @@
 import type { Surface, SurfaceComponent } from "@engenty-wizards/shared/surface";
 import { bound } from "@engenty-wizards/shared/surface";
 import type { ReactNode } from "react";
+import { lang } from "./i18n.js";
 import { cn } from "./ui.js";
 
 /**
@@ -94,7 +95,7 @@ function Bars({ data }: { data: { label: string; value: number }[] }) {
               style={{ width: `${(d.value / max) * 100}%` }}
             />
           </span>
-          <span className="text-[0.8125rem] tabular-nums">{d.value.toLocaleString()}</span>
+          <span className="text-[0.8125rem] tabular-nums">{d.value.toLocaleString(lang)}</span>
         </div>
       ))}
     </div>
@@ -183,7 +184,7 @@ function Donut({ data }: { data: { label: string; value: number }[] }) {
               style={{ background: DONUT[i % DONUT.length] }}
             />
             <span className="text-ink-2">{d.label}</span>
-            <span className="tabular-nums">{d.value.toLocaleString()}</span>
+            <span className="tabular-nums">{d.value.toLocaleString(lang)}</span>
           </li>
         ))}
       </ul>

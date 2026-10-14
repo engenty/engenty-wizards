@@ -1,7 +1,7 @@
 ---
 title: Routes
 description: HTTP routes below the plugin's own address — signed in, inside the person's tenant.
-version: 0.3.2
+version: 0.4.3
 ---
 
 A plugin's routes live below `/api/studio/plugins/<id>`, and for programs with a key below
@@ -129,6 +129,40 @@ const address = await server.publicUrl(`/signal/${source.token}`);
 - `publicUrl` gives the same address for a tenant every time.
 - A body is taken up to 4 MB. Answers and errors work as for the plugin's other routes.
 - A tenant without the plugin, or a suspended one, answers `404`.
+
+## Shared routes
+
+Some services post to one webhook for everyone: one account of the runtime's, one app. A shared
+route has one address for all tenants, and the call itself says which tenant it is for, with
+the ref the plugin handed the service before:
+
+```ts
+// Handed to the service with the call it is about to make: names the tenant.
+const ref = await server.publicRef();
+
+server.registerSharedRoute({
+  method: "POST",
+  path: "/incoming",
+  handler: async ({ request, inTenant }) => {
+    const raw = await request.text();
+    if (!signedByTheService(raw, request.headers)) {
+      throw Object.assign(new Error("Bad signature."), { status: 401, code: "bad_signature" });
+    }
+    const event = JSON.parse(raw);
+    return inTenant(event.ref, () => pickUp(event));
+  },
+});
+
+// The address to enter at the service, once: the same for every tenant.
+server.sharedUrl("/incoming");
+// https://…/api/public/plugins/<id>/shared/incoming
+```
+
+- The handler runs outside any tenant: check the service's signature, then `inTenant`.
+- `inTenant(ref, work)` runs `work` inside the tenant of that ref, as a public route of the
+  tenant would run. A ref no tenant has, a suspended tenant and one without the plugin throw
+  `404` / `not_found`.
+- `publicRef()` is the part of `publicUrl` that names the tenant; it is the same every time.
 
 ## From the studio half
 

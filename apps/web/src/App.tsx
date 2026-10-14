@@ -3,7 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router";
 import { Mascot } from "./brand";
 import { STUDIO } from "./lib/base";
 import { useLang } from "./lib/i18n";
-import { useMe } from "./lib/session";
+import { useAccountLang, useMe } from "./lib/session";
 import { PluginFrame, startStudioPlugins, useStudioPlugins } from "./plugins/host";
 import { AppFrame } from "./studio/AppFrame";
 import { AssistantProvider } from "./studio/assistant/chat";
@@ -58,6 +58,7 @@ function Studio({
 }) {
   const me = useMe();
   const location = useLocation();
+  useAccountLang(me.data);
   // Signed in, the studio takes on the tenant's plugins.
   useEffect(() => {
     if (me.data) {

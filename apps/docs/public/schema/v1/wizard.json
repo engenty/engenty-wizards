@@ -41,6 +41,13 @@
     "intro": {
       "type": "string"
     },
+    "lang": {
+      "type": "string",
+      "enum": [
+        "de",
+        "en"
+      ]
+    },
     "lists": {
       "maxItems": 12,
       "type": "array",

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import { Card, cn, IconButton, Spinner } from "../../ui";
 import { fileSize, fileUrl, useFileActions, useProjectFiles } from "./data";
 import { Description } from "./Files";
@@ -177,8 +177,8 @@ function FileText({ projectId, file }: { projectId: string; file: ProjectFileVie
       {text.data.chars > text.data.text.length ? (
         <p className="mt-3 text-[0.8125rem] text-ink-3">
           {t("project.textCut", {
-            shown: text.data.text.length.toLocaleString(),
-            total: text.data.chars.toLocaleString(),
+            shown: text.data.text.length.toLocaleString(lang),
+            total: text.data.chars.toLocaleString(lang),
           })}
         </p>
       ) : null}

@@ -138,12 +138,14 @@ export interface ShownList {
 }
 
 /**
- * What a step reports while it works, in words for each language: the runtime writes the German
+ * What a step reports while it works, in words for each language: the runtime writes the English
  * line into the run's log, a runner shows it in the language the person reads. The runtime's
  * answers to the person running a shared wizard (a refusal, a failure) are notes too: it answers
  * them in the wizard's language.
  */
 export const RUN_NOTES = {
+  // A line written out in both languages where no line of its own fits (`bilingual`).
+  text: { de: "{de}", en: "{en}" },
   entry: { de: "Eintrag {n} von {total}", en: "Entry {n} of {total}" },
   deciding: { de: "Entscheidet, wie es weitergeht …", en: "Deciding how to go on …" },
   choosingFields: { de: "Wählt die passenden Fragen …", en: "Choosing the right questions …" },
@@ -385,6 +387,19 @@ export type RunNoteCode = keyof typeof RUN_NOTES;
 export interface RunNote {
   code: RunNoteCode;
   params?: Record<string, string | number>;
+}
+
+/** What the person reads: plain words, or a note that has a line for each language. */
+export type Said = string | RunNote;
+
+/** What is said, in a language. */
+export function saidText(said: Said, lang: "de" | "en"): string {
+  return typeof said === "string" ? said : noteText(said, lang);
+}
+
+/** Free text in both languages, carried as a note: a runner or a response picks the line. */
+export function bilingual(de: string, en: string): RunNote {
+  return { code: "text", params: { de, en } };
 }
 
 /** A note in a language, its gaps filled. */

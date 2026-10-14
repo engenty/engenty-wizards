@@ -1,4 +1,5 @@
 import { ASSISTANT_LAYOUTS, type AssistantLayout } from "@engenty-wizards/shared/assistant";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { generateText } from "ai";
 import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -313,7 +314,10 @@ export async function readChat(user: SessionUser, chatId: string) {
     where: and(mine(user), eq(schema.assistantChat.id, chatId)),
   });
   if (!chat) {
-    throw new ServiceError("not_found", "Diesen Chat gibt es nicht.");
+    throw new ServiceError(
+      "not_found",
+      bilingual("Diesen Chat gibt es nicht.", "There is no such chat."),
+    );
   }
   return {
     id: chat.id,

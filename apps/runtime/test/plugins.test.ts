@@ -147,6 +147,7 @@ export default definePlugin((wizards) => {
     id: "welcome",
     title: "Willkommen",
     description: "Fragt Gäste nach ihrem Namen.",
+    language: "de",
     definition: {
       title: "Willkommen",
       steps: [
@@ -780,7 +781,7 @@ describe("a plugin's runners", () => {
         }),
       ),
     );
-    expect(body.refused).toEqual([{ field: "name", message: "Pflichtfeld" }]);
+    expect(body.refused).toEqual([{ field: "name", message: "Required" }]);
     expect(body.report.waitingFor.page).toBe("start");
   });
 });

@@ -38,10 +38,11 @@ import { seal, unseal } from "../secrets/crypto.js";
 import { putIndexEntry, removeIndexEntries } from "../services/project-index.js";
 import { originData } from "../services/space-origin.js";
 import { safeFetch } from "../tools/net-guard.js";
+import { channelsApi } from "./channels.js";
 import { discoverPlugins, type PluginProblem, type PluginSource } from "./discovery.js";
 import { migrateOpenTenants, migratePlugins } from "./migrations.js";
 import { proModulesDir, proSources } from "./pro-state.js";
-import { publicUrlOf } from "./public.js";
+import { publicRefOf, publicUrlOf, sharedUrlOf } from "./public.js";
 import {
   announceChange,
   compileRoute,
@@ -195,6 +196,12 @@ function apiFor(record: LoadedPlugin): WizardsPluginApi {
         });
       },
       publicUrl: (path) => publicUrlOf(source.id, path),
+      publicRef: () => publicRefOf(source.id),
+      registerSharedRoute(route) {
+        record.sharedRoutes.push(compileRoute(route));
+      },
+      sharedUrl: (path) => sharedUrlOf(source.id, path),
+      channels: channelsApi,
       runs: runsApiFor(source.id),
       speech: {
         async conversation() {
@@ -345,6 +352,7 @@ async function load(source: PluginSource): Promise<LoadedPlugin> {
       record.assistantTools.clear();
       record.assistantPages = [];
       record.publicRoutes = [];
+      record.sharedRoutes = [];
       record.runners.clear();
       record.jobs.clear();
       record.starters.clear();

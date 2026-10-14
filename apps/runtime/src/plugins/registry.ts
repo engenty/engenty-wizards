@@ -8,6 +8,7 @@ import type {
   PluginPublicRoute,
   PluginRoute,
   PluginRunner,
+  PluginSharedRoute,
   PluginSpaceContext,
   PluginStarter,
   PluginTick,
@@ -64,6 +65,8 @@ export interface LoadedPlugin {
   /** What the space assistant is told on the plugin's own page. */
   assistantPages: PluginAssistantPage[];
   publicRoutes: RouteEntry<PluginPublicRoute>[];
+  /** Routes for every tenant at once, below `/api/public/plugins/<id>/shared`. */
+  sharedRoutes: RouteEntry<PluginSharedRoute>[];
   /** The runners the plugin adds, by id: what `/w/<token>/<id>` serves, and what it can do. */
   runners: Map<string, RegisteredRunner>;
   jobs: Map<string, PluginJob>;
@@ -95,6 +98,7 @@ export function emptyRecord(source: PluginSource): LoadedPlugin {
     assistantTools: new Map(),
     assistantPages: [],
     publicRoutes: [],
+    sharedRoutes: [],
     runners: new Map(),
     jobs: new Map(),
     starters: new Map(),

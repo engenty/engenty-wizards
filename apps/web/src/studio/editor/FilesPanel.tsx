@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Download, FileCode2, FileJson, FileText, Image, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../../lib/api";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import { IconButton, Spinner } from "../../ui";
 
 function fileIcon(f: WorkspaceFile) {
@@ -60,7 +60,10 @@ export function FilesPanel({
         const res = await fetch(`${base}/${encodeURIComponent(file.name).replace(/%2F/g, "/")}`, {
           method: "PUT",
           credentials: "include",
-          headers: { "content-type": file.type || "application/octet-stream" },
+          headers: {
+            "content-type": file.type || "application/octet-stream",
+            "accept-language": lang,
+          },
           body: file,
         });
         if (!res.ok) {

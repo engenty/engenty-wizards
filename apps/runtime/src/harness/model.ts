@@ -2,6 +2,8 @@ import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Effort } from "@engenty-wizards/shared/definition";
+import type { RunNote } from "@engenty-wizards/shared/run";
+import { bilingual } from "@engenty-wizards/shared/run";
 import type { ImageModel, LanguageModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
@@ -63,18 +65,27 @@ export interface HarnessAnswer {
 export interface HarnessMeta {
   id: string;
   name: string;
-  exhausted?: string;
+  exhausted?: RunNote;
 }
 
 const workDir = join(env.dataDir, "harness");
 
 export const signedOut = (h: HarnessMeta) =>
-  `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle“ an.`;
+  bilingual(
+    `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle“ an.`,
+    `${h.name} is not signed in on this device. Sign in under “Models” in the settings.`,
+  );
 export const notInstalled = (h: HarnessMeta) =>
-  `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle“.`;
+  bilingual(
+    `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle“.`,
+    `${h.name} is not installed on this device. Install it under “Models” in the settings.`,
+  );
 export const exhausted = (h: HarnessMeta) =>
   h.exhausted ??
-  `Das Konto, mit dem ${h.name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.`;
+  bilingual(
+    `Das Konto, mit dem ${h.name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.`,
+    `The account ${h.name} is signed in with has no credit or quota left.`,
+  );
 
 /** The failure a client reports, as the person should read it. */
 export function failureOf(h: HarnessMeta, detail: string): Error {

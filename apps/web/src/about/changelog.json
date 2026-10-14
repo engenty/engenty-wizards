@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.4.4",
+    "timestamp": 1791958252,
+    "commits": [
+      {
+        "id": "5fb73c6",
+        "message": "numbers of the Manage-App and routes for every tenant – server.channels gives a plugin the tenant's numbers (get, request, withdraw) and books what they carry (book: SMS segments, call minutes, priced by the Manage-App) through the runtime's service key; registerSharedRoute, sharedUrl and publicRef give a service that posts to one webhook for all tenants one address (/api/public/plugins/<id>/shared/…), whose handler enters a tenant by the ref the call carries (inTenant). The calls GET/POST/DELETE /v1/tenants/:id/channels(/requests) and POST /v1/tenants/:id/channels/usage are in docs/manage-contract.md, the SDK in the plugin docs; managed.test.ts covers both",
+        "group": "Added",
+        "scope": "plugins",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.3",
-    "timestamp": 1791920360,
+    "timestamp": 1791920366,
     "commits": [
       {
         "id": "5b66f17",
