@@ -139,6 +139,6 @@ describe("the wizards-apple helper", async () => {
         prompt: `Summarize: ${words}`,
         abortSignal: AbortSignal.timeout(60_000),
       }),
-    ).rejects.toThrow(/4\.096/);
+    ).rejects.toThrow(/4,096 tokens/);
   });
 });
