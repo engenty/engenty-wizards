@@ -360,6 +360,8 @@ export interface TenantChannels {
   } | null;
   /** The numbers every tenant shares (WhatsApp, a keyword per wizard). */
   shared: { number: string; country: string; kinds: ("sms" | "call" | "whatsapp")[] }[];
+  /** The tenant's plan has a number of its own; false on a plan without one (Free). */
+  allowed?: boolean;
 }
 
 const channels = new Map<string, { at: number; value: TenantChannels }>();

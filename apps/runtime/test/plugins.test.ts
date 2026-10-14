@@ -196,6 +196,8 @@ export default definePlugin(({ server }) => {
       waits: true,
       handoff: ["sms"],
     },
+    // What the test sets: none, a text, or one with its kind.
+    problem: () => (globalThis as { phoneProblem?: unknown }).phoneProblem ?? null,
   });
   server.registerPublicRoute({
     method: "POST",
@@ -705,6 +707,28 @@ describe("a plugin's runners", () => {
       plugin: "kiosk",
       problem: null,
     });
+    // A problem is a text to set up, or says its kind: waiting for someone, not in the plan.
+    const phone = async (problem: unknown) => {
+      (globalThis as { phoneProblem?: unknown }).phoneProblem = problem;
+      const runners = await json(get("/api/studio/runners"));
+      return runners.find((r: { id: string }) => r.id === "phone");
+    };
+    expect(await phone(null)).toMatchObject({ problem: null });
+    expect(await phone("Keine Nummer")).toMatchObject({ problem: "Keine Nummer", problemKind: "setup" });
+    expect(
+      await phone({ text: "Angefragt", kind: "waiting", note: { de: "Nummer angefragt", en: "Number asked for" } }),
+    ).toMatchObject({
+      problem: "Angefragt",
+      problemKind: "waiting",
+      problemNote: { de: "Nummer angefragt", en: "Number asked for" },
+      problemPlan: null,
+    });
+    expect(await phone({ text: "Ab Pro", kind: "plan", plan: "Pro" })).toMatchObject({
+      problemKind: "plan",
+      problemNote: null,
+      problemPlan: "Pro",
+    });
+    (globalThis as { phoneProblem?: unknown }).phoneProblem = null;
     const found = registry.loadedPlugin("kiosk")!.runners;
     expect([...found.keys()]).toEqual(["kiosk", "phone"]);
     expect(found.get("kiosk")!.info).toMatchObject({ kind: "page", plugin: "kiosk" });

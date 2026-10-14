@@ -1,7 +1,7 @@
 ---
 title: The server half
 description: The function a plugin exports, what it is handed, and the rules it runs under.
-version: 0.4.3
+version: 0.4.4
 ---
 
 The server half is a file whose default export is a function. The runtime calls it once when the
@@ -97,7 +97,8 @@ the prices are the Manage-App's ([manage contract](https://github.com/engenty/wi
 const channels = await server.channels.get();
 // { number: { number: "+43…", country: "AT", kinds: ["sms", "call"], providerRef: "PN…" } | null,
 //   request: { id, country, wish, createdAt } | null,
-//   shared: [{ number, country, kinds }] }
+//   shared: [{ number, country, kinds }],
+//   allowed: true }   // false: the plan has no number of its own (Free)
 
 await server.channels.request({ userId: request.user.id, country: "AT", lang: "de" });
 await server.channels.book({ kind: "sms", quantity: segments, key: messageSid, runId });

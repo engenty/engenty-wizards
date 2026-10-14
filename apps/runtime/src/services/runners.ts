@@ -1,4 +1,8 @@
-import type { PluginRunnerAddress, PluginRunnerRequest } from "@engenty-wizards/plugin-sdk";
+import type {
+  PluginRunnerAddress,
+  PluginRunnerProblem,
+  PluginRunnerRequest,
+} from "@engenty-wizards/plugin-sdk";
 import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
 import type { PublicWizard } from "@engenty-wizards/shared/run";
 import {
@@ -35,14 +39,18 @@ export async function runnersOf(tenantId = currentTenant()): Promise<RunnerInfo[
   // A plugin's runner says per tenant whether it is ready (a number connected, a key set).
   const ofPlugins = await Promise.all(
     plugins.flatMap((p) =>
-      [...p.runners.values()].map(async (r) => ({
-        ...r.info,
-        problem: r.problem
-          ? await Promise.resolve()
-              .then(() => r.problem?.() ?? null)
-              .catch((err: Error) => err.message || "The runner is not ready.")
-          : null,
-      })),
+      [...p.runners.values()].map(
+        async (r): Promise<RunnerInfo> => ({
+          ...r.info,
+          ...problemOf(
+            r.problem
+              ? await Promise.resolve()
+                  .then(() => r.problem?.() ?? null)
+                  .catch((err: Error) => err.message || "The runner is not ready.")
+              : null,
+          ),
+        }),
+      ),
     ),
   );
   return [
@@ -51,6 +59,24 @@ export async function runnersOf(tenantId = currentTenant()): Promise<RunnerInfo[
     ),
     ...ofPlugins,
   ];
+}
+
+/** A runner's answer to `problem`, as the studio lists it. */
+function problemOf(
+  answer: string | PluginRunnerProblem | null,
+): Pick<RunnerInfo, "problem" | "problemKind" | "problemNote" | "problemPlan"> {
+  if (!answer) {
+    return { problem: null };
+  }
+  if (typeof answer === "string") {
+    return { problem: answer, problemKind: "setup" };
+  }
+  return {
+    problem: answer.text || "The runner is not ready.",
+    problemKind: answer.kind ?? "setup",
+    problemNote: answer.note ?? null,
+    problemPlan: answer.kind === "plan" ? (answer.plan ?? null) : null,
+  };
 }
 
 /**

@@ -567,6 +567,8 @@ export interface PluginChannels {
   /** The tenant's open request for its number; null for none. */
   request: { id: string; country: string; wish: string | null; createdAt: string } | null;
   shared: { number: string; country: string; kinds: PluginChannelKind[] }[];
+  /** The tenant's plan has a number of its own; false on a plan without one (Free). */
+  allowed: boolean;
 }
 
 /** An account a plugin connected for a space: a calendar, a mailbox. */
@@ -723,6 +725,22 @@ export interface PluginRunnerAddress {
   link?: string | null;
 }
 
+/** A runner's problem, with what the share dialog's row says about it. */
+export interface PluginRunnerProblem {
+  /** In the owner's words, as a text problem. */
+  text: string;
+  /**
+   * `setup` (the default): something to set up, the row offers "Einrichten". `waiting`: set up
+   * and waiting for someone else (a number asked for), nothing to do. `plan`: the tenant's plan
+   * does not have it, the row offers the plans.
+   */
+  kind?: "setup" | "waiting" | "plan";
+  /** What the row says instead of "Noch nicht eingerichtet": "Nummer angefragt", "Ab Pro". */
+  note?: { de: string; en: string };
+  /** `plan`: the plan that has it, for the row's button ("Pro ansehen"). */
+  plan?: string;
+}
+
 /**
  * A runner: a door a wizard runs through, beside the built-in page and chat. A `page` runner is
  * served at `/w/<token>/<id>` for every wizard that switched it on; a `channel` runner has an
@@ -739,9 +757,11 @@ export interface PluginRunner {
   /**
    * Why the runner cannot be used in the current tenant right now, in the owner's words ("Not
    * connected: Settings → WhatsApp"), or null when it can. Asked inside the tenant whenever the
-   * studio lists the runners; a runner with a problem cannot be switched on.
+   * studio lists the runners; a runner with a problem cannot be switched on. A text is something
+   * to set up: the share dialog's row says so and offers "Einrichten". An object says what kind of
+   * problem it is.
    */
-  problem?(): string | null | Promise<string | null>;
+  problem?(): string | PluginRunnerProblem | null | Promise<string | PluginRunnerProblem | null>;
   /**
    * A channel runner: where a person reaches the wizard, for the share dialog; null while the
    * runner is not set up. Asked inside the tenant for each wizard that has the runner on.

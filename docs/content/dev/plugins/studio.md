@@ -1,7 +1,7 @@
 ---
 title: The studio half
 description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
-version: 0.3.7
+version: 0.4.4
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -89,6 +89,7 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
 | `studio.registerShareSection({ runner, component })` | A runner's own settings for a wizard (a keyword), under the share dialog's gear once the runner is on and set up. See [Runners](./runners.md#the-runners-part-of-the-share-dialog) |
+| `studio.registerShareSetup({ runner, title, component, notice? })` | What "Einrichten" in the runner's row opens: a view inside the share dialog, with its buttons at the dialog's foot, and a banner of the runner's news. See [Runners](./runners.md#setting-up-inside-the-dialog) |
 | `studio.registerAssistantCard({ tool, component })` | A card in the assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
 - The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,

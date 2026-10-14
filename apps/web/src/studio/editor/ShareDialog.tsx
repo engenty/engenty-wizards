@@ -23,13 +23,16 @@ import {
 } from "lucide-react";
 import {
   type CSSProperties,
+  createContext,
   type ReactNode,
+  useContext,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router";
 import { api } from "../../lib/api";
 import { withBase } from "../../lib/base";
@@ -44,9 +47,10 @@ import {
   useMe,
   type WizardDetail,
 } from "../../lib/session";
-import { PluginFrame, useStudioPlugins } from "../../plugins/host";
+import { PluginFrame, type StudioPlugins, useStudioPlugins } from "../../plugins/host";
 import { Button, cn, Dialog, IconButton, Input, Spinner, Switch } from "../../ui";
 import { LinkStatus, useAccountLink } from "../Account";
+import { openExternal } from "../LocalRuntime";
 import {
   CHANNEL_GROUPS,
   type ChannelGroup,
@@ -113,12 +117,18 @@ interface Way {
   link: string | null;
   /** Not set up here, in the runner's words. */
   problem: string | null;
+  /** `setup`: to set up here; `waiting`: asked for, nothing to do; `plan`: not in the plan. */
+  problemKind: NonNullable<RunnerInfo["problemKind"]>;
+  /** What the row says about the problem, from the runner. */
+  problemNote: string | null;
+  /** `plan`: the plan that has it. */
+  problemPlan: string | null;
   plugin?: string;
 }
 
-type View = "main" | "qr" | "website" | "package" | "settings" | "channels";
+type View = "main" | "qr" | "website" | "package" | "settings" | "channels" | "setup";
 
-const HEADINGS: Record<Exclude<View, "main">, Key> = {
+const HEADINGS: Record<Exclude<View, "main" | "setup">, Key> = {
   qr: "share.qr",
   website: "share.onWebsite",
   package: "share.wpLocal",
@@ -145,6 +155,9 @@ function waysOf(answer: RunnersAnswer, base: string | null): Way[] {
         name: channel ? t(channel.label) : r.label[lang],
         icon: channel ? <ChannelIcon channel={channel} /> : <Puzzle className="size-4" />,
         problem: r.problem ?? null,
+        problemKind: r.problemKind ?? "setup",
+        problemNote: r.problemNote?.[lang] ?? null,
+        problemPlan: r.problemPlan ?? null,
         plugin: r.plugin,
       };
       if (r.kind === "page") {
@@ -171,6 +184,13 @@ function waysOf(answer: RunnersAnswer, base: string | null): Way[] {
       return { ...way, note: cannot ?? at, copy, link: a?.link ?? null };
     })
     .sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+}
+
+/** What a runner's setup says when it goes back to the main view. */
+interface SetupBanner {
+  title: string;
+  text?: string;
+  tone?: "done" | "waiting";
 }
 
 /** Puts a text on the clipboard; `copied` names what arrived there last, for a moment. */
@@ -580,6 +600,8 @@ function Ways({
   copied,
   copy,
   onChange,
+  onSetUp,
+  plansUrl,
 }: {
   ways: Way[];
   blocked: boolean;
@@ -588,15 +610,12 @@ function Ways({
   copied: string | null;
   copy: (key: string, text: string) => void;
   onChange: () => void;
+  /** "Einrichten" of a row. */
+  onSetUp: (way: Way) => void;
+  /** Where the plans are, for a channel the plan does not have; null where there are none. */
+  plansUrl: string | null;
 }) {
-  const navigate = useNavigate();
-  const { sections } = useStudioPlugins();
   const id = useId();
-  /** Where a channel is set up: its plugin's settings, the models for the built-in ones. */
-  const setUp = (way: Way) => {
-    const section = sections.find((s) => s.plugin === way.plugin);
-    navigate(section ? `/settings/${section.id}` : "/settings/models");
-  };
   const groups = CHANNEL_GROUPS.filter((g) => ways.some((w) => w.group === g.id));
   return (
     <section aria-labelledby={id} className="flex flex-col">
@@ -625,9 +644,19 @@ function Ways({
               .map((w) => {
                 const done = copied === w.id;
                 let action: ReactNode = null;
-                if (w.problem) {
+                if (w.problem && w.problemKind === "plan") {
+                  action = plansUrl ? (
+                    <Button size="sm" variant="secondary" onClick={() => openExternal(plansUrl)}>
+                      {w.problemPlan
+                        ? t("share.seePlan", { plan: w.problemPlan })
+                        : t("share.seePlans")}
+                    </Button>
+                  ) : null;
+                } else if (w.problem && w.problemKind === "waiting") {
+                  action = null;
+                } else if (w.problem) {
                   action = locked ? null : (
-                    <Button size="sm" variant="quiet" onClick={() => setUp(w)}>
+                    <Button size="sm" variant="quiet" onClick={() => onSetUp(w)}>
                       {t("share.setUp")}
                     </Button>
                   );
@@ -656,8 +685,21 @@ function Ways({
                     <span className="min-w-0 flex-1">
                       <span className="block text-[0.9375rem]">{w.name}</span>
                       {w.problem ? (
-                        <span className="block text-[0.8125rem] text-amber" title={w.problem}>
-                          {t("share.unset")}
+                        <span
+                          className={cn(
+                            "block text-[0.8125rem]",
+                            w.problemKind === "setup" ? "text-amber" : "text-ink-3",
+                          )}
+                          title={w.problem}
+                        >
+                          {w.problemNote ??
+                            t(
+                              w.problemKind === "waiting"
+                                ? "share.waiting"
+                                : w.problemKind === "plan"
+                                  ? "share.notInPlan"
+                                  : "share.unset",
+                            )}
                         </span>
                       ) : w.note ? (
                         <span className="block truncate text-[0.8125rem] text-ink-3" title={w.note}>
@@ -1098,6 +1140,45 @@ function SettingsView({
 }
 
 /** The channels it runs as, changed: the list of the new-wizard page. */
+/** Where a runner's setup puts its buttons: the dialog's foot. */
+const ActionsSlot = createContext<HTMLElement | null>(null);
+
+function SetupActions({ children }: { children: ReactNode }) {
+  const slot = useContext(ActionsSlot);
+  return slot ? createPortal(children, slot) : null;
+}
+
+/** A runner's setup from its plugin, inside the dialog: "Einrichten" of its row. */
+function SetupView({
+  wizard,
+  setup,
+  onDone,
+}: {
+  wizard: WizardDetail;
+  setup: StudioPlugins["shareSetups"][number];
+  onDone: (banner?: SetupBanner) => void;
+}) {
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const Setup = setup.component;
+  return (
+    <ActionsSlot.Provider value={slot}>
+      <Body>
+        <PluginFrame of={setup}>
+          <Setup
+            wizard={{ id: wizard.id, title: wizard.draft.title }}
+            Actions={SetupActions}
+            done={onDone}
+          />
+        </PluginFrame>
+      </Body>
+      <div
+        ref={setSlot}
+        className="flex shrink-0 flex-wrap items-center gap-2 border-border-soft border-t px-4 py-3.5 empty:hidden sm:px-5"
+      />
+    </ActionsSlot.Provider>
+  );
+}
+
 function ChannelsView({
   wizard,
   answer,
@@ -1187,6 +1268,30 @@ function SharePanel({
   });
   const [view, setView] = useState<View>("main");
   const { copied, copy } = useCopy();
+  const navigate = useNavigate();
+  const { sections, shareSetups } = useStudioPlugins();
+  /** The runner whose setup the dialog shows, and what its setup said when it went back. */
+  const [setupOf, setSetupOf] = useState<string | null>(null);
+  const [setupBanner, setSetupBanner] = useState<SetupBanner | null>(null);
+  const setup = setupOf ? shareSetups.find((s) => s.runner === setupOf) : undefined;
+  /** "Einrichten": the runner's setup in here, else its plugin's settings, the models for the built-in ones. */
+  const setUp = (way: Pick<Way, "id" | "plugin">) => {
+    if (shareSetups.some((s) => s.runner === way.id)) {
+      setSetupOf(way.id);
+      setSetupBanner(null);
+      setView("setup");
+      return;
+    }
+    const section = sections.find((s) => s.plugin === way.plugin);
+    navigate(section ? `/settings/${section.id}` : "/settings/models");
+  };
+  const setupDone = (banner?: SetupBanner) => {
+    setSetupBanner(banner ?? null);
+    setView("main");
+    void qc.invalidateQueries({ queryKey: ["wizard-runners", wizard.id] });
+  };
+  const plansUrl =
+    me.data?.mode === "managed" && me.data.manageUrl ? `${me.data.manageUrl}/billing` : null;
   // Shared for the first time: it goes live as the dialog opens. Nobody has the link yet, and
   // "Nur du" keeps it closed.
   const [firstShare, setFirstShare] = useState<"publishing" | "done" | null>(null);
@@ -1211,6 +1316,10 @@ function SharePanel({
     () => (runners.data ? waysOf(runners.data, base) : []),
     [runners.data, base],
   );
+  // A runner's news, drawn by its plugin: the first one of the runners that are on.
+  const notice = ways
+    .map((w) => shareSetups.find((s) => s.runner === w.id && s.notice))
+    .find(Boolean);
   const blocked = !wizard.published || here || !wizard.shareEnabled || !base;
   const first = ways.find((w) => w.copy?.text === base);
 
@@ -1237,6 +1346,12 @@ function SharePanel({
 
   const back = () => setView(view === "package" ? "website" : "main");
   const title = wizard.draft.title;
+  const heading =
+    view === "main"
+      ? t("share.titleOf", { title })
+      : view === "setup"
+        ? (setup?.title() ?? "")
+        : t(HEADINGS[view]);
 
   return (
     <div
@@ -1255,7 +1370,7 @@ function SharePanel({
             view === "main" && "pl-2 sm:pl-3",
           )}
         >
-          {view === "main" ? t("share.titleOf", { title }) : t(HEADINGS[view])}
+          {heading}
         </h2>
         {view === "main" ? (
           <IconButton label={t("share.settings")} onClick={() => setView("settings")}>
@@ -1321,6 +1436,18 @@ function SharePanel({
                 {t("share.changes", { v: wizard.publishedVersion ?? 0 })}
               </Banner>
             ) : null}
+            {setupBanner ? (
+              <Banner done={setupBanner.tone !== "waiting"} title={setupBanner.title}>
+                {setupBanner.text}
+              </Banner>
+            ) : notice?.notice ? (
+              <PluginFrame of={notice}>
+                <notice.notice
+                  wizard={{ id: wizard.id, title }}
+                  open={() => setUp({ id: notice.runner, plugin: notice.plugin })}
+                />
+              </PluginFrame>
+            ) : null}
             {here && wizard.published ? <LocalOffer account={account} /> : null}
             {linked && wizard.published ? (
               <CloudProblem wizard={wizard} where={where} cloud={cloud.data} />
@@ -1341,6 +1468,8 @@ function SharePanel({
                 copied={copied}
                 copy={copy}
                 onChange={() => setView("channels")}
+                onSetUp={setUp}
+                plansUrl={plansUrl}
               />
             ) : null}
           </Body>
@@ -1396,6 +1525,9 @@ function SharePanel({
       ) : null}
       {view === "channels" ? (
         <ChannelsView wizard={wizard} answer={runners.data} onDone={() => setView("main")} />
+      ) : null}
+      {view === "setup" && setup ? (
+        <SetupView wizard={wizard} setup={setup} onDone={setupDone} />
       ) : null}
     </div>
   );

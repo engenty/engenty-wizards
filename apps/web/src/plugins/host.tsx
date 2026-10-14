@@ -7,6 +7,7 @@ import type {
   StudioPluginContext,
   StudioSettingsSection,
   StudioShareSection,
+  StudioShareSetup,
   StudioSpace,
   StudioSpaceMenuEntry,
   StudioSpacePart,
@@ -107,6 +108,7 @@ export interface StudioPlugins extends Listing {
   /** The menus of the plugins' space parts, by part, as the drawn part says them. */
   spaceMenus: Record<string, StudioSpaceMenuEntry[]>;
   shareSections: Of<StudioShareSection>[];
+  shareSetups: Of<StudioShareSetup>[];
   cards: Of<StudioAssistantCard>[];
 }
 
@@ -123,6 +125,7 @@ let state: StudioPlugins = {
   spaceParts: [],
   spaceMenus: {},
   shareSections: [],
+  shareSetups: [],
   cards: [],
 };
 const listeners = new Set<() => void>();
@@ -170,6 +173,7 @@ interface Draft {
   spaceSections: Of<StudioSpaceSection>[];
   spaceParts: Of<StudioSpacePart>[];
   shareSections: Of<StudioShareSection>[];
+  shareSetups: Of<StudioShareSetup>[];
   cards: Of<StudioAssistantCard>[];
   disposers: (() => void)[];
 }
@@ -280,6 +284,15 @@ function contextFor(plugin: PluginInfo, draft: Draft): StudioPluginContext {
       }
       draft.shareSections.push({ ...section, plugin: id, serial: ++serials });
     },
+    registerShareSetup(setup) {
+      const taken = [...others(state.shareSetups), ...draft.shareSetups].some(
+        (s) => s.runner === setup.runner,
+      );
+      if (taken) {
+        throw new Error(`The runner "${setup.runner}" has a share setup already.`);
+      }
+      draft.shareSetups.push({ ...setup, plugin: id, serial: ++serials });
+    },
     registerAssistantCard(card) {
       if (draft.cards.some((c) => c.tool === card.tool)) {
         throw new Error(`The tool "${card.tool}" has a card already.`);
@@ -377,6 +390,7 @@ function unmount(id: string) {
     spaceSections: state.spaceSections.filter((s) => s.plugin !== id),
     spaceParts: state.spaceParts.filter((s) => s.plugin !== id),
     shareSections: state.shareSections.filter((s) => s.plugin !== id),
+    shareSetups: state.shareSetups.filter((s) => s.plugin !== id),
     cards: state.cards.filter((c) => c.plugin !== id),
   });
 }
@@ -394,6 +408,7 @@ async function mount(plugin: PluginInfo) {
     spaceSections: [],
     spaceParts: [],
     shareSections: [],
+    shareSetups: [],
     cards: [],
     disposers: [],
   };
@@ -433,6 +448,7 @@ async function mount(plugin: PluginInfo) {
     spaceSections: [...state.spaceSections.filter((s) => s.plugin !== id), ...draft.spaceSections],
     spaceParts: [...state.spaceParts.filter((s) => s.plugin !== id), ...draft.spaceParts],
     shareSections: [...state.shareSections.filter((s) => s.plugin !== id), ...draft.shareSections],
+    shareSetups: [...state.shareSetups.filter((s) => s.plugin !== id), ...draft.shareSetups],
     cards: [...state.cards.filter((c) => c.plugin !== id), ...draft.cards],
   });
   release(id, was?.disposers ?? [], was?.link ?? null);

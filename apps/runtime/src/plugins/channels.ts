@@ -52,6 +52,7 @@ export const channelsApi: PluginServerApi["channels"] = {
           }
         : null,
       shared: c.shared,
+      allowed: c.allowed !== false,
     };
   },
   async request(input) {

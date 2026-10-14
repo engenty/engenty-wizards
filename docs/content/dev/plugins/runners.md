@@ -1,7 +1,7 @@
 ---
 title: Runners
 description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
-version: 0.4.0
+version: 0.4.4
 ---
 
 A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the
@@ -37,7 +37,7 @@ server.registerRunner({
 | `kind` | `page`: the person opens an address. `channel`: the runner has an address of its own (a number, a bot) and drives runs from its webhooks |
 | `capabilities` | What the runner takes in and shows; see below |
 | `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in. A page runner without one throws when it is registered |
-| `problem` | `() => string \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. The share dialog shows a runner with a problem as not set up yet, with a way to its settings |
+| `problem` | `() => string \| { text, kind?, note?, plan? } \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. A text is something to set up: the share dialog's row says "Noch nicht eingerichtet" with "Einrichten". An object says its `kind`: `setup` (the same), `waiting` (asked for, waiting for someone else; the row has no button), `plan` (the tenant's plan does not have it; the row offers the plans, "`plan` ansehen"); `note` (`{ de, en }`) is what the row says instead ("Nummer angefragt", "Ab Pro") |
 | `address` | A channel runner: `(wizard: { id, title, token }) => { number?, keyword?, link? } \| null`, may be async. Where a person reaches that wizard: the number, the keyword that picks it there, and a link that opens the channel with the keyword written (`sms:…`, `https://wa.me/…`). The share dialog shows the keyword and number under the runner's name, copies the link (else the number) and offers the link as a QR code. Asked for each wizard that has the runner on; null while it is not set up |
 
 A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. From
@@ -129,6 +129,42 @@ function ShareSection({ wizard }: StudioShareSectionProps) {
 One section per runner. After a change, invalidating the query `["wizard-runners", wizard.id]`
 redraws the row. The settings a channel needs once per tenant (the number, the token)
 go into a [settings section](./studio.md).
+
+### Setting up inside the dialog
+
+What "Einrichten" in a row opens: without more, the plugin's settings section. A setup the studio
+half registers opens inside the dialog instead, as a view with a back arrow, at the dialog's
+height:
+
+```tsx
+studio.registerShareSetup({
+  runner: "sms",
+  title: () => t("setupTitle"),
+  component: Setup,
+  notice: Notice,
+});
+
+function Setup({ wizard, Actions, done }: StudioShareSetupProps) {
+  return (
+    <>
+      <p>…</p>
+      <Actions>
+        <Button onClick={() => ask.mutate()}>Nummer anfragen</Button>
+      </Actions>
+    </>
+  );
+  // done({ title: "Nummer angefragt", text: "…", tone: "waiting" }) goes back.
+}
+```
+
+| | |
+|---|---|
+| `title` | The view's heading, a function: the language can change |
+| `component` | Gets `{ wizard: { id, title }, Actions, done }`. What it renders inside `Actions` goes to the foot of the dialog, where the dialog's own buttons are. `done(banner?)` goes back to the main view and asks the rows again; `banner` (`{ title, text?, tone? }`, `tone` `done` green or `waiting` plain) shows on top |
+| `notice` | Optional: a banner above the rows while the runner has news ("Deine Nummer ist da"), drawn by the plugin, nothing while it has none. Gets `{ wizard, open }`; `open()` opens the setup. The dialog shows the first one of the runners that are on |
+
+One setup per runner. A setup that asks the server for something calls the plugin's own routes;
+the rows show what `problem` answers after `done`.
 
 ## A thread door from the SDK
 

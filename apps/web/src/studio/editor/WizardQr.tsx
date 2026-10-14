@@ -1,5 +1,6 @@
+import { cn } from "@engenty-wizards/runner/ui";
+import { useMemo } from "react";
 import { renderSVG } from "uqr";
-import { cn } from "../../ui";
 
 /** `K7WM4TQ9` → `K7WM 4TQ9`: two groups read aloud and typed more easily. */
 export const spacedCode = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
@@ -86,4 +87,18 @@ export function QrImage({
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
+}
+
+/** A QR code of a text (a link, `tel:` with a number), for a plugin's part of the studio. */
+export function QrCode({
+  text,
+  label,
+  className,
+}: {
+  text: string;
+  label: string;
+  className?: string;
+}) {
+  const svg = useMemo(() => qrSvg(text), [text]);
+  return <QrImage svg={svg} label={label} className={cn("size-40 p-1", className)} />;
 }

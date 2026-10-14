@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 /**
  * What the studio hands a plugin's studio half: the built `client.js` the studio loads after
@@ -102,6 +102,47 @@ export interface StudioShareSection {
   component: ComponentType<StudioShareSectionProps>;
 }
 
+/** What a runner's setup in the share dialog is handed. */
+export interface StudioShareSetupProps {
+  wizard: { id: string; title: string };
+  /**
+   * The buttons at the foot of the dialog, where the dialog's own are: render it anywhere in the
+   * setup, its children land there.
+   */
+  Actions: ComponentType<{ children: ReactNode }>;
+  /**
+   * Back to the dialog's main view, its rows asked again; with a banner on top that says how it
+   * went. `tone`: `done` (set up, green) or `waiting` (asked for, plain).
+   */
+  done(banner?: { title: string; text?: string; tone?: "done" | "waiting" }): void;
+}
+
+/** What a runner's banner on the share dialog is handed. */
+export interface StudioShareNoticeProps {
+  wizard: { id: string; title: string };
+  /** Opens the runner's setup in the dialog. */
+  open(): void;
+}
+
+/**
+ * A runner's setup inside the share dialog: what "Einrichten" in its row opens, a view of the
+ * dialog with a back arrow, of the dialog's height. Without one, "Einrichten" goes to the
+ * plugin's settings section. One per runner.
+ */
+export interface StudioShareSetup {
+  /** The runner's id, as the server half registered it. */
+  runner: string;
+  /** The view's title: "SMS einrichten". A function: the language can change. */
+  title: () => string;
+  component: ComponentType<StudioShareSetupProps>;
+  /**
+   * A banner above the dialog's rows while the runner has news (its number is there), drawn
+   * by the plugin; it draws nothing while it has none. The dialog shows the first runner's that
+   * is on.
+   */
+  notice?: ComponentType<StudioShareNoticeProps>;
+}
+
 /** What a card in the assistant's chat is handed. */
 export interface StudioAssistantCardProps<T = unknown> {
   /** What the assistant tool returned. */
@@ -202,6 +243,7 @@ export interface StudioPluginContext {
   registerSpaceSection(section: StudioSpaceSection): void;
   registerSpacePart(part: StudioSpacePart): void;
   registerShareSection(section: StudioShareSection): void;
+  registerShareSetup(setup: StudioShareSetup): void;
   registerAssistantCard(card: StudioAssistantCard): void;
   /**
    * A hook: the space the studio shows, `null` while it has none. A component that calls it draws

@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.4.3
+version: 0.4.4
 ---
 
 ## Server half
@@ -43,7 +43,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `publicRef(): Promise<string>` | [Routes](./routes.md#shared-routes). The part of `publicUrl` that names the current tenant |
 | `registerSharedRoute(route: PluginSharedRoute)` | [Routes](./routes.md#shared-routes). One route for every tenant; `handler({ request, path, params, query, inTenant })` |
 | `sharedUrl(path): string` | The full address of a shared route, the same for every tenant |
-| `channels.get()`, `.request({ userId, country, wish?, lang })`, `.withdraw()`, `.book({ kind, quantity, key, runId? })` | [Numbers of the Manage-App](./server.md#numbers-of-the-manage-app). `get`: `{ number, request, shared }` or `null` without a Manage-App |
+| `channels.get()`, `.request({ userId, country, wish?, lang })`, `.withdraw()`, `.book({ kind, quantity, key, runId? })` | [Numbers of the Manage-App](./server.md#numbers-of-the-manage-app). `get`: `{ number, request, shared, allowed }` or `null` without a Manage-App |
 | `registerMigrations(folder: string)` | [Tables](./tables.md). The folder is relative to the plugin's |
 | `on(event, listener)` | [Events](./events.md). `event`: `"run.done"`, `"run.failed"`, `"run.cancelled"`, `"space.created"`, `"space.updated"`, `"space.deleted"`, `"space.file.ready"`, `"space.file.removed"` |
 | `every(name, everyMs, handler)` | [Jobs](./server.md#jobs). Per tenant that has the plugin, at most once per `everyMs` (a minute at least). `handler({ tenantId, lastRun, signal })` |
@@ -243,6 +243,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
 | `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own settings for a wizard (a keyword), under the share dialog's gear once it is switched on and set up. `component` gets `{ wizard: { id, title } }` |
+| `studio.registerShareSetup({ runner, title, component, notice? })` | [Runners](./runners.md#setting-up-inside-the-dialog). What "Einrichten" in the runner's row opens inside the share dialog. `component` gets `{ wizard, Actions, done(banner?) }`, `notice` `{ wizard, open }` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
 | `studio.registerSpacePart({ id, label, icon, after?, component })` | [A part of the plugin's own](./studio.md#a-part-of-the-plugins-own) at `/studio/space/<id>`, after `info`, `knowledge` or `data` (default) in the menu |

@@ -106,6 +106,7 @@ const manage: Server = createServer(async (req, res) => {
           : null,
       request: null,
       shared: [{ number: "+436600000000", country: "AT", kinds: ["whatsapp"] }],
+      allowed: id === "tenant-a",
     });
   }
   const tenant = url.pathname.match(/^\/v1\/tenants\/([^/]+)$/)?.[1];
@@ -385,11 +386,12 @@ describe("a runtime of a Manage-App", () => {
       number: { number: "+4318008081", country: "AT", kinds: ["sms", "call"], providerRef: "PN1" },
       request: null,
       shared: [{ number: "+436600000000", country: "AT", kinds: ["whatsapp"] }],
+      allowed: true,
     });
     expect(ofA.shared).toBe(`${RUNTIME}/api/public/plugins/basics/shared/hook`);
     expect(ofA.ref).toMatch(/^[\w-]{24}$/);
     const ofB = (await (await get("/api/studio/plugins/basics/channels", b)).json()) as any;
-    expect(ofB.channels.number).toBeNull();
+    expect(ofB.channels).toMatchObject({ number: null, allowed: false });
     expect(ofB.ref).not.toBe(ofA.ref);
     // Asking: refused as the Manage-App refuses, passed on with its code.
     const refused = await post("/api/studio/plugins/basics/channels/request", a, {});
