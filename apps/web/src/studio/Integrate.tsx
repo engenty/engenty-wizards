@@ -1,3 +1,4 @@
+import { featureOn } from "@engenty-wizards/shared/features";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AppWindow,
@@ -945,7 +946,7 @@ function Revoke({ accountUrl }: { accountUrl: string }) {
 function ViaAccount({ client, me, onDesktop }: { client: Client; me: Me; onDesktop: () => void }) {
   const account = me.account?.signedIn ? me.account : null;
   const linking = useAccountLink(Boolean(account));
-  const canLink = me.features.account === true;
+  const canLink = featureOn(me.features, "account");
   return (
     <div className="flex flex-col gap-5">
       <PanelHead client={client} works={false}>

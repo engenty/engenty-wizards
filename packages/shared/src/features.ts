@@ -46,6 +46,19 @@ export function declaredByPlugin(
   return out;
 }
 
+/**
+ * Whether a switch is on in resolved values: a switch they do not carry counts as declared – a
+ * core flag with its default (`ownKeys` on, `teamPlans` off), anything else off. Every read of a
+ * flag goes through this (`useFeature` in the studio), so a missing value means one thing.
+ */
+export function featureOn(features: Features | null | undefined, name: string): boolean {
+  const value = features?.[name];
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return Object.hasOwn(FEATURES, name) ? FEATURES[name as FeatureName].default : false;
+}
+
 /** The defaults of these declarations; without any, the core's. */
 export function defaultFeatures(declared: Record<string, FeatureDeclaration> = FEATURES): Features {
   const out: Features = {};
