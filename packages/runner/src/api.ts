@@ -15,7 +15,8 @@ export function isOffline(err: unknown): boolean {
   return err instanceof ApiError && err.status === 0;
 }
 
-function safeJson(text: string) {
+/** A body as JSON; one that is not (a proxy's error page) as `{ error: <the text> }`. */
+export function safeJson(text: string) {
   try {
     return JSON.parse(text);
   } catch {
