@@ -608,13 +608,16 @@ export async function writeSummary(valueId: string): Promise<string> {
   if (!value) {
     throw new ServiceError(
       "not_found",
-      bilingual("Diesen Wert gibt es nicht.", "There is no such value."),
+      bilingual("Diesen Wert gibt es nicht.", "This value doesn’t exist."),
     );
   }
   const category = await categoryRow(value.categoryId);
   const { items, total } = await itemsOfValue(value.id);
   if (!items.length) {
-    throw new ServiceError("invalid", "Noch steht nichts unter diesem Wert.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Unter diesem Wert steht noch nichts.", "Nothing is filed under this value yet."),
+    );
   }
   const model = await textModel("standard");
   const result = await generateText({

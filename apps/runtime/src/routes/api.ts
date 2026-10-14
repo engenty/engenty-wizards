@@ -34,7 +34,7 @@ import {
 } from "../services/spaces.js";
 import { createWizard, ownedWizard, publishWizard, writeDraft } from "../services/wizards.js";
 import { codeOf, tenantStatus } from "../tenants/control.js";
-import { inLang } from "./lang.js";
+import { inLang, notFoundAnswer } from "./lang.js";
 import { dispatchAs } from "./plugins.js";
 
 const importSchema = z.object({
@@ -65,7 +65,7 @@ const WIZARD_BYTES = 48 * 1024 * 1024;
 
 const tooLarge = bodyLimit({
   maxSize: WIZARD_BYTES,
-  onError: (c) => c.json({ error: "Request body too large.", code: "too_large" }, 413),
+  onError: (c) => c.json({ error: "The request is too large.", code: "too_large" }, 413),
 });
 
 /**
@@ -79,10 +79,19 @@ async function caller(c: Context, scopes: Scope[]): Promise<Principal | Response
   }
   const who = principalOf(authInfo);
   if (scopes.some((scope) => !who.scopes.includes(scope))) {
-    return c.json({ error: "This token may not do that.", code: "insufficient_scope" }, 403);
+    return c.json(
+      { error: "This token isn’t allowed to do that.", code: "insufficient_scope" },
+      403,
+    );
   }
   if ((await tenantStatus(who.tenantId)) === "suspended") {
-    return c.json({ error: "tenant_suspended" }, 403);
+    return c.json(
+      {
+        error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+        code: "tenant_suspended",
+      },
+      403,
+    );
   }
   return who;
 }
@@ -95,8 +104,8 @@ function withinSyncLimit(c: Context, who: Principal): Response | null {
         {
           error: inLang(
             c,
-            "Zu viele Übertragungen. Bitte später noch einmal.",
-            "Too many transfers. Please try again later.",
+            "Zu viele Übertragungen. Versuch es später noch einmal.",
+            "Too many transfers. Try again later.",
           ),
           code: "rate_limited",
         },
@@ -129,7 +138,7 @@ async function pluginCall(c: Context): Promise<Response> {
           },
           403,
         )
-      : c.json({ error: "not found", code: "not_found" }, 404);
+      : c.json(notFoundAnswer(c), 404);
   }
   return inTenantAs(who, () =>
     dispatchAs(c, {
@@ -354,8 +363,8 @@ export const apiRoutes = new Hono()
         {
           error: inLang(
             c,
-            "Zu oft hintereinander. Bitte später noch einmal.",
-            "Too often in a row. Please try again later.",
+            "Zu oft hintereinander. Versuch es später noch einmal.",
+            "Too many times in a row. Try again later.",
           ),
           code: "rate_limited",
         },
@@ -470,10 +479,19 @@ export const apiRoutes = new Hono()
       !who.scopes.includes("wizards:write") ||
       (body.publish && !who.scopes.includes("wizards:publish"))
     ) {
-      return c.json({ error: "This token may not do that.", code: "insufficient_scope" }, 403);
+      return c.json(
+        { error: "This token isn’t allowed to do that.", code: "insufficient_scope" },
+        403,
+      );
     }
     if ((await tenantStatus(who.tenantId)) === "suspended") {
-      return c.json({ error: "tenant_suspended" }, 403);
+      return c.json(
+        {
+          error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+          code: "tenant_suspended",
+        },
+        403,
+      );
     }
     return inTenantAs(who, async () => {
       const writer = { source: "mcp" as const, client: who.client };

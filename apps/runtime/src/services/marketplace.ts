@@ -549,8 +549,8 @@ export async function marketplaceWizard(
     throw new ServiceError(
       "refused",
       bilingual(
-        "Diese Vorlage braucht eine neuere Version der App. Bitte aktualisiere die App.",
-        "This template needs a newer version of the app. Please update the app.",
+        "Diese Vorlage braucht eine neuere Version von engenty wizards. Aktualisiere zuerst engenty wizards.",
+        "This template needs a newer version of engenty wizards. Update engenty wizards first.",
       ),
     );
   }
@@ -561,7 +561,7 @@ export async function marketplaceWizard(
     throw new ServiceError(
       "refused",
       bilingual(
-        `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: mit Pro auf engenty.ai dabei.`,
+        `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: bei Pro auf engenty.ai dabei.`,
         `This template needs the ${needs.length === 1 ? "plugin" : "plugins"} ${needs.join(", ")}: included with Pro on engenty.ai.`,
       ),
     );

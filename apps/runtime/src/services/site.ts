@@ -190,7 +190,7 @@ function assistMessage(input: SiteInput): string {
         `## ${p.title}${p.url ? ` (${p.url})` : ""}${p.role ? ` [${p.role}]` : ""}\n\n${p.markdown.slice(0, 6000)}`,
     );
   return [
-    `This is the WordPress website ${input.url}. Fill the space from what it says about itself: a title, a description (about), facts (address, phone, email, VAT id, company register, opening hours, who runs it) and the colours, if there are none yet. Its pages are already in Knowledge; do not copy them. Write in the website's own language.`,
+    `This is the WordPress website ${input.url}. Fill the space from what it says about itself: a title, a description (about), facts (address, phone, email, VAT ID, company register, opening hours, who runs it) and the colours, if there are none yet. Its pages are already in Knowledge; do not copy them. Write in the website's own language.`,
     "The details below come straight from WordPress. Read the website with read_website only when something important is missing. Invent nothing.",
     `Name: ${input.name || "—"}\nTagline: ${input.tagline || "—"}\nLanguage: ${input.language ?? "—"}`,
     input.facts.length
@@ -323,7 +323,10 @@ export function siteJob(jobId: string) {
   if (!job || job.tenantId !== currentTenant()) {
     throw new ServiceError(
       "not_found",
-      bilingual("Diesen Vorgang gibt es nicht (mehr).", "There is no such job (any more)."),
+      bilingual(
+        "Diesen Vorgang gibt es nicht, oder er ist schon beendet.",
+        "This job doesn’t exist or has already finished.",
+      ),
     );
   }
   return siteJobView(job);

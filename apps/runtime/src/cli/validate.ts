@@ -70,7 +70,7 @@ export function validatePath(path: string): Checked {
 
 export function validateCommand(paths: string[], asJson: boolean): number {
   if (!paths.length) {
-    console.error("Name a .wizard file, an unpacked package or a wizard's JSON.");
+    console.error("Give a path: a .wizard file, an unpacked package or a wizard JSON file.");
     return 2;
   }
   const results = paths.map(validatePath);

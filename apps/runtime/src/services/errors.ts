@@ -1,4 +1,4 @@
-import type { RunNote } from "@engenty-wizards/shared/run";
+import { bilingual, type RunNote } from "@engenty-wizards/shared/run";
 import { errorText, NotedError } from "../model-errors.js";
 
 /** What a service call can refuse. The studio routes answer it as HTTP, the MCP tools as a tool error. */
@@ -44,4 +44,8 @@ export class ServiceError extends NotedError {
   }
 }
 
-export const notFound = () => new ServiceError("not_found", "not found");
+export const notFound = () =>
+  new ServiceError(
+    "not_found",
+    bilingual("Das gibt es nicht oder nicht mehr.", "This doesn’t exist or was deleted."),
+  );

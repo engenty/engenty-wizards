@@ -277,8 +277,11 @@ export async function createProject(_userId: string, name: string): Promise<{ id
     throw new ServiceError(
       "refused",
       limit === 1
-        ? bilingual("Hier gibt es ein Projekt.", "There is one project here.")
-        : bilingual(`Höchstens ${limit} Projekte.`, `At most ${limit} projects.`),
+        ? bilingual("Hier ist nur ein Space möglich.", "Only one space is allowed here.")
+        : bilingual(
+            `Hier sind höchstens ${limit} Spaces möglich.`,
+            `You can have at most ${limit} spaces here.`,
+          ),
     );
   }
   const id = nanoid(12);
@@ -481,7 +484,7 @@ export async function deleteProject(userId: string, projectId: string) {
   if (all.length <= 1) {
     throw new ServiceError(
       "refused",
-      bilingual("Das letzte Projekt bleibt.", "The last project stays."),
+      bilingual("Der letzte Space lässt sich nicht löschen.", "You can’t delete the last space."),
     );
   }
   await removeProject(projectId);

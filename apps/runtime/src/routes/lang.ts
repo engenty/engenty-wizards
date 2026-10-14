@@ -14,3 +14,11 @@ export function requestLang(c: Context): "de" | "en" {
 export function inLang(c: Context, de: string, en: string): string {
   return requestLang(c) === "de" ? de : en;
 }
+
+/** A 404 the person may read: a sentence in their language, the machine code beside it. */
+export function notFoundAnswer(c: Context): { error: string; code: "not_found" } {
+  return {
+    error: inLang(c, "Das gibt es nicht oder nicht mehr.", "This doesn’t exist or was deleted."),
+    code: "not_found",
+  };
+}

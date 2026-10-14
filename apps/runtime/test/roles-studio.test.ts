@@ -41,14 +41,14 @@ describe("RUNTIME_ROLE=studio", () => {
     // The studio's own routes answer (unauthorized, not unknown).
     expect((await get("/api/studio/me")).status).toBe(401);
     // The runs' API is on both halves: a run that does not exist, not an unknown route.
-    expect(await (await get("/api/runs/nope")).json()).toEqual({ error: "not found" });
+    expect(await (await get("/api/runs/nope")).json()).toEqual({ error: "This doesn’t exist or was deleted.", code: "not_found" });
   });
 
   it("does not serve the doors", async () => {
     for (const path of ["/api/public/wizards/abc", "/api/shares/abc", "/api/public/codes/123456"]) {
       const res = await get(path);
       expect(res.status, path).toBe(404);
-      expect(await res.json()).toEqual({ error: "not found" });
+      expect(await res.json()).toEqual({ error: "This doesn’t exist or was deleted.", code: "not_found" });
     }
     // The app links belong to the wizards' pages: not here.
     expect((await get("/.well-known/apple-app-site-association")).status).toBe(404);

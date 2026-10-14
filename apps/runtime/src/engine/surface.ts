@@ -24,8 +24,8 @@ export async function runSurfaceStep(step: SurfaceStep, ctx: StepContext): Promi
   if (issues.length) {
     throw new StepError(
       bilingual(
-        `Die Ansicht ist fehlerhaft: ${issues.map((i) => i.message).join(" ")}`,
-        `The view is faulty: ${issues.map((i) => i.message).join(" ")}`,
+        `Die Ansicht hat Fehler: ${issues.map((i) => i.message).join(" ")}`,
+        `The view has errors: ${issues.map((i) => i.message).join(" ")}`,
       ),
     );
   }

@@ -258,8 +258,8 @@ export async function runFilmStep(step: FilmStep, ctx: StepContext): Promise<Ste
       }
       throw new StepError(
         bilingual(
-          `${client.name} hat beim Film aufgehört: ${(err as Error).message}. Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
-          `${client.name} stopped working on the film: ${(err as Error).message}. The work is saved; a new attempt carries on from there.`,
+          `${client.name} hat beim Film aufgehört: ${(err as Error).message}. Die Arbeit ist gespeichert. Ein neuer Versuch macht dort weiter.`,
+          `${client.name} stopped working on the film: ${(err as Error).message}. The work is saved. A new try carries on from there.`,
         ),
       );
     });
@@ -269,8 +269,8 @@ export async function runFilmStep(step: FilmStep, ctx: StepContext): Promise<Ste
       const failure = failureOf(client, detail);
       throw new StepError(
         bilingual(
-          `${errorText(failure, "de")} Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
-          `${errorText(failure, "en")} The work is saved; a new attempt carries on from there.`,
+          `${errorText(failure, "de")} Die Arbeit ist gespeichert. Ein neuer Versuch macht dort weiter.`,
+          `${errorText(failure, "en")} The work is saved. A new try carries on from there.`,
         ),
       );
     }
@@ -311,7 +311,7 @@ export async function runFilmStep(step: FilmStep, ctx: StepContext): Promise<Ste
         throw new StepError(
           bilingual(
             `Der Film ließ sich nicht rendern: ${problem.slice(0, 400)}`,
-            `The film could not be rendered: ${problem.slice(0, 400)}`,
+            `The film couldn’t be rendered: ${problem.slice(0, 400)}`,
           ),
         );
       }

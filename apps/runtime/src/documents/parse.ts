@@ -213,8 +213,8 @@ async function read(
     if (!vision.canConvert(mime)) {
       throw new UnreadableDocument(
         bilingual(
-          `Bilder vom Typ ${mime} kann ich nicht lesen (PNG, JPEG, WebP gehen).`,
-          `I cannot read images of type ${mime} (PNG, JPEG and WebP work).`,
+          `Bilder vom Typ ${mime} lassen sich nicht lesen (PNG, JPEG und WebP gehen).`,
+          `Images of type ${mime} can’t be read (PNG, JPEG and WebP work).`,
         ),
       );
     }
@@ -261,7 +261,7 @@ async function read(
     return { markdown: text(), pages: null, via: "text" };
   }
   throw new UnreadableDocument(
-    bilingual(`„${name}“ (${mime}) kann ich nicht lesen.`, `I cannot read “${name}” (${mime}).`),
+    bilingual(`„${name}“ (${mime}) lässt sich nicht lesen.`, `“${name}” (${mime}) can’t be read.`),
   );
 }
 

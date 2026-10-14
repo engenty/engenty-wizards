@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LOCAL_MCP_HEADER, mintLocalTicket } from "../auth/local-ticket.js";
 import type { LogLine } from "../log.js";
-import { command, type Layout } from "./home.js";
+import type { Layout } from "./home.js";
 import { runningRuntime, settings } from "./start.js";
-import { bad, dim, ok } from "./ui.js";
+import { bad, cmd, dim, ok, tilde } from "./ui.js";
 
 /**
  * `wizards logs` shows the last lines the running runtime printed; `wizards report` sends its
@@ -33,11 +33,11 @@ async function ask(
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
   if (!running) {
-    return `engenty wizards is not running. Start it with \`${command()} start\` first.`;
+    return `engenty wizards isn’t running. To start it: ${cmd("start")}`;
   }
   const secret = readSecret(paths, dataDir);
   if (!secret) {
-    return "The data folder's secret could not be read.";
+    return `Couldn’t read the data folder’s secret (${tilde(join(dataDir, "secret"))}).`;
   }
   const res = await fetch(`http://127.0.0.1:${running.port}/api/local/debug${path}`, {
     method,
@@ -65,13 +65,12 @@ export async function logsCommand(paths: Layout, value: string): Promise<number>
     console.log(`${dim(at)} ${level} ${line.text}`);
   }
   if (!lines.length) {
-    console.log(dim("Nothing printed yet."));
+    console.log(dim("No log lines yet."));
   }
   return 0;
 }
 
 export async function reportCommand(paths: Layout): Promise<number> {
-  console.log(dim("Sending status, model settings (no keys) and the last log lines …"));
   const answer = await ask(paths, "POST", "/report");
   if (typeof answer === "string") {
     console.error(answer);
@@ -79,16 +78,18 @@ export async function reportCommand(paths: Layout): Promise<number> {
   }
   if (answer.status === 409) {
     console.error(
-      `${bad} This install is linked to no account. Link one in the studio under Settings → Account, then send again.`,
+      `${bad} This computer isn’t connected to an account. Sign in under Settings → Account in the studio, or with ${cmd("account sign-in")}. Then try again.`,
     );
     return 1;
   }
   if (answer.status !== 200) {
-    console.error(`${bad} ${answer.body.error ?? `The runtime answered ${answer.status}.`}`);
+    console.error(
+      `${bad} ${answer.body.error ?? `engenty wizards responded with an error (${answer.status}).`}`,
+    );
     return 1;
   }
   console.log(
-    `${ok} Report ${answer.body.id} is at ${answer.body.to}. Name it when you ask for help.`,
+    `${ok} Sent report ${answer.body.id} to ${answer.body.to}. Quote this ID when you ask for help.`,
   );
   return 0;
 }

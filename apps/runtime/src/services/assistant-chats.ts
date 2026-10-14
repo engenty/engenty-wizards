@@ -316,7 +316,7 @@ export async function readChat(user: SessionUser, chatId: string) {
   if (!chat) {
     throw new ServiceError(
       "not_found",
-      bilingual("Diesen Chat gibt es nicht.", "There is no such chat."),
+      bilingual("Diesen Chat gibt es nicht.", "This chat doesn’t exist."),
     );
   }
   return {

@@ -8,9 +8,9 @@ version: 0.3.4
 
 | Command | Does |
 |---|---|
-| `wizards` | What runs, and a menu: open the studio, restart and stop while it runs, "Start as service" or "Start here" (in this terminal) while it does not; update, which restarts what runs into the new version; "Service settings" (start at login); connect AI apps, status, setup, help. The first time, the setup runs first. Needs a terminal |
+| `wizards` | What runs, and a menu: open the studio, restart and stop while it runs, "Start in the background" or "Start here" (in this terminal) while it does not; update, which restarts it into the new version; "Start at login"; connect AI apps, status, setup, help. The first time, the setup runs first. Needs a terminal |
 | `wizards start` | Starts it and opens the studio. It runs in that terminal; Ctrl-C stops it. The first time, the setup runs first |
-| `wizards studio` | Opens the studio in your browser. When it does not run, it starts as a service first |
+| `wizards studio` | Opens the studio in your browser. When it does not run, it starts in the background first |
 | `wizards setup` | The guided setup again: your account, an AI client to think with, the browser and ffmpeg, start at login, your AI apps. `--local` leaves the account out ([Local only](./local-only.md)) |
 | `wizards account` | How the install stands to your account: signed in as whom, which team, the credits. `sign-in` shows a code and opens the browser; `sign-out` disconnects the install |
 | `wizards open` | Lets this browser into the running studio. `--print` only shows the link; it works once, within a minute |
@@ -19,8 +19,8 @@ version: 0.3.4
 | `wizards logs [n]` | The last lines the running install printed (100, or `n` up to 2000); keys and tokens are taken out |
 | `wizards report` | Sends status, model settings (never a key) and the last 500 log lines to your [linked account](./models.md#account), so support can look at what went wrong. Nothing is sent unless you run it. The command names the report's id; without a linked account it says to link one under Settings → Account |
 | `wizards stop` | Stops it. The data is kept |
-| `wizards restart` | Stops it and starts it again; after an update, the new version. When it does not run, it starts as a service |
-| `wizards update` | Installs the newest version |
+| `wizards restart` | Stops it and starts it again; after an update, the new version. When it does not run, it starts in the background |
+| `wizards update` | Installs the latest version |
 | `wizards autostart on` / `off` | Starts it at login, or no longer. A LaunchAgent on macOS, a systemd user service on Linux |
 | `wizards connect [app …]` | Adds your wizards to your [AI apps](./ai-apps.md): every app found, or the ones you name |
 | `wizards disconnect [app …]` | Takes them out again |
@@ -31,11 +31,11 @@ version: 0.3.4
 | `--yes`, `-y` | Asks nothing and installs nothing optional |
 | `--client <name>` | Installs this AI client without asking: `codex`, `claude`, `gemini`, `cursor` |
 | `--no-open` | Starts without opening the browser |
-| `--service`, `-s` | Starts it as a service: detached from the terminal, and the command returns. `wizards stop` stops it; its output goes to `logs/runtime.log` |
+| `--background`, `-s` | Starts it in the background (`--service` still works): detached from the terminal, and the command returns. `wizards stop` stops it; its output goes to `logs/runtime.log` |
 | `--version`, `--help` | |
 
 Started in a terminal, it runs while that terminal is open; Ctrl-C stops it. With
-`wizards start --service` it keeps running after the terminal closes. If it already
+`wizards start --background` it keeps running after the terminal closes. If it already
 runs, `wizards start` opens the running one instead of starting a second.
 
 ## Where things are

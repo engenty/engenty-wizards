@@ -187,7 +187,7 @@ export const claude: Harness = {
   login: { args: ["auth", "login"], interactive: false },
   model: (alias: string, effort?: Effort) => new ClaudeCodeModel(claude, alias || "sonnet", effort),
   exhausted: bilingual(
-    "Das Anthropic-Konto, mit dem Claude Code angemeldet ist, hat kein Guthaben. Melde Claude Code mit deinem Abo an: in den Einstellungen unter „Modelle“.",
-    "The Anthropic account Claude Code is signed in with has no credit. Sign Claude Code in with your subscription: under “Models” in the settings.",
+    "Das Anthropic-Konto, mit dem Claude Code angemeldet ist, hat kein Guthaben. Melde Claude Code unter Einstellungen → Modelle mit deinem Abo an.",
+    "The Anthropic account Claude Code is signed in with has no credit. Sign Claude Code in with your subscription under Settings → Models.",
   ),
 };

@@ -5,7 +5,7 @@ import { delimiter, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { installedByScript, type Layout, packageRoot } from "./home.js";
 import { findOnPath } from "./machine.js";
-import { bad, dim, ok, tilde } from "./ui.js";
+import { bad, cmd, dim, ok, tilde } from "./ui.js";
 
 const run = promisify(execFile);
 
@@ -289,7 +289,7 @@ function jsonApp(def: {
     def.ownsFileWhileRunning?.()
       ? {
           ok: false,
-          message: `${def.name} is running and would overwrite its config. Quit it (Cmd+Q), then run this again.`,
+          message: `${def.name} is running and would overwrite its settings. Quit it completely, then try again.`,
         }
       : null;
   const snippet = (server: ServerCommand) =>
@@ -316,17 +316,17 @@ function jsonApp(def: {
       if (next === null) {
         return {
           ok: false,
-          message: `${def.file} is not plain JSON (comments?); add this to it:`,
+          message: `${tilde(def.file)} isn’t plain JSON (comments?). Add this to it yourself:`,
           snippet: snippet(server),
         };
       }
       save(def.file, next);
-      return { ok: true, message: `added to ${def.file}` };
+      return { ok: true, message: `added to ${tilde(def.file)}` };
     },
     async disconnect() {
       const text = read(def.file);
       if (!text || !jsonHasServer(text, def.at)) {
-        return { ok: true, message: "was not connected" };
+        return { ok: true, message: "wasn’t connected" };
       }
       const busy = running();
       if (busy) {
@@ -336,11 +336,11 @@ function jsonApp(def: {
       if (next === null) {
         return {
           ok: false,
-          message: `${def.file} is not plain JSON; remove "${SERVER_NAME}" there.`,
+          message: `${tilde(def.file)} isn’t plain JSON. Remove “${SERVER_NAME}” from it yourself.`,
         };
       }
       save(def.file, next);
-      return { ok: true, message: `removed from ${def.file}` };
+      return { ok: true, message: `removed from ${tilde(def.file)}` };
     },
   };
 }
@@ -368,7 +368,7 @@ function claudeCode(paths: Layout): App {
     async connect(server) {
       const claude = appCommand(paths, "claude");
       if (!claude) {
-        return { ok: false, message: "the claude command was not found" };
+        return { ok: false, message: "The claude command wasn’t found." };
       }
       // Claude Code keeps rewriting its own file: its command changes it, not we.
       await run(claude, ["mcp", "remove", "--scope", "user", SERVER_NAME]).catch(() => undefined);
@@ -384,7 +384,7 @@ function claudeCode(paths: Layout): App {
           server.command,
           ...server.args,
         ]);
-        return { ok: true, message: "added with `claude mcp add --scope user`" };
+        return { ok: true, message: "added with claude mcp add --scope user" };
       } catch (error) {
         return { ok: false, message: (error as Error).message.split("\n")[0] };
       }
@@ -392,10 +392,10 @@ function claudeCode(paths: Layout): App {
     async disconnect() {
       const claude = appCommand(paths, "claude");
       if (!claude) {
-        return { ok: true, message: "was not connected" };
+        return { ok: true, message: "wasn’t connected" };
       }
       await run(claude, ["mcp", "remove", "--scope", "user", SERVER_NAME]).catch(() => undefined);
-      return { ok: true, message: "removed with `claude mcp remove`" };
+      return { ok: true, message: "removed with claude mcp remove" };
     },
   };
 }
@@ -412,15 +412,15 @@ function codex(): App {
     connected: async () => tomlHasServer(read(file) ?? ""),
     async connect(server) {
       save(file, withTomlServer(read(file), server));
-      return { ok: true, message: `added to ${file}` };
+      return { ok: true, message: `added to ${tilde(file)}` };
     },
     async disconnect() {
       const text = read(file);
       if (!text || !tomlHasServer(text)) {
-        return { ok: true, message: "was not connected" };
+        return { ok: true, message: "wasn’t connected" };
       }
       save(file, withoutTomlServer(text));
-      return { ok: true, message: `removed from ${file}` };
+      return { ok: true, message: `removed from ${tilde(file)}` };
     },
   };
 }
@@ -440,15 +440,15 @@ function goose(): App {
     connected: async () => yamlHasExtension(read(file) ?? ""),
     async connect(server) {
       save(file, withYamlExtension(read(file), server));
-      return { ok: true, message: `added to ${file}` };
+      return { ok: true, message: `added to ${tilde(file)}` };
     },
     async disconnect() {
       const text = read(file);
       if (!text || !yamlHasExtension(text)) {
-        return { ok: true, message: "was not connected" };
+        return { ok: true, message: "wasn’t connected" };
       }
       save(file, withoutYamlExtension(text));
-      return { ok: true, message: `removed from ${file}` };
+      return { ok: true, message: `removed from ${tilde(file)}` };
     },
   };
 }
@@ -483,7 +483,7 @@ function openClaw(paths: Layout): App {
           "--args",
           ...server.args,
         ]);
-        return { ok: true, message: "added with `openclaw mcp set`" };
+        return { ok: true, message: "added with openclaw mcp set" };
       } catch (error) {
         return { ok: false, message: (error as Error).message.split("\n")[0] };
       }
@@ -494,7 +494,7 @@ function openClaw(paths: Layout): App {
         return json.disconnect();
       }
       await run(openclaw, ["mcp", "unset", SERVER_NAME]).catch(() => undefined);
-      return { ok: true, message: "removed with `openclaw mcp unset`" };
+      return { ok: true, message: "removed with openclaw mcp unset" };
     },
   };
 }
@@ -592,19 +592,19 @@ export async function connectCommand(paths: Layout, ids: string[], remove: boole
   const unknown = ids.filter((id) => !apps(paths).some((app) => app.id === id));
   if (unknown.length) {
     console.error(
-      `Unknown app ${unknown.join(", ")}. One of: ${apps(paths)
+      `Unknown app ${unknown.map((id) => `“${id}”`).join(", ")}. Choose from: ${apps(paths)
         .map((app) => app.id)
-        .join(", ")}`,
+        .join(", ")}.`,
     );
     return 2;
   }
   const results = await connectApps(paths, ids, remove);
   if (!results.length) {
-    console.log("No AI app found on this machine. Name one: connect cursor");
+    console.log(`No AI app found on this computer. Name one: ${cmd("connect cursor")}`);
     return 0;
   }
   for (const { app, outcome } of results) {
-    console.log(`${outcome.ok ? ok : bad} ${app.name.padEnd(22)} ${dim(tilde(outcome.message))}`);
+    console.log(`${outcome.ok ? ok : bad} ${app.name.padEnd(22)} ${dim(outcome.message)}`);
     if (!outcome.ok && outcome.snippet) {
       console.log(outcome.snippet);
     }
@@ -613,7 +613,7 @@ export async function connectCommand(paths: Layout, ids: string[], remove: boole
     console.log("");
     console.log(dim("Restart the app (or reload its MCP servers) to see the wizards in it."));
     console.log(
-      dim("Claude Desktop, Cursor, VS Code and Goose show a run as a widget; the others as text."),
+      dim("Claude Desktop, Cursor, VS Code and Goose show a run as a widget, the others as text."),
     );
   }
   return results.every((r) => r.outcome.ok) ? 0 : 1;

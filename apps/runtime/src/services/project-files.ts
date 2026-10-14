@@ -39,7 +39,7 @@ export function fileView(row: ProjectFileRow): ProjectFileView {
     description: row.description,
     source: row.source,
     status: stale ? "failed" : row.status,
-    error: stale ? "Interrupted. Please read it in again." : row.error,
+    error: stale ? "Reading was interrupted. Read it in again." : row.error,
     indexed: row.indexed,
     pages: row.pages,
     chars: row.chars,
@@ -118,8 +118,8 @@ export async function addProjectFile(
               "A pattern is an image (SVG, PNG, JPEG, WebP).",
             )
           : bilingual(
-              "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen bitte zu den Dokumenten.",
-              "Images, videos, audio, PDFs, fonts, Lottie and 3D models belong here. Texts to look things up in go to the documents.",
+              "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen gehören ins Wissen.",
+              "Images, videos, audio, PDFs, fonts, Lottie and 3D models go here. Texts to look things up in go under knowledge.",
             ),
     );
   }
@@ -128,8 +128,8 @@ export async function addProjectFile(
     throw new ServiceError(
       "invalid",
       bilingual(
-        `Bitte eine Datei bis ${Math.round(limit / 1_000_000)} MB wählen.`,
-        `Please choose a file of up to ${Math.round(limit / 1_000_000)} MB.`,
+        `Wähl eine Datei bis ${Math.round(limit / 1_000_000)} MB.`,
+        `Choose a file of ${Math.round(limit / 1_000_000)} MB or less.`,
       ),
     );
   }
@@ -145,8 +145,8 @@ export async function addProjectFile(
     throw new ServiceError(
       "refused",
       bilingual(
-        `Höchstens ${PROJECT_LIMITS.files[input.kind]} Dateien.`,
-        `At most ${PROJECT_LIMITS.files[input.kind]} files.`,
+        `Hier haben höchstens ${PROJECT_LIMITS.files[input.kind]} Dateien Platz.`,
+        `There’s room for at most ${PROJECT_LIMITS.files[input.kind]} files here.`,
       ),
     );
   }
@@ -210,13 +210,16 @@ export async function addProjectFileFromUrl(
   }).catch(() => {
     throw new ServiceError(
       "invalid",
-      bilingual("Die Adresse ist nicht erreichbar.", "The address cannot be reached."),
+      bilingual("Die Adresse ist nicht erreichbar.", "The address can’t be reached."),
     );
   });
   if (!res.ok) {
     throw new ServiceError(
       "invalid",
-      bilingual(`Die Adresse antwortete ${res.status}.`, `The address answered ${res.status}.`),
+      bilingual(
+        `Die Adresse antwortete mit ${res.status}.`,
+        `The address responded with ${res.status}.`,
+      ),
     );
   }
   const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
@@ -226,7 +229,7 @@ export async function addProjectFileFromUrl(
       "invalid",
       bilingual(
         "Unter der Adresse steht eine Webseite, kein Bild.",
-        "The address holds a web page, not an image.",
+        "The address leads to a web page, not an image.",
       ),
       {
         reason: "page",
@@ -380,10 +383,7 @@ async function prepare(row: ProjectFileRow) {
       console.error("[project-file]", row.name, err);
       await set({
         status: "failed",
-        error:
-          err instanceof UnreadableDocument
-            ? err.message
-            : "Reading did not work. Please try again.",
+        error: err instanceof UnreadableDocument ? err.message : "Reading didn’t work. Try again.",
       });
     }
   });
@@ -499,7 +499,13 @@ export async function putOriginFile(
   });
   const mime = documentMime(input.name, input.mime) || "application/octet-stream";
   if (!input.data.byteLength || input.data.byteLength > projectFileLimit("document", mime)) {
-    throw new ServiceError("invalid", `"${input.name}" is empty or larger than a document may be.`);
+    throw new ServiceError(
+      "invalid",
+      bilingual(
+        `„${input.name}“ ist leer oder zu groß für ein Dokument.`,
+        `“${input.name}” is empty or too large for a document.`,
+      ),
+    );
   }
   const name = input.name.slice(0, 120) || "datei";
   const values = {
@@ -529,7 +535,10 @@ export async function putOriginFile(
     if (n >= PROJECT_LIMITS.files.document) {
       throw new ServiceError(
         "refused",
-        `A space keeps at most ${PROJECT_LIMITS.files.document} documents.`,
+        bilingual(
+          `Ein Space hat höchstens ${PROJECT_LIMITS.files.document} Dokumente.`,
+          `A space can have at most ${PROJECT_LIMITS.files.document} documents.`,
+        ),
       );
     }
     const ref = await saveAsset({ kind: "project", mime, name, data: input.data });

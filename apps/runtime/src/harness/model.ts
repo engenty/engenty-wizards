@@ -72,13 +72,13 @@ const workDir = join(env.dataDir, "harness");
 
 export const signedOut = (h: HarnessMeta) =>
   bilingual(
-    `${h.name} ist auf diesem Gerät nicht angemeldet. Melde dich in den Einstellungen unter „Modelle“ an.`,
-    `${h.name} is not signed in on this device. Sign in under “Models” in the settings.`,
+    `${h.name} ist auf diesem Computer nicht angemeldet. Melde dich unter Einstellungen → Modelle an.`,
+    `${h.name} isn’t signed in on this computer. Sign in under Settings → Models.`,
   );
 export const notInstalled = (h: HarnessMeta) =>
   bilingual(
-    `${h.name} ist auf diesem Gerät nicht installiert. Installiere es in den Einstellungen unter „Modelle“.`,
-    `${h.name} is not installed on this device. Install it under “Models” in the settings.`,
+    `${h.name} ist auf diesem Computer nicht installiert. Installiere es unter Einstellungen → Modelle.`,
+    `${h.name} isn’t installed on this computer. Install it under Settings → Models.`,
   );
 export const exhausted = (h: HarnessMeta) =>
   h.exhausted ??

@@ -147,8 +147,8 @@ export const RUN_NOTES = {
   // A line written out in both languages where no line of its own fits (`bilingual`).
   text: { de: "{de}", en: "{en}" },
   entry: { de: "Eintrag {n} von {total}", en: "Entry {n} of {total}" },
-  deciding: { de: "Entscheidet, wie es weitergeht …", en: "Deciding how to go on …" },
-  choosingFields: { de: "Wählt die passenden Fragen …", en: "Choosing the right questions …" },
+  deciding: { de: "Entscheidet, wie es weitergeht …", en: "Deciding what to do next…" },
+  choosingFields: { de: "Wählt die passenden Fragen …", en: "Choosing the right questions…" },
   batchDone: { de: "{done} von {total} fertig", en: "{done} of {total} done" },
   editing: { de: "Bearbeitet {n} von {total}", en: "Editing {n} of {total}" },
   filming: { de: "Dreht {n} von {total}", en: "Filming {n} of {total}" },
@@ -161,10 +161,10 @@ export const RUN_NOTES = {
     en: "Rendering the video – this usually takes 1–3 minutes.",
   },
   photo: { de: "Sieht sich Foto {n} von {total} an", en: "Looking at photo {n} of {total}" },
-  listen: { de: "Hört „{label}“ an …", en: "Listening to “{label}” …" },
+  listen: { de: "Hört „{label}“ an …", en: "Listening to “{label}”…" },
   listenFailed: {
     de: "„{label}“ konnte nicht verschriftlicht werden.",
-    en: "“{label}” could not be written down.",
+    en: "“{label}” couldn’t be transcribed.",
   },
   filmCutting: {
     de: "Der Film wird geschnitten – das dauert etwa eine Minute.",
@@ -196,7 +196,7 @@ export const RUN_NOTES = {
   fastLoop: { de: "Erledigt im Browser: {goal}", en: "Doing in the browser: {goal}" },
   personDrives: {
     de: "Du steuerst den Browser – der Wizard wartet",
-    en: "You are driving the browser – the wizard waits",
+    en: "You’re driving the browser – the wizard waits",
   },
   agentDrives: {
     de: "Der Wizard macht im Browser weiter",
@@ -205,7 +205,7 @@ export const RUN_NOTES = {
   looksAtPage: { de: "Sieht sich die Seite an", en: "Looking at the page" },
   waitsForSignIn: {
     de: "Wartet auf deine Anmeldung bei {name}",
-    en: "Waiting for you to sign in at {name}",
+    en: "Waiting for you to sign in to {name}",
   },
   downloads: { de: "Lädt {name} herunter", en: "Downloading {name}" },
   runs: { de: "Führt aus: {command}", en: "Running: {command}" },
@@ -218,9 +218,9 @@ export const RUN_NOTES = {
   },
   searchesKnowledge: {
     de: "Sucht in Wissen: {query} – {relevant} von {candidates} passen",
-    en: "Searching the knowledge: {query} – {relevant} of {candidates} fit",
+    en: "Searching knowledge: {query} – {relevant} of {candidates} fit",
   },
-  listsKnowledge: { de: "Listet Wissen", en: "Listing the knowledge" },
+  listsKnowledge: { de: "Listet Wissen", en: "Listing knowledge" },
   searchesMail: { de: "Durchsucht {label}", en: "Searching {label}" },
   savesReceipts: {
     de: "Speichert {count} Belege aus {label}",
@@ -240,7 +240,7 @@ export const RUN_NOTES = {
   filmLooks: { de: "Sieht sich Bilder des Films an", en: "Looking at frames of the film" },
   filmFix: {
     de: "Der Film ließ sich nicht rendern – Claude Code bessert nach",
-    en: "The film did not render – Claude Code is fixing it",
+    en: "The film didn’t render – Claude Code is fixing it",
   },
   filmResume: {
     de: "Macht dort weiter, wo der Film stehen geblieben ist",
@@ -250,21 +250,21 @@ export const RUN_NOTES = {
   // What the runtime answers the person running a shared wizard, in the wizard's language.
   wizardUnavailable: {
     de: "Dieser Wizard ist gerade nicht verfügbar.",
-    en: "This wizard is not available right now.",
+    en: "This wizard isn’t available right now.",
   },
   wizardLimit: {
-    de: "Für heute ist das Limit dieses Wizards erreicht. Bitte morgen wieder versuchen.",
+    de: "Für heute ist das Limit dieses Wizards erreicht. Versuch es morgen wieder.",
     en: "This wizard has reached its limit for today. Try again tomorrow.",
   },
   confirmHuman: {
-    de: "Bitte bestätige kurz, dass du ein Mensch bist.",
-    en: "Please confirm that you are a person.",
+    de: "Bestätige kurz, dass du ein Mensch bist.",
+    en: "Confirm that you’re a person.",
   },
   tooManyRuns: {
-    de: "Du hast gerade viele Durchläufe gestartet. Bitte versuche es in einer Stunde wieder.",
-    en: "You started many runs just now. Try again in an hour.",
+    de: "Du hast gerade viele Läufe gestartet. Versuch es in einer Stunde wieder.",
+    en: "You’ve started a lot of runs just now. Try again in an hour.",
   },
-  runOver: { de: "Der Durchlauf ist beendet.", en: "The run is over." },
+  runOver: { de: "Der Lauf ist beendet.", en: "The run is over." },
   runBusy: { de: "Der Wizard arbeitet gerade.", en: "The wizard is working right now." },
   pageOutdated: {
     de: "Diese Seite ist nicht mehr aktuell.",
@@ -272,33 +272,33 @@ export const RUN_NOTES = {
   },
   noStepBefore: { de: "Kein vorheriger Schritt.", en: "There is no step before this one." },
   checkFields: {
-    de: "Bitte die markierten Felder prüfen.",
-    en: "Please check the marked fields.",
+    de: "Prüf die markierten Felder.",
+    en: "Check the marked fields.",
   },
   talkOff: {
     de: "Live-Gespräche sind für diesen Wizard nicht eingeschaltet.",
-    en: "Live conversations are not switched on for this wizard.",
+    en: "Live conversations aren’t turned on for this wizard.",
   },
   talkKeyRefused: {
-    de: "Das Gespräch ließ sich nicht starten: Der OpenAI API Key wurde abgelehnt.",
-    en: "The conversation could not be started: the OpenAI API key was refused.",
+    de: "Das Gespräch ließ sich nicht starten: Der OpenAI-API-Key wurde abgelehnt.",
+    en: "The conversation couldn’t start: the OpenAI API key was refused.",
   },
   talkFailed: {
     de: "Das Gespräch ließ sich nicht starten ({status}).",
-    en: "The conversation could not be started ({status}).",
+    en: "The conversation couldn’t start ({status}).",
   },
   talkNoSecret: {
     de: "Das Gespräch ließ sich nicht starten: Es kam kein Zugang zurück.",
-    en: "The conversation could not be started: no secret came back.",
+    en: "The conversation couldn’t start: no access key came back.",
   },
-  tryLater: { de: "Bitte später noch einmal.", en: "Try again later." },
+  tryLater: { de: "Versuch es später noch einmal.", en: "Try again later." },
   recordingTooLarge: {
-    de: "Bitte eine Aufnahme bis 10 MB.",
-    en: "A recording of up to 10 MB, please.",
+    de: "Die Aufnahme darf höchstens 10 MB groß sein.",
+    en: "The recording can be 10 MB at most.",
   },
   fileTooLarge: {
-    de: "Bitte eine Datei bis {mb} MB wählen.",
-    en: "Choose a file of up to {mb} MB, please.",
+    de: "Wähl eine Datei bis {mb} MB.",
+    en: "Choose a file of {mb} MB or less.",
   },
   askClosed: {
     de: "Diese Frage ist nicht mehr offen.",
@@ -310,11 +310,11 @@ export const RUN_NOTES = {
   },
   notWaiting: {
     de: "Der Wizard wartet gerade nicht auf dich.",
-    en: "The wizard is not waiting for you right now.",
+    en: "The wizard isn’t waiting for you right now.",
   },
   pageActFailed: {
     de: "Das hat auf der Seite nicht geklappt.",
-    en: "That did not work on the page.",
+    en: "That didn’t work on the page.",
   },
   linkGone: {
     de: "Dieser Link ist abgelaufen oder wurde zurückgezogen.",
@@ -325,23 +325,23 @@ export const RUN_NOTES = {
     en: "Connected. You can close this window.",
   },
   connectFailed: {
-    de: "Verbinden hat nicht geklappt. Bitte noch einmal versuchen.",
-    en: "Connecting did not work. Try again.",
+    de: "Verbinden hat nicht geklappt. Versuch es noch einmal.",
+    en: "Connecting didn’t work. Try again.",
   },
   connectCancelled: { de: "Verbinden wurde abgebrochen.", en: "Connecting was cancelled." },
 
   // Apple Intelligence on the Mac the runtime runs on (apps/runtime/src/harness/apple.ts).
   appleOff: {
-    de: "Apple Intelligence ist auf diesem Mac ausgeschaltet. Einschalten unter Systemeinstellungen → Apple Intelligence & Siri.",
-    en: "Apple Intelligence is switched off on this Mac. Switch it on in System Settings → Apple Intelligence & Siri.",
+    de: "Apple Intelligence ist auf diesem Mac ausgeschaltet. Schalte es unter Systemeinstellungen → Apple Intelligence & Siri ein.",
+    en: "Apple Intelligence is turned off on this Mac. Turn it on in System Settings → Apple Intelligence & Siri.",
   },
   appleLoading: {
-    de: "Apple lädt das Modell für Apple Intelligence noch auf diesen Mac. Gleich noch einmal versuchen.",
+    de: "Apple lädt das Modell für Apple Intelligence noch auf diesen Mac. Versuch es gleich noch einmal.",
     en: "Apple is still loading the model for Apple Intelligence onto this Mac. Try again in a moment.",
   },
   appleMissing: {
     de: "Der Helfer für Apple Intelligence (wizards-apple) fehlt in dieser Installation.",
-    en: "The helper for Apple Intelligence (wizards-apple) is missing from this installation.",
+    en: "The helper for Apple Intelligence (wizards-apple) is missing from this install.",
   },
   appleOs: {
     de: "Apple Intelligence braucht macOS 26 oder neuer.",
@@ -349,36 +349,36 @@ export const RUN_NOTES = {
   },
   appleDevice: {
     de: "Apple Intelligence gibt es nur auf einem Mac mit Apple Silicon.",
-    en: "Apple Intelligence is only there on a Mac with Apple silicon.",
+    en: "Apple Intelligence only works on a Mac with Apple silicon.",
   },
   appleBusy: {
-    de: "Apple Intelligence nimmt gerade keine weiteren Anfragen an. Gleich noch einmal versuchen.",
-    en: "Apple Intelligence takes no more requests right now. Try again in a moment.",
+    de: "Apple Intelligence nimmt gerade keine weiteren Anfragen an. Versuch es gleich noch einmal.",
+    en: "Apple Intelligence isn’t taking more requests right now. Try again in a moment.",
   },
   appleTooLong: {
-    de: "Apple Intelligence: Der Text ist zu lang für das Modell auf diesem Mac (4.096 Tokens für Frage und Antwort). Diese Klasse in den Einstellungen unter „Modelle“ auf ein anderes Modell legen.",
-    en: "Apple Intelligence: the text is too long for the model on this Mac (4,096 tokens for question and answer). Put this class on another model under “Models” in the settings.",
+    de: "Der Text ist zu lang für Apple Intelligence auf diesem Mac (4.096 Tokens für Frage und Antwort). Wähle unter Einstellungen → Modelle ein anderes Modell für diese Klasse.",
+    en: "The text is too long for Apple Intelligence on this Mac (4,096 tokens for question and answer). Choose another model for this class under Settings → Models.",
   },
   appleRefused: {
     de: "Apple Intelligence hat die Anfrage abgelehnt: Apples Inhaltsregeln lassen sie nicht zu.",
-    en: "Apple Intelligence turned the request down: Apple's content rules do not allow it.",
+    en: "Apple Intelligence turned the request down: Apple’s content rules don’t allow it.",
   },
   appleLanguage: {
     de: "Apple Intelligence versteht die Sprache dieser Anfrage nicht.",
-    en: "Apple Intelligence does not understand the language of this request.",
+    en: "Apple Intelligence doesn’t understand the language of this request.",
   },
   appleFormat: {
     de: "Apple Intelligence kann dieses Antwortformat nicht liefern: {detail}",
-    en: "Apple Intelligence cannot answer in this format: {detail}",
+    en: "Apple Intelligence can’t answer in this format: {detail}",
   },
   appleFailed: { de: "Apple Intelligence: {detail}", en: "Apple Intelligence: {detail}" },
   appleNoFfmpeg: {
-    de: "Apple Intelligence liest {type} nicht; ohne ffmpeg bleibt die Aufnahme so. ffmpeg installieren oder im Browser als MP4 aufnehmen.",
-    en: "Apple Intelligence cannot read {type}, and without ffmpeg the recording stays as it is. Install ffmpeg or record as MP4 in the browser.",
+    de: "Apple Intelligence liest {type} nicht, und ohne ffmpeg lässt sich die Aufnahme nicht umwandeln. Installiere ffmpeg oder nimm im Browser als MP4 auf.",
+    en: "Apple Intelligence can’t read {type}, and without ffmpeg the recording can’t be converted. Install ffmpeg or record as MP4 in the browser.",
   },
   appleNotConverted: {
-    de: "Apple Intelligence: die Aufnahme ließ sich nicht wandeln: {detail}",
-    en: "Apple Intelligence: the recording could not be converted: {detail}",
+    de: "Apple Intelligence konnte die Aufnahme nicht umwandeln: {detail}",
+    en: "Apple Intelligence couldn’t convert the recording: {detail}",
   },
 } as const satisfies Record<string, { de: string; en: string }>;
 export type RunNoteCode = keyof typeof RUN_NOTES;

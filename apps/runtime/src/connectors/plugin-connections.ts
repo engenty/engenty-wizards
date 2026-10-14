@@ -91,7 +91,7 @@ async function spaceExists(space: string) {
     columns: { id: true },
   });
   if (!project) {
-    throw new Error(`There is no space "${space}".`);
+    throw new Error(`There’s no space “${space}”.`);
   }
 }
 
@@ -175,7 +175,7 @@ export async function finishPluginOAuth(
 ): Promise<{ plugin: string; projectId: string }> {
   const state = unseal<PluginOAuthState>(rawState);
   if (!state?.plugin || state.exp < Date.now()) {
-    throw new Error("The sign-in has expired. Please connect again.");
+    throw new Error("The sign-in has expired. Connect again.");
   }
   const connector = oauthConnector(state.connectorId);
   if (connector.auth.kind !== "oauth2") {

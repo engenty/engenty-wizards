@@ -192,8 +192,8 @@ export async function importWizard(
       : `Imported${name ? ` from “${name}”` : ""}: ${draft.steps.length} steps, ${files.length} ${files.length === 1 ? "file" : "files"}.`,
     lacks.length
       ? de
-        ? `Diesem Projekt fehlt noch: ${lacks.join(", ")} – in den Einstellungen unter „Connectors“ hinzufügen.`
-        : `This project still lacks: ${lacks.join(", ")} – add it under “Connectors” in the settings.`
+        ? `Diesem Space fehlt noch: ${lacks.join(", ")}. Füge es unter Einstellungen → Connectors hinzu.`
+        : `This space still needs: ${lacks.join(", ")}. Add it under Settings → Connectors.`
       : "",
   ]
     .filter(Boolean)

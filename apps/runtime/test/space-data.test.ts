@@ -360,7 +360,7 @@ describe("the space's own data from a local install", () => {
           tables: [{ id: taken.id, title: "x", columns: sent.tables[0].columns, rows: [] }],
           pages: [],
         }),
-      ).rejects.toThrow("already taken");
+      ).rejects.toThrow("already in use");
       // A space made here is not one a local install sends.
       await expect(spaces.syncSpaceData(spaceId, { tables: [], pages: [] })).rejects.toThrow();
     });

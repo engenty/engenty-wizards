@@ -17,12 +17,12 @@ const TEXT: Record<"en" | "de", Record<PushKind, string>> = {
   en: {
     done: "Your result is ready.",
     failed: "The run stopped with an error.",
-    waiting: "The wizard waits for you.",
+    waiting: "The wizard is waiting for you.",
     asks: "The wizard has a question for you.",
   },
   de: {
     done: "Dein Ergebnis ist bereit.",
-    failed: "Der Durchlauf ist mit einem Fehler stehen geblieben.",
+    failed: "Der Lauf ist mit einem Fehler stehen geblieben.",
     waiting: "Der Wizard wartet auf dich.",
     asks: "Der Wizard hat eine Frage an dich.",
   },

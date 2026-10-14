@@ -106,7 +106,7 @@ describe("what the runtime answers a visitor, in the language their browser asks
     const de = await (await get(`/api/public/wizards/${tokens.en}`, "de")).json();
     expect(en).toMatchObject({
       available: false,
-      unavailableReason: "This wizard is not available right now.",
+      unavailableReason: "This wizard isn’t available right now.",
     });
     expect(de).toMatchObject({
       available: false,
@@ -114,10 +114,10 @@ describe("what the runtime answers a visitor, in the language their browser asks
     });
     const started = await post(`/api/public/wizards/${tokens.en}/runs`, {}, "en");
     expect(started.status).toBe(403);
-    expect(await started.json()).toEqual({ error: "This wizard is not available right now." });
+    expect(await started.json()).toEqual({ error: "This wizard isn’t available right now." });
     // Without a language the runner starts in English, and so does the answer.
     const bare = await (await get(`/api/public/wizards/${tokens.en}`)).json();
-    expect(bare.unavailableReason).toBe("This wizard is not available right now.");
+    expect(bare.unavailableReason).toBe("This wizard isn’t available right now.");
     await settings("en", { shareEnabled: true });
   });
 
@@ -131,7 +131,7 @@ describe("what the runtime answers a visitor, in the language their browser asks
     );
     expect(de.status).toBe(403);
     expect((await de.json()).error).toBe(
-      "Für heute ist das Limit dieses Wizards erreicht. Bitte morgen wieder versuchen.",
+      "Für heute ist das Limit dieses Wizards erreicht. Versuch es morgen wieder.",
     );
     const shown = await (await get(`/api/public/wizards/${tokens.de}`, "en")).json();
     expect(shown.unavailableReason).toBe(
@@ -165,14 +165,14 @@ describe("Apple Intelligence's failures as notes", () => {
     const { errorText, ModelUnavailableError, noteOf } = await import("../src/model-errors");
     const tooLong = appleFailure({ kind: "contextWindow", message: "" });
     expect(noteOf(tooLong)).toEqual({ code: "appleTooLong" });
-    expect(tooLong.message).toContain("the text is too long");
-    expect(errorText(tooLong, "en")).toContain("the text is too long for the model on this Mac");
+    expect(tooLong.message).toContain("The text is too long");
+    expect(errorText(tooLong, "en")).toContain("The text is too long for Apple Intelligence on this Mac");
     expect(errorText(tooLong, "de")).toContain("Der Text ist zu lang");
 
     const off = appleFailure({ kind: "unavailable", message: "appleIntelligenceNotEnabled" });
     expect(off).toBeInstanceOf(ModelUnavailableError);
     expect(noteText(noteOf(off)!, "en")).toBe(
-      "Apple Intelligence is switched off on this Mac. Switch it on in System Settings → Apple Intelligence & Siri.",
+      "Apple Intelligence is turned off on this Mac. Turn it on in System Settings → Apple Intelligence & Siri.",
     );
     expect(noteText(noteOf(off)!, "de")).toContain("ausgeschaltet");
 
@@ -186,8 +186,8 @@ describe("Apple Intelligence's failures as notes", () => {
     const { recentEvents } = await import("../src/engine/events");
     const step = { id: "think", type: "widget", title: "Think it over", entry: "w.html", data: {} };
     for (const [lang, definition, error] of [
-      ["en", english, /^Apple Intelligence: the text is too long/],
-      ["de", german, /^Apple Intelligence: Der Text ist zu lang/],
+      ["en", english, /^The text is too long for Apple Intelligence/],
+      ["de", german, /^Der Text ist zu lang für Apple Intelligence/],
     ] as const) {
       await client.withTenant("tenant-a", async () => {
         const runId = await runner.createRun({
@@ -206,7 +206,7 @@ describe("Apple Intelligence's failures as notes", () => {
         expect(run?.error).toMatch(error);
         const failed = (await recentEvents(runId)).find((e) => e.type === "error");
         expect(failed?.note).toEqual({ code: "appleTooLong" });
-        expect(failed?.message).toContain("the text is too long");
+        expect(failed?.message).toContain("The text is too long");
       });
     }
   });

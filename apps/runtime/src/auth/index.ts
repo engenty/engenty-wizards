@@ -347,7 +347,7 @@ export const authRoutes = new Hono()
         return c.html(closePage("Signed in. You can close this window."));
       } catch (err) {
         console.error("[account]", err);
-        return c.html(closePage("The sign-in did not work. Please try again."), 400);
+        return c.html(closePage("The sign-in didn’t work. Try again."), 400);
       }
     }
     const state = unseal<LoginState>(getCookie(c, STATE_COOKIE) ?? "");

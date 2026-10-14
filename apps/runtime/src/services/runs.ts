@@ -124,7 +124,7 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
         err instanceof RunInputError
           ? bilingual(
               `Antworten fehlen oder passen nicht: ${answers("de")}`,
-              `Answers are missing or do not fit: ${answers("en")}`,
+              `Answers are missing or don’t fit: ${answers("en")}`,
             )
           : saidOf(err);
       await emitEvent(runId, null, "error", message).catch(() => undefined);
@@ -452,7 +452,7 @@ export async function startRun(
   if (w.publishedVersion === null) {
     throw new ServiceError(
       "refused",
-      "This wizard is not published yet. Publish it, or try the draft with start_test_run.",
+      "This wizard isn’t published yet. Publish it, or try the draft with start_test_run.",
     );
   }
   const version = await db.query.wizardVersion.findFirst({
@@ -547,7 +547,7 @@ export async function answerRunAsk(
 ) {
   await ownedRun(userId, runId);
   if (!(await answerAsk(runId, askId, answer === "allow" ? { type: "done" } : { type: "skip" }))) {
-    throw new ServiceError("refused", "This question is no longer open.");
+    throw new ServiceError("refused", { code: "askClosed" });
   }
 }
 

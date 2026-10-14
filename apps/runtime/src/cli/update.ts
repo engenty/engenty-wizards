@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { command, installedByScript, isCheckout, type Layout } from "./home.js";
+import { installedByScript, isCheckout, type Layout } from "./home.js";
 import { runningRuntime, settings } from "./start.js";
 import { restart } from "./status.js";
-import { cyan } from "./ui.js";
+import { cmd, cyan } from "./ui.js";
 
 /** The installer this install was made with; it also updates one. */
 const INSTALLER = "https://engenty.ai/install.sh";
@@ -18,7 +18,7 @@ async function installer(into: string): Promise<string> {
   const text = response.ok ? await response.text() : "";
   // The address answers with the studio's page while a server has no installer yet.
   if (!text.startsWith("#!")) {
-    throw new Error(`${source} did not answer with the installer.`);
+    throw new Error(`${source} didn’t return the installer.`);
   }
   const file = join(into, "install.sh");
   writeFileSync(file, text, { mode: 0o700 });
@@ -34,8 +34,8 @@ export async function update(paths: Layout, options: { restart?: boolean } = {})
   if (!installedByScript(paths)) {
     console.log(
       isCheckout()
-        ? `This copy is a checkout. The newest version: ${cyan("git pull && pnpm install && pnpm build")}`
-        : `This copy runs from npm. The newest version: ${cyan("npx wizards@latest")}`,
+        ? `This is a source checkout. To update: ${cyan("git pull && pnpm install && pnpm build")}`
+        : `This copy runs from npm. To update: ${cyan("npx wizards@latest")}`,
     );
     return 0;
   }
@@ -61,9 +61,7 @@ export async function update(paths: Layout, options: { restart?: boolean } = {})
     if (options.restart) {
       return restart(paths);
     }
-    console.log(
-      `  The runtime that is running is still the old one. Restart it: ${cyan(`${command()} restart`)}`,
-    );
+    console.log(`  Installed. Restart engenty wizards to use the new version: ${cmd("restart")}`);
   }
   return 0;
 }

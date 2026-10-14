@@ -1,3 +1,4 @@
+import { bilingual, type Said } from "@engenty-wizards/shared/run";
 import {
   type Manifest,
   manifestSchema,
@@ -15,13 +16,18 @@ import { ServiceError } from "./errors.js";
  * `wizards validate` both start here.
  */
 
-const invalid = (message: string) => new ServiceError("invalid", message);
+const invalid = (said: Said) => new ServiceError("invalid", said);
 
 export function json(data: Uint8Array): unknown {
   try {
     return JSON.parse(strFromU8(data));
   } catch {
-    throw invalid("This is not a wizard package: wizard.json is not valid JSON.");
+    throw invalid(
+      bilingual(
+        "Das ist keine Wizard-Datei: Die wizard.json darin lässt sich nicht lesen.",
+        "This isn’t a wizard file: its wizard.json can’t be read.",
+      ),
+    );
   }
 }
 
@@ -32,7 +38,12 @@ export function readManifest(raw: unknown): Manifest {
   }
   const parsed = manifestSchema.safeParse(raw);
   if (!parsed.success) {
-    throw invalid("This wizard package comes from a newer version, or it is damaged.");
+    throw invalid(
+      bilingual(
+        "Diese Wizard-Datei stammt aus einer neueren Version oder ist beschädigt. Aktualisiere engenty wizards oder exportiere den Wizard neu.",
+        "This wizard file comes from a newer version, or it’s damaged. Update engenty wizards or export the wizard again.",
+      ),
+    );
   }
   return parsed.data;
 }
@@ -59,23 +70,42 @@ export function readPackage(data: Uint8Array): {
         total += file.originalSize;
         count += 1;
         if (file.originalSize > WORKSPACE_LIMITS.fileBytes) {
-          throw invalid(`${file.name} is larger than 5 MB.`);
+          throw invalid(
+            bilingual(`${file.name} ist größer als 5 MB.`, `${file.name} is larger than 5 MB.`),
+          );
         }
         if (count > WORKSPACE_LIMITS.files + 1 || total > PACKAGE_MAX_BYTES) {
-          throw invalid("The package is larger than a workspace may be (200 files, 25 MB).");
+          throw invalid(
+            bilingual(
+              "Die Wizard-Datei ist zu groß: Ein Arbeitsbereich fasst höchstens 200 Dateien und 25 MB.",
+              "The wizard file is too large: a workspace holds at most 200 files and 25 MB.",
+            ),
+          );
         }
         return true;
       },
     });
   } catch (err) {
-    throw err instanceof ServiceError ? err : invalid("The package cannot be unpacked.");
+    throw err instanceof ServiceError
+      ? err
+      : invalid(
+          bilingual(
+            "Die Wizard-Datei lässt sich nicht öffnen. Exportiere den Wizard neu und versuche es noch einmal.",
+            "The wizard file can’t be opened. Export the wizard again and try once more.",
+          ),
+        );
   }
   // A package unpacked and zipped again often sits in a folder of its own.
   const manifestPath = Object.keys(entries)
     .filter((name) => name === PACKAGE_MANIFEST || name.endsWith(`/${PACKAGE_MANIFEST}`))
     .sort((a, b) => a.length - b.length)[0];
   if (manifestPath === undefined) {
-    throw invalid("This is not a wizard package: wizard.json is missing.");
+    throw invalid(
+      bilingual(
+        "Das ist keine Wizard-Datei: Die wizard.json fehlt.",
+        "This isn’t a wizard file: wizard.json is missing.",
+      ),
+    );
   }
   const root = manifestPath.slice(0, -PACKAGE_MANIFEST.length);
   const files = Object.entries(entries)
@@ -83,12 +113,19 @@ export function readPackage(data: Uint8Array): {
     .map(([name, content]) => {
       const path = cleanPath(name.slice(root.length + PACKAGE_FILES.length));
       if (!path) {
-        throw invalid(`"${name}" is not a valid file path.`);
+        throw invalid(
+          bilingual(`„${name}“ ist kein gültiger Dateipfad.`, `“${name}” isn’t a valid file path.`),
+        );
       }
       return { path, data: content };
     });
   if (files.reduce((n, f) => n + f.data.byteLength, 0) > WORKSPACE_LIMITS.totalBytes) {
-    throw invalid("The workspace in the package is larger than 25 MB.");
+    throw invalid(
+      bilingual(
+        "Der Arbeitsbereich in der Wizard-Datei ist größer als 25 MB.",
+        "The workspace in the wizard file is larger than 25 MB.",
+      ),
+    );
   }
   return { manifest: readManifest(json(entries[manifestPath])), files };
 }

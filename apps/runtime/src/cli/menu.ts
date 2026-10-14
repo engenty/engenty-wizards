@@ -8,7 +8,7 @@ import { command, type Layout, packageVersion, readInstallNote } from "./home.js
 import { type SetupOptions, setup } from "./setup.js";
 import { open, runningRuntime, settings, start } from "./start.js";
 import { restart, status, stop } from "./status.js";
-import { badge, cyan, dim, no, ok } from "./ui.js";
+import { badge, busy, cmd, cyan, dim, no, ok } from "./ui.js";
 import { update } from "./update.js";
 
 type Action =
@@ -51,7 +51,7 @@ function report({ running, atLogin, release, account }: State): string {
       : `${no} not running`,
   ];
   if (!("unavailable" in atLogin)) {
-    lines.push(atLogin.on ? `${ok} starts at login` : `${no} does not start at login`);
+    lines.push(atLogin.on ? `${ok} starts at login` : `${no} doesn’t start at login`);
   }
   lines.push(
     account.kind === "linked"
@@ -69,30 +69,30 @@ function choices({ running, atLogin, release, account }: State): p.Option<Action
     ? [
         { value: "open", label: "Open the studio", hint: "in your browser" },
         { value: "restart", label: "Restart" },
-        { value: "stop", label: "Stop", hint: "the data is kept" },
+        { value: "stop", label: "Stop", hint: "your data is kept" },
       ]
     : [
-        { value: "start", label: "Start as service", hint: "in the background, opens the studio" },
-        { value: "foreground", label: "Start here", hint: "in this terminal; Ctrl-C stops it" },
+        { value: "start", label: "Start in the background", hint: "and open the studio" },
+        { value: "foreground", label: "Start here", hint: "in this terminal (Ctrl-C stops it)" },
       ];
   options.push({
     value: "update",
     label: "Update",
-    hint: release?.newer
-      ? `${release.latest} is out`
-      : release?.latest
-        ? "you have the newest"
-        : undefined,
+    hint: release?.newer ? `${release.latest} is out` : release?.latest ? "up to date" : undefined,
   });
   if (!("unavailable" in atLogin)) {
     options.push({
       value: "service",
-      label: "Service settings",
-      hint: atLogin.on ? "starts at login" : "does not start at login",
+      label: "Start at login",
+      hint: atLogin.on ? "on" : "off",
     });
   }
   options.push(
-    { value: "connect", label: "Connect AI apps", hint: "your wizards in Claude, Cursor, Codex …" },
+    {
+      value: "connect",
+      label: "Connect AI apps",
+      hint: "use your wizards in Claude, Cursor, Codex…",
+    },
     {
       value: "account",
       label: "Account",
@@ -101,15 +101,15 @@ function choices({ running, atLogin, release, account }: State): p.Option<Action
           ? `signed in as ${describeAccount(account)}`
           : describeAccount(account),
     },
-    { value: "status", label: "Status", hint: "what is installed, and what is wrong" },
+    { value: "status", label: "Status", hint: "what’s installed, and any problems" },
     { value: "setup", label: "Setup", hint: "account, AI client, ffmpeg, start at login" },
     { value: "help", label: "Help", hint: "every command" },
-    { value: "quit", label: "Quit", hint: running ? "it keeps running" : undefined },
+    { value: "quit", label: "Quit", hint: running ? "engenty wizards keeps running" : undefined },
   );
   return options;
 }
 
-/** How the service runs: whether it starts at login. Esc goes back to the menu. */
+/** Whether it starts at login. Esc goes back to the menu. */
 async function serviceSettings(paths: Layout, atLogin: Autostart) {
   if ("unavailable" in atLogin) {
     return;
@@ -118,7 +118,7 @@ async function serviceSettings(paths: Layout, atLogin: Autostart) {
     message: "Start at login?",
     initialValue: atLogin.on,
     options: [
-      { value: true, label: "Yes", hint: "runs in the background from login on" },
+      { value: true, label: "Yes", hint: "runs in the background whenever you log in" },
       { value: false, label: "No", hint: "only when you start it" },
     ],
   });
@@ -128,7 +128,7 @@ async function serviceSettings(paths: Layout, atLogin: Autostart) {
   try {
     await setAutostart(paths, on);
   } catch (error) {
-    p.log.warn(`Starting at login could not be switched: ${(error as Error).message}`);
+    p.log.warn(`Couldn’t change start at login: ${(error as Error).message}`);
   }
 }
 
@@ -136,13 +136,13 @@ async function serviceSettings(paths: Layout, atLogin: Autostart) {
 function commands(): string {
   const name = command();
   return [
-    [`${name} start`, "start it and open the studio"],
-    [`${name} studio`, "open the studio; starts it when it does not run"],
-    [`${name} stop`, "stop it; the data is kept"],
-    [`${name} status`, "what is installed and what runs"],
-    [`${name} update`, "the newest version"],
-    [`${name} --version`, "the version you have"],
-    [`${name} help`, "every command"],
+    [`${name} start`, "start engenty wizards and open the studio"],
+    [`${name} studio`, "open the studio, starting engenty wizards if needed"],
+    [`${name} stop`, "stop engenty wizards (your data is kept)"],
+    [`${name} status`, "show what’s installed and running"],
+    [`${name} update`, "install the latest version"],
+    [`${name} --version`, "print the version you have"],
+    [`${name} help`, "list every command"],
   ]
     .map(([line, what]) => `${cyan(line.padEnd(name.length + 12))}${dim(what)}`)
     .join("\n");
@@ -166,14 +166,16 @@ export async function menu(
 
   p.intro(`${badge("engenty wizards")} ${dim(packageVersion())}`);
   for (;;) {
-    const spinner = p.spinner();
-    spinner.start("Looking at what runs");
+    const spinner = busy("Checking status…");
     const state = await look(paths);
     spinner.stop(report(state));
 
-    const action = await p.select<Action>({ message: "What now?", options: choices(state) });
+    const action = await p.select<Action>({
+      message: "What would you like to do?",
+      options: choices(state),
+    });
     if (p.isCancel(action) || action === "quit") {
-      p.outro(dim(`${command()} opens this again; ${command()} help lists every command.`));
+      p.outro(dim(`${cmd()} opens this menu again. ${cmd("help")} lists every command.`));
       return 0;
     }
     switch (action) {
@@ -181,7 +183,7 @@ export async function menu(
         await start(paths, { open: true, background: true });
         break;
       case "foreground":
-        p.outro("Starting engenty wizards here");
+        p.outro("Starting engenty wizards here…");
         return start(paths, { open: true });
       case "open":
         await open(paths, false);
@@ -199,7 +201,7 @@ export async function menu(
         }
         // This menu is still the old version, so it ends here.
         p.note(commands(), "Updated");
-        p.outro(dim(`${command()} opens this menu again, in the new version.`));
+        p.outro(dim(`${cmd()} opens this menu again, in the new version.`));
         return 0;
       }
       case "service":

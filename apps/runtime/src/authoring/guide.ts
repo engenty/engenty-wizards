@@ -244,7 +244,7 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 
 Templates (in instructions/prompt): {{fieldId}} · {{steps.stepId}} (whole output) · {{steps.stepId.key}} (json key)
   · {{itemsField}} (line items as a table WITH computed net/VAT/total) · {{itemsField.net|vat|gross}} · {{today}}
-  · the project (its settings): {{brand.name}} {{brand.about}} {{brand.colors}} · {{facts.key}} (one fact: address, VAT id, …) · {{facts}} (all facts)
+  · the project (its settings): {{brand.name}} {{brand.about}} {{brand.colors}} · {{facts.key}} (one fact: address, VAT ID, …) · {{facts}} (all facts)
     — every AI step already knows them, name one only where the text must carry it; agent steps also search the space's Knowledge
       and are told its categories: say in a step's instructions which category to filter by when the task names one
   · {{lists.listId}} (the stored list as a table, as it is when the step starts) · {{fileField}} (the names of the uploads, for read_document)

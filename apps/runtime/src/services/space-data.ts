@@ -47,7 +47,7 @@ async function ownerOf(projectId: string, wizardId: string | null | undefined) {
   if (!w) {
     throw new ServiceError(
       "invalid",
-      bilingual("Diesen Wizard gibt es im Space nicht.", "There is no such wizard in the space."),
+      bilingual("Diesen Wizard gibt es im Space nicht.", "This wizard isn’t in the space."),
     );
   }
   return w.id;
@@ -147,7 +147,7 @@ async function tableCount(projectId: string) {
       "refused",
       bilingual(
         `Ein Space hat höchstens ${SPACE_DATA_LIMITS.tables} Tabellen.`,
-        `A space has at most ${SPACE_DATA_LIMITS.tables} tables.`,
+        `A space can have at most ${SPACE_DATA_LIMITS.tables} tables.`,
       ),
     );
   }
@@ -254,8 +254,8 @@ export async function updateTable(
     throw new ServiceError(
       "refused",
       bilingual(
-        "Diese Tabelle gehört zu einer Liste des Wizards: ihre Spalten kommen aus dem Wizard.",
-        "This table belongs to one of the wizard's lists: its columns come from the wizard.",
+        "Diese Tabelle gehört zu einer Liste des Wizards. Ihre Spalten kommen aus dem Wizard.",
+        "This table belongs to one of the wizard’s lists. Its columns come from the wizard.",
       ),
     );
   }
@@ -366,7 +366,7 @@ export async function addTableRow(
       "refused",
       bilingual(
         `Eine Tabelle hat höchstens ${SPACE_DATA_LIMITS.rowsPerTable} Zeilen.`,
-        `A table has at most ${SPACE_DATA_LIMITS.rowsPerTable} rows.`,
+        `A table can have at most ${SPACE_DATA_LIMITS.rowsPerTable} rows.`,
       ),
     );
   }
@@ -447,7 +447,7 @@ function checkMarkdown(markdown: string) {
       "refused",
       bilingual(
         `Eine Seite hat höchstens ${SPACE_DATA_LIMITS.pageChars.toLocaleString("de")} Zeichen.`,
-        `A page has at most ${SPACE_DATA_LIMITS.pageChars.toLocaleString("en")} characters.`,
+        `A page can have at most ${SPACE_DATA_LIMITS.pageChars.toLocaleString("en")} characters.`,
       ),
     );
   }
@@ -464,7 +464,7 @@ async function pageCount(projectId: string, more = 1) {
       "refused",
       bilingual(
         `Ein Space hat höchstens ${SPACE_DATA_LIMITS.pages} Seiten.`,
-        `A space has at most ${SPACE_DATA_LIMITS.pages} pages.`,
+        `A space can have at most ${SPACE_DATA_LIMITS.pages} pages.`,
       ),
     );
   }
@@ -482,7 +482,7 @@ async function parentOf(projectId: string, parentId: string | null | undefined, 
   if (!parent || parent.wizardId) {
     throw new ServiceError(
       "invalid",
-      bilingual("Unter diese Seite kann keine Seite.", "No page can go under this page."),
+      bilingual("Diese Seite kann keine Unterseiten haben.", "This page can’t have subpages."),
     );
   }
   for (let at: string | null = parent.id; at && pageId; ) {
@@ -490,8 +490,8 @@ async function parentOf(projectId: string, parentId: string | null | undefined, 
       throw new ServiceError(
         "invalid",
         bilingual(
-          "Eine Seite kann nicht unter sich selbst stehen.",
-          "A page cannot stand under itself.",
+          "Eine Seite kann nicht ihre eigene Unterseite sein.",
+          "A page can’t be its own subpage.",
         ),
       );
     }
@@ -658,7 +658,10 @@ export async function writeRunPage(
 ) {
   const title = input.title.trim();
   if (!title) {
-    throw new ServiceError("invalid", "A page needs a title.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Eine Seite braucht einen Titel.", "A page needs a title."),
+    );
   }
   const existing = (
     await db.query.spacePage.findMany({
@@ -685,7 +688,13 @@ export async function writeRunPage(
     .from(schema.spacePage)
     .where(eq(schema.spacePage.projectId, projectId));
   if (n >= SPACE_DATA_LIMITS.pages) {
-    throw new ServiceError("refused", `A space keeps at most ${SPACE_DATA_LIMITS.pages} pages.`);
+    throw new ServiceError(
+      "refused",
+      bilingual(
+        `Ein Space hat höchstens ${SPACE_DATA_LIMITS.pages} Seiten.`,
+        `A space can have at most ${SPACE_DATA_LIMITS.pages} pages.`,
+      ),
+    );
   }
   const id = nanoid(12);
   await db.insert(schema.spacePage).values({
@@ -726,7 +735,10 @@ async function originSpace(space: string) {
     columns: { id: true },
   });
   if (!project) {
-    throw new ServiceError("not_found", `There is no space "${space}".`);
+    throw new ServiceError(
+      "not_found",
+      bilingual(`Den Space „${space}“ gibt es nicht.`, `There’s no space “${space}”.`),
+    );
   }
   await requireWritableProject(project.id);
   return project.id;
@@ -782,7 +794,10 @@ export async function putOriginPage(
   if (input.parent && !parent) {
     throw new ServiceError(
       "invalid",
-      `There is no page with the key "${input.parent}" to stand under.`,
+      bilingual(
+        `Es gibt keine Seite mit dem Schlüssel „${input.parent}“, unter die diese Seite könnte.`,
+        `There’s no page with the key “${input.parent}” to put this page under.`,
+      ),
     );
   }
   const title = input.title.replace(/\s+/g, " ").trim().slice(0, 200) || "Seite";
@@ -871,7 +886,10 @@ export async function putOriginTable(
   if (input.rows.length > SPACE_DATA_LIMITS.rowsPerTable) {
     throw new ServiceError(
       "refused",
-      `A table keeps at most ${SPACE_DATA_LIMITS.rowsPerTable} rows.`,
+      bilingual(
+        `Eine Tabelle hat höchstens ${SPACE_DATA_LIMITS.rowsPerTable} Zeilen.`,
+        `A table can have at most ${SPACE_DATA_LIMITS.rowsPerTable} rows.`,
+      ),
     );
   }
   let cells: Record<string, unknown>[];

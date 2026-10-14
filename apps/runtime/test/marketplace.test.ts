@@ -286,7 +286,7 @@ describe("an entry", () => {
       expect(remote.calls).toContain("POST /wizards/api/v1/entries/card/installs"),
     );
     await expect(inTenant(() => wizards.createWizard("u", { starterId: "nope" }))).rejects.toThrow(
-      /no starter/,
+      /no template/,
     );
   });
 

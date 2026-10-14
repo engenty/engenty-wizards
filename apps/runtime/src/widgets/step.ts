@@ -133,8 +133,8 @@ async function runFilmStep(
   if (!film) {
     throw new StepError(
       bilingual(
-        "Der Film konnte nicht gerendert werden: dazu braucht es ffmpeg und eine Zeitleiste im Widget.",
-        "The film could not be rendered: that needs ffmpeg and a timeline in the widget.",
+        "Der Film ließ sich nicht rendern. Dafür braucht es ffmpeg und eine Zeitleiste im Widget.",
+        "The film couldn’t be rendered. It needs ffmpeg and a timeline in the widget.",
       ),
     );
   }

@@ -210,12 +210,12 @@ async function requireRoom(spaceId: string): Promise<void> {
       "refused",
       limit === 1
         ? bilingual(
-            "Dieses Konto hat hier schon ein Projekt.",
-            "This account already has a project here.",
+            "Dieses Konto hat hier schon einen Space.",
+            "This account already has a space here.",
           )
         : bilingual(
-            `Dieses Konto hat hier schon ${limit} Projekte.`,
-            `This account already has ${limit} projects here.`,
+            `Dieses Konto hat hier schon ${limit} Spaces.`,
+            `This account already has ${limit} spaces here.`,
           ),
       {
         reason: "space_limit",
@@ -237,7 +237,7 @@ async function requireWizardRoom(spaceId: string): Promise<void> {
       "refused",
       bilingual(
         `Hier haben höchstens ${env.limits.syncedWizards} veröffentlichte Wizards Platz.`,
-        `There is room for at most ${env.limits.syncedWizards} published wizards here.`,
+        `There’s room for at most ${env.limits.syncedWizards} published wizards here.`,
       ),
       { reason: "wizard_limit", limit: env.limits.syncedWizards },
     );
@@ -280,8 +280,8 @@ async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow
     throw new ServiceError(
       "refused",
       bilingual(
-        "Ein Projekt mit dieser Kennung wurde hier angelegt.",
-        "A project with this id was created here.",
+        "Einen Space mit dieser Kennung gibt es hier schon, und er kommt nicht von deinem Computer.",
+        "A space with this ID already exists here and didn’t come from your computer.",
       ),
       {
         reason: "id_taken",
@@ -347,8 +347,8 @@ export async function syncWizard(
         throw new ServiceError(
           "refused",
           bilingual(
-            "Ein Wizard mit dieser Kennung gehört hier woanders hin.",
-            "A wizard with this id belongs elsewhere here.",
+            "Ein Wizard mit dieser Kennung gehört hier schon zu einem anderen Space.",
+            "A wizard with this ID already belongs to another space here.",
           ),
           {
             reason: "id_taken",
@@ -643,7 +643,7 @@ export async function syncSpaceData(rawSpaceId: string, input: SyncDataInput) {
   if ([...tablesHere, ...pagesHere].some((x) => x.projectId !== spaceId || x.wizardId !== null)) {
     throw new ServiceError(
       "refused",
-      bilingual("Eine Kennung ist hier schon vergeben.", "An id is already taken here."),
+      bilingual("Diese Kennung ist hier schon vergeben.", "This ID is already in use here."),
       {
         reason: "id_taken",
       },
@@ -742,7 +742,7 @@ async function syncCategories(
   if (taken.some((c) => c.projectId !== spaceId)) {
     throw new ServiceError(
       "refused",
-      bilingual("Eine Kennung ist hier schon vergeben.", "An id is already taken here."),
+      bilingual("Diese Kennung ist hier schon vergeben.", "This ID is already in use here."),
       {
         reason: "id_taken",
       },

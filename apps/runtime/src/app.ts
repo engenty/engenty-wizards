@@ -23,7 +23,7 @@ import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
 import { browserReport, localDebugRoutes } from "./routes/debug.js";
 import { internalRoutes } from "./routes/internal.js";
-import { inLang, requestLang } from "./routes/lang.js";
+import { inLang, notFoundAnswer, requestLang } from "./routes/lang.js";
 import { marketplaceStudio } from "./routes/marketplace.js";
 import { publicPluginRoutes } from "./routes/plugin-public.js";
 import { pluginRoutes } from "./routes/plugins.js";
@@ -77,7 +77,7 @@ const ticketedRun = /^\/api\/runs\/([^/]+)(\/|$)/;
 app.use("*", async (c, next) => {
   if (!managed && !hostAllowed(c.req.header("host") ?? new URL(c.req.url).host)) {
     // Says where it does answer: the studio opened under another name shows the way there.
-    return c.json({ error: "Forbidden host", code: "host", appUrl: env.appUrl }, 403);
+    return c.json({ error: "This address isn’t allowed.", code: "host", appUrl: env.appUrl }, 403);
   }
   const origin = c.req.header("origin");
   const path = c.req.path.startsWith(`${basePath}/`)
@@ -219,7 +219,13 @@ if (serves.studio) {
   app.use("/api/studio/*", async (c, next) => {
     const user = await principalOf(c);
     if (!user) {
-      return c.json({ error: "unauthorized" }, 401);
+      return c.json(
+        {
+          error: inLang(c, "Du bist nicht angemeldet.", "You’re not signed in."),
+          code: "unauthorized",
+        },
+        401,
+      );
     }
     if ((await tenantStatus(user.tenantId)) === "suspended") {
       return c.json(
@@ -292,7 +298,7 @@ if (serves.studio) {
   });
 }
 
-app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
+app.all("/api/*", (c) => c.json(notFoundAnswer(c), 404));
 
 /**
  * `/w/<token>/<runner>`: a plugin's page runner, where the tenant has it and the wizard offers

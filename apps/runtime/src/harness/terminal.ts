@@ -86,8 +86,8 @@ async function ptyModule(): Promise<PtyModule> {
     throw new ServiceError(
       "refused",
       bilingual(
-        "Das eingebaute Terminal ist auf diesem Gerät nicht verfügbar. Führe den Befehl in deinem eigenen Terminal aus.",
-        "The built-in terminal is not available on this device. Run the command in your own terminal.",
+        "Das eingebaute Terminal ist auf diesem Computer nicht verfügbar. Führe den Befehl in deinem eigenen Terminal aus.",
+        "The built-in terminal isn’t available on this computer. Run the command in your own terminal.",
       ),
     );
   }
@@ -159,7 +159,7 @@ export async function openTerminal(opts: TerminalOptions): Promise<string> {
       "refused",
       bilingual(
         `Der Befehl konnte nicht starten: ${(err as Error).message}`,
-        `The command could not start: ${(err as Error).message}`,
+        `The command couldn’t start: ${(err as Error).message}`,
       ),
     );
   }
@@ -226,7 +226,7 @@ function sessionOf(id: string): Session {
   if (!session) {
     throw new ServiceError(
       "not_found",
-      bilingual("Dieses Terminal gibt es nicht mehr.", "This terminal is gone."),
+      bilingual("Dieses Terminal gibt es nicht mehr.", "This terminal no longer exists."),
     );
   }
   return session;
