@@ -70,12 +70,12 @@ export async function mayBuild(): Promise<boolean> {
 }
 
 export const READ_ONLY_PROJECT = bilingual(
-  "Dieser Space kommt von deinem Computer. Ändern kannst du ihn dort.",
-  "This space comes from your computer. You change it there.",
+  "Diesen Space bearbeitest du in engenty wizards auf deinem Computer, nicht hier.",
+  "You edit this space in engenty wizards on your computer, not here.",
 );
 export const READ_ONLY_TENANT = bilingual(
-  "Hier laufen nur Wizards, die du auf deinem Computer veröffentlichst. Gebaut und geändert wird dort.",
-  "This server only runs wizards you publish from your computer. You build and change them there.",
+  "Hier laufen die Wizards, die du in engenty wizards auf deinem Computer veröffentlichst. Gebaut und bearbeitet wird dort.",
+  "Wizards run here once you publish them in engenty wizards on your computer. You build and edit them there.",
 );
 
 /** Refuses when the tenant builds nothing here. */

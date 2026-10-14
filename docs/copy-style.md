@@ -32,7 +32,7 @@ The copy is at its best when it sounds like this:
 1. **Say who does what.** Every sentence has a subject and a verb. No stacks of adjectives in
    front of a noun.
    - ✗ Synced, read-only copy from your local install. Edit this space there.
-   - ✓ This space comes from your computer. You change it there – it updates here when you publish a wizard.
+   - ✓ You edit this space in engenty wizards on your computer. Changes show up here the next time you publish a wizard.
 2. **Say what it means for the reader, then stop.** Give the consequence ("stop working", "only
    you see them"), or a reassurance ("never in the database"), or the next step. Leave out the
    mechanism behind it.
@@ -171,8 +171,16 @@ the text must not.
   Kontodienst, Standardlogos).
 - **Genders of English words**: der Wizard, der Space, der Connector, der API-Key, der Chat,
   das Plugin, das Widget, das Studio, das Abo, das HTML.
-- **Gender-neutral by construction**: Person, wer …, alle, Team. No asterisks, no paired forms,
-  no *Endnutzer*.
+- **Gender**: address everyone.
+  1. Neutral by construction first: „wer deine Website besucht“, „alle, die …“, Person, Team,
+     Kundschaft, Publikum. This is what the studio does almost everywhere.
+  2. Where a person noun can't be avoided (headings, short labels, lists), use the colon:
+     Besucher:innen, Kund:innen, Bewerber:innen, Inhaber:in. Don't build singulars with
+     articles („eine:n Besucher:in“); rephrase instead.
+  3. Already fine as they are: Mitglied, Gast, Person, Team, Admin, and compounds like
+     Benutzername or Entwicklermodus.
+  4. No asterisk, no Binnen-I, no paired forms („Kundinnen und Kunden“), no generic masculine.
+  If gendering makes a sentence clunky, rephrase it neutrally.
 - **Numbers and units** with a space: „20 %“, „4 s“, „≈ 5 Min.“; „z. B.“ with a space.
 - **Website** is a whole site, **Webseite** one page of it, **Seite** a page inside engenty.
 
@@ -212,12 +220,12 @@ The CLI uses the same voice and is English only.
 
 | Key | Before | After |
 |---|---|---|
-| `readonly.project` | Synced, read-only copy from your local install. Edit this space there. | This space comes from your computer. You change it there – it updates here when you publish a wizard. |
-| | Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Space dort. | Dieser Space kommt von deinem Computer. Ändern kannst du ihn dort – hier ist er aktuell, sobald du einen Wizard veröffentlichst. |
-| `readonly.wizard` | Synced, read-only copy from your local install. Edit this wizard there – what you publish there runs here. | This wizard comes from your computer. You change it there – when you publish, the new version runs here. |
-| | Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Wizard dort – was du dort veröffentlichst, läuft hier. | Dieser Wizard kommt von deinem Computer. Ändern kannst du ihn dort – sobald du veröffentlichst, läuft die neue Version hier. |
-| `readonly.server` | Read-only: this server only runs the wizards your local install publishes. Build and edit them there. | This server only runs wizards you publish from your computer. You build and change them there. |
-| | Schreibgeschützt: Dieser Server führt nur die Wizards aus, die deine lokale Installation veröffentlicht. Gebaut und bearbeitet wird dort. | Hier laufen nur Wizards, die du auf deinem Computer veröffentlichst. Gebaut und geändert wird dort. |
+| `readonly.project` | Synced, read-only copy from your local install. Edit this space there. | You edit this space in engenty wizards on your computer. Changes show up here the next time you publish a wizard. |
+| | Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Space dort. | Diesen Space bearbeitest du in engenty wizards auf deinem Computer. Änderungen erscheinen hier, sobald du dort wieder einen Wizard veröffentlichst. |
+| `readonly.wizard` | Synced, read-only copy from your local install. Edit this wizard there – what you publish there runs here. | You edit this wizard in engenty wizards on your computer. When you publish it there, the new version runs here. |
+| | Synchronisierte, schreibgeschützte Kopie aus deiner lokalen Installation. Bearbeite diesen Wizard dort – was du dort veröffentlichst, läuft hier. | Diesen Wizard bearbeitest du in engenty wizards auf deinem Computer. Veröffentlichst du ihn dort, läuft die neue Version hier. |
+| `readonly.server` | Read-only: this server only runs the wizards your local install publishes. Build and edit them there. | Wizards run here once you publish them in engenty wizards on your computer. You build and edit them there. |
+| | Schreibgeschützt: Dieser Server führt nur die Wizards aus, die deine lokale Installation veröffentlicht. Gebaut und bearbeitet wird dort. | Hier laufen die Wizards, die du in engenty wizards auf deinem Computer veröffentlichst. Gebaut und bearbeitet wird dort. |
 | `appbar.system` | Like the system | Match system |
 | `run.notFound` | This wizard does not exist (anymore). | This wizard doesn't exist or was deleted. |
 | `cloud.again` | It is tried again at {when}. | We'll try again at {when}. |
@@ -226,4 +234,5 @@ The CLI uses the same voice and is English only.
 | `store.confirmDelete` | Really delete everything | Yes, delete everything |
 | `run.maxFiles` (DE) | Hier gehen höchstens {n} – die übrigen habe ich weggelassen. | Hier gehen höchstens {n} Dateien – die übrigen sind weggelassen. |
 | `editor.building` (DE) | Baue den Ablauf … | Baut den Ablauf … |
+| `new.placeholder` (DE) | z. B. Kunden geben ihr Produkt … ein | z. B. Kund:innen geben ihr Produkt … ein |
 | `widget.upload` (DE) | Eigene HTML hochladen | Eigenes HTML hochladen |

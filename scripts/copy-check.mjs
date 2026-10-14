@@ -67,6 +67,10 @@ const RULES = {
     ["Sie-Form", /\b(Ihnen|Ihre[mnrs]?)\b|[a-zäöü,] Sie\b/],
     ["ihr/euch für die Lesenden: du verwenden", /\b(euch|eure[mnrs]?)\b/i],
     ["Ausrufezeichen", /!/],
+    [
+      "generisches Maskulinum: neutral umformulieren oder Doppelpunkt (Kund:innen)",
+      /\b(Besucher|Kunden?|Bewerber|Nutzer|Teilnehmer|Mitarbeiter|Endnutzer|Anwender|Händler|Interessent|Patient|Empfänger|Absender|Leser|Betreiber|Inhaber|Kollege|Handwerker|Antragsteller|Käufer|Verkäufer|Lieferant|Mieter|Vermieter|Eigentümer|Auftraggeber|Wettbewerber)(?!:in)(n|en|s)?\b/,
+    ],
     ["Glossar: Projekt → Space", /\bProjekt/],
     ["Glossar: schreibgeschützt / synchronisiert", /schreibgeschützt|synchronisiert/i],
     ["Glossar: lokale Installation / Rechner → Computer", /lokalen? Installation|\bRechner/i],

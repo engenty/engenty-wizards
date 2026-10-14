@@ -352,11 +352,11 @@ const de: Record<Key, string> = {
   "cloud.noticeNotRunnable":
     "Hier veröffentlicht. In der Cloud läuft diese Version nicht – mehr dazu unten.",
   "readonly.wizard":
-    "Dieser Wizard kommt von deinem Computer. Ändern kannst du ihn dort – sobald du veröffentlichst, läuft die neue Version hier.",
+    "Diesen Wizard bearbeitest du in engenty wizards auf deinem Computer. Veröffentlichst du ihn dort, läuft die neue Version hier.",
   "readonly.project":
-    "Dieser Space kommt von deinem Computer. Ändern kannst du ihn dort – hier ist er aktuell, sobald du einen Wizard veröffentlichst.",
+    "Diesen Space bearbeitest du in engenty wizards auf deinem Computer. Änderungen erscheinen hier, sobald du dort wieder einen Wizard veröffentlichst.",
   "readonly.server":
-    "Hier laufen nur Wizards, die du auf deinem Computer veröffentlichst. Gebaut und geändert wird dort.",
+    "Hier laufen die Wizards, die du in engenty wizards auf deinem Computer veröffentlichst. Gebaut und bearbeitet wird dort.",
   "nav.wizards": "Wizards",
   "nav.spaceMenu": "Space-Menü",
   "nav.renameSpace": "Space-Namen bearbeiten",
@@ -504,16 +504,16 @@ const de: Record<Key, string> = {
   "team.manage": "Mitglieder verwalten",
   "team.changePlan": "Paket ansehen",
   "team.roles":
-    "Inhaber und Admins legen Wizards und Spaces an und löschen sie. Mitglieder bearbeiten die vorhandenen Wizards.",
+    "Inhaber:innen und Admins legen Wizards und Spaces an und löschen sie. Mitglieder bearbeiten die vorhandenen Wizards.",
   "team.memberNote":
     "Du bist Mitglied: Du bearbeitest Wizards. Admins legen neue an und löschen sie.",
   "team.failed": "Das Team ließ sich nicht laden.",
-  "team.role.owner": "Inhaber",
+  "team.role.owner": "Inhaber:in",
   "team.role.admin": "Admin",
   "team.role.member": "Mitglied",
   "models.ownKeysPlan":
     "Eigene API-Keys gibt es ab dem Pro-Paket. Hier wird mit den Credits des Teams bezahlt.",
-  "home.fromLocal": "Kommt von deinem Computer – geändert wird dort.",
+  "home.fromLocal": "Wird auf deinem Computer bearbeitet.",
   "home.syncedAt": "Zuletzt angekommen: {when}.",
   "home.local.title": "Hier laufen die Wizards von deinem Computer",
   "home.local.text":
@@ -523,7 +523,7 @@ const de: Record<Key, string> = {
   "home.local.publish": "Veröffentliche einen Wizard. Er erscheint dann hier.",
   "new.title": "Was soll dein Wizard können?",
   "new.placeholder":
-    "z. B. Kunden geben ihr Produkt und ihre Zielgruppe ein, der Wizard recherchiert Wettbewerber und erstellt daraus ein Positionierungs-Briefing als PDF.",
+    "z. B. Kund:innen geben ihr Produkt und ihre Zielgruppe ein, der Wizard recherchiert die Konkurrenz und erstellt daraus ein Positionierungs-Briefing als PDF.",
   "new.build": "Wizard bauen",
   "new.orStarter": "Oder beginne mit einer Vorlage",
   "new.import": "Wizard-Datei importieren",
@@ -2266,11 +2266,11 @@ const en = {
   "cloud.noticeError": "Published here. This version didn’t arrive in the cloud – see below.",
   "cloud.noticeNotRunnable": "Published here. This version doesn’t run in the cloud – see below.",
   "readonly.wizard":
-    "This wizard comes from your computer. You change it there – when you publish, the new version runs here.",
+    "You edit this wizard in engenty wizards on your computer. When you publish it there, the new version runs here.",
   "readonly.project":
-    "This space comes from your computer. You change it there – it updates here when you publish a wizard.",
+    "You edit this space in engenty wizards on your computer. Changes show up here the next time you publish a wizard.",
   "readonly.server":
-    "This server only runs wizards you publish from your computer. You build and change them there.",
+    "Wizards run here once you publish them in engenty wizards on your computer. You build and edit them there.",
   "nav.wizards": "Wizards",
   "nav.spaceMenu": "Space menu",
   "nav.renameSpace": "Rename space",
@@ -2426,7 +2426,7 @@ const en = {
   "team.role.member": "Member",
   "models.ownKeysPlan":
     "Your own API keys come with the Pro plan. Here, runs use the team’s credits.",
-  "home.fromLocal": "From your computer – you change it there.",
+  "home.fromLocal": "Edited on your computer.",
   "home.syncedAt": "Arrived in the cloud: {when}.",
   "home.local.title": "Wizards you publish from your computer run here",
   "home.local.text":
