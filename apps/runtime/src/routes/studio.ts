@@ -725,7 +725,7 @@ export const studio = new Hono<Vars>()
 
   // --- projects --------------------------------------------------------------
   .get("/projects", async (c) => {
-    const projects = await listProjects(c.get("user").id);
+    const projects = await listProjects(c.get("user").id, requestLang(c));
     const build = await mayBuild();
     return c.json(
       projects.map((p) => ({
