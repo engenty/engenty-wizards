@@ -1,5 +1,6 @@
 import type { PluginSpace, PluginTool } from "@engenty-wizards/plugin-sdk";
 import { type AgentStep, pluginToolOf } from "@engenty-wizards/shared/definition";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { createTool } from "@mastra/core/tools";
 import { type StepContext, StepError } from "../engine/types.js";
 import { loadedPlugin, pluginIdsOf, pluginsOf } from "../plugins/registry.js";
@@ -45,7 +46,10 @@ async function toolOf(id: string, ctx: StepContext): Promise<{ plugin: string; t
   if (!(named && found)) {
     const plugin = named?.plugin ?? id;
     throw new StepError(
-      `Dieser Schritt braucht das Werkzeug „${id}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
+      bilingual(
+        `Dieser Schritt braucht das Werkzeug „${id}“. Das Plugin „${plugin}“ ist hier nicht installiert.`,
+        `This step needs the tool “${id}”. The plugin “${plugin}” is not installed here.`,
+      ),
     );
   }
   return { plugin: named.plugin, tool: found };
@@ -61,7 +65,10 @@ export async function callPluginTool(id: string, input: unknown, ctx: StepContex
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     throw new StepError(
-      `„${id}“ bekam ungültige Angaben: ${issue?.path.join(".") || "input"} – ${issue?.message}`,
+      bilingual(
+        `„${id}“ bekam ungültige Angaben: ${issue?.path.join(".") || "input"} – ${issue?.message}`,
+        `“${id}” got invalid input: ${issue?.path.join(".") || "input"} – ${issue?.message}`,
+      ),
     );
   }
   try {

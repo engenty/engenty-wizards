@@ -7,7 +7,7 @@ import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { Mascot } from "../../brand";
 import { postStream } from "../../lib/api";
 import { withBase } from "../../lib/base";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import type { WizardDetail } from "../../lib/session";
 import { Composer, type ComposerHandle, cn, pastedName, Spinner } from "../../ui";
 
@@ -158,7 +158,10 @@ export function useArchitectChat(
             {
               method: "PUT",
               credentials: "include",
-              headers: { "content-type": file.type || "application/octet-stream" },
+              headers: {
+                "content-type": file.type || "application/octet-stream",
+                "accept-language": lang,
+              },
               body: file,
             },
           );

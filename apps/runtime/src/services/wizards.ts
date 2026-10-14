@@ -7,6 +7,7 @@ import {
   type WizardDefinition,
   wizardSchema,
 } from "@engenty-wizards/shared/definition";
+import { bilingual } from "@engenty-wizards/shared/run";
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -14,6 +15,7 @@ import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
+import { saidOf } from "../model-errors.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
@@ -361,9 +363,16 @@ export async function writeDraft(
     .returning({ revision: schema.wizard.revision });
   if (!row) {
     const current = await ownedWizard(userId, wizardId);
-    throw new ServiceError("revision_conflict", "Der Wizard wurde inzwischen geändert.", {
-      revision: current.revision,
-    });
+    throw new ServiceError(
+      "revision_conflict",
+      bilingual(
+        "Der Wizard wurde inzwischen geändert.",
+        "The wizard has been changed in the meantime.",
+      ),
+      {
+        revision: current.revision,
+      },
+    );
   }
   if (input.note) {
     await addMessage(w.id, { role: "assistant", content: input.note, changed: true }, writer);
@@ -388,16 +397,23 @@ export async function editWizard(
 ) {
   const w = await writableWizard(userId, wizardId);
   if (w.revision !== input.baseRevision) {
-    throw new ServiceError("revision_conflict", "Der Wizard wurde inzwischen geändert.", {
-      revision: w.revision,
-    });
+    throw new ServiceError(
+      "revision_conflict",
+      bilingual(
+        "Der Wizard wurde inzwischen geändert.",
+        "The wizard has been changed in the meantime.",
+      ),
+      {
+        revision: w.revision,
+      },
+    );
   }
   let definition: unknown;
   try {
     definition = applyOps(w.draft, input.ops);
   } catch (err) {
     if (err instanceof OpError) {
-      throw new ServiceError("invalid", err.message);
+      throw new ServiceError("invalid", saidOf(err));
     }
     throw err;
   }
@@ -482,7 +498,11 @@ export async function requireClean(w: WizardRow) {
     files.map((f) => f.path),
   );
   if (issues.length) {
-    throw new ServiceError("has_issues", "Der Wizard hat noch Fehler.", { issues });
+    throw new ServiceError(
+      "has_issues",
+      bilingual("Der Wizard hat noch Fehler.", "The wizard still has errors."),
+      { issues },
+    );
   }
   return { definition: w.draft, files };
 }

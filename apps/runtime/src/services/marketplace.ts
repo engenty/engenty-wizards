@@ -26,6 +26,7 @@ import {
 } from "@engenty-wizards/shared/marketplace";
 import { type WizardOutline, wizardOutline } from "@engenty-wizards/shared/marketplace-entry";
 import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
 import { control, controlDb, db, schema, withTenant } from "../db/client.js";
@@ -61,7 +62,7 @@ import { ServiceError } from "./errors.js";
  */
 
 export const asLang = (raw: string | undefined | null): MarketplaceLang =>
-  (MARKETPLACE_LANGS as readonly string[]).includes(raw ?? "") ? (raw as MarketplaceLang) : "de";
+  (MARKETPLACE_LANGS as readonly string[]).includes(raw ?? "") ? (raw as MarketplaceLang) : "en";
 
 /** A search waits this long for the marketplace; then it searches what is kept here. */
 const TIMEOUT_MS = 5000;
@@ -166,7 +167,7 @@ function pluginSummary({ id, plugin, starter }: PluginStarterEntry): Marketplace
       .slice(0, 16),
     updatedAt: (changed?.mtime ?? new Date()).toISOString(),
     starter: true,
-    language: starter.language ?? "de",
+    language: starter.language ?? "en",
     title: starter.title,
     pitch: starter.description,
     // Found by the plugin's name as well: "Termine" finds the appointment plugin's starters.
@@ -530,7 +531,7 @@ export async function marketplaceWizard(
       revision: null,
       plugin: plugin.source.id,
       title: starter.title,
-      language: starter.language ?? "de",
+      language: starter.language ?? "en",
       definition: structuredClone(starter.definition as WizardDefinition),
       files: Object.fromEntries(
         Object.entries(starter.files ?? {}).map(([path, data]) => [
@@ -547,7 +548,10 @@ export async function marketplaceWizard(
   if (!readable(found.definition)) {
     throw new ServiceError(
       "refused",
-      "Diese Vorlage braucht eine neuere Version der App. Bitte aktualisiere die App.",
+      bilingual(
+        "Diese Vorlage braucht eine neuere Version der App. Bitte aktualisiere die App.",
+        "This template needs a newer version of the app. Please update the app.",
+      ),
     );
   }
   // A wizard whose plugins are not here would stop at its first step that uses them.
@@ -556,7 +560,10 @@ export async function marketplaceWizard(
   if (needs.length) {
     throw new ServiceError(
       "refused",
-      `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: mit Pro auf engenty.ai dabei.`,
+      bilingual(
+        `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: mit Pro auf engenty.ai dabei.`,
+        `This template needs the ${needs.length === 1 ? "plugin" : "plugins"} ${needs.join(", ")}: included with Pro on engenty.ai.`,
+      ),
     );
   }
   return {

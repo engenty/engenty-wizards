@@ -1770,7 +1770,7 @@ export function slotTime(iso: string): SlotTime | null {
 }
 
 /** The weekday and date of a slot's day: "Montag, 12. Oktober" / "Monday, 12 October". */
-export function slotDayText(iso: string, lang: "de" | "en" = "de"): string {
+export function slotDayText(iso: string, lang: "de" | "en" = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
@@ -1786,7 +1786,7 @@ export function slotDayText(iso: string, lang: "de" | "en" = "de"): string {
 }
 
 /** A chosen slot as a person reads it back: "Di 13.10.2026, 10:30" / "Tue 13/10/2026, 10:30". */
-export function slotText(iso: string, lang: "de" | "en" = "de"): string {
+export function slotText(iso: string, lang: "de" | "en" = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
@@ -1879,7 +1879,7 @@ const ENGLISH = /\b(and|the|is|not|for|with|a|an|your|you|we|what|how|or|to|of)\
 
 /**
  * The language a wizard speaks to people, read from its own words (titles, labels, intro).
- * A definition carries none; German where it is not clearly English.
+ * A definition carries none; English where it is not clearly German.
  */
 export function wizardLang(def: WizardDefinition): "de" | "en" {
   const text = [
@@ -1896,7 +1896,7 @@ export function wizardLang(def: WizardDefinition): "de" | "en" {
     .join(" ");
   const de = text.match(GERMAN)?.length ?? 0;
   const en = text.match(ENGLISH)?.length ?? 0;
-  return en > de ? "en" : "de";
+  return de > en ? "de" : "en";
 }
 
 /** The locale amounts and dates are written in for a wizard's language. */

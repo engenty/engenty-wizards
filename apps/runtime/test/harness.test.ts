@@ -136,8 +136,10 @@ describe("an installed AI client as a model", () => {
     const { ModelUnavailableError } = await import("../src/model-errors");
     const h = { id: "codex" as const, name: "Codex", install: "npm i -g @openai/codex" };
     expect(failureOf(h, "Not logged in")).toBeInstanceOf(ModelUnavailableError);
-    expect(failureOf(h, "Not logged in").message).toContain("nicht angemeldet");
-    expect(failureOf(h, "usage limit reached").message).toContain("Kontingent");
+    expect(failureOf(h, "Not logged in").message).toContain("not signed in");
+    expect(failureOf(h, "usage limit reached").message).toContain("no credit or quota left");
+    const { errorText } = await import("../src/model-errors");
+    expect(errorText(failureOf(h, "Not logged in"), "de")).toContain("nicht angemeldet");
     expect(failureOf(h, "boom")).not.toBeInstanceOf(ModelUnavailableError);
   });
 

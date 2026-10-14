@@ -91,7 +91,7 @@ export interface Thread {
   lastMessageId: string | null;
 }
 
-export const freshThreadState = (lang: ThreadLang = "de"): ThreadState => ({
+export const freshThreadState = (lang: ThreadLang = "en"): ThreadState => ({
   lang,
   wizardId: null,
   page: null,

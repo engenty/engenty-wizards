@@ -269,7 +269,7 @@ describe("an entry", () => {
     );
     expect((await inTenant(() => market.marketplaceDetail("card", "de")))?.usable).toBe(false);
     await expect(inTenant(() => wizards.createWizard("u", { starterId: "card" }))).rejects.toThrow(
-      /neuere Version/,
+      /newer version/,
     );
   });
 

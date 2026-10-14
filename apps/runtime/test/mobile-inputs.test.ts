@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { placeLabel } from "../src/geocode";
-import { readPageInput } from "../src/engine/input";
+import { fieldErrorsIn, readPageInput } from "../src/engine/input";
 import { prepareInputs } from "../src/engine/prepare";
 import { renderTemplate, type TemplateScope } from "../src/engine/template";
 import type { StepContext } from "../src/engine/types";
@@ -106,7 +106,8 @@ describe("page input from a phone", () => {
 
   it("asks for a required location that is empty or impossible", () => {
     for (const place of [undefined, "", {}, { lat: 91, lng: 0 }, { lat: 47 }, { label: "  " }, []]) {
-      expect(read({ place }).errors).toEqual([{ field: "place", message: "Pflichtfeld" }]);
+      expect(fieldErrorsIn(read({ place }).errors, "de")).toEqual([{ field: "place", message: "Pflichtfeld" }]);
+      expect(fieldErrorsIn(read({ place }).errors, "en")).toEqual([{ field: "place", message: "Required" }]);
     }
   });
 

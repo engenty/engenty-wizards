@@ -23,6 +23,7 @@ import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
 import { browserReport, localDebugRoutes } from "./routes/debug.js";
 import { internalRoutes } from "./routes/internal.js";
+import { inLang, requestLang } from "./routes/lang.js";
 import { marketplaceStudio } from "./routes/marketplace.js";
 import { publicPluginRoutes } from "./routes/plugin-public.js";
 import { pluginRoutes } from "./routes/plugins.js";
@@ -43,16 +44,19 @@ const { serves } = env;
 
 app.onError((err, c) => {
   if (err instanceof ServiceError) {
-    return c.json(err.toJSON(), err.status);
+    return c.json(err.toJSON(requestLang(c)), err.status);
   }
   if (err instanceof ZodError) {
-    return c.json({ error: "Ungültige Eingabe", issues: err.issues }, 400);
+    return c.json(
+      { error: inLang(c, "Ungültige Eingabe", "Invalid input"), issues: err.issues },
+      400,
+    );
   }
   if (err instanceof HTTPException) {
     return err.getResponse();
   }
   console.error(err);
-  return c.json({ error: "Interner Fehler" }, 500);
+  return c.json({ error: inLang(c, "Interner Fehler", "Internal error") }, 500);
 });
 
 // --- who may talk to this server at all ---------------------------------------------
@@ -218,7 +222,13 @@ if (serves.studio) {
       return c.json({ error: "unauthorized" }, 401);
     }
     if ((await tenantStatus(user.tenantId)) === "suspended") {
-      return c.json({ error: "Dieses Konto ist gesperrt.", code: "suspended" }, 403);
+      return c.json(
+        {
+          error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+          code: "suspended",
+        },
+        403,
+      );
     }
     c.set("user", user);
     return withTenant(user.tenantId, () => asRole(user.role, next));
@@ -240,7 +250,11 @@ if (serves.runner) {
 const tooLarge = (max: number) =>
   bodyLimit({
     maxSize: max,
-    onError: (c) => c.json({ error: "Das ist zu groß.", code: "too_large" }, 413),
+    onError: (c) =>
+      c.json(
+        { error: inLang(c, "Das ist zu groß.", "That is too large."), code: "too_large" },
+        413,
+      ),
   });
 const answers = tooLarge(4 * 1024 * 1024);
 const upload = tooLarge(48 * 1024 * 1024);

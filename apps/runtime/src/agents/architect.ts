@@ -40,7 +40,9 @@ export interface ArchitectInput {
   connectors: GuideConnector[];
   signal?: AbortSignal;
   onText?: (delta: string) => void;
-  /** A short line about what the architect is doing right now ("Lädt Seeformen …"). */
+  /** The language the admin reads the lines about its work in. */
+  lang?: "de" | "en";
+  /** A short line about what the architect is doing right now ("Loading lake shapes …"). */
   onActivity?: (label: string) => void;
   /** The latest line of its reasoning, for the line under the activity. */
   onThought?: (line: string) => void;
@@ -106,7 +108,12 @@ HOW YOU WORK
 }
 
 /** Turns a tool call into the line the admin sees while it runs. */
-function activity(tool: string, args: Record<string, unknown>): string | null {
+function activity(
+  tool: string,
+  args: Record<string, unknown>,
+  lang: "de" | "en" = "en",
+): string | null {
+  const de = lang === "de";
   const host = (u: unknown) => {
     try {
       return new URL(String(u)).hostname;
@@ -117,24 +124,42 @@ function activity(tool: string, args: Record<string, unknown>): string | null {
   switch (tool) {
     case "replace_wizard":
     case "edit_wizard":
-      return "Baut den Ablauf …";
+      return de ? "Baut den Ablauf …" : "Building the flow …";
     case "write_file":
-      return args.path ? `Schreibt ${String(args.path)} …` : "Schreibt eine Datei …";
+      return args.path
+        ? de
+          ? `Schreibt ${String(args.path)} …`
+          : `Writing ${String(args.path)} …`
+        : de
+          ? "Schreibt eine Datei …"
+          : "Writing a file …";
     case "download_files":
-      return "Lädt Daten herunter …";
+      return de ? "Lädt Daten herunter …" : "Downloading data …";
     case "web_fetch":
-      return args.url ? `Liest ${host(args.url)} …` : "Liest im Web …";
+      return args.url
+        ? de
+          ? `Liest ${host(args.url)} …`
+          : `Reading ${host(args.url)} …`
+        : de
+          ? "Liest im Web …"
+          : "Reading the web …";
     case "web_search":
-      return "Sucht im Web …";
+      return de ? "Sucht im Web …" : "Searching the web …";
     case "check_widget":
-      return "Testet das Widget …";
+      return de ? "Testet das Widget …" : "Testing the widget …";
     case "run_script":
-      return args.output ? `Bereitet ${String(args.output)} vor …` : "Rechnet …";
+      return args.output
+        ? de
+          ? `Bereitet ${String(args.output)} vor …`
+          : `Preparing ${String(args.output)} …`
+        : de
+          ? "Rechnet …"
+          : "Calculating …";
     case "list_files":
     case "read_file":
-      return "Sieht sich die Dateien an …";
+      return de ? "Sieht sich die Dateien an …" : "Looking at the files …";
     case "delete_file":
-      return "Räumt Dateien auf …";
+      return de ? "Räumt Dateien auf …" : "Tidying up files …";
     default:
       return null;
   }
@@ -498,7 +523,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
       input.onText?.(text);
     } else if (chunk.type === "tool-call-input-streaming-start") {
       streaming.set(payload.toolCallId, { tool: payload.toolName, args: "", named: false });
-      const label = activity(payload.toolName, {});
+      const label = activity(payload.toolName, {}, input.lang);
       if (label) {
         input.onActivity?.(label);
       }
@@ -509,14 +534,18 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectResu
         const path = s.args.match(/"path"\s*:\s*"([^"]+)"/)?.[1];
         if (path) {
           s.named = true;
-          const label = activity(s.tool, { path });
+          const label = activity(s.tool, { path }, input.lang);
           if (label) {
             input.onActivity?.(label);
           }
         }
       }
     } else if (chunk.type === "tool-call") {
-      const label = activity(payload.toolName, (payload.args ?? payload.input ?? {}) as never);
+      const label = activity(
+        payload.toolName,
+        (payload.args ?? payload.input ?? {}) as never,
+        input.lang,
+      );
       if (label) {
         input.onActivity?.(label);
       }

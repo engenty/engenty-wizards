@@ -4,10 +4,12 @@ import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join, normalize } from "node:path";
 import type { FilmStep } from "@engenty-wizards/shared/definition";
 import type { StepOutput } from "@engenty-wizards/shared/run";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { type StepContext, StepError } from "../engine/types.js";
 import { CLAUDE_BIN, claudeEnv } from "../harness/claude.js";
 import { failureOf } from "../harness/model.js";
 import { type BridgeTool, openBridge } from "../mcp/bridge.js";
+import { errorText } from "../model-errors.js";
 import { filmClient } from "../models.js";
 import { prepareFilmFolder, savedSession, saveSession } from "./project.js";
 import { runHyperframes } from "./tools.js";
@@ -255,14 +257,21 @@ export async function runFilmStep(step: FilmStep, ctx: StepContext): Promise<Ste
         throw err;
       }
       throw new StepError(
-        `${client.name} hat beim Film aufgehört: ${(err as Error).message}. Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
+        bilingual(
+          `${client.name} hat beim Film aufgehört: ${(err as Error).message}. Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
+          `${client.name} stopped working on the film: ${(err as Error).message}. The work is saved; a new attempt carries on from there.`,
+        ),
       );
     });
     const result = last as StreamEvent | null;
     if (!result || result.is_error) {
-      const detail = String(result?.result ?? (stderr.trim() || "kein Ergebnis")).slice(0, 400);
+      const detail = String(result?.result ?? (stderr.trim() || "no result")).slice(0, 400);
+      const failure = failureOf(client, detail);
       throw new StepError(
-        `${failureOf(client, detail).message} Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
+        bilingual(
+          `${errorText(failure, "de")} Die Arbeit ist gespeichert; ein neuer Versuch macht dort weiter.`,
+          `${errorText(failure, "en")} The work is saved; a new attempt carries on from there.`,
+        ),
       );
     }
     return result;
@@ -299,7 +308,12 @@ export async function runFilmStep(step: FilmStep, ctx: StepContext): Promise<Ste
       }
       const problem = renderProblem(render.out);
       if (attempt >= RENDER_FIXES) {
-        throw new StepError(`Der Film ließ sich nicht rendern: ${problem.slice(0, 400)}`);
+        throw new StepError(
+          bilingual(
+            `Der Film ließ sich nicht rendern: ${problem.slice(0, 400)}`,
+            `The film could not be rendered: ${problem.slice(0, 400)}`,
+          ),
+        );
       }
       await ctx.emit("tool", { code: "filmFix" });
       const fixed = await turn(

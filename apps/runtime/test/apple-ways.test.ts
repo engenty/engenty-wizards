@@ -71,7 +71,7 @@ const catalog = {
 
 let models: typeof import("../src/models");
 let settings: typeof import("../src/settings");
-let appleUnavailable: typeof import("../src/harness/apple").appleUnavailable;
+let appleUnavailableNote: typeof import("../src/harness/apple").appleUnavailableNote;
 let openaiText: Record<string, string>;
 
 beforeAll(async () => {
@@ -83,7 +83,7 @@ beforeAll(async () => {
   await client.migrateControlDb();
   models = await import("../src/models");
   settings = await import("../src/settings");
-  ({ appleUnavailable } = await import("../src/harness/apple"));
+  ({ appleUnavailableNote } = await import("../src/harness/apple"));
   const { providerInfo } = await import("@engenty-wizards/shared/providers");
   openaiText = providerInfo("openai")?.text as Record<string, string>;
 }, 60_000);
@@ -191,7 +191,7 @@ describe("Apple Intelligence beside the way High and Highest had", () => {
     await pickApple();
     mac.apple = { supported: true, available: false, reason: "off" };
     const ways = await models.classWays();
-    expect(ways.standard.problem).toBe(appleUnavailable(mac.apple as never));
+    expect(ways.standard.problem).toEqual(appleUnavailableNote(mac.apple as never));
     expect(ways.high.problem).toBeNull();
   });
 });
@@ -217,13 +217,14 @@ describe("voice notes on this Mac", () => {
     for (const reason of ["device", "os", "missing"]) {
       mac.apple = { supported: false, available: false, reason };
       const { problem } = (await models.classWays()).audio;
-      expect(problem).toBe(appleUnavailable(mac.apple as never));
+      expect(problem).toEqual(appleUnavailableNote(mac.apple as never));
       expect(problem).toBeTruthy();
     }
   });
 
   it("need ffmpeg for a browser's WebM or Ogg", async () => {
     mac.ffmpeg = false;
-    expect((await models.classWays()).audio.problem).toContain("ffmpeg");
+    const { audio } = models.waysIn(await models.classWays(), "en");
+    expect(audio.problem).toContain("ffmpeg");
   });
 });

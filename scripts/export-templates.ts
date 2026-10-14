@@ -80,9 +80,9 @@ mkdirSync(out, { recursive: true });
 const index: unknown[] = [];
 for (const summary of await entries()) {
   const exported = await get<MarketplaceExport>(`/entries/${summary.id}/export`);
-  // The German text where there is one, else the entry's own.
+  // The English text where there is one, else the entry's own.
   const text =
-    exported.texts.find((x) => x.language === "de") ??
+    exported.texts.find((x) => x.language === "en") ??
     exported.texts.find((x) => x.language === exported.language) ??
     exported.texts[0];
   const parsed = parseWizard(text.definition, Object.keys(exported.files));

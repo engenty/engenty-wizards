@@ -1,3 +1,4 @@
+import { bilingual } from "@engenty-wizards/shared/run";
 import {
   type ListDef,
   type ListRow,
@@ -153,7 +154,7 @@ export async function updateRow(
         })
       : null;
   if (clash) {
-    throw new StoreError("Diesen Eintrag gibt es schon.");
+    throw new StoreError(bilingual("Diesen Eintrag gibt es schon.", "This entry already exists."));
   }
   await db
     .update(schema.storeRow)

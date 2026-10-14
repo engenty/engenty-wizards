@@ -36,7 +36,7 @@ export type Values = Record<string, unknown>;
 
 function money(n: number, currency: string) {
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
+    return new Intl.NumberFormat(lang, { style: "currency", currency }).format(n);
   } catch {
     return `${n.toFixed(2)} ${currency}`;
   }

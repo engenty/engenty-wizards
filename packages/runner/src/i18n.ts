@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
  * What the runner says to the person running a wizard, in German and English. The studio spreads
  * these into its own dictionary; a host without one (the WordPress plugin) uses them as they are.
  */
-const de = {
+const de: Record<RunnerKey, string> = {
   "share.copied": "Kopiert",
   "run.closed": "Hier gerade nicht verfügbar, dafür fehlt: {list}",
   "slot.later": "Spätere Termine zeigen",
@@ -184,9 +184,9 @@ const de = {
   "run.resume": "Letzten Durchlauf fortsetzen",
 };
 
-export type RunnerKey = keyof typeof de;
+export type RunnerKey = keyof typeof en;
 
-const en: Record<RunnerKey, string> = {
+const en = {
   "share.copied": "Copied",
   "run.closed": "Not available here right now, it needs: {list}",
   "slot.later": "Show later times",
@@ -368,9 +368,9 @@ export const RUNNER_TEXTS = { de, en } as const;
 export type Lang = "de" | "en";
 
 /** The language the runner speaks: set by the host (`configureRunner`, `setRunnerLang`). */
-export let lang: Lang = "de";
+export let lang: Lang = "en";
 
-let dict: Record<RunnerKey, string> = de;
+let dict: Record<RunnerKey, string> = en;
 const listeners = new Set<() => void>();
 
 export function setRunnerLang(next: Lang) {
@@ -401,7 +401,7 @@ export function eventText(ev: { message: string; note?: RunNote | null }): strin
 }
 
 export function t(key: RunnerKey, vars?: Record<string, string | number>): string {
-  let s: string = dict[key] ?? de[key] ?? key;
+  let s: string = dict[key] ?? en[key] ?? key;
   for (const [k, v] of Object.entries(vars ?? {})) {
     s = s.replace(`{${k}}`, String(v));
   }
