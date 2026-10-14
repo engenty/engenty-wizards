@@ -768,12 +768,15 @@ export function FieldInput({
   const labelId = `${id}-label`;
   const errorId = `${id}-error`;
   const errorText = error ? fieldErrorText(error) : "";
+  const hintId = `${id}-hint`;
+  const describedBy =
+    [field.help ? hintId : "", errorText ? errorId : ""].filter(Boolean).join(" ") || undefined;
   // A text control names itself by the label, says it is required, and reads the error with it.
   const aria = {
     "aria-labelledby": labelId,
     "aria-required": field.required || undefined,
     "aria-invalid": errorText ? true : undefined,
-    "aria-describedby": errorText ? errorId : undefined,
+    "aria-describedby": describedBy,
   } as const;
   // Controls of their own (choices, uploads, a map) stand in a group that carries the same names.
   let grouped = true;
@@ -1020,14 +1023,14 @@ export function FieldInput({
     >
       {field.kind === "toggle" ? (
         <div className="flex items-start justify-between gap-6">
-          <Label hint={field.help} id={labelId}>
+          <Label hint={field.help} id={labelId} hintId={hintId}>
             {field.label}
           </Label>
           {control}
         </div>
       ) : (
         <>
-          <Label hint={field.help} required={field.required} id={labelId}>
+          <Label hint={field.help} required={field.required} id={labelId} hintId={hintId}>
             {field.label}
           </Label>
           {control}

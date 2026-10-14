@@ -207,6 +207,8 @@ function PageForm({ view, run, step }: { view: RunView; run: Run; step: PageStep
       const problem = checkAnswer(f, v);
       if (problem) {
         found[f.id] = problem;
+        // Called missing on submit, it stays so when focus passes by without a word.
+        edited.current.add(f.id);
       } else if (f.kind === "url" && typeof v === "string") {
         sending[f.id] = normalizeUrl(v);
       }

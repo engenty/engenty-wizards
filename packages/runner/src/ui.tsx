@@ -364,12 +364,15 @@ export function Label({
   hint,
   required,
   id,
+  hintId,
 }: {
   children: ReactNode;
   hint?: ReactNode;
   required?: boolean;
   /** For the control to name itself by (`aria-labelledby`). */
   id?: string;
+  /** For the control to read the hint with (`aria-describedby`). */
+  hintId?: string;
 }) {
   return (
     <div className="mb-2">
@@ -382,7 +385,11 @@ export function Label({
           </span>
         ) : null}
       </div>
-      {hint ? <div className="mt-0.5 text-[0.8125rem] text-ink-3">{hint}</div> : null}
+      {hint ? (
+        <div id={hintId} className="mt-0.5 text-[0.8125rem] text-ink-3">
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 }

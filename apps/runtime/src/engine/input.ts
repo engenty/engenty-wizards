@@ -16,6 +16,7 @@ import {
   type FieldError,
   fieldError,
   isBlank,
+  normalizeDate,
   normalizeUrl,
   parseNumber,
   todayAnywhere,
@@ -36,6 +37,9 @@ function coerce(field: Field, raw: unknown): unknown {
       return normalizeUrl(String(raw)).slice(0, 20_000);
     case "email":
       return String(raw).trim().slice(0, 20_000);
+    // `14.10.2026` or an ISO time from an API caller or an AI is kept as the day (2026-10-14).
+    case "date":
+      return normalizeDate(String(raw)).slice(0, 20_000);
     case "toggle":
       return raw === true || raw === "true" || raw === "on";
     case "multiselect":

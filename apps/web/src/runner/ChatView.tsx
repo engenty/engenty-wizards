@@ -27,7 +27,12 @@ import {
   type ReviewStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
-import { checkAnswer, type FieldCode, normalizeUrl } from "@engenty-wizards/shared/field-checks";
+import {
+  checkAnswer,
+  type FieldCode,
+  normalizeDate,
+  normalizeUrl,
+} from "@engenty-wizards/shared/field-checks";
 import type { RunEvent, RunNoteCode, RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowUp,
@@ -673,7 +678,7 @@ function typedValue(field: Field, text: string): string | undefined {
   if (!s) {
     return undefined;
   }
-  return field.kind === "url" ? normalizeUrl(s) : s;
+  return field.kind === "url" ? normalizeUrl(s) : field.kind === "date" ? normalizeDate(s) : s;
 }
 
 function FieldAsk({ field }: { field: Field }) {
@@ -933,11 +938,13 @@ function PageTurn({
       step,
       fields: current,
       values,
-      setField: (id, value) => {
+      setField: (id, raw) => {
         const target = current.find((f) => f.id === id);
         if (!target) {
           return "no such field on this page";
         }
+        // A voice may say the day as 14.10.2026; it is kept as the date field keeps it.
+        const value = target.kind === "date" && typeof raw === "string" ? normalizeDate(raw) : raw;
         const error = problem(target, value);
         if (error) {
           return error;

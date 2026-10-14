@@ -26,7 +26,7 @@ import {
   whenHolds,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import { type FieldError, fieldError } from "@engenty-wizards/shared/field-checks";
+import { type FieldError, fieldError, normalizeDate } from "@engenty-wizards/shared/field-checks";
 import {
   type ClosedChoice,
   noteText,
@@ -946,7 +946,9 @@ function prefillOf(
     }
     const value = resolveRef(dataRef(field.prefill), scope);
     if (value !== undefined && value !== null && value !== "") {
-      out[field.id] = value;
+      // An earlier step's day as `14.10.2026` or with a time starts the date field as its day.
+      out[field.id] =
+        field.kind === "date" && typeof value === "string" ? normalizeDate(value) : value;
     }
   }
   for (const [id, choice] of Object.entries(closed)) {
