@@ -1,3 +1,4 @@
+import { SPEECH_LOCALES } from "@engenty-wizards/shared/definition";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "./api";
 import { lang } from "./i18n";
@@ -228,7 +229,7 @@ export function useDictation(
     const rec = new Recognition();
     rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = lang === "de" ? "de-DE" : "en-US";
+    rec.lang = SPEECH_LOCALES[lang];
     rec.onresult = (event) => {
       // Results below resultIndex were committed by an earlier event.
       let interim = "";

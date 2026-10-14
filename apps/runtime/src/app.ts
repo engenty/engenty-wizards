@@ -23,7 +23,7 @@ import { PLUGIN_NAME, pluginArchive, pluginMarketplace } from "./plugin.js";
 import { apiRoutes } from "./routes/api.js";
 import { browserReport, localDebugRoutes } from "./routes/debug.js";
 import { internalRoutes } from "./routes/internal.js";
-import { inLang, notFoundAnswer, requestLang } from "./routes/lang.js";
+import { notFoundAnswer, requestLang, say } from "./routes/lang.js";
 import { marketplaceGuest, marketplaceStudio } from "./routes/marketplace.js";
 import { publicPluginRoutes } from "./routes/plugin-public.js";
 import { pluginRoutes } from "./routes/plugins.js";
@@ -47,16 +47,13 @@ app.onError((err, c) => {
     return c.json(err.toJSON(requestLang(c)), err.status);
   }
   if (err instanceof ZodError) {
-    return c.json(
-      { error: inLang(c, "Ungültige Eingabe", "Invalid input"), issues: err.issues },
-      400,
-    );
+    return c.json({ error: say(c, "invalidInput"), issues: err.issues }, 400);
   }
   if (err instanceof HTTPException) {
     return err.getResponse();
   }
   console.error(err);
-  return c.json({ error: inLang(c, "Interner Fehler", "Internal error") }, 500);
+  return c.json({ error: say(c, "internalError") }, 500);
 });
 
 // --- who may talk to this server at all ---------------------------------------------
@@ -221,7 +218,7 @@ if (serves.studio) {
     if (!user) {
       return c.json(
         {
-          error: inLang(c, "Du bist nicht angemeldet.", "You’re not signed in."),
+          error: say(c, "notSignedIn"),
           code: "unauthorized",
         },
         401,
@@ -230,7 +227,7 @@ if (serves.studio) {
     if ((await tenantStatus(user.tenantId)) === "suspended") {
       return c.json(
         {
-          error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+          error: say(c, "accountSuspended"),
           code: "suspended",
         },
         403,
@@ -256,11 +253,7 @@ if (serves.runner) {
 const tooLarge = (max: number) =>
   bodyLimit({
     maxSize: max,
-    onError: (c) =>
-      c.json(
-        { error: inLang(c, "Das ist zu groß.", "That is too large."), code: "too_large" },
-        413,
-      ),
+    onError: (c) => c.json({ error: say(c, "tooLarge"), code: "too_large" }, 413),
   });
 const answers = tooLarge(4 * 1024 * 1024);
 const upload = tooLarge(48 * 1024 * 1024);

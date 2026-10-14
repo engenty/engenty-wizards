@@ -28,8 +28,8 @@ import {
 } from "@engenty-wizards/shared/definition";
 import type { Said } from "@engenty-wizards/shared/run";
 import {
-  bilingual,
   type ClosedChoice,
+  note,
   type RunState,
   type RunView,
   type ShownList,
@@ -105,12 +105,7 @@ export class RunInputError extends NotedError {
 
 export class NoCreditsError extends NotedError {
   constructor() {
-    super(
-      bilingual(
-        "Dieser Wizard hat gerade kein Guthaben mehr. Versuch es später noch einmal.",
-        "This wizard has run out of credits for now. Try again later.",
-      ),
-    );
+    super(note("wizardRunOutCredits"));
   }
 }
 
@@ -190,36 +185,21 @@ function friendly(err: unknown): Said {
   }
   // A runtime that runs alone pays its provider itself: its admin can top the account up.
   if (!managed && /minimum balance|insufficient_funds|top up your credits/i.test(msg)) {
-    return bilingual(
-      "Das Guthaben beim Modellanbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Lade dort auf und versuch es noch einmal.",
-      "Your credit with the model provider isn’t enough for this (videos need a minimum balance there). Top up there and try again.",
-    );
+    return note("providerCreditLow");
   }
   if (/rate.?limit|429/i.test(msg)) {
-    return bilingual(
-      "Der KI-Dienst ist gerade ausgelastet. Versuch es gleich noch einmal.",
-      "The AI service is busy right now. Try again in a moment.",
-    );
+    return note("aiServiceBusyRight");
   }
   if (/timeout|timed out/i.test(msg)) {
-    return bilingual(
-      "Der Schritt hat zu lange gedauert. Versuch es noch einmal.",
-      "The step took too long. Try again.",
-    );
+    return note("stepTookTooLong");
   }
   // The platform's own provider account (budget, quota, key): nothing the person can fix.
   if (
     /budget|quota|insufficient|billing|credit balance|api key|unauthori[sz]ed|401|403/i.test(msg)
   ) {
-    return bilingual(
-      "Der KI-Dienst ist gerade nicht erreichbar. Versuch es später noch einmal.",
-      "The AI service can’t be reached right now. Try again later.",
-    );
+    return note("aiServiceNotReached");
   }
-  return bilingual(
-    `Dieser Schritt hat nicht geklappt: ${msg.slice(0, 300)}`,
-    `This step failed: ${msg.slice(0, 300)}`,
-  );
+  return note("stepFailed", { detail: msg.slice(0, 300) });
 }
 
 /**
@@ -807,10 +787,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     ) {
       errors.push({
         field: id,
-        message: bilingual(
-          "Das ist hier gerade nicht verfügbar.",
-          "That isn’t available here right now.",
-        ),
+        message: note("notAvailableNow"),
       });
     }
   }
@@ -831,9 +808,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       for (const id of Array.isArray(value) ? value : value ? [value] : []) {
         const asset = await db.query.asset.findFirst({ where: eq(schema.asset.id, String(id)) });
         if (asset?.runId !== runId) {
-          throw new RunInputError([
-            { field: field.id, message: bilingual("Datei nicht gefunden", "File not found") },
-          ]);
+          throw new RunInputError([{ field: field.id, message: note("fileNotFound") }]);
         }
       }
     }
@@ -843,9 +818,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       if (account) {
         values[field.id] = account.label;
       } else if (field.required) {
-        throw new RunInputError([
-          { field: field.id, message: bilingual("Verbinde zuerst", "Connect first") },
-        ]);
+        throw new RunInputError([{ field: field.id, message: note("connectFirst") }]);
       }
     }
   }

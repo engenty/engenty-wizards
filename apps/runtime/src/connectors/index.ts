@@ -1,5 +1,5 @@
 import { isLang, type Lang } from "@engenty-wizards/shared/definition";
-import { bilingual, type RunNote } from "@engenty-wizards/shared/run";
+import { note, type RunNote } from "@engenty-wizards/shared/run";
 import type {
   ConnectionDef,
   ConnectionKind,
@@ -23,6 +23,7 @@ import { env } from "../env.js";
 import { NotedError } from "../model-errors.js";
 import { seal, unseal } from "../secrets/crypto.js";
 import { deleteSecret, getSecret, putSecret, type StoreScope } from "../store/index.js";
+import { type ServerKey, serverText } from "../texts.js";
 import { connectorFetch, MAIL_CONNECTORS, resolveEnv, usable, viaAccount } from "./builtin.js";
 import { resolveConnector } from "./external.js";
 import {
@@ -35,19 +36,18 @@ import {
 /** The connectors a person can pick for each kind of connection. */
 const CONNECTORS: Record<ConnectionKind, ConnectorDefinition[]> = { mail: MAIL_CONNECTORS };
 
-const HINTS: Record<string, { de: string; en: string }> = {
-  imap: {
-    de: "Bei Gmail, iCloud, GMX und web.de brauchst du ein App-Passwort (in den Sicherheitseinstellungen deines Kontos), nicht dein normales Passwort.",
-    en: "Gmail, iCloud, GMX and web.de need an app password (in your account's security settings), not your normal password.",
-  },
-};
+const HINTS: Record<string, ServerKey> = { imap: "imapHint" };
 
-/** The built-in connectors' fields in German; their definitions say them in English. */
-const GERMAN_FIELDS: Record<string, Record<string, { label?: string; placeholder?: string }>> = {
-  imap: {
-    email: { label: "E-Mail-Adresse", placeholder: "name@firma.at" },
-    password: { label: "Passwort oder App-Passwort" },
-    host: { label: "IMAP-Server", placeholder: "leer lassen bei Gmail, GMX, iCloud …" },
+type FieldWords = Record<string, Record<string, { label?: string; placeholder?: string }>>;
+
+/** The built-in connectors' fields in each language; their definitions say them in English. */
+const FIELD_WORDS: { [L in Exclude<Lang, "en">]?: FieldWords } = {
+  de: {
+    imap: {
+      email: { label: "E-Mail-Adresse", placeholder: "name@firma.at" },
+      password: { label: "Passwort oder App-Passwort" },
+      host: { label: "IMAP-Server", placeholder: "leer lassen bei Gmail, GMX, iCloud …" },
+    },
   },
 };
 
@@ -113,11 +113,11 @@ export async function connectorOptions(
             id: c.id,
             name: c.name,
             auth: "api_key",
-            fields:
-              lang === "de"
-                ? c.auth.apiKey.fields.map((f) => ({ ...f, ...GERMAN_FIELDS[c.id]?.[f.key] }))
-                : c.auth.apiKey.fields,
-            hint: HINTS[c.id]?.[lang],
+            fields: c.auth.apiKey.fields.map((f) => ({
+              ...f,
+              ...(lang === "en" ? undefined : FIELD_WORDS[lang]?.[c.id]?.[f.key]),
+            })),
+            hint: HINTS[c.id] && serverText(lang, HINTS[c.id]),
           }
         : { id: c.id, name: c.name, auth: "oauth2" },
     );
@@ -314,7 +314,7 @@ export async function connectWithCredentials(
   for (const field of connector.auth.apiKey.fields) {
     const value = String(values[field.key] ?? "").trim();
     if (!value && field.required !== false) {
-      throw new ConnectError(bilingual(`„${field.label}“ fehlt.`, `“${field.label}” is missing.`));
+      throw new ConnectError(note("fieldMissing", { label: field.label }));
     }
     if (value) {
       credentials[field.key] = value.slice(0, 500);
@@ -350,28 +350,16 @@ function connectFailure(err: unknown): RunNote {
   const host = e.imapHost ? ` (${e.imapHost})` : "";
   if (e.authenticationFailed) {
     const answer = e.responseText?.slice(0, 160);
-    return bilingual(
-      `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Gmail und Google Workspace brauchen ein App-Passwort und eingeschaltetes IMAP.${answer ? ` Antwort des Servers: ${answer}` : ""}`,
-      `The sign-in was refused${host}. Are the address and (app) password right? Gmail and Google Workspace need an app password and IMAP turned on.${answer ? ` The server said: ${answer}` : ""}`,
-    );
+    return note("signInRefused", { host, answer: answer ? note("serverSaid", { answer }) : "" });
   }
   if (e.code === "ENOTFOUND") {
-    return bilingual(
-      `Den Mail-Server${host} gibt es nicht. Trag den IMAP-Server ein, bei Gmail und Google Workspace imap.gmail.com.`,
-      `The mail server${host} doesn’t exist. Enter the IMAP server. For Gmail and Google Workspace, it’s imap.gmail.com.`,
-    );
+    return note("mailServerNotExist", { host });
   }
   if (e.code === "ETIMEDOUT" || e.code === "ETIMEOUT" || e.code === "ECONNREFUSED") {
-    return bilingual(
-      `Der Mail-Server${host} antwortet nicht. Prüf IMAP-Server und Port.`,
-      `The mail server${host} isn’t responding. Check the IMAP server and port.`,
-    );
+    return note("mailServerNotResponding", { host });
   }
   const detail = String(e.message ?? err).slice(0, 200);
-  return bilingual(
-    `Verbinden hat nicht geklappt${host}: ${detail}`,
-    `Connecting didn’t work${host}: ${detail}`,
-  );
+  return note("connectingNotWork", { host, detail });
 }
 
 export function disconnect(scope: StoreScope, connectionId: string) {

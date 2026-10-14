@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { release } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { langOf, SPEECH_LOCALES } from "@engenty-wizards/shared/definition";
 import type { RunNote } from "@engenty-wizards/shared/run";
 import type { TranscriptionModel } from "ai";
 import { nanoid } from "nanoid";
@@ -226,7 +227,7 @@ type TranscribeResult = Awaited<ReturnType<TranscriptionV3["doGenerate"]>>;
 /** The Mac's own language: what a voice note is most likely in, unless the call names one. */
 function systemLocale(): string {
   const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-  return /^[a-z]{2}-[A-Z]{2}$/.test(locale) ? locale : locale.startsWith("de") ? "de-DE" : "en-US";
+  return /^[a-z]{2}-[A-Z]{2}$/.test(locale) ? locale : SPEECH_LOCALES[langOf(locale) ?? "en"];
 }
 
 /** What AVAudioFile reads as it is; a browser's WebM or Ogg (Opus) is turned into WAV first. */

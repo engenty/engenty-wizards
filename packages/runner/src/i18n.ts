@@ -1,5 +1,6 @@
 import type { Lang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
+import { type Line, type Texts, textOf } from "@engenty-wizards/shared/texts";
 import { useSyncExternalStore } from "react";
 
 // Wording: docs/copy-style.md (voice, glossary, EN/DE mechanics). Write each language as its
@@ -8,7 +9,7 @@ import { useSyncExternalStore } from "react";
  * What the runner says to the person running a wizard, in German and English. The studio spreads
  * these into its own dictionary; a host without one (the WordPress plugin) uses them as they are.
  */
-const de: Record<RunnerKey, string> = {
+const de: Record<RunnerKey, Line> = {
   "share.copied": "Kopiert",
   "run.closed": "Hier gerade nicht verfügbar, dafür fehlt: {list}",
   "slot.later": "Spätere Termine zeigen",
@@ -95,14 +96,17 @@ const de: Record<RunnerKey, string> = {
   "store.explain":
     "Dieser Wizard merkt sich Listen, Dateien und verbundene Konten für deinen nächsten Lauf. Nur du siehst sie.",
   "store.empty": "Noch nichts gespeichert.",
-  "store.rows": "{n} Einträge",
+  "store.rows": { one: "{n} Eintrag", other: "{n} Einträge" },
   "store.signIns": "Gemerkte Anmeldungen im Browser",
-  "store.files": "{n} Dateien · {size}",
+  "store.files": { one: "{n} Datei · {size}", other: "{n} Dateien · {size}" },
   "store.delete": "Alles löschen",
   "store.confirmDelete": "Ja, alles löschen",
   "common.close": "Schließen",
   "run.uploadTouch": "Datei wählen",
-  "run.maxFiles": "Hier gehen höchstens {n} Dateien – die übrigen sind weggelassen.",
+  "run.maxFiles": {
+    one: "Hier geht höchstens {n} Datei – die übrigen sind weggelassen.",
+    other: "Hier gehen höchstens {n} Dateien – die übrigen sind weggelassen.",
+  },
   "run.filesMin": "{n} von mindestens {min}",
   "run.filesOf": "{n} von höchstens {max}",
   "run.moveFile": "Nr. {n} verschieben",
@@ -282,14 +286,17 @@ const en = {
   "store.explain":
     "This wizard keeps lists, files and connected accounts for your next run. Only you see them.",
   "store.empty": "Nothing kept yet.",
-  "store.rows": "{n} entries",
+  "store.rows": { one: "{n} entry", other: "{n} entries" },
   "store.signIns": "Remembered sign-ins in the browser",
-  "store.files": "{n} files · {size}",
+  "store.files": { one: "{n} file · {size}", other: "{n} files · {size}" },
   "store.delete": "Delete everything",
   "store.confirmDelete": "Yes, delete everything",
   "common.close": "Close",
   "run.uploadTouch": "Choose a file",
-  "run.maxFiles": "At most {n} fit here – the rest were left out.",
+  "run.maxFiles": {
+    one: "At most {n} fits here – the rest were left out.",
+    other: "At most {n} fit here – the rest were left out.",
+  },
   "run.filesMin": "{n} of at least {min}",
   "run.filesOf": "{n} of at most {max}",
   "run.moveFile": "Move no. {n}",
@@ -384,14 +391,12 @@ const en = {
  * The runner's words in each language. English has every one; another language may lack some,
  * and those are said in English.
  */
-export const RUNNER_TEXTS = { en, de } satisfies Record<Lang, Partial<Record<RunnerKey, string>>>;
+export const RUNNER_TEXTS = { en, de } satisfies Texts<RunnerKey>;
 
 export type { Lang };
 
 /** The language the runner speaks: set by the host (`configureRunner`, `setRunnerLang`). */
 export let lang: Lang = "en";
-
-let dict: Partial<Record<RunnerKey, string>> = en;
 const listeners = new Set<() => void>();
 
 export function setRunnerLang(next: Lang) {
@@ -399,7 +404,6 @@ export function setRunnerLang(next: Lang) {
     return;
   }
   lang = next;
-  dict = RUNNER_TEXTS[next];
   for (const listener of listeners) {
     listener();
   }
@@ -421,10 +425,7 @@ export function eventText(ev: { message: string; note?: RunNote | null }): strin
   return (ev.note && noteText(ev.note, lang)) || ev.message;
 }
 
+/** A string in the runner's language: its plural form by `{count}` or `{n}`, its gaps filled. */
 export function t(key: RunnerKey, vars?: Record<string, string | number>): string {
-  let s: string = dict[key] ?? en[key] ?? key;
-  for (const [k, v] of Object.entries(vars ?? {})) {
-    s = s.replace(`{${k}}`, String(v));
-  }
-  return s;
+  return textOf(RUNNER_TEXTS, key, lang, vars);
 }

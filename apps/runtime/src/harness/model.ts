@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Effort } from "@engenty-wizards/shared/definition";
 import type { RunNote } from "@engenty-wizards/shared/run";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import type { ImageModel, LanguageModel } from "ai";
 import { nanoid } from "nanoid";
 import { env } from "../env.js";
@@ -70,22 +70,10 @@ export interface HarnessMeta {
 
 const workDir = join(env.dataDir, "harness");
 
-export const signedOut = (h: HarnessMeta) =>
-  bilingual(
-    `${h.name} ist auf diesem Computer nicht angemeldet. Melde dich unter Einstellungen → Modelle an.`,
-    `${h.name} isn’t signed in on this computer. Sign in under Settings → Models.`,
-  );
-export const notInstalled = (h: HarnessMeta) =>
-  bilingual(
-    `${h.name} ist auf diesem Computer nicht installiert. Installiere es unter Einstellungen → Modelle.`,
-    `${h.name} isn’t installed on this computer. Install it under Settings → Models.`,
-  );
+export const signedOut = (h: HarnessMeta) => note("clientNotSignedIn", { name: h.name });
+export const notInstalled = (h: HarnessMeta) => note("clientNotInstalled", { name: h.name });
 export const exhausted = (h: HarnessMeta) =>
-  h.exhausted ??
-  bilingual(
-    `Das Konto, mit dem ${h.name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.`,
-    `The account ${h.name} is signed in with has no credit or quota left.`,
-  );
+  h.exhausted ?? note("clientNoCredit", { name: h.name });
 
 /** The failure a client reports, as the person should read it. */
 export function failureOf(h: HarnessMeta, detail: string): Error {

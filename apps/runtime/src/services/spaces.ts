@@ -3,7 +3,7 @@ import type { WizardDefinition } from "@engenty-wizards/shared/definition";
 import { tableColumnsSchema } from "@engenty-wizards/shared/engenty/data-tables";
 import { CATEGORY_TYPES } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { SPACE_DATA_LIMITS } from "@engenty-wizards/shared/space-data";
 import { WORKSPACE_LIMITS } from "@engenty-wizards/shared/workspace";
 import { and, count, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
@@ -208,15 +208,7 @@ async function requireRoom(spaceId: string): Promise<void> {
   if (others.length >= limit) {
     throw new ServiceError(
       "refused",
-      limit === 1
-        ? bilingual(
-            "Dieses Konto hat hier schon einen Space.",
-            "This account already has a space here.",
-          )
-        : bilingual(
-            `Dieses Konto hat hier schon ${limit} Spaces.`,
-            `This account already has ${limit} spaces here.`,
-          ),
+      limit === 1 ? note("accountAlreadySpace") : note("accountAlreadySpaces", { count: limit }),
       {
         reason: "space_limit",
         limit,
@@ -235,10 +227,7 @@ async function requireWizardRoom(spaceId: string): Promise<void> {
   if ((row?.n ?? 0) >= env.limits.syncedWizards) {
     throw new ServiceError(
       "refused",
-      bilingual(
-        `Hier haben höchstens ${env.limits.syncedWizards} veröffentlichte Wizards Platz.`,
-        `There’s room for at most ${env.limits.syncedWizards} published wizards here.`,
-      ),
+      note("roomMostPublishedWizards", { count: env.limits.syncedWizards }),
       { reason: "wizard_limit", limit: env.limits.syncedWizards },
     );
   }
@@ -277,16 +266,9 @@ async function syncLogo(projectId: string, logo: SpaceInput["logo"]): Promise<vo
 async function syncSpace(spaceId: string, space: SpaceInput): Promise<ProjectRow> {
   const existing = await syncedProject(spaceId);
   if (existing && existing.origin !== "local") {
-    throw new ServiceError(
-      "refused",
-      bilingual(
-        "Einen Space mit dieser Kennung gibt es hier schon, und er kommt nicht von deinem Computer.",
-        "A space with this ID already exists here and didn’t come from your computer.",
-      ),
-      {
-        reason: "id_taken",
-      },
-    );
+    throw new ServiceError("refused", note("spaceIdAlreadyExists"), {
+      reason: "id_taken",
+    });
   }
   if (!existing) {
     await requireRoom(spaceId);
@@ -344,16 +326,9 @@ export async function syncWizard(
         where: and(eq(schema.wizard.id, wizardId), eq(schema.wizard.tenantId, currentTenant())),
       });
       if (existing && existing.projectId !== spaceId) {
-        throw new ServiceError(
-          "refused",
-          bilingual(
-            "Ein Wizard mit dieser Kennung gehört hier schon zu einem anderen Space.",
-            "A wizard with this ID already belongs to another space here.",
-          ),
-          {
-            reason: "id_taken",
-          },
-        );
+        throw new ServiceError("refused", note("wizardIdAlreadyBelongs"), {
+          reason: "id_taken",
+        });
       }
       const settings = {
         title: draft.title,
@@ -641,13 +616,9 @@ export async function syncSpaceData(rawSpaceId: string, input: SyncDataInput) {
       : [],
   ]);
   if ([...tablesHere, ...pagesHere].some((x) => x.projectId !== spaceId || x.wizardId !== null)) {
-    throw new ServiceError(
-      "refused",
-      bilingual("Diese Kennung ist hier schon vergeben.", "This ID is already in use here."),
-      {
-        reason: "id_taken",
-      },
-    );
+    throw new ServiceError("refused", note("idAlreadyUse"), {
+      reason: "id_taken",
+    });
   }
   const now = new Date();
   await inTransaction(async () => {
@@ -740,13 +711,9 @@ async function syncCategories(
       })
     : [];
   if (taken.some((c) => c.projectId !== spaceId)) {
-    throw new ServiceError(
-      "refused",
-      bilingual("Diese Kennung ist hier schon vergeben.", "This ID is already in use here."),
-      {
-        reason: "id_taken",
-      },
-    );
+    throw new ServiceError("refused", note("idAlreadyUse"), {
+      reason: "id_taken",
+    });
   }
   await db
     .delete(schema.spaceCategory)

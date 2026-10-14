@@ -3,13 +3,12 @@ import {
   type Field,
   formatsFor,
   isDecidedField,
-  type Lang,
   type Step,
   shownFields,
   slotText,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
@@ -48,10 +47,7 @@ export async function startTestRun(
   const w = await ownedWizard(userId, wizardId);
   const { definition, files } = await requireClean(w);
   if (!(await canSpend())) {
-    throw new ServiceError(
-      "no_credits",
-      bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
-    );
+    throw new ServiceError("no_credits", note("creditsUsedUp"));
   }
   const runId = await createRun({
     wizardId: w.id,
@@ -115,18 +111,13 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
         }
       } while (again);
     } catch (err) {
-      const answers = (lang: Lang) =>
-        err instanceof RunInputError
-          ? fieldErrorsIn(err.errors, lang)
-              .map((e) => `${e.field} – ${e.message}`)
-              .join("; ")
-          : "";
       const message =
         err instanceof RunInputError
-          ? bilingual(
-              `Antworten fehlen oder passen nicht: ${answers("de")}`,
-              `Answers are missing or don’t fit: ${answers("en")}`,
-            )
+          ? note("answersMissing", {
+              answers: err.errors.map((e) =>
+                note("fieldError", { field: e.field, message: e.message }),
+              ),
+            })
           : saidOf(err);
       await emitEvent(runId, null, "error", message).catch(() => undefined);
       land();
@@ -466,10 +457,7 @@ export async function startRun(
     throw notFound();
   }
   if (!(await canSpend())) {
-    throw new ServiceError(
-      "no_credits",
-      bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
-    );
+    throw new ServiceError("no_credits", note("creditsUsedUp"));
   }
   const runId = await createRun({
     wizardId: w.id,
@@ -483,10 +471,7 @@ export async function startRun(
       throw new ServiceError("refused", saidOf(err));
     }
     if (err instanceof NoCreditsError) {
-      throw new ServiceError(
-        "no_credits",
-        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
-      );
+      throw new ServiceError("no_credits", note("creditsUsedUp"));
     }
     throw err;
   });

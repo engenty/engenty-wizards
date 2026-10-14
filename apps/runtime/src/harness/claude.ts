@@ -1,5 +1,5 @@
 import type { Effort, TextClass } from "@engenty-wizards/shared/definition";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { resolveEnv, run } from "./env.js";
 import {
   failureOf,
@@ -186,8 +186,5 @@ export const claude: Harness = {
   },
   login: { args: ["auth", "login"], interactive: false },
   model: (alias: string, effort?: Effort) => new ClaudeCodeModel(claude, alias || "sonnet", effort),
-  exhausted: bilingual(
-    "Das Anthropic-Konto, mit dem Claude Code angemeldet ist, hat kein Guthaben. Melde Claude Code unter Einstellungen → Modelle mit deinem Abo an.",
-    "The Anthropic account Claude Code is signed in with has no credit. Sign Claude Code in with your subscription under Settings → Models.",
-  ),
+  exhausted: note("anthropicAccountClaudeCode"),
 };

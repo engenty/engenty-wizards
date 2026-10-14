@@ -4,7 +4,7 @@ import type {
   PluginRunnerRequest,
 } from "@engenty-wizards/plugin-sdk";
 import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
-import { bilingual, type PublicWizard } from "@engenty-wizards/shared/run";
+import { note, type PublicWizard } from "@engenty-wizards/shared/run";
 import {
   BUILT_IN_RUNNERS,
   CONVERSATION_RUNNERS,
@@ -103,32 +103,14 @@ export async function checkRunnerSettings(settings: RunnerSettings): Promise<Run
   const ids = new Set(available.map((r) => r.id));
   const unknown = settings.enabled.find((id) => !ids.has(id));
   if (unknown) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        `Einen Runner „${unknown}“ gibt es hier nicht.`,
-        `There’s no runner “${unknown}” here.`,
-      ),
-    );
+    throw new ServiceError("invalid", note("unknownRunner", { unknown }));
   }
   const enabled = [...new Set(settings.enabled)];
   if (!enabled.length) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        "Mindestens ein Runner muss eingeschaltet bleiben.",
-        "At least one runner has to stay on.",
-      ),
-    );
+    throw new ServiceError("invalid", note("leastOneRunnerStay"));
   }
   if (!enabled.includes(settings.default)) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        "Der Link muss einen eingeschalteten Runner öffnen.",
-        "The link has to open a runner that’s turned on.",
-      ),
-    );
+    throw new ServiceError("invalid", note("linkOpenRunnerTurned"));
   }
   return { default: settings.default, enabled };
 }

@@ -12,6 +12,7 @@ import { strToU8, zipSync } from "fflate";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { getBlob } from "../files/blobs.js";
+import { serverText } from "../texts.js";
 import { requireAdmin } from "./access.js";
 import { draftFiles, writeFile } from "./files.js";
 import { pageTree } from "./knowledge.js";
@@ -185,16 +186,14 @@ export async function importWizard(
     files.map((f) => f.path),
   );
   const lacks = await missing(userId, projectId, draft, manifest);
-  const de = lang === "de";
+  const counts = {
+    name,
+    steps: serverText(lang, "stepCount", { count: draft.steps.length }),
+    files: serverText(lang, "fileCount", { count: files.length }),
+  };
   const note = [
-    de
-      ? `Importiert${name ? ` aus „${name}“` : ""}: ${draft.steps.length} Schritte, ${files.length} ${files.length === 1 ? "Datei" : "Dateien"}.`
-      : `Imported${name ? ` from “${name}”` : ""}: ${draft.steps.length} steps, ${files.length} ${files.length === 1 ? "file" : "files"}.`,
-    lacks.length
-      ? de
-        ? `Diesem Space fehlt noch: ${lacks.join(", ")}. Füge es unter Einstellungen → Connectors hinzu.`
-        : `This space still needs: ${lacks.join(", ")}. Add it under Settings → Connectors.`
-      : "",
+    serverText(lang, name ? "importedFrom" : "imported", counts),
+    lacks.length ? serverText(lang, "spaceStillNeeds", { needs: lacks }) : "",
   ]
     .filter(Boolean)
     .join("\n\n");

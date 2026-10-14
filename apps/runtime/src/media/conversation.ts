@@ -1,3 +1,4 @@
+import { LANG_NAMES } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { NotedError } from "../model-errors.js";
 import { conversationAccess } from "../models.js";
@@ -15,8 +16,8 @@ const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 /** How long a minted secret opens a session; the session itself goes on until it ends. */
 const SECRET_TTL_SECONDS = 600;
 
-/** The voice the wizard speaks with, by language. */
-const VOICES = { de: "marin", en: "marin" } as const;
+/** The voice the wizard speaks with: one that speaks every language engenty does. */
+const VOICE = "marin";
 
 export interface ConversationSession {
   clientSecret: string;
@@ -119,41 +120,23 @@ export const CONVERSATION_TOOLS = [
   },
 ] as const;
 
-/** The rules the model speaks by, in the wizard's language. */
+/** The rules the model speaks by: written in English, it speaks the wizard's language. */
 export function conversationInstructions(view: RunView): string {
-  const de = view.lang === "de";
-  const about = [
-    `${de ? "Du bist" : "You are"} ${view.wizard.title}.`,
-    view.wizard.description,
-    view.wizard.intro,
-  ]
+  const about = [`You are ${view.wizard.title}.`, view.wizard.description, view.wizard.intro]
     .filter(Boolean)
     .join(" ");
-  const rules = de
-    ? [
-        "Du führst ein Gespräch, das einen Wizard Schritt für Schritt ausfüllt. Die Person sieht den Wizard auch auf dem Bildschirm.",
-        "Sprich Deutsch, kurz und freundlich, wie am Telefon. Ein Satz, dann die nächste Frage.",
-        "Frag ein Feld nach dem anderen, in der Reihenfolge des Zustands. Nach jeder Antwort rufst du set_field auf. Sind alle Felder beantwortet, die du per Sprache füllen kannst, rufst du submit_page auf.",
-        "Bei einer Auswahl nennst du die Möglichkeiten (höchstens vier auf einmal) und gibst genau eine davon weiter.",
-        "E-Mail-Adressen, Links und Zahlen wiederholst du zur Bestätigung, bevor du sie weitergibst.",
-        "Ein Feld, das den Bildschirm braucht (ein Foto, eine Datei, eine Unterschrift, eine Verbindung), füllt die Person dort aus: sag das in einem Satz und warte auf den nächsten Zustand.",
-        "Während der Wizard arbeitet, sagst du in einem Satz, was er gerade tut, und wartest. Erfinde nichts.",
-        "Bei einer Prüfung liest du den Text kurz zusammengefasst vor und fragst, ob er passt. Dann accept_review, oder regenerate mit dem Wunsch der Person.",
-        "Am Ende sagst du, was entstanden ist und dass es auf dem Bildschirm liegt.",
-        "Ist die Kamera an, kannst du mit look sehen, was die Person zeigt, und mit take_photo ein Foto in ein Fotofeld legen; ein Fotofeld fragst du dann so: „Halte es in die Kamera, ich mache das Foto.“ Ist die Kamera aus, bitte die Person, sie einzuschalten, oder lass das Feld dem Bildschirm.",
-      ]
-    : [
-        "You hold a conversation that fills in a wizard step by step. The person also sees the wizard on the screen.",
-        "Speak English, short and friendly, as on the phone. One sentence, then the next question.",
-        "Ask one field at a time, in the order of the state. After each answer call set_field. When every field you can fill by voice is answered, call submit_page.",
-        "For a choice, name the options (at most four at a time) and pass exactly one of them on.",
-        "Read e-mail addresses, links and numbers back before passing them on.",
-        "A field that needs the screen (a photo, a file, a signature, a connection) is filled there by the person: say so in one sentence and wait for the next state.",
-        "While the wizard works, say in one sentence what it is doing and wait. Never make anything up.",
-        "At a review, sum the text up in a few words and ask whether it fits. Then accept_review, or regenerate with what the person wants changed.",
-        "At the end, say what was made and that it is on the screen.",
-        "With the camera on you can see what the person shows with look, and put a photo into a photo field with take_photo; ask for a photo field like this: 'Hold it to the camera, I will take the picture.' With the camera off, ask the person to switch it on, or leave the field to the screen.",
-      ];
+  const rules = [
+    "You hold a conversation that fills in a wizard step by step. The person also sees the wizard on the screen.",
+    `Speak ${LANG_NAMES[view.lang]} (${view.lang}), short and friendly, as on the phone. One sentence, then the next question.`,
+    "Ask one field at a time, in the order of the state. After each answer call set_field. When every field you can fill by voice is answered, call submit_page.",
+    "For a choice, name the options (at most four at a time) and pass exactly one of them on.",
+    "Read e-mail addresses, links and numbers back before passing them on.",
+    "A field that needs the screen (a photo, a file, a signature, a connection) is filled there by the person: say so in one sentence and wait for the next state.",
+    "While the wizard works, say in one sentence what it is doing and wait. Never make anything up.",
+    "At a review, sum the text up in a few words and ask whether it fits. Then accept_review, or regenerate with what the person wants changed.",
+    "At the end, say what was made and that it is on the screen.",
+    "With the camera on you can see what the person shows with look, and put a photo into a photo field with take_photo; ask for a photo field like this: 'Hold it to the camera, I will take the picture.' With the camera off, ask the person to switch it on, or leave the field to the screen.",
+  ];
   return `${about}\n\n${rules.join("\n")}`;
 }
 
@@ -180,7 +163,7 @@ export async function mintConversation(view: RunView): Promise<ConversationSessi
             noise_reduction: { type: "far_field" },
             turn_detection: { type: "server_vad", threshold: 0.7, silence_duration_ms: 600 },
           },
-          output: { voice: VOICES[view.lang] },
+          output: { voice: VOICE },
         },
       },
     }),

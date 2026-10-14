@@ -85,7 +85,7 @@ import {
   uploadMime,
   wizardManifest,
 } from "./delivery.js";
-import { inLang, notFoundAnswer, requestLang } from "./lang.js";
+import { notFoundAnswer, requestLang, say } from "./lang.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -273,11 +273,7 @@ export const publicRoutes = new Hono()
     if (codeLookupBlocked(ip)) {
       return c.json(
         {
-          error: inLang(
-            c,
-            "Zu viele Versuche. Warte kurz und versuch es noch einmal.",
-            "Too many tries. Wait a moment and try again.",
-          ),
+          error: say(c, "tooManyTriesWait"),
           code: "too_many_tries",
         },
         429,

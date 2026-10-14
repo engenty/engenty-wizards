@@ -6,6 +6,7 @@ import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { managed } from "../manage.js";
 import { hasTextModel } from "../models.js";
+import { serverText } from "../texts.js";
 import { draftFiles, readFile } from "./files.js";
 import { ownedProject } from "./projects.js";
 import { addMessage, draftIssues, ownedWizard, wizardMessages, writableWizard } from "./wizards.js";
@@ -91,21 +92,9 @@ export async function architectTurn(
             images,
             lang,
           });
-    const de = lang === "de";
     const reply = result.unfinished
-      ? `${result.reply ? `${result.reply}\n\n` : ""}${
-          de
-            ? "Ich bin noch nicht ganz fertig geworden. Schreib „weiter“, dann mache ich genau dort weiter."
-            : "I have not quite finished. Write “continue” and I will carry on right there."
-        }`
-      : result.reply ||
-        (result.changed
-          ? de
-            ? "Erledigt."
-            : "Done."
-          : de
-            ? "Das habe ich nicht verstanden – magst du es anders formulieren?"
-            : "I did not understand that – could you put it differently?");
+      ? `${result.reply ? `${result.reply}\n\n` : ""}${serverText(lang, "notFinished")}`
+      : result.reply || serverText(lang, result.changed ? "done" : "notUnderstood");
     await addMessage(w.id, { role: "assistant", content: reply, changed: result.changed });
     const after = await ownedWizard(userId, wizardId);
     return {

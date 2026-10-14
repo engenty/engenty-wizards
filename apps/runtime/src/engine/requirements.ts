@@ -22,7 +22,7 @@ import {
 } from "@engenty-wizards/shared/fit";
 import type { Capability } from "@engenty-wizards/shared/marketplace";
 import type { ClosedChoice, MissingModel, RunNote, Said } from "@engenty-wizards/shared/run";
-import { bilingual, saidText } from "@engenty-wizards/shared/run";
+import { note, saidText } from "@engenty-wizards/shared/run";
 import { classProblem, filmClient } from "../models.js";
 
 // The steps every run passes through, and the choices that lead around a missing model, are
@@ -329,14 +329,14 @@ export function blockingMessage(missing: MissingModelSaid[]): RunNote | null {
   if (!blocking.length) {
     return null;
   }
-  const line = (lang: Lang) =>
-    blocking
-      .map((m) => {
-        const steps = m.steps.map((s) => (lang === "de" ? `„${s.title}“` : `“${s.title}”`));
-        return `${steps.join(", ")}: ${saidText(m.problem, lang)}`;
-      })
-      .join(" ");
-  return bilingual(line("de"), line("en"));
+  return blocking
+    .map((m) =>
+      note("blockedSteps", {
+        steps: m.steps.map((s) => note("quoted", { text: s.title })),
+        problem: m.problem,
+      }),
+    )
+    .reduce((first, second) => note("joined", { first, second }));
 }
 
 /** The class a marketplace capability stands for; the rest need no model of their own. */

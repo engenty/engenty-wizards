@@ -1,4 +1,4 @@
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import {
   firstRowAt,
   type ListDef,
@@ -163,7 +163,7 @@ export async function updateRow(
         })
       : null;
   if (clash) {
-    throw new StoreError(bilingual("Diesen Eintrag gibt es schon.", "This entry already exists."));
+    throw new StoreError(note("entryAlreadyExists"));
   }
   await db
     .update(schema.storeRow)

@@ -51,6 +51,7 @@ import { documentText } from "../services/project-index.js";
 import { ownedProject, type ProjectRow, updateProject } from "../services/projects.js";
 import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { type ServerKey, serverText } from "../texts.js";
 import { assistantPageOf, assistantToolsOf } from "../tools/plugin.js";
 import { readWebsite } from "./website.js";
 
@@ -154,20 +155,20 @@ HOW YOU WORK
 - Call independent tools together. Work in few steps.
 - Finish with one to three sentences: what you did or found, what is still open, and at most one question.`;
 
-const LABELS: Record<string, { de: string; en: string }> = {
-  save_logo: { de: "Holt das Logo …", en: "Fetching the logo …" },
-  save_file: { de: "Holt eine Datei …", en: "Fetching a file …" },
-  set_logo_sections: { de: "Ordnet die Logos …", en: "Grouping the logos …" },
-  set_asset_sections: { de: "Ordnet die Assets …", en: "Grouping the assets …" },
-  set_typography: { de: "Trägt die Schriften ein …", en: "Entering the fonts …" },
-  set_gradients: { de: "Trägt die Verläufe ein …", en: "Entering the gradients …" },
-  set_rules: { de: "Trägt Regeln ein …", en: "Entering rules …" },
-  set_profile: { de: "Schreibt Titel und Beschreibung …", en: "Writing title and description …" },
-  set_facts: { de: "Trägt Fakten ein …", en: "Entering facts …" },
-  set_colors: { de: "Trägt die Farben ein …", en: "Entering the colours …" },
-  look_at_file: { de: "Sieht sich eine Datei an …", en: "Looking at a file …" },
-  describe_file: { de: "Beschreibt eine Datei …", en: "Describing a file …" },
-  web_search: { de: "Sucht im Web …", en: "Searching the web …" },
+const LABELS: Record<string, ServerKey> = {
+  save_logo: "doingSaveLogo",
+  save_file: "doingSaveFile",
+  set_logo_sections: "doingSetLogoSections",
+  set_asset_sections: "doingSetAssetSections",
+  set_typography: "doingSetTypography",
+  set_gradients: "doingSetGradients",
+  set_rules: "doingSetRules",
+  set_profile: "doingSetProfile",
+  set_facts: "doingSetFacts",
+  set_colors: "doingSetColors",
+  look_at_file: "doingLookAtFile",
+  describe_file: "doingDescribeFile",
+  web_search: "doingWebSearch",
 };
 
 function activity(tool: string, args: Record<string, unknown>, lang: Lang): string | null {
@@ -180,13 +181,9 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang): stri
   };
   if (tool === "read_website") {
     const at = args.url ? host(args.url) : "";
-    return lang === "de"
-      ? at
-        ? `Liest ${at} …`
-        : "Liest die Website …"
-      : at
-        ? `Reading ${at} …`
-        : "Reading the website …";
+    return at
+      ? serverText(lang, "doingReadSite", { host: at })
+      : serverText(lang, "doingReadWebsite");
   }
   const key =
     tool === "save_file" && args.kind === "logo"
@@ -194,7 +191,7 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang): stri
       : tool === "remove_facts"
         ? "set_facts"
         : tool;
-  return LABELS[key]?.[lang] ?? null;
+  return LABELS[key] ? serverText(lang, LABELS[key]) : null;
 }
 
 async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string }> {
@@ -1094,7 +1091,7 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
     } else if (chunk.type === "tool-call") {
       // The model's own search has no tool of ours that could say so.
       if (payload.toolName === "web_search") {
-        input.onActivity?.(LABELS.web_search[input.lang]);
+        input.onActivity?.(serverText(input.lang, LABELS.web_search));
       }
       // Keep what it says before and after a tool call apart.
       if (reply.trim() && !reply.endsWith("\n\n")) {

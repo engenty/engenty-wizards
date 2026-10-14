@@ -5,7 +5,7 @@ import {
   type ProjectFileView,
   projectFileLimit,
 } from "@engenty-wizards/shared/projects";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { generateText } from "ai";
 import { and, asc, count, eq, max } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
@@ -108,29 +108,17 @@ export async function addProjectFile(
     throw new ServiceError(
       "invalid",
       input.kind === "logo"
-        ? bilingual(
-            "Ein Logo ist ein Bild (PNG, SVG, JPEG, WebP).",
-            "A logo is an image (PNG, SVG, JPEG, WebP).",
-          )
+        ? note("logoImagePngSvg")
         : input.kind === "pattern"
-          ? bilingual(
-              "Ein Muster ist ein Bild (SVG, PNG, JPEG, WebP).",
-              "A pattern is an image (SVG, PNG, JPEG, WebP).",
-            )
-          : bilingual(
-              "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen gehören ins Wissen.",
-              "Images, videos, audio, PDFs, fonts, Lottie and 3D models go here. Texts to look things up in go under knowledge.",
-            ),
+          ? note("patternImageSvgPng")
+          : note("filesGoHere"),
     );
   }
   const limit = projectFileLimit(input.kind, mime);
   if (!input.data.byteLength || input.data.byteLength > limit) {
     throw new ServiceError(
       "invalid",
-      bilingual(
-        `Wähl eine Datei bis ${Math.round(limit / 1_000_000)} MB.`,
-        `Choose a file of ${Math.round(limit / 1_000_000)} MB or less.`,
-      ),
+      note("chooseFileUpTo", { mb: Math.round(limit / 1_000_000) }),
     );
   }
   const scope = and(
@@ -144,10 +132,7 @@ export async function addProjectFile(
   if (n >= PROJECT_LIMITS.files[input.kind]) {
     throw new ServiceError(
       "refused",
-      bilingual(
-        `Hier haben höchstens ${PROJECT_LIMITS.files[input.kind]} Dateien Platz.`,
-        `There’s room for at most ${PROJECT_LIMITS.files[input.kind]} files here.`,
-      ),
+      note("roomMostFiles", { count: PROJECT_LIMITS.files[input.kind] }),
     );
   }
   const name = input.name.slice(0, 120) || "datei";
@@ -208,40 +193,21 @@ export async function addProjectFileFromUrl(
     headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
     signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]),
   }).catch(() => {
-    throw new ServiceError(
-      "invalid",
-      bilingual("Die Adresse ist nicht erreichbar.", "The address can’t be reached."),
-    );
+    throw new ServiceError("invalid", note("addressNotReached"));
   });
   if (!res.ok) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        `Die Adresse antwortete mit ${res.status}.`,
-        `The address responded with ${res.status}.`,
-      ),
-    );
+    throw new ServiceError("invalid", note("addressResponded", { status: res.status }));
   }
   const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
   if (mime === "text/html" && kind !== "document") {
     await res.body?.cancel();
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        "Unter der Adresse steht eine Webseite, kein Bild.",
-        "The address leads to a web page, not an image.",
-      ),
-      {
-        reason: "page",
-        url: res.url,
-      },
-    );
+    throw new ServiceError("invalid", note("addressLeadsWebPage"), {
+      reason: "page",
+      url: res.url,
+    });
   }
   if (Number(res.headers.get("content-length") ?? 0) > projectFileLimit(kind, mime)) {
-    throw new ServiceError(
-      "invalid",
-      bilingual("Die Datei ist zu groß.", "The file is too large."),
-    );
+    throw new ServiceError("invalid", note("addressFileTooLarge"));
   }
   const data = new Uint8Array(await res.arrayBuffer());
   const name = decodeURIComponent(new URL(res.url).pathname.split("/").pop() || kind);
@@ -393,10 +359,7 @@ export async function reindexProjectFile(projectId: string, fileId: string) {
   await requireWritableProject(projectId);
   const row = await projectFile(projectId, fileId);
   if (row.kind !== "document") {
-    throw new ServiceError(
-      "invalid",
-      bilingual("Nur Dokumente stehen im Index.", "Only documents are in the index."),
-    );
+    throw new ServiceError("invalid", note("onlyDocumentsIndex"));
   }
   const [pending] = await db
     .update(schema.projectFile)
@@ -499,13 +462,7 @@ export async function putOriginFile(
   });
   const mime = documentMime(input.name, input.mime) || "application/octet-stream";
   if (!input.data.byteLength || input.data.byteLength > projectFileLimit("document", mime)) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        `„${input.name}“ ist leer oder zu groß für ein Dokument.`,
-        `“${input.name}” is empty or too large for a document.`,
-      ),
-    );
+    throw new ServiceError("invalid", note("emptyTooLargeDocument", { name: input.name }));
   }
   const name = input.name.slice(0, 120) || "datei";
   const values = {
@@ -535,10 +492,7 @@ export async function putOriginFile(
     if (n >= PROJECT_LIMITS.files.document) {
       throw new ServiceError(
         "refused",
-        bilingual(
-          `Ein Space hat höchstens ${PROJECT_LIMITS.files.document} Dokumente.`,
-          `A space can have at most ${PROJECT_LIMITS.files.document} documents.`,
-        ),
+        note("spaceMostDocuments", { count: PROJECT_LIMITS.files.document }),
       );
     }
     const ref = await saveAsset({ kind: "project", mime, name, data: input.data });

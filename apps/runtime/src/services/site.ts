@@ -1,6 +1,6 @@
 import type { Lang } from "@engenty-wizards/shared/definition";
 import { factKey, PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { runStudioAssistant } from "../agents/studio-assistant.js";
@@ -8,6 +8,7 @@ import type { SessionUser } from "../auth/index.js";
 import { canSpend } from "../credits/credits.js";
 import { errorText } from "../model-errors.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { serverText } from "../texts.js";
 import { projectWritable, requireWritable } from "./access.js";
 import { apiSpace, apiSpaceDetails } from "./api.js";
 import { openChat, turnHistory } from "./assistant-chats.js";
@@ -209,15 +210,13 @@ function assistMessage(input: SiteInput): string {
 
 async function work(job: SiteJob, projectId: string, input: SiteInput) {
   try {
-    const de = siteLang(input) === "de";
-    job.activity = de
-      ? "Übernimmt die Angaben der Website …"
-      : "Taking over what the website says …";
+    const lang = siteLang(input);
+    job.activity = serverText(lang, "siteTakingOver");
     await fillFromSite(job.userId, projectId, input);
-    job.activity = de ? "Schreibt die Seiten in Wissen …" : "Writing the pages into Knowledge …";
+    job.activity = serverText(lang, "siteWritingPages");
     job.pages = await writePages(projectId, input);
     if (input.assist && (await canSpend())) {
-      job.activity = de ? "Liest die Angaben …" : "Reading the details …";
+      job.activity = serverText(lang, "siteReading");
       const project = await ownedProject(job.userId, projectId);
       // The person's open assistant chat gives the context; the turn is not stored in it.
       const chat = await openChat(job.user);
@@ -251,9 +250,7 @@ async function work(job: SiteJob, projectId: string, input: SiteInput) {
     job.error =
       err instanceof ServiceError
         ? errorText(err, siteLang(input))
-        : siteLang(input) === "de"
-          ? "Die Website ließ sich nicht übernehmen."
-          : "The website could not be taken over.";
+        : serverText(siteLang(input), "siteFailed");
     console.error("[site]", err);
   }
 }
@@ -322,13 +319,7 @@ function siteJobView(job: SiteJob) {
 export function siteJob(jobId: string) {
   const job = jobs.get(jobId);
   if (!job || job.tenantId !== currentTenant()) {
-    throw new ServiceError(
-      "not_found",
-      bilingual(
-        "Diesen Vorgang gibt es nicht, oder er ist schon beendet.",
-        "This job doesn’t exist or has already finished.",
-      ),
-    );
+    throw new ServiceError("not_found", note("jobNotExistAlready"));
   }
   return siteJobView(job);
 }

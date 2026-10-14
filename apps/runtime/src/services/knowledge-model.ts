@@ -1,6 +1,6 @@
 import type { TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import { type CategoryInput, dayOf, slugOf } from "@engenty-wizards/shared/knowledge";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { columnIdOf } from "@engenty-wizards/shared/space-data";
 import { generateText, Output } from "ai";
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -606,18 +606,12 @@ export async function writeSummary(valueId: string): Promise<string> {
     where: eq(schema.spaceCategoryValue.id, valueId),
   });
   if (!value) {
-    throw new ServiceError(
-      "not_found",
-      bilingual("Diesen Wert gibt es nicht.", "This value doesn’t exist."),
-    );
+    throw new ServiceError("not_found", note("valueNotExist"));
   }
   const category = await categoryRow(value.categoryId);
   const { items, total } = await itemsOfValue(value.id);
   if (!items.length) {
-    throw new ServiceError(
-      "invalid",
-      bilingual("Unter diesem Wert steht noch nichts.", "Nothing is filed under this value yet."),
-    );
+    throw new ServiceError("invalid", note("nothingFiledUnderValue"));
   }
   const model = await textModel("standard");
   const result = await generateText({

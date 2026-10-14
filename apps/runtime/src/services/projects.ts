@@ -20,7 +20,7 @@ import {
   RULE_MARKS,
   type TextStyle,
 } from "@engenty-wizards/shared/projects";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -29,6 +29,7 @@ import { env } from "../env.js";
 import { managed, tenantInfo } from "../manage.js";
 import { spaceChanged } from "../plugins/events.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { serverText } from "../texts.js";
 import { mayBuild, requireAdmin, requireBuild, requireWritable } from "./access.js";
 import { notFound, ServiceError } from "./errors.js";
 import { forgetWizardLinks } from "./links.js";
@@ -194,10 +195,7 @@ const synced = () =>
   and(eq(schema.project.tenantId, currentTenant()), eq(schema.project.origin, "local"));
 
 /** What the first space is called, in the language of whoever first opens the studio. */
-const FIRST_SPACE = {
-  cloud: { de: "Meine Wizards", en: "My wizards" },
-  local: { de: "Mein Computer", en: "My computer" },
-} as const;
+const FIRST_SPACE = { cloud: "firstSpaceCloud", local: "firstSpaceLocal" } as const;
 
 /**
  * A tenant that builds here always has a project of its own: the first one is made when its
@@ -210,7 +208,7 @@ async function ensureProject(lang: Lang = "en"): Promise<void> {
     await db.insert(schema.project).values({
       id,
       tenantId: currentTenant(),
-      name: FIRST_SPACE[env.manage.url ? "cloud" : "local"][lang],
+      name: serverText(lang, FIRST_SPACE[env.manage.url ? "cloud" : "local"]),
     });
     spaceChanged("space.created", id);
   }
@@ -283,12 +281,7 @@ export async function createProject(_userId: string, name: string): Promise<{ id
   if (n >= limit) {
     throw new ServiceError(
       "refused",
-      limit === 1
-        ? bilingual("Hier ist nur ein Space möglich.", "Only one space is allowed here.")
-        : bilingual(
-            `Hier sind höchstens ${limit} Spaces möglich.`,
-            `You can have at most ${limit} spaces here.`,
-          ),
+      limit === 1 ? note("onlyOneSpaceAllowed") : note("mostSpaces", { count: limit }),
     );
   }
   const id = nanoid(12);
@@ -320,10 +313,7 @@ export async function updateProject(
     return { ...s, headers };
   });
   if (patch.facts && new Set(patch.facts.map((f) => f.key)).size !== patch.facts.length) {
-    throw new ServiceError(
-      "invalid",
-      bilingual("Zwei Einträge haben denselben Schlüssel.", "Two entries have the same key."),
-    );
+    throw new ServiceError("invalid", note("twoEntriesSameKey"));
   }
   await db
     .update(schema.project)
@@ -489,10 +479,7 @@ export async function deleteProject(userId: string, projectId: string) {
   await requireAdmin();
   const all = await db.query.project.findMany({ where: madeHere() });
   if (all.length <= 1) {
-    throw new ServiceError(
-      "refused",
-      bilingual("Der letzte Space lässt sich nicht löschen.", "You can’t delete the last space."),
-    );
+    throw new ServiceError("refused", note("notDeleteLastSpace"));
   }
   await removeProject(projectId);
 }

@@ -1,7 +1,7 @@
 import { accessSync, chmodSync, constants } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { nanoid } from "nanoid";
 import { ServiceError } from "../services/errors.js";
 
@@ -83,13 +83,7 @@ async function ptyModule(): Promise<PtyModule> {
     }
     return { spawn };
   } catch {
-    throw new ServiceError(
-      "refused",
-      bilingual(
-        "Das eingebaute Terminal ist auf diesem Computer nicht verfügbar. Führe den Befehl in deinem eigenen Terminal aus.",
-        "The built-in terminal isn’t available on this computer. Run the command in your own terminal.",
-      ),
-    );
+    throw new ServiceError("refused", note("builtTerminalNotAvailable"));
   }
 }
 
@@ -157,10 +151,7 @@ export async function openTerminal(opts: TerminalOptions): Promise<string> {
   } catch (err) {
     throw new ServiceError(
       "refused",
-      bilingual(
-        `Der Befehl konnte nicht starten: ${(err as Error).message}`,
-        `The command couldn’t start: ${(err as Error).message}`,
-      ),
+      note("commandNotStarted", { detail: (err as Error).message }),
     );
   }
   const session: Session = {
@@ -224,10 +215,7 @@ export async function openTerminal(opts: TerminalOptions): Promise<string> {
 function sessionOf(id: string): Session {
   const session = sessions.get(id);
   if (!session) {
-    throw new ServiceError(
-      "not_found",
-      bilingual("Dieses Terminal gibt es nicht mehr.", "This terminal no longer exists."),
-    );
+    throw new ServiceError("not_found", note("terminalNoLongerExists"));
   }
   return session;
 }

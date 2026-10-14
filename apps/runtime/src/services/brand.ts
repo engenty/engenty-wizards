@@ -6,7 +6,7 @@ import {
   mainLogo,
 } from "@engenty-wizards/shared/projects";
 import type { BrandView } from "@engenty-wizards/shared/run";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { generateText, Output } from "ai";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -83,26 +83,14 @@ export async function describeGradient(
   try {
     answer = result.output;
   } catch {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        "Daraus ließ sich kein Verlauf machen. Beschreib ihn anders.",
-        "Couldn’t make a gradient from that. Try describing it differently.",
-      ),
-    );
+    throw new ServiceError("invalid", note("gradientFailed"));
   }
   const stops = answer.stops
     .filter((s) => HEX.test(s.color))
     .slice(0, 12)
     .map((s) => ({ color: s.color.toLowerCase(), at: Math.min(100, Math.max(0, s.at)) }));
   if (stops.length < 2) {
-    throw new ServiceError(
-      "invalid",
-      bilingual(
-        "Daraus ließ sich kein Verlauf machen. Beschreib ihn anders.",
-        "Couldn’t make a gradient from that. Try describing it differently.",
-      ),
-    );
+    throw new ServiceError("invalid", note("gradientFailed"));
   }
   return {
     name: answer.name.trim().slice(0, 80),

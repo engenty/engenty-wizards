@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { managed, type Role, tenantInfo } from "../manage.js";
@@ -41,10 +41,7 @@ export function currentRole(): Role {
 
 export const isAdminRole = (role: Role): boolean => role === "owner" || role === "admin";
 
-export const MEMBERS_EDIT_ONLY = bilingual(
-  "Das dürfen nur Admins des Teams. Als Mitglied bearbeitest du die Wizards, die es schon gibt.",
-  "Only team admins can do that. As a member, you can edit the wizards that already exist.",
-);
+export const MEMBERS_EDIT_ONLY = note("onlyTeamAdmins");
 
 /** Refuses a member: making and deleting is for the owner and the admins of the team. */
 export async function requireAdmin(): Promise<void> {
@@ -69,14 +66,8 @@ export async function mayBuild(): Promise<boolean> {
   return info ? info.limits.build !== false : false;
 }
 
-export const READ_ONLY_PROJECT = bilingual(
-  "Diesen Space bearbeitest du in engenty wizards auf deinem Computer, nicht hier.",
-  "You edit this space in engenty wizards on your computer, not here.",
-);
-export const READ_ONLY_TENANT = bilingual(
-  "Hier laufen die Wizards, die du in engenty wizards auf deinem Computer veröffentlichst. Gebaut und bearbeitet wird dort.",
-  "Wizards run here once you publish them in engenty wizards on your computer. You build and edit them there.",
-);
+export const READ_ONLY_PROJECT = note("spaceEditedLocally");
+export const READ_ONLY_TENANT = note("wizardsRunOncePublished");
 
 /** Refuses when the tenant builds nothing here. */
 export async function requireBuild(): Promise<void> {

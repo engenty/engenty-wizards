@@ -1,3 +1,4 @@
+import { SPEECH_LOCALES } from "@engenty-wizards/shared/definition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { withBase } from "../../lib/base";
@@ -176,7 +177,7 @@ export function useLiveChat(chat: Chat) {
     const r = new Recognition();
     r.continuous = true;
     r.interimResults = true;
-    r.lang = lang === "de" ? "de-DE" : "en-US";
+    r.lang = SPEECH_LOCALES[lang];
     r.onresult = (event) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PluginRunReport, PluginRunSignal, PluginRuns } from "@engenty-wizards/plugin-sdk";
-import { wizardLang } from "@engenty-wizards/shared/definition";
-import { noteText } from "@engenty-wizards/shared/run";
+import { LANGS, type Lang, wizardLang } from "@engenty-wizards/shared/definition";
+import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk } from "../engine/asks.js";
@@ -91,9 +91,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
         if (err instanceof NoCreditsError) {
           throw new ServiceError(
             "no_credits",
-            wizardLang(version.definition) === "de"
-              ? "Dieser Wizard hat gerade kein Guthaben mehr. Versuch es später noch einmal."
-              : "This wizard has run out of credits for now. Try again later.",
+            noteText({ code: "wizardRunOutCredits" }, wizardLang(version.definition)),
           );
         }
         throw err;
@@ -196,7 +194,9 @@ export function runsApiFor(pluginId: string): PluginRuns {
                 note: event.note
                   ? {
                       code: event.note.code,
-                      text: { de: noteText(event.note, "de"), en: noteText(event.note, "en") },
+                      text: Object.fromEntries(
+                        LANGS.map((lang) => [lang, noteText(event.note as RunNote, lang)]),
+                      ) as Record<Lang, string>,
                     }
                   : null,
               }

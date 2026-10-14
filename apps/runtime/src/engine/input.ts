@@ -13,7 +13,7 @@ import {
   shownFields,
 } from "@engenty-wizards/shared/definition";
 import type { Said } from "@engenty-wizards/shared/run";
-import { bilingual, saidText } from "@engenty-wizards/shared/run";
+import { note, saidText } from "@engenty-wizards/shared/run";
 
 export interface InputError {
   field: string;
@@ -188,24 +188,21 @@ export function readPageInput(
       continue;
     }
     if (field.required && empty(v) && field.kind !== "toggle") {
-      errors.push({ field: field.id, message: bilingual("Pflichtfeld", "Required") });
+      errors.push({ field: field.id, message: note("fieldRequired") });
       continue;
     }
     if (Array.isArray(v) && (field.kind === "image" || field.kind === "file")) {
       if (field.min && v.length < field.min) {
         errors.push({
           field: field.id,
-          message: bilingual(`Wähl mindestens ${field.min} aus`, `Choose at least ${field.min}`),
+          message: note("chooseAtLeast", { min: field.min }),
         });
         continue;
       }
       if (field.max && v.length > field.max) {
         errors.push({
           field: field.id,
-          message: bilingual(
-            `Höchstens ${field.max} – entferne einige`,
-            `At most ${field.max} – remove some`,
-          ),
+          message: note("chooseAtMost", { max: field.max }),
         });
         continue;
       }
@@ -213,25 +210,25 @@ export function readPageInput(
     if (field.kind === "number" && Number.isNaN(v)) {
       errors.push({
         field: field.id,
-        message: bilingual("Gib eine Zahl ein", "Enter a number"),
+        message: note("enterNumber"),
       });
       continue;
     }
     if (field.kind === "select" && !empty(v) && !field.options?.includes(String(v))) {
-      errors.push({ field: field.id, message: bilingual("Ungültige Auswahl", "Invalid choice") });
+      errors.push({ field: field.id, message: note("invalidChoice") });
       continue;
     }
     if (field.kind === "slot" && !empty(v) && !field.options?.includes(String(v))) {
       errors.push({
         field: field.id,
-        message: bilingual("Dieser Termin wird nicht angeboten", "This time isn’t offered"),
+        message: note("timeNotOffered"),
       });
       continue;
     }
     if (field.kind === "email" && !empty(v) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v))) {
       errors.push({
         field: field.id,
-        message: bilingual("Keine gültige E-Mail-Adresse", "Not a valid email address"),
+        message: note("notValidEmailAddress"),
       });
       continue;
     }
@@ -241,7 +238,7 @@ export function readPageInput(
       } catch {
         errors.push({
           field: field.id,
-          message: bilingual("Keine gültige URL", "Not a valid URL"),
+          message: note("notValidUrl"),
         });
         continue;
       }

@@ -1,3 +1,4 @@
+import { LOCALES } from "@engenty-wizards/shared/definition";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { api } from "../lib/api";
@@ -45,7 +46,7 @@ const HELD: Record<HeldBack, Key> = {
 };
 
 const day = (iso: string) =>
-  new Date(iso).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", {
+  new Date(iso).toLocaleDateString(LOCALES[lang], {
     day: "numeric",
     month: "long",
   });

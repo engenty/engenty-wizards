@@ -5,7 +5,7 @@ import {
   widgetSize,
 } from "@engenty-wizards/shared/definition";
 import type { StepOutput } from "@engenty-wizards/shared/run";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { resolveRef } from "../engine/template.js";
 import { type ProjectRow, type StepContext, StepError } from "../engine/types.js";
@@ -131,12 +131,7 @@ async function runFilmStep(
     }
   });
   if (!film) {
-    throw new StepError(
-      bilingual(
-        "Der Film ließ sich nicht rendern. Dafür braucht es ffmpeg und eine Zeitleiste im Widget.",
-        "The film couldn’t be rendered. It needs ffmpeg and a timeline in the widget.",
-      ),
-    );
+    throw new StepError(note("filmNotRenderedNeeds"));
   }
   if (film.errors.length) {
     await ctx.emit("info", {

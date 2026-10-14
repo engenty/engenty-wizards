@@ -16,6 +16,7 @@ import {
   type ProviderInfo,
   providerInfo,
   providerOfRef,
+  providerText,
 } from "@engenty-wizards/shared/providers";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,7 +37,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api } from "../lib/api";
-import { type Lang, lang, t } from "../lib/i18n";
+import { lang, t } from "../lib/i18n";
 import { type HarnessId, type HarnessStatus, type Me, useMe, withoutApple } from "../lib/session";
 import { Button, Card, cn, Input, LinkedText, Select, Spinner, Switch } from "../ui";
 import { billingUrl } from "./AppFrame";
@@ -176,8 +177,6 @@ const LEAD_CLASS: Record<ModelCapability, ModelClass> = {
 };
 
 const isText = (cap: ModelCapability) => cap === "text";
-
-const words = (labels: { de: string; en: string } | undefined, at: Lang) => labels?.[at] ?? "";
 
 /** What a person picked for a capability, which may differ from how it runs (a key is missing). */
 type Choice =
@@ -612,7 +611,7 @@ function ModelPick({
         options={[
           ...offered.map((m) => ({
             value: m.ref,
-            label: m.note ? `${m.label} – ${words(m.note, at)}` : m.label,
+            label: m.note ? `${m.label} – ${providerText(m.note, at)}` : m.label,
           })),
           { value: CUSTOM, label: t("models.modelCustom") },
         ]}
@@ -1337,7 +1336,7 @@ function ProviderPanel({
       <PanelHead
         icon={KeyRound}
         title={provider.name}
-        lead={words(provider.about, lang)}
+        lead={providerText(provider.about, lang)}
         status={
           <Status
             text={stored ? t("models.keyStored") : t("models.keyNone")}

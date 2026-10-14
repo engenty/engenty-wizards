@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { generateText, Output } from "ai";
 import PostalMime from "postal-mime";
 import { z } from "zod";
@@ -211,12 +211,7 @@ async function read(
   const vision = new VisionProvider(opts.charge, opts.signal, opts.call);
   if (mime.startsWith("image/")) {
     if (!vision.canConvert(mime)) {
-      throw new UnreadableDocument(
-        bilingual(
-          `Bilder vom Typ ${mime} lassen sich nicht lesen (PNG, JPEG und WebP gehen).`,
-          `Images of type ${mime} can’t be read (PNG, JPEG and WebP work).`,
-        ),
-      );
+      throw new UnreadableDocument(note("imageTypeNotReadable", { mime }));
     }
     const result = await vision.convert(data, name, mime);
     return { markdown: result.markdown, pages: 1, via: "vision" };
@@ -260,9 +255,7 @@ async function read(
   if (mime === "application/json" || mime.startsWith("text/")) {
     return { markdown: text(), pages: null, via: "text" };
   }
-  throw new UnreadableDocument(
-    bilingual(`„${name}“ (${mime}) lässt sich nicht lesen.`, `“${name}” (${mime}) can’t be read.`),
-  );
+  throw new UnreadableDocument(note("fileNotReadable", { name, mime }));
 }
 
 // --- structured extraction -----------------------------------------------------

@@ -1,17 +1,18 @@
-import type { StepType } from "@engenty-wizards/shared/definition";
+import type { Lang, StepType } from "@engenty-wizards/shared/definition";
 import {
-  CAPABILITIES,
+  CAPABILITY_IDS,
   type Capability,
-  COST_TIERS,
-  INDUSTRIES,
+  INDUSTRY_IDS,
   type Industry,
-  ITEM_FORMATS,
+  ITEM_FORMAT_IDS,
   type ItemFormat,
-  MARKETPLACE_PLANS,
+  MARKETPLACE_PLAN_IDS,
+  type MarketGroup,
   type MarketplaceEntry,
   type MarketplacePage,
   type MarketplacePlan,
-  USE_CASES,
+  marketLabel,
+  USE_CASE_IDS,
   type UseCase,
 } from "@engenty-wizards/shared/marketplace";
 import type { OutlineStep, WizardOutline } from "@engenty-wizards/shared/marketplace-entry";
@@ -100,8 +101,10 @@ interface Filters {
 }
 const NO_FILTERS: Filters = { useCase: "", industry: "", format: "", capability: "", plan: "" };
 
-type Labels = Record<string, { de: string; en: string }>;
-const label = (labels: Labels, id: string) => labels[id]?.[lang] ?? id;
+const label = (group: MarketGroup, id: string) => marketLabel(group, id, lang);
+
+/** The currency coin the cost is drawn with, by the language the person reads. */
+const COINS: Record<Lang, typeof CircleEuro> = { en: CircleDollarSign, de: CircleEuro };
 
 /** An estimate as one says it: one significant digit — 111 is "about 100", 27 "about 30". */
 function roughly(credits: number): number {
@@ -115,7 +118,7 @@ function roughly(credits: number): number {
 function costLine(e: MarketplaceEntry): string {
   return e.credits
     ? t("market.credits", { n: roughly(e.credits.credits) })
-    : COST_TIERS[e.costTier][lang];
+    : label("cost", e.costTier);
 }
 
 const FORMAT_ICONS: Record<ItemFormat, LucideIcon> = {
@@ -131,7 +134,7 @@ const FORMAT_ICONS: Record<ItemFormat, LucideIcon> = {
 /** A format as its icon; the name is there for a pointer and a screen reader. */
 function FormatIcon({ format, className }: { format: ItemFormat; className?: string }) {
   const Icon = FORMAT_ICONS[format];
-  const name = label(ITEM_FORMATS, format);
+  const name = label("format", format);
   return (
     <span title={name} className="inline-flex">
       <Icon className={className} aria-label={name} role="img" />
@@ -145,7 +148,7 @@ const TIERS = ["low", "medium", "high"] as const;
 function CostCoins({ entry }: { entry: MarketplaceEntry }) {
   const coins = TIERS.indexOf(entry.costTier) + 1;
   // A euro where the app speaks German, a dollar where it speaks English.
-  const Coin = lang === "de" ? CircleEuro : CircleDollarSign;
+  const Coin = COINS[lang];
   return (
     <span title={costLine(entry)} className="inline-flex items-center gap-1">
       <span aria-hidden="true" className="inline-flex shrink-0">
@@ -159,7 +162,7 @@ function CostCoins({ entry }: { entry: MarketplaceEntry }) {
           </span>
         ))}
       </span>
-      {COST_TIERS[entry.costTier][lang]}
+      {label("cost", entry.costTier)}
     </span>
   );
 }
@@ -263,7 +266,7 @@ function Fact({ title, children }: { title: string; children: ReactNode }) {
 
 /** Capabilities by name, as one says them in a sentence. */
 const capabilityList = (capabilities: Capability[]) =>
-  capabilities.map((c) => label(CAPABILITIES, c)).join(", ");
+  capabilities.map((c) => label("capability", c)).join(", ");
 
 const CAPABILITY_ICONS: Record<Capability, LucideIcon> = {
   text: PenLine,
@@ -583,7 +586,7 @@ export function EntryDialog({
                               missing ? "text-rose" : optional ? "text-amber" : "text-cobalt",
                             )}
                           />
-                          {label(CAPABILITIES, c)}
+                          {label("capability", c)}
                           {missing ? (
                             <span className="text-[0.75rem] text-rose">
                               {t("market.unavailable")}
@@ -980,40 +983,49 @@ export function MarketplaceBrowser({
   const thinking = query.trim() !== q || (search.isFetching && !search.isFetchingNextPage);
 
   /** The options of one filter, each with what it would leave of the list. */
-  const options = (key: keyof Filters, labels: Labels, icon?: (id: string) => ReactNode) =>
-    Object.keys(labels)
+  const options = (
+    key: keyof Filters,
+    group: MarketGroup,
+    ids: readonly string[],
+    icon?: (id: string) => ReactNode,
+  ) =>
+    ids
       // An option no entry has at all is not offered.
       .filter(
         (id) => (first?.facets[key] as Record<string, number> | undefined)?.[id] !== undefined,
       )
       .map((id) => ({
         value: id,
-        label: label(labels, id),
+        label: label(group, id),
         icon: icon?.(id),
         count: (first?.facets[key] as Record<string, number>)[id] ?? 0,
         unavailable: key === "capability" && unavailable.has(id as Capability),
       }));
 
   const unavailable = new Set(first?.unavailable ?? []);
-  const useCases = options("useCase", USE_CASES);
+  const useCases = options("useCase", "useCase", USE_CASE_IDS);
   const menus: { key: keyof Filters; name: string; options: FilterOption[] }[] = [
-    { key: "industry", name: t("market.industry"), options: options("industry", INDUSTRIES) },
+    {
+      key: "industry",
+      name: t("market.industry"),
+      options: options("industry", "industry", INDUSTRY_IDS),
+    },
     {
       key: "format",
       name: t("market.format"),
-      options: options("format", ITEM_FORMATS, (id) => (
+      options: options("format", "format", ITEM_FORMAT_IDS, (id) => (
         <FormatIcon format={id as ItemFormat} className="size-4 text-ink-3" />
       )),
     },
     {
       key: "plan",
       name: t("market.plan"),
-      options: options("plan", MARKETPLACE_PLANS),
+      options: options("plan", "plan", MARKETPLACE_PLAN_IDS),
     },
     {
       key: "capability",
       name: t("market.capability"),
-      options: options("capability", CAPABILITIES, (id) => {
+      options: options("capability", "capability", CAPABILITY_IDS, (id) => {
         const Icon = CAPABILITY_ICONS[id as Capability];
         return <Icon className="size-4 text-ink-3" />;
       }),

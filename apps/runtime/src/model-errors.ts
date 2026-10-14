@@ -2,7 +2,7 @@ import type { Lang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 
 /**
- * A failure the person reads, given as a note of `RUN_NOTES` (or `bilingual` words) where it has
+ * A failure the person reads, given as a note of `RUN_NOTES` where it has
  * one: a run shows it in the wizard's language, a response in the asker's, and the message keeps
  * the English line for the log. Free text has no note.
  */

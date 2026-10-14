@@ -26,7 +26,7 @@ import {
 } from "@engenty-wizards/shared/marketplace";
 import { type WizardOutline, wizardOutline } from "@engenty-wizards/shared/marketplace-entry";
 import { searchEntries } from "@engenty-wizards/shared/marketplace-search";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { formulaEstimate } from "../credits/estimate.js";
 import { control, controlDb, db, schema, withTenant } from "../db/client.js";
@@ -560,13 +560,7 @@ export async function marketplaceWizard(
     return null;
   }
   if (!readable(found.definition)) {
-    throw new ServiceError(
-      "refused",
-      bilingual(
-        "Diese Vorlage braucht eine neuere Version von engenty wizards. Aktualisiere zuerst engenty wizards.",
-        "This template needs a newer version of engenty wizards. Update engenty wizards first.",
-      ),
-    );
+    throw new ServiceError("refused", note("templateNeedsNewerVersion"));
   }
   // A wizard whose plugins are not here would stop at its first step that uses them.
   const have = await pluginIdsOf(currentTenant());
@@ -574,10 +568,7 @@ export async function marketplaceWizard(
   if (needs.length) {
     throw new ServiceError(
       "refused",
-      bilingual(
-        `Diese Vorlage braucht ${needs.length === 1 ? "das Plugin" : "die Plugins"} ${needs.join(", ")}: bei Pro auf engenty.ai dabei.`,
-        `This template needs the ${needs.length === 1 ? "plugin" : "plugins"} ${needs.join(", ")}: included with Pro on engenty.ai.`,
-      ),
+      note("templateNeedsPlugins", { count: needs.length, plugins: needs }),
     );
   }
   return {

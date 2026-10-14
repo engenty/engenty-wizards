@@ -29,7 +29,14 @@ function dictionaries(file) {
       else if (c === "}" && --depth === 0) break;
     }
     const body = src.slice(i, j + 1).replace(/\.\.\.[A-Z_]+\.(de|en),?/g, "");
-    out[lang] = Function(`return ${body}`)();
+    // A line with plural forms is checked form by form.
+    out[lang] = Object.fromEntries(
+      Object.entries(Function(`return ${body}`)()).flatMap(([key, line]) =>
+        typeof line === "string"
+          ? [[key, line]]
+          : Object.entries(line).map(([form, text]) => [`${key}.${form}`, text]),
+      ),
+    );
   }
   return out;
 }

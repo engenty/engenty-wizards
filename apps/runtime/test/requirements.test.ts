@@ -15,10 +15,7 @@ const unavailable = new Set<ModelClass>();
 vi.mock("../src/models", () => ({
   classProblem: async (cls: ModelClass) =>
     unavailable.has(cls)
-      ? {
-          code: "text",
-          params: { de: `Für ${cls} ist kein Modell eingerichtet.`, en: `No model is set up for ${cls}.` },
-        }
+      ? { code: "noModelFor", params: { makes: cls } }
       : null,
 }));
 

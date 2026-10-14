@@ -6,7 +6,7 @@ import {
   type StandaloneFit,
   standaloneEntry,
 } from "@engenty-wizards/shared/fit";
-import { CAPABILITIES, type Capability } from "@engenty-wizards/shared/marketplace";
+import { type Capability, marketLabel } from "@engenty-wizards/shared/marketplace";
 import { Check, CircleAlert, CircleMinus } from "lucide-react";
 import { useMemo } from "react";
 import { type Key, lang, t } from "../lib/i18n";
@@ -56,13 +56,13 @@ export function needLines(def: WizardDefinition, fit: StandaloneFit): Line[] {
   };
   // Text is always there: the one thing the site's provider does.
   if (def.steps.some((s) => s.type === "agent" && !s.call)) {
-    add("text", { text: CAPABILITIES.text[lang], tone: "ok" });
+    add("text", { text: marketLabel("capability", "text", lang), tone: "ok" });
   }
   for (const c of fit.missing) {
-    add(c, { text: CAPABILITIES[c as Capability][lang], tone: "missing" });
+    add(c, { text: marketLabel("capability", c as Capability, lang), tone: "missing" });
   }
   for (const c of fit.optional) {
-    add(c, { text: CAPABILITIES[c as Capability][lang], tone: "optional" });
+    add(c, { text: marketLabel("capability", c as Capability, lang), tone: "optional" });
   }
   for (const note of fit.notes) {
     const key = WORDED[note.need];

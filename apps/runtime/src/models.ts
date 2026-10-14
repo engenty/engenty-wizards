@@ -23,8 +23,8 @@ import {
   providerInfo,
   providerOfRef,
 } from "@engenty-wizards/shared/providers";
-import type { RunNote, Said } from "@engenty-wizards/shared/run";
-import { bilingual, saidText } from "@engenty-wizards/shared/run";
+import type { RunNote, RunNoteCode, Said } from "@engenty-wizards/shared/run";
+import { note, saidText } from "@engenty-wizards/shared/run";
 import {
   type EmbeddingModel,
   type experimental_generateVideo,
@@ -61,6 +61,7 @@ import { seal, unseal } from "./secrets/crypto.js";
 import { vaultDelete, vaultGet, vaultSet } from "./secrets/vault.js";
 import { readSetting, writeSetting } from "./settings.js";
 import { currentTenant, currentTenantOrNull } from "./tenants/tenant.js";
+import { serverText } from "./texts.js";
 
 export { isHarnessVendor } from "./harness/index.js";
 /**
@@ -360,38 +361,28 @@ function ownRef(cfg: ModelConfig, cls: ModelClass): string {
 }
 
 /** What a class makes, to say that nothing makes it. */
-const MAKES: Record<ModelClass, { de: string; en: string }> = {
-  classifier: { de: "Text", en: "text" },
-  standard: { de: "Text", en: "text" },
-  high: { de: "Text", en: "text" },
-  highest: { de: "Text", en: "text" },
-  image: { de: "Bilder", en: "images" },
-  video: { de: "Videos", en: "videos" },
-  speech: { de: "Sprachausgabe", en: "speech" },
-  audio: { de: "Sprachnotizen", en: "voice notes" },
+const MAKES: Record<ModelClass, RunNoteCode> = {
+  classifier: "makesText",
+  standard: "makesText",
+  high: "makesText",
+  highest: "makesText",
+  image: "makesImages",
+  video: "makesVideos",
+  speech: "makesSpeech",
+  audio: "makesVoiceNotes",
 };
 
 /** Why a class has no way: the provider picked for it lacks its key, or nothing is set up. */
 function missingText(cfg: ModelConfig, cls: ModelClass): RunNote {
   const bound = cfg.settings.bindings[cls];
   if (isCreditsRef(bound)) {
-    return bilingual(
-      "Dafür sind Credits gewählt, aber du bist mit keinem Konto angemeldet.",
-      "This is set to run on credits, but you’re not signed in to an account.",
-    );
+    return note("creditsNotSignedIn");
   }
-  const makes = MAKES[cls];
   const provider = bound ? providerInfo(providerOfRef(bound) ?? "") : null;
   if (provider) {
-    return bilingual(
-      `Für ${makes.de} ist ${provider.name} gewählt, aber kein API-Key hinterlegt.`,
-      `${provider.name} is chosen for ${makes.en}, but no API key is set.`,
-    );
+    return note("providerKeyMissing", { provider: provider.name, makes: note(MAKES[cls]) });
   }
-  return bilingual(
-    `Für ${makes.de} ist kein Modell eingerichtet.`,
-    `No model is set up for ${makes.en}.`,
-  );
+  return note("noModelFor", { makes: note(MAKES[cls]) });
 }
 
 interface GatewayAccess {
@@ -418,12 +409,7 @@ async function creditAccess(cfg: ModelConfig, chosen: boolean): Promise<GatewayA
   const token = await accountToken();
   if (!token) {
     if (chosen) {
-      throw new ModelUnavailableError(
-        bilingual(
-          "Das Konto ist nicht mehr angemeldet. Melde dich unter Einstellungen → Konto neu an.",
-          "The account is no longer signed in. Sign in again under Settings → Account.",
-        ),
-      );
+      throw new ModelUnavailableError(note("accountNoLongerSigned"));
     }
     return null;
   }
@@ -461,10 +447,7 @@ function need(cfg: ModelConfig, name: LocalKey): string {
   const key = cfg.keys[name];
   if (!key) {
     throw new ModelUnavailableError(
-      bilingual(
-        `Für ${providerInfo(name)?.name ?? name} ist kein API-Key hinterlegt.`,
-        `No API key is set for ${providerInfo(name)?.name ?? name}.`,
-      ),
+      note("noApiKeyFor", { provider: providerInfo(name)?.name ?? name }),
     );
   }
   return key;
@@ -613,12 +596,7 @@ async function ownLanguageModel(
         };
       }
   }
-  throw new ModelUnavailableError(
-    bilingual(
-      `Das Modell „${ref}“ lässt sich noch nicht nutzen. Hinterleg unter Einstellungen → Modelle einen API-Key oder melde dich mit einem Konto an.`,
-      `The model “${ref}” can’t be used yet. Add an API key under Settings → Models, or sign in to an account.`,
-    ),
-  );
+  throw new ModelUnavailableError(note("modelNotUsedYet", { ref }));
 }
 
 /**
@@ -714,9 +692,7 @@ export async function imageModel(
         return own(createOpenAI({ apiKey: cfg.keys.openai }).image(aliasOf(id)));
       }
   }
-  throw new ModelUnavailableError(
-    bilingual("Für Bilder ist kein Modell eingerichtet.", "No model is set up for images."),
-  );
+  throw new ModelUnavailableError(note("noModelForImages"));
 }
 
 export async function videoModel(meta: CallMeta = {}): Promise<ResolvedModel<VideoModel>> {
@@ -746,9 +722,7 @@ export async function videoModel(meta: CallMeta = {}): Promise<ResolvedModel<Vid
         return own(createGateway({ apiKey: cfg.keys.gateway }).videoModel(id), true);
       }
   }
-  throw new ModelUnavailableError(
-    bilingual("Für Videos ist kein Modell eingerichtet.", "No model is set up for videos."),
-  );
+  throw new ModelUnavailableError(note("noModelForVideos"));
 }
 
 /** The model that reads a text aloud. */
@@ -757,12 +731,7 @@ export async function speechModel(meta: CallMeta = {}): Promise<ResolvedModel<Sp
   if (route.kind === "credits") {
     const resolved = await viaCredits(route, "speech", meta, (c, id) => c.speechModel(id));
     if (!resolved.ref) {
-      throw new ModelUnavailableError(
-        bilingual(
-          "Für Sprachausgabe ist kein Modell eingerichtet.",
-          "No model is set up for speech.",
-        ),
-      );
+      throw new ModelUnavailableError(note("noModelForSpeech"));
     }
     return resolved;
   }
@@ -793,9 +762,7 @@ export async function speechModel(meta: CallMeta = {}): Promise<ResolvedModel<Sp
         return own(createOpenAI({ apiKey: cfg.keys.openai }).speech(aliasOf(id)));
       }
   }
-  throw new ModelUnavailableError(
-    bilingual("Für Sprachausgabe ist kein Modell eingerichtet.", "No model is set up for speech."),
-  );
+  throw new ModelUnavailableError(note("noModelForSpeech"));
 }
 
 /**
@@ -968,10 +935,10 @@ export function freeTierRefusal(err: unknown): string | null {
 
 /** What the person reads when Vercel's free tier leaves a model out, and how to fix it. */
 export function freeTierText(model: string): RunNote {
-  return bilingual(
-    `Dein AI-Gateway-Key nutzt bei Vercel die kostenlose Stufe, und die schließt ${model ? `„${model}“` : "dieses Modell"} aus. Lade bei Vercel Guthaben auf (${GATEWAY_TOP_UP}) oder wähle unter Einstellungen → Modelle ein anderes Modell.`,
-    `Your AI Gateway key is on Vercel’s free tier, which doesn’t include ${model ? `“${model}”` : "this model"}. Top up at Vercel (${GATEWAY_TOP_UP}) or choose another model under Settings → Models.`,
-  );
+  return note("freeTier", {
+    model: model ? note("quoted", { text: model }) : note("thisModel"),
+    url: GATEWAY_TOP_UP,
+  });
 }
 
 /** What a key was answered for a model: refusals are asked again soon, as a top-up lifts them. */
@@ -1029,12 +996,7 @@ const CONVERSATION_MODEL = env.conversationModel || "gpt-realtime";
 export async function conversationAccess(): Promise<{ apiKey: string; model: string }> {
   const cfg = await config();
   if (!cfg.keys.openai) {
-    throw new ModelUnavailableError(
-      bilingual(
-        "Für Sprachgespräche ist kein OpenAI-API-Key hinterlegt (Einstellungen → Modelle).",
-        "No OpenAI API key is set for voice conversations (Settings → Models).",
-      ),
-    );
+    throw new ModelUnavailableError(note("noOpenaiApiKey"));
   }
   return { apiKey: cfg.keys.openai, model: CONVERSATION_MODEL };
 }
@@ -1075,18 +1037,10 @@ export async function classProblem(cls: ModelClass): Promise<Said | null> {
       const named = creditsModelOf((await config()).settings.bindings[cls]);
       if (named) {
         return catalog?.models && !catalog.models.some((m) => m.id === named)
-          ? bilingual(
-              "Dieses Modell gibt es mit deinem Konto nicht.",
-              "This model isn’t available with your account.",
-            )
+          ? note("modelNotAvailableAccount")
           : null;
       }
-      return catalog?.classes && !catalog.classes[cls]
-        ? bilingual(
-            "Dafür ist bei deinem Konto kein Modell eingerichtet.",
-            "Your account has no model set up for this.",
-          )
-        : null;
+      return catalog?.classes && !catalog.classes[cls] ? note("accountNoModelSet") : null;
     }
     const client = harness(resolved.vendor);
     if (client && (await detectHarness(client.id))?.auth === "none") {
@@ -1115,10 +1069,7 @@ export async function filmClient(
   const client = managed ? null : harness(cfg.settings.source);
   if (!client || !FILM_CLIENTS.has(client.id)) {
     return {
-      problem: bilingual(
-        "Filme macht Claude Code auf diesem Computer mit deinem Abo. Richte es unter Einstellungen → Modelle als KI-Abo ein.",
-        "Claude Code makes films on this computer, using your subscription. Set it up as an AI subscription under Settings → Models.",
-      ),
+      problem: note("claudeCodeMakesFilms"),
     };
   }
   const status = await detectHarness(client.id);
@@ -1218,12 +1169,7 @@ async function appleProblem(cls: ModelClass): Promise<Said | null> {
   if (!status.supported || status.reason === "missing") {
     return appleUnavailableNote(status);
   }
-  return (await hasFfmpeg())
-    ? null
-    : bilingual(
-        "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf. Safari und die App brauchen es nicht. Installiere ffmpeg, z. B. mit „brew install ffmpeg“.",
-        "This Mac needs ffmpeg to transcribe recordings from Chrome or Firefox (WebM, Ogg). Safari and the app don’t. Install ffmpeg, e.g. with “brew install ffmpeg”.",
-      );
+  return (await hasFfmpeg()) ? null : note("macNeedsFfmpegTranscribe");
 }
 
 /** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */
@@ -1275,7 +1221,6 @@ export async function checkKey(
   key: string,
   lang: Lang = "en",
 ): Promise<{ ok: boolean; message: string | null }> {
-  const de = lang === "de";
   const requests: Record<LocalKey, [string, Record<string, string>]> = {
     openai: ["https://api.openai.com/v1/models", { authorization: `Bearer ${key}` }],
     anthropic: [
@@ -1309,19 +1254,13 @@ export async function checkKey(
       ok: false,
       message:
         res.status === 401
-          ? de
-            ? "Der Anbieter kennt diesen API-Key nicht."
-            : "The provider doesn’t recognise this key."
-          : de
-            ? `Der Anbieter antwortet mit Fehler ${res.status}.`
-            : `The provider answered with error ${res.status}.`,
+          ? serverText(lang, "keyUnknown")
+          : serverText(lang, "providerError", { status: String(res.status) }),
     };
   } catch {
     return {
       ok: false,
-      message: de
-        ? "Der Anbieter ist gerade nicht erreichbar."
-        : "The provider cannot be reached right now.",
+      message: serverText(lang, "providerUnreachable"),
     };
   }
 }

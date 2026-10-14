@@ -1,4 +1,4 @@
-import type { Lang } from "@engenty-wizards/shared/definition";
+import { type Lang, SPEECH_LOCALES } from "@engenty-wizards/shared/definition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lang as uiLang } from "./i18n";
 
@@ -52,7 +52,7 @@ export function speak(text: string, lang: Lang = uiLang, now = false) {
   if (now) {
     synth.cancel();
   }
-  const code = lang === "de" ? "de-DE" : "en-US";
+  const code = SPEECH_LOCALES[lang];
   const utterance = new SpeechSynthesisUtterance(text.trim().slice(0, 2000));
   utterance.lang = code;
   const voice = voiceFor(code);
@@ -69,7 +69,7 @@ export function say(text: string, lang: Lang = uiLang): Promise<void> {
   }
   const synth = window.speechSynthesis;
   synth.cancel();
-  const code = lang === "de" ? "de-DE" : "en-US";
+  const code = SPEECH_LOCALES[lang];
   const utterance = new SpeechSynthesisUtterance(text.trim().slice(0, 4000));
   utterance.lang = code;
   const voice = voiceFor(code);

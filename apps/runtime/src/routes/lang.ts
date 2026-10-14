@@ -1,5 +1,7 @@
 import { type Lang, localLang } from "@engenty-wizards/shared/definition";
+import type { Gap } from "@engenty-wizards/shared/texts";
 import type { Context } from "hono";
+import { type ServerKey, serverText } from "../texts.js";
 
 /**
  * The language a visitor's request asks for, as the studio starts in it (`localLang`): the
@@ -14,15 +16,15 @@ export function requestLang(c: Context): Lang {
   return localLang(asked) ?? "en";
 }
 
-/** A line the person reads, in the language their request asks for. */
-export function inLang(c: Context, de: string, en: string): string {
-  return requestLang(c) === "de" ? de : en;
+/** A line of the server's table the person reads, in the language their request asks for. */
+export function say(c: Context, key: ServerKey, params?: Record<string, Gap | undefined>): string {
+  return serverText(requestLang(c), key, params);
 }
 
 /** A 404 the person may read: a sentence in their language, the machine code beside it. */
 export function notFoundAnswer(c: Context): { error: string; code: "not_found" } {
   return {
-    error: inLang(c, "Das gibt es nicht oder nicht mehr.", "This doesn’t exist or was deleted."),
+    error: say(c, "notFound"),
     code: "not_found",
   };
 }

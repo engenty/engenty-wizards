@@ -28,6 +28,7 @@ import { deleteFile, listFiles, readFileText, writeFile } from "../services/file
 import { checkDraftWidget } from "../services/widgets.js";
 import { editWizard, ownedWizard, writeDraft } from "../services/wizards.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { type ServerKey, serverText } from "../texts.js";
 import { assertPublicUrl, safeFetch } from "../tools/net-guard.js";
 import { runScript } from "../widgets/script.js";
 import { thoughtLine } from "./thought.js";
@@ -110,7 +111,7 @@ HOW YOU WORK
 
 /** Turns a tool call into the line the admin sees while it runs. */
 function activity(tool: string, args: Record<string, unknown>, lang: Lang = "en"): string | null {
-  const de = lang === "de";
+  const say = (key: ServerKey, params?: Record<string, string>) => serverText(lang, key, params);
   const host = (u: unknown) => {
     try {
       return new URL(String(u)).hostname;
@@ -121,42 +122,28 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang = "en"
   switch (tool) {
     case "replace_wizard":
     case "edit_wizard":
-      return de ? "Baut den Ablauf …" : "Building the flow …";
+      return say("doingFlow");
     case "write_file":
       return args.path
-        ? de
-          ? `Schreibt ${String(args.path)} …`
-          : `Writing ${String(args.path)} …`
-        : de
-          ? "Schreibt eine Datei …"
-          : "Writing a file …";
+        ? say("doingWriteFile", { path: String(args.path) })
+        : say("doingWriteAFile");
     case "download_files":
-      return de ? "Lädt Daten herunter …" : "Downloading data …";
+      return say("doingDownload");
     case "web_fetch":
-      return args.url
-        ? de
-          ? `Liest ${host(args.url)} …`
-          : `Reading ${host(args.url)} …`
-        : de
-          ? "Liest im Web …"
-          : "Reading the web …";
+      return args.url ? say("doingReadSite", { host: host(args.url) }) : say("doingReadWeb");
     case "web_search":
-      return de ? "Sucht im Web …" : "Searching the web …";
+      return say("doingWebSearch");
     case "check_widget":
-      return de ? "Testet das Widget …" : "Testing the widget …";
+      return say("doingTestWidget");
     case "run_script":
       return args.output
-        ? de
-          ? `Bereitet ${String(args.output)} vor …`
-          : `Preparing ${String(args.output)} …`
-        : de
-          ? "Rechnet …"
-          : "Calculating …";
+        ? say("doingPrepare", { output: String(args.output) })
+        : say("doingCalculate");
     case "list_files":
     case "read_file":
-      return de ? "Sieht sich die Dateien an …" : "Looking at the files …";
+      return say("doingLookFiles");
     case "delete_file":
-      return de ? "Räumt Dateien auf …" : "Tidying up files …";
+      return say("doingTidyFiles");
     default:
       return null;
   }

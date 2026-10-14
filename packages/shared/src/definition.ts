@@ -35,6 +35,9 @@ export const LANG_NAMES: Record<Lang, string> = { en: "English", de: "Deutsch" }
 /** The locale amounts and dates are written in for a language. */
 export const LOCALES: Record<Lang, string> = { en: "en-GB", de: "de-DE" };
 
+/** The locale speech is heard and spoken in for a language (recognition, voices). */
+export const SPEECH_LOCALES: Record<Lang, string> = { en: "en-US", de: "de-DE" };
+
 export function isLang(value: unknown): value is Lang {
   return typeof value === "string" && (LANGS as readonly string[]).includes(value);
 }

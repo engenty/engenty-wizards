@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull, isNull, like } from "drizzle-orm";
 import { accountToken, linkedAccount } from "../auth/account.js";
 import { control, controlDb, db, schema } from "../db/client.js";
@@ -87,16 +87,9 @@ async function call<T>(
 ): Promise<CloudAnswer<T>> {
   const token = await accountToken();
   if (!token) {
-    throw new ServiceError(
-      "refused",
-      bilingual(
-        "Das Konto ist abgemeldet. Melde dich neu an.",
-        "The account is signed out. Sign in again.",
-      ),
-      {
-        reason: "signed_out",
-      },
-    );
+    throw new ServiceError("refused", note("accountSignedOut"), {
+      reason: "signed_out",
+    });
   }
   const res = await fetch(`${env.local.cloudUrl}/api/v1${path}`, {
     method,
@@ -108,13 +101,9 @@ async function call<T>(
     signal: AbortSignal.timeout(timeoutMs),
   }).catch(() => null);
   if (!res) {
-    throw new ServiceError(
-      "refused",
-      bilingual("Die Cloud ist gerade nicht erreichbar.", "The cloud can’t be reached right now."),
-      {
-        reason: "unreachable",
-      },
-    );
+    throw new ServiceError("refused", note("cloudNotReachedRight"), {
+      reason: "unreachable",
+    });
   }
   const parsed = (await res.json().catch(() => ({}))) as T & { error?: string; reason?: string };
   return { ok: res.ok, status: res.status, body: parsed };
@@ -124,10 +113,7 @@ function refusal(answer: CloudAnswer<unknown>, fallback: string): ServiceError {
   const { error, reason, ...rest } = answer.body as Record<string, unknown>;
   const message =
     answer.status === 401
-      ? bilingual(
-          "Das Konto ist abgemeldet. Melde dich neu an.",
-          "The account is signed out. Sign in again.",
-        )
+      ? note("accountSignedOut")
       : typeof error === "string" && error
         ? error
         : fallback;
@@ -311,10 +297,7 @@ export async function syncToCloud(userId: string, wizardId: string): Promise<Clo
   const w = await ownedWizard(userId, wizardId);
   const version = await publishedVersion(w);
   if (!version) {
-    throw new ServiceError(
-      "refused",
-      bilingual("Veröffentliche den Wizard zuerst.", "Publish the wizard first."),
-    );
+    throw new ServiceError("refused", note("publishWizardFirst"));
   }
   const before = await cloudState(w.id);
   try {

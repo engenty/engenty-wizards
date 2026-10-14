@@ -1,4 +1,4 @@
-import { bilingual } from "@engenty-wizards/shared/run";
+import { note } from "@engenty-wizards/shared/run";
 import { PACKAGE_MIME } from "@engenty-wizards/shared/wizard-package";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -34,7 +34,7 @@ import {
 } from "../services/spaces.js";
 import { createWizard, ownedWizard, publishWizard, writeDraft } from "../services/wizards.js";
 import { codeOf, tenantStatus } from "../tenants/control.js";
-import { inLang, notFoundAnswer } from "./lang.js";
+import { notFoundAnswer, say } from "./lang.js";
 import { dispatchAs } from "./plugins.js";
 
 const importSchema = z.object({
@@ -87,7 +87,7 @@ async function caller(c: Context, scopes: Scope[]): Promise<Principal | Response
   if ((await tenantStatus(who.tenantId)) === "suspended") {
     return c.json(
       {
-        error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+        error: say(c, "accountSuspended"),
         code: "tenant_suspended",
       },
       403,
@@ -102,11 +102,7 @@ function withinSyncLimit(c: Context, who: Principal): Response | null {
     ? null
     : c.json(
         {
-          error: inLang(
-            c,
-            "Zu viele Übertragungen. Versuch es später noch einmal.",
-            "Too many transfers. Try again later.",
-          ),
+          error: say(c, "tooManyTransfersTry"),
           code: "rate_limited",
         },
         429,
@@ -128,11 +124,7 @@ async function pluginCall(c: Context): Promise<Response> {
     return loadedPlugin(id) || PRO_PLUGINS.includes(id)
       ? c.json(
           {
-            error: inLang(
-              c,
-              "Dieses Plugin gehört nicht zu deinem Paket. Mit Pro ist es dabei.",
-              "This plugin is not part of your plan. It comes with Pro.",
-            ),
+            error: say(c, "pluginNotPartPlan"),
             code: "plugin",
             plugin: id,
           },
@@ -231,11 +223,7 @@ export const apiRoutes = new Hono()
       if (!found) {
         return c.json(
           {
-            error: inLang(
-              c,
-              "Der Wizard ist noch nicht veröffentlicht.",
-              "The wizard is not published yet.",
-            ),
+            error: say(c, "wizardNotPublishedYet"),
             code: "not_found",
           },
           404,
@@ -361,11 +349,7 @@ export const apiRoutes = new Hono()
     if (!allowed(`site:${who.tenantId}`, 20, HOUR)) {
       return c.json(
         {
-          error: inLang(
-            c,
-            "Zu oft hintereinander. Versuch es später noch einmal.",
-            "Too many times in a row. Try again later.",
-          ),
+          error: say(c, "tooManyTimesRow"),
           code: "rate_limited",
         },
         429,
@@ -487,7 +471,7 @@ export const apiRoutes = new Hono()
     if ((await tenantStatus(who.tenantId)) === "suspended") {
       return c.json(
         {
-          error: inLang(c, "Dieses Konto ist gesperrt.", "This account is suspended."),
+          error: say(c, "accountSuspended"),
           code: "tenant_suspended",
         },
         403,
@@ -531,14 +515,10 @@ export const apiRoutes = new Hono()
         return c.json({ wizardId, revision: written.revision, issues: written.issues });
       }
       if (written.issues.length) {
-        throw new ServiceError(
-          "has_issues",
-          bilingual("Der Wizard hat noch Fehler.", "The wizard still has errors."),
-          {
-            issues: written.issues,
-            wizardId,
-          },
-        );
+        throw new ServiceError("has_issues", note("wizardStillErrors"), {
+          issues: written.issues,
+          wizardId,
+        });
       }
       const published = await publishWizard(who.userId, wizardId);
       // The ID the mobile app takes.

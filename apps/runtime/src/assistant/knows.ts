@@ -18,6 +18,7 @@ import { pluginToolsOf } from "../plugins/registry.js";
 import { earlierChats, readChat, searchChats } from "../services/assistant-chats.js";
 import { asLang, marketplaceDetail, searchMarketplace } from "../services/marketplace.js";
 import { listWizards } from "../services/wizards.js";
+import { serverText } from "../texts.js";
 import { attempt } from "../tools/shared.js";
 import { readDoc, searchDocs } from "./docs.js";
 
@@ -73,7 +74,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
         "Search the engenty wizards user guide and plugin guide of this installed version. Gives the best sections with an excerpt and their engenty.ai/docs link. Use it before you explain how something works.",
       inputSchema: z.object({ query: z.string().min(2).max(200) }),
       execute: async ({ query }) => {
-        ctx.doing(ctx.lang === "de" ? "Liest in der Anleitung …" : "Reading the guide …");
+        ctx.doing(serverText(ctx.lang, "doingReadGuide"));
         return { hits: searchDocs(query) };
       },
     }),
@@ -86,7 +87,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
         from: z.number().int().min(0).optional(),
       }),
       execute: async ({ page, from }) => {
-        ctx.doing(ctx.lang === "de" ? "Liest in der Anleitung …" : "Reading the guide …");
+        ctx.doing(serverText(ctx.lang, "doingReadGuide"));
         return readDoc(page, from ?? 0);
       },
     }),
@@ -97,9 +98,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({ from: z.number().int().min(0).optional() }),
       execute: ({ from }) =>
         attempt(async () => {
-          ctx.doing(
-            ctx.lang === "de" ? "Liest die Bauanleitung …" : "Reading the authoring guide …",
-          );
+          ctx.doing(serverText(ctx.lang, "doingAuthoringGuide"));
           const guide = authoringGuide(
             ctx.project?.mcpServers ?? [],
             ctx.project ? await listConnectors(ctx.project.id) : [],
@@ -119,7 +118,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({ query: z.string().max(200).optional() }),
       execute: ({ query }) =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sucht in der Galerie …" : "Searching the gallery …");
+          ctx.doing(serverText(ctx.lang, "doingGallery"));
           const hits = await searchMarketplace({
             q: query ?? "",
             lang: asLang(ctx.lang),
@@ -198,7 +197,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({}),
       execute: () =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sieht die Pläne nach …" : "Looking up the plans …");
+          ctx.doing(serverText(ctx.lang, "doingPlans"));
           const plans = await publicPlans(accountBase());
           return { ...plans, billingPage: `${accountBase()}/billing` };
         }),
@@ -210,7 +209,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({}),
       execute: () =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sieht das Konto nach …" : "Looking up the account …");
+          ctx.doing(serverText(ctx.lang, "doingAccount"));
           if (managed) {
             const info = await tenantInfo(user.tenantId, true);
             return {
@@ -250,7 +249,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({}),
       execute: () =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sieht den Verbrauch nach …" : "Looking up the usage …");
+          ctx.doing(serverText(ctx.lang, "doingUsage"));
           if (!(managed || (await linkedAccount()))) {
             return { linked: false, note: NOT_LINKED };
           }
@@ -363,7 +362,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({}),
       execute: () =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sieht die Modelle nach …" : "Looking up the models …");
+          ctx.doing(serverText(ctx.lang, "doingModels"));
           return {
             classes: waysIn(await classWays(), "en"),
             clients: managed
@@ -384,7 +383,7 @@ export function knowsTools(ctx: KnowsContext): Record<string, any> {
       inputSchema: z.object({ query: z.string().min(3).max(200) }),
       execute: ({ query }) =>
         attempt(async () => {
-          ctx.doing(ctx.lang === "de" ? "Sucht in früheren Chats …" : "Searching earlier chats …");
+          ctx.doing(serverText(ctx.lang, "doingEarlierChats"));
           const hits = (await searchChats(user, query)).filter((h) => h.chatId !== ctx.chatId);
           return {
             hits,

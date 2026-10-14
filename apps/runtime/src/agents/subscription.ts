@@ -10,6 +10,7 @@ import { detectHarness, signedOut } from "../harness/index.js";
 import { localModelSettings } from "../models.js";
 import { ServiceError } from "../services/errors.js";
 import { deleteSetting, readSetting, writeSetting } from "../settings.js";
+import { type ServerKey, serverText } from "../texts.js";
 import type { ChatImage } from "./architect.js";
 import { thoughtLine } from "./thought.js";
 
@@ -59,15 +60,15 @@ const SYSTEM = (wizardId: string) =>
 
 const BUILDING = /edit_wizard|write_wizard|write_file|delete_file|create_wizard/;
 
-const ACTIVITY: [RegExp, { de: string; en: string }][] = [
-  [/get_authoring_guide/, { de: "Liest die Bauanleitung", en: "Reading the building guide" }],
-  [/get_starter|list_starters/, { de: "Sieht sich eine Vorlage an", en: "Looking at a template" }],
-  [/get_wizard|list_files|read_file/, { de: "Liest den Wizard", en: "Reading the wizard" }],
-  [/write_file|delete_file/, { de: "Schreibt Dateien", en: "Writing files" }],
-  [/edit_wizard|write_wizard/, { de: "Baut den Wizard um", en: "Rebuilding the wizard" }],
-  [/check_widget|preview/, { de: "Prüft das Widget", en: "Checking the widget" }],
-  [/start_test_run|get_test_run/, { de: "Testet den Wizard", en: "Testing the wizard" }],
-  [/find_connectors|import_connector/, { de: "Sucht einen Dienst", en: "Looking for a service" }],
+const ACTIVITY: [RegExp, ServerKey][] = [
+  [/get_authoring_guide/, "doingGuide"],
+  [/get_starter|list_starters/, "doingTemplate"],
+  [/get_wizard|list_files|read_file/, "doingReadWizard"],
+  [/write_file|delete_file/, "doingWriteFiles"],
+  [/edit_wizard|write_wizard/, "doingRebuild"],
+  [/check_widget|preview/, "doingCheckWidget"],
+  [/start_test_run|get_test_run/, "doingTestWizard"],
+  [/find_connectors|import_connector/, "doingFindService"],
 ];
 
 export interface SubscriptionTurn {
@@ -85,8 +86,7 @@ export interface SubscriptionTurn {
 
 /** The activity for one tool call, naming the file or service it is about when it says. */
 function activity(name: string, args: Record<string, unknown>, lang: Lang = "en"): string {
-  const label =
-    ACTIVITY.find(([re]) => re.test(name))?.[1][lang] ?? (lang === "de" ? "Arbeitet" : "Working");
+  const label = serverText(lang, ACTIVITY.find(([re]) => re.test(name))?.[1] ?? "doingWork");
   const about = [args.path, args.query].find((v) => typeof v === "string" && v.trim());
   return about ? `${label}: ${String(about)} …` : `${label} …`;
 }

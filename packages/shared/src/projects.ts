@@ -85,17 +85,18 @@ export function factKey(label: string, taken: string[] = []): string {
   return key;
 }
 
-/** Facts most projects have; offered as empty rows to fill in. */
-export const BASIC_FACTS: { key: string; de: string; en: string }[] = [
-  { key: "adresse", de: "Adresse", en: "Address" },
-  { key: "plz", de: "PLZ", en: "Postcode" },
-  { key: "ort", de: "Ort", en: "City" },
-  { key: "uid", de: "USt-IdNr.", en: "VAT ID" },
-  { key: "telefon", de: "Telefon", en: "Phone" },
-  { key: "e_mail", de: "E-Mail", en: "Email" },
-  { key: "website", de: "Website", en: "Website" },
-  { key: "iban", de: "IBAN", en: "IBAN" },
-];
+/** Facts most projects have, by key; offered as empty rows to fill in (labels: `fact.<key>`). */
+export const BASIC_FACTS = [
+  "adresse",
+  "plz",
+  "ort",
+  "uid",
+  "telefon",
+  "e_mail",
+  "website",
+  "iban",
+] as const;
+export type BasicFact = (typeof BASIC_FACTS)[number];
 
 // --- brand -----------------------------------------------------------------------
 
