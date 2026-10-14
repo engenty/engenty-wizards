@@ -38,7 +38,7 @@ import {
 import { api } from "../lib/api";
 import { withBase } from "../lib/base";
 import { lang, t } from "../lib/i18n";
-import { type Me, useCurrentProject } from "../lib/session";
+import { type Me, spaceName, useCurrentProject } from "../lib/session";
 import { useCrumbs } from "../studio/AppFrame";
 import { useAssistantPage } from "../studio/assistant/page";
 import { useAssistantTool } from "../studio/assistant/tools";
@@ -178,7 +178,8 @@ interface Draft {
 function useSpace(): StudioSpace | null {
   const { project } = useCurrentProject();
   const id = project?.id;
-  const name = project?.name ?? "";
+  // What the switcher calls it.
+  const name = project ? spaceName(project) : "";
   const readOnly = project?.readOnly ?? false;
   const brand = JSON.stringify({
     name: project?.brand.name ?? "",

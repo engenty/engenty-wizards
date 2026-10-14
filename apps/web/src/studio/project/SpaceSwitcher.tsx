@@ -32,7 +32,11 @@ function Rename({ project, save }: { project: Project; save: (patch: Patch) => P
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim()) {
+            // Unchanged, the shown name stays a stand-in: saving it would pin the title of
+            // today, or one language's "My wizards", as the space's own name.
+            if (name.trim() === spaceName(project)) {
+              setOpen(false);
+            } else if (name.trim()) {
               rename.mutate();
             }
           }}
