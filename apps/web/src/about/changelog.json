@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.4.7",
+    "timestamp": 1791989629,
+    "commits": [
+      {
+        "id": "daf3f8a",
+        "message": "the header of /new takes about half its height on a phone – below md the fluffy engenty is scaled to 84px (Mascot draws a flat one below 120), the title is 1.5rem on one line and the gaps are smaller",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "c5699d1",
+        "message": "Goose is hidden for now – the studio no longer shows the assistant's dock, its sidebar or its highlights",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.6",
-    "timestamp": 1791985908,
+    "timestamp": 1791985917,
     "commits": [
       {
         "id": "5a26b60",
