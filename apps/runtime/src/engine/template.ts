@@ -9,6 +9,7 @@ import {
   type WizardDefinition,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
+import { formatMoney } from "@engenty-wizards/shared/numbers";
 import {
   type AssetSection,
   type BrandColor,
@@ -55,14 +56,6 @@ export interface TemplateScope {
 
 const TEMPLATE_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
 
-function money(n: number, currency: string, locale: string): string {
-  try {
-    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(n);
-  } catch {
-    return `${n.toFixed(2)} ${currency}`;
-  }
-}
-
 /** Line items as a Markdown table with their totals — what a model needs to write a document. */
 export function itemsAsMarkdown(
   field: Field,
@@ -82,15 +75,17 @@ export function itemsAsMarkdown(
       `| ${cols
         .map((c) =>
           c.kind === "money"
-            ? money(Number(r[c.id]) || 0, totals.currency, locale)
+            ? formatMoney(Number(r[c.id]) || 0, totals.currency, locale)
             : String(r[c.id] ?? ""),
         )
-        .join(" | ")} | ${money(r.amount as number, totals.currency, locale)} |`,
+        .join(" | ")} | ${formatMoney(r.amount as number, totals.currency, locale)} |`,
   );
   const sums = [
-    `Net: ${money(totals.net, totals.currency, locale)}`,
-    totals.vatRate ? `VAT ${totals.vatRate}%: ${money(totals.vat, totals.currency, locale)}` : null,
-    `Total: ${money(totals.gross, totals.currency, locale)}`,
+    `Net: ${formatMoney(totals.net, totals.currency, locale)}`,
+    totals.vatRate
+      ? `VAT ${totals.vatRate}%: ${formatMoney(totals.vat, totals.currency, locale)}`
+      : null,
+    `Total: ${formatMoney(totals.gross, totals.currency, locale)}`,
   ].filter(Boolean);
   return [head, ...body, "", ...sums].join("\n");
 }

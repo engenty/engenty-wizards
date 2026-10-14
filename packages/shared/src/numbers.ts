@@ -2,7 +2,7 @@
 
 /**
  * Numbers as people write and read them: what a phone's number pad, a table cell or a document
- * gives, and a file's size as a list shows it. The server, the studio and the runner read and
+ * gives, and an amount or a file's size as a page shows it. The server, the studio and the runner read and
  * show them the same way.
  */
 
@@ -54,4 +54,13 @@ export function formatBytes(bytes: number): string {
     return `${(bytes / 1_000_000).toFixed(1)} MB`;
   }
   return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+}
+
+/** An amount in a currency, as the language writes it (`1.234,50 €`); an unknown currency code as `1234.50 XYZ`. */
+export function formatMoney(amount: number, currency: string, locale: string): string {
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`;
+  }
 }

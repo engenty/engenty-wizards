@@ -7,6 +7,7 @@ import {
   slotDayText,
   slotTime,
 } from "@engenty-wizards/shared/definition";
+import { formatMoney } from "@engenty-wizards/shared/numbers";
 import type { ClosedChoice, RunView } from "@engenty-wizards/shared/run";
 import {
   Camera,
@@ -33,14 +34,6 @@ import { cn, IconButton, Input, Label, Segmented, Select, Swatch, Switch, Textar
 import { VoiceField } from "./voice";
 
 export type Values = Record<string, unknown>;
-
-function money(n: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(lang, { style: "currency", currency }).format(n);
-  } catch {
-    return `${n.toFixed(2)} ${currency}`;
-  }
-}
 
 function ItemsField({
   field,
@@ -127,15 +120,15 @@ function ItemsField({
         </button>
         <div className="text-right text-[0.8125rem] tabular-nums">
           <div className="text-ink-3">
-            {t("run.net")} {money(totals.net, totals.currency)}
+            {t("run.net")} {formatMoney(totals.net, totals.currency, lang)}
           </div>
           {totals.vatRate ? (
             <div className="text-ink-3">
-              {t("run.vat", { r: totals.vatRate })} {money(totals.vat, totals.currency)}
+              {t("run.vat", { r: totals.vatRate })} {formatMoney(totals.vat, totals.currency, lang)}
             </div>
           ) : null}
           <div className="font-semibold text-[0.9375rem] text-ink">
-            {t("run.total")} {money(totals.gross, totals.currency)}
+            {t("run.total")} {formatMoney(totals.gross, totals.currency, lang)}
           </div>
         </div>
       </div>

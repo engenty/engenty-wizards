@@ -1,5 +1,5 @@
 import { conditionMatches } from "@engenty-wizards/shared/definition";
-import { formatBytes, readNumber } from "@engenty-wizards/shared/numbers";
+import { formatBytes, formatMoney, readNumber } from "@engenty-wizards/shared/numbers";
 import { describe, expect, it } from "vitest";
 import { numberOf } from "../src/services/space-categories.js";
 
@@ -70,5 +70,16 @@ describe("formatBytes", () => {
     expect(formatBytes(999_949_999)).toBe("999.9 MB");
     expect(formatBytes(999_950_000)).toBe("1.0 GB");
     expect(formatBytes(1_234_000_000)).toBe("1.2 GB");
+  });
+});
+
+describe("formatMoney", () => {
+  it("writes an amount as the language does", () => {
+    expect(formatMoney(1234.5, "EUR", "de").replace(/\s/g, " ")).toBe("1.234,50 €");
+    expect(formatMoney(1234.5, "EUR", "en")).toBe("€1,234.50");
+  });
+
+  it("names a currency the browser does not know by its code", () => {
+    expect(formatMoney(12, "euro", "de")).toBe("12.00 euro");
   });
 });
