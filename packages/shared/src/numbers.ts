@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 
 /**
- * Numbers as people write them: what a phone's number pad, a table cell or a document gives.
- * The server, the studio and the runner read them the same way.
+ * Numbers as people write and read them: what a phone's number pad, a table cell or a document
+ * gives, and a file's size as a list shows it. The server, the studio and the runner read and
+ * show them the same way.
  */
 
 /**
@@ -36,4 +37,21 @@ export function readNumber(value: unknown, opts: { units?: boolean } = {}): numb
   }
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * A file's size for a list, in decimal units as the operating systems show them: `1 KB` for
+ * anything below a kilobyte but nothing (`0 KB`), `340 KB`, `2.4 MB`, `1.2 GB`.
+ */
+export function formatBytes(bytes: number): string {
+  if (!(bytes > 0)) {
+    return "0 KB";
+  }
+  if (bytes < 999_500) {
+    return `${Math.max(1, Math.round(bytes / 1000))} KB`;
+  }
+  if (bytes < 999_950_000) {
+    return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  }
+  return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
 }

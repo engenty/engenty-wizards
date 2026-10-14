@@ -1,5 +1,6 @@
 import type { Format } from "@engenty-wizards/shared/definition";
 import { formatTableCell, type TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
+import { formatBytes } from "@engenty-wizards/shared/numbers";
 import type { ShownList } from "@engenty-wizards/shared/run";
 import {
   type ConnectionView,
@@ -744,12 +745,6 @@ interface StoreSummary {
   keepsSignIns: boolean;
 }
 
-function bytes(n: number): string {
-  return n > 1_000_000
-    ? `${(n / 1_000_000).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(n / 1000))} KB`;
-}
-
 /** Everything the wizard keeps for this person between runs, and the way to delete it. */
 export function StoreButton({ runId }: { runId: string }) {
   const [open, setOpen] = useState(false);
@@ -814,7 +809,7 @@ export function StoreButton({ runId }: { runId: string }) {
                 <div className="mb-1 text-ink-3">
                   {t("store.files", {
                     n: data.files.length,
-                    size: bytes(data.files.reduce((n, f) => n + f.size, 0)),
+                    size: formatBytes(data.files.reduce((n, f) => n + f.size, 0)),
                   })}
                 </div>
                 <ul className="max-h-56 overflow-y-auto rounded-lg ring-1 ring-border-soft">
@@ -827,7 +822,7 @@ export function StoreButton({ runId }: { runId: string }) {
                       >
                         <FileText className="size-3.5 shrink-0 text-ink-3" />
                         <span className="min-w-0 flex-1 truncate">{f.path}</span>
-                        <span className="text-ink-4 tabular-nums">{bytes(f.size)}</span>
+                        <span className="text-ink-4 tabular-nums">{formatBytes(f.size)}</span>
                       </a>
                     </li>
                   ))}
