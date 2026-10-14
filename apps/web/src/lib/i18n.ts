@@ -600,6 +600,7 @@ const de: Record<Key, string> = {
   "widget.upload": "Eigenes HTML hochladen",
   "widget.buildMessage": "Bitte baue das Widget „{title}“. {what}",
   "editor.chat": "Chat",
+  "editor.flow": "Ablauf",
   "editor.dropToAttach": "Loslassen, um es der Nachricht anzuhängen",
   "editor.memory": "Gedächtnis",
   "memory.explain":
@@ -2510,6 +2511,7 @@ const en = {
   "widget.upload": "Upload your own HTML",
   "widget.buildMessage": "Please build the widget “{title}”. {what}",
   "editor.chat": "Chat",
+  "editor.flow": "Flow",
   "editor.dropToAttach": "Drop to attach to your message",
   "editor.memory": "Memory",
   "memory.explain":

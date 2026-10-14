@@ -1,7 +1,7 @@
 import { type ModelClass, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Lock, Play, Share2 } from "lucide-react";
+import { ArrowLeft, Lock, Play, Share2, Workflow } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
@@ -110,12 +110,12 @@ function usePaneWidth() {
 }
 
 const SHEET_KEY = "wizards.editor.sheet";
-/** Percent of the room below the header. */
-const SHEET_DEFAULT = 55;
+/** Percent of the room below the header: open, the sheet takes all of it. */
+const SHEET_DEFAULT = 100;
 /** The folded sheet: its handle and tabs. */
 const SHEET_MIN = 76;
-/** Room the diagram keeps above the sheet. */
-const SHEET_ROOM = 96;
+/** A drag this close to the top takes the whole room. */
+const SHEET_SNAP = 90;
 /** Pixels a touch moves before it drags instead of tapping. */
 const SHEET_SLOP = 6;
 
@@ -180,8 +180,9 @@ function useSheetHeight() {
         moved = true;
         setDragging(true);
       }
-      const h = Math.min(startH + startY - ev.clientY, roomH - SHEET_ROOM);
-      last = h < SHEET_MIN + 16 ? 0 : (h / roomH) * 100;
+      const h = Math.min(startH + startY - ev.clientY, roomH);
+      const p = (h / roomH) * 100;
+      last = h < SHEET_MIN + 16 ? 0 : p > SHEET_SNAP ? 100 : p;
       set(last, false);
     };
     const up = (ev: PointerEvent) => {
@@ -216,9 +217,11 @@ function useSheetHeight() {
       toggle();
     }
   };
-  /** The sheet's height, kept between folded and the room the diagram keeps. */
-  const height = `clamp(${SHEET_MIN}px, ${percent}%, calc(100% - ${SHEET_ROOM}px))`;
-  return { ref, percent, height, folded, dragging, unfold, onPointerDown, onKeyDown };
+  /** The sheet's height, kept between folded and the whole room. */
+  const height = `clamp(${SHEET_MIN}px, ${percent}%, 100%)`;
+  /** Folded to its tabs: the diagram has the room. */
+  const fold = () => set(0);
+  return { ref, percent, height, folded, dragging, unfold, fold, onPointerDown, onKeyDown };
 }
 
 export function EditorPage() {
@@ -635,7 +638,20 @@ export function EditorPage() {
             {/* The grip sits just outside the pane, beside its edge, clear of its scrollbar. */}
             <span className="-translate-y-1/2 absolute top-1/2 left-[7px] h-12 w-1.5 rounded-full bg-ink-4/40 transition group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:h-16 group-active:bg-ember" />
           </div>
-          <nav className="flex shrink-0 gap-1 px-3 lg:pt-3">
+          <nav className="flex shrink-0 gap-1 overflow-x-auto px-3 [scrollbar-width:none] lg:pt-3">
+            {/* On a phone the open sheet covers the diagram: this tab folds it away. */}
+            <button
+              type="button"
+              aria-pressed={sheet.folded}
+              onClick={sheet.fold}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 font-medium text-[0.8125rem] transition lg:hidden",
+                sheet.folded ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
+              )}
+            >
+              <Workflow className="size-4" />
+              {t("editor.flow")}
+            </button>
             {(["chat", "step", "files", "memory", "runs"] as Tab[]).map((k) => (
               <button
                 key={k}
@@ -645,8 +661,9 @@ export function EditorPage() {
                   sheet.unfold();
                 }}
                 className={cn(
-                  "h-9 rounded-full px-4 font-medium text-[0.8125rem] transition",
+                  "h-9 shrink-0 rounded-full px-4 font-medium text-[0.8125rem] transition",
                   tab === k ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
+                  tab === k && sheet.folded && "max-lg:bg-transparent max-lg:text-ink-3",
                 )}
               >
                 {t(TAB_LABEL[k] as "editor.chat")}
