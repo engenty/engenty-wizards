@@ -65,6 +65,12 @@ export const FEATURES = {
     label: "Typography in Info & Marke",
     hint: "The brand's fonts, their licences and a type scale.",
   },
+  goose: {
+    kind: "release",
+    default: false,
+    label: "Goose",
+    hint: "The studio's assistant: its chat at the foot of the page and in the sidebar.",
+  },
   ownKeys: {
     kind: "plan",
     default: true,

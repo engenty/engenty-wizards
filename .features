@@ -24,6 +24,9 @@
 # the brand's fonts in Info & Marke
 # typography=on|off
 #
+# Goose, the studio's assistant
+# goose=on|off
+#
 # own API keys in the cloud studio (a plan's switch; on alone)
 # ownKeys=on|off
 #

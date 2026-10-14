@@ -822,6 +822,7 @@ export function AppFrame({
 }) {
   const { position } = useAppBar();
   const column = useRef<HTMLDivElement>(null);
+  const goose = useFeature("goose");
   return (
     <div className={cn("flex h-dvh overflow-hidden bg-sidebar", DIRECTION[position])}>
       <AppRail me={me} />
@@ -858,10 +859,14 @@ export function AppFrame({
                       {children}
                     </div>
                   </main>
-                  <AssistantDock column={column} />
+                  {goose && <AssistantDock column={column} />}
                 </div>
-                <AssistantSidebar column={column} />
-                <HighlightLayer />
+                {goose && (
+                  <>
+                    <AssistantSidebar column={column} />
+                    <HighlightLayer />
+                  </>
+                )}
               </div>
             </div>
           )}
