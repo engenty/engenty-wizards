@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 import { type Field, isAudioValue, isLocationValue } from "./definition.js";
+import { bilingual, type RunNote, saidText } from "./run.js";
 
 /**
  * The checks of a page's answers, the same in the page's form, the chat and the runtime: what is
@@ -30,36 +31,55 @@ export interface FieldProblem {
   params?: Record<string, string | number>;
 }
 
-/** A problem as the runtime reports it: the field, the code, and a German text for older clients. */
+/** A problem as a response carries it: the field, the code, and its text in the reader's language. */
 export interface FieldError extends FieldProblem {
   field: string;
   message: string;
 }
 
-/** What the runtime said before problems had codes; clients that read only `message` keep it. */
-const MESSAGES: Record<FieldCode, string> = {
-  required: "Pflichtfeld",
-  number: "Bitte eine Zahl eingeben",
-  email: "Keine gültige E-Mail-Adresse",
-  url: "Keine gültige URL",
-  date: "Kein gültiges Datum",
-  dateMin: "Frühestens {min}",
-  dateMax: "Spätestens {max}",
-  filesMin: "Bitte mindestens {min} auswählen",
-  filesMax: "Höchstens {max} – bitte einige entfernen",
-  select: "Ungültige Auswahl",
-  slot: "Dieser Termin wird nicht angeboten",
-  unavailable: "Das ist hier gerade nicht verfügbar.",
-  fileMissing: "Datei nicht gefunden",
-  connect: "Bitte zuerst verbinden",
+/** A problem as the runtime keeps it until it answers: the text in both languages. */
+export interface FieldRefusal extends FieldProblem {
+  field: string;
+  message: RunNote;
+}
+
+/** What the runtime says beside the code, for readers that show only `message`. */
+const MESSAGES: Record<FieldCode, { de: string; en: string }> = {
+  required: { de: "Pflichtfeld", en: "Required" },
+  number: { de: "Bitte eine Zahl eingeben", en: "Please enter a number" },
+  email: { de: "Keine gültige E-Mail-Adresse", en: "Not a valid email address" },
+  url: { de: "Keine gültige URL", en: "Not a valid URL" },
+  date: { de: "Kein gültiges Datum", en: "Not a valid date" },
+  dateMin: { de: "Frühestens {min}", en: "{min} at the earliest" },
+  dateMax: { de: "Spätestens {max}", en: "{max} at the latest" },
+  filesMin: { de: "Bitte mindestens {min} auswählen", en: "Please choose at least {min}" },
+  filesMax: {
+    de: "Höchstens {max} – bitte einige entfernen",
+    en: "At most {max} – please remove some",
+  },
+  select: { de: "Ungültige Auswahl", en: "Invalid choice" },
+  slot: { de: "Dieser Termin wird nicht angeboten", en: "This time is not offered" },
+  unavailable: {
+    de: "Das ist hier gerade nicht verfügbar.",
+    en: "That is not available here right now.",
+  },
+  fileMissing: { de: "Datei nicht gefunden", en: "File not found" },
+  connect: { de: "Bitte zuerst verbinden", en: "Please connect first" },
 };
 
-export function fieldError(field: string, problem: FieldProblem): FieldError {
-  let message = MESSAGES[problem.code];
-  for (const [k, v] of Object.entries(problem.params ?? {})) {
-    message = message.replace(`{${k}}`, String(v));
-  }
-  return { field, ...problem, message };
+export function fieldError(field: string, problem: FieldProblem): FieldRefusal {
+  const fill = (text: string) =>
+    Object.entries(problem.params ?? {}).reduce(
+      (t, [k, v]) => t.replace(`{${k}}`, String(v)),
+      text,
+    );
+  const { de, en } = MESSAGES[problem.code];
+  return { field, ...problem, message: bilingual(fill(de), fill(en)) };
+}
+
+/** The problems in a language, for whoever reads them. */
+export function fieldErrorsIn(errors: FieldRefusal[], lang: "de" | "en"): FieldError[] {
+  return errors.map((e) => ({ ...e, message: saidText(e.message, lang) }));
 }
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:(?!\d)/i;

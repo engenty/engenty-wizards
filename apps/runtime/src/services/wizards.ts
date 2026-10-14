@@ -7,6 +7,7 @@ import {
   type WizardDefinition,
   wizardSchema,
 } from "@engenty-wizards/shared/definition";
+import { bilingual } from "@engenty-wizards/shared/run";
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -14,6 +15,7 @@ import { applyOps, OpError, type WizardOp } from "../authoring/ops.js";
 import { listConnectors } from "../connectors/external.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
+import { saidOf } from "../model-errors.js";
 import { pluginToolsOf } from "../plugins/registry.js";
 import { dropLinks, putLink } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
@@ -31,21 +33,33 @@ export type WizardRow = typeof schema.wizard.$inferSelect;
 /** Who wrote: the studio, or an admin's own MCP client (named after its API key). */
 export type Writer = { source: "studio" } | { source: "mcp"; client: string };
 
-const BLANK: WizardDefinition = {
-  version: 1,
-  title: "Neuer Wizard",
-  description: "",
-  avatar: "round",
-  steps: [
-    {
-      id: "start",
-      type: "page",
-      title: "Los geht's",
-      fields: [{ id: "input", label: "Worum geht es?", kind: "textarea", required: true }],
-    },
-    { id: "done", type: "result", title: "Fertig", deliverables: [] },
-  ],
-};
+/** The wizard a new one starts as, in the language of whoever makes it. */
+function blankWizard(lang: "de" | "en"): WizardDefinition {
+  const de = lang === "de";
+  return {
+    version: 1,
+    title: de ? "Neuer Wizard" : "New wizard",
+    description: "",
+    avatar: "round",
+    lang,
+    steps: [
+      {
+        id: "start",
+        type: "page",
+        title: de ? "Los geht's" : "Let's start",
+        fields: [
+          {
+            id: "input",
+            label: de ? "Worum geht es?" : "What is it about?",
+            kind: "textarea",
+            required: true,
+          },
+        ],
+      },
+      { id: "done", type: "result", title: de ? "Fertig" : "Done", deliverables: [] },
+    ],
+  };
+}
 
 export const studioUrl = (wizardId: string) => `${env.appUrl}/studio/edit/${wizardId}`;
 export const shareUrl = (token: string) => `${env.publicUrl}/w/${token}`;
@@ -294,10 +308,17 @@ export async function createWizard(
   if (input.starterId && !starter) {
     throw new ServiceError("invalid", `There is no starter "${input.starterId}".`);
   }
+  const maker = input.lang?.toLowerCase().startsWith("de") ? "de" : "en";
   const { draft, issues } =
     input.definition !== undefined
       ? parseDraft(input.definition)
-      : { draft: starter?.definition ?? structuredClone(BLANK), issues: [] };
+      : starter
+        ? // A starter names the language it is written in, where its definition does not.
+          {
+            draft: { ...starter.definition, lang: starter.definition.lang ?? starter.language },
+            issues: [],
+          }
+        : { draft: blankWizard(maker), issues: [] };
   const fromStarter = input.definition === undefined ? starter : undefined;
   const id = nanoid(12);
   const shareToken = newShareToken();
@@ -361,9 +382,16 @@ export async function writeDraft(
     .returning({ revision: schema.wizard.revision });
   if (!row) {
     const current = await ownedWizard(userId, wizardId);
-    throw new ServiceError("revision_conflict", "Der Wizard wurde inzwischen geändert.", {
-      revision: current.revision,
-    });
+    throw new ServiceError(
+      "revision_conflict",
+      bilingual(
+        "Der Wizard wurde inzwischen geändert.",
+        "The wizard has been changed in the meantime.",
+      ),
+      {
+        revision: current.revision,
+      },
+    );
   }
   if (input.note) {
     await addMessage(w.id, { role: "assistant", content: input.note, changed: true }, writer);
@@ -388,16 +416,23 @@ export async function editWizard(
 ) {
   const w = await writableWizard(userId, wizardId);
   if (w.revision !== input.baseRevision) {
-    throw new ServiceError("revision_conflict", "Der Wizard wurde inzwischen geändert.", {
-      revision: w.revision,
-    });
+    throw new ServiceError(
+      "revision_conflict",
+      bilingual(
+        "Der Wizard wurde inzwischen geändert.",
+        "The wizard has been changed in the meantime.",
+      ),
+      {
+        revision: w.revision,
+      },
+    );
   }
   let definition: unknown;
   try {
     definition = applyOps(w.draft, input.ops);
   } catch (err) {
     if (err instanceof OpError) {
-      throw new ServiceError("invalid", err.message);
+      throw new ServiceError("invalid", saidOf(err));
     }
     throw err;
   }
@@ -482,7 +517,11 @@ export async function requireClean(w: WizardRow) {
     files.map((f) => f.path),
   );
   if (issues.length) {
-    throw new ServiceError("has_issues", "Der Wizard hat noch Fehler.", { issues });
+    throw new ServiceError(
+      "has_issues",
+      bilingual("Der Wizard hat noch Fehler.", "The wizard still has errors."),
+      { issues },
+    );
   }
   return { definition: w.draft, files };
 }

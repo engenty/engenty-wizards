@@ -26,13 +26,15 @@ import {
   whenHolds,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import { type FieldError, fieldError, normalizeDate } from "@engenty-wizards/shared/field-checks";
+import { fieldError, normalizeDate } from "@engenty-wizards/shared/field-checks";
+import type { Said } from "@engenty-wizards/shared/run";
 import {
+  bilingual,
   type ClosedChoice,
-  noteText,
   type RunState,
   type RunView,
   type ShownList,
+  saidText,
 } from "@engenty-wizards/shared/run";
 import { CONVERSATION_RUNNERS, DEFAULT_RUNNER_SETTINGS } from "@engenty-wizards/shared/runners";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
@@ -53,7 +55,7 @@ import { env } from "../env.js";
 import { saveAsset } from "../files/storage.js";
 import { managed, tenantInfo } from "../manage.js";
 import { hasFfmpeg } from "../media/ffmpeg.js";
-import { NotedError, noteOf } from "../model-errors.js";
+import { NotedError, noteOf, saidOf } from "../model-errors.js";
 import {
   conversationAvailable,
   freeTierRefusal,
@@ -79,12 +81,12 @@ import { askPerson, clearStaleAsk } from "./asks.js";
 import { decide } from "./decide.js";
 import { clearDeviceCalls } from "./device.js";
 import { emitEvent, recentEvents, signalChanged } from "./events.js";
-import { type PageContext, readPageInput } from "./input.js";
+import { type InputError, type PageContext, readPageInput } from "./input.js";
 import { pushRun } from "./push.js";
 import {
   blockingMessage,
   closedChoices,
-  missingModels,
+  missingModelsSaid,
   openValue,
   stepsWithoutModel,
 } from "./requirements.js";
@@ -97,14 +99,19 @@ import { StepError } from "./types.js";
 /** A command the run cannot take in its current state; a note where the person may read it. */
 export class RunConflict extends NotedError {}
 export class RunInputError extends NotedError {
-  constructor(readonly errors: FieldError[]) {
+  constructor(readonly errors: InputError[]) {
     super({ code: "checkFields" });
   }
 }
 
-export class NoCreditsError extends Error {
+export class NoCreditsError extends NotedError {
   constructor() {
-    super("Dieser Wizard hat gerade kein Guthaben mehr. Bitte später erneut versuchen.");
+    super(
+      bilingual(
+        "Dieser Wizard hat gerade kein Guthaben mehr. Bitte später erneut versuchen.",
+        "This wizard has no credits left right now. Please try again later.",
+      ),
+    );
   }
 }
 
@@ -168,9 +175,9 @@ function stepOf(def: WizardDefinition, id: string | null): Step | undefined {
   return id ? def.steps.find((s) => s.id === id) : undefined;
 }
 
-function friendly(err: unknown): string {
+function friendly(err: unknown): Said {
   if (err instanceof StepError || err instanceof ModelUnavailableError) {
-    return err.message;
+    return saidOf(err);
   }
   // An own AI Gateway key on Vercel's free tier: the person can top it up or pick another way.
   const refused = freeTierRefusal(err);
@@ -180,25 +187,40 @@ function friendly(err: unknown): string {
   const msg = (err as Error)?.message ?? String(err);
   // The model-gateway answers 402 once the tenant's credits are used up.
   if (/insufficient_credits|\b402\b/i.test(msg)) {
-    return new NoCreditsError().message;
+    return saidOf(new NoCreditsError());
   }
   // A runtime that runs alone pays its provider itself: its admin can top the account up.
   if (!managed && /minimum balance|insufficient_funds|top up your credits/i.test(msg)) {
-    return "Das Guthaben beim Modell-Anbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Bitte dort aufladen und noch einmal versuchen.";
+    return bilingual(
+      "Das Guthaben beim Modell-Anbieter reicht dafür nicht aus (Videos brauchen dort ein Mindestguthaben). Bitte dort aufladen und noch einmal versuchen.",
+      "The credit with the model provider is not enough for this (videos need a minimum balance there). Please top up there and try again.",
+    );
   }
   if (/rate.?limit|429/i.test(msg)) {
-    return "Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.";
+    return bilingual(
+      "Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.",
+      "The AI service is busy right now. Please try again in a moment.",
+    );
   }
   if (/timeout|timed out/i.test(msg)) {
-    return "Der Schritt hat zu lange gedauert. Bitte noch einmal versuchen.";
+    return bilingual(
+      "Der Schritt hat zu lange gedauert. Bitte noch einmal versuchen.",
+      "The step took too long. Please try again.",
+    );
   }
   // The platform's own provider account (budget, quota, key): nothing the person can fix.
   if (
     /budget|quota|insufficient|billing|credit balance|api key|unauthori[sz]ed|401|403/i.test(msg)
   ) {
-    return "Der KI-Dienst ist gerade nicht erreichbar. Bitte später noch einmal versuchen.";
+    return bilingual(
+      "Der KI-Dienst ist gerade nicht erreichbar. Bitte später noch einmal versuchen.",
+      "The AI service cannot be reached right now. Please try again later.",
+    );
   }
-  return `Dieser Schritt ist fehlgeschlagen: ${msg.slice(0, 300)}`;
+  return bilingual(
+    `Dieser Schritt ist fehlgeschlagen: ${msg.slice(0, 300)}`,
+    `This step failed: ${msg.slice(0, 300)}`,
+  );
 }
 
 /**
@@ -206,9 +228,9 @@ function friendly(err: unknown): string {
  * as that note, so a runner shows it in its language; the run's error is in the wizard's.
  */
 async function failRun(run: RunRow, stepId: string, err: unknown) {
-  const note = noteOf(err);
-  const message = note ? noteText(note, wizardLang(run.definition)) : friendly(err);
-  await emitEvent(run.id, stepId, "error", note ?? message);
+  const said = noteOf(err) ?? friendly(err);
+  const message = saidText(said, wizardLang(run.definition));
+  await emitEvent(run.id, stepId, "error", said);
   await updateRun(run.id, { status: "failed", error: message });
 }
 
@@ -234,7 +256,7 @@ export async function createRun(input: {
   const first = input.definition.steps[0];
   const state: RunState = { values: {}, outputs: {}, history: [], notes: {} };
   // A step every run passes through needs a model this runtime cannot serve: refuse before anything is held.
-  const blocked = blockingMessage(await missingModels(input.definition));
+  const blocked = blockingMessage(await missingModelsSaid(input.definition));
   if (blocked) {
     throw new ModelUnavailableError(blocked);
   }
@@ -318,9 +340,11 @@ async function take(runId: string, tenant: string): Promise<void> {
   await withTenant(tenant, () => drive(runId, abort.signal))
     .catch(async (err) => {
       console.error(`[run ${runId}]`, err);
-      await withTenant(tenant, () =>
-        updateRun(runId, { status: "failed", error: friendly(err) }),
-      ).catch(() => undefined);
+      await withTenant(tenant, async () => {
+        const run = await loadRun(runId);
+        const lang = run ? wizardLang(run.definition) : "en";
+        await updateRun(runId, { status: "failed", error: saidText(friendly(err), lang) });
+      }).catch(() => undefined);
     })
     .finally(async () => {
       clearInterval(beat);
@@ -789,7 +813,12 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
     throw new RunInputError(errors);
   }
   const connections = step.fields.some((f) => f.kind === "connection")
-    ? await connectionViews(run.definition.connections ?? [], scopeOf(run), await projectIdOf(run))
+    ? await connectionViews(
+        run.definition.connections ?? [],
+        scopeOf(run),
+        await projectIdOf(run),
+        wizardLang(run.definition),
+      )
     : [];
   for (const field of step.fields) {
     if (field.kind === "image" || field.kind === "file") {
@@ -856,7 +885,7 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
   if (!step.show.includes(action.target)) {
     throw new RunConflict("Unknown target");
   }
-  state.notes[action.target] = action.note.slice(0, 2000) || "Bitte eine neue Variante.";
+  state.notes[action.target] = action.note.slice(0, 2000) || "Please make a new variant.";
   // A step with several results makes only the named ones again.
   if (action.items?.length) {
     state.redo = { ...state.redo, [action.target]: action.items };
@@ -1068,7 +1097,12 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     lists,
     connections:
       step?.type === "page" && step.fields.some((f) => f.kind === "connection")
-        ? await connectionViews(def.connections ?? [], scopeOf(run), await projectIdOf(run))
+        ? await connectionViews(
+            def.connections ?? [],
+            scopeOf(run),
+            await projectIdOf(run),
+            wizardLang(def),
+          )
         : [],
     keeps: Boolean(def.lists?.length || def.connections?.length),
     shareUrl: run.shareToken ? `${env.publicUrl}/s/${run.shareToken}` : null,

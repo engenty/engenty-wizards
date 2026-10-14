@@ -24,7 +24,7 @@ import { AboutLinks } from "../about/AboutLinks";
 import { Logo } from "../brand";
 import { type AppBarPosition, besideBar, useAppBar } from "../lib/appbar";
 import { useFeature } from "../lib/features";
-import { t } from "../lib/i18n";
+import { lang, t } from "../lib/i18n";
 import { acceptInstall, standalone, useInstallPrompt } from "../lib/install";
 import {
   initialsOf,
@@ -147,7 +147,7 @@ export function CreditsPill({ me }: { me: Me }) {
       )}
     >
       {/* Whole credits, rounded down: the pill never shows more than there is. */}
-      {t("nav.credits", { n: Math.floor(credits).toLocaleString() })}
+      {t("nav.credits", { n: Math.floor(credits).toLocaleString(lang) })}
     </a>
   );
 }
@@ -470,7 +470,7 @@ export function UserMenu({ me, placement = "below" }: { me: Me; placement?: Menu
                 <span className="font-medium text-ink tabular-nums">
                   {state === "linked"
                     ? me.account?.credits !== null && me.account?.credits !== undefined
-                      ? t("nav.credits", { n: Math.floor(me.account.credits).toLocaleString() })
+                      ? t("nav.credits", { n: Math.floor(me.account.credits).toLocaleString(lang) })
                       : null
                     : state === "expired"
                       ? t("account.signInAgain")

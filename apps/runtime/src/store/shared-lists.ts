@@ -1,4 +1,5 @@
 import {
+  firstRowAt,
   type ListDef,
   type ListRow,
   newCells,
@@ -92,8 +93,7 @@ export async function saveSharedRows(
   });
   const byKey = new Map(existing.filter((r) => r.key).map((r) => [r.key as string, r]));
   let count = existing.length;
-  // Rows stand in the order they came, also those saved in the same second.
-  const at = Date.now();
+  const at = firstRowAt(existing);
   let added = 0;
   let updated = 0;
   for (const raw of input) {

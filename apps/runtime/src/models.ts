@@ -23,6 +23,8 @@ import {
   providerInfo,
   providerOfRef,
 } from "@engenty-wizards/shared/providers";
+import type { RunNote, Said } from "@engenty-wizards/shared/run";
+import { bilingual, saidText } from "@engenty-wizards/shared/run";
 import {
   type EmbeddingModel,
   type experimental_generateVideo,
@@ -40,7 +42,6 @@ import {
   appleModel,
   appleStatus,
   appleTranscriptionModel,
-  appleUnavailable,
   appleUnavailableNote,
 } from "./harness/apple.js";
 import {
@@ -55,7 +56,7 @@ import {
 } from "./harness/index.js";
 import { managed } from "./manage.js";
 import { hasFfmpeg } from "./media/ffmpeg.js";
-import { ModelUnavailableError } from "./model-errors.js";
+import { ModelUnavailableError, saidOf } from "./model-errors.js";
 import { seal, unseal } from "./secrets/crypto.js";
 import { vaultDelete, vaultGet, vaultSet } from "./secrets/vault.js";
 import { readSetting, writeSetting } from "./settings.js";
@@ -358,28 +359,39 @@ function ownRef(cfg: ModelConfig, cls: ModelClass): string {
   return reachable(cfg, env.models[cls]) ? env.models[cls] : "";
 }
 
-const NOTHING: Record<ModelClass, string> = {
-  classifier: "Für Text ist kein Modell eingerichtet.",
-  standard: "Für Text ist kein Modell eingerichtet.",
-  high: "Für Text ist kein Modell eingerichtet.",
-  highest: "Für Text ist kein Modell eingerichtet.",
-  image: "Für Bilder ist kein Modell eingerichtet.",
-  video: "Für Videos ist kein Modell eingerichtet.",
-  speech: "Für Sprachausgabe ist kein Modell eingerichtet.",
-  audio: "Für Sprachnotizen ist kein Modell eingerichtet.",
+/** What a class makes, to say that nothing makes it. */
+const MAKES: Record<ModelClass, { de: string; en: string }> = {
+  classifier: { de: "Text", en: "text" },
+  standard: { de: "Text", en: "text" },
+  high: { de: "Text", en: "text" },
+  highest: { de: "Text", en: "text" },
+  image: { de: "Bilder", en: "images" },
+  video: { de: "Videos", en: "videos" },
+  speech: { de: "Sprachausgabe", en: "speech" },
+  audio: { de: "Sprachnotizen", en: "voice notes" },
 };
 
 /** Why a class has no way: the provider picked for it lacks its key, or nothing is set up. */
-function missingText(cfg: ModelConfig, cls: ModelClass): string {
+function missingText(cfg: ModelConfig, cls: ModelClass): RunNote {
   const bound = cfg.settings.bindings[cls];
   if (isCreditsRef(bound)) {
-    return "Dafür ist das Guthaben gewählt, aber kein Konto angemeldet.";
+    return bilingual(
+      "Dafür ist das Guthaben gewählt, aber kein Konto angemeldet.",
+      "The credits are picked for this, but no account is signed in.",
+    );
   }
+  const makes = MAKES[cls];
   const provider = bound ? providerInfo(providerOfRef(bound) ?? "") : null;
   if (provider) {
-    return `${NOTHING[cls].replace(/ ist kein Modell eingerichtet\.$/, "")} ist ${provider.name} gewählt, aber kein API Key hinterlegt.`;
+    return bilingual(
+      `Für ${makes.de} ist ${provider.name} gewählt, aber kein API Key hinterlegt.`,
+      `${provider.name} is picked for ${makes.en}, but no API key is set.`,
+    );
   }
-  return NOTHING[cls];
+  return bilingual(
+    `Für ${makes.de} ist kein Modell eingerichtet.`,
+    `No model is set up for ${makes.en}.`,
+  );
 }
 
 interface GatewayAccess {
@@ -407,7 +419,10 @@ async function creditAccess(cfg: ModelConfig, chosen: boolean): Promise<GatewayA
   if (!token) {
     if (chosen) {
       throw new ModelUnavailableError(
-        "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
+        bilingual(
+          "Das Konto ist nicht mehr angemeldet. Bitte in den Einstellungen neu anmelden.",
+          "The account is no longer signed in. Please sign in again in the settings.",
+        ),
       );
     }
     return null;
@@ -446,7 +461,10 @@ function need(cfg: ModelConfig, name: LocalKey): string {
   const key = cfg.keys[name];
   if (!key) {
     throw new ModelUnavailableError(
-      `Für ${providerInfo(name)?.name ?? name} ist kein API Key hinterlegt.`,
+      bilingual(
+        `Für ${providerInfo(name)?.name ?? name} ist kein API Key hinterlegt.`,
+        `No API key is set for ${providerInfo(name)?.name ?? name}.`,
+      ),
     );
   }
   return key;
@@ -596,7 +614,10 @@ async function ownLanguageModel(
       }
   }
   throw new ModelUnavailableError(
-    `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen API Key hinterlegen oder ein Konto anmelden.`,
+    bilingual(
+      `Für das Modell "${ref}" ist kein Zugang eingerichtet. Bitte in den Einstellungen einen API Key hinterlegen oder ein Konto anmelden.`,
+      `There is no access set up for the model "${ref}". Please add an API key or sign in to an account in the settings.`,
+    ),
   );
 }
 
@@ -693,7 +714,9 @@ export async function imageModel(
         return own(createOpenAI({ apiKey: cfg.keys.openai }).image(aliasOf(id)));
       }
   }
-  throw new ModelUnavailableError("Für Bilder ist kein Modell eingerichtet.");
+  throw new ModelUnavailableError(
+    bilingual("Für Bilder ist kein Modell eingerichtet.", "No model is set up for images."),
+  );
 }
 
 export async function videoModel(meta: CallMeta = {}): Promise<ResolvedModel<VideoModel>> {
@@ -723,7 +746,9 @@ export async function videoModel(meta: CallMeta = {}): Promise<ResolvedModel<Vid
         return own(createGateway({ apiKey: cfg.keys.gateway }).videoModel(id), true);
       }
   }
-  throw new ModelUnavailableError("Für Videos ist kein Modell eingerichtet.");
+  throw new ModelUnavailableError(
+    bilingual("Für Videos ist kein Modell eingerichtet.", "No model is set up for videos."),
+  );
 }
 
 /** The model that reads a text aloud. */
@@ -732,7 +757,12 @@ export async function speechModel(meta: CallMeta = {}): Promise<ResolvedModel<Sp
   if (route.kind === "credits") {
     const resolved = await viaCredits(route, "speech", meta, (c, id) => c.speechModel(id));
     if (!resolved.ref) {
-      throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+      throw new ModelUnavailableError(
+        bilingual(
+          "Für Sprachausgabe ist kein Modell eingerichtet.",
+          "No model is set up for speech.",
+        ),
+      );
     }
     return resolved;
   }
@@ -763,7 +793,9 @@ export async function speechModel(meta: CallMeta = {}): Promise<ResolvedModel<Sp
         return own(createOpenAI({ apiKey: cfg.keys.openai }).speech(aliasOf(id)));
       }
   }
-  throw new ModelUnavailableError("Für Sprachausgabe ist kein Modell eingerichtet.");
+  throw new ModelUnavailableError(
+    bilingual("Für Sprachausgabe ist kein Modell eingerichtet.", "No model is set up for speech."),
+  );
 }
 
 /**
@@ -935,8 +967,11 @@ export function freeTierRefusal(err: unknown): string | null {
 }
 
 /** What the person reads when Vercel's free tier leaves a model out, and how to fix it. */
-export function freeTierText(model: string): string {
-  return `Dein AI Gateway Key ist bei Vercel im kostenlosen Tarif, und der schließt ${model ? `„${model}“` : "dieses Modell"} aus. Abhilfe: bei Vercel Guthaben aufladen (${GATEWAY_TOP_UP}) oder unter Einstellungen → Modelle dafür einen anderen Weg wählen.`;
+export function freeTierText(model: string): RunNote {
+  return bilingual(
+    `Dein AI Gateway Key ist bei Vercel im kostenlosen Tarif, und der schließt ${model ? `„${model}“` : "dieses Modell"} aus. Abhilfe: bei Vercel Guthaben aufladen (${GATEWAY_TOP_UP}) oder unter Einstellungen → Modelle dafür einen anderen Weg wählen.`,
+    `Your AI Gateway key is on Vercel's free tier, which leaves out ${model ? `“${model}”` : "this model"}. To fix it: top up at Vercel (${GATEWAY_TOP_UP}) or pick another way for it under Settings → Models.`,
+  );
 }
 
 /** What a key was answered for a model: refusals are asked again soon, as a top-up lifts them. */
@@ -995,7 +1030,10 @@ export async function conversationAccess(): Promise<{ apiKey: string; model: str
   const cfg = await config();
   if (!cfg.keys.openai) {
     throw new ModelUnavailableError(
-      "Für Sprachgespräche ist kein OpenAI API Key hinterlegt (Einstellungen → Modelle).",
+      bilingual(
+        "Für Sprachgespräche ist kein OpenAI API Key hinterlegt (Einstellungen → Modelle).",
+        "No OpenAI API key is set for voice conversations (Settings → Models).",
+      ),
     );
   }
   return { apiKey: cfg.keys.openai, model: CONVERSATION_MODEL };
@@ -1007,7 +1045,7 @@ export async function conversationAvailable(): Promise<boolean> {
 }
 
 /** Why the own AI Gateway key cannot reach what a class runs on, or null. */
-async function gatewayProblem(cls: ModelClass, ref: string): Promise<string | null> {
+async function gatewayProblem(cls: ModelClass, ref: string): Promise<Said | null> {
   const { provider, id } = parse(ref);
   const key = (await config()).keys.gateway;
   if (!key || (provider !== null && provider !== "gateway")) {
@@ -1020,7 +1058,7 @@ async function gatewayProblem(cls: ModelClass, ref: string): Promise<string | nu
  * Whether a class can run here, found out without calling it: null, or what the person reads.
  * A class the gateway serves counts as there unless its catalog leaves it unbound.
  */
-export async function classProblem(cls: ModelClass): Promise<string | null> {
+export async function classProblem(cls: ModelClass): Promise<Said | null> {
   try {
     const resolved =
       cls === "image"
@@ -1037,11 +1075,14 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
       const named = creditsModelOf((await config()).settings.bindings[cls]);
       if (named) {
         return catalog?.models && !catalog.models.some((m) => m.id === named)
-          ? "Dieses Modell gibt es beim Konto nicht."
+          ? bilingual("Dieses Modell gibt es beim Konto nicht.", "The account has no such model.")
           : null;
       }
       return catalog?.classes && !catalog.classes[cls]
-        ? "Dafür ist beim Konto kein Modell eingerichtet."
+        ? bilingual(
+            "Dafür ist beim Konto kein Modell eingerichtet.",
+            "The account has no model set up for this.",
+          )
         : null;
     }
     const client = harness(resolved.vendor);
@@ -1051,7 +1092,7 @@ export async function classProblem(cls: ModelClass): Promise<string | null> {
     return resolved.gateway ? await gatewayProblem(cls, resolved.ref) : null;
   } catch (err) {
     if (err instanceof ModelUnavailableError) {
-      return err.message;
+      return saidOf(err);
     }
     throw err;
   }
@@ -1066,13 +1107,15 @@ const FILM_CLIENTS = new Set<string>(["claude"]);
  */
 export async function filmClient(
   cls: TextClass,
-): Promise<{ client: Harness; alias: string } | { problem: string }> {
+): Promise<{ client: Harness; alias: string } | { problem: Said }> {
   const cfg = await config();
   const client = managed ? null : harness(cfg.settings.source);
   if (!client || !FILM_CLIENTS.has(client.id)) {
     return {
-      problem:
+      problem: bilingual(
         "Filme macht Claude Code auf diesem Computer mit deinem Abo. Richte es unter „Modelle“ als KI-Abo ein.",
+        "Films are made by Claude Code on this computer with your subscription. Set it up as an AI subscription under “Models”.",
+      ),
     };
   }
   const status = await detectHarness(client.id);
@@ -1109,7 +1152,7 @@ export interface ClassWay {
   kind: "client" | "key" | "local" | "credits" | "none";
   by: string | null;
   ref: string;
-  problem: string | null;
+  problem: Said | null;
 }
 
 export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
@@ -1138,9 +1181,9 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
       };
       continue;
     }
-    let problem: string | null = null;
+    let problem: Said | null = null;
     const access = await creditAccess(cfg, creditsChosen(cfg, cls)).catch((err: Error) => {
-      problem = err.message;
+      problem = saidOf(err);
       return null;
     });
     ways[cls] = access
@@ -1164,30 +1207,43 @@ export async function classWays(): Promise<Record<ModelClass, ClassWay>> {
  * helper; the system fetches a language on its first note), and ffmpeg for a recording it
  * cannot read itself: a browser's WebM or Ogg.
  */
-async function appleProblem(cls: ModelClass): Promise<string | null> {
+async function appleProblem(cls: ModelClass): Promise<Said | null> {
   const status = await appleStatus();
   if (cls !== "audio") {
-    return status.available ? null : appleUnavailable(status);
+    return status.available ? null : appleUnavailableNote(status);
   }
   if (!status.supported || status.reason === "missing") {
-    return appleUnavailable(status);
+    return appleUnavailableNote(status);
   }
   return (await hasFfmpeg())
     ? null
-    : "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf; Safari und die App brauchen es nicht. ffmpeg installieren, z. B. mit „brew install ffmpeg“.";
+    : bilingual(
+        "Aufnahmen aus Chrome oder Firefox (WebM, Ogg) schreibt dieser Mac erst mit ffmpeg auf; Safari und die App brauchen es nicht. ffmpeg installieren, z. B. mit „brew install ffmpeg“.",
+        "Recordings from Chrome or Firefox (WebM, Ogg) need ffmpeg before this Mac can write them down; Safari and the app do not. Install ffmpeg, e.g. with “brew install ffmpeg”.",
+      );
 }
 
 /** At start the ways are asked once, so a model the key cannot reach shows before a run meets it. */
 export async function checkModelsAtStart() {
   for (const [cls, way] of Object.entries(await classWays())) {
     if (way.kind !== "none" && way.problem) {
-      console.warn(`models: ${cls}: ${way.problem}`);
+      console.warn(`models: ${cls}: ${saidText(way.problem, "en")}`);
     }
   }
 }
 
+/** The ways with their problems in a language, for whoever reads them. */
+export function waysIn(ways: Record<ModelClass, ClassWay>, lang: "de" | "en") {
+  return Object.fromEntries(
+    Object.entries(ways).map(([cls, way]) => [
+      cls,
+      { ...way, problem: way.problem && saidText(way.problem, lang) },
+    ]),
+  ) as Record<ModelClass, Omit<ClassWay, "problem"> & { problem: string | null }>;
+}
+
 /** What the settings page shows: the choices, which keys are there (never the keys), and the ways. */
-export async function modelSettings() {
+export async function modelSettings(lang: "de" | "en" = "en") {
   const cfg = await config();
   return {
     source: cfg.settings.source,
@@ -1198,7 +1254,7 @@ export async function modelSettings() {
       LocalKey,
       boolean
     >,
-    ways: await classWays(),
+    ways: waysIn(await classWays(), lang),
     /** Apple Intelligence on this Mac: shown where the machine can run it, picked once it answers. */
     apple: managed ? null : await appleStatus(),
     /** What a class costs on the credits, where they are at hand. */
@@ -1214,7 +1270,9 @@ export async function modelSettings() {
 export async function checkKey(
   name: LocalKey,
   key: string,
+  lang: "de" | "en" = "en",
 ): Promise<{ ok: boolean; message: string | null }> {
+  const de = lang === "de";
   const requests: Record<LocalKey, [string, Record<string, string>]> = {
     openai: ["https://api.openai.com/v1/models", { authorization: `Bearer ${key}` }],
     anthropic: [
@@ -1248,11 +1306,20 @@ export async function checkKey(
       ok: false,
       message:
         res.status === 401
-          ? "Der Anbieter kennt diesen Key nicht."
-          : `Der Anbieter antwortet mit ${res.status}.`,
+          ? de
+            ? "Der Anbieter kennt diesen Key nicht."
+            : "The provider does not know this key."
+          : de
+            ? `Der Anbieter antwortet mit ${res.status}.`
+            : `The provider answers with ${res.status}.`,
     };
   } catch {
-    return { ok: false, message: "Der Anbieter ist gerade nicht erreichbar." };
+    return {
+      ok: false,
+      message: de
+        ? "Der Anbieter ist gerade nicht erreichbar."
+        : "The provider cannot be reached right now.",
+    };
   }
 }
 

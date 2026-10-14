@@ -8,11 +8,13 @@ import {
   slotText,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
 import { answerAsk } from "../engine/asks.js";
 import { emitEvent, recentEvents, watchRun } from "../engine/events.js";
+import { fieldErrorsIn } from "../engine/input.js";
 import {
   cancel,
   createRun,
@@ -26,7 +28,7 @@ import {
   reviewStep,
   submitPage,
 } from "../engine/runner.js";
-import { ModelUnavailableError } from "../model-errors.js";
+import { ModelUnavailableError, saidOf } from "../model-errors.js";
 import { signedUrl } from "../secrets/signing.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { notFound, ServiceError } from "./errors.js";
@@ -45,7 +47,10 @@ export async function startTestRun(
   const w = await ownedWizard(userId, wizardId);
   const { definition, files } = await requireClean(w);
   if (!(await canSpend())) {
-    throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    throw new ServiceError(
+      "no_credits",
+      bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+    );
   }
   const runId = await createRun({
     wizardId: w.id,
@@ -56,7 +61,7 @@ export async function startTestRun(
     userId,
     unattended: Boolean(autopilot),
   }).catch((err) => {
-    throw err instanceof ModelUnavailableError ? new ServiceError("refused", err.message) : err;
+    throw err instanceof ModelUnavailableError ? new ServiceError("refused", saidOf(err)) : err;
   });
   if (autopilot) {
     fly(runId, autopilot.answers, autopilot.acceptReviews);
@@ -109,10 +114,19 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
         }
       } while (again);
     } catch (err) {
+      const answers = (lang: "de" | "en") =>
+        err instanceof RunInputError
+          ? fieldErrorsIn(err.errors, lang)
+              .map((e) => `${e.field} – ${e.message}`)
+              .join("; ")
+          : "";
       const message =
         err instanceof RunInputError
-          ? `Antworten fehlen oder passen nicht: ${err.errors.map((e) => `${e.field} – ${e.message}`).join("; ")}`
-          : (err as Error).message;
+          ? bilingual(
+              `Antworten fehlen oder passen nicht: ${answers("de")}`,
+              `Answers are missing or do not fit: ${answers("en")}`,
+            )
+          : saidOf(err);
       await emitEvent(runId, null, "error", message).catch(() => undefined);
       land();
     } finally {
@@ -417,10 +431,10 @@ export const testRunReport = (userId: string, runId: string, waitSeconds = 0) =>
 /** A command the run refused, as a tool error the client can act on. */
 export function refusedInput(err: unknown): never {
   if (err instanceof RunInputError) {
-    throw new ServiceError("invalid", err.message, { fields: err.errors });
+    throw new ServiceError("invalid", saidOf(err), { fields: fieldErrorsIn(err.errors, "en") });
   }
   if (err instanceof RunConflict) {
-    throw new ServiceError("refused", err.message);
+    throw new ServiceError("refused", saidOf(err));
   }
   throw err;
 }
@@ -451,7 +465,10 @@ export async function startRun(
     throw notFound();
   }
   if (!(await canSpend())) {
-    throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+    throw new ServiceError(
+      "no_credits",
+      bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+    );
   }
   const runId = await createRun({
     wizardId: w.id,
@@ -462,10 +479,13 @@ export async function startRun(
     userId,
   }).catch((err) => {
     if (err instanceof ModelUnavailableError) {
-      throw new ServiceError("refused", err.message);
+      throw new ServiceError("refused", saidOf(err));
     }
     if (err instanceof NoCreditsError) {
-      throw new ServiceError("no_credits", "Dein Guthaben ist aufgebraucht.");
+      throw new ServiceError(
+        "no_credits",
+        bilingual("Dein Guthaben ist aufgebraucht.", "Your credits are used up."),
+      );
     }
     throw err;
   });
@@ -482,7 +502,7 @@ export async function startRun(
     return { runId, refused: null };
   } catch (err) {
     if (err instanceof RunInputError) {
-      return { runId, refused: err.errors };
+      return { runId, refused: fieldErrorsIn(err.errors, "en") };
     }
     throw err;
   }

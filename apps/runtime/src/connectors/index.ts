@@ -1,3 +1,4 @@
+import { bilingual, type RunNote } from "@engenty-wizards/shared/run";
 import type {
   ConnectionDef,
   ConnectionKind,
@@ -18,6 +19,7 @@ import {
   scopesForGroups,
 } from "../engenty/connections-sdk/types.js";
 import { env } from "../env.js";
+import { NotedError } from "../model-errors.js";
 import { seal, unseal } from "../secrets/crypto.js";
 import { deleteSecret, getSecret, putSecret, type StoreScope } from "../store/index.js";
 import { connectorFetch, MAIL_CONNECTORS, resolveEnv, usable, viaAccount } from "./builtin.js";
@@ -32,8 +34,20 @@ import {
 /** The connectors a person can pick for each kind of connection. */
 const CONNECTORS: Record<ConnectionKind, ConnectorDefinition[]> = { mail: MAIL_CONNECTORS };
 
-const HINTS: Record<string, string> = {
-  imap: "Bei Gmail, iCloud, GMX und web.de brauchst du ein App-Passwort (in den Sicherheitseinstellungen deines Kontos), nicht dein normales Passwort.",
+const HINTS: Record<string, { de: string; en: string }> = {
+  imap: {
+    de: "Bei Gmail, iCloud, GMX und web.de brauchst du ein App-Passwort (in den Sicherheitseinstellungen deines Kontos), nicht dein normales Passwort.",
+    en: "Gmail, iCloud, GMX and web.de need an app password (in your account's security settings), not your normal password.",
+  },
+};
+
+/** The built-in connectors' fields in German; their definitions say them in English. */
+const GERMAN_FIELDS: Record<string, Record<string, { label?: string; placeholder?: string }>> = {
+  imap: {
+    email: { label: "E-Mail-Adresse", placeholder: "name@firma.at" },
+    password: { label: "Passwort oder App-Passwort" },
+    host: { label: "IMAP-Server", placeholder: "leer lassen bei Gmail, GMX, iCloud …" },
+  },
 };
 
 /**
@@ -85,6 +99,7 @@ async function candidates(connection: ConnectionDef, projectId: string) {
 export async function connectorOptions(
   connection: ConnectionDef,
   projectId: string,
+  lang: "de" | "en" = "en",
 ): Promise<ConnectorOption[]> {
   const out: ConnectorOption[] = [];
   for (const c of await candidates(connection, projectId)) {
@@ -97,8 +112,11 @@ export async function connectorOptions(
             id: c.id,
             name: c.name,
             auth: "api_key",
-            fields: c.auth.apiKey.fields,
-            hint: HINTS[c.id],
+            fields:
+              lang === "de"
+                ? c.auth.apiKey.fields.map((f) => ({ ...f, ...GERMAN_FIELDS[c.id]?.[f.key] }))
+                : c.auth.apiKey.fields,
+            hint: HINTS[c.id]?.[lang],
           }
         : { id: c.id, name: c.name, auth: "oauth2" },
     );
@@ -122,6 +140,8 @@ export async function connectionViews(
   connections: ConnectionDef[],
   scope: StoreScope,
   projectId: string,
+  /** The language the person reads the connectors' fields in. */
+  lang: "de" | "en" = "en",
 ): Promise<ConnectionView[]> {
   return Promise.all(
     connections.map(async (c) => {
@@ -142,7 +162,7 @@ export async function connectionViews(
           : only && open(only)
             ? { connector: only.id, label: only.name, connectedAt: new Date(0).toISOString() }
             : null,
-        connectors: await connectorOptions(c, projectId),
+        connectors: await connectorOptions(c, projectId, lang),
       };
     }),
   );
@@ -159,6 +179,8 @@ interface OAuthState {
   connectorId: string;
   verifier: string;
   exp: number;
+  /** The language the person picked: the page the provider sends them back to speaks it. */
+  lang?: "de" | "en";
 }
 
 export async function startOAuth(
@@ -167,6 +189,7 @@ export async function startOAuth(
   runId: string,
   connection: ConnectionDef,
   connectorId: string,
+  lang?: "de" | "en",
 ): Promise<string> {
   const connector = await connectorFor(connection, connectorId, projectId);
   if (connector.auth.kind !== "oauth2") {
@@ -182,6 +205,7 @@ export async function startOAuth(
       connectorId,
       verifier: "",
       exp: Date.now() + 15 * 60_000,
+      lang,
     };
     try {
       return await startThroughAccount(
@@ -204,6 +228,7 @@ export async function startOAuth(
     connectorId,
     verifier: pkce.codeVerifier,
     exp: Date.now() + 15 * 60_000,
+    lang,
   };
   return buildAuthorizationUrl({
     connector,
@@ -213,6 +238,12 @@ export async function startOAuth(
     state: seal(state),
     resolveEnv,
   });
+}
+
+/** The language a sign-in was started in, a wizard's or a plugin's; null where it names none. */
+export function oauthStateLang(rawState: string): "de" | "en" | null {
+  const lang = unseal<{ lang?: unknown }>(rawState)?.lang;
+  return lang === "de" || lang === "en" ? lang : null;
 }
 
 /** The run an OAuth callback belongs to; its tenant is looked up before the state is used. */
@@ -230,7 +261,7 @@ export async function finishOAuth(
 ): Promise<OAuthState> {
   const state = unseal<OAuthState>(rawState);
   if (!state || state.exp < Date.now()) {
-    throw new Error("Die Anmeldung ist abgelaufen. Bitte noch einmal verbinden.");
+    throw new Error("The sign-in has expired. Please connect again.");
   }
   const run = await db.query.run.findFirst({ where: eq(schema.run.id, state.runId) });
   const connection = run?.definition.connections?.find((c) => c.id === state.connectionId);
@@ -282,7 +313,7 @@ export async function connectWithCredentials(
   for (const field of connector.auth.apiKey.fields) {
     const value = String(values[field.key] ?? "").trim();
     if (!value && field.required !== false) {
-      throw new ConnectError(`„${field.label}“ fehlt.`);
+      throw new ConnectError(bilingual(`„${field.label}“ fehlt.`, `“${field.label}” is missing.`));
     }
     if (value) {
       credentials[field.key] = value.slice(0, 500);
@@ -305,9 +336,9 @@ export async function connectWithCredentials(
 }
 
 /** A connect attempt the person can fix (wrong password, unknown server). */
-export class ConnectError extends Error {}
+export class ConnectError extends NotedError {}
 
-function connectFailure(err: unknown): string {
+function connectFailure(err: unknown): RunNote {
   const e = err as {
     authenticationFailed?: boolean;
     code?: string;
@@ -317,16 +348,29 @@ function connectFailure(err: unknown): string {
   };
   const host = e.imapHost ? ` (${e.imapHost})` : "";
   if (e.authenticationFailed) {
-    const server = e.responseText ? ` Antwort des Servers: ${e.responseText.slice(0, 160)}` : "";
-    return `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Bei Gmail und Google Workspace braucht es ein App-Passwort und aktiviertes IMAP.${server}`;
+    const answer = e.responseText?.slice(0, 160);
+    return bilingual(
+      `Anmeldung abgelehnt${host}. Stimmen Adresse und (App-)Passwort? Bei Gmail und Google Workspace braucht es ein App-Passwort und aktiviertes IMAP.${answer ? ` Antwort des Servers: ${answer}` : ""}`,
+      `Sign-in refused${host}. Are the address and (app) password right? Gmail and Google Workspace need an app password and IMAP switched on.${answer ? ` The server answered: ${answer}` : ""}`,
+    );
   }
   if (e.code === "ENOTFOUND") {
-    return `Den Mail-Server${host} gibt es nicht. Bitte den IMAP-Server eintragen, bei Gmail und Google Workspace imap.gmail.com.`;
+    return bilingual(
+      `Den Mail-Server${host} gibt es nicht. Bitte den IMAP-Server eintragen, bei Gmail und Google Workspace imap.gmail.com.`,
+      `The mail server${host} does not exist. Please enter the IMAP server; for Gmail and Google Workspace it is imap.gmail.com.`,
+    );
   }
   if (e.code === "ETIMEDOUT" || e.code === "ETIMEOUT" || e.code === "ECONNREFUSED") {
-    return `Der Mail-Server${host} antwortet nicht. Bitte IMAP-Server und Port prüfen.`;
+    return bilingual(
+      `Der Mail-Server${host} antwortet nicht. Bitte IMAP-Server und Port prüfen.`,
+      `The mail server${host} does not answer. Please check the IMAP server and port.`,
+    );
   }
-  return `Verbinden hat nicht geklappt${host}: ${String(e.message ?? err).slice(0, 200)}`;
+  const detail = String(e.message ?? err).slice(0, 200);
+  return bilingual(
+    `Verbinden hat nicht geklappt${host}: ${detail}`,
+    `Connecting did not work${host}: ${detail}`,
+  );
 }
 
 export function disconnect(scope: StoreScope, connectionId: string) {

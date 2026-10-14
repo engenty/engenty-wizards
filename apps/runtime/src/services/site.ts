@@ -1,9 +1,11 @@
 import { factKey, PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { runStudioAssistant } from "../agents/studio-assistant.js";
 import type { SessionUser } from "../auth/index.js";
 import { canSpend } from "../credits/credits.js";
+import { errorText } from "../model-errors.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { projectWritable, requireWritable } from "./access.js";
 import { apiSpace, apiSpaceDetails } from "./api.js";
@@ -63,6 +65,10 @@ export const siteSchema = z.object({
 });
 
 export type SiteInput = z.infer<typeof siteSchema>;
+
+/** The language the site's people read: German for a German site, else English. */
+const siteLang = (input: SiteInput): "de" | "en" =>
+  input.language?.toLowerCase().startsWith("de") ? "de" : "en";
 
 interface SiteJob {
   id: string;
@@ -184,16 +190,16 @@ function assistMessage(input: SiteInput): string {
         `## ${p.title}${p.url ? ` (${p.url})` : ""}${p.role ? ` [${p.role}]` : ""}\n\n${p.markdown.slice(0, 6000)}`,
     );
   return [
-    `Das ist die WordPress-Website ${input.url}. Fülle den Space aus dem, was sie über sich sagt: Titel, eine Beschreibung (about), Fakten (Adresse, Telefon, E-Mail, UID, Firmenbuch, Öffnungszeiten, wer sie betreibt) und die Farben, falls noch keine da sind. Ihre Seiten stehen schon in Wissen; schreib sie nicht ab.`,
-    "Die Angaben unten kommen direkt aus WordPress. Lies die Website mit read_website nur, wenn etwas Wichtiges fehlt. Erfinde nichts.",
-    `Name: ${input.name || "—"}\nUntertitel: ${input.tagline || "—"}\nSprache: ${input.language ?? "—"}`,
+    `This is the WordPress website ${input.url}. Fill the space from what it says about itself: a title, a description (about), facts (address, phone, email, VAT id, company register, opening hours, who runs it) and the colours, if there are none yet. Its pages are already in Knowledge; do not copy them. Write in the website's own language.`,
+    "The details below come straight from WordPress. Read the website with read_website only when something important is missing. Invent nothing.",
+    `Name: ${input.name || "—"}\nTagline: ${input.tagline || "—"}\nLanguage: ${input.language ?? "—"}`,
     input.facts.length
-      ? `Angaben der Website:\n${input.facts.map((f) => `- ${f.label}: ${f.value}`).join("\n")}`
+      ? `What the website states:\n${input.facts.map((f) => `- ${f.label}: ${f.value}`).join("\n")}`
       : "",
     input.colors.length
-      ? `Farben des Themes: ${input.colors.map((c) => `${c.name} ${c.value}`).join(", ")}`
+      ? `The theme's colours: ${input.colors.map((c) => `${c.name} ${c.value}`).join(", ")}`
       : "",
-    pages.length ? `Seiten:\n\n${pages.join("\n\n")}` : "",
+    pages.length ? `Pages:\n\n${pages.join("\n\n")}` : "",
   ]
     .filter(Boolean)
     .join("\n\n")
@@ -202,7 +208,10 @@ function assistMessage(input: SiteInput): string {
 
 async function work(job: SiteJob, projectId: string, input: SiteInput) {
   try {
-    job.activity = "Übernimmt die Angaben der Website …";
+    job.activity =
+      siteLang(input) === "de"
+        ? "Übernimmt die Angaben der Website …"
+        : "Taking over what the website says …";
     await fillFromSite(job.userId, projectId, input);
     job.activity = "Schreibt die Seiten in Wissen …";
     job.pages = await writePages(projectId, input);
@@ -220,7 +229,7 @@ async function work(job: SiteJob, projectId: string, input: SiteInput) {
         message: assistMessage(input),
         page: null,
         browserTools: [],
-        lang: input.language?.toLowerCase().startsWith("en") ? "en" : "de",
+        lang: siteLang(input),
         onActivity: (label) => {
           job.activity = label;
         },
@@ -239,7 +248,11 @@ async function work(job: SiteJob, projectId: string, input: SiteInput) {
   } catch (err) {
     job.status = "failed";
     job.error =
-      err instanceof ServiceError ? err.message : "Die Website ließ sich nicht übernehmen.";
+      err instanceof ServiceError
+        ? errorText(err, siteLang(input))
+        : siteLang(input) === "de"
+          ? "Die Website ließ sich nicht übernehmen."
+          : "The website could not be taken over.";
     console.error("[site]", err);
   }
 }
@@ -308,7 +321,10 @@ function siteJobView(job: SiteJob) {
 export function siteJob(jobId: string) {
   const job = jobs.get(jobId);
   if (!job || job.tenantId !== currentTenant()) {
-    throw new ServiceError("not_found", "Diesen Vorgang gibt es nicht (mehr).");
+    throw new ServiceError(
+      "not_found",
+      bilingual("Diesen Vorgang gibt es nicht (mehr).", "There is no such job (any more)."),
+    );
   }
   return siteJobView(job);
 }

@@ -30,7 +30,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Mascot } from "../../brand";
-import { t } from "../../lib/i18n";
+import { lang, t } from "../../lib/i18n";
 import { spokenText } from "../../lib/read-aloud";
 import { PluginFrame, useStudioPlugins } from "../../plugins/host";
 import { Composer, type ComposerHandle, cn, IconButton, LATER_KEYS, Spinner } from "../../ui";
@@ -286,7 +286,7 @@ function Earlier({ state }: { state: AssistantState }) {
                 {c.title || t("assistant.untitled")}
               </span>
               <span className="shrink-0 text-[0.75rem] text-ink-4 tabular-nums">
-                {new Date(c.closedAt).toLocaleDateString()}
+                {new Date(c.closedAt).toLocaleDateString(lang)}
               </span>
             </span>
             <span className="line-clamp-1 text-[0.8125rem] text-ink-3">

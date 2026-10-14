@@ -131,8 +131,8 @@ describe("wizard packages", () => {
       expect(copy.shareToken).not.toBe(source.shareToken);
       expect(await files.draftFiles(id)).toEqual(await files.draftFiles(sourceId));
       const [note] = await wizards.wizardMessages(id);
-      expect(note.content).toContain("„wetter.wizard“");
-      expect(note.content).toContain("3 Dateien");
+      expect(note.content).toContain("“wetter.wizard”");
+      expect(note.content).toContain("3 files");
     });
   });
 

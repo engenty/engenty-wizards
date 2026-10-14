@@ -214,7 +214,7 @@ function Linked({ account, me }: { account: NonNullable<Me["account"]>; me: Me }
               <div className="text-[0.8125rem] text-ink-3">{t("account.credits")}</div>
               <div className="font-display font-semibold text-[1.375rem] tabular-nums leading-tight">
                 {/* Whole credits, rounded down: never more than there is. */}
-                {t("nav.credits", { n: Math.floor(account.credits).toLocaleString() })}
+                {t("nav.credits", { n: Math.floor(account.credits).toLocaleString(lang) })}
               </div>
             </div>
             <Button variant="secondary" onClick={() => openExternal(`${account.url}/billing`)}>
@@ -226,7 +226,7 @@ function Linked({ account, me }: { account: NonNullable<Me["account"]>; me: Me }
               {account.expiring.map((part) => (
                 <li key={`${part.kind}:${part.expiresAt}`}>
                   {t("account.expires", {
-                    n: Math.floor(part.credits).toLocaleString(),
+                    n: Math.floor(part.credits).toLocaleString(lang),
                     date: date.format(new Date(part.expiresAt)),
                   })}
                   {CREDIT_KIND[part.kind] ? (

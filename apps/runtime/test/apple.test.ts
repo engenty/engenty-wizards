@@ -19,14 +19,20 @@ describe("Apple Intelligence on this Mac as a model", () => {
   });
 
   it("names why it waits: switched off, still loading, or not this device", async () => {
-    const { appleReasonOf, appleUnavailable } = await import("../src/harness/apple");
+    const { appleReasonOf, appleUnavailableNote } = await import("../src/harness/apple");
+    const { noteText } = await import("@engenty-wizards/shared/run");
+    const appleUnavailable = (status: Parameters<typeof appleUnavailableNote>[0], lang: "de" | "en") =>
+      noteText(appleUnavailableNote(status), lang);
     expect(appleReasonOf("appleIntelligenceNotEnabled")).toBe("off");
     expect(appleReasonOf("modelNotReady")).toBe("loading");
     expect(appleReasonOf("deviceNotEligible")).toBe("device");
-    expect(appleUnavailable({ supported: true, available: false, reason: "off" })).toContain(
+    expect(appleUnavailable({ supported: true, available: false, reason: "off" }, "de")).toContain(
       "Systemeinstellungen",
     );
-    expect(appleUnavailable({ supported: false, available: false, reason: "os" })).toContain(
+    expect(appleUnavailable({ supported: true, available: false, reason: "off" }, "en")).toContain(
+      "System Settings",
+    );
+    expect(appleUnavailable({ supported: false, available: false, reason: "os" }, "en")).toContain(
       "macOS 26",
     );
   });
@@ -40,8 +46,8 @@ describe("Apple Intelligence on this Mac as a model", () => {
     expect(
       appleFailure({ kind: "unavailable", message: "appleIntelligenceNotEnabled" }),
     ).toBeInstanceOf(ModelUnavailableError);
-    expect(appleFailure({ kind: "contextWindow", message: "" }).message).toContain("4.096");
-    expect(appleFailure({ kind: "guardrail", message: "" }).message).toContain("abgelehnt");
+    expect(appleFailure({ kind: "contextWindow", message: "" }).message).toContain("4,096");
+    expect(appleFailure({ kind: "guardrail", message: "" }).message).toContain("turned the request down");
     expect(appleFailure({ kind: "other", message: "boom" }).message).toBe(
       "Apple Intelligence: boom",
     );

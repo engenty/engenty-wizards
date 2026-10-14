@@ -9,6 +9,7 @@ import {
   type Where,
   type WhereValue,
 } from "@engenty-wizards/shared/knowledge";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull, or, type SQL, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
@@ -352,10 +353,16 @@ const MAX_CATEGORIES = 60;
 function checkDraft(draft: CategoryDraft) {
   const name = draft.name.replace(/\s+/g, " ").trim().slice(0, 80);
   if (!name) {
-    throw new ServiceError("invalid", "Eine Kategorie braucht einen Namen.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Eine Kategorie braucht einen Namen.", "A category needs a name."),
+    );
   }
   if (!CATEGORY_TYPES.includes(draft.type)) {
-    throw new ServiceError("invalid", `Unbekannter Typ „${draft.type}“.`);
+    throw new ServiceError(
+      "invalid",
+      bilingual(`Unbekannter Typ „${draft.type}“.`, `Unknown type “${draft.type}”.`),
+    );
   }
   return name;
 }
@@ -415,7 +422,13 @@ export async function putCategory(
     return known;
   }
   if (rows.length >= MAX_CATEGORIES) {
-    throw new ServiceError("refused", `Ein Space hat höchstens ${MAX_CATEGORIES} Kategorien.`);
+    throw new ServiceError(
+      "refused",
+      bilingual(
+        `Ein Space hat höchstens ${MAX_CATEGORIES} Kategorien.`,
+        `A space has at most ${MAX_CATEGORIES} categories.`,
+      ),
+    );
   }
   const id = nanoid(12);
   const [row] = await db
@@ -510,7 +523,13 @@ export async function updateCategory(
   if (name !== row.name) {
     const clash = byName(await categoryRows(row.projectId), name);
     if (clash && clash.id !== row.id) {
-      throw new ServiceError("invalid", `Die Kategorie „${name}“ gibt es schon.`);
+      throw new ServiceError(
+        "invalid",
+        bilingual(
+          `Die Kategorie „${name}“ gibt es schon.`,
+          `The category “${name}” already exists.`,
+        ),
+      );
     }
   }
   await db
@@ -564,7 +583,10 @@ export async function addCategoryValue(categoryId: string, value: string) {
   const category = await categoryRow(categoryId);
   await requireWritableProject(category.projectId);
   if (category.type !== "choice") {
-    throw new ServiceError("invalid", "Nur eine Auswahl hat Werte.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Nur eine Auswahl hat Werte.", "Only a choice has values."),
+    );
   }
   const ids = await addValues(category.id, [value]);
   return { id: [...ids.values()].at(-1) as string };
@@ -599,7 +621,13 @@ export async function mergeCategoryValues(fromId: string, intoId: string) {
   const from = await valueRow(fromId);
   const into = await valueRow(intoId);
   if (from.category.id !== into.category.id || fromId === intoId) {
-    throw new ServiceError("invalid", "Nur Werte einer Kategorie lassen sich zusammenführen.");
+    throw new ServiceError(
+      "invalid",
+      bilingual(
+        "Nur Werte einer Kategorie lassen sich zusammenführen.",
+        "Only values of one category can be merged.",
+      ),
+    );
   }
   await requireWritableProject(from.category.projectId);
   const t = schema.spaceItemCategory;

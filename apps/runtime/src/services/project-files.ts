@@ -5,6 +5,7 @@ import {
   type ProjectFileView,
   projectFileLimit,
 } from "@engenty-wizards/shared/projects";
+import { bilingual } from "@engenty-wizards/shared/run";
 import { generateText } from "ai";
 import { and, asc, count, eq, max } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
@@ -38,7 +39,7 @@ export function fileView(row: ProjectFileRow): ProjectFileView {
     description: row.description,
     source: row.source,
     status: stale ? "failed" : row.status,
-    error: stale ? "Unterbrochen. Bitte neu einlesen." : row.error,
+    error: stale ? "Interrupted. Please read it in again." : row.error,
     indexed: row.indexed,
     pages: row.pages,
     chars: row.chars,
@@ -107,17 +108,29 @@ export async function addProjectFile(
     throw new ServiceError(
       "invalid",
       input.kind === "logo"
-        ? "Ein Logo ist ein Bild (PNG, SVG, JPEG, WebP)."
+        ? bilingual(
+            "Ein Logo ist ein Bild (PNG, SVG, JPEG, WebP).",
+            "A logo is an image (PNG, SVG, JPEG, WebP).",
+          )
         : input.kind === "pattern"
-          ? "Ein Muster ist ein Bild (SVG, PNG, JPEG, WebP)."
-          : "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen bitte zu den Dokumenten.",
+          ? bilingual(
+              "Ein Muster ist ein Bild (SVG, PNG, JPEG, WebP).",
+              "A pattern is an image (SVG, PNG, JPEG, WebP).",
+            )
+          : bilingual(
+              "Hierher gehören Bilder, Videos, Audio, PDFs, Schriften, Lottie und 3D-Modelle. Texte zum Nachschlagen bitte zu den Dokumenten.",
+              "Images, videos, audio, PDFs, fonts, Lottie and 3D models belong here. Texts to look things up in go to the documents.",
+            ),
     );
   }
   const limit = projectFileLimit(input.kind, mime);
   if (!input.data.byteLength || input.data.byteLength > limit) {
     throw new ServiceError(
       "invalid",
-      `Bitte eine Datei bis ${Math.round(limit / 1_000_000)} MB wählen.`,
+      bilingual(
+        `Bitte eine Datei bis ${Math.round(limit / 1_000_000)} MB wählen.`,
+        `Please choose a file of up to ${Math.round(limit / 1_000_000)} MB.`,
+      ),
     );
   }
   const scope = and(
@@ -129,7 +142,13 @@ export async function addProjectFile(
     .from(schema.projectFile)
     .where(scope);
   if (n >= PROJECT_LIMITS.files[input.kind]) {
-    throw new ServiceError("refused", `Höchstens ${PROJECT_LIMITS.files[input.kind]} Dateien.`);
+    throw new ServiceError(
+      "refused",
+      bilingual(
+        `Höchstens ${PROJECT_LIMITS.files[input.kind]} Dateien.`,
+        `At most ${PROJECT_LIMITS.files[input.kind]} files.`,
+      ),
+    );
   }
   const name = input.name.slice(0, 120) || "datei";
   const ref = await saveAsset({
@@ -189,21 +208,37 @@ export async function addProjectFileFromUrl(
     headers: { "user-agent": "Mozilla/5.0 (compatible; engenty-wizards/0.1)" },
     signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]),
   }).catch(() => {
-    throw new ServiceError("invalid", "Die Adresse ist nicht erreichbar.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Die Adresse ist nicht erreichbar.", "The address cannot be reached."),
+    );
   });
   if (!res.ok) {
-    throw new ServiceError("invalid", `Die Adresse antwortete ${res.status}.`);
+    throw new ServiceError(
+      "invalid",
+      bilingual(`Die Adresse antwortete ${res.status}.`, `The address answered ${res.status}.`),
+    );
   }
   const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
   if (mime === "text/html" && kind !== "document") {
     await res.body?.cancel();
-    throw new ServiceError("invalid", "Unter der Adresse steht eine Webseite, kein Bild.", {
-      reason: "page",
-      url: res.url,
-    });
+    throw new ServiceError(
+      "invalid",
+      bilingual(
+        "Unter der Adresse steht eine Webseite, kein Bild.",
+        "The address holds a web page, not an image.",
+      ),
+      {
+        reason: "page",
+        url: res.url,
+      },
+    );
   }
   if (Number(res.headers.get("content-length") ?? 0) > projectFileLimit(kind, mime)) {
-    throw new ServiceError("invalid", "Die Datei ist zu groß.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Die Datei ist zu groß.", "The file is too large."),
+    );
   }
   const data = new Uint8Array(await res.arrayBuffer());
   const name = decodeURIComponent(new URL(res.url).pathname.split("/").pop() || kind);
@@ -348,7 +383,7 @@ async function prepare(row: ProjectFileRow) {
         error:
           err instanceof UnreadableDocument
             ? err.message
-            : "Das Lesen hat nicht geklappt. Bitte noch einmal versuchen.",
+            : "Reading did not work. Please try again.",
       });
     }
   });
@@ -358,7 +393,10 @@ export async function reindexProjectFile(projectId: string, fileId: string) {
   await requireWritableProject(projectId);
   const row = await projectFile(projectId, fileId);
   if (row.kind !== "document") {
-    throw new ServiceError("invalid", "Nur Dokumente stehen im Index.");
+    throw new ServiceError(
+      "invalid",
+      bilingual("Nur Dokumente stehen im Index.", "Only documents are in the index."),
+    );
   }
   const [pending] = await db
     .update(schema.projectFile)

@@ -18,6 +18,7 @@ import {
   shellToolDescription,
 } from "../sandbox/index.js";
 import { snapshotFile } from "../services/files.js";
+import { hasStoreFiles } from "../store/index.js";
 import { browserTools } from "./browser.js";
 import { connectorTools } from "./connector.js";
 import { mailTools } from "./mail.js";
@@ -61,6 +62,18 @@ function isReadable(type: string, body: string): boolean {
     }
   }
   return odd <= sample.length * 0.01;
+}
+
+/**
+ * Whether a step has no use for the wizard's store: it declares no tools and no connections,
+ * got no uploads, and the wizard keeps no lists. Its files may still be there (`buildStepTools`).
+ */
+export function storeIdle(
+  step: Pick<AgentStep, "tools" | "connections">,
+  lists: number,
+  uploads: number,
+): boolean {
+  return step.tools.length === 0 && !step.connections?.length && lists === 0 && uploads === 0;
 }
 
 /** The tools an agent step may use: exactly what its definition allowlists. */
@@ -170,8 +183,16 @@ export async function buildStepTools(
   }
 
   // The wizard's lists and files, the documents the person gave and the project's documents are
-  // always at hand.
-  Object.assign(tools, storeTools(ctx, uploads, files));
+  // always at hand. An installed client gets tools over an MCP bridge its CLI starts for every
+  // call, seconds of its own: a step with no use for the store goes without its tools, and
+  // without others (Wissen, a workspace file) the client answers without the bridge.
+  const idle =
+    isHarnessVendor(resolved.vendor) &&
+    storeIdle(step, ctx.def.lists?.length ?? 0, uploads.length) &&
+    !(await hasStoreFiles(ctx.store));
+  if (!idle) {
+    Object.assign(tools, storeTools(ctx, uploads, files));
+  }
   Object.assign(tools, await projectTools(ctx));
   Object.assign(tools, mailTools(step, ctx, files));
   Object.assign(tools, await connectorTools(step, ctx, files));

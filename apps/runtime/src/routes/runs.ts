@@ -16,6 +16,7 @@ import {
   connectWithCredentials,
   disconnect,
   finishOAuth,
+  oauthStateLang,
   oauthStateRun,
   startOAuth,
 } from "../connectors/index.js";
@@ -24,6 +25,7 @@ import { db, schema, withTenant } from "../db/client.js";
 import { answerAsk, pendingAsk } from "../engine/asks.js";
 import { answerDevice, offerDevice, openDeviceCalls } from "../engine/device.js";
 import { emitEvent, signalChanged, watchRun } from "../engine/events.js";
+import { fieldErrorsIn } from "../engine/input.js";
 import { fromOwner } from "../engine/owner.js";
 import { pushAvailable, setPushDevice } from "../engine/push.js";
 import { liveResources } from "../engine/resources.js";
@@ -76,6 +78,7 @@ import {
   visitorOverLimit,
 } from "../tenants/control.js";
 import { byteRange, uploadLimit, wizardManifest } from "./delivery.js";
+import { requestLang } from "./lang.js";
 
 const VISITOR_COOKIE = "wz_vid";
 
@@ -92,16 +95,6 @@ export function clientIp(c: Context): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- * The language a visitor's request asks for: what the runner around it speaks, the browser's
- * first language (apps/web: `navigator.language`) — German for "de…", else English; German
- * without one, as the runner starts.
- */
-function requestLang(c: Context): "de" | "en" {
-  const asked = c.req.header("accept-language")?.trim().toLowerCase();
-  return !asked || asked.startsWith("de") ? "de" : "en";
 }
 
 /** A refusal the visitor reads, in the language their request asks for. */
@@ -187,7 +180,10 @@ async function viewOf(run: NonNullable<Awaited<ReturnType<typeof accessibleRun>>
 
 function commandError(c: Context, err: unknown) {
   if (err instanceof RunInputError) {
-    return c.json({ error: errorText(err, requestLang(c)), fields: err.errors }, 422);
+    return c.json(
+      { error: errorText(err, requestLang(c)), fields: fieldErrorsIn(err.errors, requestLang(c)) },
+      422,
+    );
   }
   if (err instanceof RunConflict) {
     return c.json({ error: errorText(err, requestLang(c)) }, 409);
@@ -712,7 +708,7 @@ export const runRoutes = new Hono()
       .object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
-        language: z.enum(["de", "en"]).default("de"),
+        language: z.enum(["de", "en"]).default("en"),
       })
       .parse(await c.req.json());
     return c.json({ label: await reverseGeocode(lat, lng, language) });
@@ -922,11 +918,12 @@ export const runRoutes = new Hono()
         run.id,
         connection,
         c.req.param("connectorId"),
+        requestLang(c),
       );
       return c.json({ url });
     } catch (err) {
       if (err instanceof ConnectError) {
-        return c.json({ error: err.message }, 422);
+        return c.json({ error: errorText(err, requestLang(c)) }, 422);
       }
       throw err;
     }
@@ -954,7 +951,7 @@ export const runRoutes = new Hono()
       return c.json({ ok: true, label });
     } catch (err) {
       if (err instanceof ConnectError) {
-        return c.json({ error: err.message }, 422);
+        return c.json({ error: errorText(err, requestLang(c)) }, 422);
       }
       throw err;
     }
@@ -1059,7 +1056,12 @@ export const runRoutes = new Hono()
       lists,
       files: await storeFiles(scope),
       connections: (
-        await connectionViews(run.definition.connections ?? [], scope, await projectIdOf(run))
+        await connectionViews(
+          run.definition.connections ?? [],
+          scope,
+          await projectIdOf(run),
+          requestLang(c),
+        )
       ).filter((x) => x.account),
       keepsSignIns: secrets.some((s) => s.slot === "browser"),
     });
@@ -1130,7 +1132,7 @@ export const runRoutes = new Hono()
       return c.json(await shareRun(run));
     } catch (err) {
       if (err instanceof ServiceError) {
-        return c.json(err.toJSON(), err.status);
+        return c.json(err.toJSON(requestLang(c)), err.status);
       }
       throw err;
     }
@@ -1148,7 +1150,7 @@ type RunRow = typeof schema.run.$inferSelect;
 
 function listError(c: Context, err: unknown) {
   if (err instanceof TableColumnValueError || err instanceof StoreError) {
-    return c.json({ error: err.message }, 422);
+    return c.json({ error: errorText(err, requestLang(c)) }, 422);
   }
   throw err;
 }
@@ -1201,7 +1203,7 @@ export const connectCallback = new Hono().get("/callback", async (c) => {
       said = { code: "connectFailed" };
     }
   }
-  const message = noteText(said, requestLang(c));
+  const message = noteText(said, (state && oauthStateLang(state)) || requestLang(c));
   return c.html(
     `<!doctype html><meta charset="utf-8"><title>engenty wizards</title>
 <body style="font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#333">

@@ -17,9 +17,10 @@ import type {
 } from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { ApiError, api } from "./api";
 import { STUDIO, withBase } from "./base";
+import { type Lang, setLang, storedLang } from "./i18n";
 
 /** An AI client installed on this machine that can think for the app, on its own subscription. */
 export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
@@ -88,6 +89,8 @@ export function initialsOf(name: string): string {
 export interface Me {
   user: { id: string; name: string; email: string; image?: string | null };
   profile: UserProfile;
+  /** The language the person picked, kept with them; null until they pick one. */
+  lang: Lang | null;
   tenant: {
     id: string;
     role: "owner" | "admin" | "member";
@@ -178,6 +181,38 @@ export function spendableCredits(me: Me): number | null {
     return me.credits;
   }
   return me.models?.source === "account" ? (me.account?.credits ?? null) : null;
+}
+
+/** Switches the language and keeps it with the person: another browser or device opens in it. */
+export function usePickLang() {
+  const qc = useQueryClient();
+  return (next: Lang) => {
+    setLang(next);
+    qc.setQueryData<Me | null>(["me"], (me) => (me ? { ...me, lang: next } : me));
+    void api.put("/api/studio/lang", { lang: next }).catch(() => undefined);
+  };
+}
+
+/**
+ * Once the person is known, the language they picked anywhere wins over this browser's. A pick
+ * this browser kept from before goes to them once, so nobody loses theirs.
+ */
+export function useAccountLang(me: Me | null | undefined) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!me) {
+      return;
+    }
+    if (me.lang) {
+      setLang(me.lang);
+      return;
+    }
+    const kept = storedLang();
+    if (kept) {
+      qc.setQueryData<Me | null>(["me"], (now) => (now ? { ...now, lang: kept } : now));
+      void api.put("/api/studio/lang", { lang: kept }).catch(() => undefined);
+    }
+  }, [me, qc]);
 }
 
 export function useMe() {

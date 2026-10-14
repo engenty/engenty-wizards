@@ -46,6 +46,21 @@ export async function userProfile(user: SessionUser): Promise<UserProfile> {
   };
 }
 
+const langKey = (user: SessionUser) => `lang:${user.tenantId}:${user.id}`;
+
+/**
+ * The language the person picked in the studio, kept with them rather than one browser: a new
+ * browser or device opens in it. Null until they pick one; the browser's language stands then.
+ */
+export async function userLang(user: SessionUser): Promise<"de" | "en" | null> {
+  const lang = await readSetting<unknown>(langKey(user));
+  return lang === "de" || lang === "en" ? lang : null;
+}
+
+export async function saveUserLang(user: SessionUser, lang: "de" | "en"): Promise<void> {
+  await writeSetting(langKey(user), lang);
+}
+
 export async function saveProfile(user: SessionUser, profile: UserProfile): Promise<UserProfile> {
   // Name and e-mail an account gives stay the person's own underneath: they come back unlinked.
   const stored = (await readSetting<Partial<UserProfile>>(key(user))) ?? {};

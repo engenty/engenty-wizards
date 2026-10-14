@@ -4,6 +4,7 @@ import {
   checkAnswer,
   checkDate,
   fieldError,
+  fieldErrorsIn,
   isUrl,
   normalizeDate,
   normalizeUrl,
@@ -109,15 +110,17 @@ describe("the shared checks of an answer", () => {
     expect(normalizeUrl("//orf.at/x")).toBe("https://orf.at/x");
   });
 
-  it("gives every problem a German text for clients that read only the message", () => {
-    expect(fieldError("f", { code: "required" })).toEqual({
-      field: "f",
-      code: "required",
-      message: "Pflichtfeld",
-    });
-    expect(fieldError("f", { code: "filesMin", params: { min: 2 } }).message).toBe(
-      "Bitte mindestens 2 auswählen",
-    );
+  it("gives every problem a text in both languages for clients that read only the message", () => {
+    const required = [fieldError("f", { code: "required" })];
+    expect(fieldErrorsIn(required, "de")).toEqual([
+      { field: "f", code: "required", message: "Pflichtfeld" },
+    ]);
+    expect(fieldErrorsIn(required, "en")).toEqual([
+      { field: "f", code: "required", message: "Required" },
+    ]);
+    const filesMin = [fieldError("f", { code: "filesMin", params: { min: 2 } })];
+    expect(fieldErrorsIn(filesMin, "de")[0].message).toBe("Bitte mindestens 2 auswählen");
+    expect(fieldErrorsIn(filesMin, "en")[0].message).toBe("Please choose at least 2");
   });
 });
 
@@ -144,7 +147,7 @@ describe("the runtime reads a page with the same checks", () => {
       ["count", "number"],
       ["day", "date"],
     ]);
-    expect(bad.errors[0].message).toBe("Keine gültige URL");
+    expect(fieldErrorsIn(bad.errors, "de")[0].message).toBe("Keine gültige URL");
   });
 
   it("keeps a day sent as 14.10.2026 or with a time as YYYY-MM-DD", () => {
