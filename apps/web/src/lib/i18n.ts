@@ -21,6 +21,9 @@ const de = {
   "auth.wrongHost": "Das Studio läuft unter einer anderen Adresse",
   "auth.wrongHostWhy":
     "Die App auf diesem Computer antwortet nur unter ihrer eigenen Adresse – das schützt sie vor fremden Webseiten. Öffne das Studio dort:",
+  "auth.otherHost": "Das Studio meldet dich unter einer anderen Adresse an",
+  "auth.otherHostWhy":
+    "Eine Anmeldung gilt nur für eine Adresse, und das Studio meldet einen Browser unter seiner eigenen an, nicht unter {address}. Öffne das Studio dort:",
   "auth.unreachable": "Die App antwortet gerade nicht",
   "auth.unreachableWhy":
     "Unter {address} läuft das Studio, aber die App dahinter gibt keine Antwort – sie startet vielleicht gerade neu oder ist beendet. Die Seite versucht es weiter.",
@@ -1820,6 +1823,9 @@ const en: Record<Key, string> = {
   "auth.wrongHost": "The studio runs at another address",
   "auth.wrongHostWhy":
     "The app on this computer answers only at its own address – that keeps other web pages out. Open the studio there:",
+  "auth.otherHost": "The studio signs you in at another address",
+  "auth.otherHostWhy":
+    "A sign-in holds for one address only, and the studio signs a browser in at its own, not at {address}. Open the studio there:",
   "auth.unreachable": "The app is not answering",
   "auth.unreachableWhy":
     "The studio is at {address}, but the app behind it gives no answer – it may be restarting or stopped. This page keeps trying.",

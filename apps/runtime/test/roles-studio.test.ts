@@ -64,6 +64,10 @@ describe("RUNTIME_ROLE=studio", () => {
     expect((await get("/s/abcdefgh")).status).toBe(404);
   });
 
+  it("names the address a browser signs in at", async () => {
+    expect((await (await get("/api/config")).json()).appUrl).toBe("http://localhost:5181");
+  });
+
   it("makes the wizards' links with PUBLIC_URL", async () => {
     expect((await (await get("/api/config")).json()).publicUrl).toBe("https://doors.example");
     expect(wizards.shareUrl("tok")).toBe("https://doors.example/w/tok");

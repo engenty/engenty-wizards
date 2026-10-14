@@ -152,6 +152,11 @@ app.get("/api/config", (c) =>
     devLogin: !managed && env.devLogin,
     /** The product's own site, for a runtime that runs alone. */
     site: managed ? null : env.local.cloudUrl,
+    /**
+     * The address a runtime that runs alone signs a browser in at: its cookie holds for that
+     * host only, so the studio opened under another (127.0.0.1 for localhost) points there.
+     */
+    appUrl: managed ? null : env.appUrl,
     /** Where the wizards' pages are: the studio makes their links with it. */
     publicUrl: env.publicUrl,
     /** The feature switches before anyone is signed in: the code's, the environment's, the file's. */

@@ -27,6 +27,14 @@ function Sentences({ text }: { text: string }) {
   ));
 }
 
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 /** Why the studio does not open here, and what helps. */
 function Note({
   title,
@@ -50,7 +58,10 @@ function Note({
 export function SignInPage() {
   const config = useQuery({
     queryKey: ["config"],
-    queryFn: () => api.get<{ mode: "managed" | "local"; devLogin: boolean }>("/api/config"),
+    queryFn: () =>
+      api.get<{ mode: "managed" | "local"; devLogin: boolean; appUrl?: string | null }>(
+        "/api/config",
+      ),
     // A runtime that restarts answers again in a moment: the page asks until it does.
     refetchInterval: (query) =>
       query.state.status === "error" &&
@@ -109,6 +120,13 @@ export function SignInPage() {
   const refusal =
     config.error instanceof ApiError && config.error.body?.code === "host" ? config.error : null;
   const ownAddress = refusal ? String(refusal.body.appUrl ?? "") : null;
+  // Opened under another name it does answer to (127.0.0.1 for localhost): the sign-in's cookie
+  // holds for the address the app signs in at, so this browser is signed in there, not here.
+  const signInOrigin = local && config.data?.appUrl ? originOf(config.data.appUrl) : null;
+  const elsewhere =
+    signInOrigin && signInOrigin !== window.location.origin
+      ? `${signInOrigin}${window.location.pathname}${window.location.search}`
+      : null;
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-16">
       <div className="flex w-full max-w-md animate-rise flex-col items-center text-center">
@@ -177,7 +195,17 @@ export function SignInPage() {
               {t("auth.dev")}
             </Button>
           ) : null}
-          {local ? (
+          {elsewhere ? (
+            <Note title={t("auth.otherHost")} className="-mt-2">
+              <p>{t("auth.otherHostWhy", { address: window.location.host })}</p>
+              <a
+                href={elsewhere}
+                className="mt-1.5 block break-all font-medium text-ember-strong underline-offset-2 hover:underline"
+              >
+                {signInOrigin}
+              </a>
+            </Note>
+          ) : local ? (
             <Note title={t("auth.localTitle")} className="-mt-2">
               <p>{t("auth.localWhy")}</p>
               <p className="mt-3">{t("auth.localLink")}</p>
