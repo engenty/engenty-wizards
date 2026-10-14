@@ -3737,7 +3737,42 @@ export type Lang = "de" | "en";
 
 const LANG_KEY = "wizards.lang";
 
-function storedLang(): Lang | null {
+/**
+ * The language engenty's other pages read and keep — the account pages and the mails their
+ * server sends: a readable cookie on the site's parent domain holding "de" or "en"
+ * (engenty-wizards-manage, apps/server/src/mails/lang.ts).
+ */
+const SHARED_COOKIE = "engenty_lang";
+
+function sharedLang(): Lang | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const raw = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${SHARED_COOKIE}=`))
+    ?.slice(SHARED_COOKIE.length + 1);
+  return raw === "de" || raw === "en" ? raw : null;
+}
+
+function shareLang(next: Lang) {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const host = window.location.hostname;
+  const labels = host.split(".");
+  // app.engenty.ai → engenty.ai, engenty.ai stays itself: one cookie the account pages share.
+  // localhost and plain addresses keep the host.
+  const named = labels.length > 1 && !/^\d+$/.test(labels[labels.length - 1]);
+  const parent = named ? (labels.length > 2 ? labels.slice(1).join(".") : host) : "";
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  // biome-ignore lint/suspicious/noDocumentCookie: the Cookie Store API is missing in Safari and Firefox
+  document.cookie = `${SHARED_COOKIE}=${next}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax${parent ? `; Domain=${parent}` : ""}${secure}`;
+}
+
+/** The language this browser kept from the person's last pick; null where they never picked. */
+export function storedLang(): Lang | null {
   try {
     const pick = localStorage.getItem(LANG_KEY);
     return pick === "de" || pick === "en" ? pick : null;
@@ -3753,6 +3788,7 @@ function storedLang(): Lang | null {
  */
 export let lang: Lang =
   storedLang() ??
+  sharedLang() ??
   (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("de")
     ? "de"
     : "en");
@@ -3763,6 +3799,7 @@ const listeners = new Set<() => void>();
 
 /** Switches the language in place and keeps the pick: the app renders again, nothing reloads. */
 export function setLang(next: Lang) {
+  shareLang(next);
   if (next === lang) {
     return;
   }
