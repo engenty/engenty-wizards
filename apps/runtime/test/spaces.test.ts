@@ -264,6 +264,7 @@ describe("a tenant that builds nothing here (the free tier)", () => {
       }),
       studio("PATCH", `/wizards/${WIZARD_ID}`, free, { shareEnabled: false }),
       studio("POST", `/wizards/${WIZARD_ID}/publish`, free),
+      studio("POST", `/wizards/${WIZARD_ID}/unpublish`, free),
       studio("POST", `/wizards/${WIZARD_ID}/duplicate`, free),
       studio("POST", `/wizards/${WIZARD_ID}/rotate-link`, free),
       studio("DELETE", `/wizards/${WIZARD_ID}`, free),
@@ -292,6 +293,29 @@ describe("a tenant that builds nothing here (the free tier)", () => {
     expect(
       (await studio("GET", `/wizards/${WIZARD_ID}/files`, free)).body.map((f: any) => f.path),
     ).toEqual(["terms.md"]);
+  });
+
+  it("takes the copy back to its draft when the install does, and publishes it again behind its link", async () => {
+    const shareToken = shareUrl.split("/w/")[1];
+    const page = () => app.fetch(new Request(`${RUNTIME}/api/public/wizards/${shareToken}`));
+    const res = await api("POST", `/spaces/${SPACE_ID}/wizards/${WIZARD_ID}/unpublish`, "free");
+    expect(res.status).toBe(200);
+    expect((await studio("GET", `/wizards/${WIZARD_ID}`, free)).body).toMatchObject({
+      published: false,
+      publishedVersion: null,
+    });
+    expect((await page()).status).toBe(404);
+    const again = await sync("free", SPACE_ID, WIZARD_ID, {
+      version: 4,
+      definition: definition("Angebot 2"),
+      files: [{ path: "terms.md", data: text("# AGB") }],
+      shareEnabled: true,
+    });
+    expect(again.body).toMatchObject({ publishedVersion: 4, shareUrl });
+    expect((await page()).status).toBe(200);
+    // Only the install's own wizards: an unknown one is not found.
+    const other = await api("POST", `/spaces/${SPACE_ID}/wizards/unknownwiz1/unpublish`, "free");
+    expect(other.status).toBe(404);
   });
 
   it("leaves nothing behind when a sending breaks off, and takes the next one whole", async () => {

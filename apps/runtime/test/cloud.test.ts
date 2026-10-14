@@ -17,6 +17,8 @@ const seen: Seen[] = [];
 /** The answer to the next sending of a wizard; back to "take it" afterwards. */
 let refuseWith: { status: number; body: unknown } | null = null;
 const cloudSpaces: { id: string; name: string; syncedAt: null; wizards: [] }[] = [];
+/** A cloud from before it knew how to take a copy back to its draft. */
+let oldCloud = false;
 let origin = "";
 
 const unsigned = (claims: Record<string, unknown>) =>
@@ -71,6 +73,9 @@ const cloud: Server = createServer(async (req, res) => {
   if (/^\/api\/v1\/spaces\/[^/]+\/data$/.test(url.pathname) && req.method === "PUT") {
     const sent = JSON.parse(raw || "{}");
     return json({ tables: sent.tables?.length ?? 0, pages: sent.pages?.length ?? 0 });
+  }
+  if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/unpublish$/.test(url.pathname) && !oldCloud) {
+    return json({ ok: true });
   }
   if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/rotate-link$/.test(url.pathname)) {
     return json({ shareUrl: `${origin}/w/cloudtoken00002`, code: "K7WM4TQ9" });
@@ -327,6 +332,38 @@ describe("a runtime that runs alone and the cloud of its account", () => {
       path: "/api/v1/spaces/check",
       body: { definition: { title: "Angebot (Entwurf)" }, files: ["prices.csv"] },
     });
+  });
+
+  it("takes the copy back to its draft too, and publishes it again behind the same link", async () => {
+    const before = await local(() => wizards.ownedWizard(USER, wizardId));
+    const done = await local(() => sync.unpublishAndSync(USER, wizardId));
+    expect(seen.at(-1)).toMatchObject({
+      method: "POST",
+      path: `/api/v1/spaces/${projectId}/wizards/${wizardId}/unpublish`,
+    });
+    expect(done).toMatchObject({ published: false, cloud: { copy: { publishedVersion: null }, error: null } });
+    expect((await local(() => wizards.ownedWizard(USER, wizardId))).publishedVersion).toBeNull();
+    const again = await local(() => sync.publishAndSync(USER, wizardId));
+    const next = (before.publishedVersion ?? 0) + 1;
+    expect(again).toMatchObject({
+      version: next,
+      cloud: { copy: { version: next, shareUrl: `${origin}/w/cloudtoken00001` }, error: null },
+    });
+    expect(sent("PUT").at(-1)?.body).toMatchObject({ version: next });
+  });
+
+  it("switches the copy's link off where the cloud does not know how to take it back", async () => {
+    oldCloud = true;
+    try {
+      const done = await local(() => sync.unpublishAndSync(USER, wizardId));
+      expect(sent("PATCH").at(-1)).toMatchObject({
+        path: `/api/v1/spaces/${projectId}/wizards/${wizardId}`,
+        body: { shareEnabled: false },
+      });
+      expect(done.cloud).toMatchObject({ error: null });
+    } finally {
+      oldCloud = false;
+    }
   });
 
   it("takes the copy away with the wizard", async () => {

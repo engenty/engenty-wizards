@@ -27,7 +27,14 @@ import {
   projectLimit,
   removeProject,
 } from "./projects.js";
-import { deleteWizard, draftIssues, parseDraft, rotateShareLink, shareUrl } from "./wizards.js";
+import {
+  deleteWizard,
+  draftIssues,
+  parseDraft,
+  rotateShareLink,
+  shareUrl,
+  unpublishWizard,
+} from "./wizards.js";
 
 /**
  * A local install's project on this runtime (docs/manage-contract.md, "Spaces of a local
@@ -451,6 +458,16 @@ export async function rotateSyncedLink(userId: string, spaceId: string, wizardId
   const w = await syncedWizard(spaceId, wizardId);
   const { shareToken } = await asSync(() => rotateShareLink(userId, w.id));
   return { shareUrl: shareUrl(shareToken), code: await codeOf(shareToken) };
+}
+
+/**
+ * The install took a wizard back to its draft: its copy here answers as a draft too. Its link and
+ * runs stay, and the install's next sync publishes it again behind the same link.
+ */
+export async function unpublishSyncedWizard(userId: string, spaceId: string, wizardId: string) {
+  const w = await syncedWizard(spaceId, wizardId);
+  await asSync(() => unpublishWizard(userId, w.id));
+  return { ok: true };
 }
 
 /** The install deleted a wizard: its copy here goes, with its link and its runs. */

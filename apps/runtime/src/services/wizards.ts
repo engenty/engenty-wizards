@@ -490,7 +490,12 @@ export async function requireClean(w: WizardRow) {
 export async function publishWizard(userId: string, wizardId: string) {
   const w = await writableWizard(userId, wizardId);
   const { definition, files } = await requireClean(w);
-  const version = (w.publishedVersion ?? 0) + 1;
+  // Counted from the versions kept: a wizard taken back to its draft goes on from its last one.
+  const [{ last }] = await db
+    .select({ last: sql<number | null>`max(${schema.wizardVersion.version})` })
+    .from(schema.wizardVersion)
+    .where(eq(schema.wizardVersion.wizardId, w.id));
+  const version = (last ?? 0) + 1;
   await db
     .insert(schema.wizardVersion)
     .values({ id: nanoid(12), wizardId: w.id, version, definition, files });
@@ -499,4 +504,20 @@ export async function publishWizard(userId: string, wizardId: string) {
     .set({ publishedVersion: version, updatedAt: new Date() })
     .where(eq(schema.wizard.id, w.id));
   return { version, shareUrl: shareUrl(w.shareToken), shareEnabled: w.shareEnabled };
+}
+
+/**
+ * Takes a wizard back to its draft: its link and every other way in answer as for a wizard never
+ * published, until it is published again. The versions stay; runs already started carry on with
+ * the version they started.
+ */
+export async function unpublishWizard(userId: string, wizardId: string) {
+  const w = await writableWizard(userId, wizardId);
+  if (w.publishedVersion !== null) {
+    await db
+      .update(schema.wizard)
+      .set({ publishedVersion: null, updatedAt: new Date() })
+      .where(eq(schema.wizard.id, w.id));
+  }
+  return { published: false };
 }

@@ -129,6 +129,7 @@ import {
   replaceCloudSpaces,
   rotateInCloud,
   syncToCloud,
+  unpublishAndSync,
 } from "../services/cloud.js";
 import { notFound, ServiceError } from "../services/errors.js";
 import { deleteFile, listFiles, readFile, writeFile } from "../services/files.js";
@@ -1257,6 +1258,11 @@ export const studio = new Hono<Vars>()
   // With an account linked the published version also goes to its cloud: `cloud` says how that went.
   .post("/wizards/:id/publish", async (c) =>
     c.json(await publishAndSync(c.get("user").id, c.req.param("id"))),
+  )
+  // Back to the draft: its links answer as before it was published. With an account linked the
+  // copy in the cloud follows: `cloud` says how that went.
+  .post("/wizards/:id/unpublish", async (c) =>
+    c.json(await unpublishAndSync(c.get("user").id, c.req.param("id"))),
   )
   // What publishing the draft would change: the steps and files, its last test, the cost of a run before and after.
   .get("/wizards/:id/changes", async (c) => {

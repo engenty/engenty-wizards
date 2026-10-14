@@ -195,6 +195,7 @@ Calls of the cloud runtime, below `<RUNTIME_URL>/api/v1`, with the account's acc
 | `PUT /spaces/:spaceId/data` | `wizards:write` | `{ tables: [{ id, title, columns, rows: [{ id, cells }] }], pages: [{ id, title, markdown }] }` → `{ tables, pages }` · the space's own tables and pages (not a wizard's), sent after a wizard when they changed; replaces what came before, under the install's ids · `404` before the space's first wizard arrived |
 | `PATCH /spaces/:spaceId/wizards/:wizardId` | `wizards:publish` | `{ shareEnabled?, dailyRunLimit? }` → `{ ok: true }` |
 | `POST /spaces/:spaceId/wizards/:wizardId/rotate-link` | `wizards:publish` | → `{ shareUrl, code }` · the copy gets a new link (the install made one); the old one stops answering |
+| `POST /spaces/:spaceId/wizards/:wizardId/unpublish` | `wizards:publish` | → `{ ok: true }` · the install took the wizard back to its draft: the copy's link answers as an unpublished wizard's, its runs stay; the next `PUT` publishes it again behind the same link · a cloud without this route answers `404`, and the install switches the copy's link off with `PATCH` instead |
 | `DELETE /spaces/:spaceId/wizards/:wizardId` | `wizards:write` | → `{ ok: true }` · the copy goes with its link and its runs |
 | `GET /spaces` | `wizards:read` | → `{ spaces: [{ id, name, syncedAt, wizards: [{ id, title, publishedVersion, shareUrl, shareEnabled }] }] }` |
 | `DELETE /spaces/:spaceId` | `wizards:write` | → `{ ok: true }` · the project goes with its wizards |

@@ -30,6 +30,7 @@ import {
   syncSpaceData,
   syncWizard,
   syncWizardSchema,
+  unpublishSyncedWizard,
 } from "../services/spaces.js";
 import { createWizard, ownedWizard, publishWizard, writeDraft } from "../services/wizards.js";
 import { codeOf, tenantStatus } from "../tenants/control.js";
@@ -414,6 +415,21 @@ export const apiRoutes = new Hono()
     }
     return inTenantAs(who, async () =>
       c.json(await rotateSyncedLink(who.userId, c.req.param("spaceId"), c.req.param("wizardId"))),
+    );
+  })
+  .post("/spaces/:spaceId/wizards/:wizardId/unpublish", async (c) => {
+    const who = await caller(c, ["wizards:publish"]);
+    if (who instanceof Response) {
+      return who;
+    }
+    const limited = withinSyncLimit(c, who);
+    if (limited) {
+      return limited;
+    }
+    return inTenantAs(who, async () =>
+      c.json(
+        await unpublishSyncedWizard(who.userId, c.req.param("spaceId"), c.req.param("wizardId")),
+      ),
     );
   })
   .delete("/spaces/:spaceId/wizards/:wizardId", async (c) => {

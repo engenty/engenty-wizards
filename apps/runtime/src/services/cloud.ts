@@ -12,7 +12,7 @@ import { ServiceError } from "./errors.js";
 import { projectFileContent, projectFiles } from "./project-files.js";
 import { ownedProject } from "./projects.js";
 import type { ServerProblem, SpaceInput, SyncDataInput, SyncResult } from "./spaces.js";
-import { ownedWizard, publishedVersion, publishWizard } from "./wizards.js";
+import { ownedWizard, publishedVersion, publishWizard, unpublishWizard } from "./wizards.js";
 
 /**
  * A runtime that runs alone, linked to an account: what it publishes also goes to the account's
@@ -367,6 +367,64 @@ export async function publishAndSync(userId: string, wizardId: string) {
   const published = await publishWizard(userId, wizardId);
   const cloud = (await cloudLinked()) ? await syncToCloud(userId, wizardId) : null;
   return { ...published, cloud };
+}
+
+/**
+ * A wizard went back to its draft here: its copy in the cloud does too, and the link there
+ * answers as a draft's; its runs stay, and publishing again sends it behind the same link. A
+ * cloud from before it knew this switches the copy's link off instead. Null where no account is
+ * linked or the cloud holds no copy; a try that failed comes back as the state's error.
+ */
+async function unpublishInCloud(userId: string, wizardId: string): Promise<CloudState | null> {
+  if (!(await cloudLinked())) {
+    return null;
+  }
+  const state = await cloudState(wizardId);
+  if (!state.copy) {
+    return null;
+  }
+  const w = await ownedWizard(userId, wizardId);
+  const path = `/spaces/${w.projectId}/wizards/${w.id}`;
+  try {
+    let answer = await call("POST", `${path}/unpublish`);
+    if (answer.status === 404) {
+      answer = await call("PATCH", path, { shareEnabled: false });
+    }
+    if (!answer.ok) {
+      throw refusal(answer, "The copy in the cloud could not be taken back.");
+    }
+    const next: CloudState = { copy: { ...state.copy, publishedVersion: null }, error: null };
+    await writeSetting(key(w.id), next);
+    return next;
+  } catch (err) {
+    const failed: CloudState = {
+      copy: state.copy,
+      error: {
+        message:
+          err instanceof ServiceError
+            ? err.message
+            : "The copy in the cloud could not be taken back.",
+        reason: err instanceof ServiceError ? (err.data.reason as string | undefined) : undefined,
+        at: new Date().toISOString(),
+        tries: 1,
+        again: null,
+      },
+    };
+    await writeSetting(key(w.id), failed);
+    if (!(err instanceof ServiceError)) {
+      console.error("[cloud] unpublishing failed:", err);
+    }
+    return failed;
+  }
+}
+
+/**
+ * Takes a wizard back to its draft here and, with an account linked, in the cloud. The cloud
+ * never holds it up: what it answered comes along as `cloud`.
+ */
+export async function unpublishAndSync(userId: string, wizardId: string) {
+  const done = await unpublishWizard(userId, wizardId);
+  return { ...done, cloud: await unpublishInCloud(userId, wizardId) };
 }
 
 /** How a wizard is shared changed here: the copy in the cloud follows. */
