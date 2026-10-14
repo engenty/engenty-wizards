@@ -13,6 +13,8 @@
       "packages/runner/*.ts",
       "packages/runner/scripts/**",
       "scripts/*.ts",
+      "scripts/*.mjs",
+      "bin/*.mjs",
       "apps/docs/app/**",
       "apps/docs/components/**",
       "apps/docs/lib/**",

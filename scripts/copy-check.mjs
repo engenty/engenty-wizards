@@ -45,7 +45,10 @@ function objectAfter(src, decl, file) {
 function dictionaries([file, en, de, prefix]) {
   const src = readFileSync(root + file, "utf8");
   const out = {};
-  for (const [lang, where] of [["en", en], ["de", de]]) {
+  for (const [lang, where] of [
+    ["en", en],
+    ["de", de],
+  ]) {
     const [decl, half] = where.split(".");
     const table = half ? objectAfter(src, decl, file)[half] : objectAfter(src, decl, file);
     out[lang] = Object.fromEntries(
@@ -71,12 +74,18 @@ const RULES = {
     ["space before …", / …/],
     ["straight quotes: use “ ”", /"/],
     ["straight apostrophe: use ’", /\w'\w|s' /],
-    ["American spelling", /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|center|canceled)\b/i],
+    [
+      "American spelling",
+      /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|center|canceled)\b/i,
+    ],
     ["exclamation mark", /!/],
     ["please", /\bplease\b/i, AI_FACING],
     ["glossary: project → space", /\bprojects?\b/i],
     ["glossary: synced / read-only", /\b(synced|read-only)\b/i, ["connectors.actions"]],
-    ["glossary: local install / this machine → your computer", /\blocal install\b|\bthis machine\b/i],
+    [
+      "glossary: local install / this machine → your computer",
+      /\blocal install\b|\bthis machine\b/i,
+    ],
     ["glossary: the runtime → engenty wizards", /\bruntime\b/i],
     ["glossary: E-mail → email", /\bE-mail\b/],
     ["glossary: log in → sign in", /\blog ?in\b/i, ["auth.dev"]],
@@ -92,7 +101,10 @@ const RULES = {
     ["Sie-Form", /\b(Ihnen|Ihre[mnrs]?)\b|[a-zäöü,] Sie\b/],
     ["ihr/euch für die Lesenden: du verwenden", /\b(euch|eure[mnrs]?)\b/i],
     ["Ausrufezeichen", /!/],
-    ["österreichisch: Standarddeutsch verwenden (Januar, USt-IdNr., Kassierer)", /\b(Jänner|Feber|heuer|Kassier|Obfrau|Bankomat|Sackerl)\b|\bUID\b(?! ?\/)/],
+    [
+      "österreichisch: Standarddeutsch verwenden (Januar, USt-IdNr., Kassierer)",
+      /\b(Jänner|Feber|heuer|Kassier|Obfrau|Bankomat|Sackerl)\b|\bUID\b(?! ?\/)/,
+    ],
     [
       "generisches Maskulinum: neutral umformulieren oder Doppelpunkt (Kund:innen)",
       /\b(Besucher|Kunden?|Bewerber|Nutzer|Teilnehmer|Mitarbeiter|Endnutzer|Anwender|Händler|Interessent|Patient|Empfänger|Absender|Leser|Betreiber|Inhaber|Kollege|Handwerker|Antragsteller|Käufer|Verkäufer|Lieferant|Mieter|Vermieter|Eigentümer|Auftraggeber|Wettbewerber)(?!:in)(n|en|s)?\b/,
@@ -102,7 +114,16 @@ const RULES = {
     ["Glossar: lokale Installation / Rechner → Computer", /lokalen? Installation|\bRechner/i],
     ["Glossar: API Key → API-Key", /\bAPI Key/],
     ["Glossar: Durchlauf → Lauf", /Durchl[aä]uf/],
-    ["Glossar: Konnektor → Connector", /Konnektor/, ["integrate.openConnectors", "integrate.claudeAiWhere", "integrate.desktopWhere", "mcp.claudeAi"]],
+    [
+      "Glossar: Konnektor → Connector",
+      /Konnektor/,
+      [
+        "integrate.openConnectors",
+        "integrate.claudeAiWhere",
+        "integrate.desktopWhere",
+        "mcp.claudeAi",
+      ],
+    ],
     ["~ für Schätzungen: ≈ oder etwa", /~ ?\{/],
   ],
 };
@@ -128,7 +149,10 @@ const DOC_RULES = [
   ["em dash: use a spaced en dash –", /—/],
   ["straight quotes: use “ ”", /"/],
   ["straight apostrophe: use ’", /\w'\w/],
-  ["American spelling", /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|canceled)\b/i],
+  [
+    "American spelling",
+    /\b(colors?|colored|summariz\w*|organiz\w*|analyz\w*|favorite|canceled)\b/i,
+  ],
   ["please", /\bplease\b/i],
 ];
 const USER_DOC_RULES = [
@@ -190,11 +214,21 @@ for (const [rule, pattern, userOnly] of [
 
 // Words a person reads, written straight into the code instead of a table: a string or JSX text with
 // German letters, or with two German words, in a file that holds no table.
-const SOURCE_DIRS = ["apps/web/src", "apps/runtime/src", "packages/runner/src", "packages/shared/src", "packages/plugin-sdk/src"];
+const SOURCE_DIRS = [
+  "apps/web/src",
+  "apps/runtime/src",
+  "packages/runner/src",
+  "packages/shared/src",
+  "packages/plugin-sdk/src",
+];
 // German that is no UI copy: [file or folder, a piece of the line (none: all of it), why].
 const NOT_COPY = [
   ["apps/web/src/dev", null, "the dev-only mascot builder, not shipped to people"],
-  ["apps/runtime/src/agents/architect.ts", "Neuer Schritt", "AI prompt: the German words the studio sends"],
+  [
+    "apps/runtime/src/agents/architect.ts",
+    "Neuer Schritt",
+    "AI prompt: the German words the studio sends",
+  ],
   ["apps/runtime/src/agents/studio-assistant.ts", "Primär", "AI prompt: an example colour name"],
   ["apps/runtime/src/authoring/guide.ts", null, "AI prompt: German examples of what people write"],
   ["apps/runtime/src/media/transcribe.ts", "ähm", "AI prompt: filler words to keep"],
@@ -202,7 +236,11 @@ const NOT_COPY = [
   ["apps/runtime/src/tools/project.ts", "Graz Süd", "AI tool description: an example value"],
   ["apps/runtime/src/services/project-index.ts", "der die das", "stop words for search"],
   ["apps/runtime/src/browser/fast/span-picker.ts", "Jän|Mär", "month names a page may show"],
-  ["apps/runtime/src/connectors/index.ts", "App-Passwort", "FIELD_WORDS.de, the German half of a table"],
+  [
+    "apps/runtime/src/connectors/index.ts",
+    "App-Passwort",
+    "FIELD_WORDS.de, the German half of a table",
+  ],
 ];
 const GERMAN_WORD =
   /\b(und|oder|nicht|noch|kein|keine|dein|deine|deinen|dich|dir|bitte|wird|werden|ist|sind|hier|jetzt|mit|für|auf|eine?|der|die|das|zum|zur|Schritt|Lauf|Datei|Dateien)\b/g;
@@ -225,7 +263,8 @@ for (const dir of SOURCE_DIRS) {
       .forEach((line, i) => {
         const code = line.trimStart();
         // Comments, a line the allowlist names, and `de: "…"` beside its English in one object.
-        if (/^(\/\/|\*|\/\*)/.test(code) || allowed.some(([, piece]) => code.includes(piece))) return;
+        if (/^(\/\/|\*|\/\*)/.test(code) || allowed.some(([, piece]) => code.includes(piece)))
+          return;
         if (/\bde: ["'`].*\ben: ["'`]/.test(code)) return;
         for (const literal of code.match(LITERAL) ?? []) {
           if (looksGerman(literal)) hardCoded.push(`${file}:${i + 1}: ${literal.slice(0, 90)}`);
