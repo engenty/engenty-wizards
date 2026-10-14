@@ -98,23 +98,23 @@ describe("wizard packages", () => {
           page("pg-4", "Kinder", "Ab 6 Jahren.", "pg-2"),
         ]);
       const plain = unzipSync((await pkg.exportWizard(USER, sourceId)).zip);
-      expect(Object.keys(plain).some((k) => k.startsWith("files/wissen/"))).toBe(false);
+      expect(Object.keys(plain).some((k) => k.startsWith("files/knowledge/"))).toBe(false);
       const { zip } = await pkg.exportWizard(USER, sourceId, { knowledge: true });
       const entries = unzipSync(zip);
       const told = JSON.parse(strFromU8(entries["wizard.json"]));
       // The empty page stays out; the long one is cut at its limit, and the manifest says so.
       expect(told.knowledge).toEqual({ pages: 3, truncated: true });
-      const paths = Object.keys(entries).filter((k) => k.startsWith("files/wissen/")).sort();
+      const paths = Object.keys(entries).filter((k) => k.startsWith("files/knowledge/")).sort();
       expect(paths).toEqual([
-        "files/wissen/oeffnungszeiten-sommer.md",
-        "files/wissen/preise.md",
-        "files/wissen/preise/kinder.md",
+        "files/knowledge/oeffnungszeiten-sommer.md",
+        "files/knowledge/preise.md",
+        "files/knowledge/preise/kinder.md",
       ]);
-      const hours = strFromU8(entries["files/wissen/oeffnungszeiten-sommer.md"]);
+      const hours = strFromU8(entries["files/knowledge/oeffnungszeiten-sommer.md"]);
       expect(hours).toContain('title: "Öffnungszeiten: Sommer"');
       expect(hours).toContain("path: pages/oeffnungszeiten-sommer");
       expect(hours).toContain("Mo–Fr 9–18 Uhr.");
-      expect(strFromU8(entries["files/wissen/preise.md"]).length).toBeLessThan(pkg.KNOWLEDGE_PAGE_CHARS + 200);
+      expect(strFromU8(entries["files/knowledge/preise.md"]).length).toBeLessThan(pkg.KNOWLEDGE_PAGE_CHARS + 200);
     });
   });
 

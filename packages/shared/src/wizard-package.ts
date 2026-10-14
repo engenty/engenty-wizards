@@ -50,7 +50,7 @@ export const manifestSchema = z.object({
     .array(z.object({ id: z.string().max(31), name: z.string().max(60) }))
     .max(10)
     .default([]),
-  /** The project's pages under `files/wissen/`, when they were asked for: how many, and whether the cap cut some. */
+  /** The project's pages under `files/knowledge/`, when they were asked for: how many, and whether the cap cut some. */
   knowledge: z.object({ pages: z.number().int(), truncated: z.boolean() }).optional(),
 });
 

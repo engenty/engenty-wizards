@@ -22,7 +22,7 @@ import { createWizard, deleteWizard, draftIssues, ownedWizard, parseDraft } from
 /** A wizard as a file — the format is `@engenty-wizards/shared/wizard-package`'s. */
 
 /** Where the project's pages go in a package, as Markdown the standalone runner reads inline. */
-export const KNOWLEDGE_DIR = "wissen/";
+export const KNOWLEDGE_DIR = "knowledge/";
 /** How much of the project's knowledge a package takes along: enough pages, never the whole space. */
 export const KNOWLEDGE_MAX_CHARS = 2_000_000;
 /** What one page may hold in the package (the plugin hands a file to the model up to there). */
