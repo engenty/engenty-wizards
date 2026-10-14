@@ -121,17 +121,21 @@ describe("the ticket of the local one-time link", () => {
 });
 
 describe("the secret the command signs with", () => {
-  it("is APP_SECRET of the terminal or the install's .env, else the data folder's", () => {
+  it("is APP_SECRET of the install's .env, else the data folder's; never the terminal's", () => {
     const paths = layout(dir);
     expect(readSecret(paths, {})).toBeNull();
     expect(entryUrl({ url: "http://localhost:8891" }, paths, {})).toBe("http://localhost:8891/");
+    // The runtime the command starts never sees the terminal's APP_SECRET.
+    expect(readSecret(paths, { APP_SECRET: "from-terminal" })).toBeNull();
     mkdirSync(paths.data, { recursive: true });
     writeFileSync(join(paths.data, "secret"), "from-file\n");
     expect(readSecret(paths, {})).toBe("from-file");
+    expect(readSecret(paths, { APP_SECRET: "from-terminal" })).toBe("from-file");
     expect(entryUrl({ url: "http://localhost:8891" }, paths, {})).toMatch(/\/api\/local\/enter\?t=/);
     writeFileSync(paths.envFile, "APP_SECRET=from-env-file\n");
-    expect(readSecret(paths, {})).toBe("from-env-file");
-    expect(readSecret(paths, { APP_SECRET: "from-terminal" })).toBe("from-terminal");
+    expect(readSecret(paths, { APP_SECRET: "from-terminal" })).toBe("from-env-file");
+    writeFileSync(join(dir, ".env.local"), "APP_SECRET=from-env-local\n");
+    expect(readSecret(paths, {})).toBe("from-env-local");
   });
 });
 

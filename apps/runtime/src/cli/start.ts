@@ -23,18 +23,21 @@ export function settings(paths: Layout, env: NodeJS.ProcessEnv = process.env) {
     dataDir: value("DATA_DIR") ? resolve(paths.home, value("DATA_DIR")) : paths.data,
     port: Number(value("API_PORT")) || null,
     appUrl: value("APP_URL").replace(/\/$/, ""),
-    appSecret: value("APP_SECRET"),
   };
 }
 
 /**
- * The secret the runtime signs with, read the way it reads it (env.ts): APP_SECRET, else the one
- * it keeps in the data folder. Null before it made one.
+ * The secret the runtime this command starts signs with, read the way it reads it (env.ts): its
+ * APP_SECRET, else the one it keeps in the data folder; null before it made one. The runtime
+ * never sees the terminal's APP_SECRET (cli/environment.ts), only its folder's `.env.local` and
+ * `.env`, so the terminal's is left out here too: a ticket signed with it would be refused.
  */
 export function readSecret(paths: Layout, env: NodeJS.ProcessEnv = process.env): string | null {
-  const { appSecret, dataDir } = settings(paths, env);
-  if (appSecret) {
-    return appSecret;
+  const { fileEnv, dataDir } = settings(paths, env);
+  const given =
+    readEnvFile(join(paths.home, ".env.local")).APP_SECRET?.trim() || fileEnv.APP_SECRET?.trim();
+  if (given) {
+    return given;
   }
   try {
     return readFileSync(join(dataDir, "secret"), "utf8").trim() || null;
