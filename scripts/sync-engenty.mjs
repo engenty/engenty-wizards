@@ -107,6 +107,42 @@ const SETS = [
       "import-sources.ts",
     ],
   ],
+  [
+    "packages/ui-core/src/components/engenty",
+    "apps/web/src/engenty",
+    [
+      "accent-geometry.ts",
+      "accent-shaders.ts",
+      "coat-goggles.ts",
+      "colors.ts",
+      "engenty.tsx",
+      "fluffy-engenty.tsx",
+      "forms.ts",
+      "fur-palette.ts",
+      "fur-renderer.ts",
+      "fur-shader.ts",
+      "fur-stage.ts",
+      "goggle-geometry.ts",
+      "goggle-shaders.ts",
+      "goggles.tsx",
+      "head-turn.ts",
+      "jelly-defaults.ts",
+      "jelly-deformation.ts",
+      "jelly-drag.ts",
+      "jelly-motion.ts",
+      "jelly-shader.ts",
+      "logo.tsx",
+      "pointer.ts",
+      "strand-geometry.ts",
+      "strand-order.ts",
+      "strand-renderer.ts",
+      "strand-shaders.ts",
+      "use-engenty-gaze.ts",
+      "volume-geometry.ts",
+      "volume-mesh.ts",
+      "volume-shaders.ts",
+    ],
+  ],
 ];
 
 /** Where an `@engenty/*` package lives in this tree (a file, relative to the repo root). */
@@ -148,9 +184,9 @@ writeFileSync(
   join(root, "apps/runtime/src/engenty/README.md"),
   `# engenty framework code
 
-Files under \`apps/runtime/src/engenty\` and \`packages/shared/src/engenty\` are copies from the engenty monorepo
-(commit \`${commit}\`). They are not edited here: change them upstream, then run
-\`node scripts/sync-engenty.mjs\`. Only \`shims/\` is written for this product — it stands in for
+Files under \`apps/runtime/src/engenty\`, \`packages/shared/src/engenty\` and \`apps/web/src/engenty\`
+(its README aside) are copies from the engenty monorepo (commit \`${commit}\`). They are not
+edited here: change them upstream, then run \`node scripts/sync-engenty.mjs\`. Only \`shims/\` is written for this product — it stands in for
 the engenty packages the copies import.
 
 ${copied.map((c) => `- ${c}`).join("\n")}
