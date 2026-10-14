@@ -18,7 +18,7 @@ import {
   shellToolDescription,
 } from "../sandbox/index.js";
 import { snapshotFile } from "../services/files.js";
-import { storeFiles } from "../store/index.js";
+import { hasStoreFiles } from "../store/index.js";
 import { browserTools } from "./browser.js";
 import { connectorTools } from "./connector.js";
 import { mailTools } from "./mail.js";
@@ -189,7 +189,7 @@ export async function buildStepTools(
   const idle =
     isHarnessVendor(resolved.vendor) &&
     storeIdle(step, ctx.def.lists?.length ?? 0, uploads.length) &&
-    (await storeFiles(ctx.store)).length === 0;
+    !(await hasStoreFiles(ctx.store));
   if (!idle) {
     Object.assign(tools, storeTools(ctx, uploads, files));
   }

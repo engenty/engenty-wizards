@@ -240,6 +240,15 @@ export async function storeFiles(scope: StoreScope, folder?: string): Promise<St
   return rows.map(toFile);
 }
 
+/** Whether the wizard keeps any file for the holder: one row, not the whole list. */
+export async function hasStoreFiles(scope: StoreScope): Promise<boolean> {
+  const row = await db.query.storeFile.findFirst({
+    where: ownFiles(scope),
+    columns: { path: true },
+  });
+  return row !== undefined;
+}
+
 export async function readStoreFile(scope: StoreScope, rawPath: string) {
   const path = cleanPath(rawPath);
   const row = path
