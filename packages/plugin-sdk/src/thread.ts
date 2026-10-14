@@ -408,6 +408,11 @@ export class ThreadDoor {
   }
 
   private async menu(thread: Thread, offered: ThreadWizard[]): Promise<void> {
+    // Before a wizard is picked, the thread speaks the wizards' language where they share one.
+    const spoken = new Set(offered.map((w) => w.lang));
+    if (spoken.size === 1) {
+      thread.state.lang = offered[0].lang;
+    }
     const lang = thread.state.lang;
     if (!offered.length) {
       await this.send(thread, { kind: "text", text: say(lang, "nothing") });
