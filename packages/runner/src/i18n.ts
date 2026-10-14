@@ -1,3 +1,4 @@
+import { LOCALES } from "@engenty-wizards/shared/definition";
 import type { FieldProblem } from "@engenty-wizards/shared/field-checks";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
@@ -23,6 +24,19 @@ const de = {
   "field.unavailable": "Das ist hier gerade nicht verfügbar.",
   "field.fileMissing": "Die Datei wurde nicht gefunden – bitte noch einmal hochladen.",
   "field.connect": "Bitte zuerst verbinden.",
+  "calendar.open": "Kalender öffnen",
+  "calendar.format": "Eingabe als {pattern}",
+  "calendar.letters.day": "TT",
+  "calendar.letters.month": "MM",
+  "calendar.letters.year": "JJJJ",
+  "calendar.pickMonth": "Monat wählen",
+  "calendar.pickYear": "Jahr wählen",
+  "calendar.prev.days": "Vorheriger Monat",
+  "calendar.next.days": "Nächster Monat",
+  "calendar.prev.months": "Vorheriges Jahr",
+  "calendar.next.months": "Nächstes Jahr",
+  "calendar.prev.years": "Frühere Jahre",
+  "calendar.next.years": "Spätere Jahre",
   "slot.later": "Spätere Termine zeigen",
   "slot.none": "Gerade sind keine Termine frei.",
   "cards.open": "Details",
@@ -218,6 +232,19 @@ const en: Record<RunnerKey, string> = {
   "field.unavailable": "This is not available here right now.",
   "field.fileMissing": "The file was not found – please upload it again.",
   "field.connect": "Please connect first.",
+  "calendar.open": "Open calendar",
+  "calendar.format": "Type it as {pattern}",
+  "calendar.letters.day": "DD",
+  "calendar.letters.month": "MM",
+  "calendar.letters.year": "YYYY",
+  "calendar.pickMonth": "Choose month",
+  "calendar.pickYear": "Choose year",
+  "calendar.prev.days": "Previous month",
+  "calendar.next.days": "Next month",
+  "calendar.prev.months": "Previous year",
+  "calendar.next.months": "Next year",
+  "calendar.prev.years": "Earlier years",
+  "calendar.next.years": "Later years",
   "slot.later": "Show later times",
   "slot.none": "No times are free right now.",
   "cards.open": "Details",
@@ -450,7 +477,7 @@ export function fieldErrorText(issue: FieldIssue): string {
     Object.entries(issue.params ?? {}).map(([k, v]) => [
       k,
       typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)
-        ? new Date(`${v}T00:00:00`).toLocaleDateString(lang)
+        ? new Date(`${v}T00:00:00`).toLocaleDateString(LOCALES[lang])
         : v,
     ]),
   );

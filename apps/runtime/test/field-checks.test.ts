@@ -1,12 +1,14 @@
-import { describe, expect, it } from "vitest";
-import type { Field, PageStep } from "@engenty-wizards/shared/definition";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { type Field, type PageStep, parseWizard } from "@engenty-wizards/shared/definition";
 import {
   checkAnswer,
   checkDate,
+  dateBounds,
   fieldError,
   isUrl,
   normalizeUrl,
   parseNumber,
+  todayAnywhere,
 } from "@engenty-wizards/shared/field-checks";
 import { readPageInput } from "../src/engine/input";
 
@@ -130,5 +132,93 @@ describe("the runtime reads a page with the same checks", () => {
       ["day", "date"],
     ]);
     expect(bad.errors[0].message).toBe("Keine gültige URL");
+  });
+});
+
+describe("a date field's own bounds", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const birth = field("date", { id: "born", required: true, minDate: "1900-01-01", maxDate: "today" });
+  const booking = field("date", { id: "visit", minDate: "today", maxDate: "2026-12-31" });
+  const page: PageStep = { id: "start", type: "page", title: "Start", fields: [birth, booking] };
+
+  it("resolves today on the device's clock or, on a server, anywhere on earth", () => {
+    expect(dateBounds(birth, "2026-10-14")).toEqual({ min: "1900-01-01", max: "2026-10-14" });
+    expect(dateBounds(field("date"))).toEqual({});
+    // 2026-10-14 12:00 UTC: still the 14th at UTC−12, already the 15th at UTC+14.
+    expect(todayAnywhere(Date.UTC(2026, 9, 14, 12))).toEqual({
+      earliest: "2026-10-14",
+      latest: "2026-10-15",
+    });
+    expect(todayAnywhere(Date.UTC(2026, 9, 14, 1))).toEqual({
+      earliest: "2026-10-13",
+      latest: "2026-10-14",
+    });
+  });
+
+  it("holds an answer to the field's minDate and maxDate in the shared check", () => {
+    expect(checkAnswer(birth, "1899-12-31")).toEqual({ code: "dateMin", params: { min: "1900-01-01" } });
+    expect(checkAnswer(booking, "2027-01-01")).toEqual({ code: "dateMax", params: { max: "2026-12-31" } });
+    expect(checkAnswer(birth, "1985-04-03")).toBeNull();
+  });
+
+  it("refuses a day outside them in readPageInput, reading today generously", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 9, 14, 12)));
+    const ok = readPageInput(page, { born: "1985-04-03", visit: "2026-10-14" });
+    expect(ok.errors).toEqual([]);
+    expect(ok.values).toEqual({ born: "1985-04-03", visit: "2026-10-14" });
+    // East of the date line it may already be the 15th.
+    expect(readPageInput(page, { born: "2026-10-15" }).errors).toEqual([]);
+
+    const bad = readPageInput(page, { born: "2026-10-16", visit: "2026-10-13" });
+    expect(bad.errors.map((e) => [e.field, e.code, e.params])).toEqual([
+      ["born", "dateMax", { max: "2026-10-15" }],
+      ["visit", "dateMin", { min: "2026-10-14" }],
+    ]);
+    expect(bad.errors[1]?.message).toBe("Frühestens 2026-10-14");
+    expect(readPageInput(page, { born: "1899-12-31" }).errors[0]).toMatchObject({
+      field: "born",
+      code: "dateMin",
+      params: { min: "1900-01-01" },
+    });
+    expect(readPageInput(page, { visit: "2027-01-01" }).errors.map((e) => e.code)).toEqual([
+      "required",
+      "dateMax",
+    ]);
+  });
+});
+
+describe("a date field's options in a definition", () => {
+  const read = (extra: Partial<Field>, kind: Field["kind"] = "date") =>
+    parseWizard({
+      title: "W",
+      steps: [
+        { id: "p", type: "page", title: "P", fields: [field(kind, { id: "d", ...extra })] },
+        { id: "r", type: "result", title: "R", deliverables: [] },
+      ],
+    });
+
+  it("takes days, today, a start view and a start year", () => {
+    const parsed = read({ minDate: "1900-01-01", maxDate: "today", startView: "years", startYear: 1985 });
+    expect(parsed.ok).toBe(true);
+    expect(parsed.issues).toEqual([]);
+  });
+
+  it("turns down a day that is none, bounds the wrong way round and options on another kind", () => {
+    const messages = (extra: Partial<Field>, kind?: Field["kind"]) =>
+      read(extra, kind).issues.map((i) => i.message);
+    expect(messages({ minDate: "2026-02-30" })).toEqual([
+      'Field "d": minDate "2026-02-30" is not a day of the calendar.',
+    ]);
+    expect(messages({ minDate: "2026-10-02", maxDate: "2026-10-01" })).toEqual([
+      'Field "d": minDate is later than maxDate.',
+    ]);
+    expect(messages({ startYear: 1985 }, "text")).toEqual([
+      'Field "d": "startYear" belongs to a date field; kind is "text".',
+    ]);
+    expect(read({ minDate: "tomorrow" }).ok).toBe(false);
   });
 });

@@ -455,10 +455,13 @@ export function Dialog({
   wide,
   bare,
   height = "auto",
+  label,
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
+  /** What a screen reader calls the dialog. */
+  label?: string;
   children: ReactNode;
   /** `"page"`: room for a document. */
   wide?: boolean | "page";
@@ -508,6 +511,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
+      aria-label={label}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === ref.current) {

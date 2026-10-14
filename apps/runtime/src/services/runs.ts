@@ -8,6 +8,7 @@ import {
   slotText,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
+import { dateBounds, todayAnywhere } from "@engenty-wizards/shared/field-checks";
 import { and, count, desc, eq, gte, inArray, max, or, sql } from "drizzle-orm";
 import { canSpend, MICROS_PER_CREDIT } from "../credits/credits.js";
 import { db, schema } from "../db/client.js";
@@ -223,6 +224,12 @@ function deliverableFormats(run: RunRow, step: Step) {
   return listed ? listed.formats.filter((f) => possible.includes(f)) : [];
 }
 
+/** A date field's bounds as days, for an AI client to keep within; "today" as the runtime takes it. */
+function dateBoundsHint(field: Field): { earliest?: string; latest?: string } {
+  const { min, max } = dateBounds(field, todayAnywhere());
+  return { ...(min ? { earliest: min } : {}), ...(max ? { latest: max } : {}) };
+}
+
 /**
  * What a client needs besides the plain field: a slot's times as the person reads them, and the
  * one value of them to send back.
@@ -312,6 +319,8 @@ async function waitingFor(run: RunRow, current: Step | null, draft?: Record<stri
         columns: f.columns,
         ...slotHints(run, f, f.options),
         ...(f.multiple ? { multiple: true } : {}),
+        // A day is answered as YYYY-MM-DD, between these days where the field has bounds.
+        ...(f.kind === "date" ? { format: "YYYY-MM-DD", ...dateBoundsHint(f) } : {}),
         // A file, a recording or a signature comes from the person's device: the run page.
         inChat: FIELD_WAYS[f.kind] !== "device",
         // A field with a condition is asked only while it holds; one on another field of this

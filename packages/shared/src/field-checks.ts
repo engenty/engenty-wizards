@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
-import { type Field, isAudioValue, isLocationValue } from "./definition.js";
+import { type Field, isAudioValue, isDay, isLocationValue } from "./definition.js";
 
 /**
  * The checks of a page's answers, the same in the page's form, the chat and the runtime: what is
@@ -120,15 +120,37 @@ export interface DateBounds {
   max?: string;
 }
 
-const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** The day of a moment on this device's clock, YYYY-MM-DD. */
+export function localDay(at: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
 
-function isDay(s: string): boolean {
-  const m = DAY.exec(s);
-  if (!m) {
-    return false;
-  }
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  return d.toISOString().slice(0, 10) === s;
+/**
+ * "Today" where the person answering may be, as a server reads it without their clock: from the
+ * day that has begun last on earth (UTC−12) to the one that has begun first (UTC+14).
+ */
+export function todayAnywhere(now: number = Date.now()): { earliest: string; latest: string } {
+  const hour = 3_600_000;
+  return {
+    earliest: new Date(now - 12 * hour).toISOString().slice(0, 10),
+    latest: new Date(now + 14 * hour).toISOString().slice(0, 10),
+  };
+}
+
+/**
+ * A date field's bounds as days: "today" is the given day, or the device's. A server passes
+ * `todayAnywhere()`, so a person a day ahead of or behind it is not turned away.
+ */
+export function dateBounds(
+  field: Pick<Field, "minDate" | "maxDate">,
+  today: string | { earliest: string; latest: string } = localDay(),
+): DateBounds {
+  const [earliest, latest] =
+    typeof today === "string" ? [today, today] : [today.earliest, today.latest];
+  const min = field.minDate === "today" ? earliest : field.minDate;
+  const max = field.maxDate === "today" ? latest : field.maxDate;
+  return { ...(min ? { min } : {}), ...(max ? { max } : {}) };
 }
 
 /** A day as the date field gives it (YYYY-MM-DD), within its bounds when it has them. */
@@ -191,7 +213,8 @@ export function isBlank(field: Field, v: unknown): boolean {
 /**
  * What is wrong with one answer, or null: required, number, e-mail, link and date. Takes the
  * value as typed or as the runtime has read it. Choices, files and connections the runtime
- * checks on its own, against what only it knows.
+ * checks on its own, against what only it knows. A date is held to the field's `minDate` and
+ * `maxDate`, "today" read on this device's clock unless `date` gives the bounds as days.
  */
 export function checkAnswer(
   field: Field,
@@ -214,7 +237,7 @@ export function checkAnswer(
     case "url":
       return isUrl(String(value)) ? null : { code: "url" };
     case "date":
-      return checkDate(String(value), options.date);
+      return checkDate(String(value), options.date ?? dateBounds(field));
     default:
       return null;
   }

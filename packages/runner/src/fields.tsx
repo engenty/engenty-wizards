@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
+import { DateInput } from "./date";
 import { canUseMedia, isTouch } from "./device";
 import { api, runBase, withBase } from "./env.js";
 import { type FieldIssue, fieldErrorText, lang, t } from "./i18n.js";
@@ -861,17 +862,10 @@ export function FieldInput({
       );
       break;
     }
+    // Typed in the person's order, or picked in a calendar that jumps to a year and a month.
     case "date":
       grouped = false;
-      control = (
-        <Input
-          {...aria}
-          type="date"
-          value={str}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full sm:w-56"
-        />
-      );
+      control = <DateInput field={field} value={str} onChange={onChange} aria={aria} />;
       break;
     case "email":
       grouped = false;

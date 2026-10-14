@@ -627,11 +627,12 @@ type Way = "typed" | "tapped" | "control";
 
 /**
  * How a field is answered in the chat, from the shared `FIELD_WAYS`: typed into the composer,
- * tapped from its choices; the others bring their own control into the thread.
+ * tapped from its choices; the others bring their own control into the thread. A date brings
+ * the page's: typed there in the person's order, or picked in its calendar by year and month.
  */
 function wayOf(field: Field): Way {
   const way = FIELD_WAYS[field.kind];
-  if (way === "typed" && !field.scan) {
+  if (way === "typed" && !field.scan && field.kind !== "date") {
     return "typed";
   }
   return way === "tapped" ? "tapped" : "control";
@@ -1107,8 +1108,6 @@ function inputPropsOf(field: Field): React.InputHTMLAttributes<HTMLInputElement>
         autoCorrect: "off",
         spellCheck: false,
       };
-    case "date":
-      return { type: "date" };
     default:
       return textHints(field);
   }

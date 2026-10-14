@@ -252,6 +252,27 @@ export interface CardOption {
   link?: string;
 }
 
+/** What a date field's calendar shows: the days of a month, the months of a year, or years. */
+export const DATE_VIEWS = ["days", "months", "years"] as const;
+export type DateView = (typeof DATE_VIEWS)[number];
+
+const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A real calendar day written YYYY-MM-DD: 2026-02-30 is none. */
+export function isDay(s: string): boolean {
+  const m = DAY.exec(s);
+  if (!m) {
+    return false;
+  }
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === s;
+}
+
+/** A bound of a date field: a day, or "today", the day of the person answering. */
+const dateBoundSchema = z
+  .string()
+  .regex(/^(\d{4}-\d{2}-\d{2}|today)$/, 'a day as "YYYY-MM-DD", or "today"');
+
 export const fieldSchema = z.object({
   id,
   label: z.string().min(1),
@@ -286,6 +307,19 @@ export const fieldSchema = z.object({
   listen: z.boolean().optional(),
   /** text: also fill it by scanning a QR code or barcode with the camera. */
   scan: z.boolean().optional(),
+  /**
+   * date: the earliest and the latest day it takes, both included: a day ("1900-01-01") or
+   * "today", the day of the person answering. Days outside them cannot be picked.
+   */
+  minDate: dateBoundSchema.optional(),
+  maxDate: dateBoundSchema.optional(),
+  /**
+   * date: what its calendar opens on while the field is empty — the days of a month (the
+   * default), the months of a year, or a page of years, which suits a birth date.
+   */
+  startView: z.enum(DATE_VIEWS).optional(),
+  /** date: the year its calendar opens in while the field is empty, like 1985 for a birth date. */
+  startYear: z.number().int().min(1000).max(9999).optional(),
   /** connection: id of the wizard connection the person connects here. */
   connection: z.string().optional(),
   /** list: id of the wizard list shown here for the person to check and correct. */
@@ -902,7 +936,7 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           if ((field.kind !== "image" && field.kind !== "file") || !field.multiple) {
             issues.push({
               stepId: step.id,
-              message: `Field "${field.id}": "min" and "max" count the files of an image or file field with "multiple".`,
+              message: `Field "${field.id}": "min" and "max" count the files of an image or file field with "multiple".${field.kind === "date" ? ' A date field takes "minDate" and "maxDate".' : ""}`,
             });
           } else if (field.min !== undefined && field.max !== undefined && field.min > field.max) {
             issues.push({
@@ -915,6 +949,36 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
           issues.push({
             stepId: step.id,
             message: `Field "${field.id}": "scan" fills a text field; kind is "${field.kind}".`,
+          });
+        }
+        const dateOptions = (["minDate", "maxDate", "startView", "startYear"] as const).filter(
+          (key) => field[key] !== undefined,
+        );
+        if (dateOptions.length && field.kind !== "date") {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": "${dateOptions[0]}" belongs to a date field; kind is "${field.kind}".`,
+          });
+        }
+        for (const key of ["minDate", "maxDate"] as const) {
+          const bound = field[key];
+          if (bound !== undefined && bound !== "today" && !isDay(bound)) {
+            issues.push({
+              stepId: step.id,
+              message: `Field "${field.id}": ${key} "${bound}" is not a day of the calendar.`,
+            });
+          }
+        }
+        if (
+          field.minDate &&
+          field.maxDate &&
+          isDay(field.minDate) &&
+          isDay(field.maxDate) &&
+          field.minDate > field.maxDate
+        ) {
+          issues.push({
+            stepId: step.id,
+            message: `Field "${field.id}": minDate is later than maxDate.`,
           });
         }
         if (field.listen && field.kind !== "file") {

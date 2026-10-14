@@ -93,6 +93,12 @@ type Field = {
   listen?: boolean              // file: a recording (video/audio) is listened to before the next step: {{field.speech}} gives what is
                                 //   said piece by piece between pauses, with exact times "[12.40–15.10] text" — to cut slips and pauses
   scan?: boolean                // text: a "scan" button fills it from a QR code or barcode (serial number, ticket, article number)
+  minDate?: "YYYY-MM-DD"|"today", maxDate?: "YYYY-MM-DD"|"today"
+                                // date: the earliest / latest day it takes, both included; "today" is the person's day.
+                                //   Checked on the page and by the server. A birth date: maxDate "today"; a booking: minDate "today"
+  startView?: "days"|"months"|"years", startYear?: number
+                                // date: what its calendar opens on while empty (default "days"). A birth date:
+                                //   startView "years", startYear 1985. The person can always type the day instead
   connection?: connectionId     // kind "connection": the page shows "connect your account"; with required the person must connect
   list?: listId                 // kind "list": the page shows that stored list for the person to check, correct and extend
   prefill?: "steps.<id>.<key>"  // what the field starts with, from an earlier step. An "items" field takes a table whose

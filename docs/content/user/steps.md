@@ -1,7 +1,7 @@
 ---
 title: Steps
 description: What a wizard is made of — pages, AI steps, generated media, widgets, reviews and the result.
-version: 0.3.2
+version: 0.4.4
 ---
 
 A wizard runs its steps from top to bottom. The last step is always the result.
@@ -36,6 +36,13 @@ A page has a title, up to five fields and a button. Each field has a kind:
 | List | checks, corrects and extends a list the wizard keeps for them |
 
 A text field can have a "Scan" button that fills it from a QR code or barcode.
+
+A date is typed in the person's own order (03.04.1985 in German, 03/04/1985 in English) or picked
+in a calendar that goes straight to a year and a month, so a birth date takes three taps. A date
+field can have an earliest and a latest day, each a fixed day or "today" (a birth date: at the
+latest today; a booking: at the earliest today); days outside them cannot be picked, and the
+wizard turns them down when they are typed. It can also say what its calendar opens on: the days
+of a month, the months of a year or a page of years, and in which year, such as 1985.
 
 A field can start with a value an earlier step proposed. A line-items field, for example, shows
 the positions an AI step looked up, for the person to correct.

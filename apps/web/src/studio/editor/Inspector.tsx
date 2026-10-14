@@ -4,6 +4,7 @@ import {
   CONDITION_OPS,
   type Condition,
   conditionsOf,
+  DATE_VIEWS,
   ENGENTY_KINDS,
   FIELD_KINDS,
   type Field,
@@ -45,6 +46,7 @@ import { useStudioPlugins } from "../../plugins/host";
 import {
   Button,
   cn,
+  DatePicker,
   IconButton,
   Input,
   Label,
@@ -112,7 +114,95 @@ function withKind(field: Field, kind: Field["kind"]): Field {
     camera: kind === "file" ? field.camera : undefined,
     video: kind === "file" ? field.video : undefined,
     scan: kind === "text" ? field.scan : undefined,
+    minDate: kind === "date" ? field.minDate : undefined,
+    maxDate: kind === "date" ? field.maxDate : undefined,
+    startView: kind === "date" ? field.startView : undefined,
+    startYear: kind === "date" ? field.startYear : undefined,
   };
+}
+
+/** A year of four digits; the field keeps what is typed until it is one. */
+function YearInput({
+  value,
+  onChange,
+}: {
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  const [text, setText] = useState(value === undefined ? "" : String(value));
+  useEffect(() => {
+    // A year being typed (198) is left alone; a change from elsewhere is shown.
+    setText((prev) =>
+      value === undefined
+        ? prev.length === 4
+          ? ""
+          : prev
+        : Number(prev) === value
+          ? prev
+          : String(value),
+    );
+  }, [value]);
+  return (
+    <Input
+      inputMode="numeric"
+      aria-label={t("editor.date.year")}
+      placeholder={t("editor.date.yearHint")}
+      value={text}
+      onChange={(e) => {
+        const typed = e.target.value.replace(/\D/g, "").slice(0, 4);
+        setText(typed);
+        onChange(typed.length === 4 && Number(typed) >= 1000 ? Number(typed) : undefined);
+      }}
+      className="h-8 w-24 text-right"
+    />
+  );
+}
+
+/** A date field's earliest and latest day: none, the day of the person answering, or a day. */
+function DateBound({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (v: string | undefined) => void;
+  min?: string;
+  max?: string;
+}) {
+  const kind = value === undefined ? "" : value === "today" ? "today" : "day";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[0.8125rem] text-ink-2">{label}</span>
+      <div className="flex gap-1.5">
+        <Select
+          className="w-32 shrink-0"
+          value={kind}
+          onChange={(v) =>
+            onChange(
+              v === "today" ? "today" : v === "day" ? (min ?? max ?? "2000-01-01") : undefined,
+            )
+          }
+          options={[
+            { value: "", label: t("editor.date.none") },
+            { value: "today", label: t("editor.date.today") },
+            { value: "day", label: t("editor.date.day") },
+          ]}
+        />
+        {kind === "day" ? (
+          <DatePicker
+            className="flex-1"
+            value={value ?? ""}
+            min={min}
+            max={max}
+            onChange={(v) => onChange(v || undefined)}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 /** A wizard that is shown here and changed elsewhere: its settings are there to read. */
@@ -464,6 +554,43 @@ function FieldEditor({
                 onChange={(v) => onChange({ ...field, scan: v || undefined })}
               />
             </div>
+          ) : null}
+          {field.kind === "date" ? (
+            <>
+              <DateBound
+                label={t("editor.date.min")}
+                value={field.minDate}
+                max={field.maxDate && field.maxDate !== "today" ? field.maxDate : undefined}
+                onChange={(minDate) => onChange({ ...field, minDate })}
+              />
+              <DateBound
+                label={t("editor.date.max")}
+                value={field.maxDate}
+                min={field.minDate && field.minDate !== "today" ? field.minDate : undefined}
+                onChange={(maxDate) => onChange({ ...field, maxDate })}
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[0.8125rem] text-ink-2">{t("editor.date.view")}</span>
+                <Select
+                  className="w-40"
+                  value={field.startView ?? "days"}
+                  onChange={(v) =>
+                    onChange({
+                      ...field,
+                      startView: v === "days" ? undefined : (v as Field["startView"]),
+                    })
+                  }
+                  options={DATE_VIEWS.map((v) => ({ value: v, label: t(`editor.date.view.${v}`) }))}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[0.8125rem] text-ink-2">{t("editor.date.year")}</span>
+                <YearInput
+                  value={field.startYear}
+                  onChange={(startYear) => onChange({ ...field, startYear })}
+                />
+              </div>
+            </>
           ) : null}
           {["text", "textarea", "number", "email", "url", "location"].includes(field.kind) ? (
             <Input

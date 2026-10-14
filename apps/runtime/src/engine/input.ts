@@ -12,11 +12,13 @@ import {
 } from "@engenty-wizards/shared/definition";
 import {
   checkAnswer,
+  dateBounds,
   type FieldError,
   fieldError,
   isBlank,
   normalizeUrl,
   parseNumber,
+  todayAnywhere,
 } from "@engenty-wizards/shared/field-checks";
 
 /** A refused answer: the field, a code the client words, and a German text for older clients. */
@@ -174,6 +176,7 @@ export function readPageInput(
   const fields = step.fields
     .filter((f) => !isDecidedField(f) || context.decided?.includes(f.id))
     .map((f) => (context.options?.[f.id]?.length ? { ...f, options: context.options[f.id] } : f));
+  const today = todayAnywhere();
   const typed = Object.fromEntries(fields.map((f) => [f.id, coerce(f, input[f.id])]));
   for (const field of shownFields(fields, context.known ?? {}, typed)) {
     const v = typed[field.id];
@@ -181,7 +184,8 @@ export function readPageInput(
       continue;
     }
     // Required, number, e-mail, link and date: the same checks the page's form and the chat make.
-    const problem = checkAnswer(field, v);
+    // A date's "today" is the person's, whose clock may be a day ahead of or behind this one.
+    const problem = checkAnswer(field, v, { date: dateBounds(field, today) });
     if (problem) {
       errors.push(fieldError(field.id, problem));
       continue;
