@@ -1,7 +1,97 @@
 [
   {
+    "version": "v0.4.5",
+    "timestamp": 1791977851,
+    "commits": [
+      {
+        "id": "7a8ccbb",
+        "message": "the authoring guide says when a step goes without the store's file tools, and the check for kept files reads one row – guide.ts no longer promises files_list, read_document and scan_documents to every agent step (an installed client gets them only where there is something to read), and buildStepTools asks hasStoreFiles instead of loading every kept file",
+        "group": "Fixed",
+        "scope": "harness",
+        "breaking": false
+      },
+      {
+        "id": "ed98f4a",
+        "message": "a tool-less step on an installed client answers without the MCP bridge – a step that declares no tools or connections, got no uploads and whose wizard keeps no lists and no files no longer gets the store's file tools (files_list, read_document, scan_documents), so without other tools (Wissen, a workspace file) the client starts no bridge for the call; harness.test.ts covers both",
+        "group": "Performance",
+        "scope": "harness",
+        "breaking": false
+      },
+      {
+        "id": "35c437e",
+        "message": "a list keeps its rows in the order they came – a new row is stamped after every row the list holds, so two saves in one millisecond no longer tie and swap places by their random ids (a shared list across saves, a person's list even within one save); the flaky \"a shared list\" test met exactly that (#12)",
+        "group": "Fixed",
+        "scope": "store",
+        "breaking": false
+      },
+      {
+        "id": "aa6352b",
+        "message": "keep the picked language with the person and share it with the account pages (#5)",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "92249a4",
+        "message": "English is the base language everywhere; the studio follows the picked language, not the browser's (#4)",
+        "group": "Added",
+        "scope": "i18n",
+        "breaking": false
+      },
+      {
+        "id": "849831d",
+        "message": "the space sidebar's state stands in a module of its own (side-menu.ts), so a plugin page that imports MenuPage no longer pulls the studio into its typecheck; the wizard menu imports base relatively; the cloud test expects a lone runtime's first space to be \"Local Space\"",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "a779c74",
+        "message": "one menu at the left – a page with a menu of its own (the space's areas, the settings, a plugin page through the new MenuPage) draws it into the sidebar while that is open, else at its own left; the top bar runs across the sidebar and the page with the toggle, the space's name and the trail, open or closed; the space menu opens fixed under the name, so the sidebar no longer cuts it off, and its actions are a line glyph and a word",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "f9a74a9",
+        "message": "the space sidebar – a toggle left of the space's name opens it (animated, closed below 1024 px, the toggle never moves); it holds Wizards, New wizard and the space's parts under SPACE, and in an area of the space page that area's own menu instead, so one menu stands at the left; the space's name opens the space menu (the spaces, Wizards in space, Add wizard, Edit space name in a dialog) with a computer or cloud icon after it; the area menu's top level is \"Space\" with a way back to the wizards; the list is titled \"Wizards in <space>\"; the breadcrumb starts with a slash; a wizard has a ⋯ menu on its card and in the editor (Duplicate, Export, Delete behind a confirm dialog, admins only); the assistant is one card – the open chat or the last turn above the bar, the handle always on top, Goose perched once on top of it, 600 px wide, a taller input",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "fbb7b45",
+        "message": "the studio has no footer – version and changelog stay in the About dialog behind the mark – and Goose perches on top of the assistant's bar only while it is in use (focused, open, working or live), rising in animated, instead of standing beside it",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "fa8ec67",
+        "message": "the space chooser has no \"Add space\" row at the plan's limit, the chevron shows only where there is something to switch to or add, and the menu opens under the chevron",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "2835e00",
+        "message": "a new wizard starts as a step-by-step wizard only, with a + beside the channel button and \"How should it run?\" as the question, the hint stands below the input, dark is the default theme (System stays a pick), the top bar has no wordmark, the space name is plain text and only its chevron opens the chooser, and a local install's first space is called \"Local Space\"",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "70de829",
+        "message": "the sign-in page gets the logo, the theme and language switches and a footer with the version; the headline and the sub line are the new wish text in both languages, the hint is shorter and points to wizards open --print",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.4.4",
-    "timestamp": 1791958252,
+    "timestamp": 1791958258,
     "commits": [
       {
         "id": "5fb73c6",
