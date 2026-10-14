@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.4",
+    "timestamp": 1792013697,
+    "commits": [
+      {
+        "id": "a317c97",
+        "message": "the editor on a phone – the pane is a sheet over the whole room or folded, and the row under the header has \"Ablauf\" (folds it to the diagram and back) with Test and Share as icons; the tab Chat is Assistent, the Steps tab has the chat's composer too (on every screen), a swipe left or right goes to the next or the previous step, the tab in effect scrolls into view, the zoom bar is gone on a phone, and the wizard's menu has vertical dots at the very right. The home page drops the offer to install on one's own computer",
+        "group": "Added",
+        "scope": "editor",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.3",
-    "timestamp": 1792013484,
+    "timestamp": 1792013490,
     "commits": [
       {
         "id": "ce3ee90",
