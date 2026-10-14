@@ -114,6 +114,15 @@ export function listAsMarkdown(def: ListDef, rows: ListRow[], limit = 200): stri
   return [head, ...body, ...more].join("\n");
 }
 
+/**
+ * When the first row saved now is stamped, in milliseconds: after every row the list already
+ * holds, so a list reads in the order its rows came — also when two saves fall in one
+ * millisecond. The rows of one save follow it a millisecond apart.
+ */
+export function firstRowAt(existing: { createdAt: Date }[]): number {
+  return existing.reduce((at, row) => Math.max(at, row.createdAt.getTime() + 1), Date.now());
+}
+
 /** The key a row is matched on: trimmed and lower-cased, so "Notion " and "notion" are one row. */
 export function rowKey(def: ListDef, cells: Record<string, unknown>): string | null {
   if (!def.key) {
