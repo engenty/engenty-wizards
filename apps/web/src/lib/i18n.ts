@@ -831,6 +831,10 @@ const de = {
   "share.runs": "Durchläufe",
   "share.newLink": "Neuer Link",
   "share.rotated": "Neuer Link erzeugt",
+  "notFound.title": "Diese Seite gibt es nicht",
+  "notFound.text":
+    "Unter {path} gibt es im Studio nichts. Vielleicht ist die Adresse vertippt oder veraltet.",
+  "notFound.home": "Zur Startseite",
   "share.link": "Link",
   "share.copyFailed": "Der Link ließ sich nicht kopieren. Hier kannst du ihn selbst kopieren:",
   "share.copy": "Kopieren",
@@ -2612,6 +2616,10 @@ const en: Record<Key, string> = {
   "share.runs": "runs",
   "share.newLink": "New link",
   "share.rotated": "New link created",
+  "notFound.title": "This page doesn't exist",
+  "notFound.text":
+    "There is nothing in the studio at {path}. The address may be mistyped or out of date.",
+  "notFound.home": "Go to the home page",
   "share.link": "Link",
   "share.copyFailed": "Couldn't copy the link. You can copy it here:",
   "share.copy": "Copy",

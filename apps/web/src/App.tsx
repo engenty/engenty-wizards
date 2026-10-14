@@ -1,13 +1,14 @@
 import { lazy, type ReactNode, Suspense, useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 import { Mascot } from "./brand";
 import { STUDIO } from "./lib/base";
-import { useLang } from "./lib/i18n";
+import { t, useLang } from "./lib/i18n";
 import { useMe } from "./lib/session";
 import { PluginFrame, startStudioPlugins, useStudioPlugins } from "./plugins/host";
 import { AppFrame } from "./studio/AppFrame";
 import { AssistantProvider } from "./studio/assistant/chat";
 import { SignInPage } from "./studio/SignInPage";
+import { Button } from "./ui";
 
 // The public runner and the studio are separate bundles: a visitor never downloads the editor.
 const PublicRunner = lazy(() =>
@@ -122,7 +123,22 @@ function ToStudio() {
 /** An address the studio does not know: a plugin's page that is still loading, or nothing. */
 function Unknown() {
   const plugins = useStudioPlugins();
-  return plugins.status === "ready" ? <Navigate to="/" replace /> : <Splash />;
+  const location = useLocation();
+  const navigate = useNavigate();
+  if (plugins.status !== "ready") {
+    return <Splash />;
+  }
+  // Said, not swallowed: a mistyped or old address finds out it leads nowhere.
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
+      <Mascot kind="round" size={56} />
+      <h1 className="font-display font-semibold text-xl">{t("notFound.title")}</h1>
+      <p className="max-w-md text-[0.875rem] text-ink-3">
+        {t("notFound.text", { path: location.pathname })}
+      </p>
+      <Button onClick={() => navigate("/", { replace: true })}>{t("notFound.home")}</Button>
+    </main>
+  );
 }
 
 /** The studio, below `/studio`: its addresses are written as if it stood at the root. */
