@@ -12,6 +12,7 @@ import {
   type PageStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
+import { readNumber } from "@engenty-wizards/shared/numbers";
 import type { Said } from "@engenty-wizards/shared/run";
 import { note, saidText } from "@engenty-wizards/shared/run";
 
@@ -35,11 +36,10 @@ function coerce(field: Field, raw: unknown): unknown {
   }
   switch (field.kind) {
     case "number": {
-      if (raw === "") {
+      if (String(raw).trim() === "") {
         return undefined;
       }
-      const n = Number(String(raw).replace(",", "."));
-      return Number.isFinite(n) ? n : Number.NaN;
+      return readNumber(raw) ?? Number.NaN;
     }
     case "toggle":
       return raw === true || raw === "true" || raw === "on";
@@ -86,8 +86,7 @@ function coerce(field: Field, raw: unknown): unknown {
               if (c.kind === "text") {
                 return [c.id, String(v ?? "").slice(0, 2000)];
               }
-              const n = Number(String(v ?? "").replace(",", "."));
-              return [c.id, Number.isFinite(n) ? n : 0];
+              return [c.id, readNumber(v) ?? 0];
             }),
           ),
         )

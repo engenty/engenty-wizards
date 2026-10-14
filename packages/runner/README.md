@@ -21,5 +21,5 @@ React external, and `runner.css` — the look of a wizard's page, every rule sco
 `.engenty-runner`, for a host without Tailwind.
 
 MIT, the modules of `@engenty-wizards/shared` it bundles included: the wizard format
-(definition, fit, run, shape, store, surface and the data-tables columns) is `FSL-1.1-MIT OR MIT`
+(definition, fit, numbers, run, shape, store, surface and the data-tables columns) is `FSL-1.1-MIT OR MIT`
 (packages/shared/LICENSE-MIT). The rest of engenty wizards is FSL-1.1-MIT.

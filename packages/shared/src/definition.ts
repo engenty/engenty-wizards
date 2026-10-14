@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 import { z } from "zod";
 import { tableColumnsSchema } from "./engenty/data-tables/index.js";
+import { readNumber } from "./numbers.js";
 import { type ObjectShape, outputShapeSchema, shapeOfFields } from "./shape.js";
 import { CONNECTION_KINDS } from "./store.js";
 import { type SurfaceComponent, surfaceComponentsSchema, validateSurface } from "./surface.js";
@@ -1832,18 +1833,6 @@ export function conditionsOf(when: When | undefined): Condition[] {
   return when === undefined ? [] : Array.isArray(when) ? when : [when];
 }
 
-/** A typed number as a number: "89,90" from a German number pad counts as 89.9. */
-function numberOf(v: unknown): number | null {
-  if (typeof v === "number") {
-    return Number.isFinite(v) ? v : null;
-  }
-  if (typeof v !== "string" || !v.trim()) {
-    return null;
-  }
-  const n = Number(v.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
-
 export function conditionMatches(c: Condition, values: Record<string, unknown>): boolean {
   const v = values[c.field];
   switch (c.op) {
@@ -1859,8 +1848,8 @@ export function conditionMatches(c: Condition, values: Record<string, unknown>):
       return Array.isArray(c.value) && c.value.map(String).includes(String(v));
     case "gt":
     case "lt": {
-      const a = numberOf(v);
-      const b = numberOf(c.value);
+      const a = readNumber(v);
+      const b = readNumber(c.value);
       return a !== null && b !== null && (c.op === "gt" ? a > b : a < b);
     }
     case "contains":
@@ -2147,8 +2136,8 @@ export function itemsTotals(
   let vatRate = field.vat?.rate ?? 0;
   if (field.vat?.field) {
     const raw = values[field.vat.field];
-    const parsed = Number.parseFloat(String(raw ?? "").replace(",", "."));
-    if (Number.isFinite(parsed)) {
+    const parsed = readNumber(raw, { units: true });
+    if (parsed !== null) {
       vatRate = parsed;
     }
   }
@@ -2165,8 +2154,7 @@ export function itemsTotals(
 
 /** A typed amount as a number: a phone's number pad in German gives "89,90". */
 function amountOf(v: unknown): number {
-  const n = typeof v === "string" ? Number(v.replace(/\s/g, "").replace(",", ".")) : Number(v);
-  return Number.isFinite(n) ? n : 0;
+  return readNumber(v) ?? 0;
 }
 
 function round2(n: number): number {

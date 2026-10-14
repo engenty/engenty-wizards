@@ -1,3 +1,4 @@
+import { readNumber } from "@engenty-wizards/shared/numbers";
 import type { Surface, SurfaceComponent } from "@engenty-wizards/shared/surface";
 import { bound } from "@engenty-wizards/shared/surface";
 import { Check, ChevronRight, Clock, Lightbulb, Share2 } from "lucide-react";
@@ -36,10 +37,7 @@ const text = (v: unknown): string =>
         ? JSON.stringify(v)
         : String(v);
 
-const num = (v: unknown): number => {
-  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-};
+const num = (v: unknown): number => readNumber(v) ?? 0;
 
 /** A picture: an asset of the run by id, or an address. */
 function src(v: unknown, assetUrl: (id: string) => string): string | null {

@@ -26,6 +26,7 @@ import {
   type ReviewStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
+import { readNumber } from "@engenty-wizards/shared/numbers";
 import type { RunEvent, RunNoteCode, RunView } from "@engenty-wizards/shared/run";
 import {
   ArrowUp,
@@ -653,7 +654,7 @@ function problem(field: Field, v: unknown): string | null {
       return t("chat.badUrl");
     }
   }
-  if (field.kind === "number" && !Number.isFinite(Number(s.replace(",", ".")))) {
+  if (field.kind === "number" && readNumber(s) === null) {
     return t("chat.badNumber");
   }
   if (Array.isArray(v) && field.multiple && field.min && v.length < field.min) {
