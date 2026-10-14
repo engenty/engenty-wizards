@@ -433,7 +433,7 @@ function ZoomBar() {
   const btn =
     "inline-flex size-8 items-center justify-center rounded-full text-ink-3 hover:bg-accent hover:text-ink";
   return (
-    <div className="absolute bottom-4 left-4 z-10 flex items-center gap-0.5 rounded-full bg-card p-1 shadow-soft ring-1 ring-border-soft">
+    <div className="absolute bottom-4 left-4 z-10 flex items-center gap-0.5 rounded-full bg-card p-1 shadow-soft ring-1 ring-border-soft max-sm:hidden">
       <button
         type="button"
         className={btn}

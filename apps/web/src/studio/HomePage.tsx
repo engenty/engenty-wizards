@@ -9,7 +9,6 @@ import {
   Inbox,
   Laptop,
   type LucideIcon,
-  Mail,
   PencilLine,
   Plug,
   Plus,
@@ -447,72 +446,6 @@ function FromLocal() {
   );
 }
 
-/**
- * The cloud studio's offer of the second way: the same account on the person's own computer,
- * thinking with the subscriptions there. The command, and the Manage-App's mail with the steps.
- */
-function OnYourComputer({ me }: { me: Me }) {
-  const [copied, setCopied] = useState(false);
-  const mail = useMutation({
-    mutationFn: () => api.post("/api/studio/install-mail", { lang }),
-  });
-  return (
-    <section
-      className="mt-10 grid gap-6 rounded-2xl px-6 py-6 text-white sm:px-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
-      style={{ background: "oklch(50% 0.2 262)" }}
-    >
-      <div className="flex min-w-0 flex-col gap-2.5">
-        <p className="flex items-center gap-2 font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.12em]">
-          <Laptop className="size-3.5" /> {t("home.computer")}
-        </p>
-        <h2 className="font-display font-semibold text-[1.375rem] leading-tight tracking-tight">
-          {t("home.computerTitle")}
-        </h2>
-        <p className="text-[0.875rem] text-white/90 leading-relaxed">{t("home.computerText")}</p>
-        <div className="mt-1 flex max-w-full items-center gap-2 self-start rounded-lg bg-black/25 py-1.5 pr-1.5 pl-3">
-          <code className="min-w-0 select-all overflow-x-auto whitespace-nowrap font-mono text-[0.8125rem]">
-            {INSTALL}
-          </code>
-          <button
-            type="button"
-            aria-label={t("share.copy")}
-            onClick={() => {
-              void navigator.clipboard.writeText(INSTALL);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-            className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white/15 transition hover:bg-white/25"
-          >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-col gap-2.5 lg:w-56">
-        <button
-          type="button"
-          disabled={mail.isPending || mail.isSuccess}
-          onClick={() => mail.mutate()}
-          className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-5 font-semibold text-[0.9375rem] transition hover:bg-white/90 disabled:cursor-default"
-          style={{ color: "oklch(32% 0.15 262)" }}
-        >
-          <Mail className="size-4" />
-          {mail.isSuccess
-            ? t("home.computerMailed", { email: me.user.email })
-            : t("home.computerMail")}
-        </button>
-        <a
-          href="https://engenty.ai/docs/user/install"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/50 px-5 font-semibold text-[0.9375rem] transition hover:bg-white/10"
-        >
-          {t("home.computerDocs")} <ArrowUpRight className="size-4" />
-        </a>
-      </div>
-    </section>
-  );
-}
-
 export function HomePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -608,7 +541,6 @@ export function HomePage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {me ? shown.map((w) => <WizardCard key={w.id} w={w} me={me} runners={runners} />) : null}
       </div>
-      {me?.mode === "managed" && canCreate && !q ? <OnYourComputer me={me} /> : null}
       {beyond ? (
         <>
           {canCreate ? (

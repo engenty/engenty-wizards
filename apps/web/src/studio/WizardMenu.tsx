@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Copy, Download, MoreHorizontal, Trash2 } from "lucide-react";
+import { Copy, Download, MoreVertical, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
@@ -10,7 +10,7 @@ import { Button, cn, Dialog } from "../ui";
 import { useDismiss } from "./AppFrame";
 
 /**
- * A wizard's ⋯ menu, in the editor's header and on its card: a copy of it, the package to keep,
+ * A wizard's ⋮ menu, in the editor's header and on its card: a copy of it, the package to keep,
  * and – for whoever manages the team – deleting it, behind a dialog that says what goes with it.
  */
 export function WizardMenu({
@@ -63,7 +63,7 @@ export function WizardMenu({
           open && "bg-accent text-ink",
         )}
       >
-        <MoreHorizontal className="size-4" />
+        <MoreVertical className="size-4" />
       </button>
       {open ? (
         <div

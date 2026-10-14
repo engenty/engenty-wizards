@@ -1,7 +1,7 @@
 import { type ModelClass, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Lock, Play, Share2, Workflow } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Lock, Play, Share2, Workflow } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "../lib/api";
@@ -114,8 +114,8 @@ const SHEET_KEY = "wizards.editor.sheet";
 const SHEET_DEFAULT = 100;
 /** The folded sheet: its handle and tabs. */
 const SHEET_MIN = 76;
-/** A drag this close to the top takes the whole room. */
-const SHEET_SNAP = 90;
+/** A drag let go above this percent opens the sheet to the whole room, below it folds. */
+const SHEET_SNAP = 50;
 /** Pixels a touch moves before it drags instead of tapping. */
 const SHEET_SLOP = 6;
 
@@ -123,7 +123,8 @@ function storedSheet(): number {
   try {
     const raw = localStorage.getItem(SHEET_KEY);
     const n = raw === null ? Number.NaN : Number(raw);
-    return Number.isFinite(n) ? Math.min(Math.max(n, 0), 100) : SHEET_DEFAULT;
+    // Open is the whole room; only folded is kept as it was.
+    return Number.isFinite(n) && n === 0 ? 0 : SHEET_DEFAULT;
   } catch {
     return SHEET_DEFAULT;
   }
@@ -138,14 +139,9 @@ function useSheetHeight() {
   const [percent, setPercent] = useState(storedSheet);
   const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLElement>(null);
-  /** The last open height, for unfolding. */
-  const opened = useRef(percent || SHEET_DEFAULT);
-  /** Sets the height; `settled` false while a drag passes through heights on its way. */
-  const set = useCallback((next: number, settled = true) => {
+  /** Sets the height, remembered in this browser. */
+  const set = useCallback((next: number) => {
     const p = Math.round(Math.min(Math.max(next, 0), 100) * 10) / 10;
-    if (p > 0 && settled) {
-      opened.current = p;
-    }
     setPercent(p);
     try {
       localStorage.setItem(SHEET_KEY, String(p));
@@ -154,10 +150,10 @@ function useSheetHeight() {
     }
   }, []);
   const folded = percent === 0;
-  const toggle = () => set(folded ? opened.current : 0);
+  const toggle = () => set(folded ? SHEET_DEFAULT : 0);
   const unfold = () => {
     if (folded) {
-      set(opened.current);
+      set(SHEET_DEFAULT);
     }
   };
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -181,9 +177,9 @@ function useSheetHeight() {
         setDragging(true);
       }
       const h = Math.min(startH + startY - ev.clientY, roomH);
-      const p = (h / roomH) * 100;
-      last = h < SHEET_MIN + 16 ? 0 : p > SHEET_SNAP ? 100 : p;
-      set(last, false);
+      set(h < SHEET_MIN + 16 ? 0 : (h / roomH) * 100);
+      // Let go, it opens to the whole room or folds, whichever is nearer.
+      last = h / roomH > SHEET_SNAP / 100 ? 100 : 0;
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
@@ -205,13 +201,12 @@ function useSheetHeight() {
     window.addEventListener("pointercancel", up);
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = e.shiftKey ? 25 : 10;
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      set(percent + step);
+      set(100);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      set(percent - step < 15 ? 0 : percent - step);
+      set(0);
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggle();
@@ -219,9 +214,7 @@ function useSheetHeight() {
   };
   /** The sheet's height, kept between folded and the whole room. */
   const height = `clamp(${SHEET_MIN}px, ${percent}%, 100%)`;
-  /** Folded to its tabs: the diagram has the room. */
-  const fold = () => set(0);
-  return { ref, percent, height, folded, dragging, unfold, fold, onPointerDown, onKeyDown };
+  return { ref, percent, height, folded, dragging, unfold, toggle, onPointerDown, onKeyDown };
 }
 
 export function EditorPage() {
@@ -241,6 +234,16 @@ export function EditorPage() {
   const [tab, setTab] = useState<Tab>("chat");
   const pane = usePaneWidth();
   const sheet = useSheetHeight();
+  // The tab in effect stays in view where the row scrolls (a phone).
+  const tabsRef = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the tab in effect is what moves into view
+  useEffect(() => {
+    tabsRef.current
+      ?.querySelector("[data-active]")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [tab, sheet.folded]);
+  /** Where a touch on the step panel began, for a swipe. */
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
@@ -372,6 +375,39 @@ export function EditorPage() {
     }
   };
 
+  /** A swipe on the step panel: left to the next step, right to the one before (the wizard's own settings first). */
+  const stepSwipe = {
+    onTouchStart: (e: React.TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // A field, a slider, a row that scrolls sideways keep their own gestures.
+      const own = target.closest(
+        "input, textarea, select, [contenteditable='true'], [role='slider']",
+      );
+      const touch = e.touches[0];
+      swipeStart.current =
+        own || e.touches.length > 1 || !touch ? null : { x: touch.clientX, y: touch.clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      const touch = e.changedTouches[0];
+      if (!(start && touch)) {
+        return;
+      }
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2) {
+        return;
+      }
+      const ids = ["__wizard", ...def.steps.map((st) => st.id)];
+      const at = selected ? ids.indexOf(selected) : -1;
+      const next = at + (dx < 0 ? 1 : -1);
+      if (next >= 0 && next < ids.length) {
+        select(ids[next]);
+      }
+    },
+  };
+
   /**
    * A step asked for in the step panel or the diagram goes to the conversation as the admin's
    * message, so the thread tells what was asked and built. The step appears in its place while
@@ -413,6 +449,33 @@ export function EditorPage() {
         },
       };
 
+  /** Test and share: in the header, on a phone as icons in the row below it. */
+  const testButton = (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="max-sm:aspect-square max-sm:px-0 max-sm:coarse:px-0"
+      title={t("editor.test")}
+      disabled={hasIssues || building || blocked}
+      busy={testRun.isPending}
+      onClick={() => testRun.mutate()}
+    >
+      <Play className="size-3.5 max-sm:size-4" />
+      <span className="max-sm:sr-only">{t("editor.test")}</span>
+    </Button>
+  );
+  const shareButton = (
+    <Button
+      size="sm"
+      className="max-sm:aspect-square max-sm:px-0 max-sm:coarse:px-0"
+      title={t("editor.share")}
+      onClick={() => setShareOpen(true)}
+    >
+      <Share2 className="size-3.5 max-sm:size-4" />
+      <span className="max-sm:sr-only">{t("editor.share")}</span>
+    </Button>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {readOnlyNote ? (
@@ -426,14 +489,14 @@ export function EditorPage() {
           {failed}
         </div>
       ) : null}
-      <header className="flex h-12 shrink-0 items-center gap-2 px-3 coarse:h-14 sm:px-4">
+      <header className="flex h-12 shrink-0 items-center gap-1 px-2 coarse:h-14 sm:gap-2 sm:px-4">
         <IconButton label={t("common.back")} onClick={() => navigate("/")}>
           <ArrowLeft className="size-5" />
         </IconButton>
         <button
           type="button"
           onClick={() => select("__wizard")}
-          className="min-w-0 truncate rounded-md px-2 py-1 text-left hover:bg-accent"
+          className="min-w-0 truncate rounded-md px-1 py-1 text-left hover:bg-accent sm:px-2"
         >
           <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
             {def.title}
@@ -455,20 +518,7 @@ export function EditorPage() {
           <LiveChip remote={remote} merged={merged} />
         </span>
         <div className="ml-auto flex items-center gap-2">
-          {/* A copy, the package to keep, deleting it. */}
-          <WizardMenu
-            wizard={{ id: w.id, title: def.title, published: w.published }}
-            onDeleted={() => navigate("/")}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={hasIssues || building || blocked}
-            busy={testRun.isPending}
-            onClick={() => testRun.mutate()}
-          >
-            <Play className="size-3.5" /> {t("editor.test")}
-          </Button>
+          <span className="contents max-sm:hidden">{testButton}</span>
           {/* The first version goes live by sharing; every later one by its own dialog. */}
           {w.published && w.dirty && !w.readOnly ? (
             <Button variant="secondary" size="sm" onClick={() => setLiveOpen(true)}>
@@ -477,14 +527,30 @@ export function EditorPage() {
               <span className="sm:hidden">{t("live.openShort")}</span>
             </Button>
           ) : null}
-          <Button size="sm" onClick={() => setShareOpen(true)}>
-            <Share2 className="size-3.5" /> {t("editor.share")}
-          </Button>
+          <span className="contents max-sm:hidden">{shareButton}</span>
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
           </span>
+          {/* At the very right: a copy, the package to keep, deleting it. */}
+          <WizardMenu
+            wizard={{ id: w.id, title: def.title, published: w.published }}
+            onDeleted={() => navigate("/")}
+          />
         </div>
       </header>
+
+      {/* Where the pane is a sheet: the diagram behind it, and on a phone test and share. */}
+      <div className="flex shrink-0 items-center gap-2 px-3 pb-2 lg:hidden">
+        <Button variant="secondary" size="sm" aria-expanded={sheet.folded} onClick={sheet.toggle}>
+          <Workflow className="size-4" /> {t("editor.flow")}
+          {sheet.folded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </Button>
+        <span className="flex-1" />
+        <span className="contents sm:hidden">
+          {testButton}
+          {shareButton}
+        </span>
+      </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="relative min-h-0 flex-1 overflow-hidden">
@@ -638,24 +704,15 @@ export function EditorPage() {
             {/* The grip sits just outside the pane, beside its edge, clear of its scrollbar. */}
             <span className="-translate-y-1/2 absolute top-1/2 left-[7px] h-12 w-1.5 rounded-full bg-ink-4/40 transition group-hover:bg-ember/70 group-focus-visible:bg-ember group-active:h-16 group-active:bg-ember" />
           </div>
-          <nav className="flex shrink-0 gap-1 overflow-x-auto px-3 [scrollbar-width:none] lg:pt-3">
-            {/* On a phone the open sheet covers the diagram: this tab folds it away. */}
-            <button
-              type="button"
-              aria-pressed={sheet.folded}
-              onClick={sheet.fold}
-              className={cn(
-                "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 font-medium text-[0.8125rem] transition lg:hidden",
-                sheet.folded ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
-              )}
-            >
-              <Workflow className="size-4" />
-              {t("editor.flow")}
-            </button>
+          <nav
+            ref={tabsRef}
+            className="flex shrink-0 gap-1 overflow-x-auto px-3 [scrollbar-width:none] lg:pt-3"
+          >
             {(["chat", "step", "files", "memory", "runs"] as Tab[]).map((k) => (
               <button
                 key={k}
                 type="button"
+                data-active={tab === k || undefined}
                 onClick={() => {
                   setTab(k);
                   sheet.unfold();
@@ -663,7 +720,6 @@ export function EditorPage() {
                 className={cn(
                   "h-9 shrink-0 rounded-full px-4 font-medium text-[0.8125rem] transition",
                   tab === k ? "bg-paper-2 text-ink" : "text-ink-3 hover:text-ink",
-                  tab === k && sheet.folded && "max-lg:bg-transparent max-lg:text-ink-3",
                 )}
               >
                 {t(TAB_LABEL[k] as "editor.chat")}
@@ -674,20 +730,31 @@ export function EditorPage() {
             {tab === "chat" ? (
               <ChatPanel chat={chat} avatar={def.avatar} closed={readOnlyNote ?? undefined} />
             ) : tab === "step" ? (
-              <Inspector
-                def={def}
-                selected={selected}
-                update={save}
-                onSelect={select}
-                issues={w.issues}
-                mcpServers={w.mcpServers}
-                files={w.files}
-                wizardId={w.id}
-                readOnly={w.readOnly}
-                decisions={shownDecisions}
-                branchFocus={branchFocus}
-                assistant={assistant}
-              />
+              <div className="flex h-full min-h-0 flex-col">
+                {/* A swipe left or right moves to the next or the previous step. */}
+                <div className="min-h-0 flex-1 overflow-y-auto" {...stepSwipe}>
+                  <Inspector
+                    def={def}
+                    selected={selected}
+                    update={save}
+                    onSelect={select}
+                    issues={w.issues}
+                    mcpServers={w.mcpServers}
+                    files={w.files}
+                    wizardId={w.id}
+                    readOnly={w.readOnly}
+                    decisions={shownDecisions}
+                    branchFocus={branchFocus}
+                    assistant={assistant}
+                  />
+                </div>
+                {/* The chat's composer stays at hand while a step is open; its thread is the Chat tab's. */}
+                {readOnlyNote ? null : (
+                  <div className="shrink-0 px-3 pt-2 pb-3">
+                    <ChatPanel compact chat={chat} avatar={def.avatar} />
+                  </div>
+                )}
+              </div>
             ) : tab === "files" ? (
               <FilesPanel wizardId={w.id} files={w.files} readOnly={w.readOnly} />
             ) : tab === "memory" ? (
