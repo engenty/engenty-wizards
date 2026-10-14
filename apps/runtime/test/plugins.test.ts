@@ -780,7 +780,7 @@ describe("a plugin's runners", () => {
         }),
       ),
     );
-    expect(body.refused).toEqual([{ field: "name", message: "Pflichtfeld" }]);
+    expect(body.refused).toEqual([{ field: "name", code: "required", message: "Pflichtfeld" }]);
     expect(body.report.waitingFor.page).toBe("start");
   });
 });

@@ -106,7 +106,7 @@ describe("page input from a phone", () => {
 
   it("asks for a required location that is empty or impossible", () => {
     for (const place of [undefined, "", {}, { lat: 91, lng: 0 }, { lat: 47 }, { label: "  " }, []]) {
-      expect(read({ place }).errors).toEqual([{ field: "place", message: "Pflichtfeld" }]);
+      expect(read({ place }).errors).toEqual([{ field: "place", code: "required", message: "Pflichtfeld" }]);
     }
   });
 

@@ -125,7 +125,7 @@ interface PluginRuns {
     person: { channel: string; id: string };
     answers?: Record<string, unknown>;
     runner?: string;
-  }): Promise<{ runId: string; ticket: string; refused: { field: string; message: string }[] | null }>;
+  }): Promise<{ runId: string; ticket: string; refused: { field: string; code?: string; message: string }[] | null }>;
   report(runId: string, options?: { waitSeconds?: number; draft?: Record<string, unknown> }): Promise<PluginRunReport>;
   wizards(runner: string): Promise<{ wizardId: string; token: string; title: string; lang: "de" | "en" }[]>;
   answerPage(runId: string, stepId: string, values: Record<string, unknown>): Promise<void>;

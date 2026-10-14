@@ -857,7 +857,8 @@ export interface PluginRuns {
     runId: string;
     /** Opens the run's own routes (`/api/runs/<id>?rt=…`); `handoffUrl` carries it. */
     ticket: string;
-    refused: { field: string; message: string }[] | null;
+    /** `code` names the problem (`required`, `number`, `url` …); `message` is a German text. */
+    refused: { field: string; code?: string; message: string }[] | null;
   }>;
   /**
    * The run as it stands, after waiting up to `waitSeconds` (at most 45) while it works. A door

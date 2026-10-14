@@ -10,28 +10,30 @@ import {
   type PageStep,
   shownFields,
 } from "@engenty-wizards/shared/definition";
+import {
+  checkAnswer,
+  type FieldError,
+  fieldError,
+  isBlank,
+  normalizeUrl,
+  parseNumber,
+} from "@engenty-wizards/shared/field-checks";
 
-export interface InputError {
-  field: string;
-  message: string;
-}
-
-function empty(v: unknown): boolean {
-  return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
-}
+/** A refused answer: the field, a code the client words, and a German text for older clients. */
+export type InputError = FieldError;
 
 function coerce(field: Field, raw: unknown): unknown {
   if (raw === undefined || raw === null) {
     return undefined;
   }
   switch (field.kind) {
-    case "number": {
-      if (raw === "") {
-        return undefined;
-      }
-      const n = Number(String(raw).replace(",", "."));
-      return Number.isFinite(n) ? n : Number.NaN;
-    }
+    case "number":
+      return parseNumber(raw);
+    // A link typed without its scheme (`orf.at`) is kept as one that opens (`https://orf.at`).
+    case "url":
+      return normalizeUrl(String(raw)).slice(0, 20_000);
+    case "email":
+      return String(raw).trim().slice(0, 20_000);
     case "toggle":
       return raw === true || raw === "true" || raw === "on";
     case "multiselect":
@@ -178,46 +180,29 @@ export function readPageInput(
     if (field.kind === "connection" || field.kind === "list") {
       continue;
     }
-    if (field.required && empty(v) && field.kind !== "toggle") {
-      errors.push({ field: field.id, message: "Pflichtfeld" });
+    // Required, number, e-mail, link and date: the same checks the page's form and the chat make.
+    const problem = checkAnswer(field, v);
+    if (problem) {
+      errors.push(fieldError(field.id, problem));
       continue;
     }
     if (Array.isArray(v) && (field.kind === "image" || field.kind === "file")) {
       if (field.min && v.length < field.min) {
-        errors.push({ field: field.id, message: `Bitte mindestens ${field.min} auswählen` });
+        errors.push(fieldError(field.id, { code: "filesMin", params: { min: field.min } }));
         continue;
       }
       if (field.max && v.length > field.max) {
-        errors.push({
-          field: field.id,
-          message: `Höchstens ${field.max} – bitte einige entfernen`,
-        });
+        errors.push(fieldError(field.id, { code: "filesMax", params: { max: field.max } }));
         continue;
       }
     }
-    if (field.kind === "number" && Number.isNaN(v)) {
-      errors.push({ field: field.id, message: "Bitte eine Zahl eingeben" });
+    if (field.kind === "select" && !isBlank(field, v) && !field.options?.includes(String(v))) {
+      errors.push(fieldError(field.id, { code: "select" }));
       continue;
     }
-    if (field.kind === "select" && !empty(v) && !field.options?.includes(String(v))) {
-      errors.push({ field: field.id, message: "Ungültige Auswahl" });
+    if (field.kind === "slot" && !isBlank(field, v) && !field.options?.includes(String(v))) {
+      errors.push(fieldError(field.id, { code: "slot" }));
       continue;
-    }
-    if (field.kind === "slot" && !empty(v) && !field.options?.includes(String(v))) {
-      errors.push({ field: field.id, message: "Dieser Termin wird nicht angeboten" });
-      continue;
-    }
-    if (field.kind === "email" && !empty(v) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v))) {
-      errors.push({ field: field.id, message: "Keine gültige E-Mail-Adresse" });
-      continue;
-    }
-    if (field.kind === "url" && !empty(v)) {
-      try {
-        new URL(String(v));
-      } catch {
-        errors.push({ field: field.id, message: "Keine gültige URL" });
-        continue;
-      }
     }
     if (v !== undefined) {
       values[field.id] = v;

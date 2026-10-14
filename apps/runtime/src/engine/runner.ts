@@ -26,6 +26,7 @@ import {
   whenHolds,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
+import { type FieldError, fieldError } from "@engenty-wizards/shared/field-checks";
 import {
   type ClosedChoice,
   noteText,
@@ -96,7 +97,7 @@ import { StepError } from "./types.js";
 /** A command the run cannot take in its current state; a note where the person may read it. */
 export class RunConflict extends NotedError {}
 export class RunInputError extends NotedError {
-  constructor(readonly errors: { field: string; message: string }[]) {
+  constructor(readonly errors: FieldError[]) {
     super({ code: "checkFields" });
   }
 }
@@ -781,7 +782,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       answer !== undefined &&
       (choice.values.length === 0 || choice.values.some((v) => String(v) === String(answer)))
     ) {
-      errors.push({ field: id, message: "Das ist hier gerade nicht verfügbar." });
+      errors.push(fieldError(id, { code: "unavailable" }));
     }
   }
   if (errors.length) {
@@ -796,7 +797,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       for (const id of Array.isArray(value) ? value : value ? [value] : []) {
         const asset = await db.query.asset.findFirst({ where: eq(schema.asset.id, String(id)) });
         if (asset?.runId !== runId) {
-          throw new RunInputError([{ field: field.id, message: "Datei nicht gefunden" }]);
+          throw new RunInputError([fieldError(field.id, { code: "fileMissing" })]);
         }
       }
     }
@@ -806,7 +807,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
       if (account) {
         values[field.id] = account.label;
       } else if (field.required) {
-        throw new RunInputError([{ field: field.id, message: "Bitte zuerst verbinden" }]);
+        throw new RunInputError([fieldError(field.id, { code: "connect" })]);
       }
     }
   }
