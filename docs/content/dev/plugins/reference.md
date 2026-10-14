@@ -1,15 +1,15 @@
 ---
 title: Reference
 description: Every call, type, address and setting of the plugin framework on one page.
-version: 0.4.4
+version: 0.5.0
 ---
 
 ## Server half
 
 `import { definePlugin } from "@engenty-wizards/plugin-sdk"`
 
-`import { ThreadDoor } from "@engenty-wizards/plugin-sdk/thread"` — a wizard run in a
-messenger's thread, one message at a time; a plugin brings the surface. See
+`import { ThreadDoor } from "@engenty-wizards/plugin-sdk/thread"`: a wizard run in a
+messenger's thread, one message at a time, for which a plugin brings the surface. See
 [Runners](./runners.md#a-thread-door-from-the-sdk).
 
 The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => void | Promise<void>`.
@@ -20,7 +20,8 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 |---|---|---|
 | `plugin` | `PluginManifest` | The manifest |
 | `server` | `PluginServerApi` | Below |
-| `config.get(key)` | `string \| undefined` | A setting of the install |
+| `config.get(key)` | `string \| undefined` | A setting of the install: a line of its `.env` |
+| `features.has(name)`, `features.all()` | `Promise<boolean>`, `Promise<Record<string, boolean>>` | The tenant's feature switches. A short name is the plugin's own switch from its manifest (`<id>.<name>`); a full name asks for any switch. Off unless something turned it on |
 | `log.info`, `log.warn`, `log.error` | `(...args) => void` | A log line with the plugin's name |
 | `resolvePath(relative)` | `string` | A file of the plugin as an absolute path |
 
@@ -36,7 +37,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `spaces.brand(space)` | [The space](./space.md#the-spaces-brand). `{ name, colors, fonts }` of the space, or `null` |
 | `registerAssistantTool(tool: PluginAssistantTool)` | [The space](./space.md#tools-of-the-space-assistant) |
 | `index.put({ space, key, title, text, link? })`, `index.remove(space, key?)` | [The space](./space.md#the-search-index) |
-| `spaceData.putCategories`, `.putPage`, `.putTable`, `.putFile`, `.putDocument`, `.list`, `.readPages`, `.files`, `.readFile`, `.remove`, `.summarize` | [The space](./space.md#knowledge-a-plugin-writes). Knowledge of a space: pages, tables and files under keys of the plugin's own, with their Kategorien; and the space's own pages and files to read |
+| `spaceData.putCategories`, `.putPage`, `.putTable`, `.putFile`, `.putDocument`, `.list`, `.readPages`, `.files`, `.readFile`, `.remove`, `.summarize` | [The space](./space.md#knowledge-a-plugin-writes). Knowledge of a space: pages, tables and files under keys of the plugin's own, with their categories; and the space's own pages and files to read |
 | `registerHttpRoute(route: PluginRoute)` | [Routes](./routes.md) |
 | `registerPublicRoute(route: PluginPublicRoute)` | [Routes](./routes.md#public-routes) |
 | `publicUrl(path): Promise<string>` | The full address of a public route for the current tenant |
@@ -51,7 +52,7 @@ The default export is a `WizardsPluginFactory`: `(wizards: WizardsPluginApi) => 
 | `documents.parse({ data, name, mime }, { signal? })` | [Documents](./server.md#documents). `{ markdown, pages }` |
 | `getTenantDb(): PluginDb` | The current tenant's database, a Drizzle libSQL database |
 | `generate(request): Promise<{ text, object }>` | Asks a model of the current tenant: `prompt`, `system?`, `schema?`, `model?`, `maxOutputTokens?`, `signal?`, `files?` (pictures and PDFs: `{ data, mediaType, name? }[]`). See [The server half](./server.md#asking-a-model) |
-| `connections.available(ids)`, `.start({ space, connector, actions })`, `.connect({ space, connector, actions, credentials })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md) |
+| `connections.available(ids)`, `.start({ space, connector, actions, lang? })`, `.connect({ space, connector, actions, credentials })`, `.list(space)`, `.get(id)`, `.call(id, action, input)`, `.remove(id)` | [Accounts](./connections.md). `lang`: the language of the page the person comes back to |
 | `secrets.seal(value): string`, `secrets.unseal(sealed)` | [Keys of the plugin's own](./server.md#keys-of-the-plugins-own). `unseal` gives null for a value sealed on another install |
 | `registerAssistantContext({ block })` | [The space](./space.md#the-assistant-on-the-plugins-own-page). `block(space): string \| null` |
 | `registerStarter(starter: PluginStarter)` | [Starters](./starters.md). Known as `<plugin id>.<starter id>` |
@@ -97,9 +98,16 @@ interface PluginRunner {
     handoff: ("screen" | "thread" | "sms" | "push")[];
   };
   page?(request: PluginRunnerRequest): Response | Promise<Response>;
-  problem?(): string | null | Promise<string | null>;  // why not usable in this tenant right now
+  problem?(): string | PluginRunnerProblem | null | Promise<string | PluginRunnerProblem | null>;  // why not usable in this tenant right now
   address?(wizard: { id: string; title: string; token: string }):
     | PluginRunnerAddress | null | Promise<PluginRunnerAddress | null>;  // where a person reaches the wizard
+}
+
+interface PluginRunnerProblem {
+  text: string;                           // in the owner's words
+  kind?: "setup" | "waiting" | "plan";    // default "setup"
+  note?: { de: string; en: string };      // what the share dialog's row says instead
+  plan?: string;                          // "plan": the plan that has it
 }
 
 interface PluginRunnerAddress {
@@ -214,7 +222,7 @@ interface PluginStarter {
   id: string;                    // lower case, digits and "-"
   title: string;
   description: string;           // what it makes, in one or two sentences
-  language?: "de" | "en";        // the language of its texts; default "de"
+  language?: "de" | "en";        // the language of its texts; default "en"
   definition: unknown;           // a complete wizard definition, checked when it is registered
   files?: Record<string, string | Uint8Array>;  // workspace files by path; a string is UTF-8
 }
@@ -243,7 +251,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar. `label: () => string` |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section at `/studio/settings/<id>` |
 | `studio.registerShareSection({ runner, component })` | [Runners](./runners.md#the-runners-part-of-the-share-dialog). The runner's own settings for a wizard (a keyword), under the share dialog's gear once it is switched on and set up. `component` gets `{ wizard: { id, title } }` |
-| `studio.registerShareSetup({ runner, title, component, notice? })` | [Runners](./runners.md#setting-up-inside-the-dialog). What "Einrichten" in the runner's row opens inside the share dialog. `component` gets `{ wizard, Actions, done(banner?) }`, `notice` `{ wizard, open }` |
+| `studio.registerShareSetup({ runner, title, component, notice? })` | [Runners](./runners.md#setting-up-inside-the-dialog). What “Set up” in the runner's row opens inside the share dialog. `component` gets `{ wizard, Actions, done(banner?) }`, `notice` `{ wizard, open }` |
 | `studio.registerAssistantCard({ tool, component })` | Draws a tool's result in the space assistant's chat. `component` gets `{ data, send }` |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`; `group`: `info`, `knowledge` (default), `data` or `results` |
 | `studio.registerSpacePart({ id, label, icon, after?, component })` | [A part of the plugin's own](./studio.md#a-part-of-the-plugins-own) at `/studio/space/<id>`, after `info`, `knowledge` or `data` (default) in the menu |
@@ -253,7 +261,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | `studio.useAssistantPage(page)` | A hook: what the page shows, for the assistant: `open?: { kind, id?, label }`, `selection?`, `summary?`, `fields?: { id, label, value }[]`, `compact?`, and the words of `studio.Assistant` |
 | `studio.useAssistantTool(name, { description, parameters? }, run)` | A hook: a tool the assistant runs in the page while it is shown, as `<plugin>_<name>`. `parameters`: JSON Schema; `run(args)` returns what the assistant learns |
 | `studio.useSpace()` | A hook: `{ id, name, readOnly, brand }` of the space the studio shows, or `null`; `brand` is `{ name, colors, fonts }` |
-| `studio.i18n.register({ de, en })` | Gives `t(key, vars?)` |
+| `studio.i18n.register({ de, en })` | Gives `t(key, vars?)`. A key missing in the language shown falls back to `de` |
 | `studio.i18n.lang()` | `"de"` or `"en"` |
 | `studio.api.get`, `.post`, `.put`, `.patch`, `.del` | The plugin's own routes |
 | `studio.me()` | `{ user: { id, name, email }, tenant: { id, role }, mode: "managed" \| "local" }` |
@@ -270,7 +278,7 @@ The default export is a `StudioPlugin`: `(studio: StudioPluginContext) => void`.
 | Starter id | Lower case, digits and `-`, starting with a letter, at most 40 characters | `book` |
 | Starter id in a list of templates | `<plugin id>.<starter id>` | `contacts.follow-up` |
 | Table name | Begins with the plugin's id | `run_log_entry` |
-| Runner id | Lower case, digits and `-`, starting with a letter, at most 24 characters; not `steps`, `chat` or a sub-path of a wizard's address | `kiosk` |
+| Runner id | Lower case, digits and `-`, starting with a letter, at most 24 characters; not a built-in runner (`steps`, `chat`, `talk`, `video`) or a sub-path of a wizard's address (`runs`, `icons`) | `kiosk` |
 | Element around what a plugin draws | `data-plugin="<plugin id>"` | |
 
 ## Addresses
@@ -286,7 +294,7 @@ All below `/api/studio/plugins`, all signed in:
 | `POST /-/reload` | Loads every plugin again | Owners and admins, alone |
 | `POST /-/reload/<id>` | Loads one plugin again | Owners and admins, alone |
 
-"Alone": where the runtime runs alone, not as the runtime of engenty.ai.
+“Alone”: where the runtime runs on its own, not as the runtime of engenty.ai.
 
 For programs, with an API key or an access token:
 
@@ -299,10 +307,12 @@ And public, nobody signed in:
 | Address | |
 |---|---|
 | `ALL /api/public/plugins/<id>/<ref>/…` | A plugin's public routes; `<ref>` names the tenant. `server.publicUrl` gives the full address |
+| `ALL /api/public/plugins/<id>/shared/…` | A plugin's shared routes, one address for every tenant. `server.sharedUrl` gives the full address |
 | `/w/<token>/<runner>` | A plugin's page runner for a wizard that switched it on (built; from source `/api/public/wizards/<token>/runners/<runner>`) |
 
 The studio's addresses of a plugin: `/studio<path>` for its pages, `/studio/settings/<id>` for a
-settings section, `/studio/space/<group>#<id>` for a section of the space page.
+settings section, `/studio/space/<group>#<id>` for a section of the space page and
+`/studio/space/<id>` for a part of it.
 
 ## Settings
 
@@ -311,7 +321,8 @@ In the install's `.env`:
 | Setting | | Default |
 |---|---|---|
 | `PLUGINS_DIR` | Folders to look for plugins in, comma-separated, besides the runtime's `modules/` | Installed app: `~/.engenty/wizards/plugins`. Checkout: none |
-| `PLUGINS_WATCH` | `0`: plugins do not load again when their files change | `1` |
+| `PLUGINS_WATCH` | `0`: plugins do not load again when their files change. A runtime of engenty.ai never reloads them | `1` |
+| `PLUGINS_DEFAULT` | On engenty.ai: the ids of the plugins every tenant has, comma-separated | none |
 | `PLUGIN_JOBS` | `0`: this runtime runs no jobs (`server.every`), for one whose jobs another process runs | `1` |
 
 ## Files

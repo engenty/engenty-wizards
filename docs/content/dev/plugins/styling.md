@@ -1,7 +1,7 @@
 ---
 title: Styles and components
 description: The studio's components, Tailwind against the studio's theme, and why a plugin's styles never leak.
-version: 0.3.7
+version: 0.5.0
 ---
 
 A plugin's page should look like the studio. Two things make that easy: the studio's components
@@ -28,10 +28,12 @@ and its theme.
 | `DateRangePicker` | A day or a period in one month: the first click is the start, the second the end | `from`, `to`, `onChange({ from, to })`, `min`, `max` |
 | `TimePicker` | A time of day from an hour and a minute column; arrow keys on the field move it by `step` | `value` ("HH:MM" or ""), `onChange`, `step` (minutes, default 5), `compact` (narrow, no clock) |
 | `PageMenu` | A page's own menu: a list at the side with one level below that slides in, tabs on a phone | `title`, `entries` ({ id, label, icon?, to, entries? }), `current`, `footer` |
+| `MenuPage` | A page with a menu of its own: the menu stands at the page's left, or in the studio's sidebar while that is open, so there is only ever one menu at the left | `menu` (a `PageMenu`, or any), `children` (the page) |
 | `Composer` | The field a message is written in: text, dictation, files, send | `onSend(text, files)` (false keeps the draft), `placeholder`, `disabled`, `attach`, `floating` |
 | `Dialog` | A modal; on a phone it fills the screen | `open`, `onClose`, `title`, `wide` (`true`, or `"page"` for a document), `height="tall"` (for tabs, folds or lists: its height does not jump), `bare` (the children are the panel) |
 | `Spinner`, `Empty` | Loading, and nothing there yet | |
 | `LinkedText` | A sentence with its web addresses as links, named by their host | `text` |
+| `QrCode` | A QR code of a text, such as a link or a `tel:` number, as the share dialog draws it | `text`, `label` (for screen readers) |
 | `cn(...)` | Joins class names, skipping what is false | |
 | `dateText(date, withWeekday?)` | A "YYYY-MM-DD" date in the studio's language: "Wed 14 Oct 2026" | |
 | `Anchor`, `Section` | A section of the space page and the spot the menu jumps to: the heading and its hint above the card | `id` on the anchor · `title`, `hint`, `save` (how the last save went), `action` (beside the heading), `plain` (the content draws its own cards) |
@@ -58,9 +60,9 @@ import { Button, Card, Chip, Label, Input } from "@engenty-wizards/web/ui";
 Icons are from `lucide-react`.
 
 Most of these components live in the runner package (`@engenty-wizards/runner`), so a wizard's
-run page looks like the studio. Import them from `@engenty-wizards/web/ui` all the same: that
-is the import the studio shares. `@engenty-wizards/runner` is not shared and would be bundled
-into `client.js`.
+run page looks like the studio. Import them from `@engenty-wizards/web/ui` all the same: that is
+the import the studio shares. `@engenty-wizards/runner` is not shared, so the build would bundle
+it into `client.js`.
 
 ## Tailwind
 
@@ -87,20 +89,21 @@ the studio and a wizard's run page share it.
 
 ## Rules
 
-- **Colours come from the names.** Dark is derived from the theme's values, not a fixed
-  palette. A literal colour (`#1a1a1a`, `text-gray-700`) breaks in the other theme.
-- **Check both themes.** The user menu switches between light and dark.
+- **Colours come from the names.** The dark theme is derived from the theme's values, not from a
+  fixed palette. A literal colour (`#1a1a1a`, `text-gray-700`) breaks in the other theme.
+- **Check both themes.** Dark is the studio's default. The user menu and the app bar's own menu
+  switch between light, dark and the system's.
 - **Touch targets.** `coarse:min-h-11` gives a control the 44 px a finger needs. The studio's
   components do that themselves.
-- **Do not style outside your own part.** It would not work anyway: see below.
+- **Don't style outside your own part.** It would not work anyway: see below.
 
 ## Why a plugin's styles never leak
 
 `client.css` is built so that it cannot change how the studio looks:
 
 - Every rule applies only inside what the plugin draws. The studio wraps each page, section,
-  app bar icon, part of the share dialog and assistant card of a plugin in an element with
-  `data-plugin="<id>"`, and every rule of `client.css` is nested below that.
+  part of the space page, app bar icon, part of the share dialog and assistant card of a plugin
+  in an element with `data-plugin="<id>"`, and every rule of `client.css` is nested below that.
 - The rules sit in a layer above the studio's utilities, so inside the plugin's part the
   plugin's stylesheet decides.
 - The theme is used by reference: `client.css` carries the names' uses, none of the variables
@@ -114,13 +117,13 @@ A stylesheet imported in `ui/plugin.tsx` lands in `client.css` as it is:
 import "./contacts.css";
 ```
 
-It is not nested for you. Begin its class names with the plugin's id (`.contacts-chart`) and use
-the theme's variables for colours: `var(--ink-2)`, `var(--paper-2)`, `var(--ember)`.
+The build doesn't nest it for you. Begin its class names with the plugin's id
+(`.contacts-chart`) and use the theme's variables for colours: `var(--ink-2)`, `var(--paper-2)`,
+`var(--ember)`.
 
 ## The theme is a contract
 
-A plugin is built against the names of the theme at the time of its build. A name that is
-renamed or removed in a later release breaks plugins built before, without an error: the class
-is simply not there. Whoever changes `theme.css` treats its names as a contract for that reason.
-If you build against a name a release added, say in your plugin's description which release it
-needs.
+A plugin is built against the names the theme has at the time of its build. If a later release
+renames or removes a name, plugins built before break without an error: the class is simply not
+there. That is why whoever changes `theme.css` treats its names as a contract. If you build
+against a name a release added, say in your plugin's description which release it needs.

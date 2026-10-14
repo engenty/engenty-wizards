@@ -1,12 +1,12 @@
 ---
 title: The wizard format
 description: A wizard as JSON and as a .wizard file, its JSON Schema, and checking it with wizards validate.
-version: 0.3.2
+version: 0.5.0
 ---
 
-A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file,
-and imports one back. Both can be written by hand or by a tool, checked in your editor against a
-JSON Schema, and checked completely with `wizards validate`.
+A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file
+and imports one back. You can write either by hand or with a tool, check it in your editor
+against a JSON Schema, and check it completely with `wizards validate`.
 
 The code that defines the format and checks it is also under the
 [MIT licence](https://github.com/engenty/wizards/blob/main/packages/shared/LICENSE-MIT), so any
@@ -21,25 +21,31 @@ tool may read and write wizards.
   "title": "Create an invoice",
   "description": "A finished invoice from a few details.",
   "avatar": "round",
+  "lang": "en",
   "steps": [ … ]
 }
 ```
 
-`steps` run top to bottom, and the last one is always a `result` step. The step types and their
-fields are in the schema below. The studio's MCP tool `get_authoring_guide` explains them with a
-complete example.
+`steps` run from top to bottom, and the last one is always a `result` step. The schema below
+lists the step types and their fields. The studio's MCP tool `get_authoring_guide` explains them
+with a complete example.
+
+`lang` is the language the wizard speaks to people: `de` or `en`. It sets the runner's own words
+and how numbers and dates are written. Without it, the language is read from the wizard's own
+words, and English is the default where they are not clearly German.
 
 `version` is the definition's version. It changes only with a breaking change; the schemas of
 each version stay online in their own folder (`/schema/v1/`, `/schema/v2/`, …).
 
 ## The `.wizard` file
 
-A zip with two things in it:
+The file is a zip with two things in it:
 
 | Path | What it holds |
 |---|---|
-| `wizard.json` | The manifest: the definition, plus what it needs from its project |
+| `wizard.json` | The manifest: the definition, plus what the wizard needs from its space |
 | `files/…` | The wizard's workspace: widget pages, templates, images. At most 200 files and 25 MB |
+| `files/knowledge/…` | Only when the export was asked for it: the space's Knowledge pages as Markdown files, one per page, with its title in front. A website runs the wizard with them, without the space |
 
 ```json
 {
@@ -52,8 +58,13 @@ A zip with two things in it:
 }
 ```
 
-`connectors` and `mcpServers` name what the wizard's steps use from its project, without
-addresses or credentials. A project that lacks one is told so on import.
+`connectors` and `mcpServers` (the space's connected systems) name what the wizard's steps use
+from its space, without addresses or credentials. When the space you import into lacks one, the
+import says so.
+
+`knowledge` (`{ "pages": 12, "truncated": false }`) is there when the export took the space's
+pages along. It says how many there are and whether the cap of about 2 MB left some out. The
+share dialog's website package does this with “Take the knowledge along”.
 
 The import also takes a `wizard.json` on its own, or a definition on its own.
 The file's media type is `application/vnd.engenty.wizard+zip`.
@@ -72,8 +83,8 @@ The schemas are written from the code that reads wizards, so they match it. They
 in one way: a key the app does not know is an error. The app would drop such a key without a
 word.
 
-What a JSON Schema cannot say is left to `wizards validate`: unique ids, steps and fields that
-refer to each other, templates naming answers that exist by then, and files in the workspace.
+`wizards validate` checks what a JSON Schema cannot say: unique ids, steps and fields that refer
+to each other, templates that name answers that exist by then, and files in the workspace.
 
 ## `wizards validate`
 
@@ -81,8 +92,8 @@ refer to each other, templates naming answers that exist by then, and files in t
 wizards validate invoice.wizard
 ```
 
-It checks a wizard the way the studio's import does, with no running studio and no account.
-It takes any number of paths:
+It checks a wizard the way the studio's import does, without a running studio and without an
+account. It takes any number of paths:
 
 | Path | Read as |
 |---|---|
@@ -96,12 +107,13 @@ It takes any number of paths:
   "{{nope}}" refers to a field that is not asked before "g".
 ```
 
-`--json` prints the issues as JSON. The exit code is `0` when every wizard is fine, `1` when one
-has issues and `2` when no path was given. That is enough for a check in CI:
+A wizard without issues gets a ✓ with its number of steps and files. `--json` prints the
+results as JSON. The exit code is `0` when every wizard is fine, `1` when one has issues and `2`
+when no path was given. That is enough for a check in CI:
 
 ```bash
 npx wizards validate wizards/*.wizard
 ```
 
-The project's own things are checked on import, because only a project has them: its
-connectors and their actions, its MCP servers and its plugins' tools.
+The import checks what belongs to the space, because only the space has it: its connectors and
+their actions, its connected systems (MCP servers) and its plugins' tools.

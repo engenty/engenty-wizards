@@ -1,15 +1,15 @@
 ---
 title: Runners
-description: A door a wizard runs through, beside the page and the chat — a call, a messenger, a kiosk — and the run API that drives runs from it.
-version: 0.4.4
+description: A door a wizard runs through, beside the page and the chat (a call, a messenger, a kiosk), and the run API that drives runs from it.
+version: 0.5.0
 ---
 
 A runner is a way to run a wizard. The runtime has four: the stepped page at `/w/<token>`, the
 chat at `/w/<token>/chat`, live voice at `/w/<token>/talk` and the video call at
-`/w/<token>/video`; the last two only where a speech model is set up. A plugin adds more. The
-owner picks them per wizard when it is made, and later under "Change" in the share dialog; the
-link opens the first page runner that is on, the others answer under their own address or from
-their own channel.
+`/w/<token>/video`. The last two are there only where a speech model is set up. A plugin adds
+more. The owner picks them per wizard when it is made, and later under “Change” in the share
+dialog. The link opens the first page runner that is on; the others answer under their own
+address or from their own channel.
 
 ## Register a runner
 
@@ -32,24 +32,25 @@ server.registerRunner({
 
 | | |
 |---|---|
-| `id` | Lower case, digits and `-`, starting with a letter, at most 24 characters. The sub-path of the wizard's address. Not one of the built-in runners (`steps`, `chat`, `talk`, `video`), `runs` or `icons`: such an id throws "is taken" |
+| `id` | Lower case, digits and `-`, starting with a letter, at most 24 characters. The sub-path of the wizard's address. Not one of the built-in runners (`steps`, `chat`, `talk`, `video`), `runs` or `icons`: such an id throws “is taken” |
 | `label` | `{ de, en }`: its name in German and English |
 | `kind` | `page`: the person opens an address. `channel`: the runner has an address of its own (a number, a bot) and drives runs from its webhooks |
 | `capabilities` | What the runner takes in and shows; see below |
 | `page` | A page runner's handler: what `/w/<token>/<id>` answers with. Nobody is signed in. A page runner without one throws when it is registered |
-| `problem` | `() => string \| { text, kind?, note?, plan? } \| null`, may be async: why the runner cannot be used in the current tenant right now ("Not connected: Settings → WhatsApp"), asked inside the tenant whenever the studio lists the runners. A text is something to set up: the share dialog's row says "Noch nicht eingerichtet" with "Einrichten". An object says its `kind`: `setup` (the same), `waiting` (asked for, waiting for someone else; the row has no button), `plan` (the tenant's plan does not have it; the row offers the plans, "`plan` ansehen"); `note` (`{ de, en }`) is what the row says instead ("Nummer angefragt", "Ab Pro") |
+| `problem` | `() => string \| { text, kind?, note?, plan? } \| null`, may be async: why the runner cannot be used in the current tenant right now (“Not connected: Settings → WhatsApp”). The runtime asks it inside the tenant whenever the studio lists the runners, and a runner with a problem can't be switched on. A text is something to set up: the share dialog's row says “Not set up yet” and offers “Set up”. An object says its `kind`: `setup` (the same), `waiting` (asked for and waiting for someone else; the row says “Waiting” and has no button) or `plan` (the tenant's plan does not have it; the row says “Not in your plan” and offers “See {plan}” with the `plan` it names, else “See the plans”). `note` (`{ de, en }`) is what the row says instead (“Number requested”, “From Pro”) |
 | `address` | A channel runner: `(wizard: { id, title, token }) => { number?, keyword?, link? } \| null`, may be async. Where a person reaches that wizard: the number, the keyword that picks it there, and a link that opens the channel with the keyword written (`sms:…`, `https://wa.me/…`). The share dialog shows the keyword and number under the runner's name, copies the link (else the number) and offers the link as a QR code. Asked for each wizard that has the runner on; null while it is not set up |
 
-A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. From
-source, where Vite serves the pages, the same handler answers at
+A page runner is served at `/w/<token>/<id>` for every wizard that switched it on. When you run
+from source, where Vite serves the pages, the same handler answers at
 `/api/public/wizards/<token>/runners/<id>`; the public wizard's `runners` list carries the
 right address either way.
 
 ### Capabilities
 
-The runner declares; the runtime works out per wizard how far it gets, and the editor shows it:
-everything in the channel, hands off to the page at these steps, or not possible. A kind the
-runtime does not know throws when the runner is registered.
+The runner declares what it can do. The runtime works out per wizard how far it gets:
+everything in the channel, a hand-off to the run page at some steps, or not possible. Where it is
+not possible, the share dialog's row says “Not possible:” with the steps. A kind the runtime does
+not know throws when the runner is registered.
 
 | Field | Says |
 |---|---|
@@ -58,7 +59,7 @@ runtime does not know throws when the runner is registered.
 | `output.pictures` | What it shows as a picture with a link to the real thing. Anything else is a link |
 | `asks` | `confirm` for a running step that asks before it changes something; `login` only where a browser types the sign-in |
 | `review` | `accept`, `regenerate`, `edit` |
-| `waits` | Whether it stays through a step that takes minutes. A runner that cannot gets "not possible" for such wizards |
+| `waits` | Whether it stays through a step that takes minutes. A runner that can't is not possible for such wizards |
 | `handoff` | How a link to the run page reaches the person: `screen`, `thread`, `sms`, `push`. A runner with none cannot hand off |
 
 ## Drive a run
@@ -107,9 +108,9 @@ A refused command throws an error with a `status` and a `code` (`not_found`, `in
 
 ## What the person sees
 
-- The wizard's first page offers the runners that are on beside "Let’s go".
+- The wizard's first page offers the runners that are on beside “Let’s go”.
 - A hand-off is a link to the same run; nothing is asked twice. The run page knows the
-  door's person through the run, and "What this wizard remembers" is theirs there too.
+  door's person through the run, and “What this wizard remembers” is theirs there too.
 - The space's results carry the door a run came through.
 
 ## The runner's part of the share dialog
@@ -132,8 +133,8 @@ go into a [settings section](./studio.md).
 
 ### Setting up inside the dialog
 
-What "Einrichten" in a row opens: without more, the plugin's settings section. A setup the studio
-half registers opens inside the dialog instead, as a view with a back arrow, at the dialog's
+“Set up” in a row opens the plugin's settings section, unless the studio half registers a
+setup. That setup opens inside the dialog instead, as a view with a back arrow, at the dialog's
 height:
 
 ```tsx
@@ -149,11 +150,11 @@ function Setup({ wizard, Actions, done }: StudioShareSetupProps) {
     <>
       <p>…</p>
       <Actions>
-        <Button onClick={() => ask.mutate()}>Nummer anfragen</Button>
+        <Button onClick={() => ask.mutate()}>{t("request")}</Button>
       </Actions>
     </>
   );
-  // done({ title: "Nummer angefragt", text: "…", tone: "waiting" }) goes back.
+  // done({ title: t("requested"), text: "…", tone: "waiting" }) goes back.
 }
 ```
 
@@ -161,7 +162,7 @@ function Setup({ wizard, Actions, done }: StudioShareSetupProps) {
 |---|---|
 | `title` | The view's heading, a function: the language can change |
 | `component` | Gets `{ wizard: { id, title }, Actions, done }`. What it renders inside `Actions` goes to the foot of the dialog, where the dialog's own buttons are. `done(banner?)` goes back to the main view and asks the rows again; `banner` (`{ title, text?, tone? }`, `tone` `done` green or `waiting` plain) shows on top |
-| `notice` | Optional: a banner above the rows while the runner has news ("Deine Nummer ist da"), drawn by the plugin, nothing while it has none. Gets `{ wizard, open }`; `open()` opens the setup. The dialog shows the first one of the runners that are on |
+| `notice` | Optional: a banner above the rows while the runner has news (“Your number is here”), drawn by the plugin. It draws nothing while there is no news. It gets `{ wizard, open }`; `open()` opens the setup. The dialog shows the banner of the first runner that is on |
 
 One setup per runner. A setup that asks the server for something calls the plugin's own routes;
 the rows show what `problem` answers after `done`.
@@ -180,7 +181,7 @@ const surface: ThreadSurface = {
   runner: "sms",
   asks: ["text", "number", "select", "multiselect", "toggle", "date", "email", "url", "location"],
   async send(thread, prompt) {
-    // prompt.kind: "text" | "choice" | "location" | "link" | "media" — draw it as the channel allows.
+    // prompt.kind: "text" | "choice" | "location" | "link" | "media": draw it as the channel allows.
     await twilio.send(thread.id, toText(prompt, thread.state.lang));
   },
 };
@@ -199,13 +200,17 @@ const door = new ThreadDoor({ runs: server.runs, surface, offered, watch, unwatc
 | `watch(thread)`, `unwatch(runId)` | Hear the run (`runs.subscribe`) and call `door.resume` when it moves; the plugin keeps the subscriptions |
 | `Thread` | `{ id, name, runId, state, lastInboundAt, lastMessageId }`: the plugin keeps it in a table per person and hands it to the door before and after |
 
+Once a wizard runs, the door speaks the wizard's language. Before that, it speaks the language
+all offered wizards share; when they differ, it keeps the language it spoke last, which is
+English in a new thread.
+
 A messenger plugin is a surface of this door: the webhook on a public route, the keyword table,
 the number and the keyword in the share dialog are the plugin's; buttons and lists, or numbered
 lines and links, are its surface.
 
 ## A call
 
-A call has no thread and no screen: the person and a realtime speech model talk, and the
+A call has no thread and no screen: the person talks with a realtime speech model, and the
 model fills the run through tools, as the chat's live voice does in the browser. The runtime
 hands a plugin the tenant's speech model for it:
 

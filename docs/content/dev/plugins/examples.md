@@ -1,7 +1,7 @@
 ---
 title: Examples
 description: Two plugins in the repository to read, run and copy.
-version: 0.3.2
+version: 0.5.0
 ---
 
 The repository has two example plugins. Load them from a checkout with one line in `.env.local`:
@@ -13,7 +13,7 @@ PLUGINS_DIR=examples/plugins
 ## notify: one file
 
 [examples/plugins/notify.ts](https://github.com/engenty/wizards/blob/main/examples/plugins/notify.ts)
-posts a line to an address whenever a real run of a wizard reached its end.
+posts a line to an address whenever a real run of a wizard reaches its end.
 
 ```ts
 import type { WizardsPluginFactory } from "@engenty-wizards/plugin-sdk";
@@ -58,8 +58,8 @@ keeps a line for every run that ended and shows them in the studio.
 | `migrations/0002_space.sql` | A column added later: the space of each line |
 | `src/schema.ts` | The same table for Drizzle |
 | `src/plugin.ts` | A listener on the three run events (`run.done`, `run.failed`, `run.cancelled`), two routes (one for admins only, one that filters by space) and a tool, `run-log.recent` |
-| `ui/messages.ts` | Words in German and English |
-| `ui/plugin.tsx` | A section of the space page with the space's last runs, under Results, a page with the whole log, and a section of the settings that empties the log |
+| `ui/messages.ts` | Its texts in English and German |
+| `ui/plugin.tsx` | A section of the space page under Results with the space's last runs, a page with the whole log, and a settings section that empties the log |
 | `package.json` | A workspace package whose `build` script builds the studio half |
 
 Build its studio half once, or on every save:
@@ -75,11 +75,12 @@ node scripts/build-plugin.mjs examples/plugins/run-log --watch
 Then, in the studio:
 
 1. Test a wizard to its end.
-2. The house icon in the app bar opens the space's page; under Results, "Runs" stands below the
-   results: the last five runs of the space's wizards. Its last line opens the page with the
-   whole log.
-3. Settings → Runs shows how many lines are kept and deletes them.
-4. An AI step can list the tool "Run log" and tell how the last runs ended.
+2. Open the space's Results: choose “Results” under Space in the sidebar, or open the space's
+   page with the house icon in the app bar and go to Results. “Runs” stands below the results
+   and shows the last five runs of the space's wizards. Its last line, “All … runs”, opens the
+   page with the whole log.
+3. Settings → Runs shows how many lines are kept, and “Delete all” deletes them.
+4. An AI step can list the tool “Run log” and tell how the last runs ended.
 
 ## The plugin of these pages
 
@@ -97,4 +98,4 @@ The `contacts` plugin these pages build up, piece by piece:
 
 [apps/runtime/test/plugins.test.ts](https://github.com/engenty/wizards/blob/main/apps/runtime/test/plugins.test.ts)
 writes small plugins into a folder and exercises them: finding, loading, a plugin that fails,
-routes, tables per tenant, tools in a run, events, reloading.
+routes, tables per tenant, tools in a run, events and reloading.

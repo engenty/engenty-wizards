@@ -1,7 +1,7 @@
 ---
 title: The studio half
-description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
-version: 0.4.4
+description: Pages, icons in the app bar, sections of the settings and of the space page – written in React, built once, drawn inside the studio.
+version: 0.5.0
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -88,12 +88,15 @@ export default defineStudioPlugin((studio) => {
 | `studio.registerNav({ to, label, icon })` | An icon in the app bar that opens a page |
 | `studio.registerSettingsSection({ id, label, icon, component, menu? })` | A section of the settings at `/studio/settings/<id>`. `menu`: the user menu links to it directly |
 | `studio.registerSpaceSection({ id, group?, label, hint?, component })` | A section of a part of the space page at `/studio/space/<group>#<id>`, below the part's own. See [The space](#the-space) |
+| `studio.registerSpacePart({ id, label, icon, after?, component })` | A part of the space page of the plugin's own, at `/studio/space/<id>`. See [A part of the plugin's own](#a-part-of-the-plugins-own) |
 | `studio.registerShareSection({ runner, component })` | A runner's own settings for a wizard (a keyword), under the share dialog's gear once the runner is on and set up. See [Runners](./runners.md#the-runners-part-of-the-share-dialog) |
-| `studio.registerShareSetup({ runner, title, component, notice? })` | What "Einrichten" in the runner's row opens: a view inside the share dialog, with its buttons at the dialog's foot, and a banner of the runner's news. See [Runners](./runners.md#setting-up-inside-the-dialog) |
+| `studio.registerShareSetup({ runner, title, component, notice? })` | What “Set up” in the runner's row opens: a view inside the share dialog, with its buttons at the dialog's foot, and a banner of the runner's news. See [Runners](./runners.md#setting-up-inside-the-dialog) |
 | `studio.registerAssistantCard({ tool, component })` | A card in the assistant's chat for what a tool of the server half returned. See [The space](./space.md#a-card-in-the-chat) |
 
 - The studio's own addresses are taken: `/new`, `/edit`, `/settings`, `/space`, `/setup`,
   `/sign-in`.
+- The settings' own sections are taken as ids: `account`, `team`, `connectors`, `models`,
+  `integrate` and `plugins`.
 - `label` is a function, since the language can change while the studio is open.
 - `icon` is a component that takes `className`: any icon of `lucide-react`.
 
@@ -125,7 +128,7 @@ space page, behind the house icon (Space) in the app bar, shows them in four par
 | Part | `group` | Holds |
 |---|---|---|
 | Info & brand | `info` | Basics, Facts, Logos, Colours, Brand assets |
-| Knowledge | `knowledge` | Documents, pages, tables and files with their Kategorien: what every AI step looks things up in |
+| Knowledge | `knowledge` | Documents, pages, tables and files with their categories: what every AI step looks things up in |
 | Data | `data` | What the wizards keep |
 | Results | `results` | The runs that reached their result |
 
@@ -162,9 +165,10 @@ studio.registerSpaceSection({
   `documents`.
 - `studio.useSpace()` is a hook: `{ id, name, readOnly, brand }`, or `null` while there is none.
   A component that calls it draws again when the person picks another space, or changes its
-  brand. `readOnly`: the space came from a local install, or nothing is built on this runtime;
-  show it, change nothing. `brand` is what Info & brand holds of the look: `name`, `colors`
-  (`{ name, value }`, the first is the accent) and `fonts` (`{ family, role, weights }`).
+  brand. `readOnly`: the space is edited in engenty wizards on a computer and only shown here,
+  or nothing is built on this runtime. Show it, but change nothing. `brand` is what Info & brand
+  holds of the look: `name`, `colors` (`{ name, value }`, the first is the accent) and `fonts`
+  (`{ family, role, weights }`).
 - Every wizard belongs to a space: a [run event](./events.md) names it as
   `wizard.projectId`. Keep it with what the plugin stores to show a space's part of it.
 
@@ -216,7 +220,7 @@ const t = studio.i18n.register({
 t("count", { n: 12 });
 ```
 
-- `de` is the source: a key missing in `en` shows the German.
+- `de` is the source: a key missing in `en` shows the German, so give every key in both.
 - `{name}` in a text is filled from the second argument.
 - `studio.i18n.lang()` is `"de"` or `"en"`, for dates and numbers:
   `new Date(at).toLocaleString(studio.i18n.lang())`.
@@ -261,11 +265,49 @@ studio.useCrumbs([{ label: t("title"), to: "/contacts" }, { label: person.name ?
 - Each step is `{ label, to? }`; the last one is the page itself. A phone does not show the trail.
 - The assistant names the page by its trail.
 
+## A page with a menu
+
+A page with parts of its own puts its menu where the studio's own pages put theirs. `MenuPage`
+from `@engenty-wizards/web/ui` draws the menu in the studio's sidebar while that is open, and at
+the page's left otherwise, so there is only ever one menu at the left. `PageMenu` draws the menu
+as the settings do: a list with one level below it, and tabs on a phone.
+
+```tsx
+import { MenuPage, PageMenu } from "@engenty-wizards/web/ui";
+import { useParams } from "react-router";
+
+function ContactsPage() {
+  const { tab = "all" } = useParams();
+  return (
+    <MenuPage
+      menu={
+        <PageMenu
+          title={t("title")}
+          current={tab}
+          entries={[
+            { id: "all", label: t("all"), to: "/contacts/all" },
+            { id: "new", label: t("new"), to: "/contacts/new" },
+          ]}
+        />
+      }
+    >
+      <ContactList tab={tab} />
+    </MenuPage>
+  );
+}
+```
+
+- An entry is `{ id, label, icon?, to, entries? }`; `entries` is the level below.
+- `current` is the id of the entry shown, at either level.
+
 ## The assistant
 
 The studio's assistant stands on a plugin's pages too. `studio.Assistant`,
 `studio.useAssistantPage` and `studio.useAssistantTool` tell it what to say there, what the page
 shows and what it may do in it. See [The space](./space.md#the-assistant-on-the-plugins-own-page).
+
+For now the studio shows its assistant only where it is switched on, and it is off by default.
+While it is off, these calls do no harm and nobody sees what they say.
 
 ## Build it
 
@@ -314,7 +356,8 @@ studio.onUnload(() => clearInterval(timer));
 
 ## When it fails
 
-- A studio half that throws while it loads registers nothing. Settings → Plugins says "The
-  studio half did not load" with the reason. The server half keeps working.
-- A page or section that throws while it draws shows "This part of a plugin crashed" in its
+- A studio half that throws while it loads registers nothing. Settings → Plugins says “The
+  studio part didn’t load. Check the plugin and reload” with the reason. The server half keeps
+  working.
+- A page or section that throws while it draws shows “This part of a plugin crashed.” in its
   place. The rest of the studio stays up.

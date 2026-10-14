@@ -1,12 +1,12 @@
 ---
 title: Shipping
 description: Hand a plugin to someone else, put it into a server's image, and decide which tenant has it.
-version: 0.3.2
+version: 0.5.0
 ---
 
 ## To someone's install
 
-A plugin is a file or a folder. Whoever installs it puts it into their plugins folder:
+A plugin is a file or a folder. Whoever installs it puts it into their plugins folder, which is
 `~/.engenty/wizards/plugins` for an installed app.
 
 Give them:
@@ -18,7 +18,7 @@ Give them:
 | Dependencies | A `node_modules` beside the plugin, if it imports anything but the SDK, `zod` and `drizzle-orm` |
 | Settings | The names of the `.env` lines it reads, in its description |
 
-Say what it does with data: a plugin runs with the app's full rights, and the person who
+Say what the plugin does with data. A plugin runs with the app's full rights, and the person who
 installs it trusts you with them.
 
 ## As a package
@@ -52,12 +52,15 @@ Or copy the plugins into an image of your own, built on the runtime's.
 ## With engenty wizards itself
 
 Plugins in the repository's `modules/` folder ship with every runtime: in a checkout, in the
-installed app and in the Docker image. A module there is part of the open product.
+npm package and installed app, and in the Docker image. A module there is part of the open
+product.
 
-- Its server half imports only what the runtime hands every plugin and its own files. It has no
+- Its server half imports only what the runtime hands every plugin, and its own files. It has no
   `node_modules` of its own where it is installed.
 - A module with a studio half is a workspace package whose `build` script is
   `node ../../scripts/build-plugin.mjs .`, so the product's build builds its `dist/`.
+  `apps/runtime/Dockerfile` copies each workspace package's `package.json` before it installs:
+  add the module's there.
 
 A plugin that is not part of the open product stays out of `modules/` and goes into a folder of
 `PLUGINS_DIR`.
@@ -66,11 +69,11 @@ A plugin that is not part of the open product stays out of `modules/` and goes i
 
 On an install of your own, on your computer or your own server, every tenant has every plugin
 the runtime loaded. On engenty.ai the service installs the plugins and switches them on per
-account; a person cannot install one there.
+account. A person cannot install a plugin there.
 
 ## Versions
 
-- `version` in the manifest is shown in the settings. The runtime does not compare versions.
-- A plugin's `.sql` files only ever grow: an update adds files, it never changes one that ran.
-- A wizard that uses a plugin's tool names it by id. Renaming a tool or the plugin breaks those
-  wizards: keep ids for good.
+- The settings show `version` from the manifest. The runtime doesn't compare versions.
+- A plugin's `.sql` files only ever grow: an update adds files and never changes one that ran.
+- A wizard that uses a plugin's tool names it by its id. Renaming a tool or the plugin breaks
+  those wizards, so keep ids for good.

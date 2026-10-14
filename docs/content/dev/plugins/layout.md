@@ -1,7 +1,7 @@
 ---
 title: Files and manifest
 description: Where the runtime looks for plugins, what counts as one, and what engenty.plugin.json says.
-version: 0.3.2
+version: 0.5.0
 ---
 
 ## Where the runtime looks
@@ -12,9 +12,9 @@ version: 0.3.2
 | Each folder of `PLUGINS_DIR` (comma-separated) | Plugins of this install |
 
 - An installed app looks in `~/.engenty/wizards/plugins` unless its `.env` names another folder.
-- From a checkout `PLUGINS_DIR` is empty. `PLUGINS_DIR=examples/plugins` in `.env.local` loads
+- In a checkout `PLUGINS_DIR` is empty. `PLUGINS_DIR=examples/plugins` in `.env.local` loads
   the examples.
-- A runtime that watches its plugins makes a folder of `PLUGINS_DIR` that is missing.
+- A runtime that watches its plugins creates a folder of `PLUGINS_DIR` that is missing.
 
 ## What counts as a plugin
 
@@ -27,10 +27,11 @@ In such a folder:
 | `hello/index.ts`, `hello/index.js` | A plugin without a manifest. Its id is the folder's name |
 | `node_modules/<package>`, `node_modules/@scope/<package>` | Installed packages that carry a manifest |
 
-- Names that begin with `.` or `_` are skipped.
-- `.mjs` files are not read: Node keeps such a file once imported, so it could not load again.
-- Of two plugins with one id the first found stays. The other shows under "Not a plugin" in
-  Settings → Plugins, as does a manifest that cannot be read.
+- The runtime skips names that begin with `.` or `_`.
+- It doesn't read `.mjs` files: Node keeps such a file once it is imported, so it could not load
+  again.
+- Of two plugins with the same id, the first one found stays. The other shows under “Not a
+  plugin” in Settings → Plugins, as does a manifest that cannot be read.
 
 ## A plugin's folder
 
@@ -50,19 +51,19 @@ contacts/
   package.json            only if it has dependencies of its own
 ```
 
-Only the manifest is required. A plugin with a studio half is a folder with a manifest.
+Only the manifest is required. A plugin with a studio half must be a folder with a manifest.
 
 ## The manifest
 
-`engenty.plugin.json` is the file an engenty module has. Fields this runtime does not know are
-kept as they are.
+`engenty.plugin.json` is the same file an engenty module has. The runtime keeps fields it
+doesn't know as they are.
 
 ```json
 {
   "id": "contacts",
   "name": "Contacts",
   "version": "0.1.0",
-  "description": "Keeps the e-mail address of everyone who ran a wizard to its end."
+  "description": "Keeps the email address of everyone who ran a wizard to its end."
 }
 ```
 

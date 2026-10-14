@@ -1,7 +1,7 @@
 ---
 title: Tools
-description: A tool an AI step can call — how to register it, how a wizard lists it, and what the model sees.
-version: 0.3.2
+description: A tool an AI step can call – how to register it, how a wizard lists it, and what the model sees.
+version: 0.5.0
 ---
 
 A tool is a function an AI step may call while it works. The model decides when, from the
@@ -12,7 +12,7 @@ server.registerTool({
   name: "lookup",
   title: "Contacts",
   description:
-    "Looks a person up by e-mail among the people who ran a wizard of this project before.",
+    "Looks a person up by email among the people who ran a wizard of this space before.",
   inputSchema: z.object({ email: z.string().email() }),
   execute: async ({ email }) => {
     const [found] = await db()
@@ -51,7 +51,7 @@ The second argument is the step that calls the tool:
 | `step.space` | `{ id, name }`: the space of the step's wizard |
 | `step.project` | The same as `step.space`, by its older name |
 | `step.wizard` | `{ id, title }` |
-| `step.mode` | `"test"` for a test run from the studio, else `"live"`. Keep what a test makes apart: a booking, a message to someone outside |
+| `step.mode` | `"test"` for a test run from the studio, else `"live"`. Keep what a test run makes apart, such as a booking or a message to someone outside |
 | `step.signal` | Aborted when the run is cancelled. Pass it to `fetch` |
 | `step.emit(message)` | Tells the person what the step is doing right now |
 
@@ -69,7 +69,7 @@ execute: async ({ url }, step) => {
 
 An error thrown in `execute` does not fail the step. The model gets `{ "error": "<message>" }`
 as the tool's result, with the first 400 characters of the message, and can try again or work
-around it. Throw an error whose message says what was wrong with the input.
+around it. Throw errors whose message says what was wrong with the input.
 
 ## In a wizard
 
@@ -81,17 +81,18 @@ A step lists the tool beside the built-in ones:
 
 - The editor offers the tools of the tenant's plugins in every AI step.
 - The assistant and the MCP authoring guide list them with their descriptions.
-- A draft whose step lists a tool in `tools` that this tenant does not have shows an issue.
-- A run fails at the step that names one. A wizard that uses a plugin's tool runs only where
-  that plugin is installed: think of that before you publish a wizard to the cloud or export it.
-- The model has to call tools. Apple Intelligence on a Mac calls none: a step whose class it
+- A draft with a step that lists a tool this tenant does not have shows an issue.
+- A run fails at the step that names such a tool, with “This step needs the tool “…”. The
+  plugin “…” isn’t installed here.” A wizard that uses a plugin's tool runs only where that
+  plugin is installed. Keep that in mind before you publish a wizard to the cloud or export it.
+- The model has to call the tools. Apple Intelligence on a Mac calls none: a step whose class it
   answers (Classifier, Standard) runs from its prompt alone. A step that needs the tool runs on
-  High, or a [call without a model](#called-without-a-model) does it.
+  High, or a [call without a model](#called-without-a-model) does the job.
 
 ### Called without a model
 
-Where a step only fetches data and hands it on unchanged, it calls the tool itself: no model
-picks the tool, and none copies its answer.
+Where a step only fetches data and hands it on unchanged, it can call the tool itself: no model
+picks the tool, and no model copies its answer.
 
 ```json
 {
@@ -115,8 +116,8 @@ picks the tool, and none copies its answer.
 - The tool's answer is the step's json output, as it is. An answer that is not an object (a
   list, a text) is kept as `{ "result": … }`. `output.fields` name the keys later steps read,
   so the editor and the checks know them.
-- String inputs are templates. A filled-in number or `true`/`false` is passed as one; an
-  empty one is left out. The input is checked against the tool's schema.
+- String inputs are templates. A template that fills in to a number or to `true`/`false` is
+  passed as one, and an empty one is left out. The input is checked against the tool's schema.
 - What the tool throws, or an answer that is only `{ "error": … }`, is the step's error. A tool
   this tenant does not have fails the step too.
 - It costs no credits and answers as fast as the tool: the free times of a calendar in under a
@@ -124,8 +125,8 @@ picks the tool, and none copies its answer.
 
 ## While a step runs
 
-A step that is running keeps the tools it started with. A plugin that loads again changes the
-tools of the next step.
+A step that is running keeps the tools it started with. When a plugin loads again, the change
+reaches the next step.
 
 ## Write a good tool
 

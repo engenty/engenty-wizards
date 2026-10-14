@@ -1,7 +1,7 @@
 ---
 title: Routes
-description: HTTP routes below the plugin's own address — signed in, inside the person's tenant.
-version: 0.4.3
+description: HTTP routes below the plugin's own address – signed in, inside the person's tenant.
+version: 0.5.0
 ---
 
 A plugin's routes live below `/api/studio/plugins/<id>`, and for programs with a key below
@@ -80,9 +80,9 @@ throw Object.assign(new Error("No such contact."), { status: 404, code: "no_cont
 ## With a key
 
 A program that is not the studio, such as the [WordPress plugin](../../user/wordpress.md),
-calls the same routes below `/api/v1/plugins/<id>`. It signs in with an API key (on your own
-install Settings → Integrate makes one, on engenty.ai the account) or an access token of
-engenty.ai:
+calls the same routes below `/api/v1/plugins/<id>`. It signs in with an API key or with an
+access token of engenty.ai. On a runtime that runs alone, you create the key under Settings →
+Integrate; on engenty.ai, in your account:
 
 ```bash
 curl -H "Authorization: Bearer $KEY" https://wizards.example.com/api/v1/plugins/contacts/
@@ -92,10 +92,10 @@ curl -H "Authorization: Bearer $KEY" https://wizards.example.com/api/v1/plugins/
   person, with the role. A `role: "admin"` route answers a member's key with `403`. `name` and
   `email` can be empty.
 - `GET` needs the scope `wizards:read`, every other method `wizards:write`. A key has every
-  scope, a token the ones the person granted. Without it: `403` with the code
+  scope, a token the ones the person granted. A call without the scope gets `403` with the code
   `insufficient_scope`.
-- A plugin the runtime has but the key's account does not answers `403` with the code `plugin`.
-  An id it does not know answers `404`.
+- A plugin that the runtime has but the key's account does not have answers `403` with the code
+  `plugin`. An id the runtime does not know answers `404`.
 - `x-api-key: <key>` works in place of the `Authorization` header.
 - The answers and errors are the same as at the studio's address.
 
@@ -158,11 +158,12 @@ server.sharedUrl("/incoming");
 // https://…/api/public/plugins/<id>/shared/incoming
 ```
 
-- The handler runs outside any tenant: check the service's signature, then `inTenant`.
+- The handler runs outside any tenant: check the service's signature, then call `inTenant`.
 - `inTenant(ref, work)` runs `work` inside the tenant of that ref, as a public route of the
   tenant would run. A ref no tenant has, a suspended tenant and one without the plugin throw
   `404` / `not_found`.
 - `publicRef()` is the part of `publicUrl` that names the tenant; it is the same every time.
+- A body is taken up to 4 MB, as on a public route.
 
 ## From the studio half
 
