@@ -1,7 +1,12 @@
 import type { Format } from "@engenty-wizards/shared/definition";
 import { formatTableCell, type TableColumn } from "@engenty-wizards/shared/engenty/data-tables";
 import type { ShownList } from "@engenty-wizards/shared/run";
-import type { ConnectionView, ConnectorOption, StoreFile } from "@engenty-wizards/shared/store";
+import {
+  type ConnectionView,
+  type ConnectorOption,
+  cellValue,
+  type StoreFile,
+} from "@engenty-wizards/shared/store";
 import { Check, Database, FileText, Link2, Plus, Trash2, Unplug } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ApiError } from "./api.js";
@@ -197,21 +202,6 @@ function inputText(value: unknown): string {
     : Array.isArray(value)
       ? value.join(", ")
       : String(value);
-}
-
-/** What the person typed, as the value the column takes. */
-function cellValue(column: TableColumn, text: string): unknown {
-  if (text.trim() === "") {
-    return null;
-  }
-  if (column.type === "number") {
-    const n = Number(text.replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n) ? n : text;
-  }
-  if (column.type === "boolean") {
-    return text === "true";
-  }
-  return text;
 }
 
 function CellInput({
