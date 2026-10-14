@@ -21,6 +21,7 @@ import { saveAsset } from "../files/storage.js";
 import { wizardUnavailable } from "../limits.js";
 import { transcribeAudio } from "../media/transcribe.js";
 import { errorText, ModelUnavailableError } from "../model-errors.js";
+import { uploadMime } from "../routes/delivery.js";
 import { runTicket } from "../secrets/signing.js";
 import { notFound, ServiceError } from "../services/errors.js";
 import { runnerSettingsOf, runnersOf } from "../services/runners.js";
@@ -206,10 +207,12 @@ export function runsApiFor(pluginId: string): PluginRuns {
     },
     async upload(runId, file) {
       await pluginRun(runId);
+      // The type comes from the channel's sender: kept only when it is one a wizard takes.
+      const mime = uploadMime(file.mime);
       const asset = await saveAsset({
         runId,
-        kind: file.mime.startsWith("image/") ? "image" : "file",
-        mime: file.mime,
+        kind: mime.startsWith("image/") ? "image" : "file",
+        mime,
         name: file.name,
         data: file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data),
       });
