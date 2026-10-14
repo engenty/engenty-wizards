@@ -71,7 +71,7 @@ describe("one chat per person", () => {
     const res = await send("POST", "/api/studio/assistant/turn", {
       message: "Wo stelle ich die Modelle ein?",
       projectId: spaceId,
-      page: { route: "/space/info", title: "Space / Info & Marke" },
+      page: { route: "/space/info", title: "Space / Info & brand" },
       tools: [
         {
           name: "navigate",
@@ -96,7 +96,7 @@ describe("one chat per person", () => {
         id: seen[0].data.messageId,
         role: "user",
         content: "Wo stelle ich die Modelle ein?",
-        page: { route: "/space/info", title: "Space / Info & Marke" },
+        page: { route: "/space/info", title: "Space / Info & brand" },
       }),
     ]);
   });

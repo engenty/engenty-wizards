@@ -532,10 +532,10 @@ export async function removeSyncedSpace(rawSpaceId: string) {
 }
 
 // --- the space's own tables and pages --------------------------------------------
-// What the admin made under Space → Daten on the install, not what a wizard keeps: those stay
+// What the admin made under Space → Data on the install, not what a wizard keeps: those stay
 // where their runs write them. Sent as a whole, it replaces what came before.
 
-// Since Wissen: sub-pages, where an item came from, Kategorien and what has them. An install of
+// Since Knowledge: sub-pages, where an item came from, categories and what has them. An install of
 // before sends none of it.
 export const syncDataSchema = z.object({
   tables: z
@@ -726,7 +726,7 @@ export async function syncSpaceData(rawSpaceId: string, input: SyncDataInput) {
   return { tables: input.tables.length, pages: input.pages.length };
 }
 
-/** The Kategorien a local install sent, their values, and what has them: they replace these here. */
+/** The categories a local install sent, their values, and what has them: they replace these here. */
 async function syncCategories(
   spaceId: string,
   categories: NonNullable<SyncDataInput["categories"]>,

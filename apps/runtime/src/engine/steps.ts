@@ -598,7 +598,7 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       step.tools.includes("browser") ? BROWSER_RULES : "",
       `Today is ${today(ctx)}.`,
       brandBlock(ctx),
-      // Wissen: what the space holds for its wizards, and how to find and read it.
+      // Knowledge: what the space holds for its wizards, and how to find and read it.
       await knowledgeBlock(ctx.project.id),
       // What the space's plugins hold for its wizards: a wiki, questions and answers.
       ...(await spaceContextOf(ctx)).blocks,

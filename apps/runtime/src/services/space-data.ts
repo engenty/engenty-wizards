@@ -26,9 +26,9 @@ import { ownedProject } from "./projects.js";
 import { itemCategoriesOf, setItemCategories, syncTableRowCategories } from "./space-categories.js";
 
 /**
- * The tables and pages a space keeps: its own — Wissen, written by people and by plugins — or
- * one of its wizards' — Daten, written by its runs. Every write checks that the space may be
- * changed here; a read-only space (a local install's) shows them only. What Wissen holds is
+ * The tables and pages a space keeps: its own — Knowledge, written by people and by plugins — or
+ * one of its wizards' — Data, written by its runs. Every write checks that the space may be
+ * changed here; a read-only space (a local install's) shows them only. What Knowledge holds is
  * indexed on every write, a moment after it.
  */
 
@@ -71,7 +71,7 @@ export function checkColumns(columns: unknown): TableColumn[] {
   return parsed.data;
 }
 
-/** Daten: the tables and pages the space's wizards keep, and the wizards to name whose they are. */
+/** Data: the tables and pages the space's wizards keep, and the wizards to name whose they are. */
 export async function listSpaceData(userId: string, projectId: string): Promise<SpaceData> {
   const project = await ownedProject(userId, projectId);
   const [tables, rows, pages, wizards] = await Promise.all([
@@ -341,7 +341,7 @@ async function refuseClash(tableId: string, key: string | null, rowId: string | 
   }
 }
 
-/** After a row of a table of Wissen changed: its Kategorien from its columns, its unit. */
+/** After a row of a table of Knowledge changed: its categories from its columns, its unit. */
 async function rowChanged(table: TableRow, rowId: string) {
   if (table.wizardId) {
     return;
@@ -639,7 +639,7 @@ export async function orderSubPages(_userId: string, pageId: string, ids: string
 // --- what runs read and write --------------------------------------------------
 // A run writes the pages of its own wizard, on the runtime it runs on: a run on the server writes
 // the server's, also in a space a local install synced, which the studio there only shows. It
-// reads its wizard's pages; the space's own are Wissen, read by path.
+// reads its wizard's pages; the space's own are Knowledge, read by path.
 
 /** The pages of a run's wizard. */
 export async function runPages(projectId: string, wizardId: string) {
@@ -700,7 +700,7 @@ export async function writeRunPage(
 }
 
 // --- what plugins write ------------------------------------------------------------
-// A plugin (`server.spaceData`) writes Wissen under keys of its own: the same key again
+// A plugin (`server.spaceData`) writes Knowledge under keys of its own: the same key again
 // rewrites, never doubles. What a person changed since stays theirs.
 
 export type OriginState = "written" | "kept";

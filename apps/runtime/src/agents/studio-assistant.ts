@@ -145,7 +145,7 @@ THE SPACE
 - Typography: the brand's fonts (set_typography), each with what it is for ("Headings", "Body text") and the weights it uses — from the website's stylesheet (read_website lists its fonts) or a brand guide; system and generic faces are no brand fonts. A font's licence and what it may be used for (web, documents, print, images, video) only where a brand guide, the font's own page or the person says so; the wizards keep to it. A type scale (text styles: name, size, weight, line height, letter spacing) only when a brand guide gives one.
 - Asset sections are optional too: tabs of one kind each ("Icons", "Background images"), made with set_asset_sections only when the space holds enough assets of clearly different kinds or the person asks; a handful of pictures stay in the general tab.
 - Files the person attached are stored already; the message names them. look_at_file shows you a picture or a document's text. Give a file a description with describe_file when it has none or the person says what it is. Take facts from a document when asked.
-- Wissen (German „Wissen“) is what the wizards' steps look things up in: pages, tables and files, kept apart by typed Kategorien. Documents the person attaches are read into Wissen by themselves: say so; do not copy their text into facts unless asked. A website, a sitemap or a folder whose entries should go into Wissen is a source: where a tool proposes sources, use it (the person takes the proposal on its card); where there is none, say that sources need the Sources plugin.
+- Knowledge („Wissen“ in the German studio) is what the wizards' steps look things up in: pages, tables and files, kept apart by typed categories. Documents the person attaches are read into Knowledge by themselves: say so; do not copy their text into facts unless asked. A website, a sitemap or a folder whose entries should go into Knowledge is a source: where a tool proposes sources, use it (the person takes the proposal on its card); where there is none, say that sources need the Sources plugin.
 - Talking from another page than Info & brand, change title, about, logos, colours and facts only when the person asks.
 - A space that is read-only (synced from a local install, or a team that builds elsewhere) has no tools: say where it is changed.
 
@@ -209,9 +209,9 @@ async function projectState(userId: string, projectId: string) {
   const files = await projectFiles(projectId);
   const categories = await categoryRows(projectId);
   return {
-    wissen: {
+    knowledge: {
       ...(await knowledgeCounts(projectId)),
-      kategorien: categories.map((c) => `${c.name} (${c.type}${c.proposed ? ", proposed" : ""})`),
+      categories: categories.map((c) => `${c.name} (${c.type}${c.proposed ? ", proposed" : ""})`),
     },
     title: p.brand.name ?? "",
     about: p.brand.about ?? "",
@@ -1001,7 +1001,7 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
         ? `The space "${project.name}" is read-only here: nothing of it can be changed in this studio.`
         : "No space is open.",
     part === "knowledge"
-      ? "The person talks to you from Wissen: they want the wizards to know something."
+      ? "The person talks to you from Knowledge: they want the wizards to know something."
       : "",
     space && !(brandOn.brandSections && brandOn.brandRules && brandOn.typography)
       ? `Not in this studio (no tools for it; never offer it): ${[

@@ -16,7 +16,7 @@ import { StoreError } from "./errors.js";
  * A wizard's shared lists: one table of the space per list, owned by the wizard, that every run
  * reads and writes, wherever it runs — a run on the server writes the server's table, one on a
  * local install the install's. The list in the wizard's definition decides the table's title,
- * columns and key; the studio shows it under Space → Daten.
+ * columns and key; the studio shows it under Space → Data.
  */
 
 type TableRow = typeof schema.spaceTable.$inferSelect;

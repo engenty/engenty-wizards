@@ -37,7 +37,7 @@ const meta = (file: ProjectFileView) =>
 const TEXT_LIMIT = 200_000;
 
 /**
- * A file of Wissen that is no page and no table, opened: its Kategorien, its description, the
+ * A file of Knowledge that is no page and no table, opened: its categories, its description, the
  * file itself where the browser can show it (a PDF, a picture), and the text the models read.
  */
 export function FileView({

@@ -19,7 +19,7 @@ import { listOrigin, putOriginPage, removeOrigin } from "./space-data.js";
 /*
  * A website reads itself into a space: the WordPress plugin sends what the site says about
  * itself (name, tagline, logo, the theme's colours, contact details) and its pages as text. The
- * pages go into Wissen under the origin `wordpress`, the empty details of the space are filled
+ * pages go into Knowledge under the origin `wordpress`, the empty details of the space are filled
  * from what the site states, and the space assistant reads the rest (about, facts from the
  * imprint) as it does when an admin gives it a website. It takes a minute: the call starts a job
  * the client asks after.
@@ -152,7 +152,7 @@ async function fillFromSite(userId: string, projectId: string, input: SiteInput)
   }
 }
 
-/** The site's pages as Wissen: the same page again rewrites, a page gone from the site goes. */
+/** The site's pages as Knowledge: the same page again rewrites, a page gone from the site goes. */
 async function writePages(projectId: string, input: SiteInput): Promise<number> {
   const keys = new Set<string>();
   for (const page of input.pages) {
@@ -208,15 +208,15 @@ function assistMessage(input: SiteInput): string {
 
 async function work(job: SiteJob, projectId: string, input: SiteInput) {
   try {
-    job.activity =
-      siteLang(input) === "de"
-        ? "Übernimmt die Angaben der Website …"
-        : "Taking over what the website says …";
+    const de = siteLang(input) === "de";
+    job.activity = de
+      ? "Übernimmt die Angaben der Website …"
+      : "Taking over what the website says …";
     await fillFromSite(job.userId, projectId, input);
-    job.activity = "Schreibt die Seiten in Wissen …";
+    job.activity = de ? "Schreibt die Seiten in Wissen …" : "Writing the pages into Knowledge …";
     job.pages = await writePages(projectId, input);
     if (input.assist && (await canSpend())) {
-      job.activity = "Liest die Angaben …";
+      job.activity = de ? "Liest die Angaben …" : "Reading the details …";
       const project = await ownedProject(job.userId, projectId);
       // The person's open assistant chat gives the context; the turn is not stored in it.
       const chat = await openChat(job.user);

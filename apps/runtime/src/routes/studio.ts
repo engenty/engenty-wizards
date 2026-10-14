@@ -882,7 +882,7 @@ export const studio = new Hono<Vars>()
     const text = await documentText(row);
     return c.json({ text: text.slice(0, limit), chars: text.length });
   })
-  // What a search of Wissen finds for a question: the items an agent step would get.
+  // What a search of Knowledge finds for a question: the items an agent step would get.
   .post("/projects/:id/search", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));
     const body = z
@@ -955,7 +955,7 @@ export const studio = new Hono<Vars>()
     );
   })
 
-  // --- Wissen: its items and Kategorien ---------------------------------------
+  // --- Knowledge: its items and categories ------------------------------------
   .get("/projects/:id/knowledge", async (c) =>
     c.json(await listKnowledge(c.get("user").id, c.req.param("id"))),
   )
@@ -1024,7 +1024,7 @@ export const studio = new Hono<Vars>()
     return c.json({ ok: true });
   })
   .get("/values/:id", async (c) => c.json(await valueContents(c.get("user").id, c.req.param("id"))))
-  // Everything that has a Kategorie: the entries its page lists.
+  // Everything that has a category: the entries its page lists.
   .get("/categories/:id/items", async (c) =>
     c.json(await categoryContents(c.get("user").id, c.req.param("id"))),
   )
@@ -1048,14 +1048,14 @@ export const studio = new Hono<Vars>()
     await deleteCategoryValue(c.req.param("id"));
     return c.json({ ok: true });
   })
-  // The Übersicht of a value: a model writes it from the value's items.
+  // The summary of a value: a model writes it from the value's items.
   .post("/values/:id/summary", async (c) => {
     const { category } = await categoryValue(c.req.param("id"));
     const project = await ownedProject(c.get("user").id, category.projectId);
     await requireWritable(project);
     return c.json({ summary: await writeSummary(c.req.param("id")) });
   })
-  // A Kategorie a person sets on an item: `p:<page>`, `t:<table>`, `r:<row>`, `f:<file>`.
+  // A category a person sets on an item: `p:<page>`, `t:<table>`, `r:<row>`, `f:<file>`.
   .put("/projects/:id/items/:key/categories/:categoryId", async (c) => {
     const project = await ownedProject(c.get("user").id, c.req.param("id"));
     await requireWritable(project);

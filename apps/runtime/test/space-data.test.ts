@@ -106,7 +106,7 @@ describe("a table of the space", () => {
     expect(next.cells).toEqual({ name: "Ahorn" });
   });
 
-  it("is listed in Wissen with its rows, not in Daten, and goes with its rows", async () => {
+  it("is listed in Knowledge with its rows, not in Data, and goes with its rows", async () => {
     await send("POST", `/api/studio/tables/${tableId}/rows`, { cells: { name: "Birke" } });
     const data = await json(send("GET", `/api/studio/projects/${spaceId}/data`));
     expect(data.tables).toEqual([]);

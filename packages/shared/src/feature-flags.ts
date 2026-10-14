@@ -50,19 +50,19 @@ export const FEATURES = {
   brandSections: {
     kind: "release",
     default: false,
-    label: "Sections in Info & Marke",
+    label: "Sections in Info & brand",
     hint: "Sections of logos and of colours, gradients and patterns among them.",
   },
   brandRules: {
     kind: "release",
     default: false,
-    label: "Rules in Info & Marke",
+    label: "Rules in Info & brand",
     hint: "Rules for how the logos, the colours and the type may be used.",
   },
   typography: {
     kind: "release",
     default: false,
-    label: "Typography in Info & Marke",
+    label: "Typography in Info & brand",
     hint: "The brand's fonts, their licences and a type scale.",
   },
   ownKeys: {

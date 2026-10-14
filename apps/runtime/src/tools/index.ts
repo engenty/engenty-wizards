@@ -185,7 +185,7 @@ export async function buildStepTools(
   // The wizard's lists and files, the documents the person gave and the project's documents are
   // always at hand. An installed client gets tools over an MCP bridge its CLI starts for every
   // call, seconds of its own: a step with no use for the store goes without its tools, and
-  // without others (Wissen, a workspace file) the client answers without the bridge.
+  // without others (Knowledge, a workspace file) the client answers without the bridge.
   const idle =
     isHarnessVendor(resolved.vendor) &&
     storeIdle(step, ctx.def.lists?.length ?? 0, uploads.length) &&

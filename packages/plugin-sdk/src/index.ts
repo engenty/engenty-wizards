@@ -191,7 +191,7 @@ export interface PluginSpaceContext {
   steps?: ("agent" | "html")[];
 }
 
-/** A space's brand as the studio's Info & Marke has it: what a plugin draws or writes in its look. */
+/** A space's brand as the studio's Info & brand has it: what a plugin draws or writes in its look. */
 export interface PluginBrand {
   /** The title end users see. */
   name: string;
@@ -222,7 +222,7 @@ export interface PluginIndex {
   remove(space: string, key?: string): Promise<void>;
 }
 
-/** A Kategorie of a space: a typed property set on pages, tables, rows and files of Wissen. */
+/** A category of a space: a typed property set on pages, tables, rows and files of Knowledge. */
 export interface PluginCategory {
   name: string;
   type: "choice" | "date" | "number" | "text" | "boolean";
@@ -241,7 +241,7 @@ export interface PluginCategory {
 }
 
 /**
- * Kategorien of an item, by their names: a choice's value (or a list of them), a day as
+ * Categories of an item, by their names: a choice's value (or a list of them), a day as
  * `YYYY-MM-DD`, a number, a short text, true or false. Null takes one off.
  */
 export type PluginCategoryValues = Record<
@@ -272,9 +272,9 @@ export interface PluginPageInput {
   position?: number;
   original?: PluginOriginal;
   categories?: PluginCategoryValues;
-  /** A model fills the space's Kategorien the page did not get from `categories`. */
+  /** A model fills the space's categories the page did not get from `categories`. */
   fill?: boolean;
-  /** Why a person should look at it ("hardly readable"); shown in Wissen. */
+  /** Why a person should look at it ("hardly readable"); shown in Knowledge. */
   review?: string | null;
 }
 
@@ -317,7 +317,7 @@ export interface PluginDocumentInput {
   data: Uint8Array;
   /** Set on what it becomes: its first page, its first table, or the file. */
   categories?: PluginCategoryValues;
-  /** A model fills the space's Kategorien it did not get from `categories`. */
+  /** A model fills the space's categories it did not get from `categories`. */
   fill?: boolean;
 }
 
@@ -370,12 +370,12 @@ export interface PluginSpaceItem {
 }
 
 /**
- * Wissen of a space, written by a plugin: pages, tables and files under keys of its own, with
- * their Kategorien. Every write is indexed: `project_search` finds it a moment later.
+ * Knowledge of a space, written by a plugin: pages, tables and files under keys of its own, with
+ * their categories. Every write is indexed: `project_search` finds it a moment later.
  */
 export interface PluginSpaceData {
   /**
-   * Adds Kategorien to the space, or values to ones it has. `proposed`: shown to the person to
+   * Adds categories to the space, or values to ones it has. `proposed`: shown to the person to
    * confirm, never filled before; a later call without it takes them.
    */
   putCategories(input: {
@@ -404,12 +404,12 @@ export interface PluginSpaceData {
     space: string,
     kind?: "logo" | "asset" | "document" | "pattern",
   ): Promise<PluginSpaceFile[]>;
-  /** One file of the space with its bytes: a price list someone dropped into Wissen. */
+  /** One file of the space with its bytes: a price list someone dropped into Knowledge. */
   readFile(space: string, fileId: string): Promise<PluginSpaceFile & { data: Uint8Array }>;
   /** Takes out one key, or every item of the plugin in the space; what a person changed stays. */
   remove(space: string, key?: string): Promise<number>;
   /**
-   * Writes the Übersicht of values: of one, or of every value of a choice (or of every choice)
+   * Writes the summary of values: of one, or of every value of a choice (or of every choice)
    * that has three items or more. Returns how many were written. Costs a model call each.
    */
   summarize(space: string, category?: string, value?: string): Promise<number>;
@@ -999,7 +999,7 @@ export interface PluginServerApi {
   every(name: string, everyMs: number, handler: (tick: PluginTick) => void | Promise<void>): void;
   /** The space's search index, which `project_search` asks. */
   index: PluginIndex;
-  /** Wissen of a space: pages, tables and files the plugin writes, with their Kategorien. */
+  /** Knowledge of a space: pages, tables and files the plugin writes, with their categories. */
   spaceData: PluginSpaceData;
   spaces: {
     /** The space's brand, of the current tenant; null for a space it does not have. */

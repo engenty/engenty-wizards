@@ -333,7 +333,7 @@ export const apiRoutes = new Hono()
     }
     return inTenantAs(who, async () => c.json(await apiRun(who.userId, c.req.param("id"))));
   })
-  // The space's own details: title, about, colours, facts, logo, how much Wissen it holds.
+  // The space's own details: title, about, colours, facts, logo, how much Knowledge it holds.
   .get("/space", async (c) => {
     const who = await caller(c, ["wizards:read"]);
     if (who instanceof Response) {

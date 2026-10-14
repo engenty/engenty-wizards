@@ -372,9 +372,9 @@ export const projectFile = sqliteTable(
 );
 
 /**
- * The index of Wissen: one unit per section of a page, row of a table, file, summary of a
- * Kategorie's value, passage of a document read before pages, and passage of a plugin's text
- * (`server.index`). Each unit's text starts with where it stands and its Kategorien. Keywords
+ * The index of Knowledge: one unit per section of a page, row of a table, file, summary of a
+ * category's value, passage of a document read before pages, and passage of a plugin's text
+ * (`server.index`). Each unit's text starts with where it stands and its categories. Keywords
  * live in two FTS5 tables, words (`project_chunk_fts`) and trigrams (`project_chunk_tri`), which
  * triggers keep in step (see the migrations); `embedding` is the unit's vector as float32
  * bytes, compared with libSQL's `vector_distance_cos`.
@@ -543,11 +543,11 @@ export const spacePage = sqliteTable(
   ],
 );
 
-// --- Kategorien -----------------------------------------------------------------
-// Typed properties that run across Wissen: set on pages, rows, tables and files, any number of
+// --- Categories -----------------------------------------------------------------
+// Typed properties that run across Knowledge: set on pages, rows, tables and files, any number of
 // each, so a step filters before it searches.
 
-/** A Kategorie of the space: a name, a type and, for a choice, the values it has met. */
+/** A category of the space: a name, a type and, for a choice, the values it has met. */
 export const spaceCategory = sqliteTable(
   "space_category",
   {
@@ -580,7 +580,7 @@ export const spaceCategory = sqliteTable(
   (t) => [uniqueIndex("space_category_name").on(t.projectId, t.name)],
 );
 
-/** A value of a choice: grows as items arrive; its summary is the Übersicht of its items. */
+/** A value of a choice: grows as items arrive; its summary is the summary of its items. */
 export const spaceCategoryValue = sqliteTable(
   "space_category_value",
   {
@@ -590,7 +590,7 @@ export const spaceCategoryValue = sqliteTable(
       .references(() => spaceCategory.id, { onDelete: "cascade" }),
     value: text("value").notNull(),
     position: integer("position").notNull().default(0),
-    /** The Übersicht: Markdown a model wrote of the value's items, when it last did. */
+    /** The summary: Markdown a model wrote of the value's items, when it last did. */
     summary: text("summary"),
     summaryAt: integer("summary_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
@@ -599,7 +599,7 @@ export const spaceCategoryValue = sqliteTable(
 );
 
 /**
- * A Kategorie set on an item: exactly one of page, row, table and file. A choice points to its
+ * A category set on an item: exactly one of page, row, table and file. A choice points to its
  * value; the other types keep theirs typed: a date as milliseconds, a number, a short text, yes
  * or no. A choice with several values has a row per value.
  */
