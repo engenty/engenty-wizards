@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.3",
+    "timestamp": 1792013484,
+    "commits": [
+      {
+        "id": "ce3ee90",
+        "message": "`npx wizards` installs, sets up and runs the studio – a copy from npm (npx, npm i -g) on macOS and Linux installs engenty wizards into ~/.engenty/wizards with the install.sh it carries (own Node, runtime, the `wizards` command), brings an older install up to its own version and restarts a runtime that runs, then hands every command to the installed `wizards`; a Node older than 24.11 gets the same instead of a refusal; --version, --help, validate and mcp still run from npm; node-pty is an optional dependency of the package, so npx installs on a Linux without a compiler; the install page names `npx wizards` beside the curl installer",
+        "group": "Added",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.2",
-    "timestamp": 1792012348,
+    "timestamp": 1792012368,
     "commits": [
       {
         "id": "8abf854",

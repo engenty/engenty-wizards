@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.3] - 2026-10-14
+- ADDED **[cli]** `npx wizards` installs, sets up and runs the studio – a copy from npm (npx, npm i -g) on macOS and Linux installs engenty wizards into ~/.engenty/wizards with the install.sh it carries (own Node, runtime, the `wizards` command), brings an older install up to its own version and restarts a runtime that runs, then hands every command to the installed `wizards`; a Node older than 24.11 gets the same instead of a refusal; --version, --help, validate and mcp still run from npm; node-pty is an optional dependency of the package, so npx installs on a Linux without a compiler; the install page names `npx wizards` beside the curl installer
+
 ## [0.5.2] - 2026-10-14
 - ADDED **[editor]** On a phone the sheet opens over the whole room, and the tab Ablauf folds it to the diagram – a drag near the top takes all of it, the tabs scroll sideways where they do not fit
 
