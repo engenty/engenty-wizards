@@ -43,7 +43,7 @@ appears once a plugin, or a file that looks like one, is there.
 | Reload | Loads one plugin again from its files |
 | Look again | Loads all plugins again and finds new ones |
 
-- "The server half did not load" or "The studio half did not load" names what went wrong with a
+- "The server part didn’t load" or "The studio part didn’t load" names what went wrong with a
   plugin. It adds nothing until that is mended.
 - "Not a plugin" lists files in the plugins folder that look like a plugin and are none.
 

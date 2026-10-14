@@ -125,7 +125,7 @@ says so on top:
 
 | It shows | Means |
 |---|---|
-| "Version 3 does not run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
+| "Version 3 doesn’t run in the cloud" | Something the wizard needs is missing there. The list says what; the version before keeps running |
 | "Send again" | The last sending did not arrive, or the space changed. When engenty.ai was the trouble, the studio tries again by itself and says when |
 
 Without an account the dialog says that the wizard runs only on this computer ("Only on this
