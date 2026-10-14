@@ -3,24 +3,25 @@ import {
   TEXT_CLASSES,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
-import type {
-  AssetSection,
-  BrandColor,
-  BrandFont,
-  BrandGradient,
-  BrandPattern,
-  BrandRule,
-  ColorSection,
-  LogoSection,
-  ProjectFact,
-  TextStyle,
+import {
+  type AssetSection,
+  type BrandColor,
+  type BrandFont,
+  type BrandGradient,
+  type BrandPattern,
+  type BrandRule,
+  type ColorSection,
+  DEFAULT_SPACE_NAME,
+  type LogoSection,
+  type ProjectFact,
+  type TextStyle,
 } from "@engenty-wizards/shared/projects";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 import { ApiError, api } from "./api";
 import { STUDIO, withBase } from "./base";
-import { type Lang, setLang, storedLang } from "./i18n";
+import { type Lang, setLang, storedLang, t } from "./i18n";
 
 /** An AI client installed on this machine that can think for the app, on its own subscription. */
 export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
@@ -260,6 +261,19 @@ export interface Project {
   readOnly: boolean;
 }
 
+/**
+ * What the studio calls a space wherever it names one — the top bar, the switcher, the app bar,
+ * the space's page: its own name. The name the runtime gave the first space is no one's choice,
+ * so until the space is renamed its title (Info & Marke) stands in, else that name in the
+ * person's language.
+ */
+export function spaceName(project: Pick<Project, "name" | "brand">): string {
+  if (project.name !== DEFAULT_SPACE_NAME) {
+    return project.name;
+  }
+  return project.brand.name?.trim() || t("space.defaultName");
+}
+
 export function useProjects(enabled = true) {
   return useQuery({
     queryKey: ["projects"],
@@ -308,6 +322,19 @@ export function useCurrentProject() {
   // A pick that is gone (deleted, another tenant) falls back to the first project.
   const current = list.find((p) => p.id === id) ?? list[0] ?? null;
   return { project: current, projects: list, select: pick, loading: projects.isLoading };
+}
+
+/**
+ * Whether there is anything to pick among the spaces: another one to switch to, or room for one
+ * this person may add. A single space at the plan's limit offers nothing, so no switcher shows.
+ */
+export function useSwitchable(): boolean {
+  const me = useMe().data;
+  const { projects } = useCurrentProject();
+  const mayCreate = useMayCreate();
+  // Null: as many as wanted.
+  const limit = me ? me.limits.projects : 1;
+  return projects.length > 1 || (mayCreate && (limit === null || projects.length < limit));
 }
 
 export interface WizardSummary {

@@ -1,3 +1,9 @@
+/**
+ * The name the runtime gives a tenant's first space. Until someone renames the space, the studio
+ * shows its title instead, or this in the person's language (`spaceName` in the studio).
+ */
+export const DEFAULT_SPACE_NAME = "Meine Wizards";
+
 // --- facts ---------------------------------------------------------------------
 // What a project knows about itself as label and value: an address, a VAT id, anything. Every
 // step of the project's wizards can read them.

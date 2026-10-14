@@ -1,11 +1,12 @@
 ---
 title: Space
 description: What your wizards share and produce — who you are, what they look things up in, and the results of their runs.
-version: 0.3.7
+version: 0.4.4
 ---
 
-The house in the app bar, after the space's tile, opens your space: what all your wizards share,
-and what they produce.
+The space's tile in the app bar, after the mark, opens your space: what all your wizards share,
+and what they produce. The house after it leads home, to the space's wizards, as the wordmark in
+the top bar does.
 Every AI step knows it, so a wizard never has to ask for your company's name or address.
 
 The menu on the left shows the space's four parts; a part opens its own sections, the arrow at
@@ -99,6 +100,8 @@ It enters what it finds: title, description, logo, colours and facts. You correc
 ## One space
 
 A local install has one space. On engenty.ai the team's plan says how many it may have: the
-space's name in the top bar switches between them, and "Add space" adds one. Each space has its
+space's name in the top bar switches between them, and "Add space" adds one. With one space and
+no room for another, the name is only a name. A team's first space shows its title from Info &
+brand ("My wizards" until it has one); a space you named or renamed keeps its name. Each space has its
 own wizards, Info & brand, Knowledge, Data, connectors and results; the account, the models and
 the plugins are the same for every space.

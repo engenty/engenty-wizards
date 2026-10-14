@@ -31,9 +31,11 @@ import {
   type Me,
   type Project,
   signOut,
+  spaceName,
   spendableCredits,
   useCurrentProject,
   useMayCreate,
+  useSwitchable,
 } from "../lib/session";
 import { useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
@@ -218,7 +220,7 @@ export function SpaceFace({
   size?: "sm" | "md";
 }) {
   const color = project?.brand.colors?.[0]?.value;
-  const initials = initialsOf(project?.name ?? "");
+  const initials = initialsOf(project ? spaceName(project) : "");
   return (
     <span
       className={cn(
@@ -235,9 +237,9 @@ export function SpaceFace({
 
 /**
  * The spaces, listed as Slack lists its workspaces: the one shown first (its row opens its
- * wizards; its page is behind the home in the bar), the others to switch to, and a row that adds one — greyed at the plan's limit. The
- * trigger is the caller's: the space's tile in the app bar, its name in the top bar. `label`:
- * the trigger's name for a screen reader where it shows no text.
+ * wizards; its page is behind its tile in the app bar), the others to switch to, and a row that
+ * adds one — greyed at the plan's limit. The trigger is the caller's: the space's name in the
+ * top bar. `label`: the trigger's name for a screen reader where it shows no text.
  */
 export function SpaceMenu({
   me,
@@ -310,7 +312,7 @@ export function SpaceMenu({
                       current ? "font-semibold text-ink" : "font-medium text-ink-2",
                     )}
                   >
-                    {p.name}
+                    {spaceName(p)}
                   </span>
                   <span className="truncate text-[0.75rem] text-ink-4">
                     {t("nav.wizardCount", { n: p.wizardCount })}
@@ -357,11 +359,22 @@ export function SpaceMenu({
   );
 }
 
-/** The space's name in the top bar; it opens the spaces to switch between and to add one. */
+/**
+ * The space's name in the top bar: the one place that switches between spaces and adds one. With
+ * nothing to switch to or add, it is only the name.
+ */
 function SpaceName({ me }: { me: Me }) {
   const { project } = useCurrentProject();
+  const switchable = useSwitchable();
   if (!project) {
     return null;
+  }
+  if (!switchable) {
+    return (
+      <span className="max-w-[16rem] shrink-0 truncate px-1 font-medium text-[0.9375rem] text-ink">
+        {spaceName(project)}
+      </span>
+    );
   }
   return (
     <SpaceMenu
@@ -369,7 +382,7 @@ function SpaceName({ me }: { me: Me }) {
       placement="below"
       className="-ml-1 flex h-8 max-w-[16rem] items-center gap-1 rounded-lg px-2 font-medium text-[0.9375rem] text-ink transition hover:bg-accent"
     >
-      <span className="truncate">{project.name}</span>
+      <span className="truncate">{spaceName(project)}</span>
       <ChevronDown className="size-4 shrink-0 text-ink-4" />
     </SpaceMenu>
   );

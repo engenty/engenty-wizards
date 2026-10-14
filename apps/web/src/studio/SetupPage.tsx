@@ -11,6 +11,7 @@ import {
   type AppleStatus,
   type HarnessStatus,
   type LocalModels,
+  spaceName,
   useCurrentProject,
   useMe,
   withoutApple,
@@ -722,7 +723,7 @@ export function SetupPage() {
           engenty ·{" "}
           {me.data.account?.signedIn
             ? t("setup.thisComputer", {
-                space: project?.name ?? "",
+                space: project ? spaceName(project) : "",
                 team: me.data.account.team ?? me.data.account.name,
               })
             : t("setup.local")}

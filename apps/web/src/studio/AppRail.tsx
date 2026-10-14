@@ -31,11 +31,11 @@ import {
   useAppBar,
 } from "../lib/appbar";
 import { type Key, t } from "../lib/i18n";
-import { type Me, useCurrentProject } from "../lib/session";
+import { type Me, spaceName, useCurrentProject } from "../lib/session";
 import { setTheme, type Theme, useThemePick } from "../lib/theme";
 import { PluginFrame, useStudioPlugins } from "../plugins/host";
 import { cn } from "../ui";
-import { SpaceFace, SpaceMenu, UserMenu, useDismiss } from "./AppFrame";
+import { SpaceFace, UserMenu, useDismiss } from "./AppFrame";
 
 const AboutDialog = lazy(() =>
   import("../about/AboutDialog").then((m) => ({ default: m.AboutDialog })),
@@ -43,9 +43,9 @@ const AboutDialog = lazy(() =>
 
 /**
  * The app bar at an edge of the window, as in engenty-pro: the mark (it opens the About dialog:
- * the version, updates, what is new), the space with its home (the space's page: Info & Marke,
- * Wissen, Daten, Ergebnisse), the apps the plugins added, and at its end the settings and the
- * person. A place is a filled tile, a tool a line glyph; the
+ * the version, updates, what is new), the space's tile (its page: Info & Marke, Wissen, Daten,
+ * Ergebnisse), the home (the space's wizards), the apps the plugins added, and at its end the
+ * settings and the person. A place is a filled tile, a tool a line glyph; the
  * one that is open is cut from the page's own paper. A right click on the bar picks its edge
  * and the colour scheme. A phone has it along the bottom, or the top (`useAppBar`); a long
  * press there opens the same menu with those two edges.
@@ -60,23 +60,27 @@ function glyph(active: boolean): string {
   );
 }
 
-/** The space's tile: it opens the spaces to switch between; the ring says the menu is open. */
-function SpaceTile({ me }: { me: Me }) {
+/**
+ * The space's tile: it opens the space's page; the ring says that page is open. Spaces are
+ * switched at the space's name in the top bar.
+ */
+function SpaceTile() {
   const { project } = useCurrentProject();
+  const label = project ? `${t("nav.project")}: ${spaceName(project)}` : t("nav.project");
   return (
-    <SpaceMenu
-      me={me}
-      placement="bar-start"
-      label={project?.name ?? t("nav.project")}
-      className={(open) =>
+    <NavLink
+      to="/space"
+      title={label}
+      aria-label={label}
+      className={({ isActive }) =>
         cn(
           "block rounded-lg transition",
-          open ? "ring-2 ring-ink/80 ring-offset-2 ring-offset-sidebar" : "hover:shadow-soft",
+          isActive ? "ring-2 ring-ink/80 ring-offset-2 ring-offset-sidebar" : "hover:shadow-soft",
         )
       }
     >
       <SpaceFace project={project} />
-    </SpaceMenu>
+    </NavLink>
   );
 }
 
@@ -258,13 +262,14 @@ export function AppRail({ me }: { me: Me }) {
           <EngentyLogoMark size={32} />
         </button>
         <div className={horizontal ? "ml-1" : "mt-2"}>
-          <SpaceTile me={me} />
+          <SpaceTile />
         </div>
-        {/* The space's home: its page with Info & Marke, Wissen, Daten and Ergebnisse. */}
+        {/* Home: the space's wizards, as the wordmark in the top bar. */}
         <NavLink
-          to="/space"
-          title={t("nav.project")}
-          aria-label={t("nav.project")}
+          to="/"
+          end
+          title={t("nav.home")}
+          aria-label={t("nav.home")}
           className={({ isActive }) => cn(glyph(isActive), horizontal ? "ml-1.5" : "mt-2")}
         >
           <Home className="size-5" />

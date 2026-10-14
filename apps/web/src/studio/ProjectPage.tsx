@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useFeature } from "../lib/features";
 import { t } from "../lib/i18n";
-import { useCurrentProject, useManyProjects } from "../lib/session";
+import { spaceName, useCurrentProject, useManyProjects } from "../lib/session";
 import { PluginFrame, SpacePartFrame, useStudioPlugins } from "../plugins/host";
 import { cn, Empty } from "../ui";
 import { scrollRoot, useCrumbs } from "./AppFrame";
@@ -159,7 +159,7 @@ export function ProjectPage() {
   const levelStep = useStepDirection(level);
   const pageStep = useStepDirection(phone);
   const menu = useMemo(() => ({ slot, narrow, setDetail }), [slot, narrow]);
-  const title = project ? project.brand.name?.trim() || project.name : t("nav.project");
+  const title = project ? spaceName(project) : t("nav.project");
 
   // Typography waits behind its switch.
   const off = useFeature("typography") ? [] : ["typography"];

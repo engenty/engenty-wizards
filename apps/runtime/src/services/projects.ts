@@ -8,6 +8,7 @@ import {
   type ColorSection,
   cleanAssetSections,
   cleanLogoSections,
+  DEFAULT_SPACE_NAME,
   FACT_TYPES,
   FONT_USES,
   FONT_WEIGHTS,
@@ -202,7 +203,7 @@ async function ensureProject(): Promise<void> {
     const id = nanoid(12);
     await db
       .insert(schema.project)
-      .values({ id, tenantId: currentTenant(), name: "Meine Wizards" });
+      .values({ id, tenantId: currentTenant(), name: DEFAULT_SPACE_NAME });
     spaceChanged("space.created", id);
   }
 }

@@ -6,7 +6,7 @@ import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { type Key, t } from "../lib/i18n";
-import { useCurrentProject, useMe } from "../lib/session";
+import { spaceName, useCurrentProject, useMe } from "../lib/session";
 import { useGround } from "../lib/theme";
 import { cn } from "../ui";
 import { LangSwitch } from "./LangSwitch";
@@ -407,7 +407,7 @@ export function OnboardingPage() {
                 {t("onboard.space")}
               </h1>
               <p className="text-[1.0625rem] text-white/90 leading-relaxed">
-                {t("onboard.spaceSub", { space: project?.name ?? "" })}
+                {t("onboard.spaceSub", { space: project ? spaceName(project) : "" })}
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {(

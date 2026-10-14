@@ -27,10 +27,12 @@ import { useFeature } from "../lib/features";
 import { type Key, lang, t } from "../lib/i18n";
 import {
   type Me,
+  spaceName,
   useCurrentProject,
   useMayBuild,
   useMayCreate,
   useMe,
+  useSwitchable,
   type WizardSummary,
 } from "../lib/session";
 import { Button, Card, Chip, cn, Dialog, Empty, IconButton, Input, Select } from "../ui";
@@ -108,14 +110,19 @@ export function NewSpaceDialog({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-/** Picks the project the studio looks at. Nothing where the tenant works with one project. */
+/**
+ * Picks the project the studio looks at. Nothing where there is nothing to pick: one project, and
+ * no room or no right to add another.
+ */
 export function ProjectSwitcher() {
   const { project, projects, select } = useCurrentProject();
+  const limits = useMe().data?.limits;
   // Null: as many as wanted.
-  const limit = useMe().data?.limits.projects ?? 1;
+  const limit = limits ? limits.projects : 1;
   const mayCreate = useMayCreate();
+  const switchable = useSwitchable();
   const [open, setOpen] = useState(false);
-  if (!project || (limit !== null && limit <= 1)) {
+  if (!project || !switchable) {
     return null;
   }
   return (
@@ -125,7 +132,7 @@ export function ProjectSwitcher() {
         value={project.id}
         onChange={(v) => (v === "__new" ? setOpen(true) : select(v))}
         options={[
-          ...projects.map((p) => ({ value: p.id, label: p.name })),
+          ...projects.map((p) => ({ value: p.id, label: spaceName(p) })),
           // A tenant that builds nothing here makes no project here either; nor does a member.
           ...(mayCreate
             ? [

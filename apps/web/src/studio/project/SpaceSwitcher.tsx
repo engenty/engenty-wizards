@@ -3,7 +3,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import type { Project } from "../../lib/session";
+import { type Project, spaceName } from "../../lib/session";
 import { Button, Dialog, IconButton, Input } from "../../ui";
 import { ProjectSwitcher } from "../HomePage";
 
@@ -12,7 +12,7 @@ type Patch = { name: string };
 /** The project's own name: what the switcher calls it, never shown to end users. */
 function Rename({ project, save }: { project: Project; save: (patch: Patch) => Promise<unknown> }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState(project.name);
+  const [name, setName] = useState(spaceName(project));
   const rename = useMutation({
     mutationFn: () => save({ name: name.trim() }),
     onSuccess: () => setOpen(false),
@@ -22,7 +22,7 @@ function Rename({ project, save }: { project: Project; save: (patch: Patch) => P
       <IconButton
         label={t("project.rename")}
         onClick={() => {
-          setName(project.name);
+          setName(spaceName(project));
           setOpen(true);
         }}
       >

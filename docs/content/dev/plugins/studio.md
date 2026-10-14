@@ -1,7 +1,7 @@
 ---
 title: The studio half
 description: Pages, icons in the app bar, sections of the settings and of the space page — written in React, built once, drawn inside the studio.
-version: 0.3.7
+version: 0.4.4
 ---
 
 The studio half is `ui/plugin.tsx`. Its default export is a function; the studio calls it after
@@ -119,7 +119,7 @@ studio.registerSettingsSection({
 ## The space
 
 A space holds what all its wizards share: a title, logos, colours, facts and Knowledge. The
-space page, behind the house icon (Space) in the app bar, shows them in four parts:
+space page, behind the space's tile in the app bar, shows them in four parts:
 
 | Part | `group` | Holds |
 |---|---|---|

@@ -1,7 +1,7 @@
 ---
 title: Create an account
 description: Your team, its space and your wizards live in your account at engenty.ai. Sign up with an invitation code, answer four questions, build.
-version: 0.3.4
+version: 0.4.4
 ---
 
 engenty wizards is in a closed beta: a new account needs an invitation code. "Get started" on
@@ -28,7 +28,7 @@ The studio asks four things, one per page. Each but the first can be skipped and
 | Who you are | What your team is called: your company, your club, or just your name | The team's name at account.engenty.ai |
 | About you & your brand | Your website. engenty reads your name, what you do, your logo and colours from it; or you write a line about yourself | [Space → Info & brand](./space.md#info--brand) |
 | Knowledge | Documents the wizards may look things up in: price lists, your terms, an FAQ | [Space → Knowledge](./space.md#knowledge) |
-| Your space | Nothing: it explains the space that holds all of this, "Meine Wizards" | — |
+| Your space | Nothing: it explains the space that holds all of this, under your brand's title ("My wizards" until it has one) | — |
 
 Then "Build your first wizard" opens the studio's start: describe a task in a sentence, or pick
 a template. See [Build a wizard](./build-a-wizard.md).
