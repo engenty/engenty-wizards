@@ -520,6 +520,55 @@ export interface PluginPublicRoute {
   handler(request: PluginPublicRequest): unknown | Promise<unknown>;
 }
 
+/** What a shared route's handler gets: nobody is signed in, and no tenant yet. */
+export interface PluginSharedRequest {
+  request: Request;
+  /** The address below the plugin's shared one. */
+  path: string;
+  params: Record<string, string>;
+  query: URLSearchParams;
+  /**
+   * Runs `work` inside the tenant whose public address has this ref (`server.publicRef()`),
+   * when the tenant is active and has the plugin. Throws with the status `404` and the code
+   * `not_found` otherwise.
+   */
+  inTenant<T>(ref: string, work: () => T | Promise<T>): Promise<T>;
+}
+
+/**
+ * A route for every tenant at once, at the address `sharedUrl` gives: for a service that posts
+ * to one webhook for all of them (one account of the runtime's, one app). The call names its
+ * tenant only by what it carries – the ref of the tenant's address, handed to the service
+ * before (`publicRef`) – so check the service's signature first, then `inTenant`.
+ */
+export interface PluginSharedRoute {
+  method: PluginHttpMethod;
+  path: string;
+  handler(request: PluginSharedRequest): unknown | Promise<unknown>;
+}
+
+/** A kind of use of a number of the Manage-App's. */
+export type PluginChannelKind = "sms" | "call" | "whatsapp";
+
+/**
+ * The numbers a Manage-App gives the tenant (docs/manage-contract.md): its own number for
+ * texts and calls, asked for and assigned there, and the numbers every tenant shares.
+ */
+export interface PluginChannels {
+  number: {
+    /** With the country code: `+43…`. */
+    number: string;
+    /** ISO 3166, upper case: `AT`. */
+    country: string;
+    kinds: PluginChannelKind[];
+    /** The provider's id of the number (Twilio's `PN…`); null when none was entered. */
+    providerRef: string | null;
+  } | null;
+  /** The tenant's open request for its number; null for none. */
+  request: { id: string; country: string; wish: string | null; createdAt: string } | null;
+  shared: { number: string; country: string; kinds: PluginChannelKind[] }[];
+}
+
 /** An account a plugin connected for a space: a calendar, a mailbox. */
 export interface PluginConnection {
   id: string;
@@ -877,6 +926,44 @@ export interface PluginServerApi {
   registerPublicRoute(route: PluginPublicRoute): void;
   /** The full address of a public route for the current tenant: what to hand to whoever calls it. */
   publicUrl(path: string): Promise<string>;
+  /** The part of `publicUrl` that names the current tenant: what a shared route's call carries. */
+  publicRef(): Promise<string>;
+  /** A route for every tenant at once (one webhook of a service for all of them). */
+  registerSharedRoute(route: PluginSharedRoute): void;
+  /** The full address of a shared route, the same for every tenant. */
+  sharedUrl(path: string): string;
+  /**
+   * The numbers the Manage-App gives the current tenant. `get` is null on a runtime without a
+   * Manage-App; there `request` and `withdraw` throw, and `book` books nothing.
+   */
+  channels: {
+    /** Kept for a minute. */
+    get(): Promise<PluginChannels | null>;
+    /**
+     * A person of the tenant asks for its number. Throws with the status `403` and the code
+     * `plan` on a plan without one, `409` and `has_number` when the tenant has it; asking again
+     * answers the open request.
+     */
+    request(input: {
+      userId: string;
+      /** ISO 3166: `AT`. */
+      country: string;
+      wish?: string | null;
+      lang: "de" | "en";
+    }): Promise<NonNullable<PluginChannels["request"]>>;
+    /** Takes the open request back; false when there was none. */
+    withdraw(): Promise<boolean>;
+    /**
+     * Books what the tenant's number carried, at the Manage-App's prices: `sms` by segment
+     * (sent or received), `call` by started minute. The same `key` twice books once.
+     */
+    book(input: {
+      kind: "sms" | "call";
+      quantity: number;
+      key: string;
+      runId?: string | null;
+    }): Promise<{ credits: number }>;
+  };
   /**
    * Runs `handler` for every tenant that has the plugin, at most once per `everyMs` (a minute
    * at least), inside that tenant. When it ran is kept: a restart does not start the count again,

@@ -14,6 +14,8 @@ const RUNTIME = "http://localhost:5181";
 const SERVICE_KEY = "wzr_test_service_key";
 const balances: Record<string, number> = { "tenant-a": 500, "tenant-b": 0 };
 const reservations: { tenantId: string; runId: string; credits: number }[] = [];
+const numberRequests: { tenantId: string; body: any }[] = [];
+const channelUsage: { tenantId: string; body: any }[] = [];
 let issuer = "";
 
 function token(claims: Record<string, unknown>, aud: string) {
@@ -81,6 +83,31 @@ const manage: Server = createServer(async (req, res) => {
       seats: { limit: 5, taken: 3 },
     });
   }
+  // Tenant A has its number for texts and calls; tenant B asks for one.
+  const channels = url.pathname.match(/^\/v1\/tenants\/([^/]+)\/channels(\/requests|\/usage)?$/);
+  if (channels) {
+    const [, id, sub] = channels;
+    if (sub === "/usage") {
+      const body = JSON.parse(raw);
+      channelUsage.push({ tenantId: id, body });
+      return json({ credits: body.quantity * 10 });
+    }
+    if (sub === "/requests") {
+      if (id === "tenant-a") {
+        return json({ error: "The team has its number.", code: "has_number" }, 409);
+      }
+      numberRequests.push({ tenantId: id, body: JSON.parse(raw) });
+      return json({ request: { id: "req-1", country: "AT", wish: null, email: "b@test.local", createdAt: "2026-10-14T00:00:00.000Z" } });
+    }
+    return json({
+      number:
+        id === "tenant-a"
+          ? { id: "n1", number: "+4318008081", country: "AT", kinds: ["sms", "call"], providerRef: "PN1", since: "2026-10-01T00:00:00.000Z" }
+          : null,
+      request: null,
+      shared: [{ number: "+436600000000", country: "AT", kinds: ["whatsapp"] }],
+    });
+  }
   const tenant = url.pathname.match(/^\/v1\/tenants\/([^/]+)$/)?.[1];
   if (tenant) {
     return json({
@@ -136,9 +163,41 @@ process.env.MANAGE_CLIENT_SECRET = "secret";
 process.env.MANAGE_SERVICE_KEY = SERVICE_KEY;
 
 // Three plugins: one every tenant has, one the Manage-App lists for tenant A, one nobody has.
+// The one every tenant has also reads the tenant's numbers and has a route for all tenants.
 const plugins = join(dir, "plugins");
 mkdirSync(plugins);
-for (const id of ["basics", "teams", "spaces"]) {
+writeFileSync(
+  join(plugins, "basics.ts"),
+  `export default (wizards: any) => {
+  const { server } = wizards;
+  server.registerHttpRoute({ method: "GET", path: "/", handler: ({ user }: any) => ({ plugin: "basics", tenant: user.tenantId }) });
+  server.registerHttpRoute({
+    method: "GET",
+    path: "/channels",
+    handler: async () => ({ channels: await server.channels.get(), ref: await server.publicRef(), shared: server.sharedUrl("/hook") }),
+  });
+  server.registerHttpRoute({
+    method: "POST",
+    path: "/channels/request",
+    handler: ({ user }: any) => server.channels.request({ userId: user.id, country: "at", lang: "de" }),
+  });
+  server.registerHttpRoute({
+    method: "POST",
+    path: "/channels/book",
+    handler: () => server.channels.book({ kind: "sms", quantity: 2, key: "SM1", runId: "run-1" }),
+  });
+  server.registerSharedRoute({
+    method: "POST",
+    path: "/hook",
+    handler: async (request: any) => {
+      const { ref } = await request.request.json();
+      return request.inTenant(ref, async () => ({ number: (await server.channels.get())?.number?.number ?? null }));
+    },
+  });
+};
+`,
+);
+for (const id of ["teams", "spaces"]) {
   writeFileSync(
     join(plugins, `${id}.ts`),
     `export default (wizards: any) => {
@@ -318,6 +377,43 @@ describe("a runtime of a Manage-App", () => {
     expect((await post("/api/studio/plugins/-/reload", a, {})).status).toBe(403);
     expect((await post("/api/studio/plugins/-/reload/teams", a, {})).status).toBe(403);
     expect((await get("/api/studio/plugins/-/events", a)).status).toBe(404);
+  });
+
+  it("gives a plugin the tenant's numbers, books what they carry, and enters a tenant from a shared route by its ref", async () => {
+    const ofA = (await (await get("/api/studio/plugins/basics/channels", a)).json()) as any;
+    expect(ofA.channels).toEqual({
+      number: { number: "+4318008081", country: "AT", kinds: ["sms", "call"], providerRef: "PN1" },
+      request: null,
+      shared: [{ number: "+436600000000", country: "AT", kinds: ["whatsapp"] }],
+    });
+    expect(ofA.shared).toBe(`${RUNTIME}/api/public/plugins/basics/shared/hook`);
+    expect(ofA.ref).toMatch(/^[\w-]{24}$/);
+    const ofB = (await (await get("/api/studio/plugins/basics/channels", b)).json()) as any;
+    expect(ofB.channels.number).toBeNull();
+    expect(ofB.ref).not.toBe(ofA.ref);
+    // Asking: refused as the Manage-App refuses, passed on with its code.
+    const refused = await post("/api/studio/plugins/basics/channels/request", a, {});
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "has_number" });
+    const asked = await post("/api/studio/plugins/basics/channels/request", b, {});
+    expect(await asked.json()).toMatchObject({ id: "req-1", country: "AT" });
+    expect(numberRequests).toEqual([
+      { tenantId: "tenant-b", body: { userId: "user-b", country: "AT", wish: null, lang: "de" } },
+    ]);
+    // Booking: the quantity goes, the Manage-App prices it.
+    expect(await (await post("/api/studio/plugins/basics/channels/book", a, {})).json()).toEqual({ credits: 20 });
+    expect(channelUsage).toEqual([
+      { tenantId: "tenant-a", body: { kind: "sms", quantity: 2, idempotencyKey: "SM1", runId: "run-1" } },
+    ]);
+    // The shared route: one address, the tenant by the ref the call carries.
+    const hook = (ref: string) =>
+      app.fetch(new Request(ofA.shared, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ref }) }));
+    expect(await (await hook(ofA.ref)).json()).toEqual({ number: "+4318008081" });
+    expect(await (await hook(ofB.ref)).json()).toEqual({ number: null });
+    const unknown = await hook("x".repeat(24));
+    expect(unknown.status).toBe(404);
+    expect(await unknown.json()).toMatchObject({ code: "not_found" });
+    expect((await app.fetch(new Request(`${RUNTIME}/api/public/plugins/basics/shared/other`, { method: "POST" }))).status).toBe(404);
   });
 
   it("refuses a test run without credits and reserves credits with them", async () => {
