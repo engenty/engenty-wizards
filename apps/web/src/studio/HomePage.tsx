@@ -152,9 +152,17 @@ function CopyLink({ url }: { url: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        void navigator.clipboard.writeText(url);
-        setDone(true);
-        setTimeout(() => setDone(false), 1500);
+        // "Copied" only once it is: without the clipboard (a denied permission, an address that
+        // is not secure) the link is handed over to copy by hand.
+        Promise.resolve()
+          .then(() => navigator.clipboard.writeText(url))
+          .then(
+            () => {
+              setDone(true);
+              setTimeout(() => setDone(false), 1500);
+            },
+            () => window.prompt(t("share.copyFailed"), url),
+          );
       }}
       className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-3 hover:bg-accent hover:text-ink"
     >

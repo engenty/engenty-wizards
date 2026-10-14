@@ -70,14 +70,14 @@ export function ChannelIcons({ w, runners }: { w: WizardSummary; runners: Runner
       {on.map((id) => {
         const Icon = runnerIcon(id);
         const label = runners.find((r) => r.id === id)?.label[lang] ?? id;
+        // The title on a box around it: an SVG's own shows only over its thin strokes.
         return (
-          <Icon
-            key={id}
-            aria-label={label}
-            className={cn("size-3.5", id === first ? "text-ink-2" : "text-ink-4")}
-          >
-            <title>{label}</title>
-          </Icon>
+          <span key={id} role="img" aria-label={label} title={label} className="inline-flex">
+            <Icon
+              aria-hidden
+              className={cn("size-3.5", id === first ? "text-ink-2" : "text-ink-4")}
+            />
+          </span>
         );
       })}
     </span>
