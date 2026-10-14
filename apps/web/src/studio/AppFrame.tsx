@@ -224,7 +224,7 @@ export function SpaceFace({
 }) {
   const color = project?.brand.colors?.[0]?.value;
   const initials = initialsOf(project?.name ?? "");
-  return (
+  const face = (
     <span
       className={cn(
         "grid shrink-0 place-items-center rounded-lg font-semibold tracking-wide",
@@ -234,6 +234,18 @@ export function SpaceFace({
       style={color ? { background: color, color: onFill(color) } : undefined}
     >
       {initials || <Folder className="size-4" />}
+    </span>
+  );
+  if (project?.origin !== "local") {
+    return face;
+  }
+  // A space a local install sent: a laptop on its corner, as the note on its pages says.
+  return (
+    <span className="relative shrink-0" title={t("readonly.project")}>
+      {face}
+      <span className="-right-1 -bottom-1 absolute grid size-4 place-items-center rounded-full bg-amber ring-2 ring-paper">
+        <Laptop className="size-2.5 text-paper" />
+      </span>
     </span>
   );
 }
