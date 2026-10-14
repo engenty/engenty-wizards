@@ -56,6 +56,7 @@ until you publish it again:
   stay.
 - The versions stay. Publishing again makes the next one, behind the same link.
 - With an account, its copy in the cloud goes back to its draft too and keeps its address there.
+  Where the cloud is out of reach, the install asks it again by itself.
 
 ## Share
 

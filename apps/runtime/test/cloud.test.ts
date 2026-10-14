@@ -19,6 +19,8 @@ let refuseWith: { status: number; body: unknown } | null = null;
 const cloudSpaces: { id: string; name: string; syncedAt: null; wizards: [] }[] = [];
 /** A cloud from before it knew how to take a copy back to its draft. */
 let oldCloud = false;
+/** The answer to the next taking back of a copy; back to "done" afterwards. */
+let refuseUnpublish: { status: number; body: unknown } | null = null;
 let origin = "";
 
 const unsigned = (claims: Record<string, unknown>) =>
@@ -75,6 +77,11 @@ const cloud: Server = createServer(async (req, res) => {
     return json({ tables: sent.tables?.length ?? 0, pages: sent.pages?.length ?? 0 });
   }
   if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/unpublish$/.test(url.pathname) && !oldCloud) {
+    if (refuseUnpublish) {
+      const refusal = refuseUnpublish;
+      refuseUnpublish = null;
+      return json(refusal.body, refusal.status);
+    }
     return json({ ok: true });
   }
   if (/^\/api\/v1\/spaces\/[^/]+\/wizards\/[^/]+\/rotate-link$/.test(url.pathname)) {
@@ -350,6 +357,37 @@ describe("a runtime that runs alone and the cloud of its account", () => {
       cloud: { copy: { version: next, shareUrl: `${origin}/w/cloudtoken00001` }, error: null },
     });
     expect(sent("PUT").at(-1)?.body).toMatchObject({ version: next });
+  });
+
+  it("asks the cloud again when taking the copy back did not get through", async () => {
+    refuseUnpublish = { status: 503, body: { error: "Wartung" } };
+    const done = await local(() => sync.unpublishAndSync(USER, wizardId));
+    expect(done.cloud?.error).toMatchObject({ message: "Wartung", tries: 1 });
+    expect(done.cloud?.error?.again).toBeTruthy();
+
+    // Its sharing changed meanwhile: the copy's link stays off while it is a draft here.
+    await local(async () => {
+      await wizards.updateWizardSettings(USER, wizardId, { shareEnabled: true });
+      await sync.pushSharing(USER, wizardId);
+    });
+    expect(sent("PATCH").at(-1)?.body).toMatchObject({ shareEnabled: false });
+
+    const { writeSetting } = await import("../src/settings");
+    const failed = await sync.cloudState(wizardId);
+    await writeSetting(`cloud:${wizardId}`, {
+      ...failed,
+      error: { ...failed.error, again: new Date(Date.now() - 1000).toISOString() },
+    });
+    const before = seen.length;
+    await local(() => sync.retryFailedSends(USER));
+    expect(seen.slice(before).map((s) => `${s.method} ${s.path}`)).toEqual([
+      `POST /api/v1/spaces/${projectId}/wizards/${wizardId}/unpublish`,
+    ]);
+    expect(await sync.cloudState(wizardId)).toMatchObject({
+      copy: { publishedVersion: null },
+      error: null,
+    });
+    await local(() => sync.publishAndSync(USER, wizardId));
   });
 
   it("switches the copy's link off where the cloud does not know how to take it back", async () => {

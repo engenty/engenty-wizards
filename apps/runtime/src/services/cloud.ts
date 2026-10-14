@@ -375,7 +375,11 @@ export async function publishAndSync(userId: string, wizardId: string) {
  * cloud from before it knew this switches the copy's link off instead. Null where no account is
  * linked or the cloud holds no copy; a try that failed comes back as the state's error.
  */
-async function unpublishInCloud(userId: string, wizardId: string): Promise<CloudState | null> {
+async function unpublishInCloud(
+  userId: string,
+  wizardId: string,
+  tries = 1,
+): Promise<CloudState | null> {
   if (!(await cloudLinked())) {
     return null;
   }
@@ -397,6 +401,9 @@ async function unpublishInCloud(userId: string, wizardId: string): Promise<Cloud
     await writeSetting(key(w.id), next);
     return next;
   } catch (err) {
+    // Its link there still answers: a cloud that was the trouble is asked again by
+    // retryFailedSends, like a sending that did not arrive.
+    const now = new Date();
     const failed: CloudState = {
       copy: state.copy,
       error: {
@@ -405,9 +412,9 @@ async function unpublishInCloud(userId: string, wizardId: string): Promise<Cloud
             ? err.message
             : "The copy in the cloud could not be taken back.",
         reason: err instanceof ServiceError ? (err.data.reason as string | undefined) : undefined,
-        at: new Date().toISOString(),
-        tries: 1,
-        again: null,
+        at: now.toISOString(),
+        tries,
+        again: worthAnotherTry(err) ? nextTry(tries, now) : null,
       },
     };
     await writeSetting(key(w.id), failed);
@@ -438,7 +445,9 @@ export async function pushSharing(userId: string, wizardId: string): Promise<voi
   }
   const w = await ownedWizard(userId, wizardId);
   await call("PATCH", `/spaces/${w.projectId}/wizards/${w.id}`, {
-    shareEnabled: w.shareEnabled,
+    // Taken back to its draft here, its copy's link stays off: a cloud that only switched it off
+    // (unpublishInCloud) would otherwise serve the old version again. Publishing sends it anew.
+    shareEnabled: w.shareEnabled && w.publishedVersion !== null,
     dailyRunLimit: w.dailyRunLimit,
     ...(w.runners ? { runners: w.runners } : {}),
   }).catch((err) => console.error("[cloud] sharing not sent:", (err as Error).message));
@@ -508,6 +517,14 @@ export async function retryFailedSends(userId: string): Promise<void> {
     }
     const wizardId = row.key.slice("cloud:".length);
     const w = await ownedWizard(userId, wizardId).catch(() => null);
+    if (w && w.publishedVersion === null && state.copy) {
+      // Taken back to its draft here while the cloud was out of reach: its copy follows now.
+      const taken = await unpublishInCloud(userId, wizardId, state.error.tries + 1);
+      if (taken?.error && !taken.error.again) {
+        break;
+      }
+      continue;
+    }
     if (!w?.publishedVersion) {
       await deleteSetting(row.key);
       continue;
