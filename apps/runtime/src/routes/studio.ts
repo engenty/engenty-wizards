@@ -9,6 +9,8 @@ import {
   assistantTurnSchema,
 } from "@engenty-wizards/shared/assistant";
 import {
+  LANGS,
+  type Lang,
   MODEL_CLASSES,
   TEXT_CLASSES,
   type WizardDefinition,
@@ -321,10 +323,7 @@ interface ClassTest {
   error?: string;
 }
 
-async function testClass(
-  cls: (typeof MODEL_CLASSES)[number],
-  lang: "de" | "en",
-): Promise<ClassTest> {
+async function testClass(cls: (typeof MODEL_CLASSES)[number], lang: Lang): Promise<ClassTest> {
   const started = Date.now();
   const signal = AbortSignal.timeout(cls === "video" ? 300_000 : 120_000);
   const done = (result: Omit<ClassTest, "ok" | "ms">): ClassTest => ({
@@ -538,7 +537,7 @@ export const studio = new Hono<Vars>()
     c.json(await saveProfile(c.get("user"), profileSchema.parse(await c.req.json()))),
   )
   .put("/lang", async (c) => {
-    const { lang } = z.object({ lang: z.enum(["de", "en"]) }).parse(await c.req.json());
+    const { lang } = z.object({ lang: z.enum(LANGS) }).parse(await c.req.json());
     await saveUserLang(c.get("user"), lang);
     return c.json({ lang });
   })
@@ -592,7 +591,7 @@ export const studio = new Hono<Vars>()
   .post("/assistant/turn", async (c) => {
     const user = c.get("user");
     const body = assistantTurnSchema
-      .extend({ lang: z.enum(["de", "en"]).default("en") })
+      .extend({ lang: z.enum(LANGS).default("en") })
       .parse(await c.req.json());
     if (!(await canSpend())) {
       throw new ServiceError(
@@ -1664,7 +1663,7 @@ export const studio = new Hono<Vars>()
       );
     }
     const { cls, lang } = z
-      .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(["de", "en"]).default("en") })
+      .object({ cls: z.enum(MODEL_CLASSES), lang: z.enum(LANGS).default("en") })
       .parse(await c.req.json());
     return c.json(await testClass(cls, lang));
   })
@@ -1863,7 +1862,7 @@ export const studio = new Hono<Vars>()
       );
     }
     const { lang } = z
-      .object({ lang: z.enum(["de", "en"]).default("en") })
+      .object({ lang: z.enum(LANGS).default("en") })
       .parse(await c.req.json().catch(() => ({})));
     await installMail(c.get("user").email, lang);
     return c.json({ ok: true });

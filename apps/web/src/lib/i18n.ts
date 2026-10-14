@@ -1,4 +1,5 @@
 import { RUNNER_TEXTS, setRunnerLang } from "@engenty-wizards/runner/i18n";
+import { isLang, type Lang, localLang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
@@ -3807,13 +3808,18 @@ const en = {
   "connectors.clientSecret": "OAuth client secret",
 };
 
-export type Lang = "de" | "en";
+export type { Lang };
+
+/** The strings of each language. English has every one; another language may lack some. */
+const TEXTS = { en, de } satisfies Record<Lang, Partial<Record<Key, string>>>;
 
 const LANG_KEY = "wizards.lang";
+/** The last language other than English the person picked: the switch's other side. */
+const LOCAL_KEY = "wizards.lang.local";
 
 /**
  * The language engenty's other pages read and keep — the account pages and the mails their
- * server sends: a readable cookie on the site's parent domain holding "de" or "en"
+ * server sends: a readable cookie on the site's parent domain holding a language code
  * (engenty-wizards-manage, apps/server/src/mails/lang.ts).
  */
 const SHARED_COOKIE = "engenty_lang";
@@ -3827,7 +3833,7 @@ function sharedLang(): Lang | null {
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${SHARED_COOKIE}=`))
     ?.slice(SHARED_COOKIE.length + 1);
-  return raw === "de" || raw === "en" ? raw : null;
+  return isLang(raw) ? raw : null;
 }
 
 function shareLang(next: Lang) {
@@ -3845,29 +3851,57 @@ function shareLang(next: Lang) {
   document.cookie = `${SHARED_COOKIE}=${next}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax${parent ? `; Domain=${parent}` : ""}${secure}`;
 }
 
-/** The language this browser kept from the person's last pick; null where they never picked. */
-export function storedLang(): Lang | null {
+function kept(key: string): Lang | null {
   try {
-    const pick = localStorage.getItem(LANG_KEY);
-    return pick === "de" || pick === "en" ? pick : null;
+    const pick = localStorage.getItem(key);
+    return isLang(pick) ? pick : null;
   } catch {
     return null;
   }
 }
 
-/**
- * The language in effect: the person's pick, else the browser's. It changes when the person
- * switches, so read it where it is used — while rendering or in a function — never once at the
- * top of a module.
- */
-export let lang: Lang =
-  storedLang() ??
-  sharedLang() ??
-  (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("de")
-    ? "de"
-    : "en");
+/** The language this browser kept from the person's last pick; null where they never picked. */
+export function storedLang(): Lang | null {
+  return kept(LANG_KEY);
+}
 
-let dict = lang === "de" ? de : en;
+/**
+ * This browser's own language beside English (`localLang`): from its languages, else from the
+ * country of its time zone; null where neither names one engenty speaks.
+ */
+function browserLang(): Lang | null {
+  if (typeof navigator === "undefined") {
+    return null;
+  }
+  let zone: string | null = null;
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    // no time zone to go by
+  }
+  return localLang(navigator.languages ?? [navigator.language], zone);
+}
+
+/**
+ * The language in effect: the person's pick, else the local language of this browser, else
+ * English. It changes when the person switches, so read it where it is used — while rendering
+ * or in a function — never once at the top of a module.
+ */
+export let lang: Lang = storedLang() ?? sharedLang() ?? browserLang() ?? "en";
+
+let dict: Partial<Record<Key, string>> = TEXTS[lang];
+
+/**
+ * The language the switch offers beside English: the one in effect when it is not English,
+ * else the last other one the person picked, else this browser's; null where there is none —
+ * then the studio speaks English and shows no switch.
+ */
+export function localSide(): Lang | null {
+  if (lang !== "en") {
+    return lang;
+  }
+  return kept(LOCAL_KEY) ?? browserLang();
+}
 
 const listeners = new Set<() => void>();
 
@@ -3878,12 +3912,15 @@ export function setLang(next: Lang) {
     return;
   }
   lang = next;
-  dict = next === "de" ? de : en;
+  dict = TEXTS[next];
   // The runner's own words follow.
   setRunnerLang(next);
   document.documentElement.lang = next;
   try {
     localStorage.setItem(LANG_KEY, next);
+    if (next !== "en") {
+      localStorage.setItem(LOCAL_KEY, next);
+    }
   } catch {
     // the pick only lasts this page then
   }

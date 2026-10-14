@@ -4,6 +4,7 @@ import {
   isAudioValue,
   isLocationValue,
   itemsTotals,
+  type Lang,
   LOCALES,
   locationText,
   type WizardDefinition,
@@ -68,7 +69,7 @@ export function itemsAsMarkdown(
   field: Field,
   value: unknown,
   values: Record<string, unknown>,
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ): string {
   const locale = LOCALES[lang];
   const totals = itemsTotals(field, value, values);

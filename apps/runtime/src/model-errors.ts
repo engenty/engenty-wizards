@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 
 /**
@@ -28,7 +29,7 @@ export function saidOf(err: unknown): string | RunNote {
 }
 
 /** A failure in a language: its note where it has one, else its message as it is. */
-export function errorText(err: unknown, lang: "de" | "en"): string {
+export function errorText(err: unknown, lang: Lang): string {
   const note = noteOf(err);
   return note ? noteText(note, lang) : ((err as Error)?.message ?? String(err));
 }

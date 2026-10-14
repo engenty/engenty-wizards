@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import type { MarketplaceExport } from "@engenty-wizards/shared/marketplace";
 import { sql } from "drizzle-orm";
 import {
@@ -66,7 +67,7 @@ export const runIndex = sqliteTable(
     push: text("push", { mode: "json" }).$type<{
       token: string;
       platform: "ios" | "android";
-      lang: "en" | "de";
+      lang: Lang;
     }>(),
     createdAt: createdAt(),
   },

@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import {
   type TableColumn,
   TableColumnValueError,
@@ -157,7 +158,7 @@ export async function createTable(
   userId: string,
   projectId: string,
   input: { title: string; wizardId?: string | null; columns?: unknown; format?: "faq" | null },
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ) {
   const de = lang === "de";
   const project = await ownedProject(userId, projectId);

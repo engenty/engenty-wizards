@@ -1,3 +1,4 @@
+import { isLang, type Lang } from "@engenty-wizards/shared/definition";
 import { bilingual, type RunNote } from "@engenty-wizards/shared/run";
 import type {
   ConnectionDef,
@@ -99,7 +100,7 @@ async function candidates(connection: ConnectionDef, projectId: string) {
 export async function connectorOptions(
   connection: ConnectionDef,
   projectId: string,
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ): Promise<ConnectorOption[]> {
   const out: ConnectorOption[] = [];
   for (const c of await candidates(connection, projectId)) {
@@ -141,7 +142,7 @@ export async function connectionViews(
   scope: StoreScope,
   projectId: string,
   /** The language the person reads the connectors' fields in. */
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ): Promise<ConnectionView[]> {
   return Promise.all(
     connections.map(async (c) => {
@@ -180,7 +181,7 @@ interface OAuthState {
   verifier: string;
   exp: number;
   /** The language the person picked: the page the provider sends them back to speaks it. */
-  lang?: "de" | "en";
+  lang?: Lang;
 }
 
 export async function startOAuth(
@@ -189,7 +190,7 @@ export async function startOAuth(
   runId: string,
   connection: ConnectionDef,
   connectorId: string,
-  lang?: "de" | "en",
+  lang?: Lang,
 ): Promise<string> {
   const connector = await connectorFor(connection, connectorId, projectId);
   if (connector.auth.kind !== "oauth2") {
@@ -241,9 +242,9 @@ export async function startOAuth(
 }
 
 /** The language a sign-in was started in, a wizard's or a plugin's; null where it names none. */
-export function oauthStateLang(rawState: string): "de" | "en" | null {
+export function oauthStateLang(rawState: string): Lang | null {
   const lang = unseal<{ lang?: unknown }>(rawState)?.lang;
-  return lang === "de" || lang === "en" ? lang : null;
+  return isLang(lang) ? lang : null;
 }
 
 /** The run an OAuth callback belongs to; its tenant is looked up before the state is used. */

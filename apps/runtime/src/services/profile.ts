@@ -1,3 +1,4 @@
+import { isLang, type Lang } from "@engenty-wizards/shared/definition";
 import { z } from "zod";
 import { linkedAccount } from "../auth/account.js";
 import type { SessionUser } from "../auth/index.js";
@@ -52,12 +53,12 @@ const langKey = (user: SessionUser) => `lang:${user.tenantId}:${user.id}`;
  * The language the person picked in the studio, kept with them rather than one browser: a new
  * browser or device opens in it. Null until they pick one; the browser's language stands then.
  */
-export async function userLang(user: SessionUser): Promise<"de" | "en" | null> {
+export async function userLang(user: SessionUser): Promise<Lang | null> {
   const lang = await readSetting<unknown>(langKey(user));
-  return lang === "de" || lang === "en" ? lang : null;
+  return isLang(lang) ? lang : null;
 }
 
-export async function saveUserLang(user: SessionUser, lang: "de" | "en"): Promise<void> {
+export async function saveUserLang(user: SessionUser, lang: Lang): Promise<void> {
   await writeSetting(langKey(user), lang);
 }
 

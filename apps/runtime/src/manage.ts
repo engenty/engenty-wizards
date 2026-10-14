@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { createRemoteJWKSet, type JWTPayload, jwtVerify } from "jose";
 import { env } from "./env.js";
 
@@ -250,7 +251,7 @@ export async function renameTenant(id: string, name: string): Promise<TenantInfo
 }
 
 /** The Manage-App mails the install command and the first steps to one of the team's people. */
-export function installMail(email: string, lang: "de" | "en"): Promise<{ ok: boolean }> {
+export function installMail(email: string, lang: Lang): Promise<{ ok: boolean }> {
   return call("POST", "/v1/install-mail", { email, lang });
 }
 
@@ -385,7 +386,7 @@ export function forgetChannels(id: string) {
 /** A person of the tenant asks for its number; what the Manage-App answers with is the request. */
 export async function requestChannelNumber(
   id: string,
-  input: { userId: string; country: string; wish?: string | null; lang: "de" | "en" },
+  input: { userId: string; country: string; wish?: string | null; lang: Lang },
 ) {
   channels.delete(id);
   return call<{ request: NonNullable<TenantChannels["request"]> }>(

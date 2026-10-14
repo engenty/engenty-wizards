@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { eq } from "drizzle-orm";
 import { type ChatImage, runArchitect } from "../agents/architect.js";
 import { chatEngine, subscriptionTurn } from "../agents/subscription.js";
@@ -41,7 +42,7 @@ export async function architectTurn(
   wizardId: string,
   message: string,
   /** The language the admin reads: the lines about what it does, and its stock replies. */
-  lang: "de" | "en",
+  lang: Lang,
   io: {
     signal: AbortSignal;
     onText: (delta: string) => void;

@@ -1,10 +1,9 @@
+import { isLang, LANG_NAMES, LANGS } from "@engenty-wizards/shared/definition";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { type Lang, t, useLang } from "../lib/i18n";
+import { type Lang, localSide, t, useLang } from "../lib/i18n";
 import { usePickLang } from "../lib/session";
-import { cn } from "../ui";
+import { cn, Select } from "../ui";
 
-const NAMES: Record<Lang, string> = { en: "English", de: "Deutsch" };
-const LANGS = ["en", "de"] as const;
 /** Inner padding of each option, either side. */
 const PAD_X = 12;
 const EASE = "cubic-bezier(0.3, 0.7, 0.2, 1)";
@@ -24,9 +23,11 @@ function useNarrow(): boolean {
 }
 
 /**
- * EN · DE as on the landing page: the language in effect is lit and named in full. A thumb
- * slides to the pick while the options grow and shrink to their labels, and the app turns to
- * that language in place. `ground`: on a vivid page; `surface`: on a card or menu.
+ * English and the person's own language (`localSide`), EN · DE as on the landing page: the
+ * language in effect is lit and named in full. A thumb slides to the pick while the options grow
+ * and shrink to their labels, and the app turns to that language in place. Nothing where the
+ * person has no language beside English: the account page picks among all of them.
+ * `ground`: on a vivid page; `surface`: on a card or menu.
  */
 export function LangSwitch({
   tone = "ground",
@@ -41,8 +42,11 @@ export function LangSwitch({
   const narrow = useNarrow();
   const probes = useRef<Record<string, HTMLSpanElement | null>>({});
   const [sizes, setSizes] = useState<Record<string, number> | null>(null);
+  const local = localSide();
+  const langs: Lang[] = local ? ["en", local] : [];
 
   // The labels' widths as rendered; again once the web font is in.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the labels to measure follow the other side
   useLayoutEffect(() => {
     const measure = () => {
       const next: Record<string, number> = {};
@@ -53,17 +57,21 @@ export function LangSwitch({
     };
     measure();
     void document.fonts?.ready.then(measure);
-  }, []);
+  }, [local]);
 
   const width = (code: Lang) =>
     sizes
       ? sizes[code === lang && !narrow ? `${code}-full` : `${code}-short`] + PAD_X * 2
       : undefined;
   const offset = sizes
-    ? LANGS.slice(0, LANGS.indexOf(lang)).reduce((sum, code) => sum + (width(code) ?? 0), 0)
+    ? langs.slice(0, langs.indexOf(lang)).reduce((sum, code) => sum + (width(code) ?? 0), 0)
     : 0;
   const timing = `300ms ${EASE}`;
   const ground = tone === "ground";
+
+  if (!local) {
+    return null;
+  }
 
   return (
     <fieldset
@@ -87,7 +95,7 @@ export function LangSwitch({
           }}
         />
       ) : null}
-      {LANGS.map((code) => {
+      {langs.map((code) => {
         const selected = code === lang;
         return (
           <button
@@ -112,10 +120,10 @@ export function LangSwitch({
               transition: `width ${timing}, color ${timing}`,
               ...(ground && selected && ink ? { color: ink } : {}),
             }}
-            title={NAMES[code]}
+            title={LANG_NAMES[code]}
             type="button"
           >
-            {[NAMES[code], code.toUpperCase()].map((text, i) => {
+            {[LANG_NAMES[code], code.toUpperCase()].map((text, i) => {
               const shown = selected && !narrow ? i === 0 : i === 1;
               return (
                 <span
@@ -136,7 +144,7 @@ export function LangSwitch({
               aria-hidden="true"
               className="invisible absolute"
             >
-              {NAMES[code]}
+              {LANG_NAMES[code]}
             </span>
             <span
               ref={(el) => {
@@ -148,10 +156,30 @@ export function LangSwitch({
               {code.toUpperCase()}
             </span>
             {/* Holds the height and, before the sizes are measured, the width. */}
-            <span className="invisible px-3">{selected ? NAMES[code] : code.toUpperCase()}</span>
+            <span className="invisible px-3">
+              {selected ? LANG_NAMES[code] : code.toUpperCase()}
+            </span>
           </button>
         );
       })}
     </fieldset>
+  );
+}
+
+/** Every language engenty speaks, for the account page: the pick also sets the switch's other side. */
+export function LangPick() {
+  const lang = useLang();
+  const pickLang = usePickLang();
+  return (
+    <Select
+      className="w-44"
+      value={lang}
+      onChange={(next) => {
+        if (isLang(next)) {
+          pickLang(next);
+        }
+      }}
+      options={LANGS.map((code) => ({ value: code, label: LANG_NAMES[code] }))}
+    />
   );
 }

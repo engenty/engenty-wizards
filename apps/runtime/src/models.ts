@@ -6,7 +6,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { createGoogle } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createReplicate } from "@ai-sdk/replicate";
-import type { VideoResolution } from "@engenty-wizards/shared/definition";
+import type { Lang, VideoResolution } from "@engenty-wizards/shared/definition";
 import {
   type Effort,
   MODEL_CLASSES,
@@ -1236,7 +1236,7 @@ export async function checkModelsAtStart() {
 }
 
 /** The ways with their problems in a language, for whoever reads them. */
-export function waysIn(ways: Record<ModelClass, ClassWay>, lang: "de" | "en") {
+export function waysIn(ways: Record<ModelClass, ClassWay>, lang: Lang) {
   return Object.fromEntries(
     Object.entries(ways).map(([cls, way]) => [
       cls,
@@ -1246,7 +1246,7 @@ export function waysIn(ways: Record<ModelClass, ClassWay>, lang: "de" | "en") {
 }
 
 /** What the settings page shows: the choices, which keys are there (never the keys), and the ways. */
-export async function modelSettings(lang: "de" | "en" = "en") {
+export async function modelSettings(lang: Lang = "en") {
   const cfg = await config();
   return {
     source: cfg.settings.source,
@@ -1273,7 +1273,7 @@ export async function modelSettings(lang: "de" | "en" = "en") {
 export async function checkKey(
   name: LocalKey,
   key: string,
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ): Promise<{ ok: boolean; message: string | null }> {
   const de = lang === "de";
   const requests: Record<LocalKey, [string, Record<string, string>]> = {

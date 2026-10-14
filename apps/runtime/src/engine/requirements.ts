@@ -5,6 +5,7 @@ import {
   isDecidedField,
   isDecisionStep,
   isOtherwise,
+  type Lang,
   MODEL_CLASSES,
   type ModelClass,
   type NextRule,
@@ -274,7 +275,7 @@ export type MissingModelSaid = Omit<MissingModel, "problem"> & { problem: Said }
 /** The classes this wizard needs that this runtime cannot serve, in a language; empty = every step can run. */
 export async function missingModels(
   def: WizardDefinition,
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ): Promise<MissingModel[]> {
   return (await missingModelsSaid(def)).map((m) => ({ ...m, problem: saidText(m.problem, lang) }));
 }
@@ -328,7 +329,7 @@ export function blockingMessage(missing: MissingModelSaid[]): RunNote | null {
   if (!blocking.length) {
     return null;
   }
-  const line = (lang: "de" | "en") =>
+  const line = (lang: Lang) =>
     blocking
       .map((m) => {
         const steps = m.steps.map((s) => (lang === "de" ? `„${s.title}“` : `“${s.title}”`));

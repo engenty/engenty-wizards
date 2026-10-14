@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { internalKey } from "../auth/keys.js";
 import { env } from "../env.js";
 import { CLAUDE_BIN as CLAUDE, claudeEnv } from "../harness/claude.js";
@@ -79,11 +80,11 @@ export interface SubscriptionTurn {
   onBuilding: () => void;
   images?: ChatImage[];
   /** The language the admin reads the lines about its work in. */
-  lang?: "de" | "en";
+  lang?: Lang;
 }
 
 /** The activity for one tool call, naming the file or service it is about when it says. */
-function activity(name: string, args: Record<string, unknown>, lang: "de" | "en" = "en"): string {
+function activity(name: string, args: Record<string, unknown>, lang: Lang = "en"): string {
   const label =
     ACTIVITY.find(([re]) => re.test(name))?.[1][lang] ?? (lang === "de" ? "Arbeitet" : "Working");
   const about = [args.path, args.query].find((v) => typeof v === "string" && v.trim());

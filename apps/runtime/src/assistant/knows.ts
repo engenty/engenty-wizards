@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import type { MarketplaceEntry } from "@engenty-wizards/shared/marketplace";
 import type { WizardOutline } from "@engenty-wizards/shared/marketplace-entry";
 import { createTool } from "@mastra/core/tools";
@@ -29,7 +30,7 @@ import { readDoc, searchDocs } from "./docs.js";
 export interface KnowsContext {
   user: SessionUser;
   project: { id: string; name: string; mcpServers: { id: string; name: string }[] } | null;
-  lang: "de" | "en";
+  lang: Lang;
   /** The chat that is open: `chats_search` leaves it out where asked. */
   chatId: string;
   doing(label: string): void;

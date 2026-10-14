@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lang as uiLang } from "./i18n";
 
@@ -43,7 +44,7 @@ function voiceFor(code: string): SpeechSynthesisVoice | null {
 }
 
 /** Says `text` in the wizard's language after what is being said; `now` drops the queue first. */
-export function speak(text: string, lang: "de" | "en" = uiLang, now = false) {
+export function speak(text: string, lang: Lang = uiLang, now = false) {
   if (!canSpeak || !text.trim()) {
     return;
   }
@@ -62,7 +63,7 @@ export function speak(text: string, lang: "de" | "en" = uiLang, now = false) {
 }
 
 /** Says `text` now, dropping what is being said; resolves when it is said or cut off. */
-export function say(text: string, lang: "de" | "en" = uiLang): Promise<void> {
+export function say(text: string, lang: Lang = uiLang): Promise<void> {
   if (!canSpeak || !text.trim()) {
     return Promise.resolve();
   }
@@ -130,7 +131,7 @@ export function useReadAloud(): [boolean, (on: boolean) => void] {
  */
 export function useReadLines(
   on: boolean,
-  lang: "de" | "en",
+  lang: Lang,
   lines: { key: string; who: "bot" | "me"; spoken?: boolean }[],
   textOf: (key: string) => string | null,
 ) {

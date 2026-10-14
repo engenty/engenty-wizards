@@ -1,4 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic";
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { SURFACE_GUIDE } from "@engenty-wizards/shared/surface";
 import { isTextMime } from "@engenty-wizards/shared/workspace";
 import { Agent } from "@mastra/core/agent";
@@ -41,7 +42,7 @@ export interface ArchitectInput {
   signal?: AbortSignal;
   onText?: (delta: string) => void;
   /** The language the admin reads the lines about its work in. */
-  lang?: "de" | "en";
+  lang?: Lang;
   /** A short line about what the architect is doing right now ("Loading lake shapes …"). */
   onActivity?: (label: string) => void;
   /** The latest line of its reasoning, for the line under the activity. */
@@ -108,11 +109,7 @@ HOW YOU WORK
 }
 
 /** Turns a tool call into the line the admin sees while it runs. */
-function activity(
-  tool: string,
-  args: Record<string, unknown>,
-  lang: "de" | "en" = "en",
-): string | null {
+function activity(tool: string, args: Record<string, unknown>, lang: Lang = "en"): string | null {
   const de = lang === "de";
   const host = (u: unknown) => {
     try {

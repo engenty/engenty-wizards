@@ -1,4 +1,4 @@
-import { FORMATS, LIST_FORMATS, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import { FORMATS, LANGS, LIST_FORMATS, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import { TableColumnValueError } from "@engenty-wizards/shared/engenty/data-tables";
 import { noteText, type PublicWizard, type RunNote } from "@engenty-wizards/shared/run";
 import { getConnInfo } from "@hono/node-server/conninfo";
@@ -729,7 +729,7 @@ export const runRoutes = new Hono()
       .object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
-        language: z.enum(["de", "en"]).default("en"),
+        language: z.enum(LANGS).default("en"),
       })
       .parse(await c.req.json());
     return c.json({ label: await reverseGeocode(lat, lng, language) });
@@ -1130,7 +1130,7 @@ export const runRoutes = new Hono()
       .object({
         token: z.string().min(8).max(512),
         platform: z.enum(["ios", "android"]),
-        lang: z.enum(["en", "de"]).default("en"),
+        lang: z.enum(LANGS).default("en"),
       })
       .parse(await c.req.json());
     await setPushDevice(run.id, body);

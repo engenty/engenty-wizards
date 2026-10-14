@@ -3,6 +3,7 @@ import {
   type Field,
   formatsFor,
   isDecidedField,
+  type Lang,
   type Step,
   shownFields,
   slotText,
@@ -114,7 +115,7 @@ function fly(runId: string, answers: Record<string, unknown>, acceptReviews: boo
         }
       } while (again);
     } catch (err) {
-      const answers = (lang: "de" | "en") =>
+      const answers = (lang: Lang) =>
         err instanceof RunInputError
           ? fieldErrorsIn(err.errors, lang)
               .map((e) => `${e.field} – ${e.message}`)

@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import {
   type AssetSection,
   type BrandFont,
@@ -202,7 +203,7 @@ const FIRST_SPACE = {
  * A tenant that builds here always has a project of its own: the first one is made when its
  * studio is first opened, named in that request's language.
  */
-async function ensureProject(lang: "de" | "en" = "en"): Promise<void> {
+async function ensureProject(lang: Lang = "en"): Promise<void> {
   const any = await db.query.project.findFirst({ where: madeHere() });
   if (!any) {
     const id = nanoid(12);
@@ -238,7 +239,7 @@ export async function defaultProject(_userId: string): Promise<ProjectRow> {
  * The projects the studio shows. A tenant that builds here: its own and the synced ones, up to
  * its number. One that does not: only what its local install synced — possibly nothing yet.
  */
-export async function listProjects(_userId: string, lang?: "de" | "en") {
+export async function listProjects(_userId: string, lang?: Lang) {
   const build = await mayBuild();
   if (build) {
     await ensureProject(lang);

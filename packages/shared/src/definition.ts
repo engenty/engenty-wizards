@@ -19,6 +19,138 @@ export const ENGENTY_KINDS = [
 ] as const;
 export type EngentyKind = (typeof ENGENTY_KINDS)[number];
 
+// --- languages -------------------------------------------------------------------------------
+
+/**
+ * The languages engenty speaks: the studio, the runner, the mails, a wizard's own words. A
+ * language joins once its strings are written; English is the one every string has, and what a
+ * language still lacks is said in English.
+ */
+export const LANGS = ["en", "de"] as const;
+export type Lang = (typeof LANGS)[number];
+
+/** Each language's name, in that language: what a switch or a menu shows. */
+export const LANG_NAMES: Record<Lang, string> = { en: "English", de: "Deutsch" };
+
+/** The locale amounts and dates are written in for a language. */
+export const LOCALES: Record<Lang, string> = { en: "en-GB", de: "de-DE" };
+
+export function isLang(value: unknown): value is Lang {
+  return typeof value === "string" && (LANGS as readonly string[]).includes(value);
+}
+
+/** The language of a tag such as "de-AT", "fr" or "pt_BR", where engenty speaks it. */
+export function langOf(tag: string | null | undefined): Lang | null {
+  const code = tag?.trim().toLowerCase().split(/[-_]/)[0];
+  return isLang(code) ? code : null;
+}
+
+/**
+ * The main language of each European country. It holds languages engenty does not speak yet:
+ * `langOf` passes over them until they join `LANGS`.
+ */
+const COUNTRY_LANGUAGE: Record<string, string> = {
+  AT: "de",
+  BE: "nl",
+  BG: "bg",
+  CH: "de",
+  CY: "el",
+  CZ: "cs",
+  DE: "de",
+  DK: "da",
+  EE: "et",
+  ES: "es",
+  FI: "fi",
+  FR: "fr",
+  GB: "en",
+  GR: "el",
+  HR: "hr",
+  HU: "hu",
+  IE: "en",
+  IS: "is",
+  IT: "it",
+  LI: "de",
+  LT: "lt",
+  LU: "fr",
+  LV: "lv",
+  MC: "fr",
+  MT: "en",
+  NL: "nl",
+  NO: "nb",
+  PL: "pl",
+  PT: "pt",
+  RO: "ro",
+  RS: "sr",
+  SE: "sv",
+  SI: "sl",
+  SK: "sk",
+  SM: "it",
+  UA: "uk",
+  VA: "it",
+};
+
+/** The country of each European time zone (IANA names, as `Intl` gives them). */
+const ZONE_COUNTRY: Record<string, string> = {
+  "Europe/Amsterdam": "NL",
+  "Europe/Athens": "GR",
+  "Europe/Belgrade": "RS",
+  "Europe/Berlin": "DE",
+  "Europe/Bratislava": "SK",
+  "Europe/Brussels": "BE",
+  "Europe/Bucharest": "RO",
+  "Europe/Budapest": "HU",
+  "Europe/Busingen": "DE",
+  "Europe/Copenhagen": "DK",
+  "Europe/Dublin": "IE",
+  "Europe/Helsinki": "FI",
+  "Europe/Kiev": "UA",
+  "Europe/Kyiv": "UA",
+  "Europe/Lisbon": "PT",
+  "Europe/Ljubljana": "SI",
+  "Europe/London": "GB",
+  "Europe/Luxembourg": "LU",
+  "Europe/Madrid": "ES",
+  "Europe/Malta": "MT",
+  "Europe/Monaco": "MC",
+  "Europe/Oslo": "NO",
+  "Europe/Paris": "FR",
+  "Europe/Prague": "CZ",
+  "Europe/Riga": "LV",
+  "Europe/Rome": "IT",
+  "Europe/San_Marino": "SM",
+  "Europe/Sofia": "BG",
+  "Europe/Stockholm": "SE",
+  "Europe/Tallinn": "EE",
+  "Europe/Vaduz": "LI",
+  "Europe/Vatican": "VA",
+  "Europe/Vienna": "AT",
+  "Europe/Vilnius": "LT",
+  "Europe/Warsaw": "PL",
+  "Europe/Zagreb": "HR",
+  "Europe/Zurich": "CH",
+  "Atlantic/Canary": "ES",
+  "Atlantic/Madeira": "PT",
+  "Atlantic/Reykjavik": "IS",
+  "Asia/Nicosia": "CY",
+};
+
+/**
+ * The person's own language beside English: the first of their languages (the browser's, in
+ * its order) that engenty speaks, else the main language of the country their time zone lies
+ * in; null where neither names one.
+ */
+export function localLang(languages: readonly string[], timeZone?: string | null): Lang | null {
+  for (const tag of languages) {
+    const found = langOf(tag);
+    if (found && found !== "en") {
+      return found;
+    }
+  }
+  const country = timeZone ? ZONE_COUNTRY[timeZone] : undefined;
+  const found = country ? langOf(COUNTRY_LANGUAGE[country]) : null;
+  return found === "en" ? null : found;
+}
+
 export const FIELD_KINDS = [
   "text",
   "textarea",
@@ -91,7 +223,7 @@ export interface AudioValue {
   seconds?: number;
   transcript?: string;
   /** The language the runner was in when the note was taken: what it is most likely spoken in. */
-  lang?: "de" | "en";
+  lang?: Lang;
 }
 
 export function isLocationValue(v: unknown): v is LocationValue {
@@ -711,7 +843,7 @@ export const wizardSchema = z.object({
    * The language the wizard speaks to people: its texts, the runner's words, its numbers and
    * dates. Without one it is read from the wizard's own words (`wizardLang`).
    */
-  lang: z.enum(["de", "en"]).optional(),
+  lang: z.enum(LANGS).optional(),
   /** Tabular data the wizard keeps between runs, per person — or for all runs (`shared`). */
   lists: z.array(listSchema).max(12).optional(),
   /** Accounts the person connects; kept between runs, per person. */
@@ -1775,7 +1907,7 @@ export function slotTime(iso: string): SlotTime | null {
 }
 
 /** The weekday and date of a slot's day: "Montag, 12. Oktober" / "Monday, 12 October". */
-export function slotDayText(iso: string, lang: "de" | "en" = "en"): string {
+export function slotDayText(iso: string, lang: Lang = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
@@ -1791,7 +1923,7 @@ export function slotDayText(iso: string, lang: "de" | "en" = "en"): string {
 }
 
 /** A chosen slot as a person reads it back: "Di 13.10.2026, 10:30" / "Tue 13/10/2026, 10:30". */
-export function slotText(iso: string, lang: "de" | "en" = "en"): string {
+export function slotText(iso: string, lang: Lang = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
@@ -1886,7 +2018,7 @@ const ENGLISH = /\b(and|the|is|not|for|with|a|an|your|you|we|what|how|or|to|of)\
  * The language a wizard speaks to people: the one it names, else read from its own words
  * (titles, labels, intro) — English where they are not clearly German.
  */
-export function wizardLang(def: WizardDefinition): "de" | "en" {
+export function wizardLang(def: WizardDefinition): Lang {
   if (def.lang) {
     return def.lang;
   }
@@ -1906,9 +2038,6 @@ export function wizardLang(def: WizardDefinition): "de" | "en" {
   const en = text.match(ENGLISH)?.length ?? 0;
   return de > en ? "de" : "en";
 }
-
-/** The locale amounts and dates are written in for a wizard's language. */
-export const LOCALES = { de: "de-DE", en: "en-GB" } as const;
 
 // --- can this app read a definition? ---------------------------------------------------------
 // The schema drops what it does not know. A definition written for a newer app would be read

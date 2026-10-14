@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
-import type { CardOption, Format, ModelClass, Step, WizardDefinition } from "./definition.js";
+import type { CardOption, Format, Lang, ModelClass, Step, WizardDefinition } from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
 import type { Surface } from "./surface.js";
 
@@ -393,7 +393,7 @@ export interface RunNote {
 export type Said = string | RunNote;
 
 /** What is said, in a language. */
-export function saidText(said: Said, lang: "de" | "en"): string {
+export function saidText(said: Said, lang: Lang): string {
   return typeof said === "string" ? said : noteText(said, lang);
 }
 
@@ -403,7 +403,7 @@ export function bilingual(de: string, en: string): RunNote {
 }
 
 /** A note in a language, its gaps filled. */
-export function noteText(note: RunNote, lang: "de" | "en"): string {
+export function noteText(note: RunNote, lang: Lang): string {
   const line: { de: string; en: string } | undefined = RUN_NOTES[note.code];
   if (!line) {
     return "";
@@ -432,7 +432,7 @@ export interface RunView {
   mode: "test" | "live";
   wizard: Pick<WizardDefinition, "title" | "description" | "avatar" | "intro">;
   /** The language the wizard speaks: what is read aloud, and in which voice. */
-  lang: "de" | "en";
+  lang: Lang;
   /** A live conversation can be started on this run: the runtime has a model for it and the wizard has live voice or video on (always in a test). */
   talk: boolean;
   /** The step the person is on (interactive) or the one running. */

@@ -3,7 +3,9 @@ import {
   type CardOption,
   type Field,
   isDecidedField,
+  isLang,
   isLocationValue,
+  type Lang,
   type LocationValue,
   MAX_FILES,
   offeredSlot,
@@ -19,7 +21,7 @@ export interface InputError {
 }
 
 /** The field errors in a language, for whoever reads them. */
-export function fieldErrorsIn(errors: InputError[], lang: "de" | "en") {
+export function fieldErrorsIn(errors: InputError[], lang: Lang) {
   return errors.map((e) => ({ field: e.field, message: saidText(e.message, lang) }));
 }
 
@@ -147,7 +149,7 @@ function readAudio(raw: unknown): AudioValue | undefined {
   if (typeof input.transcript === "string") {
     out.transcript = input.transcript.slice(0, 20_000);
   }
-  if (input.lang === "de" || input.lang === "en") {
+  if (isLang(input.lang)) {
     out.lang = input.lang;
   }
   return out;

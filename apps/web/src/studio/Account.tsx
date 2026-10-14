@@ -7,7 +7,7 @@ import { useFeature } from "../lib/features";
 import { type Key, lang, t } from "../lib/i18n";
 import { type ExpiringCredits, initialsOf, type Me, type UserProfile } from "../lib/session";
 import { Button, Chip, Input, Label, Spinner, Textarea } from "../ui";
-import { LangSwitch } from "./LangSwitch";
+import { LangPick } from "./LangSwitch";
 import { openExternal } from "./LocalRuntime";
 import { useAutosave } from "./project/data";
 import { Section } from "./project/Section";
@@ -365,7 +365,7 @@ export function Account({ me }: { me: Me }) {
         <div className="flex flex-col divide-y divide-border-soft">
           <div className="flex items-center justify-between gap-4 pb-4">
             <span className="font-medium text-[0.875rem]">{t("nav.language")}</span>
-            <LangSwitch tone="surface" />
+            <LangPick />
           </div>
           <div className="flex items-center justify-between gap-4 pt-4">
             <span className="font-medium text-[0.875rem]">{t("nav.theme")}</span>

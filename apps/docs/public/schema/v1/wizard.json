@@ -44,8 +44,8 @@
     "lang": {
       "type": "string",
       "enum": [
-        "de",
-        "en"
+        "en",
+        "de"
       ]
     },
     "lists": {

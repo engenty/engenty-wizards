@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { noteText } from "@engenty-wizards/shared/run";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Lang } from "@engenty-wizards/shared/definition";
 
 const dir = mkdtempSync(join(tmpdir(), "wizards-visitor-lang-"));
 process.env.DATA_DIR = dir;
@@ -53,19 +54,19 @@ const german = {
   ],
 };
 
-const wizardIds: Record<"en" | "de", string> = { en: "", de: "" };
-const tokens: Record<"en" | "de", string> = { en: "", de: "" };
+const wizardIds: Record<Lang, string> = { en: "", de: "" };
+const tokens: Record<Lang, string> = { en: "", de: "" };
 
 /** What a browser sends as its language (`navigator.language` first). */
 const ACCEPT = { en: "en-US,en;q=0.9", de: "de-AT,de;q=0.9,en;q=0.8" } as const;
 
-const get = (path: string, lang?: "en" | "de") =>
+const get = (path: string, lang?: Lang) =>
   app.fetch(
     new Request(`http://localhost:5181${path}`, {
       headers: lang ? { "accept-language": ACCEPT[lang] } : {},
     }),
   );
-const post = (path: string, body: unknown, lang?: "en" | "de", cookie?: string) =>
+const post = (path: string, body: unknown, lang?: Lang, cookie?: string) =>
   app.fetch(
     new Request(`http://localhost:5181${path}`, {
       method: "POST",
@@ -77,7 +78,7 @@ const post = (path: string, body: unknown, lang?: "en" | "de", cookie?: string) 
       body: JSON.stringify(body),
     }),
   );
-const settings = (lang: "en" | "de", patch: { shareEnabled?: boolean; dailyRunLimit?: number }) =>
+const settings = (lang: Lang, patch: { shareEnabled?: boolean; dailyRunLimit?: number }) =>
   client.withTenant("tenant-a", () =>
     wizards.updateWizardSettings("user-a", wizardIds[lang], patch),
   );

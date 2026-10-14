@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { useSyncExternalStore } from "react";
 
@@ -379,14 +380,18 @@ const en = {
   "package.noManifest": "This isn’t a wizard file: wizard.json is missing.",
 };
 
-export const RUNNER_TEXTS = { de, en } as const;
+/**
+ * The runner's words in each language. English has every one; another language may lack some,
+ * and those are said in English.
+ */
+export const RUNNER_TEXTS = { en, de } satisfies Record<Lang, Partial<Record<RunnerKey, string>>>;
 
-export type Lang = "de" | "en";
+export type { Lang };
 
 /** The language the runner speaks: set by the host (`configureRunner`, `setRunnerLang`). */
 export let lang: Lang = "en";
 
-let dict: Record<RunnerKey, string> = en;
+let dict: Partial<Record<RunnerKey, string>> = en;
 const listeners = new Set<() => void>();
 
 export function setRunnerLang(next: Lang) {
@@ -394,7 +399,7 @@ export function setRunnerLang(next: Lang) {
     return;
   }
   lang = next;
-  dict = next === "de" ? de : en;
+  dict = RUNNER_TEXTS[next];
   for (const listener of listeners) {
     listener();
   }

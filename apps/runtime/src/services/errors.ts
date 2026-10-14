@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { bilingual, type RunNote } from "@engenty-wizards/shared/run";
 import { errorText, NotedError } from "../model-errors.js";
 
@@ -39,7 +40,7 @@ export class ServiceError extends NotedError {
   }
 
   /** The answer, its words in the asker's language; English where none is known. */
-  toJSON(lang: "de" | "en" = "en") {
+  toJSON(lang: Lang = "en") {
     return { error: errorText(this, lang), code: this.code, ...this.data };
   }
 }

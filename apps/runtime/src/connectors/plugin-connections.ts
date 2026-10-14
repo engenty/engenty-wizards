@@ -3,6 +3,7 @@ import type {
   PluginConnections,
   PluginConnectorOffer,
 } from "@engenty-wizards/plugin-sdk";
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, schema } from "../db/client.js";
@@ -44,7 +45,7 @@ interface PluginOAuthState {
   verifier: string;
   exp: number;
   /** The language the person picked: the page the provider sends them back to speaks it. */
-  lang?: "de" | "en";
+  lang?: Lang;
 }
 
 /** What is sealed in `data`. */

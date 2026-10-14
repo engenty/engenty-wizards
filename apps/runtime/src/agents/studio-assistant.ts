@@ -6,6 +6,7 @@ import type {
   AssistantStep,
   BrowserTool,
 } from "@engenty-wizards/shared/assistant";
+import type { Lang } from "@engenty-wizards/shared/definition";
 import {
   cleanAssetSections,
   cleanLogoSections,
@@ -67,7 +68,7 @@ export interface AssistantInput {
   page: AssistantPage | null;
   /** Tools the browser runs (AG-UI's `tools`): the built-in six and what the page adds. */
   browserTools: BrowserTool[];
-  lang: "de" | "en";
+  lang: Lang;
   signal?: AbortSignal;
   onText?: (delta: string) => void;
   /** A short line about what the assistant is doing right now. */
@@ -169,7 +170,7 @@ const LABELS: Record<string, { de: string; en: string }> = {
   web_search: { de: "Sucht im Web …", en: "Searching the web …" },
 };
 
-function activity(tool: string, args: Record<string, unknown>, lang: "de" | "en"): string | null {
+function activity(tool: string, args: Record<string, unknown>, lang: Lang): string | null {
   const host = (u: unknown) => {
     try {
       return new URL(/^https?:/i.test(String(u)) ? String(u) : `https://${u}`).hostname;

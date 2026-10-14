@@ -10,7 +10,10 @@ import {
   type Format,
   formatsFor,
   isDecisionStep,
+  isLang,
   isOtherwise,
+  LANG_NAMES,
+  LANGS,
   type NextRule,
   type PageStep,
   type Step,
@@ -1106,11 +1109,10 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
           <Label hint={t("inspector.langHint")}>{t("inspector.lang")}</Label>
           <Select
             value={def.lang ?? ""}
-            onChange={(v) => update({ ...def, lang: v === "de" || v === "en" ? v : undefined })}
+            onChange={(v) => update({ ...def, lang: isLang(v) ? v : undefined })}
             options={[
               { value: "", label: t("inspector.langAuto") },
-              { value: "en", label: "English" },
-              { value: "de", label: "Deutsch" },
+              ...LANGS.map((code) => ({ value: code, label: LANG_NAMES[code] })),
             ]}
           />
         </div>

@@ -1,13 +1,17 @@
+import { type Lang, localLang } from "@engenty-wizards/shared/definition";
 import type { Context } from "hono";
 
 /**
- * The language a visitor's request asks for: what the runner around it speaks, the browser's
- * first language (apps/web: `navigator.language`) — German for "de…", else English; English
- * without one, as the runner starts.
+ * The language a visitor's request asks for, as the studio starts in it (`localLang`): the
+ * first of the browser's languages engenty speaks other than English, else English. The
+ * browser's `Accept-Language` names them in its order; the server has no time zone to go by.
  */
-export function requestLang(c: Context): "de" | "en" {
-  const asked = c.req.header("accept-language")?.trim().toLowerCase();
-  return asked?.startsWith("de") ? "de" : "en";
+export function requestLang(c: Context): Lang {
+  const asked = (c.req.header("accept-language") ?? "")
+    .split(",")
+    .map((part) => part.split(";")[0]?.trim() ?? "")
+    .filter(Boolean);
+  return localLang(asked) ?? "en";
 }
 
 /** A line the person reads, in the language their request asks for. */

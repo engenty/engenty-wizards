@@ -1,4 +1,4 @@
-import type { WizardDefinition } from "@engenty-wizards/shared/definition";
+import type { Lang, WizardDefinition } from "@engenty-wizards/shared/definition";
 import {
   type Manifest,
   PACKAGE_EXTENSION,
@@ -175,7 +175,7 @@ export async function importWizard(
   data: Uint8Array,
   name?: string,
   /** The language the admin reads the import's note in. */
-  lang: "de" | "en" = "en",
+  lang: Lang = "en",
 ) {
   await requireAdmin();
   const { manifest, files } = readPackage(data);

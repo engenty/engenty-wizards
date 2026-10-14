@@ -1,3 +1,4 @@
+import type { Lang } from "@engenty-wizards/shared/definition";
 import { factKey, PROJECT_LIMITS } from "@engenty-wizards/shared/projects";
 import { bilingual } from "@engenty-wizards/shared/run";
 import { nanoid } from "nanoid";
@@ -67,7 +68,7 @@ export const siteSchema = z.object({
 export type SiteInput = z.infer<typeof siteSchema>;
 
 /** The language the site's people read: German for a German site, else English. */
-const siteLang = (input: SiteInput): "de" | "en" =>
+const siteLang = (input: SiteInput): Lang =>
   input.language?.toLowerCase().startsWith("de") ? "de" : "en";
 
 interface SiteJob {

@@ -1,5 +1,6 @@
 import { versionChanges } from "@engenty-wizards/shared/changes";
 import {
+  type Lang,
   pluginToolOf,
   shapeIssues,
   type ValidationIssue,
@@ -34,7 +35,7 @@ export type WizardRow = typeof schema.wizard.$inferSelect;
 export type Writer = { source: "studio" } | { source: "mcp"; client: string };
 
 /** The wizard a new one starts as, in the language of whoever makes it. */
-function blankWizard(lang: "de" | "en"): WizardDefinition {
+function blankWizard(lang: Lang): WizardDefinition {
   const de = lang === "de";
   return {
     version: 1,
