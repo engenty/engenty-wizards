@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.0] - 2026-10-14
+- ADDED **[studio]** Mark spaces synced from a local install (#17)
+- CHANGED **[knowledge]** English names in the source for Wissen and its parts; packages keep pages under files/knowledge/ (#13) **[breaking]**
+
 ## [0.4.7] - 2026-10-14
 - ADDED **[studio]** Goose is hidden for now – the studio no longer shows the assistant's dock, its sidebar or its highlights
 - FIXED **[studio]** The header of /new takes about half its height on a phone – below md the fluffy engenty is scaled to 84px (Mascot draws a flat one below 120), the title is 1.5rem on one line and the gaps are smaller

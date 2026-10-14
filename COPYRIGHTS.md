@@ -147,7 +147,7 @@ Used to build, check and test; not part of what people run:
 | [postcss](https://postcss.org/) | 8.5.28 | MIT |
 | [tailwindcss](https://tailwindcss.com) | 4.3.3 | MIT |
 | [tsx](https://tsx.hirok.io) | 4.23.15 | MIT |
-| [typescript](https://www.typescriptlang.org/) | 6.0.3 | Apache-2.0 |
+| [typescript](https://www.typescriptlang.org/) | 7.0.2 | Apache-2.0 |
 | [vite](https://vite.dev) | 8.3.2 | MIT |
 | [vite-plugin-dts](https://github.com/qmhc/vite-plugin-dts#readme) | 4.5.4 | MIT |
 | [vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile/tree/main/#readme) | 2.3.3 | MIT |

@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.5.0",
+    "timestamp": 1791995058,
+    "commits": [
+      {
+        "id": "ed997dd",
+        "message": "mark spaces synced from a local install (#17)",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "1c5b90f",
+        "message": "English names in the source for Wissen and its parts; packages keep pages under files/knowledge/ (#13)",
+        "group": "Changed",
+        "scope": "knowledge",
+        "breaking": true
+      }
+    ]
+  },
+  {
     "version": "v0.4.7",
-    "timestamp": 1791989629,
+    "timestamp": 1791989799,
     "commits": [
       {
         "id": "daf3f8a",
@@ -12,7 +32,7 @@
       },
       {
         "id": "c5699d1",
-        "message": "Goose is hidden for now – the studio no longer shows the assistant's dock, its sidebar or its highlights",
+        "message": "Goose behind a release switch `goose`, off by default – AppFrame leaves out the assistant's dock, its sidebar and its highlights until the switch is on; the .features template names it",
         "group": "Added",
         "scope": "studio",
         "breaking": false
