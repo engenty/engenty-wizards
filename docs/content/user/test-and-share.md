@@ -1,7 +1,7 @@
 ---
 title: Test and share
 description: Try the wizard, publish it, and hand out its link or put it on a website.
-version: 0.4.0
+version: 0.4.4
 ---
 
 ## Test
@@ -15,9 +15,11 @@ measured from the latest runs after five of them.
 
 ## Publish
 
-A wizard goes live the first time you share it: "Share" publishes the draft as version 1 as the
-dialog opens (nobody has the link yet, and "Only you" under Access keeps it closed). A draft with
-issues is not published; the dialog lists what to fix first, with "Let the assistant fix it".
+While a wizard is a draft, the editor's top bar has "Publish" where it later has "Share". It
+asks first; once you confirm, the draft goes live as its first version and the share dialog
+opens with it (nobody has the link yet, and "Only you" under Access keeps it closed). A draft
+with issues is not published; the dialog lists what to fix first, with "Let the assistant fix
+it".
 
 After that the editor's top bar has "Make changes live" whenever the draft differs from the
 version people run. It opens a dialog that says:
@@ -29,11 +31,11 @@ version people run. It opens a dialog that says:
 | Notes | Anyone in the middle of a run carries on with the version they started; what a run costs now where that changed; with an account, that the version goes to the cloud too |
 
 "Go live" makes the draft the next version; the link stays the same. Issues stop it, as on the
-first share. The editor's top bar and the wizard's card on the start page say where it runs:
+first publish. The editor's top bar and the wizard's card on the start page say where it runs:
 
 | It says | Means |
 |---|---|
-| Not published yet · Draft | Only you can run it, as a test. Sharing it publishes it |
+| Not published yet · Draft | Only you can run it, as a test. "Publish" puts it live |
 | Live · version 3 | The link runs this version. With a cloud icon: on engenty.ai, for everyone with the link |
 | Live · 1 note | It runs in the cloud, one step there with less (see "Share") |
 | Local | Published on an install without an account: the link answers only on this computer |
@@ -43,6 +45,17 @@ first share. The editor's top bar and the wizard's card on the start page say wh
 On a card, "Link" copies the address others can open, and the arrow opens it. A wizard that
 runs only on this computer has no address for others: its "Link" says so and how an account
 gives it one, and the arrow opens it here.
+
+### Back to draft
+
+"Unpublish" under the gear in the share dialog takes a published wizard back to its draft, after
+asking. Its link, QR code, website tag and channels then answer as for a wizard never published,
+until you publish it again:
+
+- Anyone in the middle of a run carries on with the version they started; results already shared
+  stay.
+- The versions stay. Publishing again makes the next one, behind the same link.
+- With an account, its copy in the cloud goes back to its draft too and keeps its address there.
 
 ## Share
 
@@ -55,7 +68,7 @@ gives it one, and the arrow opens it here.
 | QR code | One of the links as a QR code, to download or print, and the wizard's ID for the mobile app |
 | Website | The tag for a website (see below), and for WordPress the plugin or the wizard as a package that runs without an account, with what it lacks there: see [WordPress](./wordpress.md#without-an-account) |
 | Copy link | The link people open. It opens the first browser channel, and the wizard offers the others on its first page |
-| The gear | Runs a day (50 unless you change it, with what that costs at most), each message channel's keyword, and "Create a new link": the old link and its QR code stop working, in the cloud too |
+| The gear | Runs a day (50 unless you change it, with what that costs at most), each message channel's keyword, "Create a new link": the old link and its QR code stop working, in the cloud too, and "Unpublish" (see [Back to draft](#back-to-draft)) |
 
 Where the draft has changes, the dialog says so on top and leads to "Make changes live".
 
@@ -112,7 +125,7 @@ for anyone else. To let others run the wizard:
 
 | Way | How |
 |---|---|
-| The cloud | With an [account](./models.md#account) signed in, every version that goes live (the first share, and each "Go live") also goes to engenty.ai. Its link there runs on the account's credits, also while your computer is off |
+| The cloud | With an [account](./models.md#account) signed in, every version that goes live (the first "Publish", and each "Go live") also goes to engenty.ai. Its link there runs on the account's credits, also while your computer is off |
 | Your own server | [Run engenty wizards on a server](./server.md) with a public https address |
 
 ### In the cloud
@@ -146,7 +159,8 @@ the studio there edits nothing. An account holds one space of one computer. On a
 the share dialog offers to replace the space of the old one, which removes its wizards and
 their links from the cloud.
 
-Deleting a wizard here removes its copy; switching its link off here switches it off there.
+Deleting a wizard here removes its copy; switching its link off here switches it off there, and
+taking it back to its draft does the same there.
 
 ### Embed in a website
 

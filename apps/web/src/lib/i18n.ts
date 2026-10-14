@@ -658,6 +658,9 @@ const de = {
   "tool.pages": "Seiten",
   "editor.test": "Testen",
   "editor.share": "Teilen",
+  "editor.publish": "Veröffentlichen",
+  "editor.publishConfirm":
+    "„{title}“ veröffentlichen? Der Entwurf geht als Version live, die andere über seinen Link öffnen können. Zurück zum Entwurf geht es jederzeit unter Teilen → Zahnrad.",
   "editor.published": "Live · Version {v}",
   "editor.notPublished": "Noch nicht veröffentlicht",
   "editor.composer": "Beschreibe, was sich ändern soll …",
@@ -718,12 +721,23 @@ const de = {
   "sharePage.until": "Geteilt · verfügbar bis {date}",
   "sharePage.shared": "Geteilt am {date}",
   "share.publishing": "Wird veröffentlicht …",
-  "share.firstTitle": "Beim Teilen veröffentlicht",
+  "share.firstTitle": "Veröffentlicht",
   "share.firstText": "Version {v} ist live. Hinein kommt nur, wer den Link bekommt.",
-  "share.notReady": "Noch nicht bereit zum Teilen",
-  "share.notReadyHint": "Beim ersten Teilen wird er veröffentlicht – vorher muss das stimmen:",
+  "share.notReady": "Noch nicht bereit zum Veröffentlichen",
+  "share.notReadyHint": "Bevor er veröffentlicht wird, muss das stimmen:",
   "share.stillBuilding":
-    "Der Assistent baut ihn noch. Sobald er fertig ist, wird er beim Teilen veröffentlicht.",
+    "Der Assistent baut ihn noch. Sobald er fertig ist, kannst du ihn veröffentlichen.",
+  "share.draftHint": "Nur du kannst ihn ausführen, als Test. Mit „Veröffentlichen“ geht er live.",
+  "share.unpublishTitle": "Zurück zum Entwurf",
+  "share.unpublishHint":
+    "Der Link und alle anderen Wege hinein antworten nicht mehr, bis du ihn wieder veröffentlichst. Wer gerade mittendrin ist, macht weiter.",
+  "share.unpublishCloud":
+    "Der Link und alle anderen Wege hinein antworten nicht mehr, auch in der Cloud, bis du ihn wieder veröffentlichst. Wer gerade mittendrin ist, macht weiter.",
+  "share.unpublish": "Veröffentlichung zurücknehmen",
+  "share.unpublishConfirm":
+    "„{title}“ zurück zum Entwurf nehmen? Sein Link hört auf zu funktionieren, bis du ihn wieder veröffentlichst.",
+  "share.unpublishCloudFailed":
+    "Hier ist er zurück im Entwurf, die Kopie in der Cloud antwortet aber noch: {why}",
   "live.open": "Änderungen live schalten",
   "live.openShort": "Live schalten",
   "live.title": "Änderungen live schalten",
@@ -2440,6 +2454,9 @@ const en: Record<Key, string> = {
   "tool.pages": "Pages",
   "editor.test": "Test",
   "editor.share": "Share",
+  "editor.publish": "Publish",
+  "editor.publishConfirm":
+    "Publish “{title}”? The draft goes live as a version others can open by its link. You can take it back to a draft at any time under Share → gear.",
   "editor.published": "Live · version {v}",
   "editor.notPublished": "Not published yet",
   "editor.composer": "Describe what should change …",
@@ -2499,12 +2516,22 @@ const en: Record<Key, string> = {
   "sharePage.until": "Shared · available until {date}",
   "sharePage.shared": "Shared on {date}",
   "share.publishing": "Publishing …",
-  "share.firstTitle": "Published by sharing",
+  "share.firstTitle": "Published",
   "share.firstText": "Version {v} is live. Only those who get the link come in.",
-  "share.notReady": "Not ready to share yet",
-  "share.notReadyHint": "Sharing it the first time publishes it – first this has to be right:",
-  "share.stillBuilding":
-    "The assistant is still building it. Once it is done, sharing publishes it.",
+  "share.notReady": "Not ready to publish yet",
+  "share.notReadyHint": "Before it is published, this has to be right:",
+  "share.stillBuilding": "The assistant is still building it. Once it is done, you can publish it.",
+  "share.draftHint": "Only you can run it, as a test. “Publish” puts it live.",
+  "share.unpublishTitle": "Back to draft",
+  "share.unpublishHint":
+    "The link and every other way in stop answering until you publish it again. Anyone in the middle of a run carries on.",
+  "share.unpublishCloud":
+    "The link and every other way in stop answering, in the cloud too, until you publish it again. Anyone in the middle of a run carries on.",
+  "share.unpublish": "Unpublish",
+  "share.unpublishConfirm":
+    "Take “{title}” back to a draft? Its link stops working until you publish it again.",
+  "share.unpublishCloudFailed":
+    "It is back to a draft here, but its copy in the cloud still answers: {why}",
   "live.open": "Make changes live",
   "live.openShort": "Go live",
   "live.title": "Make changes live",

@@ -21,7 +21,7 @@ import { Button, cn, Dialog, Spinner } from "../../ui";
 /**
  * "Änderungen live schalten": the draft becomes the version people run, from a dialog that
  * says first what changes, whether these changes were tested, and what goes on meanwhile.
- * The first version goes live by sharing; this is every one after it.
+ * The first version goes live by "Veröffentlichen"; this is every one after it.
  */
 
 /** What the studio asks before: the version that runs, what the draft changes, its last test. */

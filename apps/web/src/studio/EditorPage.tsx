@@ -1,7 +1,7 @@
 import { type ModelClass, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
 import type { MissingModel, RunView } from "@engenty-wizards/shared/run";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, Lock, Play, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Globe, Lock, Play, Share2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { withBase } from "@/lib/base";
@@ -10,6 +10,7 @@ import { useFeature } from "../lib/features";
 import { type Key, t } from "../lib/i18n";
 import {
   type PublishResult,
+  type UnpublishResult,
   useCloud,
   useMe,
   useProjects,
@@ -34,7 +35,7 @@ import { Inspector } from "./editor/Inspector";
 import { LiveDialog } from "./editor/LiveDialog";
 import { MemoryPanel } from "./editor/MemoryPanel";
 import { RunsPanel } from "./editor/RunsPanel";
-import { ShareDialog } from "./editor/ShareDialog";
+import { confirmPublish, ShareDialog } from "./editor/ShareDialog";
 import { LiveChip, useLiveDraft } from "./live";
 import { LookSwitch, RunDrawer, useRunLook } from "./RunDrawer";
 import { WhereChip, whereItRuns } from "./where";
@@ -239,6 +240,8 @@ export function EditorPage() {
   const pane = usePaneWidth();
   const sheet = useSheetHeight();
   const [shareOpen, setShareOpen] = useState(false);
+  /** The admin confirmed publishing the draft: it goes live as the share dialog opens. */
+  const [publishConfirmed, setPublishConfirmed] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [drawerRun, setDrawerRun] = useState<string | null>(null);
   const [look, setLook] = useRunLook();
@@ -307,6 +310,19 @@ export function EditorPage() {
       ]);
     },
   });
+  const unpublish = useMutation({
+    mutationFn: () => api.post<UnpublishResult>(`/api/studio/wizards/${id}/unpublish`),
+    onSuccess: async ({ cloud }) => {
+      if (cloud) {
+        qc.setQueryData(["cloud", id], { linked: true, ...cloud });
+      }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["wizard", id] }),
+        qc.invalidateQueries({ queryKey: ["cloud", id] }),
+        qc.invalidateQueries({ queryKey: ["wizards"] }),
+      ]);
+    },
+  });
 
   const issueSteps = useMemo(
     () => new Set((wizard.data?.issues ?? []).map((i) => i.stepId).filter(Boolean) as string[]),
@@ -329,9 +345,13 @@ export function EditorPage() {
   // A first build covers the diagram; a step asked for in place is shown in its place instead.
   const building = chat.phase !== "idle" && w.blank && !adding;
   const hasIssues = w.issues.length > 0;
+  const closeShare = () => {
+    setShareOpen(false);
+    setPublishConfirmed(false);
+  };
   /** Asks the assistant to mend the draft's issues, in the chat. */
   const fixIssues = () => {
-    setShareOpen(false);
+    closeShare();
     setLiveOpen(false);
     setTab("chat");
     void chat.send(
@@ -360,6 +380,18 @@ export function EditorPage() {
       : null;
   /** A write the server refused, in its own words. */
   const failed = refused ?? (publish.error ? (publish.error as Error).message : null);
+  /** A draft that can go live from here: its button publishes, after the admin confirms. */
+  const draft = !w.published && !w.readOnly;
+  const openShare = () => {
+    // A draft that cannot go live yet opens the dialog unconfirmed: it says what to do first.
+    if (draft && !hasIssues && !building) {
+      if (!confirmPublish(def.title)) {
+        return;
+      }
+      setPublishConfirmed(true);
+    }
+    setShareOpen(true);
+  };
 
   const select = (sid: string | null) => {
     setSelected(sid);
@@ -471,7 +503,7 @@ export function EditorPage() {
           >
             <Play className="size-3.5" /> {t("editor.test")}
           </Button>
-          {/* The first version goes live by sharing; every later one by its own dialog. */}
+          {/* The first version goes live by "Publish"; every later one by its own dialog. */}
           {w.published && w.dirty && !w.readOnly ? (
             <Button variant="secondary" size="sm" onClick={() => setLiveOpen(true)}>
               <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
@@ -479,8 +511,9 @@ export function EditorPage() {
               <span className="sm:hidden">{t("live.openShort")}</span>
             </Button>
           ) : null}
-          <Button size="sm" onClick={() => setShareOpen(true)}>
-            <Share2 className="size-3.5" /> {t("editor.share")}
+          <Button size="sm" onClick={openShare}>
+            {draft ? <Globe className="size-3.5" /> : <Share2 className="size-3.5" />}
+            {t(draft ? "editor.publish" : "editor.share")}
           </Button>
           <span className="ml-2 hidden md:inline-flex">
             <CreditsPill me={me.data} />
@@ -733,7 +766,7 @@ export function EditorPage() {
       <ShareDialog
         wizard={w}
         open={shareOpen}
-        onClose={() => setShareOpen(false)}
+        onClose={closeShare}
         publish={
           w.readOnly
             ? undefined
@@ -741,11 +774,13 @@ export function EditorPage() {
                 run: () => publish.mutateAsync(),
                 busy: publish.isPending,
                 disabled: hasIssues || building,
+                confirmed: publishConfirmed,
                 fix: fixIssues,
                 goLive: () => {
-                  setShareOpen(false);
+                  closeShare();
                   setLiveOpen(true);
                 },
+                unpublish: () => unpublish.mutateAsync(),
               }
         }
       />

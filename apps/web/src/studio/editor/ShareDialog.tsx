@@ -19,6 +19,7 @@ import {
   Puzzle,
   QrCode,
   RefreshCw,
+  Undo2,
   X,
 } from "lucide-react";
 import {
@@ -40,6 +41,7 @@ import {
   type CloudState,
   type PublishResult,
   type ServerProblem,
+  type UnpublishResult,
   useCloud,
   useMe,
   type WizardDetail,
@@ -72,19 +74,28 @@ const WORDPRESS_ZIP =
   "https://github.com/engenty/engenty-wizards-wp-plugin/releases/latest/download/engenty-wizards.zip";
 
 /**
- * The editor's publishing: a wizard shared for the first time goes live as it opens; later
- * changes go live through "Änderungen live schalten".
+ * The editor's publishing: a draft goes live once the admin confirmed it ("Veröffentlichen"),
+ * as the dialog opens; later changes go live through "Änderungen live schalten". Under the gear
+ * it goes back to its draft.
  */
 interface Publish {
   run: () => Promise<PublishResult>;
   busy: boolean;
   /** The draft cannot be published as it is: it has issues, or it is being built. */
   disabled: boolean;
+  /** The admin confirmed publishing the draft: it goes live as the dialog opens. */
+  confirmed: boolean;
   /** Asks the assistant to mend the draft's issues. */
   fix?: () => void;
   /** Opens "Änderungen live schalten". */
   goLive: () => void;
+  /** Takes the wizard back to its draft: its link answers as before it was published. */
+  unpublish: () => Promise<UnpublishResult>;
 }
+
+/** Asks before a draft goes live: the editor's button and the dialog's ask the same. */
+export const confirmPublish = (title: string) =>
+  window.confirm(t("editor.publishConfirm", { title }));
 
 /** Where a channel's plugin says a person reaches the wizard. */
 interface RunnerAddress {
@@ -976,11 +987,16 @@ function SettingsView({
   wizard,
   ways,
   cloudCopy,
+  unpublish,
+  onUnpublished,
   onDone,
 }: {
   wizard: WizardDetail;
   ways: Way[];
   cloudCopy: boolean;
+  /** Takes the wizard back to its draft; none where nothing is changed here. */
+  unpublish?: () => Promise<UnpublishResult>;
+  onUnpublished: (result: UnpublishResult) => void;
   onDone: () => void;
 }) {
   const qc = useQueryClient();
@@ -1008,9 +1024,13 @@ function SettingsView({
       return refresh();
     },
   });
+  const back = useMutation({
+    mutationFn: () => (unpublish ? unpublish() : Promise.reject(new Error("read only"))),
+    onSuccess: onUnpublished,
+  });
   /** Shown and run here, changed in the local install: how it is shared is set there. */
   const locked = wizard.readOnly;
-  const failed = patch.error ?? rotate.error;
+  const failed = patch.error ?? rotate.error ?? back.error;
   const estimate = useEstimate(wizard.id, wizard.draft);
   const perDay =
     estimate.data?.available && estimate.data.reserve > 0
@@ -1084,6 +1104,27 @@ function SettingsView({
             {t(rotate.isSuccess ? "share.rotated" : "share.rotate")}
           </Button>
         </div>
+        {wizard.published && unpublish && !locked ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-border-soft border-t pt-5">
+            <div className="min-w-0 flex-[1_1_14rem]">
+              <div className="font-medium text-[0.875rem]">{t("share.unpublishTitle")}</div>
+              <p className="text-[0.8125rem] text-ink-3">
+                {t(cloudCopy ? "share.unpublishCloud" : "share.unpublishHint")}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              busy={back.isPending}
+              onClick={() =>
+                window.confirm(t("share.unpublishConfirm", { title: wizard.draft.title })) &&
+                back.mutate()
+              }
+            >
+              <Undo2 className="size-3.5" /> {t("share.unpublish")}
+            </Button>
+          </div>
+        ) : null}
         {locked ? <p className="text-[0.8125rem] text-ink-3">{t("share.readOnly")}</p> : null}
         {failed ? <p className="text-[0.8125rem] text-rose">{(failed as Error).message}</p> : null}
       </Body>
@@ -1187,25 +1228,34 @@ function SharePanel({
   });
   const [view, setView] = useState<View>("main");
   const { copied, copy } = useCopy();
-  // Shared for the first time: it goes live as the dialog opens. Nobody has the link yet, and
-  // "Nur du" keeps it closed.
+  // A draft the admin confirmed to publish goes live as the dialog opens, or by the button on
+  // top of it. Nobody has the link yet, and "Nur du" keeps it closed.
   const [firstShare, setFirstShare] = useState<"publishing" | "done" | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const tried = useRef(false);
-  useEffect(() => {
-    if (tried.current || wizard.published || wizard.readOnly || !publish || publish.disabled) {
-      return;
-    }
+  const goLive = (p: Publish) => {
     tried.current = true;
+    setFailed(null);
     setFirstShare("publishing");
-    publish
-      .run()
+    p.run()
       .then(() => setFirstShare("done"))
       .catch((err: Error) => {
         setFirstShare(null);
         setFailed(err.message);
       });
-  }, [wizard.published, wizard.readOnly, publish]);
+  };
+  useEffect(() => {
+    if (
+      tried.current ||
+      wizard.published ||
+      wizard.readOnly ||
+      !publish?.confirmed ||
+      publish.disabled
+    ) {
+      return;
+    }
+    goLive(publish);
+  });
 
   const ways = useMemo(
     () => (runners.data ? waysOf(runners.data, base) : []),
@@ -1291,6 +1341,10 @@ function SharePanel({
                     <Button size="sm" variant="secondary" onClick={publish.fix}>
                       {t("editor.fixWithChat")}
                     </Button>
+                  ) : publish && !publish.disabled ? (
+                    <Button size="sm" onClick={() => confirmPublish(title) && goLive(publish)}>
+                      {t("editor.publish")}
+                    </Button>
                   ) : null
                 }
               >
@@ -1304,7 +1358,14 @@ function SharePanel({
                     </ul>
                   </>
                 ) : (
-                  (failed ?? t(wizard.readOnly ? "share.readOnly" : "share.stillBuilding"))
+                  (failed ??
+                  t(
+                    wizard.readOnly
+                      ? "share.readOnly"
+                      : publish?.disabled
+                        ? "share.stillBuilding"
+                        : "share.draftHint",
+                  ))
                 )}
               </Banner>
             ) : null}
@@ -1391,6 +1452,15 @@ function SharePanel({
           wizard={wizard}
           ways={ways}
           cloudCopy={Boolean(cloud.data?.copy)}
+          unpublish={publish?.unpublish}
+          onUnpublished={({ cloud: next }) => {
+            // Back to the draft: the dialog says so on top, with the way to publish again.
+            setFirstShare(null);
+            setFailed(
+              next?.error ? t("share.unpublishCloudFailed", { why: next.error.message }) : null,
+            );
+            setView("main");
+          }}
           onDone={() => setView("main")}
         />
       ) : null}

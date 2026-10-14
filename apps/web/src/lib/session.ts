@@ -381,6 +381,12 @@ export interface PublishResult {
   cloud: CloudState | null;
 }
 
+/** A wizard taken back to its draft; with an account linked, how its copy in the cloud followed. */
+export interface UnpublishResult {
+  published: false;
+  cloud: CloudState | null;
+}
+
 /** The server's sentence when a write was refused because nothing is changed here; else null. */
 export function readOnlyError(err: unknown): string | null {
   return err instanceof ApiError && err.body?.code === "read_only" ? err.message : null;
