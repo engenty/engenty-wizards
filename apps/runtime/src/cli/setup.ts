@@ -393,7 +393,12 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<boole
     return false;
   }
   writeInstallNote(
-    { ...readInstallNote(paths), setupAt: new Date().toISOString(), version },
+    {
+      ...readInstallNote(paths),
+      setupAt: new Date().toISOString(),
+      version,
+      unattended: !process.stdout.isTTY,
+    },
     paths,
   );
 

@@ -2,6 +2,7 @@ import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { accountState, describeAccount } from "./account.js";
 import { type Autostart, autostartForStatus, autostartState, setAutostart } from "./autostart.js";
+import { autoUpdatePolicy, updateNotice } from "./autoupdate.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
 import { findWizardsProcesses, stopProcesses } from "./processes.js";
@@ -42,6 +43,13 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
   if (!("unavailable" in atLogin)) {
     row("At login", atLogin.on ? `${ok} starts ${dim(`(${atLogin.how})`)}` : `${no} doesn’t start`);
   }
+  if (installedByScript(paths)) {
+    const policy = autoUpdatePolicy(paths, { installed: true });
+    row(
+      "Updates",
+      policy.on ? `${ok} automatic` : `${no} ${policy.reason} ${dim(`(${cmd("autoupdate on")})`)}`,
+    );
+  }
   row("Account", `${account.kind === "linked" ? ok : no} ${describeAccount(account)}`);
   for (const { client, path, version } of clients) {
     row(
@@ -54,6 +62,12 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
     chrome ? `${ok} ${dim(tilde(chrome))}` : `${no} not found (needed for PDF and PNG)`,
   );
   row("ffmpeg", ffmpeg.path ? `${ok} ${ffmpeg.version ?? ""}` : `${no} not found (needed for MP4)`);
+  const { updated, pending } = updateNotice(paths, packageVersion());
+  if (updated) {
+    console.log(`\n  ${ok} Updated to ${updated.to}. What changed: ${cyan(updated.notes)}`);
+  } else if (pending) {
+    console.log(`\n  ${ok} Version ${pending.version} is downloaded; it runs from the next start.`);
+  }
   console.log("");
   if (!checks) {
     return 0;

@@ -7,7 +7,8 @@
 # ~/.engenty/wizards (ENGENTY_HOME moves it):
 #
 #   tools/node-v<version>/   its own Node; a Node you already have is left alone
-#   runtime/                 the package `wizards`, from the GitHub release
+#   runtime/<version>/       the package `wizards`, from the GitHub release; runtime/current
+#                            names the one that runs, the one before stays for going back
 #   bin/wizards              the command, linked into ~/.local/bin
 #   data/                    your wizards and results (made at the first start)
 #
@@ -474,20 +475,37 @@ package() {
 
 runtime() {
   STEP="Installing engenty wizards"
+  local dir="$HOME_DIR/runtime" stage previous path
   # An install of the package under its old name is replaced, not kept beside the new one.
-  if [ -d "$HOME_DIR/runtime/node_modules/$OLD_NAME" ]; then
-    rm -rf "$HOME_DIR/runtime"
+  if [ -d "$dir/node_modules/$OLD_NAME" ]; then
+    rm -rf "$dir"
   fi
-  mkdir -p "$HOME_DIR/runtime"
-  # npm is a script that asks for `node`: ours comes first on the PATH. No install scripts run;
-  # the runtime works without them. --legacy-peer-deps: the dependencies as the package names
-  # them and no peers on top, which nothing here uses (about 70 MB less).
+  mkdir -p "$dir"
+  # Each version has its folder (runtime/<version>/, an npm prefix); `current` names the one the
+  # command starts, and a version that runs keeps its files. npm is a script that asks for
+  # `node`: ours comes first on the PATH. No install scripts run; the runtime works without
+  # them. --legacy-peer-deps: no peers on top, which nothing here uses (about 70 MB less).
+  stage="$(mktemp -d "$dir/.staging-XXXXXX")"
   spin "Installing engenty wizards (about 650 MB on disk, a minute or two)" \
-    env PATH="$NODE_DIR/bin:$PATH" "$NODE_DIR/bin/npm" install --prefix "$HOME_DIR/runtime" \
+    env PATH="$NODE_DIR/bin:$PATH" "$NODE_DIR/bin/npm" install --prefix "$stage" \
     --omit=dev --ignore-scripts --legacy-peer-deps --no-audit --no-fund --loglevel=error "$SPEC"
-  INSTALLED="$(MANIFEST="$HOME_DIR/runtime/node_modules/$PACKAGE_NAME/package.json" \
+  INSTALLED="$(MANIFEST="$stage/node_modules/$PACKAGE_NAME/package.json" \
     "$NODE_DIR/bin/node" -p 'require(process.env.MANIFEST).version')"
-  done_step "engenty wizards $INSTALLED" "$(tilde "$HOME_DIR/runtime")"
+  # Up to 0.6.2 runtime/ itself was the prefix.
+  if [ -d "$dir/node_modules" ] && [ ! -L "$dir/node_modules" ]; then
+    rm -rf "$dir/node_modules" "$dir/package.json" "$dir/package-lock.json"
+  fi
+  previous="$(readlink "$dir/current" 2>/dev/null || true)"
+  rm -rf "${dir:?}/$INSTALLED"
+  mv "$stage" "$dir/$INSTALLED"
+  ln -sfn "$INSTALLED" "$dir/current"
+  # For a command written before the version folders (an older bin/wizards or npx wizards).
+  ln -sfn "current/node_modules" "$dir/node_modules"
+  # This version and the one before stay; older ones go.
+  for path in "$dir"/[0-9]*; do
+    case "${path##*/}" in "$INSTALLED" | "$previous") ;; *) rm -rf "$path" ;; esac
+  done
+  done_step "engenty wizards $INSTALLED" "$(tilde "$dir/$INSTALLED")"
 }
 
 command_link() {
@@ -500,7 +518,7 @@ command_link() {
       printf 'export ENGENTY_HOME="${ENGENTY_HOME:-%s}"\n' "$BASE"
     fi
     printf 'exec "%s" "%s" "$@"\n' "$HOME_DIR/tools/node/bin/node" \
-      "$HOME_DIR/runtime/node_modules/$PACKAGE_NAME/bin/wizards.mjs"
+      "$HOME_DIR/runtime/current/node_modules/$PACKAGE_NAME/bin/wizards.mjs"
   } >"$WRAPPER"
   chmod 755 "$WRAPPER"
   if [ "$LINK" != 1 ]; then

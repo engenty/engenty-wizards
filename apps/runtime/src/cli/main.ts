@@ -12,7 +12,7 @@ import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
 import { cmd, cyan, tilde } from "./ui.js";
-import { update } from "./update.js";
+import { autoUpdateCommand, update } from "./update.js";
 import { validateCommand } from "./validate.js";
 
 /** One line of the help: the name padded, then coloured, so the columns stay straight. */
@@ -40,6 +40,8 @@ ${line(`${command()} report`, "send the status, model settings and last log line
 ${line(`${command()} stop`, "stop it (your data is kept)")}
 ${line(`${command()} restart`, "restart it, e.g. to switch to a newly installed version")}
 ${line(`${command()} update`, "install the latest version")}
+${line(`${command()} autoupdate`, "updates by themselves: add on or off (WIZARDS_DISABLE_AUTOUPDATE=1 is off too)")}
+${more("(downloaded in the background, used from the next start; never during a run)")}
 ${line(`${command()} autostart`, "start it when you log in: add on or off")}
 ${more("(macOS: a LaunchAgent; Linux: a systemd user service)")}
 ${line(`${command()} connect`, "add your wizards to your AI apps: every app found, or the ones you name:")}
@@ -127,7 +129,10 @@ function parse(argv: string[]): Args | string {
       args.command = "version";
     } else if (arg.startsWith("-")) {
       return `Unknown option ${arg}.`;
-    } else if (["autostart", "logs", "account"].includes(args.command) && !args.value) {
+    } else if (
+      ["autostart", "autoupdate", "logs", "account"].includes(args.command) &&
+      !args.value
+    ) {
       args.value = arg;
     } else if (["connect", "disconnect", "features"].includes(args.command)) {
       args.apps.push(arg);
@@ -204,6 +209,8 @@ async function main(argv: string[]): Promise<number> {
       return update(paths);
     case "autostart":
       return autostart(paths, args.value);
+    case "autoupdate":
+      return autoUpdateCommand(paths, args.value);
     case "account":
       return accountCommand(paths, args.value, { yes: args.yes });
     case "connect":

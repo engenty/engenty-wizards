@@ -71,6 +71,19 @@ the right of the address bar.
 
 ## Update
 
+engenty wizards updates itself: it looks for a new version when it starts and once a day,
+downloads it in the background and checks it, and switches to it at the next start (a restart or
+the next login), never while a wizard runs. The version before stays beside it. `wizards status`
+and the studio then say “Updated to …” with what changed. To turn it off:
+
+```bash
+wizards autoupdate off
+```
+
+or set `WIZARDS_DISABLE_AUTOUPDATE=1` (in the terminal or in `~/.engenty/wizards/.env`). In CI,
+and for an install set up without a terminal, it is off unless you turn it on with `wizards
+autoupdate on`. `npx wizards` never updates itself. To update now:
+
 ```bash
 wizards update
 ```
