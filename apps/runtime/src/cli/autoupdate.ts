@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -15,8 +14,8 @@ import { currentVersion, promote, prune, runtimeDir, switchTo, versionIn } from 
 
 /**
  * Updates that come by themselves, for an install made by install.sh (never `npx wizards` or a
- * checkout). The runtime asks GitHub for the newest release when it starts and once a day; a
- * newer one is downloaded, its SHA-256 checked, and installed beside the one that runs
+ * checkout). The runtime asks the npm registry for the newest `wizards` when it starts and once
+ * a day; npm installs a newer one, checking its integrity, beside the one that runs
  * (versions.ts). Nothing switches then: runs cost credits and are never cut off. The next
  * `wizards start` (a restart, the next login) makes it `current` before any runtime runs.
  *
@@ -25,7 +24,7 @@ import { currentVersion, promote, prune, runtimeDir, switchTo, versionIn } from 
  * docs/plans/auto-update.md has the steps after this one.
  */
 
-const RELEASES_URL = "https://api.github.com/repos/engenty/wizards/releases/latest";
+const LATEST_URL = "https://registry.npmjs.org/wizards/latest";
 const HOUR = 60 * 60_000;
 /** How long the status and the studio keep saying what came with an update. */
 const NOTICE_MS = 14 * 24 * HOUR;
@@ -34,7 +33,7 @@ export const notesUrl = (version: string) =>
   `https://github.com/engenty/wizards/releases/tag/v${version}`;
 
 export interface UpdateState {
-  /** When GitHub was last asked. */
+  /** When the npm registry was last asked. */
   checkedAt?: string;
   /** Downloaded and installed beside the version that runs; current at the next start. */
   pending?: { version: string; notes: string };
@@ -123,8 +122,8 @@ export function autoUpdatePolicy(
 /** What the update does to the world; tests replace it. */
 export interface UpdateDeps {
   fetch: typeof fetch;
-  /** Installs a package tarball into an npm prefix with the install's own Node and npm. */
-  npmInstall(paths: Layout, prefix: string, tarball: string): Promise<void>;
+  /** Installs a package (`wizards@1.2.3`) into an npm prefix with the install's own Node. */
+  npmInstall(paths: Layout, prefix: string, spec: string): Promise<void>;
   now(): Date;
 }
 
@@ -134,53 +133,28 @@ export const systemDeps: UpdateDeps = {
   now: () => new Date(),
 };
 
-interface Release {
-  version: string;
-  notes: string;
-  tarball: string;
-  sha256: string;
-}
-
-/** The newest release and its package, with the SHA-256 GitHub keeps of it; none, no install. */
-async function latestRelease(deps: UpdateDeps, env: NodeJS.ProcessEnv): Promise<Release | null> {
-  const response = await deps.fetch(env.ENGENTY_WIZARDS_RELEASES_URL?.trim() || RELEASES_URL, {
-    headers: { accept: "application/vnd.github+json", "user-agent": "engenty-wizards" },
+/** The version npm's `latest` tag names; null when it names none. */
+async function latestVersion(deps: UpdateDeps, env: NodeJS.ProcessEnv): Promise<string | null> {
+  const response = await deps.fetch(env.ENGENTY_WIZARDS_REGISTRY_URL?.trim() || LATEST_URL, {
+    headers: { accept: "application/json" },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
-    throw new Error(`GitHub answered ${response.status} for the newest release.`);
+    throw new Error(`The npm registry answered ${response.status} for the newest version.`);
   }
-  const release = (await response.json()) as {
-    tag_name?: string;
-    html_url?: string;
-    assets?: { name: string; browser_download_url: string; digest?: string | null }[];
-  };
-  const version = release.tag_name?.replace(/^v/, "") ?? "";
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
-    return null;
-  }
-  const asset = release.assets?.find((a) => a.name === `wizards-${version}.tgz`);
-  const sha256 = asset?.digest?.match(/^sha256:([0-9a-f]{64})$/i)?.[1].toLowerCase();
-  if (!asset || !sha256) {
-    throw new Error(`Release ${version} has no package with a checksum; it is not installed.`);
-  }
-  return {
-    version,
-    notes: release.html_url || notesUrl(version),
-    tarball: asset.browser_download_url,
-    sha256,
-  };
+  const { version } = (await response.json()) as { version?: unknown };
+  return typeof version === "string" && /^\d+\.\d+\.\d+$/.test(version) ? version : null;
 }
 
 /** npm of the install's own Node, as install.sh runs it; its output goes to logs/update.log. */
-async function npmInstall(paths: Layout, prefix: string, tarball: string): Promise<void> {
+async function npmInstall(paths: Layout, prefix: string, spec: string): Promise<void> {
   const bin = join(paths.tools, "node", "bin");
   mkdirSync(paths.logs, { recursive: true });
   const log = openSync(join(paths.logs, "update.log"), "a");
   const args =
     "install --omit=dev --ignore-scripts --legacy-peer-deps --no-audit --no-fund --loglevel=error";
   const code = await new Promise<number>((done) => {
-    const child = spawn(join(bin, "npm"), [...args.split(" "), "--prefix", prefix, tarball], {
+    const child = spawn(join(bin, "npm"), [...args.split(" "), "--prefix", prefix, spec], {
       stdio: ["ignore", log, log],
       env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` },
     });
@@ -197,8 +171,8 @@ export type CheckResult =
   | { kind: "current" | "downloaded"; version: string };
 
 /**
- * Asks GitHub for the newest release and, when it is newer than the current one, downloads it,
- * checks it and installs it into its version folder. It switches nothing. `force` asks even
+ * Asks npm for the newest version and, when it is newer than the current one, installs it into
+ * its version folder (npm checks the package against the registry's integrity hash). It switches nothing. `force` asks even
  * within the hour since the last time.
  */
 export async function checkForUpdate(
@@ -222,30 +196,17 @@ export async function checkForUpdate(
   delete state.error;
   const tmp = mkdtempSync(join(paths.home, "update-"));
   try {
-    const release = await latestRelease(deps, options.env ?? process.env);
-    if (!release || !isNewer(release.version, current)) {
+    const version = await latestVersion(deps, options.env ?? process.env);
+    if (!version || !isNewer(version, current)) {
       return { kind: "current", version: current };
     }
-    if (
-      state.pending?.version === release.version &&
-      versionIn(runtimeDir(paths, release.version))
-    ) {
-      return { kind: "downloaded", version: release.version };
+    if (state.pending?.version !== version || !versionIn(runtimeDir(paths, version))) {
+      await deps.npmInstall(paths, tmp, `wizards@${version}`);
+      promote(paths, tmp, version);
+      state.pending = { version, notes: notesUrl(version) };
+      prune(paths, keepOf(state));
     }
-    const response = await deps.fetch(release.tarball, {
-      signal: AbortSignal.timeout(10 * 60_000),
-    });
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (!response.ok || createHash("sha256").update(bytes).digest("hex") !== release.sha256) {
-      throw new Error(`The download of ${release.version} does not match its checksum.`);
-    }
-    const tarball = join(tmp, `wizards-${release.version}.tgz`);
-    writeFileSync(tarball, bytes);
-    await deps.npmInstall(paths, join(tmp, "prefix"), tarball);
-    promote(paths, join(tmp, "prefix"), release.version);
-    state.pending = { version: release.version, notes: release.notes };
-    prune(paths, keepOf(state));
-    return { kind: "downloaded", version: release.version };
+    return { kind: "downloaded", version };
   } catch (error) {
     state.error = (error as Error).message;
     return { kind: "failed", reason: state.error };

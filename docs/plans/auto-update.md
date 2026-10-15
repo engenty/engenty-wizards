@@ -11,10 +11,12 @@ runs, and can be turned off. Runs spend credits, so an update never cuts one off
   `runtime/node_modules` → `current/node_modules` for commands written before (an older
   `bin/wizards` or `npx wizards`). An install from before (runtime/ as the prefix) moves into its
   version folder at its first switch. Code: `apps/runtime/src/cli/versions.ts`.
-- **Check and download.** The runtime asks GitHub (`releases/latest`) soon after it starts (at most
-  once an hour) and once a day. A newer `wizards-<v>.tgz` is downloaded and its SHA-256 checked
-  against the digest GitHub keeps of each asset; no digest, no install. npm installs it, it
-  becomes `runtime/<v>/`, and `update.json` notes it as pending. Code: `apps/runtime/src/cli/autoupdate.ts`.
+- **Check and install.** The runtime asks the npm registry (`wizards/latest`) soon after it
+  starts (at most once an hour) and once a day. A newer version is installed by npm, which checks
+  it against the registry's integrity hash, into a folder of its own that becomes `runtime/<v>/`;
+  `update.json` notes it as pending. This needs the release workflow to keep publishing to npm
+  (`PUBLISH_NPM`); install.sh and `wizards update` still take the GitHub release's tarball.
+  Code: `apps/runtime/src/cli/autoupdate.ts`.
 - **Switch.** Only `wizards start` switches, before it starts a runtime: at a restart or the next
   login, never while a runtime (and so a run) is up. It then replaces itself with the new
   version's `start` (`process.execve`, same pid for the login item).
@@ -49,9 +51,10 @@ runs, and can be turned off. Runs spend credits, so an update never cuts one off
    beta takes the newest release including pre-releases (`/releases` instead of
    `/releases/latest`), stable only full releases. Switching from beta to stable does not
    downgrade; it waits for a stable release newer than the installed one.
-6. **Stronger signature.** The digest comes from GitHub as the tarball does; signing the tarball
-   (Sigstore / npm provenance) and checking it before install guards against a compromised
-   release too. install.sh should check the same digest.
+6. **Stronger signature.** npm's integrity hash comes from the registry as the package does;
+   publishing with npm provenance and checking it (`npm audit signatures`) guards against a
+   compromised publish too. install.sh could take the package from npm as well, so both use one
+   source.
 7. **Processes on an old version.** A long-running `wizards mcp` may still run from a version
    that pruning deletes (two updates without a restart of the AI app). It loads its code at
    start, so this is fine today; if not, pruning should skip versions a process still uses.

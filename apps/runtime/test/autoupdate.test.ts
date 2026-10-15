@@ -1,9 +1,7 @@
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -52,28 +50,19 @@ function legacyInstall(version: string) {
 
 const on = { on: true, reason: "on" };
 
-function fakeGitHub(version: string, body: Buffer, digest?: string): UpdateDeps {
-  const sha = digest ?? createHash("sha256").update(body).digest("hex");
+/** npm's registry naming `version` as latest; `fails` makes the install fail. */
+function fakeRegistry(version: string, fails = false): UpdateDeps {
   return {
     now: () => new Date("2026-10-15T12:00:00Z"),
     fetch: (async (url: string) => {
-      if (String(url).includes("api.github.com")) {
-        return Response.json({
-          tag_name: `v${version}`,
-          html_url: `https://github.com/engenty/wizards/releases/tag/v${version}`,
-          assets: [
-            {
-              name: `wizards-${version}.tgz`,
-              browser_download_url: "https://example.test/pkg.tgz",
-              digest: `sha256:${sha}`,
-            },
-          ],
-        });
-      }
-      return new Response(new Uint8Array(body));
+      expect(String(url)).toBe("https://registry.npmjs.org/wizards/latest");
+      return Response.json({ name: "wizards", version });
     }) as typeof fetch,
-    npmInstall: async (_paths, prefix, tarball) => {
-      expect(readFileSync(tarball)).toEqual(body);
+    npmInstall: async (_paths, prefix, spec) => {
+      expect(spec).toBe(`wizards@${version}`);
+      if (fails) {
+        throw new Error("npm install of the new version failed (exit 1)");
+      }
       fakePrefix(prefix, version);
     },
   };
@@ -150,11 +139,9 @@ describe("whether it updates itself", () => {
 });
 
 describe("an update", () => {
-  const body = Buffer.from("the package");
-
-  it("downloads, checks and installs beside the current one, and switches only at apply", async () => {
+  it("installs beside the current one, and switches only at apply", async () => {
     legacyInstall("0.6.2");
-    const result = await checkForUpdate(paths, { policy: on }, fakeGitHub("0.7.0", body));
+    const result = await checkForUpdate(paths, { policy: on }, fakeRegistry("0.7.0"));
     expect(result).toEqual({ kind: "downloaded", version: "0.7.0" });
     // Nothing switched yet: what runs keeps running.
     expect(currentVersion(paths)).toBe("0.6.2");
@@ -177,22 +164,18 @@ describe("an update", () => {
     expect(applyPendingUpdate(paths)).toBeNull();
   });
 
-  it("keeps nothing whose checksum does not match", async () => {
+  it("keeps nothing when npm fails", async () => {
     legacyInstall("0.6.2");
-    const result = await checkForUpdate(
-      paths,
-      { policy: on },
-      fakeGitHub("0.7.0", body, "0".repeat(64)),
-    );
+    const result = await checkForUpdate(paths, { policy: on }, fakeRegistry("0.7.0", true));
     expect(result.kind).toBe("failed");
     expect(installedVersions(paths)).toEqual([]);
     expect(readUpdateState(paths).pending).toBeUndefined();
-    expect(readUpdateState(paths).error).toMatch(/checksum/);
+    expect(readUpdateState(paths).error).toMatch(/npm install/);
   });
 
   it("does nothing when off, or when it is the newest already", async () => {
     legacyInstall("0.7.0");
-    const deps = fakeGitHub("0.7.0", body);
+    const deps = fakeRegistry("0.7.0");
     expect((await checkForUpdate(paths, { policy: { on: false, reason: "x" } }, deps)).kind).toBe(
       "off",
     );
