@@ -6,7 +6,7 @@
 #
 # Built on GitHub's runners and pulled by the server (.github/workflows/ci.yml, job `images`;
 # deploy/Dockerfile.docs).
-FROM node:24-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 WORKDIR /app
 RUN corepack enable
 
@@ -30,7 +30,7 @@ ENV NEXT_PUBLIC_DOCS_SITE_URL=$NEXT_PUBLIC_DOCS_SITE_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter "@engenty-wizards/docs" build
 
-FROM node:24-bookworm-slim
+FROM node:25-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8896 \
