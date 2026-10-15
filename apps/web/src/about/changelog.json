@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.5",
+    "timestamp": 1792037723,
+    "commits": [
+      {
+        "id": "0996111",
+        "message": "sign-out ends the account's sign-in too – the studio's sign-in page no longer signs the person in again by itself",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.4",
-    "timestamp": 1792013697,
+    "timestamp": 1792013713,
     "commits": [
       {
         "id": "a317c97",

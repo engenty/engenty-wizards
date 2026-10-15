@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.5] - 2026-10-15
+- FIXED **[studio]** Sign-out ends the account's sign-in too – the studio's sign-in page no longer signs the person in again by itself
+
 ## [0.5.4] - 2026-10-14
 - ADDED **[editor]** The editor on a phone – the pane is a sheet over the whole room or folded, and the row under the header has "Ablauf" (folds it to the diagram and back) with Test and Share as icons; the tab Chat is Assistent, the Steps tab has the chat's composer too (on every screen), a swipe left or right goes to the next or the previous step, the tab in effect scrolls into view, the zoom bar is gone on a phone, and the wizard's menu has vertical dots at the very right. The home page drops the offer to install on one's own computer
 
