@@ -23,7 +23,7 @@ import { STUDIO, withBase } from "./base";
 import { type Lang, setLang, storedLang } from "./i18n";
 
 /** An AI client installed on this machine that can think for the app, on its own subscription. */
-export type HarnessId = "claude" | "codex" | "gemini" | "cursor";
+export type HarnessId = "claude" | "codex" | "antigravity" | "cursor";
 
 export interface HarnessStatus {
   id: HarnessId;

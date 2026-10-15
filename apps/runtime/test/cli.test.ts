@@ -201,8 +201,10 @@ describe("the AI clients", () => {
   });
 
   it("suggests the first when no vendor app says otherwise", () => {
-    const missing = CLIENTS.filter((c) => c.id !== "codex" && !c.app).map((client) => ({ client }));
-    expect(suggestedClient(missing)?.client.id).toBe("gemini");
+    const missing = CLIENTS.filter((c) => c.id !== "codex").map((c) => ({
+      client: { ...c, app: undefined },
+    }));
+    expect(suggestedClient(missing)?.client.id).toBe("claude");
     expect(suggestedClient([])).toBeNull();
   });
 });

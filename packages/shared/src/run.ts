@@ -287,6 +287,8 @@ const NOTES_EN = {
   clientNotInstalled:
     "{name} isn’t installed on this computer. Install it under Settings → Models.",
   clientNoCredit: "The account {name} is signed in with has no credit or quota left.",
+  clientAccountNotServed:
+    "{name} no longer serves the account it is signed in with. Sign it in with another account, or choose another way under Settings → Models.",
   anthropicAccountClaudeCode:
     "The Anthropic account Claude Code is signed in with has no credit. Sign Claude Code in with your subscription under Settings → Models.",
   chatgptAccountCodexSigned:
@@ -614,6 +616,8 @@ const NOTES_DE: Partial<Record<RunNoteCode, Line>> = {
     "{name} ist auf diesem Computer nicht installiert. Installiere es unter Einstellungen → Modelle.",
   clientNoCredit:
     "Das Konto, mit dem {name} angemeldet ist, hat kein Guthaben oder Kontingent mehr.",
+  clientAccountNotServed:
+    "{name} bedient das Konto, mit dem es angemeldet ist, nicht mehr. Melde es mit einem anderen Konto an oder wähle unter Einstellungen → Modelle einen anderen Weg.",
   anthropicAccountClaudeCode:
     "Das Anthropic-Konto, mit dem Claude Code angemeldet ist, hat kein Guthaben. Melde Claude Code unter Einstellungen → Modelle mit deinem Abo an.",
   chatgptAccountCodexSigned:

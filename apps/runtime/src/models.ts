@@ -67,7 +67,7 @@ import { serverText } from "./texts.js";
 export { isHarnessVendor } from "./harness/index.js";
 /**
  * A step names a model class, never a model. Where the class runs is decided here, in this order:
- *  1. its own way: an AI client installed on the machine (Claude Code, Codex, Gemini CLI, Cursor
+ *  1. its own way: an AI client installed on the machine (Claude Code, Codex, Antigravity, Cursor
  *     Agent — on its subscription), an API key the person brought (OpenAI, Anthropic, Google,
  *     fal.ai, ElevenLabs, Replicate, AI Gateway) or a local model;
  *  2. credits: the model-gateway binds `wizards/<class>`, meters the call and books it — on the
@@ -149,15 +149,35 @@ function envKey(name: LocalKey): string | undefined {
   return value || undefined;
 }
 
+/**
+ * Gemini CLI no longer serves Google AI subscriptions; Antigravity took its place. Settings saved
+ * before name it: its source moves over, and a class bound to one of its models runs on
+ * Antigravity's model of that class.
+ */
+function retireGemini(settings: LocalModelSettings): LocalModelSettings {
+  const source = (settings.source as string) === "gemini" ? "antigravity" : settings.source;
+  const bindings = { ...settings.bindings };
+  for (const [cls, ref] of Object.entries(bindings)) {
+    if (ref?.startsWith("gemini/")) {
+      const own = harness("antigravity")?.classes[cls as TextClass];
+      if (own) {
+        bindings[cls as ModelClass] = `antigravity/${own}`;
+      } else {
+        delete bindings[cls as ModelClass];
+      }
+    }
+  }
+  return { ...settings, source, bindings };
+}
+
 /** Reads the model settings and keys of a runtime that runs alone; called at start and after a change. */
 export async function loadLocalModels() {
   if (managed) {
     return;
   }
-  local.settings = (await readSetting<LocalModelSettings>("models")) ?? {
-    source: "own",
-    bindings: {},
-  };
+  local.settings = retireGemini(
+    (await readSetting<LocalModelSettings>("models")) ?? { source: "own", bindings: {} },
+  );
   const keys: ModelConfig["keys"] = {};
   for (const name of LOCAL_KEYS) {
     keys[name] = (await vaultGet(`key.${name}`)) ?? envKey(name);
