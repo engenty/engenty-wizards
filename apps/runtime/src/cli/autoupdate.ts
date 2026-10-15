@@ -21,7 +21,6 @@ import { currentVersion, promote, prune, runtimeDir, switchTo, versionIn } from 
  *
  * Off with `wizards autoupdate off` or WIZARDS_DISABLE_AUTOUPDATE=1 (terminal or the install's
  * .env); off by default in CI and for an install set up without a terminal.
- * docs/plans/auto-update.md has the steps after this one.
  */
 
 const LATEST_URL = "https://registry.npmjs.org/wizards/latest";
