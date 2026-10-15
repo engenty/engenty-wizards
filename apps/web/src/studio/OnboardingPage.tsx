@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
-import { type Key, t } from "../lib/i18n";
+import { type Key, lang, t } from "../lib/i18n";
 import { pendingWish, useCurrentProject, useMe } from "../lib/session";
 import { useGround } from "../lib/theme";
 import { cn } from "../ui";
@@ -100,6 +100,164 @@ function Dots({ step }: { step: Step }) {
   );
 }
 
+// --- Who the team is: what it uses engenty for, and the questions that fit ----------------
+
+type Kind = "personal" | "club" | "small" | "corp";
+
+const KINDS: { kind: Kind; label: Key; sub: Key }[] = [
+  { kind: "personal", label: "onboard.kindPersonal", sub: "onboard.kindPersonalSub" },
+  { kind: "club", label: "onboard.kindClub", sub: "onboard.kindClubSub" },
+  { kind: "small", label: "onboard.kindSmall", sub: "onboard.kindSmallSub" },
+  { kind: "corp", label: "onboard.kindCorp", sub: "onboard.kindCorpSub" },
+];
+
+/** Addresses anyone can have: they say nothing about a business. */
+const FREE_MAIL = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "gmx.at",
+  "gmx.de",
+  "gmx.net",
+  "web.de",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "icloud.com",
+  "me.com",
+  "yahoo.com",
+  "yahoo.de",
+  "aon.at",
+  "a1.net",
+  "chello.at",
+  "t-online.de",
+  "proton.me",
+  "protonmail.com",
+]);
+
+/** What the address says: free mail is someone on their own, a club's domain a club, else a business. */
+function guessKind(email: string): { kind: Kind | null; domain: string } {
+  const domain = (email.split("@")[1] ?? "").trim().toLowerCase();
+  if (!domain) {
+    return { kind: null, domain };
+  }
+  if (FREE_MAIL.has(domain)) {
+    return { kind: "personal", domain };
+  }
+  if (/(verein|club|klub|^sv-|^fc-|^ff-|feuerwehr|musik|chor)/.test(domain)) {
+    return { kind: "club", domain };
+  }
+  return { kind: "small", domain };
+}
+
+/** People or members, as ranges; kept as these ids, shown in the reader's numbers. */
+const SIZES: Record<Exclude<Kind, "personal">, string[]> = {
+  club: ["0-50", "50-250", "250-1000", "1000+"],
+  small: ["1", "2-9", "10-49"],
+  corp: ["50-249", "250-999", "1000+"],
+};
+const num = (n: string) => Number(n).toLocaleString(lang);
+const sizeLabel = (id: string) => {
+  if (id === "1") {
+    return t("onboard.justMe");
+  }
+  if (id.endsWith("+")) {
+    return `${num(id.slice(0, -1))}+`;
+  }
+  const [from, to] = id.split("-");
+  return from === "0" ? `≤ ${num(to)}` : `${num(from)}–${num(to)}`;
+};
+
+const CLUB_KINDS = [
+  "sport",
+  "culture",
+  "social",
+  "education",
+  "environment",
+  "rescue",
+  "other",
+] as const;
+const CLUB_ROLES = ["chair", "board", "treasurer", "secretary", "member"] as const;
+const CORP_ROLES = ["management", "it", "marketing", "sales", "operations", "other"] as const;
+
+interface Profile {
+  kind: Kind | null;
+  size: string | null;
+  sector: string;
+  role: string | null;
+  need: string;
+  legalName: string;
+  phone: string;
+}
+
+const SMALL_FIELD =
+  "w-full rounded-[14px] border border-white/30 bg-white/15 px-4 py-3 text-[1.0625rem] text-white outline-none placeholder:text-white/55 focus:border-white/60";
+
+/** One of the four answers to "what for": a card that shows when it is picked. */
+function Choice({
+  picked,
+  label,
+  sub,
+  onClick,
+}: {
+  picked: boolean;
+  label: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={picked}
+      onClick={onClick}
+      className={cn(
+        "flex cursor-pointer flex-col gap-1 rounded-[18px] border px-5 py-4 text-left transition",
+        picked ? "border-white bg-white/25" : "border-white/30 bg-white/10 hover:bg-white/15",
+      )}
+    >
+      <span className="font-display font-semibold text-[1.125rem]">{label}</span>
+      <span className="text-[0.875rem] text-white/80">{sub}</span>
+    </button>
+  );
+}
+
+/** Pick one: the club's kind, a range, a role. */
+function Chips<T extends string>({
+  label,
+  options,
+  value,
+  text,
+  onChange,
+}: {
+  label: string;
+  options: readonly T[];
+  value: string | null;
+  text: (id: T) => string;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-2 text-[0.9375rem] text-white/85">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={value === id}
+            onClick={() => onChange(id)}
+            className={cn(
+              "cursor-pointer rounded-full border px-4 py-2 text-[0.9375rem] transition",
+              value === id ? "border-white bg-white" : "border-white/30 hover:bg-white/15",
+            )}
+            style={value === id ? { color: GROUND_INK } : undefined}
+          >
+            {text(id)}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 interface Outcome {
   name: string;
   about: boolean;
@@ -130,6 +288,40 @@ export function OnboardingPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   // A wish typed before signing in (GuestStartPage): in sight here, built on "new" right after.
   const [wish] = useState(pendingWish);
+  // Step 1 has three pages the dots count as one: what for, the questions that fit, the name.
+  const [sub, setSub] = useState<"kind" | "details" | "team">("kind");
+  const [guess] = useState(() => guessKind(me.data?.user.email ?? ""));
+  const [profile, setProfile] = useState<Profile>({
+    kind: guess.kind,
+    size: null,
+    sector: "",
+    role: null,
+    need: "",
+    legalName: "",
+    phone: "",
+  });
+  const answer = (patch: Partial<Profile>) => setProfile((p) => ({ ...p, ...patch }));
+  // Kept at the Manage-App with the team; a failure here holds nobody up.
+  const keep = useMutation({
+    mutationFn: (website: string | undefined) =>
+      api.put("/api/studio/team/profile", {
+        kind: profile.kind,
+        size: profile.size,
+        sector: profile.sector.trim() || null,
+        role: profile.role,
+        need: profile.need.trim() || null,
+        legalName: profile.legalName.trim() || null,
+        phone: profile.phone.trim() || null,
+        website: website?.trim() || null,
+      }),
+  });
+  /** On to the website, with the address's domain where it is a business's. */
+  const toSite = () => {
+    if (!site && guess.domain && profile.kind !== "personal" && !FREE_MAIL.has(guess.domain)) {
+      setSite(guess.domain);
+    }
+    setStep(2);
+  };
 
   const rename = useMutation({
     mutationFn: (name: string) => api.put("/api/studio/team", { name }),
@@ -208,17 +400,215 @@ export function OnboardingPage() {
             </figure>
           ) : null}
         </div>
-        <div key={step} className="flex min-w-0 max-w-2xl animate-rise flex-col gap-5">
-          {step === 1 ? (
+        <div key={`${step}-${sub}`} className="flex min-w-0 max-w-2xl animate-rise flex-col gap-5">
+          {step === 1 && sub === "kind" ? (
+            <form
+              className="contents"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (profile.kind) {
+                  setSub("details");
+                }
+              }}
+            >
+              <p className="font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.14em]">
+                {firstName ? t("onboard.kicker1", { name: firstName }) : t("onboard.kicker1Anon")}
+              </p>
+              <h1 className="font-display font-bold text-[2.5rem] leading-[1.05] tracking-[-0.02em] sm:text-[3.25rem]">
+                {t("onboard.kind")}
+              </h1>
+              <p className="text-[1.0625rem] text-white/90 leading-relaxed">
+                {t("onboard.kindSub")}
+              </p>
+              {guess.kind ? (
+                <p className="text-[0.9375rem] text-white/80">
+                  {t("onboard.guess", {
+                    domain: guess.domain,
+                    kind: t(KINDS.find((k) => k.kind === guess.kind)?.label ?? "onboard.kindSmall"),
+                  })}
+                </p>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {KINDS.map((k) => (
+                  <Choice
+                    key={k.kind}
+                    picked={profile.kind === k.kind}
+                    label={t(k.label)}
+                    sub={t(k.sub)}
+                    onClick={() =>
+                      answer({ kind: k.kind, size: k.kind === profile.kind ? profile.size : null })
+                    }
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-5">
+                <Next type="submit">{t("onboard.continue")}</Next>
+                <Dots step={1} />
+              </div>
+            </form>
+          ) : null}
+
+          {step === 1 && sub === "details" && profile.kind ? (
+            <form
+              className="contents"
+              onSubmit={(e) => {
+                e.preventDefault();
+                keep.mutate(undefined);
+                if (profile.kind === "corp" && profile.legalName.trim() && !team) {
+                  setTeam(profile.legalName.trim());
+                }
+                setSub("team");
+              }}
+            >
+              <p className="font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.14em]">
+                {firstName ? t("onboard.kicker1", { name: firstName }) : t("onboard.kicker1Anon")}
+              </p>
+              <h1 className="font-display font-bold text-[2.25rem] leading-[1.05] tracking-[-0.02em] sm:text-[2.75rem]">
+                {t(
+                  profile.kind === "personal"
+                    ? "onboard.personalTitle"
+                    : profile.kind === "club"
+                      ? "onboard.clubTitle"
+                      : "onboard.businessTitle",
+                )}
+              </h1>
+              {profile.kind === "personal" ? (
+                <textarea
+                  value={profile.need}
+                  onChange={(e) => answer({ need: e.target.value })}
+                  placeholder={t("onboard.personalPlaceholder")}
+                  rows={3}
+                  maxLength={2000}
+                  aria-label={t("onboard.personalTitle")}
+                  className={cn(FIELD, "resize-none text-[1.125rem] leading-relaxed")}
+                />
+              ) : null}
+              {profile.kind === "club" ? (
+                <>
+                  <Chips
+                    label={t("onboard.clubKind")}
+                    options={CLUB_KINDS}
+                    value={profile.sector}
+                    text={(id) => t(`onboard.club.${id}`)}
+                    onChange={(id) => answer({ sector: id })}
+                  />
+                  <Chips
+                    label={t("onboard.members")}
+                    options={SIZES.club}
+                    value={profile.size}
+                    text={sizeLabel}
+                    onChange={(id) => answer({ size: id })}
+                  />
+                  <Chips
+                    label={t("onboard.yourRole")}
+                    options={CLUB_ROLES}
+                    value={profile.role}
+                    text={(id) => t(`onboard.role.${id}`)}
+                    onChange={(id) => answer({ role: id })}
+                  />
+                </>
+              ) : null}
+              {profile.kind === "small" ? (
+                <>
+                  <Chips
+                    label={t("onboard.people")}
+                    options={SIZES.small}
+                    value={profile.size}
+                    text={sizeLabel}
+                    onChange={(id) => answer({ size: id })}
+                  />
+                  <label className="flex flex-col gap-2 text-[0.9375rem] text-white/85">
+                    {t("onboard.sector")}
+                    <input
+                      value={profile.sector}
+                      onChange={(e) => answer({ sector: e.target.value })}
+                      placeholder={t("onboard.sectorPlaceholder")}
+                      maxLength={120}
+                      className={SMALL_FIELD}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-[0.9375rem] text-white/85">
+                    <span>
+                      {t("onboard.need")}{" "}
+                      <span className="text-white/60">{t("onboard.optional")}</span>
+                    </span>
+                    <textarea
+                      value={profile.need}
+                      onChange={(e) => answer({ need: e.target.value })}
+                      placeholder={t("onboard.needPlaceholder")}
+                      rows={2}
+                      maxLength={2000}
+                      className={cn(SMALL_FIELD, "resize-none")}
+                    />
+                  </label>
+                </>
+              ) : null}
+              {profile.kind === "corp" ? (
+                <>
+                  <Chips
+                    label={t("onboard.people")}
+                    options={SIZES.corp}
+                    value={profile.size}
+                    text={sizeLabel}
+                    onChange={(id) => answer({ size: id })}
+                  />
+                  <Chips
+                    label={t("onboard.yourRole")}
+                    options={CORP_ROLES}
+                    value={profile.role}
+                    text={(id) => t(`onboard.role.${id}`)}
+                    onChange={(id) => answer({ role: id })}
+                  />
+                  <label className="flex flex-col gap-2 text-[0.9375rem] text-white/85">
+                    {t("onboard.legalName")}
+                    <input
+                      value={profile.legalName}
+                      onChange={(e) => answer({ legalName: e.target.value })}
+                      placeholder={t("onboard.legalNamePlaceholder")}
+                      maxLength={200}
+                      autoComplete="organization"
+                      className={SMALL_FIELD}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-[0.9375rem] text-white/85">
+                    <span>
+                      {t("onboard.phone")}{" "}
+                      <span className="text-white/60">{t("onboard.phoneWhy")}</span>
+                    </span>
+                    <input
+                      type="tel"
+                      value={profile.phone}
+                      onChange={(e) =>
+                        answer({ phone: e.target.value.replace(/[^+0-9 ()/.-]/g, "") })
+                      }
+                      placeholder="+43 …"
+                      maxLength={40}
+                      autoComplete="tel"
+                      className={SMALL_FIELD}
+                    />
+                  </label>
+                </>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-5">
+                <Next type="submit" busy={keep.isPending}>
+                  {t("onboard.continue")}
+                </Next>
+                <Quiet onClick={() => setSub("kind")}>{t("onboard.back")}</Quiet>
+                <Dots step={1} />
+              </div>
+            </form>
+          ) : null}
+
+          {step === 1 && sub === "team" ? (
             <form
               className="contents"
               onSubmit={(e) => {
                 e.preventDefault();
                 const name = team.trim();
                 if (name) {
-                  rename.mutate(name, { onSuccess: () => setStep(2) });
+                  rename.mutate(name, { onSuccess: toSite });
                 } else {
-                  setStep(2);
+                  toSite();
                 }
               }}
             >
@@ -264,20 +654,30 @@ export function OnboardingPage() {
                   className="contents"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (site.trim() && !read.isPending) {
-                      read.mutate(site.trim());
+                    const given = site.trim();
+                    if (!given || read.isPending) {
+                      return;
                     }
+                    if (profile.kind) {
+                      keep.mutate(given);
+                    }
+                    // A name, not an address: kept with the team, nothing to read.
+                    if (!given.includes(".")) {
+                      setStep(3);
+                      return;
+                    }
+                    read.mutate(given);
                   }}
                 >
                   <input
                     value={site}
                     onChange={(e) => setSite(e.target.value)}
                     placeholder={t("onboard.sitePlaceholder")}
-                    inputMode="url"
                     autoCapitalize="none"
                     aria-label={t("onboard.site")}
                     className={FIELD}
                   />
+                  <p className="-mt-2 text-[0.875rem] text-white/75">{t("onboard.siteNameHint")}</p>
                   {outcome ? (
                     <p className="flex items-center gap-2 text-[0.9375rem] text-(color:--moss)">
                       <Check className="size-4" />
@@ -456,7 +856,7 @@ export function OnboardingPage() {
         </div>
       </main>
       <footer className="mx-auto flex w-full max-w-6xl items-center justify-between pb-6 text-[0.75rem] text-white/55 sm:pb-8">
-        <span>engenty</span>
+        <span>engenty.wizards</span>
         <span aria-hidden="true" className="size-[3px] bg-(color:--dot)" />
       </footer>
     </div>

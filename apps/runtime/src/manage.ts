@@ -250,6 +250,31 @@ export async function renameTenant(id: string, name: string): Promise<TenantInfo
   return value;
 }
 
+/** What a team tells the studio's first visit about itself; the Manage-App keeps it (its leads). */
+export interface TeamProfile {
+  kind: "personal" | "club" | "small" | "corp";
+  size?: string | null;
+  sector?: string | null;
+  role?: string | null;
+  need?: string | null;
+  legalName?: string | null;
+  phone?: string | null;
+  website?: string | null;
+}
+
+export function saveTeamProfile(
+  tenantId: string,
+  userId: string,
+  lang: "de" | "en",
+  profile: TeamProfile,
+): Promise<{ ok: boolean }> {
+  return call("PUT", `/v1/tenants/${encodeURIComponent(tenantId)}/profile`, {
+    ...profile,
+    userId,
+    lang,
+  });
+}
+
 /** The Manage-App mails the install command and the first steps to one of the team's people. */
 export function installMail(email: string, lang: Lang): Promise<{ ok: boolean }> {
   return call("POST", "/v1/install-mail", { email, lang });

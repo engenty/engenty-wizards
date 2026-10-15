@@ -75,6 +75,7 @@ import {
   installMail,
   managed,
   renameTenant,
+  saveTeamProfile,
   tenantInfo,
   tenantMembers,
   userInfo,
@@ -1777,6 +1778,35 @@ export const studio = new Hono<Vars>()
     const { name } = z.object({ name: z.string().trim().min(1).max(80) }).parse(await c.req.json());
     const info = await renameTenant(c.get("user").tenantId, name);
     return c.json({ name: info.name });
+  })
+  // What the team uses engenty for, and the questions that fit: kept at the Manage-App.
+  .put("/team/profile", async (c) => {
+    if (!managed) {
+      return c.json(
+        {
+          error: say(c, "onlyAvailableCloud"),
+          code: "not_managed",
+        },
+        404,
+      );
+    }
+    await requireAdmin();
+    const field = (max: number) => z.string().trim().max(max).nullable().optional();
+    const profile = z
+      .object({
+        kind: z.enum(["personal", "club", "small", "corp"]),
+        size: field(40),
+        sector: field(120),
+        role: field(120),
+        need: field(2000),
+        legalName: field(200),
+        phone: field(40),
+        website: field(400),
+      })
+      .parse(await c.req.json());
+    const user = c.get("user");
+    await saveTeamProfile(user.tenantId, user.id, requestLang(c) === "de" ? "de" : "en", profile);
+    return c.json({ ok: true });
   })
   .post("/onboarding/done", async (c) => {
     if (!managed) {

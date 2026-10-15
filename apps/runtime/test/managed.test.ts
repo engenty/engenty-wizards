@@ -15,6 +15,8 @@ const SERVICE_KEY = "wzr_test_service_key";
 const balances: Record<string, number> = { "tenant-a": 500, "tenant-b": 0 };
 const reservations: { tenantId: string; runId: string; credits: number }[] = [];
 const numberRequests: { tenantId: string; body: any }[] = [];
+/** What the studio's first visit sent about a team. */
+const profiles: { tenantId: string; body: any }[] = [];
 const channelUsage: { tenantId: string; body: any }[] = [];
 // The Manage-App fails on tenant B's plan while this is set.
 let tenantBDown = false;
@@ -84,6 +86,11 @@ const manage: Server = createServer(async (req, res) => {
       invitations: [{ id: "inv-1", email: "x@test.local", role: "member", expiresAt: "2026-10-20T00:00:00.000Z" }],
       seats: { limit: 5, taken: 3 },
     });
+  }
+  const profile = url.pathname.match(/^\/v1\/tenants\/([^/]+)\/profile$/)?.[1];
+  if (profile && req.method === "PUT") {
+    profiles.push({ tenantId: profile, body: JSON.parse(raw) });
+    return json({ ok: true });
   }
   // Tenant A has its number for texts and calls; tenant B asks for one.
   const channels = url.pathname.match(/^\/v1\/tenants\/([^/]+)\/channels(\/requests|\/usage)?$/);
@@ -595,6 +602,25 @@ describe("a runtime of a Manage-App", () => {
     expect(
       new URL(long.headers.get("location") ?? "").searchParams.get("wish")?.length,
     ).toBe(600);
+  });
+
+  it("hands what a team says about itself to the Manage-App, from its owner only", async () => {
+    const owner = await signIn("code-a");
+    const put = (cookie: string, body: unknown) =>
+      app.fetch(
+        new Request(`${RUNTIME}/api/studio/team/profile`, {
+          method: "PUT",
+          headers: { cookie, "content-type": "application/json", origin: RUNTIME },
+          body: JSON.stringify(body),
+        }),
+      );
+    const res = await put(owner, { kind: "small", size: "2-9", sector: "Tischlerei" });
+    expect(res.status).toBe(200);
+    expect(profiles.at(-1)).toMatchObject({
+      tenantId: "tenant-a",
+      body: { userId: "user-a", kind: "small", size: "2-9", sector: "Tischlerei" },
+    });
+    expect((await put(owner, { kind: "nonsense" })).status).toBe(400);
   });
 
   it("signs out here and names where the account's sign-in ends", async () => {
