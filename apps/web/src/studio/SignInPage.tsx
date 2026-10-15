@@ -123,7 +123,11 @@ export function SignInPage() {
       <DoorBar className="absolute inset-x-6 top-6 sm:inset-x-10 sm:top-8" />
       <div className="flex w-full max-w-md animate-rise flex-col items-center text-center">
         <Mascot kind="round" size={local || config.isError ? 140 : 200} fluffy />
-        <EngentyWordmark className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight" />
+        {/* The product's whole name: "wizards" alone is other companies' too. */}
+        <span className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight">
+          <EngentyWordmark />
+          <span className="font-normal">wizards</span>
+        </span>
         <h1 className="mt-3 text-balance font-display font-semibold text-[2.125rem] leading-[1.1] tracking-tight">
           <Sentences text={t("brand.tagline")} />
         </h1>

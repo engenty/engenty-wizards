@@ -104,7 +104,7 @@ export function GuestStartPage({ failed }: { failed: boolean }) {
       </section>
       {/* As on the landing page: the name and the legal pages, nothing more. */}
       <footer className="mt-16 flex flex-wrap justify-center gap-x-5 gap-y-1 text-[0.75rem] text-ink-3">
-        <span>engenty</span>
+        <span>engenty.wizards</span>
         {(["imprint", "privacy", "terms"] as const).map((page) => (
           <a key={page} href={LEGAL[lang][page]} className="transition hover:text-ink-2">
             {t(`legal.${page}`)}
