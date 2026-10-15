@@ -89,7 +89,8 @@ export function described(
 ): string {
   const parts = [account.name || account.email];
   if (team) {
-    parts.push(`team ${team.name}`);
+    // "Team Anna" and "New team" say it themselves: not "team Team Anna".
+    parts.push(/\bteam\b/i.test(team.name) ? team.name : `team ${team.name}`);
     if (credits) {
       parts.push(`${team.balanceCredits} credits`);
     }

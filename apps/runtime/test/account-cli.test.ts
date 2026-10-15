@@ -73,6 +73,9 @@ describe("the account line", () => {
         account,
         team: { tenantId: "t", name: "Team", balanceCredits: 1, at: "" },
       }),
-    ).toBe("Matthias · team Team");
+    ).toBe("Matthias · Team");
+    expect(cli.described(account, { name: "Team Anna", balanceCredits: 500 })).toBe(
+      "Matthias · Team Anna · 500 credits",
+    );
   });
 });
