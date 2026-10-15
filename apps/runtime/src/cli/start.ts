@@ -6,8 +6,9 @@ import { join, resolve } from "node:path";
 import { mintLocalTicket } from "../auth/local-ticket.js";
 import { type Running, readRunning } from "../running.js";
 import { RESTART_EXIT } from "../update.js";
+import { applyPendingUpdate, autoUpdatePolicy, notesUrl } from "./autoupdate.js";
 import { runtimeEnv } from "./environment.js";
-import { type Layout, packageRoot, readEnvFile } from "./home.js";
+import { installedByScript, type Layout, packageRoot, readEnvFile } from "./home.js";
 import { findOnPath } from "./machine.js";
 import { cmd, cyan, dim, live, tilde } from "./ui.js";
 
@@ -181,6 +182,22 @@ export async function start(
     show(running.url, entryUrl(running, paths), options.open);
     console.log(dim(`    It was already running. To stop it: ${cmd("stop")}`));
     return 0;
+  }
+
+  // Nothing runs, so no run is cut off: a version downloaded meanwhile becomes current and
+  // takes this process's place (the login item keeps waiting on the same pid). In the
+  // background, the `start` spawned below does it.
+  if (!options.background && installedByScript(paths) && process.execve) {
+    const switched = autoUpdatePolicy(paths, { installed: true }).on && applyPendingUpdate(paths);
+    if (switched) {
+      console.log(`  ${live} Updated to ${switched.to}. What changed: ${notesUrl(switched.to)}`);
+      const wrapper = join(paths.bin, "wizards");
+      try {
+        process.execve(wrapper, [wrapper, "start", ...(options.open ? [] : ["--no-open"])]);
+      } catch {
+        // This version starts once more; the next start is the new one.
+      }
+    }
   }
 
   if (options.background) {

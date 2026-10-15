@@ -94,6 +94,10 @@ export interface InstallNote {
   version?: string;
   /** Set up with `--local`: no account, nothing leaves this computer. A sign-in clears it. */
   local?: boolean;
+  /** `wizards autoupdate on|off`; unset, it follows autoupdate.ts's defaults. */
+  autoUpdate?: boolean;
+  /** The setup ran without a terminal (CI, a script): no updates by themselves unless turned on. */
+  unattended?: boolean;
 }
 
 export function readInstallNote(paths: Layout = layout()): InstallNote {

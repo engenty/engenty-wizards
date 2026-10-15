@@ -23,7 +23,7 @@ import { purgeExpiredRuns } from "./services/shares.js";
 import { purgeUnusedStores } from "./store/index.js";
 import { forgetRunner, registerRunner } from "./tenants/control.js";
 import { LOCAL_TENANT } from "./tenants/tenant.js";
-import { onRestart, RESTART_EXIT } from "./update.js";
+import { onRestart, RESTART_EXIT, startUpdateChecks } from "./update.js";
 
 // Before anything prints: the last lines stay in memory for a look from afar (debug.ts).
 hookConsole();
@@ -47,6 +47,8 @@ if (managed) {
   void loadCatalog();
   void checkModelsAtStart().catch(() => undefined);
   startProChecks();
+  // A newer release is downloaded beside this one and used from the next start.
+  startUpdateChecks();
 }
 
 // The marketplace's starters and the starred entries, kept for offline use; checked hourly.
