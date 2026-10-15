@@ -385,15 +385,19 @@ function claudeCode(paths: Layout): App {
           "add",
           "--scope",
           "user",
-          ...Object.entries(server.env ?? {}).flatMap(([key, value]) => ["-e", `${key}=${value}`]),
+          // The name before `-e`: claude's `-e` takes every value up to the next option, so a
+          // name after it is read as one more variable.
           SERVER_NAME,
+          ...Object.entries(server.env ?? {}).flatMap(([key, value]) => ["-e", `${key}=${value}`]),
           "--",
           server.command,
           ...server.args,
         ]);
         return { ok: true, message: "added with claude mcp add --scope user" };
       } catch (error) {
-        return { ok: false, message: (error as Error).message.split("\n")[0] };
+        // claude's own words say what was wrong; "Command failed: …" only repeats the command.
+        const said = String((error as { stderr?: unknown }).stderr ?? "").trim();
+        return { ok: false, message: (said || (error as Error).message).split("\n")[0] };
       }
     },
     async disconnect() {
