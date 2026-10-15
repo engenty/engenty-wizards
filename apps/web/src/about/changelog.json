@@ -1,7 +1,41 @@
 [
   {
+    "version": "v0.5.12",
+    "timestamp": 1792047429,
+    "commits": [
+      {
+        "id": "9727faf",
+        "message": "the first visit asks what the team uses engenty for (guessed from the address: free mail personal, a club's domain a club, else a business) and the questions that fit, sends the answers to the Manage-App (PUT /api/studio/team/profile), and takes a website's address or just its name",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "b590768",
+        "message": "engenty.wizards under the door's engenty and at the foot of the guests' start page",
+        "group": "Fixed",
+        "scope": "brand",
+        "breaking": false
+      },
+      {
+        "id": "db8b878",
+        "message": "review findings – runner exports, own keys fail closed, one secret reader, run cleanup, CI checks (#28)",
+        "group": "Fixed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "e3fbc08",
+        "message": "remove hard-coded German, widen copy-check (#31)",
+        "group": "Fixed",
+        "scope": "copy",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.11",
-    "timestamp": 1792044133,
+    "timestamp": 1792044141,
     "commits": [
       {
         "id": "c197da3",
