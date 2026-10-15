@@ -160,6 +160,12 @@ writeFileSync(
       type: "module",
       bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,
+      // Windows has no installer yet (bin/wizards.mjs says so): npm refuses at once instead of
+      // installing for many minutes first.
+      os: ["darwin", "linux"],
+      // Windows has no installer yet (bin/wizards.mjs says so): npm refuses at once instead of
+      // installing for many minutes first.
+      os: ["darwin", "linux"],
       files: ["apps", "bin", "modules", "plugin"],
       dependencies: sorted(Object.keys(dependencies).filter((name) => !OPTIONAL.includes(name))),
       optionalDependencies: sorted(OPTIONAL.filter((name) => name in dependencies)),
