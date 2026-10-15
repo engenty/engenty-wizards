@@ -1,20 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readlinkSync } from "node:fs";
 import { sep } from "node:path";
 
 /**
- * The processes of engenty wizards on this machine, found by their command line: the runtime,
- * `wizards start` (a terminal, the login item, an older `start --no-open` whose note in the data
- * folder another one overwrote), `wizards mcp` (started by an AI app) and the copies npx runs.
+ * Every process that runs from the install folder: the runtime, each `wizards start` (also an
+ * older `start --no-open` whose note in running.json another overwrote) and `wizards mcp`.
  * `stop` and `uninstall` stop them all, not only the one in running.json.
  */
 
-export type ProcessKind = "runtime" | "start" | "mcp" | "other";
-
 export interface WizardsProcess {
   pid: number;
-  kind: ProcessKind;
-  command: string;
+  kind: "runtime" | "start" | "mcp" | "other";
 }
 
 export interface ProcessEntry {
@@ -23,17 +18,10 @@ export interface ProcessEntry {
   command: string;
 }
 
-/** Every process of this user, as `ps` lists it; empty where there is no `ps` (Windows). */
-export function listProcesses(): ProcessEntry[] {
-  if (process.platform === "win32") {
-    return [];
-  }
+/** Every process, as `ps` lists it; empty where there is no `ps` (Windows). */
+function listProcesses(): ProcessEntry[] {
   try {
-    const out = execFileSync("ps", ["-axww", "-o", "pid=,ppid=,command="], {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-    });
-    return out
+    return execFileSync("ps", ["-axww", "-o", "pid=,ppid=,command="], { encoding: "utf8" })
       .split("\n")
       .map((line) => line.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/))
       .filter((match) => match !== null)
@@ -43,144 +31,65 @@ export function listProcesses(): ProcessEntry[] {
   }
 }
 
-/** This process and the ones that started it (npx, npm, a shell): never stopped by it. */
-export function selfAndAncestors(list: ProcessEntry[], pid = process.pid): Set<number> {
-  const parents = new Map(list.map((entry) => [entry.pid, entry.ppid]));
-  const out = new Set<number>();
-  for (let at: number | undefined = pid; at && !out.has(at); at = parents.get(at)) {
-    out.add(at);
-  }
-  return out;
-}
-
-/** What a command line of engenty wizards runs, by its arguments. */
-function kindOf(command: string): ProcessKind {
-  if (/apps[\\/]runtime[\\/]dist[\\/]index\.js/.test(command)) {
-    return "runtime";
-  }
-  const args = command.split(/\s+/);
-  if (args.includes("mcp")) {
-    return "mcp";
-  }
-  if (args.includes("start")) {
-    return "start";
-  }
-  return "other";
-}
-
-/** The folder a process works in; null where it can't be told. */
-export function cwdOf(pid: number): string | null {
-  try {
-    if (process.platform === "linux") {
-      return readlinkSync(`/proc/${pid}/cwd`);
-    }
-    if (process.platform === "darwin") {
-      const out = execFileSync(
-        existsSync("/usr/sbin/lsof") ? "/usr/sbin/lsof" : "lsof",
-        ["-a", "-p", String(pid), "-d", "cwd", "-Fn"],
-        {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        },
-      );
-      return (
-        out
-          .split("\n")
-          .find((line) => line.startsWith("n"))
-          ?.slice(1) || null
-      );
-    }
-  } catch {
-    // gone, or not ours to look at
-  }
-  return null;
-}
-
 /**
- * The processes of engenty wizards in `list`: whatever runs from the install folder `home`, and
- * the npm package `wizards` (npx, a global install) working in that folder, as the command and
- * the runtime always do (install-env.ts, start.ts). Another install's processes, and the npx
- * that only hands over to the install, are left alone; the latter ends with what it started. A
- * checkout (`pnpm wizards`) is left alone too. `skip` holds the processes never to name: this
- * one and its parents.
+ * The processes in `list` that run from `home`, apart from `self` and the processes that started
+ * it (npx, a shell).
  */
 export function wizardsProcesses(
   home: string,
   list: ProcessEntry[],
-  skip: Set<number> = new Set(),
-  cwd: (pid: number) => string | null = cwdOf,
+  self = process.pid,
 ): WizardsProcess[] {
-  const inHome = home.endsWith(sep) ? home : home + sep;
-  const fromNpm = /[\\/]node_modules[\\/](wizards[\\/]|\.bin[\\/]wizards(\s|$))/;
-  const worksInHome = (pid: number) => {
-    const dir = cwd(pid);
-    return dir !== null && (dir === home || dir.startsWith(inHome));
-  };
+  const parents = new Map(list.map((entry) => [entry.pid, entry.ppid]));
+  const skip = new Set<number>();
+  for (let at: number | undefined = self; at && !skip.has(at); at = parents.get(at)) {
+    skip.add(at);
+  }
   return list
-    .filter((entry) => !skip.has(entry.pid))
-    .filter(
-      (entry) =>
-        entry.command.includes(inHome) || (fromNpm.test(entry.command) && worksInHome(entry.pid)),
-    )
-    .map((entry) => ({ pid: entry.pid, kind: kindOf(entry.command), command: entry.command }));
+    .filter((entry) => !skip.has(entry.pid) && entry.command.includes(home + sep))
+    .map(({ pid, command }) => {
+      const args = command.split(/\s+/);
+      const kind = /apps[\\/]runtime[\\/]dist[\\/]index\.js/.test(command)
+        ? "runtime"
+        : args.includes("mcp")
+          ? "mcp"
+          : args.includes("start")
+            ? "start"
+            : "other";
+      return { pid, kind };
+    });
 }
 
-/** The processes of this install that run now, apart from this one and its parents. */
-export function findWizardsProcesses(home: string): WizardsProcess[] {
-  const list = listProcesses();
-  return wizardsProcesses(home, list, selfAndAncestors(list));
-}
+export const findWizardsProcesses = (home: string) => wizardsProcesses(home, listProcesses());
 
-export function alive(pid: number): boolean {
+const alive = (pid: number) => {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    // EPERM: it runs, as somebody else.
     return (error as NodeJS.ErrnoException).code === "EPERM";
   }
-}
-
-export interface StopDeps {
-  kill: (pid: number, signal: NodeJS.Signals) => void;
-  alive: (pid: number) => boolean;
-  wait: (ms: number) => Promise<void>;
-}
-
-const realStop: StopDeps = {
-  kill: (pid, signal) => process.kill(pid, signal),
-  alive,
-  wait: (ms) => new Promise((done) => setTimeout(done, ms)),
 };
 
-/**
- * Stops these processes: SIGTERM, then SIGKILL for any still there after `graceMs`. The ones
- * that still run after that, or could not be signalled.
- */
-export async function stopProcesses(
-  pids: number[],
-  graceMs = 8000,
-  deps: StopDeps = realStop,
-): Promise<number[]> {
-  const signal = (pid: number, name: NodeJS.Signals) => {
-    try {
-      deps.kill(pid, name);
-    } catch {
-      // gone already, or not ours to stop: the check below tells
+/** SIGTERM, then SIGKILL after 8 seconds; the processes still there after that. */
+export async function stopProcesses(pids: number[]): Promise<number[]> {
+  const signal = (name: NodeJS.Signals) => {
+    for (const pid of pids.filter(alive)) {
+      try {
+        process.kill(pid, name);
+      } catch {
+        // gone meanwhile, or not ours: the check below tells
+      }
     }
   };
-  for (const pid of pids) {
-    signal(pid, "SIGTERM");
-  }
-  const left = () => pids.filter((pid) => deps.alive(pid));
-  for (let waited = 0; waited < graceMs && left().length; waited += 100) {
-    await deps.wait(100);
-  }
-  for (const pid of left()) {
-    signal(pid, "SIGKILL");
-  }
-  for (let waited = 0; waited < 2000 && left().length; waited += 100) {
-    await deps.wait(100);
-  }
-  return left();
+  const wait = async (ms: number) => {
+    for (let waited = 0; waited < ms && pids.some(alive); waited += 100) {
+      await new Promise((done) => setTimeout(done, 100));
+    }
+  };
+  signal("SIGTERM");
+  await wait(8000);
+  signal("SIGKILL");
+  await wait(2000);
+  return pids.filter(alive);
 }

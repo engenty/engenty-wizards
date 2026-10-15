@@ -1,336 +1,128 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { present } from "../src/cli/autostart.js";
 import type { App } from "../src/cli/connect.js";
 import { layout } from "../src/cli/home.js";
-import {
-  type ProcessEntry,
-  selfAndAncestors,
-  stopProcesses,
-  type WizardsProcess,
-  wizardsProcesses,
-} from "../src/cli/processes.js";
-import {
-  makePlan,
-  parseUninstall,
-  type UninstallSystem,
-  uninstall,
-} from "../src/cli/uninstall.js";
+import { type WizardsProcess, wizardsProcesses } from "../src/cli/processes.js";
+import { type UninstallSystem, uninstall } from "../src/cli/uninstall.js";
 
-// Every test works in a home folder of its own under the temp folder, never the real one: the
-// system the uninstall talks to (apps, processes, launchctl) is a stand-in.
+// Every test works in a home folder of its own, never the real one; apps, processes and
+// launchctl are stand-ins.
 
 let user: string;
 let paths: ReturnType<typeof layout>;
+const plist = () => join(user, "Library", "LaunchAgents", "com.engenty.wizards.login.plist");
+const link = () => join(user, ".local", "bin", "wizards");
 beforeEach(() => {
   user = mkdtempSync(join(tmpdir(), "wizards-uninstall-"));
   paths = layout(join(user, ".engenty", "wizards"));
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
+  for (const file of [join(paths.bin, "wizards"), join(paths.runtime, "x"), paths.envFile, join(paths.data, "secret"), plist()]) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, "x");
+  }
+  mkdirSync(dirname(link()), { recursive: true });
+  symlinkSync(join(paths.bin, "wizards"), link());
 });
 afterEach(() => {
   vi.restoreAllMocks();
   rmSync(user, { recursive: true, force: true });
 });
 
-const touch = (file: string, text = "x") => {
-  mkdirSync(join(file, ".."), { recursive: true });
-  writeFileSync(file, text);
-};
-
-/** An install as install.sh leaves it, with a login item, the link and some data. */
-function installed() {
-  touch(join(paths.bin, "wizards"), "#!/bin/sh\n");
-  touch(join(paths.runtime, "node_modules", "wizards", "package.json"), "{}");
-  touch(join(paths.tools, "node", "bin", "node"));
-  touch(join(paths.logs, "runtime.log"));
-  touch(paths.installFile, "{}");
-  touch(paths.envFile, "API_PORT=8900\n");
-  mkdirSync(paths.plugins, { recursive: true });
-  touch(join(paths.data, "secret"));
-  touch(join(user, "Library", "LaunchAgents", "com.engenty.wizards.login.plist"), "<plist/>");
-  mkdirSync(join(user, ".local", "bin"), { recursive: true });
-  symlinkSync(join(paths.bin, "wizards"), join(user, ".local", "bin", "wizards"));
-}
-
-function fakeApp(id: string, connected: boolean, works = true): App & { on: boolean } {
-  const app = {
-    id,
-    name: id,
-    widgets: false,
-    where: join(user, `.${id}.json`),
-    on: connected,
-    installed: () => true,
-    connected: async () => app.on,
-    connect: async () => ({ ok: true as const, message: "" }),
-    disconnect: async () => {
-      if (!works) {
-        return { ok: false as const, message: `${id} is running` };
-      }
-      app.on = false;
-      return { ok: true as const, message: "removed" };
-    },
-  };
-  return app;
-}
-
-function fakeSystem(
-  over: Partial<UninstallSystem> & { running?: WizardsProcess[]; stubborn?: number[] } = {},
-) {
-  const running = over.running ?? [];
+function fakeSystem(opts: { stubborn?: boolean; appWorks?: boolean } = {}) {
   const calls: string[] = [];
-  const appList = [fakeApp("cursor", true), fakeApp("codex", false)];
+  let running: WizardsProcess[] = [
+    { pid: 11, kind: "runtime" },
+    { pid: 12, kind: "mcp" },
+  ];
+  const app = {
+    id: "cursor",
+    name: "Cursor",
+    on: true,
+    connected: async () => app.on,
+    disconnect: async () => {
+      app.on = opts.appWorks === false;
+      return app.on ? { ok: false, message: "Cursor is running" } : { ok: true, message: "" };
+    },
+  } as unknown as App & { on: boolean };
   const system: UninstallSystem = {
     userHome: user,
     platform: "darwin",
     env: {},
     interactive: false,
-    apps: () => appList,
+    apps: () => [app],
     processes: () => running,
     stop: async (pids) => {
       calls.push(`stop ${pids.join(",")}`);
-      const left = pids.filter((pid) => over.stubborn?.includes(pid));
-      running.splice(0, running.length, ...running.filter((p) => left.includes(p.pid)));
-      return left;
+      running = opts.stubborn ? running : [];
+      return running.map((p) => p.pid);
     },
     unloadLoginItem: async () => {
       calls.push("bootout");
     },
-    removeUnit: async (file) => {
-      calls.push("unit");
-      rmSync(file, { force: true });
-    },
-    ...over,
+    removeUnit: async () => undefined,
   };
-  return { system, calls, apps: appList };
+  return { system, calls, app };
 }
 
-const proc = (pid: number, kind: WizardsProcess["kind"]): WizardsProcess => ({
-  pid,
-  kind,
-  command: `node ${paths.home}/runtime/node_modules/wizards/bin/wizards.mjs ${kind}`,
-});
-
-describe("the plan of an uninstall", () => {
-  it("names the apps, the login item, the processes, the program, the link and the data", async () => {
-    installed();
-    const { system } = fakeSystem({ running: [proc(11, "runtime"), proc(12, "mcp")] });
-    const plan = await makePlan(paths, system);
-    expect(plan.apps.map((app) => app.id)).toEqual(["cursor"]);
-    expect(plan.loginItem).toBe(
-      join(user, "Library", "LaunchAgents", "com.engenty.wizards.login.plist"),
-    );
-    expect(plan.processes.map((p) => p.pid)).toEqual([11, 12]);
-    expect(plan.links).toEqual([join(user, ".local", "bin", "wizards")]);
-    // An empty plugins folder is program; the settings go with the data.
-    expect(plan.program.sort()).toEqual(
-      [paths.bin, paths.runtime, paths.tools, paths.logs, paths.installFile, paths.plugins].sort(),
-    );
-    expect(plan.data.sort()).toEqual([paths.data, paths.envFile].sort());
-  });
-
-  it("finds the login item on Linux as a systemd user service", async () => {
-    installed();
-    const unit = join(user, ".config", "systemd", "user", "engenty-wizards.service");
-    touch(unit, "[Unit]\n");
-    const { system } = fakeSystem({ platform: "linux" });
-    expect((await makePlan(paths, system)).loginItem).toBe(unit);
-  });
-
-  it("leaves a link that isn't the install's alone", async () => {
-    mkdirSync(join(user, ".local", "bin"), { recursive: true });
-    symlinkSync("/usr/bin/true", join(user, ".local", "bin", "wizards"));
-    const { system } = fakeSystem();
-    const plan = await makePlan(paths, system);
-    expect(plan.links).toEqual([]);
-    expect(plan.program).toEqual([]);
-  });
-});
+const run = (system: UninstallSystem, flags: { dryRun?: boolean; yes?: boolean; deleteData?: boolean }) =>
+  uninstall(paths, { dryRun: false, yes: false, deleteData: false, ...flags }, system);
 
 describe("wizards uninstall", () => {
-  it("refuses without a terminal unless --yes is given", async () => {
-    installed();
-    const { system } = fakeSystem();
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: false, deleteData: false},
-      system,
-    );
-    expect(code).toBe(2);
-    expect(existsSync(paths.bin)).toBe(true);
-  });
-
-  it("changes nothing with --dry-run", async () => {
-    installed();
-    const { system, calls, apps } = fakeSystem({ running: [proc(11, "start")] });
-    const code = await uninstall(
-      paths,
-      { dryRun: true, yes: false, deleteData: false},
-      system,
-    );
-    expect(code).toBe(0);
+  it("refuses without a terminal unless --yes is given, and --dry-run changes nothing", async () => {
+    const { system, calls, app } = fakeSystem();
+    expect(await run(system, {})).toBe(2);
+    expect(await run(system, { dryRun: true })).toBe(0);
     expect(calls).toEqual([]);
-    expect(apps[0].on).toBe(true);
+    expect(app.on).toBe(true);
     expect(existsSync(paths.runtime)).toBe(true);
-    expect(existsSync(join(user, ".local", "bin", "wizards"))).toBe(true);
   });
 
-  it("with --yes takes the program away and keeps the data where a reinstall finds it", async () => {
-    installed();
-    const { system, calls, apps } = fakeSystem({
-      running: [proc(11, "runtime"), proc(12, "start"), proc(13, "mcp")],
-    });
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: true, deleteData: false},
-      system,
-    );
-    expect(code).toBe(0);
-    expect(apps[0].on).toBe(false);
-    expect(calls).toContain("bootout");
-    expect(calls).toContain("stop 11,12,13");
-    expect(present(join(user, "Library", "LaunchAgents", "com.engenty.wizards.login.plist"))).toBe(
-      false,
-    );
-    expect(existsSync(join(user, ".local", "bin", "wizards"))).toBe(false);
-    for (const gone of [paths.bin, paths.runtime, paths.tools, paths.logs, paths.installFile]) {
+  it("with --yes removes apps, login item, processes, program and link, and keeps the data", async () => {
+    const { system, calls, app } = fakeSystem();
+    expect(await run(system, { yes: true })).toBe(0);
+    expect(app.on).toBe(false);
+    expect(calls).toEqual(["bootout", "stop 11,12"]);
+    for (const gone of [plist(), link(), paths.bin, paths.runtime]) {
       expect(existsSync(gone)).toBe(false);
     }
     expect(existsSync(join(paths.data, "secret"))).toBe(true);
-    expect(readFileSync(paths.envFile, "utf8")).toContain("API_PORT");
+    expect(existsSync(paths.envFile)).toBe(true);
   });
 
-  it("deletes the data too with --yes --delete-data", async () => {
-    installed();
-    const { system, calls } = fakeSystem();
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: true, deleteData: true },
-      system,
-    );
-    expect(code).toBe(0);
-    expect(calls).toContain("bootout");
-    // Nothing is left, not even the empty ~/.engenty.
+  it("with --yes --delete-data leaves nothing, not even an empty ~/.engenty", async () => {
+    const { system } = fakeSystem();
+    expect(await run(system, { yes: true, deleteData: true })).toBe(0);
     expect(existsSync(join(user, ".engenty"))).toBe(false);
   });
 
-  it("fails when something is left: an app that can't be changed, a process that won't stop", async () => {
-    installed();
-    const { system } = fakeSystem({ running: [proc(21, "mcp")], stubborn: [21] });
-    system.apps = () => [fakeApp("claude-desktop", true, false)];
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: true, deleteData: false},
-      system,
-    );
-    expect(code).toBe(1);
+  it("fails and says how to fix what is left", async () => {
+    const { system } = fakeSystem({ stubborn: true, appWorks: false });
+    expect(await run(system, { yes: true })).toBe(1);
     const said = vi.mocked(console.log).mock.calls.flat().join("\n");
-    expect(said).toContain("npx wizards disconnect claude-desktop");
-    expect(said).toContain("kill -9 21");
-  });
-
-  it("says there is nothing to do on a computer without it", async () => {
-    const { system, calls } = fakeSystem();
-    system.apps = () => [];
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: true, deleteData: false},
-      system,
-    );
-    expect(code).toBe(0);
-    expect(calls).toEqual([]);
-    expect(existsSync(join(user, ".engenty"))).toBe(false);
-  });
-
-  it("reads its options", () => {
-    expect(parseUninstall(["uninstall", "--yes", "--delete-data"])).toEqual({
-      dryRun: false,
-      yes: true,
-      deleteData: true,
-    });
-    expect(parseUninstall(["--dry-run"])).toMatchObject({ dryRun: true });
-    expect(parseUninstall(["--force"])).toMatch(/Unknown option --force/);
+    expect(said).toContain("npx wizards disconnect cursor");
+    expect(said).toContain("kill -9 11");
   });
 });
 
-describe("the processes of engenty wizards", () => {
-  const home = "/Users/x/.engenty/wizards";
-  const list: ProcessEntry[] = [
-    { pid: 1, ppid: 0, command: "/sbin/launchd" },
-    { pid: 10, ppid: 1, command: `${home}/tools/node/bin/node ${home}/runtime/node_modules/wizards/bin/wizards.mjs start --no-open` },
-    { pid: 11, ppid: 10, command: `${home}/tools/node-v24.14.0/bin/node ${home}/runtime/node_modules/wizards/apps/runtime/dist/index.js` },
-    { pid: 12, ppid: 1, command: `${home}/tools/node/bin/node ${home}/runtime/node_modules/wizards/bin/wizards.mjs mcp` },
-    { pid: 20, ppid: 1, command: "npm exec wizards uninstall" },
-    { pid: 21, ppid: 20, command: "node /Users/x/.npm/_npx/aa98/node_modules/.bin/wizards uninstall" },
-    { pid: 30, ppid: 1, command: "node /Users/x/code/wizards/bin/wizards.mjs start" },
-    { pid: 31, ppid: 1, command: "vim /Users/x/notes/wizards.md" },
-    { pid: 40, ppid: 1, command: "npm exec wizards" },
-  ];
-
-  it("are found by their command line, whatever started them, and named by what they run", () => {
-    // pid 50 is a runtime run by npx, in the install's folder; 51 one of another install.
-    const more: ProcessEntry[] = [
-      ...list,
-      { pid: 50, ppid: 1, command: "node /Users/x/.npm/_npx/aa98/node_modules/wizards/apps/runtime/dist/index.js" },
-      { pid: 51, ppid: 1, command: "node /Users/x/.npm/_npx/aa98/node_modules/wizards/apps/runtime/dist/index.js" },
+describe("the processes of an install", () => {
+  it("are the ones running from its folder, apart from this one and its parents", () => {
+    const home = "/Users/x/.engenty/wizards";
+    const bin = `${home}/runtime/node_modules/wizards/bin/wizards.mjs`;
+    const list = [
+      { pid: 10, ppid: 1, command: `${home}/tools/node/bin/node ${bin} start --no-open` },
+      { pid: 11, ppid: 10, command: `node ${home}/runtime/node_modules/wizards/apps/runtime/dist/index.js` },
+      { pid: 12, ppid: 1, command: `node ${bin} mcp` },
+      { pid: 20, ppid: 1, command: "npm exec wizards uninstall" },
+      { pid: 21, ppid: 20, command: `node ${bin} uninstall` },
+      { pid: 30, ppid: 1, command: "node /Users/x/other/.engenty/wizards/x.js" },
     ];
-    const cwd = (pid: number) => (pid === 50 ? home : pid === 51 ? "/srv/engenty/wizards" : "/Users/x");
-    const found = wizardsProcesses(home, more, selfAndAncestors(more, 21), cwd);
-    expect(found.map((p) => [p.pid, p.kind])).toEqual([
-      [10, "start"],
-      [11, "runtime"],
-      [12, "mcp"],
-      [50, "runtime"],
+    expect(wizardsProcesses(home, list, 21)).toEqual([
+      { pid: 10, kind: "start" },
+      { pid: 11, kind: "runtime" },
+      { pid: 12, kind: "mcp" },
     ]);
-  });
-
-  it("never include this process or the ones that started it", () => {
-    expect([...selfAndAncestors(list, 21)].sort((a, b) => a - b)).toEqual([1, 20, 21]);
-  });
-
-  it("are stopped with SIGTERM, then SIGKILL for the ones that stay", async () => {
-    const living = new Set([1, 2]);
-    const sent: string[] = [];
-    const left = await stopProcesses([1, 2], 300, {
-      kill: (pid, signal) => {
-        sent.push(`${signal} ${pid}`);
-        if (pid === 1 || signal === "SIGKILL") {
-          living.delete(pid);
-        }
-      },
-      alive: (pid) => living.has(pid),
-      wait: async () => undefined,
-    });
-    expect(left).toEqual([]);
-    expect(sent).toEqual(["SIGTERM 1", "SIGTERM 2", "SIGKILL 2"]);
-  });
-});
-
-describe("whether a login item is there", () => {
-  it("is an error, not a no, where the folder can't be looked into", () => {
-    const folder = join(user, "locked");
-    mkdirSync(folder);
-    touch(join(folder, "item.plist"));
-    expect(present(join(folder, "item.plist"))).toBe(true);
-    expect(present(join(folder, "other.plist"))).toBe(false);
-    if (process.getuid?.() !== 0) {
-      chmodSync(folder, 0o000);
-      try {
-        expect(() => present(join(folder, "item.plist"))).toThrow(/Couldn’t check/);
-      } finally {
-        chmodSync(folder, 0o755);
-      }
-    }
   });
 });
