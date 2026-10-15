@@ -304,18 +304,6 @@ export async function writeStoreFile(
   };
 }
 
-export async function deleteStoreFile(scope: StoreScope, rawPath: string) {
-  const path = cleanPath(rawPath);
-  if (!path) {
-    return false;
-  }
-  const gone = await db
-    .delete(schema.storeFile)
-    .where(and(ownFiles(scope), eq(schema.storeFile.path, path)))
-    .returning({ path: schema.storeFile.path });
-  return gone.length > 0;
-}
-
 // --- secrets -----------------------------------------------------------------
 
 const ownSecrets = (scope: StoreScope) =>

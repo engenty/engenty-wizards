@@ -16,8 +16,6 @@ export type Features = Record<string, boolean>;
 /** `teamPlans`, `contacts.leadScoring`. */
 export const FEATURE_NAME = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)?$/;
 
-export const FEATURE_NAMES = Object.keys(FEATURES) as FeatureName[];
-
 /** What a manifest declares for one switch; what is left out is a release switch, off, named by its key. */
 export interface FeatureDeclarationInput {
   kind?: "release" | "plan";

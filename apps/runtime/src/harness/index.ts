@@ -90,11 +90,6 @@ export function detectHarnesses(force = false): Promise<HarnessStatus[]> {
   return Promise.all(HARNESSES.map((h) => detectHarness(h.id, force) as Promise<HarnessStatus>));
 }
 
-/** The clients installed on this machine. */
-export async function installedHarnesses(): Promise<HarnessStatus[]> {
-  return (await detectHarnesses()).filter((h) => h.version !== null);
-}
-
 /**
  * What the inline terminal runs to install a client: the command the terminal setup runs, shown
  * first. A client from npm goes into the install's own prefix with the npm of its own Node.

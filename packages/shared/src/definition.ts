@@ -857,18 +857,6 @@ export type WizardDefinition = z.infer<typeof wizardSchema>;
 
 export const INTERACTIVE: ReadonlySet<StepType> = new Set(["page", "review", "result"]);
 
-/**
- * A wizard with a film step runs only where an AI client is installed and signed in, on the
- * person's own subscription: one film takes a client many minutes and many tokens.
- */
-export function needsInstalledClient(def: WizardDefinition): boolean {
-  return def.steps.some((s) => s.type === "film");
-}
-
-export function isInteractive(step: Step): boolean {
-  return INTERACTIVE.has(step.type);
-}
-
 /** Which formats each producing step can be downloaded in. */
 export function formatsFor(step: Step): Format[] {
   if (step.type === "generate") {

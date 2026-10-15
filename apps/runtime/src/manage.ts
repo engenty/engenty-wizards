@@ -329,17 +329,6 @@ export async function publicPlans(base: string): Promise<PublicPlans> {
   return (await res.json()) as PublicPlans;
 }
 
-export function bookUsage(input: {
-  tenantId: string;
-  runId?: string;
-  stepId?: string;
-  kind: string;
-  usd: number;
-  idempotencyKey: string;
-}) {
-  return call<{ credits: number }>("POST", "/v1/usage", input);
-}
-
 /** The tenant's numbers at the Manage-App, as `GET /v1/tenants/:id/channels` answers. */
 export interface TenantChannels {
   /** The tenant's own number for texts and calls; null while it has none. */
@@ -376,11 +365,6 @@ export async function tenantChannels(id: string): Promise<TenantChannels> {
   const value = await call<TenantChannels>("GET", `/v1/tenants/${encodeURIComponent(id)}/channels`);
   channels.set(id, { at: Date.now(), value });
   return value;
-}
-
-/** Forgets what the Manage-App said of the tenant's numbers: the next `tenantChannels` asks. */
-export function forgetChannels(id: string) {
-  channels.delete(id);
 }
 
 /** A person of the tenant asks for its number; what the Manage-App answers with is the request. */

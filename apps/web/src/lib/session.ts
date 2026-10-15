@@ -421,11 +421,6 @@ export function readOnlyError(err: unknown): string | null {
   return err instanceof ApiError && err.body?.code === "read_only" ? err.message : null;
 }
 
-export function useRefreshMe() {
-  const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ["me"] });
-}
-
 export async function signOut() {
   const res = await fetch(withBase("/api/auth/sign-out"), {
     method: "POST",
