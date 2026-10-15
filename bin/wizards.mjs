@@ -149,8 +149,21 @@ if (command === "version") {
   console.log(versionOf(root));
   process.exit(0);
 }
-const fromNpm =
-  process.platform !== "win32" && !existsSync(join(root, "pnpm-workspace.yaml")) && !isInstall();
+const checkout = existsSync(join(root, "pnpm-workspace.yaml"));
+// Windows has no installer yet, and the setup, the service and the AI clients are written for
+// macOS and Linux: it says so instead of half working. What needs no install still runs.
+if (process.platform === "win32" && !checkout && !RUN_HERE.includes(command)) {
+  console.error(
+    "engenty wizards for Windows is coming soon.\n\n" +
+      "Until then it runs in WSL (Windows Subsystem for Linux). In PowerShell:\n\n" +
+      "  wsl --install\n\n" +
+      "then, in the Ubuntu terminal that opens:\n\n" +
+      "  curl -fsSL https://engenty.ai/install.sh | bash\n\n" +
+      "https://engenty.ai/docs/user/install\n",
+  );
+  process.exit(1);
+}
+const fromNpm = process.platform !== "win32" && !checkout && !isInstall();
 if (fromNpm && (!currentNode || !RUN_HERE.includes(command))) {
   const own = versionOf(root) || "0.0.0";
   const installed = existsSync(wrapper)
