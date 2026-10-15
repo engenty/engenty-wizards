@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.5.10",
+    "timestamp": 1792043147,
+    "commits": [
+      {
+        "id": "c9d5d9c",
+        "message": "the light/dark pick is shared with the account pages (cookie engenty_theme on the parent domain, also what a first visit shows), and the guests' start page ends like the landing page – engenty and the legal pages, no version",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      },
+      {
+        "id": "c131cb2",
+        "message": "voice input on the start page for guests – the browser's own speech recognition, nothing sent to the server without an account; where the browser has none, no microphone button",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.9",
-    "timestamp": 1792042750,
+    "timestamp": 1792042754,
     "commits": [
       {
         "id": "085cfe3",

@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.10] - 2026-10-15
+- ADDED **[studio]** Voice input on the start page for guests – the browser's own speech recognition, nothing sent to the server without an account; where the browser has none, no microphone button
+- FIXED **[studio]** The light/dark pick is shared with the account pages (cookie engenty_theme on the parent domain, also what a first visit shows), and the guests' start page ends like the landing page – engenty and the legal pages, no version
+
 ## [0.5.9] - 2026-10-15
 - FIXED **[cli]** The npm package `wizards` is for macOS and Linux only (os in its package.json) – on Windows npm refuses within a minute or two instead of an install of twenty minutes that ends in a crash
 - FIXED **[cli]** `npx wizards` on Windows says engenty wizards for Windows is coming soon and how to run it in WSL meanwhile, instead of an npm install of several minutes that ends in a crash (no libsql build for Windows on Arm; no installer, service or AI client lookup for Windows yet); --version, --help, validate and mcp still run
