@@ -3,8 +3,10 @@ import {
   DataMenu,
   HtmlFrame,
   JsonSchemaDialog,
+  OutputView,
   SurfaceView,
 } from "@engenty-wizards/runner";
+import type { Step } from "@engenty-wizards/shared/definition";
 import type { RunTheme } from "@engenty-wizards/shared/run";
 import { validateSurface } from "@engenty-wizards/shared/surface";
 import { Braces } from "lucide-react";
@@ -42,6 +44,16 @@ const THEMES: Record<string, { label: string; theme: Partial<RunTheme> }> = {
 };
 
 const WIDTHS = { phone: 390, desktop: 960 } as const;
+
+/** The agent step behind the plan, for drawing its result without a view. */
+const PLAN_STEP = {
+  id: "plan",
+  type: "agent",
+  title: "Menüplan",
+  instructions: "Plan meals from the photos.",
+  tools: [],
+  output: { format: "json", schema: fridgeShape },
+} as unknown as Step;
 
 // Development only: the brands' typefaces from Google Fonts. A run page will serve them itself.
 const FONTS =
@@ -195,6 +207,19 @@ export function ViewLab() {
           </p>
           <div className="mx-auto w-full overflow-hidden rounded-xl bg-card ring-1 ring-border-soft">
             <DataEditor shape={fridgeShape} value={plan} onChange={setPlan} />
+          </div>
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display font-semibold text-[1.25rem]">Without a view</h2>
+          <p className="max-w-prose text-[0.875rem] text-ink-3">
+            The same result when the step has no view: what a run shows from the schema alone.
+            Things as cards, words as chips, steps as numbered lines; a table only for figures.
+          </p>
+          <div
+            className="mx-auto w-full rounded-[1.75rem] bg-paper p-4 ring-1 ring-border-soft sm:p-6"
+            style={{ maxWidth: WIDTHS[width] }}
+          >
+            <OutputView base="" step={PLAN_STEP} output={{ json: plan, at: "" }} />
           </div>
         </section>
         <section className="flex flex-col gap-3">

@@ -1,5 +1,7 @@
 import type { Format, Step } from "@engenty-wizards/shared/definition";
+import { stepShape } from "@engenty-wizards/shared/definition";
 import type { StepOutput } from "@engenty-wizards/shared/run";
+import { labelOf } from "@engenty-wizards/shared/shape";
 import DOMPurify from "dompurify";
 import { Check, Copy, Download, FileText, Maximize2, Printer, Share } from "lucide-react";
 import { marked } from "marked";
@@ -7,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { canShareFiles } from "./device";
 import { appCall, appCan, appDownload, asset, standalone, withBase } from "./env.js";
 import { t } from "./i18n.js";
+import { JsonView } from "./json-view.js";
 import { type Written, writePdf } from "./pdf.js";
 import { type SurfaceAction, SurfaceView } from "./surface";
 import { cn, Spinner, Textarea } from "./ui.js";
@@ -260,77 +263,10 @@ export function AiBadge({
   );
 }
 
+/** What people read for a key of a step's output: its label in the step's shape. */
 function labelFor(step: Step, key: string): string {
-  if (step.type === "agent") {
-    return step.output.fields?.find((f) => f.id === key)?.description ?? key;
-  }
-  return key;
-}
-
-function JsonView({ step, json }: { step: Step; json: unknown }) {
-  if (!json || typeof json !== "object") {
-    return <pre className="text-[0.8125rem]">{JSON.stringify(json, null, 2)}</pre>;
-  }
-  return (
-    <div className="flex flex-col gap-4">
-      {Object.entries(json as Record<string, unknown>).map(([key, v]) => (
-        <div key={key}>
-          <div className="mb-1 font-medium text-[0.75rem] text-ink-3 uppercase tracking-[0.06em]">
-            {labelFor(step, key)}
-          </div>
-          {typeof v === "boolean" ? (
-            <div className="text-[0.9375rem]">{t(v ? "run.yes" : "run.no")}</div>
-          ) : typeof v === "string" || typeof v === "number" ? (
-            <div className="whitespace-pre-wrap text-[0.9375rem]">{String(v)}</div>
-          ) : Array.isArray(v) && v.every((x) => typeof x !== "object") ? (
-            <ul className="list-disc pl-5 text-[0.875rem]">
-              {v.map((x, i) => (
-                <li key={i} className="break-words">
-                  {String(x)}
-                </li>
-              ))}
-            </ul>
-          ) : Array.isArray(v) && v.length && typeof v[0] === "object" ? (
-            <Table rows={v as Record<string, unknown>[]} />
-          ) : (
-            <pre className="overflow-auto rounded-lg bg-paper-2 p-3 text-[0.75rem]">
-              {JSON.stringify(v, null, 2)}
-            </pre>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Table({ rows }: { rows: Record<string, unknown>[] }) {
-  const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
-  return (
-    <div className="overflow-x-auto rounded-lg ring-1 ring-border-soft">
-      <table className="w-full text-[0.8125rem]">
-        <thead className="bg-paper-2 text-ink-2">
-          <tr>
-            {cols.map((c) => (
-              <th key={c} className="px-3 py-2 text-left font-medium">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-border-soft border-t">
-              {cols.map((c) => (
-                <td key={c} className="px-3 py-2 tabular-nums">
-                  {r[c] === null || r[c] === undefined ? "" : String(r[c])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  const f = step.type === "agent" ? stepShape(step).fields[key] : undefined;
+  return f ? labelOf(key, f) : key;
 }
 
 function CopyButton({ text }: { text: string }) {
