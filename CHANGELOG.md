@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.6.1] - 2026-10-15
+- ADDED **[schema]** MIT license notice in the wizard and package JSON Schemas
+
 ## [0.6.0] - 2026-10-15
 - ADDED **[runtime]** Prompts design results first; json steps report what they write
 - ADDED **[runner]** A json result without a view shows things as cards, not tables

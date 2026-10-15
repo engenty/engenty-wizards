@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.6.1",
+    "timestamp": 1792048754,
+    "commits": [
+      {
+        "id": "1c77c99",
+        "message": "MIT license notice in the wizard and package JSON Schemas",
+        "group": "Added",
+        "scope": "schema",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.6.0",
-    "timestamp": 1792048462,
+    "timestamp": 1792048468,
     "commits": [
       {
         "id": "99532b8",
