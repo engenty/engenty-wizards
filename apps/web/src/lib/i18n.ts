@@ -699,7 +699,7 @@ const de: Record<Key, Line> = {
   "editor.building": "Baut den Ablauf …",
   "editor.files": "Dateien",
   "files.explain":
-    "Was dein Wizard bei jedem Lauf braucht: Widget-Code, Bibliotheken, Kartenumrisse, Preislisten. Der Assistent legt die Dateien im Chat an. Du kannst auch eigene hochladen.",
+    "Diese Dateien nutzt dein Wizard bei jedem Lauf, etwa Widget-Code, Bibliotheken oder Preislisten. Der Assistent legt sie im Chat an. Du kannst auch eigene hochladen.",
   "files.upload": "Hochladen",
   "files.drop": "Zum Hochladen loslassen",
   "files.count": { one: "{n} Datei · {size}", other: "{n} Dateien · {size}" },
@@ -1223,6 +1223,7 @@ const de: Record<Key, Line> = {
     "Jeder API-Key meldet eine App an und hat alle Rechte – behandle ihn wie ein Passwort. Löschst du ihn, ist die App abgemeldet.",
   "editor.viaClient": "Über {client}",
   "editor.changedVia": "Geändert über {client}",
+  "editor.flowChanged": "Ablauf aktualisiert",
   "editor.merged": "Mit Änderungen von außen zusammengeführt",
   "common.remove": "Entfernen",
   "common.back": "Zurück",
@@ -2649,7 +2650,7 @@ const en = {
   "editor.building": "Building the flow…",
   "editor.files": "Files",
   "files.explain":
-    "What your wizard needs on every run: widget code, libraries, map outlines, price lists. The assistant creates them in the chat – you can upload your own too.",
+    "Your wizard uses these files on every run, like widget code, libraries or price lists. The assistant creates them in the chat, or you can upload your own.",
   "files.upload": "Upload",
   "files.drop": "Drop to upload",
   "files.count": { one: "{n} file · {size}", other: "{n} files · {size}" },
@@ -3165,6 +3166,7 @@ const en = {
     "Each API key signs in one app and has full rights – treat it like a password. Delete it and that app is signed out.",
   "editor.viaClient": "Via {client}",
   "editor.changedVia": "Changed via {client}",
+  "editor.flowChanged": "Flow updated",
   "editor.merged": "Merged with changes from elsewhere",
   "common.remove": "Remove",
   "common.back": "Back",

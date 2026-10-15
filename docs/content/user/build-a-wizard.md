@@ -52,7 +52,7 @@ You can change everything afterwards in the chat.
 | The diagram, left | The steps as a flow with their branches. Click a step to open it |
 | Chat | Say what should change. The assistant edits the flow and tells you what it did |
 | Steps | One step at a time: its texts, fields, tools and model class. Move it up or down, or delete it |
-| Files | What the wizard needs on every run: widget code, libraries, price lists. Upload your own or let the assistant write them |
+| Files | Files the wizard uses on every run, like widget code, libraries or price lists. Upload your own or let the assistant write them |
 | Memory | What the wizard knows across all its runs: the notes that AI steps with the “Pages” tool read and add to, and the tables of its shared lists |
 | Runs | The test runs and live runs of this wizard |
 
