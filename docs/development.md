@@ -494,7 +494,7 @@ reach only servers on the internet: for them a wizard runs on engenty.ai, not on
 | engenty's built-in connectors (Google, Microsoft, Slack, GitHub, HubSpot, S3), copied unchanged | `apps/runtime/src/engenty/connections-*`, `apps/runtime/src/connectors/builtin.ts` |
 | Imported connectors: any service from the integrations.sh registry, by its OpenAPI spec or MCP server | `apps/runtime/src/connectors/external.ts`, `apps/runtime/src/tools/connector.ts`, `apps/web/src/studio/Connectors.tsx` |
 | Document reading (PDF, scans and photos, Word, Excel, CSV, mails) and invoice fields | `apps/runtime/src/documents/parse.ts` |
-| engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `apps/runtime/src/engenty/`, `packages/shared/src/engenty/`, `apps/web/src/engenty/` (the Engenty figures) |
+| engenty framework code, copied unchanged (`node scripts/sync-engenty.mjs`) | `apps/runtime/src/engenty/`, `packages/shared/src/engenty/` |
 | Architect (prompt → wizard, self-repairing) | `apps/runtime/src/agents/architect.ts` |
 | Widgets: bundle (code + data → one HTML), `window.wizard` runtime, PNG/PDF/MP4 export | `apps/runtime/src/widgets/` |
 | Workspace files (content-addressed blobs, snapshots per version and run) | `apps/runtime/src/services/files.ts`, `apps/runtime/src/files/blobs.ts` |
