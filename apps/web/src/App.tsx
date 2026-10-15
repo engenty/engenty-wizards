@@ -32,6 +32,9 @@ const ProjectPage = lazy(() =>
 );
 const SetupPage = lazy(() => import("./studio/SetupPage").then((m) => ({ default: m.SetupPage })));
 
+const ViewLab = import.meta.env.DEV
+  ? lazy(() => import("./dev/ViewLab").then((m) => ({ default: m.ViewLab })))
+  : null;
 const EngentyBuilder = import.meta.env.DEV
   ? lazy(() => import("./dev/EngentyBuilder").then((m) => ({ default: m.EngentyBuilder })))
   : null;
@@ -95,6 +98,7 @@ export function PublicApp() {
     <Suspense fallback={<Splash />}>
       <Routes>
         {EngentyBuilder && <Route path="/dev/engenty-builder" element={<EngentyBuilder />} />}
+        {ViewLab && <Route path="/dev/views" element={<ViewLab />} />}
         <Route path="/w/:token" element={<PublicRunner />} />
         <Route path="/w/:token/steps" element={<PublicRunner steps />} />
         <Route path="/w/:token/steps/:runId" element={<PublicRunner steps />} />

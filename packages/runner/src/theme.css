@@ -46,6 +46,8 @@
   --color-ink-3: var(--ink-3);
   --color-ink-4: var(--ink-4);
   --color-moss: var(--moss);
+  --color-second: var(--second);
+  --color-second-tint: var(--second-tint);
   --color-moss-tint: var(--moss-tint);
   --color-cobalt: var(--cobalt);
   --color-cobalt-tint: var(--cobalt-tint);

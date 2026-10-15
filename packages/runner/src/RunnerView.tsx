@@ -29,7 +29,7 @@ import {
   useNotifyState,
   useWakeLock,
 } from "./device";
-import { runBase, runnerEnv, withBase } from "./env.js";
+import { api, runBase, runnerEnv, withBase } from "./env.js";
 import { FieldInput, type Values } from "./fields";
 import { eventText, setChoiceLabels, t } from "./i18n.js";
 import { DownloadButtons, OutputView } from "./outputs";
@@ -70,6 +70,11 @@ function Progress({ view }: { view: RunView }) {
     </div>
   );
 }
+
+/** Keeps what the person did in a step's view (ticks, a widget's state) with the run. */
+const keepView = (runId: string, stepId: string) => (state: Record<string, unknown>) => {
+  api.put(`${runBase(runId)}/views/${stepId}`, { state }).catch(() => undefined);
+};
 
 function StepHeading({
   title,
@@ -458,6 +463,7 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                   base={`${runBase(view.id)}`}
                   step={s}
                   output={output}
+                  onView={keepView(view.id, s.id)}
                   editable={editable && editing[s.id]}
                   draft={drafts[s.id]}
                   onDraft={(text) => setDrafts((d) => ({ ...d, [s.id]: text }))}
@@ -635,7 +641,7 @@ function Result({
                 foot={`${view.wizard.title} · ${new Date().toLocaleDateString(runnerEnv().lang)}`}
               />
             </div>
-            <TranslatedOutput view={view} run={run} step={s} output={output} />
+            <TranslatedOutput view={view} run={run} step={s} output={output} onView={keepView(view.id, s.id)} />
             {output?.assets?.some((a) => a.ai) ? (
               // Whoever publishes it has to say so too; the file already does, in its metadata.
               <p className="mt-3 text-[0.75rem] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
@@ -699,23 +705,25 @@ function TranslatedOutput({
   run,
   step,
   output,
+  onView,
 }: {
   view: RunView;
   run: Run;
   step: Step;
   output: StepOutput | null;
+  onView?: (state: Record<string, unknown>) => void;
 }) {
   const [original, setOriginal] = useState(false);
   const [busy, setBusy] = useState(false);
   const base = runBase(view.id);
   const translated = view.translation?.results[step.id];
   if (!(view.translation && output?.text && run.translateResult)) {
-    return <OutputView base={base} step={step} output={output} />;
+    return <OutputView base={base} step={step} output={output} onView={onView} />;
   }
   const shown = translated && !original ? { ...output, text: translated } : output;
   return (
     <>
-      <OutputView base={base} step={step} output={shown} />
+      <OutputView base={base} step={step} output={shown} onView={onView} />
       <div className="mt-3 flex items-center gap-3 text-[0.8125rem] text-ink-3">
         {translated ? (
           <>

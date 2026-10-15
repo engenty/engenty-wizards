@@ -4,6 +4,7 @@ import {
   type WidgetStep,
   widgetSize,
 } from "@engenty-wizards/shared/definition";
+import { runTheme } from "@engenty-wizards/shared/projects";
 import type { StepOutput } from "@engenty-wizards/shared/run";
 import { note } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -29,6 +30,7 @@ export async function widgetBrand(project: ProjectRow): Promise<WidgetBrand> {
     facts: Object.fromEntries(
       project.facts.filter((f) => f.value.trim()).map((f) => [f.key, f.value]),
     ),
+    theme: runTheme(project.brand),
   };
 }
 

@@ -1391,7 +1391,85 @@
                         }
                       },
                       "surface": {
-                        "type": "boolean"
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "minItems": 1,
+                            "maxItems": 200,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,40}$"
+                                },
+                                "component": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Column",
+                                    "Text",
+                                    "List",
+                                    "Row",
+                                    "DetailGrid",
+                                    "Badge",
+                                    "Grid",
+                                    "Metric",
+                                    "Table",
+                                    "Image",
+                                    "BarChart",
+                                    "LineChart",
+                                    "DonutChart",
+                                    "Actions",
+                                    "Button",
+                                    "Tabs",
+                                    "Card",
+                                    "Fold",
+                                    "Group",
+                                    "Chips",
+                                    "Checklist",
+                                    "Steps",
+                                    "Link",
+                                    "Callout"
+                                  ]
+                                },
+                                "children": {
+                                  "anyOf": [
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "path": {
+                                          "type": "string"
+                                        },
+                                        "componentId": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "path",
+                                        "componentId"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "component"
+                              ],
+                              "additionalProperties": {}
+                            }
+                          }
+                        ]
                       }
                     },
                     "required": [
@@ -1818,6 +1896,13 @@
                   "sample": {
                     "type": "string"
                   },
+                  "layout": {
+                    "type": "string",
+                    "enum": [
+                      "fixed",
+                      "page"
+                    ]
+                  },
                   "size": {
                     "type": "object",
                     "properties": {
@@ -2021,7 +2106,16 @@
                             "LineChart",
                             "DonutChart",
                             "Actions",
-                            "Button"
+                            "Button",
+                            "Tabs",
+                            "Card",
+                            "Fold",
+                            "Group",
+                            "Chips",
+                            "Checklist",
+                            "Steps",
+                            "Link",
+                            "Callout"
                           ]
                         },
                         "children": {
@@ -2100,7 +2194,16 @@
                                   "LineChart",
                                   "DonutChart",
                                   "Actions",
-                                  "Button"
+                                  "Button",
+                                  "Tabs",
+                                  "Card",
+                                  "Fold",
+                                  "Group",
+                                  "Chips",
+                                  "Checklist",
+                                  "Steps",
+                                  "Link",
+                                  "Callout"
                                 ]
                               },
                               "children": {

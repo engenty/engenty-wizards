@@ -1,3 +1,5 @@
+import type { RunTheme } from "./run.js";
+
 // --- facts ---------------------------------------------------------------------
 // What a project knows about itself as label and value: an address, a VAT id, anything. Every
 // step of the project's wizards can read them.
@@ -314,6 +316,70 @@ export interface BrandFont {
    * a system font.
    */
   uses?: FontUse[];
+}
+
+const BACKGROUND_WORDS = /hintergrund|background|untergrund|grund|paper|papier|fläche|surface/i;
+const TEXT_WORDS = /\btext|schrift|ink|typo/i;
+const DISPLAY_ROLES = /head|überschrift|display|titel|title|headline/i;
+const BODY_ROLES = /body|fließ|copy|lauf|text|ui|interface/i;
+
+/** The channels of a #rrggbb colour, 0–255; null for anything else. */
+function rgbOf(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  return m
+    ? [Number.parseInt(m[1], 16), Number.parseInt(m[2], 16), Number.parseInt(m[3], 16)]
+    : null;
+}
+
+/** How light a colour looks, 0–1 (relative luminance). */
+function luminance(hex: string): number {
+  const rgb = rgbOf(hex);
+  if (!rgb) {
+    return 1;
+  }
+  const [r, g, b] = rgb.map((c) => {
+    const v = c / 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** A colour with a hue of its own, not a grey, white or black. */
+function colourful(hex: string): boolean {
+  const rgb = rgbOf(hex);
+  return rgb ? Math.max(...rgb) - Math.min(...rgb) > 40 : false;
+}
+
+/**
+ * How a wizard's pages look, from the brand: the first standard colour is the accent, a standard
+ * colour named as the ground ("Hintergrund") the background, the next colourful one the second
+ * colour; the typeface for headings and the one for text by their roles. What the brand does not
+ * say stays the runner's own.
+ */
+export function runTheme(brand: {
+  colors?: BrandColor[];
+  fonts?: Pick<BrandFont, "family" | "role">[];
+}): RunTheme {
+  const standard = (brand.colors ?? []).filter((c) => !c.section && rgbOf(c.value));
+  const accent = standard[0]?.value ?? null;
+  const background = standard.find((c) => BACKGROUND_WORDS.test(c.name))?.value ?? null;
+  const second =
+    standard
+      .slice(1)
+      .find((c) => c.value !== background && !TEXT_WORDS.test(c.name) && colourful(c.value))
+      ?.value ?? null;
+  const fonts = brand.fonts ?? [];
+  const display = fonts.find((f) => DISPLAY_ROLES.test(f.role)) ?? fonts[0];
+  const body =
+    fonts.find((f) => f !== display && BODY_ROLES.test(f.role)) ?? fonts.find((f) => f !== display);
+  return {
+    accent,
+    second,
+    background,
+    display: display?.family ?? null,
+    body: body?.family ?? null,
+    dark: background ? luminance(background) < 0.18 : false,
+  };
 }
 
 /** The font's licence as a model reads it: ", licence …, may only be used for …". */

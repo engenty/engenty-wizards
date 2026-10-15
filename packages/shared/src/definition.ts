@@ -616,10 +616,11 @@ export const agentStepSchema = z.object({
       format: z.enum(["text", "markdown", "json"]),
       fields: z.array(outputFieldSchema).optional(),
       /**
-       * json only: the step also composes a view of its result from the surface catalog, bound
-       * to its own fields; reviews and the result show that view instead of a plain table.
+       * json only: a view of the result from the surface catalog, bound to the step's own fields;
+       * reviews and the result show it instead of a plain table. Components: written once, the
+       * same every run, nothing to pay. `true`: a model composes one each run.
        */
-      surface: z.boolean().optional(),
+      surface: z.union([z.boolean(), surfaceComponentsSchema]).optional(),
     })
     .default({ format: "markdown" }),
   /** The kind of model the step needs; default `high`. The model itself is bound elsewhere. */
@@ -681,6 +682,12 @@ export const widgetStepSchema = z.object({
   data: z.record(z.string(), z.string()).default({}),
   /** Workspace path of example data (JSON) for previews before any run. */
   sample: z.string().optional(),
+  /**
+   * How the run shows it: `fixed` (default) at `size`, scaled to the page; `page` as a part of
+   * the page, as wide as it and as tall as its content — a result people scroll and use, not a
+   * picture. PNG/PDF/MP4 still render at `size`.
+   */
+  layout: z.enum(["fixed", "page"]).optional(),
   /** The size the widget is designed for; previews scale it, PNG/PDF/MP4 render at it. */
   size: z
     .object({
@@ -1347,6 +1354,16 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             stepId: step.id,
             message: 'A step composes a view ("surface") of json output only.',
           });
+        }
+        if (Array.isArray(step.output.surface)) {
+          // A step with `each` hands over its entries as `rows`.
+          const keys = step.each ? ["rows"] : (step.output.fields ?? []).map((f) => f.id);
+          for (const issue of validateSurface(
+            step.output.surface,
+            keys.length ? keys : undefined,
+          )) {
+            issues.push({ stepId: step.id, message: `View: ${issue.message}` });
+          }
         }
         if (step.each) {
           const ref = dataRef(step.each);

@@ -137,7 +137,7 @@ type AgentStep = {
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[], surface?: boolean }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[], surface?: SurfaceComponent[] | true }
                                 // "score" answers its description on the scale in options, lowest first ("low", "medium", "high")
   each?: "steps.<id>.<key>" | "lists.<id>"
                                 // ONE RUN PER ENTRY (at most 20): the rows of a table output, the entries of a list output, or the
@@ -175,7 +175,9 @@ type SurfaceStep = {
 }
 // A SURFACE is a native view in the runner — facts, a list of results, key figures, a chart — themed, on phones, free per run.
 //   Prefer it to a widget for such views; a widget is for what the catalog cannot show (a map, an animation).
-//   An agent step with output.format "json" can also set output.surface: true: it composes such a view of its own result.
+//   An agent step with output.format "json" can also carry such a view of its own result: output.surface: [components],
+//   written once and bound to its fields by path ({"path": "/<field id>"}; a step with "each": "/rows"). Prefer it to
+//   output.surface: true, which has a model compose a new view on every run.
 //   Reviews and the result show a step's view instead of its plain table.
 type GenerateStep = {
   type: "generate"
@@ -201,7 +203,10 @@ type WidgetStep = {
   entry: string                 // workspace path of the widget's HTML, e.g. "weather/index.html"
   data: { [key]: string }       // what the widget gets as wizard.data: key → fieldId | steps.stepId | steps.stepId.key | brand.name | facts.key | today
   sample?: string               // workspace path of example data (same shape as data) for previews
-  size?: { width, height }      // design size in px, default 1280×720 (9:16 → 1080×1920)
+  layout?: "fixed"|"page"       // fixed (default): drawn at size and scaled to the page — maps, charts, films.
+                                //   page: part of the run page, as wide as it and as tall as its content, never scaled —
+                                //   a result people scroll and use (a cook mode, a configurator, a planner)
+  size?: { width, height }      // design size in px, default 1280×720 (9:16 → 1080×1920); exports render at it
   video?: boolean               // a FILM: the timeline is rendered to an MP4 WITH SOUND when the step runs; the person sees and
                                 //   downloads that video. data may then name generate steps: "steps.<id>" of an image / video / voice
                                 //   step arrives as a URL (a list of URLs for a step with "each").
@@ -298,8 +303,12 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
   <script src="lib/name.min.js">. Fetch reference data ONCE now (e.g. lake outlines
   from nominatim.openstreetmap.org/search?q=…&format=json&polygon_geojson=1&polygon_threshold=0.0005)
   and save it as a workspace file.
-- Runtime, window.wizard: data · brand {name, accent, logo, colors [{name, value}], facts {key: value}} · ai "generated"|"edited"|null · mode "view"|"export" · file(path) ·
-  json(path) · url(path) (data URL for images/fonts) · ready() · timeline({ duration, seek, poster }).
+- Runtime, window.wizard: data · brand {name, accent, logo, colors [{name, value}], facts {key: value}, theme} · ai "generated"|"edited"|null · mode "view"|"export" · file(path) ·
+  json(path) · url(path) (data URL for images/fonts) · ready() · timeline({ duration, seek, poster }) ·
+  state (what the person did last time, kept with the run) · save(state) (keep ticks, an open tab, a step reached: small JSON) ·
+  share(text) (the device's share sheet).
+- layout "page": let the document grow with its content (no height: 100vh, no fixed body height) and lay out for phones
+  first; the page sets the frame's height from it. Keep what the person does with wizard.save and start from wizard.state.
 - Animation: call wizard.timeline({ duration: seconds, seek: t => draw(t) }) and drive your own
   play/pause and <input type=range> scrubber from it. seek(t) must draw time t synchronously — the MP4
   export steps through it frame by frame. In mode "export" hide all controls and do not autoplay.
@@ -311,7 +320,9 @@ one-off pages stay "generate" steps. A widget is code in the wizard's WORKSPACE 
   arrive as URLs, not inlined.
 - Call wizard.ready() once the first frame is drawn. Lay out for the step's size and scale to fit
   the window on every "resize" event — the window can be 0×0 when your script first runs.
-- Plain HTML/CSS/JS, SVG or canvas. Calm design, one accent colour (brand.accent), legible labels.
+- Plain HTML/CSS/JS, SVG or canvas. Take the look from wizard.brand.theme: accent for actions, second for meaning (done,
+  there, a tip), background for the ground, display for headings, body for text (system fonts behind them); dark: a dark
+  ground. Cards for things, generous spacing, legible labels; no table of things.
 - After writing, ALWAYS run check_widget, read its errors and look at the screenshot; fix until clean.`;
 
 export interface GuideServer {

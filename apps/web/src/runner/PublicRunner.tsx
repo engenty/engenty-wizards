@@ -44,19 +44,7 @@ function useRunLang(runId: string | undefined, page: PageLanguage | null) {
   }, [runId, lang]);
 }
 
-/** The wizard owner's accent recolours the whole palette: every Ember token derives from --raw-primary. */
-export function useBrandAccent(accent: string | null | undefined) {
-  useEffect(() => {
-    if (!accent) {
-      return;
-    }
-    const root = document.documentElement;
-    root.style.setProperty("--raw-primary", accent);
-    return () => {
-      root.style.removeProperty("--raw-primary");
-    };
-  }, [accent]);
-}
+import { useRunTheme } from "./theme";
 
 /**
  * A wizard's link is an app of its own: the browser's "add to home screen" then installs this
@@ -561,7 +549,7 @@ export function PublicRunner({
   const door = calling ? "video" : talking ? "talk" : "chat";
   const page = usePageLanguage(wizard.data);
   useRunLang(runId, page);
-  useBrandAccent(wizard.data?.brand.accent);
+  useRunTheme(wizard.data?.brand.theme);
   useStage(wizard.data?.avatar);
   useWizardApp(token, wizard.data?.title);
   useEmbed(chat);

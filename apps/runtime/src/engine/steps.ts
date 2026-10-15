@@ -504,25 +504,27 @@ async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutp
     assets.push(...(out.assets ?? []));
   }
   const json = { rows };
-  const surface = step.output.surface
-    ? await composeSurface(
-        {
-          ...step,
-          output: {
-            ...step.output,
-            fields: [
-              {
-                id: "rows",
-                kind: "table",
-                description: "One row per entry: its columns and the step's fields",
-              },
-            ],
+  const surface = Array.isArray(step.output.surface)
+    ? { components: step.output.surface, data: json }
+    : step.output.surface
+      ? await composeSurface(
+          {
+            ...step,
+            output: {
+              ...step.output,
+              fields: [
+                {
+                  id: "rows",
+                  kind: "table",
+                  description: "One row per entry: its columns and the step's fields",
+                },
+              ],
+            },
           },
-        },
-        json,
-        ctx,
-      )
-    : undefined;
+          json,
+          ctx,
+        )
+      : undefined;
   return {
     text: texts.join("\n\n"),
     json,
@@ -700,7 +702,12 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       output = structured.output as Record<string, unknown>;
     }
     const json = tablesToRecords(output, fields);
-    const surface = step.output.surface ? await composeSurface(step, json, ctx) : undefined;
+    // A view written once is bound to this run's data; `true` asks a model for one.
+    const surface = Array.isArray(step.output.surface)
+      ? { components: step.output.surface, data: json }
+      : step.output.surface
+        ? await composeSurface(step, json, ctx)
+        : undefined;
     return {
       text,
       json,

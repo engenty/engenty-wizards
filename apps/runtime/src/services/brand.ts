@@ -4,6 +4,7 @@ import {
   GRADIENT_TYPES,
   gradientCss,
   mainLogo,
+  runTheme,
 } from "@engenty-wizards/shared/projects";
 import type { BrandView } from "@engenty-wizards/shared/run";
 import { note } from "@engenty-wizards/shared/run";
@@ -33,6 +34,7 @@ export async function brandView(projectId: string): Promise<BrandView> {
     name: p?.brand.name ?? "",
     accent: p?.brand.colors?.[0]?.value ?? null,
     logoUrl: logo ? `/api/public/logos/${logo}` : null,
+    theme: runTheme(p?.brand ?? {}),
   };
 }
 

@@ -51,6 +51,8 @@
   --popover: var(--card);
   --moss: #006527;
   --moss-tint: #eafaec;
+  --second: var(--moss);
+  --second-tint: var(--moss-tint);
   --cobalt: #2b5fd9;
   --cobalt-tint: #ebf0fd;
   --amber: #e2a324;

@@ -14,11 +14,12 @@
 }
 
 /* Dark is not the near-black of the base palette: the page takes the deep
-   colour of an engenty (`--stage`, set per wizard by `useStage`), the ground
+   colour of an engenty (`--engenty-stage`, set per wizard by `useStage`), the ground
    the jelly coat is made for. Every surface and ink step derives from it, so
    a wizard's page, cards and text all carry its hue. */
 .dark {
-  --stage: oklch(34% 0.14 264);
+  /* A brand's own ground first, then the wizard's engenty, then the cobalt one. */
+  --stage: var(--brand-stage, var(--engenty-stage, oklch(34% 0.14 264)));
   --raw-background: var(--stage);
   --raw-sidebar: oklch(from var(--stage) calc(l - 0.04) c h);
   --paper: oklch(from var(--stage) l c h);

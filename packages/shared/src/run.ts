@@ -35,6 +35,11 @@ export interface StepOutput {
   /** A view from the surface catalog and the data it is bound to. */
   surface?: Surface;
   assets?: AssetRef[];
+  /**
+   * What the person did in the step's view, kept with the run: a checklist's ticks by component
+   * id, a widget's own state (`wizard.save`).
+   */
+  view?: Record<string, unknown>;
   /** Widgets: what loading it with this run's data showed. */
   widget?: {
     /** Seconds of animation the widget registered for video export; null = a still widget. */
@@ -955,6 +960,23 @@ export interface BrandView {
   name: string;
   accent: string | null;
   logoUrl: string | null;
+  /** How the pages look: the run page sets its tokens from it. */
+  theme: RunTheme;
+}
+
+/** How a wizard's pages look, taken from its space's brand (`runTheme`). Null: the runner's own. */
+export interface RunTheme {
+  /** Buttons and marks. */
+  accent: string | null;
+  /** What is there, done or good to know: ticks, tips, group headings. */
+  second: string | null;
+  /** The ground the pages stand on; its hue tints paper and ink. */
+  background: string | null;
+  /** Typefaces as CSS names them. */
+  display: string | null;
+  body: string | null;
+  /** The brand stands on a dark ground. */
+  dark: boolean;
 }
 
 export interface PublicWizard {

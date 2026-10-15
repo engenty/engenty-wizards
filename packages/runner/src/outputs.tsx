@@ -33,6 +33,9 @@ export function HtmlFrame({
   page,
   height,
   fit,
+  flow,
+  state,
+  onState,
 }: {
   src: string;
   /** Layout width in CSS px; null = the frame's own width. */
@@ -40,7 +43,43 @@ export function HtmlFrame({
   height: number;
   /** Scale up as well as down, so a fixed-size widget fills the width. */
   fit?: boolean;
+  /**
+   * A widget laid out as part of the page: as wide as the page, as tall as its content says
+   * (`height` until it does), never scaled. It may keep a state and share text.
+   */
+  flow?: boolean;
+  /** What the widget kept last time (`wizard.state`). */
+  state?: Record<string, unknown>;
+  onState?: (state: Record<string, unknown>) => void;
 }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [tall, setTall] = useState(height);
+  // The state the frame started with: later saves must not reload it.
+  const [initial] = useState(() => state ?? {});
+  const keep = useRef(onState);
+  keep.current = onState;
+  useEffect(() => {
+    const listen = (e: MessageEvent) => {
+      if (!frame.current || e.source !== frame.current.contentWindow) {
+        return;
+      }
+      const msg = e.data as { wizard?: string; height?: unknown; state?: unknown; text?: unknown };
+      if (msg?.wizard === "height" && typeof msg.height === "number") {
+        setTall(Math.min(20_000, Math.max(120, Math.ceil(msg.height))));
+      } else if (msg?.wizard === "state" && msg.state && typeof msg.state === "object") {
+        keep.current?.(msg.state as Record<string, unknown>);
+      } else if (msg?.wizard === "share" && typeof msg.text === "string") {
+        const text = msg.text.slice(0, 10_000);
+        if (navigator.share) {
+          navigator.share({ text }).catch(() => undefined);
+        } else {
+          navigator.clipboard?.writeText(text).catch(() => undefined);
+        }
+      }
+    };
+    window.addEventListener("message", listen);
+    return () => window.removeEventListener("message", listen);
+  }, []);
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -63,35 +102,47 @@ export function HtmlFrame({
       alive = false;
     };
   }, [src]);
-  const layout = page ?? Math.max(width, 900);
-  const scale = width ? (fit ? width / layout : Math.min(1, width / layout)) : 1;
+  const layout = flow ? width || 360 : (page ?? Math.max(width, 900));
+  const scale = flow ? 1 : width ? (fit ? width / layout : Math.min(1, width / layout)) : 1;
+  const shown = flow ? tall : height;
+  // The kept state goes in ahead of the widget's own scripts, so `wizard.state` is there at once.
+  const doc =
+    flow && html
+      ? `<script>window.__WIZARD_STATE=${JSON.stringify(initial).replace(/</g, "\\u003c")}</script>${html.text}`
+      : html?.text;
   return (
     <div
       ref={wrap}
-      className="relative overflow-hidden rounded-lg bg-white ring-1 ring-border-soft"
-      style={{ height: height * scale }}
+      className={cn(
+        "relative overflow-hidden",
+        !flow && "rounded-lg bg-white ring-1 ring-border-soft",
+      )}
+      style={{ height: shown * scale }}
     >
       {html?.src === src ? (
         <iframe
+          ref={frame}
           key={src}
           title={t("output.preview")}
-          srcDoc={html.text}
+          srcDoc={doc}
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           className="absolute top-0 left-0 origin-top-left border-0"
-          style={{ width: layout, height, transform: `scale(${scale})` }}
+          style={{ width: layout, height: shown, transform: `scale(${scale})` }}
         />
       ) : (
         <div className="absolute inset-0 animate-pulse bg-paper-2" />
       )}
-      <a
-        href={src}
-        target="_blank"
-        rel="noreferrer"
-        className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full bg-card/90 text-ink-2 shadow-soft ring-1 ring-border-soft backdrop-blur hover:text-ink coarse:size-11"
-        aria-label={t("run.openFull")}
-      >
-        <Maximize2 className="size-4" />
-      </a>
+      {flow ? null : (
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full bg-card/90 text-ink-2 shadow-soft ring-1 ring-border-soft backdrop-blur hover:text-ink coarse:size-11"
+          aria-label={t("run.openFull")}
+        >
+          <Maximize2 className="size-4" />
+        </a>
+      )}
     </div>
   );
 }
@@ -311,6 +362,7 @@ export function OutputView({
   picked,
   onPick,
   onSurfaceAction,
+  onView,
 }: {
   /** `/api/runs/<id>` or `/api/shares/<token>` — where the output's files are served. */
   base: string;
@@ -324,6 +376,8 @@ export function OutputView({
   onPick?: (index: number) => void;
   /** A surface's buttons: "regenerate" where the review allows it. */
   onSurfaceAction?: (a: SurfaceAction) => void;
+  /** Keeps what the person did in the view (ticks, a widget's state) with the run. */
+  onView?: (state: Record<string, unknown>) => void;
 }) {
   if (!output) {
     return null;
@@ -331,7 +385,15 @@ export function OutputView({
   const assetUrl = (id: string) => withBase(`${base}/assets/${id}`);
   // A view from the catalog stands for the step's data.
   if (output.surface) {
-    return <SurfaceView surface={output.surface} assetUrl={assetUrl} onAction={onSurfaceAction} />;
+    return (
+      <SurfaceView
+        surface={output.surface}
+        assetUrl={assetUrl}
+        onAction={onSurfaceAction}
+        initial={output.view}
+        onState={onView}
+      />
+    );
   }
   if (step.type === "widget" || step.type === "film") {
     const film = output.assets?.find((a) => a.kind === "video");
@@ -364,7 +426,15 @@ export function OutputView({
     const html = output.assets?.find((a) => a.mime === "text/html");
     const size = step.size ?? { width: 1280, height: 720 };
     return html ? (
-      <HtmlFrame src={assetUrl(html.id)} page={size.width} height={size.height} fit />
+      <HtmlFrame
+        src={assetUrl(html.id)}
+        page={size.width}
+        height={size.height}
+        fit
+        flow={step.layout === "page"}
+        state={output.view}
+        onState={onView}
+      />
     ) : null;
   }
   if (step.type === "generate") {

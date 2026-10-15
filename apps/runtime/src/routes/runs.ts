@@ -181,6 +181,9 @@ function visitorId(c: Context, create: boolean, embedded = false): string | null
  * the owner's AI app with its run ticket, or — on the read-only file routes — a signed link
  * handed out to the owner's MCP client.
  */
+/** A view's kept state stays small: ticks and choices, not data. */
+const MAX_VIEW_STATE = 32_000;
+
 async function accessibleRun(c: Context, runId: string, opts: { signed?: boolean } = {}) {
   const run = await db.query.run.findFirst({ where: eq(schema.run.id, runId) });
   if (!run) {
@@ -683,6 +686,36 @@ export const runRoutes = new Hono()
     } catch (err) {
       return commandError(c, err);
     }
+  })
+  // What the person did in a step's view — a checklist's ticks, a widget's state — kept with the
+  // run, so the next visit shows it. Only while the run waits or is done: a running step owns
+  // the state then.
+  .put("/:id/views/:stepId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const stepId = c.req.param("stepId");
+    const output = run?.state.outputs[stepId];
+    if (!run || !output) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    if (run.status !== "waiting_input" && run.status !== "done") {
+      return c.json({ error: "busy" }, 409);
+    }
+    const { state } = z
+      .object({ state: z.record(z.string(), z.unknown()) })
+      .parse(await c.req.json());
+    if (JSON.stringify(state).length > MAX_VIEW_STATE) {
+      return c.json({ error: "too large" }, 413);
+    }
+    await db
+      .update(schema.run)
+      .set({
+        state: {
+          ...run.state,
+          outputs: { ...run.state.outputs, [stepId]: { ...output, view: state } },
+        },
+      })
+      .where(eq(schema.run.id, run.id));
+    return c.json({ ok: true });
   })
   .post("/:id/reviews/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));

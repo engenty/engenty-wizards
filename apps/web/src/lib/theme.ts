@@ -166,8 +166,9 @@ export function useGround(color: string | null) {
 }
 
 /**
- * Dark pages take the colour of the wizard's engenty. Set on the root, like
- * the brand accent, because every surface token derives from `--stage` there.
+ * Dark pages take the colour of the wizard's engenty, unless its brand names a ground of its own
+ * (`--brand-stage`, `useRunTheme`). Set on the root, because every surface token derives from
+ * `--stage` there.
  */
 export function useStage(kind: string | null | undefined) {
   useEffect(() => {
@@ -175,10 +176,10 @@ export function useStage(kind: string | null | undefined) {
       return;
     }
     const root = document.documentElement;
-    root.style.setProperty("--stage", stageFill(kind as EngentyKind));
+    root.style.setProperty("--engenty-stage", stageFill(kind as EngentyKind));
     syncThemeColor();
     return () => {
-      root.style.removeProperty("--stage");
+      root.style.removeProperty("--engenty-stage");
       syncThemeColor();
     };
   }, [kind]);
