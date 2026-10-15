@@ -1,6 +1,6 @@
 import type { Lang } from "@engenty-wizards/shared/definition";
 import { note, type RunNote } from "@engenty-wizards/shared/run";
-import { errorText, NotedError } from "../model-errors.js";
+import { errorText, NotedError, type ServerLine } from "../model-errors.js";
 
 /** What a service call can refuse. The studio routes answer it as HTTP, the MCP tools as a tool error. */
 export type ServiceErrorCode =
@@ -29,7 +29,7 @@ const STATUS: Record<ServiceErrorCode, 400 | 402 | 403 | 404 | 409> = {
 export class ServiceError extends NotedError {
   constructor(
     readonly code: ServiceErrorCode,
-    said: string | RunNote,
+    said: string | RunNote | ServerLine,
     readonly data: Record<string, unknown> = {},
   ) {
     super(said);

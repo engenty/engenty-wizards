@@ -14,11 +14,13 @@ import {
   MODEL_CLASSES,
   TEXT_CLASSES,
   type WizardDefinition,
+  wizardLang,
 } from "@engenty-wizards/shared/definition";
 import { CATEGORY_TYPES, whereSchema } from "@engenty-wizards/shared/knowledge";
 import { PROJECT_FILE_KINDS } from "@engenty-wizards/shared/projects";
 import { isCreditsRef } from "@engenty-wizards/shared/providers";
 import { note } from "@engenty-wizards/shared/run";
+import { wizardTexts } from "@engenty-wizards/shared/translation";
 import {
   PACKAGE_EXTENSION,
   PACKAGE_MAX_BYTES,
@@ -207,6 +209,13 @@ import {
   updateTable,
   updateTableRow,
 } from "../services/space-data.js";
+import {
+  deleteTranslation,
+  editTranslation,
+  isLangCode,
+  publishedDefinition,
+  translationsOf,
+} from "../services/translations.js";
 import { draftWidgetPreview } from "../services/widgets.js";
 import {
   createWizard,
@@ -228,7 +237,7 @@ import { currentTenant } from "../tenants/tenant.js";
 import { serverText } from "../texts.js";
 import { applyUpdate, updateStatus } from "../update.js";
 import { byteRange } from "./delivery.js";
-import { requestLang, say } from "./lang.js";
+import { notFoundAnswer, requestLang, say } from "./lang.js";
 
 type Vars = { Variables: { user: SessionUser } };
 
@@ -1259,6 +1268,7 @@ export const studio = new Hono<Vars>()
         dailyRunLimit: z.number().int().min(1).max(10_000).optional(),
         projectId: z.string().optional(),
         runners: z.object({ default: z.string(), enabled: z.array(z.string()).max(20) }).optional(),
+        translate: z.boolean().optional(),
       })
       .parse(await c.req.json());
     await updateWizardSettings(c.get("user").id, c.req.param("id"), patch);
@@ -1266,10 +1276,45 @@ export const studio = new Hono<Vars>()
     if (
       patch.shareEnabled !== undefined ||
       patch.dailyRunLimit !== undefined ||
-      patch.runners !== undefined
+      patch.runners !== undefined ||
+      patch.translate !== undefined
     ) {
       await pushSharing(c.get("user").id, c.req.param("id"));
     }
+    return c.json({ ok: true });
+  })
+  // The languages the published wizard is kept in, each original text with its translation.
+  .get("/wizards/:id/translations", async (c) => {
+    const w = await ownedWizard(c.get("user").id, c.req.param("id"));
+    const def = await publishedDefinition(w);
+    const kept = await translationsOf(w.id);
+    return c.json({
+      lang: def ? wizardLang(def) : wizardLang(w.draft),
+      texts: def ? wizardTexts(def) : [],
+      translations: kept.map((t) => ({
+        lang: t.lang,
+        texts: t.texts,
+        updatedAt: t.updatedAt.toISOString(),
+      })),
+    });
+  })
+  // The author's own lines for a language: they replace what a model wrote.
+  .put("/wizards/:id/translations/:lang", async (c) => {
+    const w = await writableWizard(c.get("user").id, c.req.param("id"));
+    const def = await publishedDefinition(w);
+    const lang = c.req.param("lang");
+    if (!(def && isLangCode(lang))) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    const { lines } = z
+      .object({ lines: z.record(z.string(), z.string().max(4000)) })
+      .parse(await c.req.json());
+    await editTranslation(w.id, def, lang, lines);
+    return c.json({ ok: true });
+  })
+  .delete("/wizards/:id/translations/:lang", async (c) => {
+    const w = await writableWizard(c.get("user").id, c.req.param("id"));
+    await deleteTranslation(w.id, c.req.param("lang"));
     return c.json({ ok: true });
   })
   // The wizard's ID for the mobile app, beside its link.

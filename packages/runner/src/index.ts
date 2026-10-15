@@ -28,11 +28,17 @@ export {
 } from "./env.js";
 export { FieldInput, textHints, type Values } from "./fields.js";
 export {
+  choiceLabel,
   eventText,
   type Lang,
   RUNNER_TEXTS,
   type RunnerKey,
+  type RunnerTable,
+  runnerLangCode,
+  runnerTable,
+  setChoiceLabels,
   setRunnerLang,
+  setRunnerTable,
   t,
   useRunnerLang,
 } from "./i18n.js";

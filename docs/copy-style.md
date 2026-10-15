@@ -3,7 +3,7 @@
 How engenty wizards talks to people, in English and German. It covers every word a person reads:
 the studio, the runner, the CLI, error messages from the server, emails, the site and the docs.
 Read it before you add or change a string in `apps/web/src/lib/i18n.ts`,
-`packages/runner/src/i18n.ts` or `apps/runtime/src/cli/`, or a page in `docs/content`;
+`packages/shared/src/runner-texts.ts` or `apps/runtime/src/cli/`, or a page in `docs/content`;
 `pnpm copy:check` checks the mechanical rules.
 
 Code comments and the developer notes in `docs/*.md` use a compressed style of their own ("A try

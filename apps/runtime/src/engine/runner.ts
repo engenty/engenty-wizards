@@ -37,6 +37,7 @@ import {
 } from "@engenty-wizards/shared/run";
 import { CONVERSATION_RUNNERS, DEFAULT_RUNNER_SETTINGS } from "@engenty-wizards/shared/runners";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
+import { machineTranslated, translateDefinition } from "@engenty-wizards/shared/translation";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -65,6 +66,7 @@ import {
 import { runEnded } from "../plugins/events.js";
 import { projectFiles } from "../services/project-files.js";
 import { projectProfile } from "../services/projects.js";
+import { storedTranslation } from "../services/translations.js";
 import { listRows, scopeOf } from "../store/index.js";
 import {
   claimRun,
@@ -234,6 +236,8 @@ export async function createRun(input: {
   origin?: string | null;
   /** An autopilot fills the pages (an MCP client's test run): the run asks nobody. */
   unattended?: boolean;
+  /** The language the viewer reads the wizard in, translated on request; null: its own. */
+  lang?: string | null;
 }): Promise<string> {
   const id = nanoid(18);
   const first = input.definition.steps[0];
@@ -266,6 +270,7 @@ export async function createRun(input: {
     userId: input.userId ?? null,
     ipHash: input.ipHash ?? null,
     origin: input.origin ?? null,
+    lang: input.lang ?? null,
     unattended: input.unattended ?? false,
     status: first.type === "page" ? "waiting_input" : "running",
     cursor: first.id,
@@ -467,6 +472,7 @@ async function makeContext(
     stepId,
     store,
     def: run.definition,
+    lang: run.lang,
     files: run.files,
     state,
     scope: {
@@ -996,7 +1002,10 @@ export async function talkAllowed(run: RunRow): Promise<boolean> {
 }
 
 export async function runView(run: RunRow, brand: RunView["brand"]): Promise<RunView> {
-  const def = run.definition;
+  // In the viewer's language every text of the view is the translation; ids and values stay.
+  const memory = run.lang ? await storedTranslation(run.wizardId, run.lang) : null;
+  const translated = memory ? translateDefinition(run.definition, memory) : null;
+  const def = translated?.def ?? run.definition;
   const step = stepOf(def, run.cursor) ?? null;
   const closed =
     step?.type === "page" && run.status === "waiting_input"
@@ -1055,7 +1064,16 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
       avatar: def.avatar,
       intro: def.intro,
     },
-    lang: wizardLang(def),
+    lang: wizardLang(run.definition),
+    translation:
+      run.lang && memory && translated
+        ? {
+            lang: run.lang,
+            labels: translated.labels,
+            machine: machineTranslated(memory, run.definition),
+            results: run.state.translated?.[run.lang] ?? {},
+          }
+        : null,
     talk: await talkAllowed(run),
     step,
     answered: run.state.history.map((id) => stepOf(def, id)).filter((s): s is Step => Boolean(s)),
@@ -1080,7 +1098,10 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
     progress: { done: run.status === "done" ? def.steps.length : index, total: def.steps.length },
     canBack: run.state.history.length > 0 && run.status !== "running",
     error: run.error,
-    events: await recentEvents(run.id, 0, 30),
+    // A step's own words as it starts ("working") are the wizard's: in its translation too.
+    events: (await recentEvents(run.id, 0, 30)).map((ev) =>
+      memory?.[ev.message] && !ev.note ? { ...ev, message: memory[ev.message].text } : ev,
+    ),
     brand,
     ask: run.status === "running" ? run.ask : null,
     lists,

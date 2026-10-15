@@ -1,5 +1,6 @@
 import {
   AskPanel,
+  choiceLabel,
   DownloadButtons,
   FieldInput,
   initialValues,
@@ -716,7 +717,9 @@ function Answer({ field, value, runId }: { field: Field; value: unknown; runId: 
   }
   switch (field.kind) {
     case "multiselect":
-      return <>{(value as string[]).join(", ")}</>;
+      return <>{(value as string[]).map(choiceLabel).join(", ")}</>;
+    case "select":
+      return <>{choiceLabel(String(value))}</>;
     case "date": {
       const d = new Date(`${String(value)}T00:00`);
       return (
@@ -1150,7 +1153,7 @@ function Choice({
               )
             }
           >
-            {o}
+            {choiceLabel(o)}
           </Reply>
         ))}
         <Reply primary disabled={field.required && !picked.length} onClick={() => onAnswer(picked)}>
@@ -1163,7 +1166,7 @@ function Choice({
     <QuickReplies>
       {options.map((o) => (
         <Reply key={o} on={value === o} disabled={shut.has(o)} onClick={() => onAnswer(o)}>
-          {o}
+          {choiceLabel(o)}
         </Reply>
       ))}
       {field.required ? null : <Reply onClick={() => onAnswer(undefined)}>{t("chat.skip")}</Reply>}

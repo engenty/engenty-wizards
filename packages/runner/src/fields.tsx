@@ -24,7 +24,7 @@ import { useEffect, useRef, useState } from "react";
 import { CameraDialog, canRecordClips, shrinkImage } from "./camera";
 import { canUseMedia, isTouch } from "./device";
 import { api, runBase, withBase } from "./env.js";
-import { lang, t } from "./i18n.js";
+import { choiceLabel, lang, t } from "./i18n.js";
 import { LocationField } from "./location";
 import { ScanDialog } from "./scan";
 import { SignatureField } from "./signature";
@@ -793,13 +793,19 @@ export function FieldInput({
           disabled={shut}
         />
       ) : options.length <= 5 && options.every((o) => o.length <= 28) ? (
-        <Segmented value={str} options={options} onChange={onChange} disabled={[...shut]} />
+        <Segmented
+          value={str}
+          options={options}
+          onChange={onChange}
+          disabled={[...shut]}
+          label={choiceLabel}
+        />
       ) : (
         <Select
           value={str}
           placeholder="—"
           onChange={onChange}
-          options={options.map((o) => ({ value: o, label: o, disabled: shut.has(o) }))}
+          options={options.map((o) => ({ value: o, label: choiceLabel(o), disabled: shut.has(o) }))}
         />
       );
       break;
@@ -833,6 +839,7 @@ export function FieldInput({
           value={Array.isArray(value) ? (value as string[]) : []}
           options={field.options ?? []}
           onChange={onChange}
+          label={choiceLabel}
         />
       );
       break;

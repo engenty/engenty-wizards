@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
-import type { CardOption, Format, Lang, ModelClass, Step, WizardDefinition } from "./definition.js";
+import {
+  type CardOption,
+  type Format,
+  isLang,
+  type Lang,
+  type ModelClass,
+  type Step,
+  type WizardDefinition,
+} from "./definition.js";
 import type { ConnectionView, ListDef, ListRow } from "./store.js";
 import type { Surface } from "./surface.js";
-import { type Gap, type Line, type Texts, textOf } from "./texts.js";
+import { type Gap, type Line, lineText, type Texts, type TextTable, textOf } from "./texts.js";
 
 export type RunStatus = "waiting_input" | "running" | "done" | "failed" | "cancelled";
 
@@ -60,6 +68,11 @@ export interface RunState {
    * pages stay as they are; the copy goes with the run.
    */
   memory?: Record<string, string>;
+  /**
+   * Finished results translated on request, by language and step: the text the person reads in
+   * place of the step's own (`StepOutput.text`); the step's output stays as it was made.
+   */
+  translated?: Record<string, Record<string, string>>;
 }
 
 /** What a decision over a step's `ask` branches found. */
@@ -204,6 +217,10 @@ const NOTES_EN = {
   filmFix: "The film didn’t render – Claude Code is fixing it",
   filmResume: "Picking the film up where it stopped",
   wizardUnavailable: "This wizard isn’t available right now.",
+  translationFailed: "This wizard can’t be translated right now. It’s shown as it was written.",
+  translationOff: "This wizard is only offered as it was written.",
+  translationPlaceholder:
+    "The translation of “{text}” needs every placeholder in curly brackets the original has.",
   wizardLimit: "This wizard has reached its limit for today. Try again tomorrow.",
   confirmHuman: "Confirm that you’re a person.",
   tooManyRuns: "You’ve started a lot of runs just now. Try again in an hour.",
@@ -521,6 +538,11 @@ const NOTES_DE: Partial<Record<RunNoteCode, Line>> = {
   filmFix: "Der Film ließ sich nicht rendern – Claude Code bessert nach",
   filmResume: "Macht dort weiter, wo der Film stehen geblieben ist",
   wizardUnavailable: "Dieser Wizard ist gerade nicht verfügbar.",
+  translationFailed:
+    "Dieser Wizard lässt sich gerade nicht übersetzen. Du siehst ihn so, wie er geschrieben wurde.",
+  translationOff: "Diesen Wizard gibt es nur so, wie er geschrieben wurde.",
+  translationPlaceholder:
+    "Die Übersetzung von „{text}“ braucht jeden Platzhalter in geschweiften Klammern, den das Original hat.",
   wizardLimit: "Für heute ist das Limit dieses Wizards erreicht. Versuch es morgen wieder.",
   confirmHuman: "Bestätige kurz, dass du ein Mensch bist.",
   tooManyRuns: "Du hast gerade viele Läufe gestartet. Versuch es in einer Stunde wieder.",
@@ -802,26 +824,33 @@ export function saidText(said: Said, lang: Lang): string {
   return typeof said === "string" ? said : noteText(said, lang);
 }
 
-function gapIn(value: NoteGap, lang: Lang): Gap {
+function gapIn(value: NoteGap, lang: string, table?: TextTable): Gap {
   if (Array.isArray(value)) {
-    return value.map((item: NoteGap) => gapIn(item, lang));
+    return value.map((item: NoteGap) => gapIn(item, lang, table));
   }
   if (typeof value === "object" && value !== null && "code" in value) {
-    return noteText(value, lang);
+    return noteText(value, lang, table);
   }
   return value as Gap;
 }
 
-/** A note in a language, its gaps filled; English where the language lacks the line. */
-export function noteText(note: RunNote, lang: Lang): string {
+/**
+ * A note in a language, its gaps filled; English where the language lacks the line. A language
+ * outside `LANGS` reads its lines from `table`, the notes translated on request.
+ */
+export function noteText(note: RunNote, lang: string, table?: TextTable): string {
   if (!(note.code in NOTES_EN)) {
     return "";
   }
   const params: Record<string, Gap | undefined> = {};
   for (const [key, value] of Object.entries(note.params ?? {})) {
-    params[key] = value === undefined ? undefined : gapIn(value, lang);
+    params[key] = value === undefined ? undefined : gapIn(value, lang, table);
   }
-  return textOf(RUN_NOTES, note.code, lang, params);
+  const own = table?.[note.code];
+  if (own !== undefined) {
+    return lineText(own, lang, params);
+  }
+  return textOf(RUN_NOTES, note.code, isLang(lang) ? lang : "en", params);
 }
 
 export interface RunEvent {
@@ -844,6 +873,12 @@ export interface RunView {
   wizard: Pick<WizardDefinition, "title" | "description" | "avatar" | "intro">;
   /** The language the wizard speaks: what is read aloud, and in which voice. */
   lang: Lang;
+  /**
+   * The run in the viewer's language (a wizard translated on request): every text of the view
+   * is written in it, the choices keep their values and show `labels[value]`. Null: the
+   * wizard's own words.
+   */
+  translation: RunTranslation | null;
   /** A live conversation can be started on this run: the runtime has a model for it and the wizard has live voice or video on (always in a test). */
   talk: boolean;
   /** The step the person is on (interactive) or the one running. */
@@ -890,6 +925,18 @@ export interface RunView {
   expiresAt: string | null;
 }
 
+/** How a run in the viewer's language shows. */
+export interface RunTranslation {
+  /** The language, by its code ("fr"): any language, not only one of `LANGS`. */
+  lang: string;
+  /** What a choice shows, by its value. */
+  labels: Record<string, string>;
+  /** A model wrote some of it; false where the author wrote every text by hand. */
+  machine: boolean;
+  /** Results shown in this language, by step (`RunState.translated`). */
+  results: Record<string, string>;
+}
+
 /** A shared result: what `/s/<token>` shows. Never the person's answers. */
 export interface ShareView {
   token: string;
@@ -925,6 +972,21 @@ export interface PublicWizard {
    * beside "Let's go". A page runner has an address; a channel (a number, a bot) has none.
    */
   runners: { id: string; label: string; kind: "page" | "channel"; url: string | null }[];
+  /** The language the wizard is written in: the page opens in it. */
+  lang: Lang;
+  /** The author offers the wizard in the viewer's language, translated on request. */
+  translatable: boolean;
+  /** The page in the viewer's language, where it was asked for (`?lang=`); null: the original. */
+  translation: Omit<RunTranslation, "results"> | null;
+}
+
+/** The runner's own words in a language outside `LANGS`: `GET /api/public/texts/:lang`. */
+export interface UiTexts {
+  lang: string;
+  /** The runner's table (`packages/shared/src/runner-texts.ts`). */
+  runner: TextTable;
+  /** The run notes (`RUN_NOTES`). */
+  notes: TextTable;
 }
 
 /** What a step is expected to cost, in credits. `high` is the 90th percentile once measured. */

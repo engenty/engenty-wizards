@@ -24,6 +24,8 @@ export interface StepContext {
   /** What the wizard keeps for the person running it. */
   store: StoreScope;
   def: WizardDefinition;
+  /** The language the viewer reads the wizard in, translated on request; null: its own. */
+  lang: string | null;
   /** The workspace the run started with. */
   files: WorkspaceFile[];
   state: RunState;

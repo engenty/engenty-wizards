@@ -1,6 +1,20 @@
-import { FORMATS, LANGS, LIST_FORMATS, TEXT_CLASSES } from "@engenty-wizards/shared/definition";
+import {
+  FORMATS,
+  isLang,
+  LANG_CODE,
+  LANGS,
+  LIST_FORMATS,
+  TEXT_CLASSES,
+  type WizardDefinition,
+  wizardLang,
+} from "@engenty-wizards/shared/definition";
 import { TableColumnValueError } from "@engenty-wizards/shared/engenty/data-tables";
 import { noteText, type PublicWizard, type RunNote } from "@engenty-wizards/shared/run";
+import {
+  machineTranslated,
+  type TranslationMemory,
+  translateDefinition,
+} from "@engenty-wizards/shared/translation";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { and, eq } from "drizzle-orm";
 import { type Context, Hono, type MiddlewareHandler } from "hono";
@@ -57,6 +71,13 @@ import { brandView } from "../services/brand.js";
 import { ServiceError } from "../services/errors.js";
 import { publicRunners, servePageRunner } from "../services/runners.js";
 import { sharedRun, shareImage, shareRun, shareView, unshareRun } from "../services/shares.js";
+import {
+  isLangCode,
+  storedTranslation,
+  translateResult,
+  translationFor,
+  uiTexts,
+} from "../services/translations.js";
 import { isIconFile, wizardAvatarSvg, wizardIcon } from "../services/wizard-icon.js";
 import {
   clearStore,
@@ -266,6 +287,62 @@ async function pageRunner(c: Context, rest: string): Promise<Response> {
   return served ?? c.json(notFoundAnswer(c), 404);
 }
 
+/** A wizard's link with its published version, or null where it has none. */
+async function publishedWizard(token: string | undefined) {
+  const w = await db.query.wizard.findFirst({
+    where: eq(schema.wizard.shareToken, token ?? ""),
+  });
+  if (!w || w.publishedVersion === null) {
+    return null;
+  }
+  const version = await db.query.wizardVersion.findFirst({
+    where: and(
+      eq(schema.wizardVersion.wizardId, w.id),
+      eq(schema.wizardVersion.version, w.publishedVersion),
+    ),
+  });
+  return version ? { w, def: version.definition, version: w.publishedVersion } : null;
+}
+
+/** The author offers the wizard translated, and the language is not the one it is written in. */
+function wantsTranslation(w: { translate: boolean }, def: WizardDefinition, lang: string): boolean {
+  return w.translate && lang !== wizardLang(def);
+}
+
+/** What a wizard's page shows before a run: in the viewer's language where `as` is given. */
+async function publicBody(
+  c: Context,
+  w: NonNullable<Awaited<ReturnType<typeof publishedWizard>>>["w"],
+  original: WizardDefinition,
+  as: { lang: string; memory: TranslationMemory } | null,
+): Promise<PublicWizard> {
+  const translated = as ? translateDefinition(original, as.memory) : null;
+  const def = translated?.def ?? original;
+  const reason = await wizardUnavailable(w);
+  return {
+    token: w.shareToken,
+    title: def.title,
+    description: def.description,
+    avatar: def.avatar,
+    intro: def.intro ?? null,
+    brand: await brandView(w.projectId),
+    turnstileSiteKey: env.turnstile.siteKey || null,
+    available: !reason,
+    unavailableReason: reason && noteText(reason, requestLang(c)),
+    runners: await publicRunners(w, original),
+    lang: wizardLang(original),
+    translatable: w.translate,
+    translation:
+      as && translated
+        ? {
+            lang: as.lang,
+            labels: translated.labels,
+            machine: machineTranslated(as.memory, original),
+          }
+        : null,
+  };
+}
+
 export const publicRoutes = new Hono()
   // A wizard's ID, typed into the mobile app: answers its share token.
   .get("/codes/:code", async (c) => {
@@ -290,33 +367,60 @@ export const publicRoutes = new Hono()
   .use("/wizards/:token/*", wizardLink)
   .use("/logos/:id", logoLink)
   .get("/wizards/:token", async (c) => {
-    const w = await db.query.wizard.findFirst({
-      where: eq(schema.wizard.shareToken, c.req.param("token")),
-    });
-    if (!w || w.publishedVersion === null) {
+    const found = await publishedWizard(c.req.param("token"));
+    if (!found) {
       return c.json(notFoundAnswer(c), 404);
     }
-    const version = await db.query.wizardVersion.findFirst({
-      where: and(
-        eq(schema.wizardVersion.wizardId, w.id),
-        eq(schema.wizardVersion.version, w.publishedVersion),
-      ),
-    });
-    const def = version!.definition;
-    const reason = await wizardUnavailable(w);
-    const body: PublicWizard = {
-      token: w.shareToken,
-      title: def.title,
-      description: def.description,
-      avatar: def.avatar,
-      intro: def.intro ?? null,
-      brand: await brandView(w.projectId),
-      turnstileSiteKey: env.turnstile.siteKey || null,
-      available: !reason,
-      unavailableReason: reason && noteText(reason, requestLang(c)),
-      runners: await publicRunners(w, def),
-    };
-    return c.json(body);
+    // The page in the viewer's language where it is kept; making it is the POST below.
+    const lang = c.req.query("lang");
+    const memory =
+      isLangCode(lang) && wantsTranslation(found.w, found.def, lang)
+        ? await storedTranslation(found.w.id, lang)
+        : null;
+    return c.json(
+      await publicBody(c, found.w, found.def, lang && memory ? { lang, memory } : null),
+    );
+  })
+  // The wizard in the viewer's language: translated now where it is not kept yet.
+  .post("/wizards/:token/translation", async (c) => {
+    const found = await publishedWizard(c.req.param("token"));
+    if (!found) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    const { lang } = z
+      .object({ lang: z.string().regex(LANG_CODE) })
+      .parse(await c.req.json().catch(() => ({})));
+    if (!wantsTranslation(found.w, found.def, lang)) {
+      return refuse(c, { code: "translationOff" }, 403);
+    }
+    try {
+      const memory = await translationFor(found.w.id, found.def, lang, found.version);
+      return c.json(await publicBody(c, found.w, found.def, { lang, memory }));
+    } catch (err) {
+      if (err instanceof ServiceError || err instanceof ModelUnavailableError) {
+        return refuse(c, { code: "translationFailed" }, 502);
+      }
+      throw err;
+    }
+  })
+  // The runner's own words in a language outside LANGS, booked to this wizard's owner when new.
+  .get("/wizards/:token/texts/:lang", async (c) => {
+    const found = await publishedWizard(c.req.param("token"));
+    const lang = c.req.param("lang");
+    if (!found || !isLangCode(lang) || isLang(lang)) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    if (!wantsTranslation(found.w, found.def, lang)) {
+      return refuse(c, { code: "translationOff" }, 403);
+    }
+    try {
+      return c.json(await uiTexts(lang));
+    } catch (err) {
+      if (err instanceof ServiceError || err instanceof ModelUnavailableError) {
+        return refuse(c, { code: "translationFailed" }, 502);
+      }
+      throw err;
+    }
   })
   .post("/wizards/:token/runs", async (c) => {
     const w = await db.query.wizard.findFirst({
@@ -335,6 +439,8 @@ export const publicRoutes = new Hono()
         embedded: z.boolean().optional(),
         // The website page that embeds the wizard: shown with the result.
         origin: z.string().max(2000).optional(),
+        // The language the viewer reads the wizard in, translated on request.
+        lang: z.string().regex(LANG_CODE).optional(),
       })
       .parse(await c.req.json().catch(() => ({})));
     const ip = clientIp(c);
@@ -362,6 +468,12 @@ export const publicRoutes = new Hono()
         visitorId: vid,
         ipHash,
         origin: body.embedded ? webAddress(body.origin) : null,
+        lang:
+          body.lang &&
+          wantsTranslation(w, version!.definition, body.lang) &&
+          (await storedTranslation(w.id, body.lang))
+            ? body.lang
+            : null,
       });
       return c.json({ runId });
     } catch (err) {
@@ -625,6 +737,69 @@ export const runRoutes = new Hono()
       return c.json(notFoundAnswer(c), 404);
     }
     await cancel(run.id);
+    return c.json({ ok: true });
+  })
+  // The viewer reads the run in another language from now on: null for the wizard's own.
+  .post("/:id/lang", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    const { lang } = z
+      .object({ lang: z.string().regex(LANG_CODE).nullable() })
+      .parse(await c.req.json().catch(() => ({})));
+    const w = await db.query.wizard.findFirst({ where: eq(schema.wizard.id, run.wizardId) });
+    const own = !lang || lang === wizardLang(run.definition);
+    if (!(own || (w && wantsTranslation(w, run.definition, lang)))) {
+      return refuse(c, { code: "translationOff" }, 403);
+    }
+    if (!own) {
+      try {
+        await translationFor(run.wizardId, run.definition, lang, run.version);
+      } catch (err) {
+        if (err instanceof ServiceError || err instanceof ModelUnavailableError) {
+          return refuse(c, { code: "translationFailed" }, 502);
+        }
+        throw err;
+      }
+    }
+    await db
+      .update(schema.run)
+      .set({ lang: own ? null : lang })
+      .where(eq(schema.run.id, run.id));
+    signalChanged(run.id);
+    return c.json({ ok: true });
+  })
+  // A finished result's text in the language the viewer reads the run in, kept on the run.
+  .post("/:id/translate-result", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    if (!run) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    const { stepId } = z.object({ stepId: z.string() }).parse(await c.req.json().catch(() => ({})));
+    const text = run.state.outputs[stepId]?.text;
+    if (!(run.lang && text)) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    if (!run.state.translated?.[run.lang]?.[stepId]) {
+      let translated: string;
+      try {
+        translated = await translateResult(text, run.lang, wizardLang(run.definition));
+      } catch (err) {
+        if (err instanceof ServiceError || err instanceof ModelUnavailableError) {
+          return refuse(c, { code: "translationFailed" }, 502);
+        }
+        throw err;
+      }
+      const fresh = await db.query.run.findFirst({ where: eq(schema.run.id, run.id) });
+      const state = fresh?.state ?? run.state;
+      state.translated = {
+        ...state.translated,
+        [run.lang]: { ...state.translated?.[run.lang], [stepId]: translated },
+      };
+      await db.update(schema.run).set({ state }).where(eq(schema.run.id, run.id));
+      signalChanged(run.id);
+    }
     return c.json({ ok: true });
   })
   // A live conversation on the run: the secret the browser opens the session with.

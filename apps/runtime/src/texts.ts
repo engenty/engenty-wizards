@@ -8,6 +8,7 @@ import { type Gap, type Line, type Texts, textOf } from "@engenty-wizards/shared
  */
 const EN = {
   keyUnknown: "The provider doesn’t recognise this key.",
+  schemaMismatch: "The wizard doesn’t match the schema.",
   providerError: "The provider answered with error {status}.",
   providerUnreachable: "The provider cannot be reached right now.",
   importedFrom: "Imported from “{name}”: {steps}, {files}.",
@@ -183,6 +184,7 @@ const DE: Partial<Record<ServerKey, Line>> = {
   firstSpaceLocal: "Mein Computer",
   invalidInput: "Ungültige Eingabe",
   internalError: "Interner Fehler",
+  schemaMismatch: "Der Wizard passt nicht zum Schema.",
   notSignedIn: "Du bist nicht angemeldet.",
   accountSuspended: "Dieses Konto ist gesperrt.",
   tooLarge: "Das ist zu groß.",

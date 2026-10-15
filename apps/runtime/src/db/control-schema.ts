@@ -1,5 +1,6 @@
 import type { Lang } from "@engenty-wizards/shared/definition";
 import type { MarketplaceExport } from "@engenty-wizards/shared/marketplace";
+import type { UiTexts } from "@engenty-wizards/shared/run";
 import { sql } from "drizzle-orm";
 import {
   index,
@@ -112,6 +113,17 @@ export const session = sqliteTable(
 export const setting = sqliteTable("setting", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).$type<unknown>().notNull(),
+});
+
+/**
+ * The runner's own words in a language outside `LANGS`, translated once for the runtime:
+ * `source` is the hash of the English tables they were made from.
+ */
+export const uiTranslation = sqliteTable("ui_translation", {
+  lang: text("lang").primaryKey(),
+  source: text("source").notNull(),
+  texts: text("texts", { mode: "json" }).$type<Omit<UiTexts, "lang">>().notNull(),
+  createdAt: createdAt(),
 });
 
 // --- marketplace -----------------------------------------------------------------

@@ -324,6 +324,8 @@ export interface WizardSummary {
   dailyRunLimit: number;
   /** How it is offered: the runner its link opens, the ones switched on. Null: steps, chat beside it. */
   runners: { default: string; enabled: string[] } | null;
+  /** Its page offers it in the viewer's language, translated on request. */
+  translate: boolean;
   stepCount: number;
   updatedAt: string;
   /**

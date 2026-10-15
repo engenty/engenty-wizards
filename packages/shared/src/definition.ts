@@ -154,6 +154,61 @@ export function localLang(languages: readonly string[], timeZone?: string | null
   return found === "en" ? null : found;
 }
 
+/**
+ * A language a wizard can be translated into: any language, by its two- or three-letter code
+ * ("fr", "it", "pl"), not only those of `LANGS`.
+ */
+export const LANG_CODE = /^[a-z]{2,3}$/;
+
+/** The code of a tag such as "fr-CA" or "pt_BR"; null where it names no language. */
+export function langCodeOf(tag: string | null | undefined): string | null {
+  const code = tag?.trim().toLowerCase().split(/[-_]/)[0] ?? "";
+  return LANG_CODE.test(code) ? code : null;
+}
+
+/**
+ * The language the person reads, for a wizard translated on request: the first of their
+ * languages (the browser's, in its order), else the main language of the country their time
+ * zone lies in. Any language, not only one engenty's own strings are written in.
+ */
+export function viewerLang(languages: readonly string[], timeZone?: string | null): string | null {
+  for (const tag of languages) {
+    const code = langCodeOf(tag);
+    if (code) {
+      return code;
+    }
+  }
+  const country = timeZone ? ZONE_COUNTRY[timeZone] : undefined;
+  return country ? langCodeOf(COUNTRY_LANGUAGE[country]) : null;
+}
+
+/** A language's name in that language, as a switch shows it: "Italiano", "Polski". */
+export function langName(code: string): string {
+  if (isLang(code)) {
+    return LANG_NAMES[code];
+  }
+  try {
+    const name = new Intl.DisplayNames([code], { type: "language" }).of(code) ?? code;
+    return name.charAt(0).toLocaleUpperCase(code) + name.slice(1);
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
+/** A language's name in English, for a model told what to write in: "Italian". */
+export function langNameEn(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** The locale amounts, dates and plural forms are written in for any language. */
+export function localeOf(code: string): string {
+  return isLang(code) ? LOCALES[code] : code;
+}
+
 export const FIELD_KINDS = [
   "text",
   "textarea",

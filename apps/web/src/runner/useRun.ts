@@ -1,3 +1,4 @@
+import { setChoiceLabels } from "@engenty-wizards/runner";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { useCallback, useEffect, useState } from "react";
 import { withBase } from "@/lib/base";
@@ -143,6 +144,8 @@ export function useRun(runId: string | null) {
     [runId],
   );
 
+  // A translated run's choices show their labels, in the chat as on the page.
+  setChoiceLabels(view?.translation?.labels);
   return {
     view,
     notFound,
@@ -162,5 +165,8 @@ export function useRun(runId: string | null) {
       }),
     back: () => command("back"),
     retry: () => command("retry"),
+    translateResult: (stepId: string) => command("translate-result", { stepId }),
+    /** The language the run is read in from now on; null: the wizard's own. */
+    setLang: (lang: string | null) => command("lang", { lang }),
   };
 }

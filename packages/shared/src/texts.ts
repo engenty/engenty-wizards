@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
-import { type Lang, LOCALES } from "./definition.js";
+import { type Lang, localeOf } from "./definition.js";
 
 /**
  * A line with a form for each plural category of its `{count}` (or `{n}`, `Intl.PluralRules`):
@@ -28,27 +28,32 @@ export type Texts<K extends string> = { en: Record<K, Line> } & {
 /** What fills a line's gaps: words, a number (written the language's way), or a list of them. */
 export type Gap = string | number | readonly Gap[];
 
-const plurals = new Map<Lang, Intl.PluralRules>();
+const plurals = new Map<string, Intl.PluralRules>();
 
-function form(line: Line, lang: Lang, count: unknown): string {
+/** The plural rules of a language: any language, by its code. */
+export function pluralRules(lang: string): Intl.PluralRules {
+  let rules = plurals.get(lang);
+  if (!rules) {
+    rules = new Intl.PluralRules(localeOf(lang));
+    plurals.set(lang, rules);
+  }
+  return rules;
+}
+
+function form(line: Line, lang: string, count: unknown): string {
   if (typeof line === "string") {
     return line;
   }
   if (typeof count !== "number") {
     return line.other;
   }
-  let rules = plurals.get(lang);
-  if (!rules) {
-    rules = new Intl.PluralRules(LOCALES[lang]);
-    plurals.set(lang, rules);
-  }
-  return line[rules.select(count)] ?? line.other;
+  return line[pluralRules(lang).select(count)] ?? line.other;
 }
 
 /** A gap's words in a language: numbers as the language writes them, lists joined. */
-export function gapText(value: Gap, lang: Lang): string {
+export function gapText(value: Gap, lang: string): string {
   if (typeof value === "number") {
-    return value.toLocaleString(LOCALES[lang]);
+    return value.toLocaleString(localeOf(lang));
   }
   if (Array.isArray(value)) {
     return value.map((item) => gapText(item, lang)).join(", ");
@@ -59,7 +64,7 @@ export function gapText(value: Gap, lang: Lang): string {
 /** Fills `{name}` gaps; a gap with nothing for it stays as it is. */
 export function fillGaps(
   text: string,
-  lang: Lang,
+  lang: string,
   params?: Record<string, Gap | undefined>,
 ): string {
   return text.replace(/\{(\w+)\}/g, (gap, key: string) => {
@@ -83,5 +88,20 @@ export function textOf<K extends string>(
   if (line === undefined) {
     return key;
   }
+  return fillGaps(form(line, lang, params?.count ?? params?.n), lang, params);
+}
+
+/**
+ * A string table of one language outside `LANGS`, translated on request: lines by key, a plural
+ * line with the forms of that language's plural categories.
+ */
+export type TextTable = Record<string, Line>;
+
+/** A line of a table, in a language: its gaps filled and its plural form picked. */
+export function lineText(
+  line: Line,
+  lang: string,
+  params?: Record<string, Gap | undefined>,
+): string {
   return fillGaps(form(line, lang, params?.count ?? params?.n), lang, params);
 }

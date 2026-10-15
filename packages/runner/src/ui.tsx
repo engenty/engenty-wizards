@@ -199,6 +199,7 @@ export function Segmented({
   options,
   multi,
   disabled,
+  label,
 }: {
   value: string | string[];
   onChange: (v: any) => void;
@@ -206,6 +207,8 @@ export function Segmented({
   multi?: boolean;
   /** Options shown but not to be picked. */
   disabled?: string[];
+  /** What an option shows; default: the option itself. */
+  label?: (option: string) => string;
 }) {
   const selected = new Set(Array.isArray(value) ? value : value ? [value] : []);
   return (
@@ -238,7 +241,7 @@ export function Segmented({
                 : "border-input bg-card text-ink-2 hover:border-ink-4 hover:text-ink",
             )}
           >
-            {o}
+            {label ? label(o) : o}
           </button>
         );
       })}

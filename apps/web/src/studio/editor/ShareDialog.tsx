@@ -63,6 +63,7 @@ import {
 import { FitChip, NeedList, useStandalone } from "../StandaloneNeeds";
 import { sharedLink, type WhereItRuns, whereItRuns } from "../where";
 import { useEstimate } from "./estimate";
+import { TranslationsSection } from "./Translations";
 import { printQr, QrImage, qrSvg, saveQrPng, spacedCode } from "./WizardQr";
 
 /**
@@ -1096,6 +1097,11 @@ function SettingsView({
             </p>
           ) : null}
         </div>
+        <TranslationsSection
+          wizard={wizard}
+          locked={locked}
+          onPatch={(body) => patch.mutate(body)}
+        />
         {locked
           ? null
           : own.map(({ way, section }) => (

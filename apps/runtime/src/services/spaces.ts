@@ -85,6 +85,7 @@ export type SyncWizardInput = z.infer<typeof syncWizardSchema>;
 
 export const syncSettingsSchema = z.object({
   shareEnabled: z.boolean().optional(),
+  translate: z.boolean().optional(),
   dailyRunLimit: z.number().int().min(1).max(10_000).optional(),
 });
 

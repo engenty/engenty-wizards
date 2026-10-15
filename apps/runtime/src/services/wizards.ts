@@ -98,6 +98,8 @@ export function wizardSummary(w: WizardRow) {
     dailyRunLimit: w.dailyRunLimit,
     /** How it is offered; null: the link opens the page, the chat is on beside it. */
     runners: w.runners,
+    /** Its page offers it in the viewer's language, translated on request. */
+    translate: w.translate,
     stepCount: w.draft.steps.length,
     updatedAt: w.updatedAt.toISOString(),
   };
@@ -277,9 +279,13 @@ export function parseDraft(
 ): { draft: WizardDefinition; issues: ValidationIssue[] } {
   const parsed = wizardSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new ServiceError("invalid", "The wizard doesn’t match the schema.", {
-      issues: shapeIssues(parsed.error, raw),
-    });
+    throw new ServiceError(
+      "invalid",
+      { server: "schemaMismatch" },
+      {
+        issues: shapeIssues(parsed.error, raw),
+      },
+    );
   }
   return { draft: parsed.data, issues: validateWizard(parsed.data, files) };
 }
@@ -436,6 +442,7 @@ export async function updateWizardSettings(
     dailyRunLimit?: number;
     projectId?: string;
     runners?: RunnerSettings;
+    translate?: boolean;
   },
 ) {
   const w = await writableWizard(userId, wizardId);

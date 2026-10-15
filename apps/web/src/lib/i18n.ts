@@ -1,7 +1,18 @@
-import { RUNNER_TEXTS, setRunnerLang } from "@engenty-wizards/runner/i18n";
-import { isLang, type Lang, localLang } from "@engenty-wizards/shared/definition";
+import {
+  RUNNER_TEXTS,
+  type RunnerTable,
+  runnerTable,
+  setRunnerLang,
+  setRunnerTable,
+} from "@engenty-wizards/runner/i18n";
+import {
+  isLang,
+  type Lang,
+  localLang,
+  viewerLang as viewerLangOf,
+} from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
-import { type Line, type Texts, textOf } from "@engenty-wizards/shared/texts";
+import { type Line, lineText, type Texts, textOf } from "@engenty-wizards/shared/texts";
 import { useSyncExternalStore } from "react";
 
 // Wording: docs/copy-style.md (voice, glossary, EN/DE mechanics). Write each language as its
@@ -471,7 +482,6 @@ const de: Record<Key, Line> = {
   "nav.expired": "Anmeldung abgelaufen",
   "nav.onlyHere": "Nur auf diesem Computer",
   "nav.local": "lokal",
-  "nav.language": "Sprache",
   "nav.theme": "Design",
   "nav.credits": { one: "{n} Credit", other: "{n} Credits" },
   "about.version": "Version {v}",
@@ -915,6 +925,18 @@ const de: Record<Key, Line> = {
   "share.link": "Link",
   "share.copy": "Kopieren",
   "share.limit": "Höchstens am Tag",
+  "translate.offer": "Übersetzung anbieten",
+  "translate.offerHint":
+    "Wer eine andere Sprache spricht, kann den Wizard in seiner Sprache lesen. Die erste Übersetzung in eine Sprache ist ein kurzer KI-Aufruf, danach wird sie nur noch gelesen.",
+  "translate.byYou": "Von dir bearbeitet",
+  "translate.byMachine": "Maschinell übersetzt",
+  "translate.edit": "Übersetzung bearbeiten",
+  "translate.delete": "Übersetzung löschen",
+  "translate.none":
+    "Noch keine Übersetzung. Sie entsteht, sobald jemand den Wizard in einer anderen Sprache öffnet.",
+  "translate.save": "Speichern",
+  "translate.editHint":
+    "Was du hier änderst, bleibt auch nach dem nächsten Veröffentlichen, solange der Originaltext gleich bleibt. Platzhalter in geschweiften Klammern bleiben, wie sie sind.",
   "share.rotate": "Neuen Link erzeugen",
   "share.rotateHint": "Der alte Link und der QR-Code gehen danach nicht mehr.",
   "share.website": "Website",
@@ -938,60 +960,10 @@ const de: Record<Key, Line> = {
   "share.readOnly":
     "Ob der Link aktiv ist und wie viele Läufe er am Tag zulässt, stellst du auf deinem Computer ein.",
   "share.fit.no": "Nicht möglich: {steps}",
-  "run.orAs": "Oder: {label}",
   "chat.view": "Ansicht",
   "chat.steps": "Schritte",
   "chat.chat": "Chat",
-  "chat.send": "Senden",
-  "chat.dictate": "Diktieren (⌘⇧M)",
-  "chat.dictateStop": "Diktat beenden",
-  "chat.listening": "Ich höre zu …",
-  "chat.transcribing": "Wird in Text umgewandelt …",
-  "chat.micDenied":
-    "Das Mikrofon ist für diese Seite nicht freigegeben. Erlaube es in den Website-Einstellungen deines Browsers.",
-  "chat.readAloud": "Vorlesen",
-  "chat.readAloudOff": "Vorlesen beenden",
-  "talk.start": "Gespräch beginnen",
-  "talk.stop": "Gespräch beenden",
-  "talk.connecting": "Verbindet …",
-  "talk.live": "Im Gespräch",
-  "talk.speaking": "Spricht",
-  "talk.listening": "Hört zu",
-  "talk.failed": "Das Gespräch ließ sich nicht starten.",
-  "talk.hint": "Sprich mit dem Wizard. Auf dem Bildschirm kannst du mitlesen.",
-  "talk.camera": "Kamera einschalten",
-  "talk.cameraOff": "Kamera ausschalten",
-  "talk.cameraDenied":
-    "Die Kamera ist für diese Seite nicht freigegeben. Erlaube sie in den Website-Einstellungen deines Browsers.",
-  "video.join": "Beitreten",
-  "video.rejoin": "Wieder beitreten",
-  "video.leave": "Verlassen",
-  "video.hint":
-    "Beim Beitreten fragt dein Browser nach Mikrofon und Kamera. Im Chat daneben kannst du mitlesen und eingeben, was sich schlecht sagen lässt.",
-  "video.you": "Du",
-  "video.cameraOff": "Kamera aus",
-  "video.mute": "Stummschalten",
-  "video.unmute": "Stummschaltung aufheben",
-  "video.flip": "Kamera wechseln",
-  "video.ended": "Anruf beendet",
   "video.chat": "Chat",
-  "talk.joinHint":
-    "Beim Start fragt dein Browser nach dem Mikrofon, nach der Kamera erst, wenn du sie einschaltest. Im Chat daneben kannst du mitlesen und eingeben, was sich schlecht sagen lässt.",
-  "chat.skip": "Überspringen",
-  "chat.skipped": "Übersprungen",
-  "chat.change": "Ändern",
-  "chat.placeholder": "Deine Antwort …",
-  "chat.above": "Antworte oben im Chat",
-  "chat.required": "Dafür brauche ich eine Antwort.",
-  "chat.badEmail": "Das sieht nicht nach einer E-Mail-Adresse aus.",
-  "chat.badUrl": "Das sieht nicht nach einer Webadresse aus.",
-  "chat.badNumber": "Das sieht nicht nach einer Zahl aus.",
-  "chat.file": "1 Datei",
-  "chat.files": { one: "{n} Datei", other: "{n} Dateien" },
-  "chat.voice": "Sprachnotiz",
-  "chat.rows": { one: "{n} Zeile", other: "{n} Zeilen" },
-  "chat.connected": "Verbunden",
-  "chat.checked": "Geprüft",
   "type.page": "Seite",
   "type.agent": "KI-Schritt",
   "type.generate": "Erzeugen",
@@ -1052,7 +1024,6 @@ const de: Record<Key, Line> = {
   "market.cost": "Kosten",
   "new.forWebsite": "Kleine Helfer für deine Website",
   "run.download": "Herunterladen",
-  "run.madeWith": "Erstellt mit engenty wizards",
   "run.required": "Pflichtfeld",
   "settings.title": "Einstellungen",
   "settings.name": "Name",
@@ -1366,9 +1337,6 @@ const de: Record<Key, Line> = {
   "inspector.account": "Konto",
   "inspector.list": "Liste",
   "inspector.stepDescription": "Erklärung unter dem Titel (optional)",
-  "browser.takeOver": "Übernehmen",
-  "browser.handBack": "Zurückgeben",
-  "browser.driving": "Du steuerst den Browser – klick und tipp in die Seite. Der Wizard wartet.",
   "composer.send": "Senden",
   "composer.stop": "Anhalten",
   "composer.sendBusy":
@@ -1426,12 +1394,6 @@ const de: Record<Key, Line> = {
     "Dein Gerät konnte den Standort gerade nicht bestimmen. Versuch es im Freien noch einmal oder tipp die Adresse ein.",
   "location.timeout":
     "Das hat zu lange gedauert. Versuch es noch einmal oder tipp die Adresse ein.",
-  "install.add": "Zum Startbildschirm hinzufügen",
-  "install.ios": "Tippe unten auf „Teilen“ und dann auf „Zum Home-Bildschirm“.",
-  "install.bookmark": "Als Lesezeichen speichern",
-  "install.bookmark.mac": "Drücke ⌘ D, dann liegt dieser Wizard in deinen Lesezeichen.",
-  "install.bookmark.pc": "Drücke Strg + D, dann liegt dieser Wizard in deinen Lesezeichen.",
-  "install.app": "In der App öffnen",
   "install.app.offer":
     "Installiere das Studio als App: eigenes Fenster, eigenes Symbol im Dock oder in der Taskleiste.",
   "install.app.browser":
@@ -2476,7 +2438,6 @@ const en = {
   "nav.expired": "Sign-in expired",
   "nav.onlyHere": "Only on this computer",
   "nav.local": "local",
-  "nav.language": "Language",
   "nav.theme": "Theme",
   "nav.credits": { one: "{n} credit", other: "{n} credits" },
   "about.version": "Version {v}",
@@ -2912,6 +2873,18 @@ const en = {
   "share.link": "Link",
   "share.copy": "Copy",
   "share.limit": "Limit per day",
+  "translate.offer": "Offer a translation",
+  "translate.offerHint":
+    "People who speak another language can read the wizard in theirs. The first translation into a language is one short AI call. After that it is only read.",
+  "translate.byYou": "Edited by you",
+  "translate.byMachine": "Machine-translated",
+  "translate.edit": "Edit translation",
+  "translate.delete": "Delete translation",
+  "translate.none":
+    "No translation yet. One is made when someone opens the wizard in another language.",
+  "translate.save": "Save",
+  "translate.editHint":
+    "What you change here stays when you publish again, as long as the original text stays the same. Leave placeholders in curly brackets as they are.",
   "share.rotate": "Create a new link",
   "share.rotateHint": "The old link and the QR code stop working.",
   "share.open": "Open",
@@ -2934,60 +2907,10 @@ const en = {
   "share.readOnly":
     "You set whether the link is active and how many runs a day it allows on your computer.",
   "share.fit.no": "Not possible: {steps}",
-  "run.orAs": "Or: {label}",
   "chat.view": "View",
   "chat.steps": "Steps",
   "chat.chat": "Chat",
-  "chat.send": "Send",
-  "chat.dictate": "Dictate (⌘⇧M)",
-  "chat.dictateStop": "Stop dictating",
-  "chat.listening": "Listening…",
-  "chat.transcribing": "Writing it down…",
-  "chat.micDenied":
-    "The microphone isn’t allowed for this page. Allow it in your browser’s site settings.",
-  "chat.readAloud": "Read aloud",
-  "chat.readAloudOff": "Stop reading aloud",
-  "talk.start": "Start talking",
-  "talk.stop": "End the conversation",
-  "talk.connecting": "Connecting…",
-  "talk.live": "In conversation",
-  "talk.speaking": "Speaking",
-  "talk.listening": "Listening",
-  "talk.failed": "The conversation couldn’t start. Check your connection and try again.",
-  "talk.hint": "Talk to the wizard – the screen follows along.",
-  "talk.camera": "Switch the camera on",
-  "talk.cameraOff": "Switch the camera off",
-  "talk.cameraDenied":
-    "The camera isn’t allowed for this page. Allow it in your browser’s site settings.",
-  "video.join": "Join",
-  "video.rejoin": "Rejoin",
-  "video.leave": "Leave",
-  "video.hint":
-    "Your browser asks for the microphone and camera when you join. The chat beside it follows along and handles what voice can’t.",
-  "video.you": "You",
-  "video.cameraOff": "Camera off",
-  "video.mute": "Mute",
-  "video.unmute": "Unmute",
-  "video.flip": "Switch camera",
-  "video.ended": "Call ended",
   "video.chat": "Chat",
-  "talk.joinHint":
-    "Your browser asks for the microphone when you start, and for the camera only when you switch it on. The chat beside it follows along and handles what voice can’t.",
-  "chat.skip": "Skip",
-  "chat.skipped": "Skipped",
-  "chat.change": "Change",
-  "chat.placeholder": "Your answer…",
-  "chat.above": "Answer above in the chat",
-  "chat.required": "I need an answer for this one.",
-  "chat.badEmail": "That doesn’t look like an email address.",
-  "chat.badUrl": "That isn’t a valid address.",
-  "chat.badNumber": "Enter a number.",
-  "chat.file": "1 file",
-  "chat.files": { one: "{n} file", other: "{n} files" },
-  "chat.voice": "Voice note",
-  "chat.rows": { one: "{n} row", other: "{n} rows" },
-  "chat.connected": "Connected",
-  "chat.checked": "Checked",
   "type.page": "Page",
   "type.agent": "AI step",
   "type.generate": "Generate",
@@ -3049,7 +2972,6 @@ const en = {
   "market.cost": "Cost",
   "new.forWebsite": "Small helpers for your website",
   "run.download": "Download",
-  "run.madeWith": "Made with engenty wizards",
   "run.required": "Required",
   "settings.title": "Settings",
   "settings.name": "Name",
@@ -3358,10 +3280,6 @@ const en = {
   "inspector.account": "Account",
   "inspector.list": "List",
   "inspector.stepDescription": "Explanation under the title (optional)",
-  "browser.takeOver": "Take over",
-  "browser.handBack": "Hand back",
-  "browser.driving":
-    "You’re in control of the browser – click and type in the page. The wizard waits.",
   "composer.send": "Send",
   "composer.stop": "Stop",
   "composer.sendBusy": "Send: before the next step (Enter) – {keys}: once the answer is done",
@@ -3416,12 +3334,6 @@ const en = {
   "location.unavailable":
     "Your device couldn’t find its location right now. Try again outdoors or type the address.",
   "location.timeout": "That took too long. Try again or type the address.",
-  "install.add": "Add to home screen",
-  "install.ios": "Tap “Share” below, then “Add to Home Screen”.",
-  "install.bookmark": "Bookmark this wizard",
-  "install.bookmark.mac": "Press ⌘ D to keep this wizard in your bookmarks.",
-  "install.bookmark.pc": "Press Ctrl + D to keep this wizard in your bookmarks.",
-  "install.app": "Open in the app",
   "install.app.offer":
     "Install the studio as an app: its own window, its own icon in the Dock or taskbar.",
   "install.app.browser":
@@ -4079,6 +3991,26 @@ function browserLang(): Lang | null {
  */
 export let lang: Lang = storedLang() ?? sharedLang() ?? browserLang() ?? "en";
 
+/** The person's own pick (or this browser's language): what `lang` goes back to after a page. */
+let picked: Lang = lang;
+
+/**
+ * The language this browser reads, for a wizard translated on request: any language, from the
+ * browser's languages, else the country of its time zone (`viewerLang`).
+ */
+export function viewerLang(): string | null {
+  if (typeof navigator === "undefined") {
+    return null;
+  }
+  let zone: string | null = null;
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    // no time zone to go by
+  }
+  return viewerLangOf(navigator.languages ?? [navigator.language], zone);
+}
+
 /**
  * The language the switch offers beside English: the one in effect when it is not English,
  * else the last other one the person picked, else this browser's; null where there is none —
@@ -4092,10 +4024,13 @@ export function localSide(): Lang | null {
 }
 
 const listeners = new Set<() => void>();
+/** Counts every change: a page's table can change while `lang` stays the same. */
+let version = 0;
 
 /** Switches the language in place and keeps the pick: the app renders again, nothing reloads. */
 export function setLang(next: Lang) {
   shareLang(next);
+  picked = next;
   if (next === lang) {
     return;
   }
@@ -4111,6 +4046,28 @@ export function setLang(next: Lang) {
   } catch {
     // the pick only lasts this page then
   }
+  version += 1;
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+/**
+ * A page in a language of its own (a wizard's page: its language, or the one it is translated
+ * into), without touching the person's pick: one of `LANGS` speaks its own strings, any other
+ * the runner's words from `table`, the rest in English. Null goes back to the pick.
+ */
+export function showLang(code: string | null, table?: RunnerTable | null) {
+  const next: Lang = code === null ? picked : isLang(code) ? code : "en";
+  const other = code !== null && !isLang(code) ? (table ?? null) : null;
+  if (next === lang && other === runnerTable()) {
+    return;
+  }
+  lang = next;
+  setRunnerLang(next);
+  setRunnerTable(other);
+  document.documentElement.lang = code ?? next;
+  version += 1;
   for (const listener of listeners) {
     listener();
   }
@@ -4118,22 +4075,30 @@ export function setLang(next: Lang) {
 
 /** The language, for a component that must render again when it changes — the app's root does. */
 export function useLang(): Lang {
-  return useSyncExternalStore(
+  useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    () => lang,
+    () => version,
   );
+  return lang;
 }
 
 /** What a run reports, in the language the person reads: its note where it has one. */
 export function eventText(ev: { message: string; note?: RunNote | null }): string {
-  return (ev.note && noteText(ev.note, lang)) || ev.message;
+  const table = runnerTable();
+  return (ev.note && noteText(ev.note, table?.lang ?? lang, table?.notes)) || ev.message;
 }
 
 /** A string in the language in effect: its plural form by `{count}` or `{n}`, its gaps filled. */
 export function t(key: Key, vars?: Record<string, string | number>): string {
+  // A page in a translated language: the runner's words from its table.
+  const table = runnerTable();
+  const own = table?.runner[key];
+  if (table && own !== undefined) {
+    return lineText(own, table.lang, vars);
+  }
   return textOf(TEXTS, key, lang, vars);
 }
 

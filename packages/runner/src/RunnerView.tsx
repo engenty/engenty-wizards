@@ -3,14 +3,16 @@ import {
   type PageStep,
   type ResultStep,
   type ReviewStep,
+  type Step,
   shownFields,
 } from "@engenty-wizards/shared/definition";
-import type { RunView } from "@engenty-wizards/shared/run";
+import type { RunView, StepOutput } from "@engenty-wizards/shared/run";
 import {
   ArrowLeft,
   ArrowRight,
   Bell,
   BellRing,
+  Languages,
   Pencil,
   RefreshCw,
   RotateCcw,
@@ -29,7 +31,7 @@ import {
 } from "./device";
 import { runBase, runnerEnv, withBase } from "./env.js";
 import { FieldInput, type Values } from "./fields";
-import { eventText, t } from "./i18n.js";
+import { eventText, setChoiceLabels, t } from "./i18n.js";
 import { DownloadButtons, OutputView } from "./outputs";
 import { ListCheck, ListDownloads, ListTable, StoreButton } from "./store";
 import { Button, Card, cn, LinkedText, Spinner, Textarea } from "./ui.js";
@@ -49,6 +51,8 @@ export interface RunSource {
   regenerate(stepId: string, target: string, note: string, items?: number[]): Promise<boolean>;
   back(): Promise<boolean>;
   retry(): Promise<boolean>;
+  /** A finished result's text in the language the run is read in (a translated wizard). */
+  translateResult?(stepId: string): Promise<boolean>;
 }
 
 type Run = RunSource;
@@ -631,7 +635,7 @@ function Result({
                 foot={`${view.wizard.title} · ${new Date().toLocaleDateString(runnerEnv().lang)}`}
               />
             </div>
-            <OutputView base={`${runBase(view.id)}`} step={s} output={output} />
+            <TranslatedOutput view={view} run={run} step={s} output={output} />
             {output?.assets?.some((a) => a.ai) ? (
               // Whoever publishes it has to say so too; the file already does, in its metadata.
               <p className="mt-3 text-[0.75rem] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
@@ -686,6 +690,63 @@ function Failed({ view, run }: { view: RunView; run: Run }) {
   );
 }
 
+/**
+ * A result in a translated run: as it was made, with the offer to read its text in the run's
+ * language; once translated, the translation with the way back to the original.
+ */
+function TranslatedOutput({
+  view,
+  run,
+  step,
+  output,
+}: {
+  view: RunView;
+  run: Run;
+  step: Step;
+  output: StepOutput | null;
+}) {
+  const [original, setOriginal] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const base = runBase(view.id);
+  const translated = view.translation?.results[step.id];
+  if (!(view.translation && output?.text && run.translateResult)) {
+    return <OutputView base={base} step={step} output={output} />;
+  }
+  const shown = translated && !original ? { ...output, text: translated } : output;
+  return (
+    <>
+      <OutputView base={base} step={step} output={shown} />
+      <div className="mt-3 flex items-center gap-3 text-[0.8125rem] text-ink-3">
+        {translated ? (
+          <>
+            {original ? null : <span>{t("translation.machine")}</span>}
+            <button
+              type="button"
+              className="underline-offset-4 hover:text-ink hover:underline coarse:min-h-11"
+              onClick={() => setOriginal((o) => !o)}
+            >
+              {t(original ? "translation.showTranslated" : "translation.showOriginal")}
+            </button>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            busy={busy}
+            onClick={async () => {
+              setBusy(true);
+              await run.translateResult?.(step.id);
+              setBusy(false);
+            }}
+          >
+            <Languages className="size-4" />{" "}
+            {busy ? t("translation.working") : t("result.translate")}
+          </Button>
+        )}
+      </div>
+    </>
+  );
+}
 export function RunnerBody({
   run,
   compact,
@@ -701,6 +762,7 @@ export function RunnerBody({
   stickyProgress?: boolean;
 }) {
   const { view } = run;
+  setChoiceLabels(view?.translation?.labels);
   useEffect(() => {
     onView?.(view);
   }, [view, onView]);

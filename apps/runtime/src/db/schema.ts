@@ -14,6 +14,7 @@ import type {
 } from "@engenty-wizards/shared/projects";
 import type { AskAnswer, RunAsk, RunNote, RunState } from "@engenty-wizards/shared/run";
 import type { RunnerSettings } from "@engenty-wizards/shared/runners";
+import type { TranslationMemory } from "@engenty-wizards/shared/translation";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { sql } from "drizzle-orm";
 import {
@@ -118,6 +119,8 @@ export const wizard = sqliteTable(
     revision: integer("revision").notNull().default(0),
     /** How the wizard is offered: the runner its link opens, the ones switched on. Null: steps and chat. */
     runners: text("runners", { mode: "json" }).$type<RunnerSettings>(),
+    /** The wizard's page offers it in the viewer's language, translated on request. */
+    translate: integer("translate", { mode: "boolean" }).notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -141,6 +144,27 @@ export const wizardVersion = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("wizard_version_n").on(t.wizardId, t.version)],
+);
+
+/**
+ * A wizard in one viewer's language: each original text the person reads with its translation,
+ * written by a model or by the author. Shared by every version; a new version's changed texts
+ * are added when the next viewer asks for the language.
+ */
+export const wizardTranslation = sqliteTable(
+  "wizard_translation",
+  {
+    wizardId: text("wizard_id")
+      .notNull()
+      .references(() => wizard.id, { onDelete: "cascade" }),
+    /** Any language, by its code ("fr"). */
+    lang: text("lang").notNull(),
+    texts: text("texts", { mode: "json" }).$type<TranslationMemory>().notNull(),
+    /** The published version whose texts it last completed. */
+    version: integer("version"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.wizardId, t.lang] })],
 );
 
 /** The draft's workspace: widget code, libraries, reference data. Content lives in the blob store. */
@@ -196,6 +220,8 @@ export const run = sqliteTable(
     mode: text("mode", { enum: ["test", "live"] }).notNull(),
     /** The door the run came through: steps, chat, or a plugin's runner. Null: the page. */
     runner: text("runner"),
+    /** The language the viewer reads the wizard in, translated on request; null: its own. */
+    lang: text("lang"),
     visitorId: text("visitor_id"),
     userId: text("user_id"),
     ipHash: text("ip_hash"),
