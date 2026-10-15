@@ -63,7 +63,7 @@ It needs nothing but `curl` and `tar` and asks for no password. It brings its ow
 Node you already have is left alone), installs engenty wizards into `~/.engenty/wizards` and
 then walks you through the rest:
 
-- **Your engenty account.** “Sign in, or create your account, now?”: a link and a code, and
+- **Your engenty account.** “Sign in or create your account now?”: a link and a code, and
   the browser for the sign-in, which also creates a new account (with your invitation code); what
   you publish on this computer then runs in the cloud too. Esc while it waits, or say no, and
   `wizards account sign-in` does it any time.

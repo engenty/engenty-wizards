@@ -322,7 +322,7 @@ const de: Record<Key, Line> = {
   "onboard.siteSub":
     "Nenn deine Website, und engenty holt sich Namen, Tätigkeit, Logo und Farben von dort. Jeder Wizard klingt dann wie du und sieht aus wie du. Keine Website? Schreib stattdessen eine Zeile über dich.",
   "onboard.siteSubPersonal":
-    "Hast du eine eigene Website? engenty holt sich von dort, wer du bist und was du tust, und jeder Wizard klingt dann nach dir. Keine Website? Schreib eine Zeile über dich, oder lass es einfach.",
+    "Hast du eine eigene Website? engenty liest dort, wer du bist und was du machst. Dann klingt jeder Wizard nach dir. Keine Website? Schreib eine Zeile über dich, oder lass es einfach weg.",
   "onboard.sitePlaceholder": "berger-fenster.at",
   "onboard.sitePlaceholderPersonal": "anna-berger.at",
   "onboard.read": "Einlesen",
@@ -2290,7 +2290,7 @@ const en = {
   "onboard.siteSub":
     "Enter your website and engenty picks up your name, what you do, your logo and colours from it. Every wizard then sounds like you and looks like you. No website? Write a line about yourself instead.",
   "onboard.siteSubPersonal":
-    "Got a website of your own? engenty picks up who you are and what you do from it, and every wizard then sounds like you. No website? Write a line about yourself, or just skip this.",
+    "Got a website of your own? engenty reads who you are and what you do there. Then every wizard sounds like you. No website? Write a line about yourself, or skip this.",
   "onboard.sitePlaceholder": "berger-windows.com",
   "onboard.sitePlaceholderPersonal": "annaberger.com",
   "onboard.read": "Read it",

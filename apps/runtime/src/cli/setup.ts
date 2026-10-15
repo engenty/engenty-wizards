@@ -409,8 +409,8 @@ export async function setup(paths: Layout, options: SetupOptions): Promise<boole
   if (options.next) {
     p.outro(
       options.next === "start"
-        ? "Set up. Starting engenty wizards…"
-        : `Set up. ${dim(`${cmd("help")} lists every command.`)}`,
+        ? "Setup is done. Starting engenty wizards…"
+        : `Setup is done. ${dim(`${cmd("help")} lists every command.`)}`,
     );
     return true;
   }
