@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.7.2",
+    "timestamp": 1792064363,
+    "commits": [
+      {
+        "id": "1f29bc7",
+        "message": "on a phone the read-only note leaves the top (a lock on the tabs instead); with the keyboard up the run page drops its bar, shrinks the title and keeps the focused field above Weiter",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.7.1",
-    "timestamp": 1792058127,
+    "timestamp": 1792058130,
     "commits": [
       {
         "id": "5842af1",
