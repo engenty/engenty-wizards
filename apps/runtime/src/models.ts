@@ -149,35 +149,15 @@ function envKey(name: LocalKey): string | undefined {
   return value || undefined;
 }
 
-/**
- * Gemini CLI no longer serves Google AI subscriptions; Antigravity took its place. Settings saved
- * before name it: its source moves over, and a class bound to one of its models runs on
- * Antigravity's model of that class.
- */
-function retireGemini(settings: LocalModelSettings): LocalModelSettings {
-  const source = (settings.source as string) === "gemini" ? "antigravity" : settings.source;
-  const bindings = { ...settings.bindings };
-  for (const [cls, ref] of Object.entries(bindings)) {
-    if (ref?.startsWith("gemini/")) {
-      const own = harness("antigravity")?.classes[cls as TextClass];
-      if (own) {
-        bindings[cls as ModelClass] = `antigravity/${own}`;
-      } else {
-        delete bindings[cls as ModelClass];
-      }
-    }
-  }
-  return { ...settings, source, bindings };
-}
-
 /** Reads the model settings and keys of a runtime that runs alone; called at start and after a change. */
 export async function loadLocalModels() {
   if (managed) {
     return;
   }
-  local.settings = retireGemini(
-    (await readSetting<LocalModelSettings>("models")) ?? { source: "own", bindings: {} },
-  );
+  local.settings = (await readSetting<LocalModelSettings>("models")) ?? {
+    source: "own",
+    bindings: {},
+  };
   const keys: ModelConfig["keys"] = {};
   for (const name of LOCAL_KEYS) {
     keys[name] = (await vaultGet(`key.${name}`)) ?? envKey(name);
