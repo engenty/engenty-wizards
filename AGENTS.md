@@ -8,4 +8,4 @@
 
 ## Copy
 
-- Before you add or change words a person reads (UI strings in English and German, CLI output, error messages, emails, docs pages), read [docs/copy-style.md](docs/copy-style.md) and follow it: its rules, its glossary, and its patterns for each kind of string. Write each language as a native speaker would; never translate sentence by sentence. `pnpm copy:check` checks the mechanical rules.
+- Words people read follow [docs/copy-style.md](docs/copy-style.md); `pnpm copy:check` checks it.
