@@ -315,6 +315,8 @@ export function OnboardingPage() {
         website: website?.trim() || null,
       }),
   });
+  /** Just them, no business or club: the pages ask about the person, not a team or a brand. */
+  const personal = profile.kind === "personal";
   /** On to the website, with the address's domain where it is a business's. */
   const toSite = () => {
     if (!site && guess.domain && profile.kind !== "personal" && !FREE_MAIL.has(guess.domain)) {
@@ -457,7 +459,12 @@ export function OnboardingPage() {
                 if (profile.kind === "corp" && profile.legalName.trim() && !team) {
                   setTeam(profile.legalName.trim());
                 }
-                setSub("team");
+                // Just them: no team to name (the account page renames it, should one come).
+                if (profile.kind === "personal") {
+                  toSite();
+                } else {
+                  setSub("team");
+                }
               }}
             >
               <p className="font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.14em]">
@@ -641,13 +648,13 @@ export function OnboardingPage() {
           {step === 2 ? (
             <>
               <p className="font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.14em]">
-                {t("onboard.kicker2")}
+                {t(personal ? "onboard.kicker2Personal" : "onboard.kicker2")}
               </p>
               <h1 className="font-display font-bold text-[2.5rem] leading-[1.05] tracking-[-0.02em] sm:text-[3.25rem]">
                 {t("onboard.site")}
               </h1>
               <p className="text-[1.0625rem] text-white/90 leading-relaxed">
-                {t("onboard.siteSub")}
+                {t(personal ? "onboard.siteSubPersonal" : "onboard.siteSub")}
               </p>
               {line === null ? (
                 <form
@@ -672,12 +679,19 @@ export function OnboardingPage() {
                   <input
                     value={site}
                     onChange={(e) => setSite(e.target.value)}
-                    placeholder={t("onboard.sitePlaceholder")}
+                    placeholder={t(
+                      personal ? "onboard.sitePlaceholderPersonal" : "onboard.sitePlaceholder",
+                    )}
                     autoCapitalize="none"
                     aria-label={t("onboard.site")}
                     className={FIELD}
                   />
-                  <p className="-mt-2 text-[0.875rem] text-white/75">{t("onboard.siteNameHint")}</p>
+                  {/* A name to keep in mind is a business's or a club's. */}
+                  {personal ? null : (
+                    <p className="-mt-2 text-[0.875rem] text-white/75">
+                      {t("onboard.siteNameHint")}
+                    </p>
+                  )}
                   {outcome ? (
                     <p className="flex items-center gap-2 text-[0.9375rem] text-(color:--moss)">
                       <Check className="size-4" />
@@ -717,7 +731,9 @@ export function OnboardingPage() {
                   <textarea
                     value={line}
                     onChange={(e) => setLine(e.target.value)}
-                    placeholder={t("onboard.linePlaceholder")}
+                    placeholder={t(
+                      personal ? "onboard.linePlaceholderPersonal" : "onboard.linePlaceholder",
+                    )}
                     rows={3}
                     maxLength={8000}
                     aria-label={t("onboard.line")}
