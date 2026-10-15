@@ -566,6 +566,13 @@ describe("a runtime of a Manage-App", () => {
     expect(cookieOf(await handoff(windowCookie), "wz_session")).toBe("");
   });
 
+  it("signs out here and names where the account's sign-in ends", async () => {
+    const session = await signIn("code-a");
+    const res = await post("/api/auth/sign-out", session, {});
+    expect(await res.json()).toEqual({ ok: true, account: `${issuer}/api/sign-out` });
+    expect((await get("/api/studio/me", session)).status).toBe(401);
+  });
+
   it("suspends and deletes a tenant when the Manage-App says so", async () => {
     const tell = (id: string, action: string, key = SERVICE_KEY) =>
       app.fetch(

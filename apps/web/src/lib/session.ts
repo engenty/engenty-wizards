@@ -427,13 +427,29 @@ export function useRefreshMe() {
 }
 
 export async function signOut() {
-  await fetch(withBase("/api/auth/sign-out"), {
+  const res = await fetch(withBase("/api/auth/sign-out"), {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json" },
     body: "{}",
   });
-  window.location.href = `${STUDIO}/`;
+  const { account } = (await res.json().catch(() => ({}))) as { account?: string | null };
+  if (!account) {
+    window.location.href = `${STUDIO}/`;
+    return;
+  }
+  // Signed in through the account: that sign-in ends as well, and the account sends the browser
+  // back to the studio's start page.
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = account;
+  const back = document.createElement("input");
+  back.type = "hidden";
+  back.name = "return";
+  back.value = `${window.location.origin}${STUDIO}/`;
+  form.append(back);
+  document.body.append(form);
+  form.submit();
 }
 
 /** Sign-in happens at the Manage-App; it sends the person back to `returnTo`. */

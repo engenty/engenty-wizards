@@ -407,5 +407,11 @@ export const authRoutes = new Hono()
     }
     deleteCookie(c, SESSION_COOKIE, { path: cookiePath });
     deleteCookie(c, LOCAL_COOKIE, { path: cookiePath });
-    return c.json({ ok: true });
+    if (!managed) {
+      return c.json({ ok: true });
+    }
+    // The person signs out of the account too (the Manage-App's `/api/sign-out`, a form the page
+    // sends there): still signed in there, the sign-in page would sign them in again at once.
+    const d = await discovery().catch(() => null);
+    return c.json({ ok: true, account: d ? new URL("/api/sign-out", d.issuer).toString() : null });
   });
