@@ -88,11 +88,29 @@ brought up to date at the next start.
 ## Remove
 
 ```bash
-wizards stop
-wizards autostart off
-wizards disconnect
+wizards uninstall
 ```
 
-`wizards disconnect` takes your wizards out of your AI apps again. Then delete `~/.engenty/wizards`
-and `~/.local/bin/wizards`. Your wizards and results are in `~/.engenty/wizards/data`:
-[back that folder up](./data.md) first if you want to keep them.
+First it shows what it will remove: your wizards in your AI apps, starting at login, everything of
+engenty wizards that is running, the program in `~/.engenty/wizards` and the command
+`~/.local/bin/wizards`. Then it asks about your data on its own.
+
+- **Your data is kept** unless you choose otherwise. It stays in `~/.engenty/wizards/data`, and
+  installing again picks it up.
+- **To delete it**, you confirm once more. If a wizard exists only on this computer, you type
+  `delete`. Before that, it offers to save a backup in your home folder. On a Mac, the keys in the
+  Keychain go with it.
+
+At the end it checks again and lists what it removed, what it kept and anything it couldn’t
+remove, with the command that does it.
+
+If the `wizards` command no longer runs, `npx wizards uninstall` does the same.
+
+| Option | What it does |
+|---|---|
+| `--dry-run` | Only shows what it would remove |
+| `--yes` | Removes everything without asking and keeps your data |
+| `--yes --delete-data` | Deletes your data as well |
+| `--backup` | With `--delete-data`: saves a backup of your data first |
+
+Without a terminal, it asks for `--yes`.

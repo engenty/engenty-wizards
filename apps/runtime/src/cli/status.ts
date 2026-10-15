@@ -1,9 +1,10 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { accountState, describeAccount } from "./account.js";
-import { autostartState, setAutostart } from "./autostart.js";
+import { type Autostart, autostartForStatus, autostartState, setAutostart } from "./autostart.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
+import { findWizardsProcesses, stopProcesses } from "./processes.js";
 import { entryUrl, runningRuntime, settings, startInBackground } from "./start.js";
 import { bad, badge, cmd, cyan, dim, no, ok, tilde } from "./ui.js";
 
@@ -17,7 +18,7 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
     runningRuntime(dataDir),
     detectClients(paths),
     findFfmpeg(),
-    autostartState(paths),
+    autostartForStatus(paths),
     accountState(),
   ]);
   const chrome = findChrome();
@@ -101,21 +102,49 @@ async function ended(pid: number, ms: number): Promise<boolean> {
   return false;
 }
 
-/** Stops the runtime that runs on this install's data folder. */
+/**
+ * Stops engenty wizards: the runtime that runs on this install's data folder, and every other
+ * runtime or `start` of this install still about (an older `start --no-open` whose note another
+ * one overwrote). `wizards mcp` processes belong to the AI apps and stay.
+ */
 export async function stop(paths: Layout): Promise<number> {
   const { dataDir } = settings(paths);
   const running = await runningRuntime(dataDir);
-  if (!running) {
+  const found = findWizardsProcesses(paths.home);
+  const pids = [
+    ...new Set([
+      ...(running ? [running.pid] : []),
+      ...found.filter((p) => p.kind === "runtime" || p.kind === "start").map((p) => p.pid),
+    ]),
+  ];
+  if (!pids.length) {
     console.log("engenty wizards isn’t running.");
     return 0;
   }
-  process.kill(running.pid, "SIGTERM");
-  if (await ended(running.pid, 8000)) {
-    console.log(`Stopped (pid ${running.pid}). Your data is kept.`);
-    return 0;
+  const left = await stopProcesses(pids);
+  const stopped = pids.length - left.length;
+  if (stopped) {
+    console.log(
+      pids.length === 1
+        ? `Stopped (pid ${pids[0]}). Your data is kept.`
+        : `Stopped ${stopped} processes (pid ${pids.filter((pid) => !left.includes(pid)).join(", ")}). Your data is kept.`,
+    );
   }
-  console.error(`engenty wizards (pid ${running.pid}) didn’t stop within 8 seconds.`);
-  return 1;
+  const apps = found.filter((p) => p.kind === "mcp").length;
+  if (apps && !left.length) {
+    console.log(
+      dim(
+        `${apps === 1 ? "An AI app connection still runs" : `${apps} AI app connections still run`}. Using a wizard there starts engenty wizards again.`,
+      ),
+    );
+  }
+  if (left.length) {
+    console.error(
+      `${left.length === 1 ? "A process" : `${left.length} processes`} of engenty wizards didn’t stop (pid ${left.join(", ")}). To stop ${left.length === 1 ? "it" : "them"}: ${cyan(`kill -9 ${left.join(" ")}`)}`,
+    );
+    return 1;
+  }
+  return 0;
 }
 
 /**
@@ -168,14 +197,17 @@ export async function autostart(paths: Layout, value: string): Promise<number> {
     console.error(`Use ${cmd("autostart on")} or ${cmd("autostart off")}.`);
     return 2;
   }
-  let state = await autostartState(paths);
-  if (value && !("unavailable" in state)) {
-    try {
+  let state: Autostart;
+  try {
+    state = await autostartState(paths);
+    if (value && !("unavailable" in state)) {
       state = await setAutostart(paths, value === "on");
-    } catch (error) {
-      console.error(`Couldn’t turn start at login ${value}: ${(error as Error).message}`);
-      return 1;
     }
+  } catch (error) {
+    console.error(
+      `Couldn’t ${value ? `turn start at login ${value}` : "check start at login"}: ${(error as Error).message}`,
+    );
+    return 1;
   }
   if ("unavailable" in state) {
     console.error(`Start at login isn’t available here: ${state.unavailable}.`);

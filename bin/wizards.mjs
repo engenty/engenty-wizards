@@ -149,57 +149,88 @@ if (command === "version") {
   console.log(versionOf(root));
   process.exit(0);
 }
-const checkout = existsSync(join(root, "pnpm-workspace.yaml"));
-// Windows has no installer yet, and the setup, the service and the AI clients are written for
-// macOS and Linux: it says so instead of half working. What needs no install still runs.
-if (process.platform === "win32" && !checkout && !RUN_HERE.includes(command)) {
-  console.error(
-    "engenty wizards for Windows is coming soon.\n\n" +
-      "Until then it runs in WSL (Windows Subsystem for Linux). In PowerShell:\n\n" +
-      "  wsl --install\n\n" +
-      "then, in the Ubuntu terminal that opens:\n\n" +
-      "  curl -fsSL https://engenty.ai/install.sh | bash\n\n" +
-      "https://engenty.ai/docs/user/install\n",
-  );
-  process.exit(1);
+// The uninstall runs from whichever copy is at hand (npx too), never installs or updates first,
+// and never hands over: the install it takes away may no longer run. An old Node runs it with
+// the install's own Node, if that is still there.
+if (command === "uninstall") {
+  if (currentNode) {
+    await import("../apps/runtime/dist/cli/uninstall-main.js");
+  } else {
+    const node = join(home, "tools", "node", "bin", "node");
+    const result = existsSync(node)
+      ? spawnSync(node, [fileURLToPath(import.meta.url), ...args], { stdio: "inherit" })
+      : null;
+    if (result && !result.error && result.status !== null) {
+      process.exit(result.status);
+    }
+    console.error(
+      `The uninstall needs Node.js 24.11 or newer. This is ${process.version}.\n` +
+        "To remove engenty wizards by hand (your data is in ~/.engenty/wizards/data):\n\n" +
+        "  launchctl bootout gui/$(id -u)/com.engenty.wizards.login   # macOS\n" +
+        "  rm -f ~/Library/LaunchAgents/com.engenty.wizards.login.plist\n" +
+        "  systemctl --user disable --now engenty-wizards.service   # Linux\n" +
+        "  pkill -f .engenty/wizards/\n" +
+        "  rm -rf ~/.engenty/wizards ~/.local/bin/wizards\n",
+    );
+    process.exit(1);
+  }
+} else {
+  await main();
 }
-const fromNpm = process.platform !== "win32" && !checkout && !isInstall();
-if (fromNpm && (!currentNode || !RUN_HERE.includes(command))) {
-  const own = versionOf(root) || "0.0.0";
-  const installed = existsSync(wrapper)
-    ? versionOf(join(runtime, "node_modules", "wizards"))
-    : null;
-  if (!installed || older(installed, own)) {
-    const quiet = RUN_HERE.includes(command);
-    const running = installed && runs();
-    if (install(own, quiet)) {
-      // What runs is still the old version: it starts again as the new one.
-      if (running) {
-        spawnSync(wrapper, ["restart"], {
-          stdio: ["ignore", quiet ? 2 : "inherit", "inherit"],
-          env: terminalEnv(),
-        });
+
+async function main() {
+  const checkout = existsSync(join(root, "pnpm-workspace.yaml"));
+  // Windows has no installer yet, and the setup, the service and the AI clients are written for
+  // macOS and Linux: it says so instead of half working. What needs no install still runs.
+  if (process.platform === "win32" && !checkout && !RUN_HERE.includes(command)) {
+    console.error(
+      "engenty wizards for Windows is coming soon.\n\n" +
+        "Until then it runs in WSL (Windows Subsystem for Linux). In PowerShell:\n\n" +
+        "  wsl --install\n\n" +
+        "then, in the Ubuntu terminal that opens:\n\n" +
+        "  curl -fsSL https://engenty.ai/install.sh | bash\n\n" +
+        "https://engenty.ai/docs/user/install\n",
+    );
+    process.exit(1);
+  }
+  const fromNpm = process.platform !== "win32" && !checkout && !isInstall();
+  if (fromNpm && (!currentNode || !RUN_HERE.includes(command))) {
+    const own = versionOf(root) || "0.0.0";
+    const installed = existsSync(wrapper)
+      ? versionOf(join(runtime, "node_modules", "wizards"))
+      : null;
+    if (!installed || older(installed, own)) {
+      const quiet = RUN_HERE.includes(command);
+      const running = installed && runs();
+      if (install(own, quiet)) {
+        // What runs is still the old version: it starts again as the new one.
+        if (running) {
+          spawnSync(wrapper, ["restart"], {
+            stdio: ["ignore", quiet ? 2 : "inherit", "inherit"],
+            env: terminalEnv(),
+          });
+        }
+      } else if (currentNode && !installed) {
+        console.error(
+          `The install into ${tilde(home)} failed; this time engenty wizards runs from npm.\n`,
+        );
       }
-    } else if (currentNode && !installed) {
+    } else if (older(own, installed)) {
       console.error(
-        `The install into ${tilde(home)} failed; this time engenty wizards runs from npm.\n`,
+        `${tilde(home)} has engenty wizards ${installed}, newer than ${own}; that one runs.`,
       );
     }
-  } else if (older(own, installed)) {
+    if (existsSync(wrapper) && versionOf(join(runtime, "node_modules", "wizards"))) {
+      process.exit(await handOver());
+    }
+  }
+  if (!currentNode) {
     console.error(
-      `${tilde(home)} has engenty wizards ${installed}, newer than ${own}; that one runs.`,
+      `engenty wizards needs Node.js 24.11 or newer. This is ${process.version}.\n` +
+        "The installer brings its own and leaves yours alone:\n\n" +
+        "  curl -fsSL https://engenty.ai/install.sh | bash\n",
     );
+    process.exit(1);
   }
-  if (existsSync(wrapper) && versionOf(join(runtime, "node_modules", "wizards"))) {
-    process.exit(await handOver());
-  }
+  await import("../apps/runtime/dist/cli/main.js");
 }
-if (!currentNode) {
-  console.error(
-    `engenty wizards needs Node.js 24.11 or newer. This is ${process.version}.\n` +
-      "The installer brings its own and leaves yours alone:\n\n" +
-      "  curl -fsSL https://engenty.ai/install.sh | bash\n",
-  );
-  process.exit(1);
-}
-await import("../apps/runtime/dist/cli/main.js");
