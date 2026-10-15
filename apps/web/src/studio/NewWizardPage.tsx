@@ -422,10 +422,10 @@ export function NewWizardPage() {
                 add(picked);
               }}
             />
+            {speech.supported ? <DictationButton speech={speech} labelled /> : null}
             <span className="min-w-0 flex-1 truncate text-[0.75rem] text-ink-4">
               {dropping ? t("new.dropHint") : null}
             </span>
-            {speech.supported ? <DictationButton speech={speech} /> : null}
             <Button
               size="md"
               onClick={submit}

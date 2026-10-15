@@ -363,13 +363,15 @@ export type Speech = ReturnType<typeof useDictation>;
 
 /**
  * The mic button and, beside it, its menu: which microphone, and whether the button records while
- * it is held (push to talk) or on and off with a click.
+ * it is held (push to talk) or on and off with a click. `labelled`: an outlined button that says
+ * what it does, where the row has the room (the new-wizard page).
  */
-export function DictationButton({ speech }: { speech: Speech }) {
+export function DictationButton({ speech, labelled }: { speech: Speech; labelled?: boolean }) {
   const [prefs, setPrefs] = useDictationSettings();
   const mics = useMicrophones();
-  const [menu, setMenu] = useState<{ bottom: number; right: number } | null>(null);
+  const [menu, setMenu] = useState<{ bottom: number; left?: number; right?: number } | null>(null);
   const opener = useRef<HTMLButtonElement>(null);
+  const group = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menu) {
@@ -400,9 +402,14 @@ export function DictationButton({ speech }: { speech: Speech }) {
   }, [menu, mics.refresh]);
   const open = () => {
     const rect = opener.current?.getBoundingClientRect();
-    if (rect) {
+    const start = group.current?.getBoundingClientRect();
+    if (rect && start) {
       // Fixed to the window: a card around the composer that clips its content does not cut it.
-      setMenu({ bottom: window.innerHeight - rect.top + 8, right: window.innerWidth - rect.right });
+      // The labelled button stands at the start of its row, so its menu opens to the right.
+      const bottom = window.innerHeight - rect.top + 8;
+      setMenu(
+        labelled ? { bottom, left: start.left } : { bottom, right: window.innerWidth - rect.right },
+      );
     }
   };
 
@@ -449,26 +456,51 @@ export function DictationButton({ speech }: { speech: Speech }) {
   // A chosen microphone that is gone falls back to the default one.
   const chosen = choices.some((c) => c.deviceId === prefs.deviceId) ? prefs.deviceId : "";
 
+  const icon = speech.processing ? (
+    <Spinner className="size-4" />
+  ) : speech.listening ? (
+    <Square className="size-3.5 animate-pulse-dot fill-current" />
+  ) : (
+    <Mic className="size-4" />
+  );
+
   return (
-    <div className="flex shrink-0 items-center">
-      <IconButton
-        label={label}
-        aria-pressed={speech.listening}
-        disabled={speech.processing}
-        {...hold}
-        className={cn(
-          "touch-none",
-          speech.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
-        )}
-      >
-        {speech.processing ? (
-          <Spinner className="size-4" />
-        ) : speech.listening ? (
-          <Square className="size-3.5 animate-pulse-dot fill-current" />
-        ) : (
-          <Mic className="size-4" />
-        )}
-      </IconButton>
+    <div ref={group} className="flex shrink-0 items-center">
+      {labelled ? (
+        <button
+          type="button"
+          title={label}
+          aria-pressed={speech.listening}
+          disabled={speech.processing}
+          {...hold}
+          className={cn(
+            "inline-flex h-10 touch-none select-none items-center gap-2 whitespace-nowrap rounded-full border px-4 font-medium text-sm transition disabled:opacity-60 coarse:h-11",
+            speech.listening
+              ? "border-rose/40 bg-rose-tint text-rose"
+              : "border-border text-ink hover:bg-paper-2",
+          )}
+        >
+          {icon}
+          {speech.processing
+            ? t("dictation.writing")
+            : speech.listening
+              ? t("dictation.stop")
+              : t("dictation.speak")}
+        </button>
+      ) : (
+        <IconButton
+          label={label}
+          aria-pressed={speech.listening}
+          disabled={speech.processing}
+          {...hold}
+          className={cn(
+            "touch-none",
+            speech.listening && "bg-rose-tint text-rose hover:bg-rose-tint hover:text-rose",
+          )}
+        >
+          {icon}
+        </IconButton>
+      )}
       <button
         ref={opener}
         type="button"
@@ -478,7 +510,8 @@ export function DictationButton({ speech }: { speech: Speech }) {
         aria-expanded={Boolean(menu)}
         onClick={() => (menu ? setMenu(null) : open())}
         className={cn(
-          "-ml-1.5 inline-flex h-9 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition hover:text-ink coarse:h-11",
+          "inline-flex h-9 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition hover:text-ink coarse:h-11",
+          labelled ? "ml-0.5" : "-ml-1.5",
           menu && "text-ink",
         )}
       >
@@ -490,7 +523,11 @@ export function DictationButton({ speech }: { speech: Speech }) {
           role="menu"
           aria-label={t("dictation.settings")}
           className="fixed z-50 w-72 max-w-[calc(100vw-2rem)] animate-rise rounded-xl bg-card p-1.5 text-[0.875rem] shadow-overlay ring-1 ring-border-soft"
-          style={{ bottom: menu.bottom, right: Math.max(16, menu.right - 8) }}
+          style={
+            menu.left === undefined
+              ? { bottom: menu.bottom, right: Math.max(16, (menu.right ?? 0) - 8) }
+              : { bottom: menu.bottom, left: Math.max(16, menu.left) }
+          }
         >
           <p className="px-2.5 pt-1.5 pb-1 text-[0.75rem] text-ink-3">
             {t("dictation.microphone")}
