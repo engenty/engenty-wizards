@@ -4,6 +4,10 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.7.3] - 2026-10-15
+- FIXED **[studio]** Template cards on a phone in a column with a block title (Safari cut the footer off a card whose title wraps); a search brings its field to the top so results show
+- FIXED **[cli]** Onboarding sign-in a new person can finish or skip (#38)
+
 ## [0.7.2] - 2026-10-15
 - FIXED **[studio]** On a phone the read-only note leaves the top (a lock on the tabs instead); with the keyboard up the run page drops its bar, shrinks the title and keeps the focused field above Weiter
 
