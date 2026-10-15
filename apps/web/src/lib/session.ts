@@ -46,7 +46,8 @@ export interface LocalModels {
   source: HarnessId | "account" | "own";
   bindings: Record<ModelClass, string>;
   ollamaUrl: string;
-  keys: { gateway: boolean; openai: boolean; anthropic: boolean };
+  /** Which providers have a key stored, by provider id. */
+  keys: Partial<Record<string, boolean>>;
 }
 
 /** Apple Intelligence as the runtime sees it: supported by the machine, answering, or why not. */

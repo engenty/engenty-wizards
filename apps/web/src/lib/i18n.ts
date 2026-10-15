@@ -74,15 +74,16 @@ const de: Record<Key, Line> = {
   "local.sourceOwn": "Eigene API-Keys",
   "local.keys": "API-Keys",
   "local.keysHint":
-    "Ein API-Key reicht. Die Keys liegen im Schlüsselbund dieses Geräts, nie in der Datenbank.",
+    "Ein API-Key reicht. Testen prüft ihn beim Anbieter. Die Keys liegen im Schlüsselbund dieses Geräts, nie in der Datenbank.",
   "local.keySet": "hinterlegt",
-  "local.keyEmpty": "nicht hinterlegt",
   "local.keyRemove": "Entfernen",
-  "local.classes": "Modell je Klasse",
-  "local.classesHint":
-    "Ein Schritt nennt nur die Klasse. Hier steht, welches Modell sie bedient, z. B. anthropic/claude-haiku-4.5, openai:gpt-5.4-mini oder ollama:qwen3.",
-  "local.save": "Speichern",
-  "local.saved": "Gespeichert",
+  "local.keyGet": "Key holen",
+  "local.keyWorks": "Funktioniert. Deine Wizards schreiben mit {model}.",
+  "local.keyWorksOther": "Funktioniert. Deine Wizards schreiben weiter mit {model}.",
+  "local.keyWorksPlain": "Funktioniert.",
+  "local.ollamaWhere": "auf diesem Computer",
+  "local.modelsLater":
+    "Welches Modell was übernimmt, lässt sich später unter Einstellungen → Modelle ändern.",
   "local.chat": "Der Chat im Studio antwortet über",
   "local.chatModels": "Modellklasse Highest",
   "local.chatClaude": "Claude-Abo (Claude Code)",
@@ -377,7 +378,7 @@ const de: Record<Key, Line> = {
   "setup.ready": "Alles bereit.",
   "setup.noHarness":
     "Noch kein KI-Client installiert. Wähle einen aus – er wird dann hier installiert. Oder trage eigene API-Keys ein.",
-  "setup.ownDesc": "AI Gateway, OpenAI, Anthropic oder Ollama.",
+  "setup.ownDesc": "OpenAI, Anthropic, Google, AI Gateway oder Ollama.",
   "setup.appleDesc": "Das Modell auf diesem Mac – ohne Konto, ohne Internet.",
   "setup.appleHint":
     "Kurze Texte und Entscheidungen übernimmt Apple Intelligence auf diesem Mac. Nichts verlässt ihn. Für Recherche, lange Dokumente und Code richtest du später unter Einstellungen → Modelle einen weiteren Zugang ein.",
@@ -2045,15 +2046,15 @@ const en = {
   "local.sourceOwn": "Your own keys",
   "local.keys": "Keys",
   "local.keysHint":
-    "One key is enough. Keys stay in this computer’s keychain, never in the database.",
+    "One key is enough. Test checks it with the provider. Keys stay in this computer’s keychain, never in the database.",
   "local.keySet": "stored",
-  "local.keyEmpty": "not stored",
   "local.keyRemove": "Delete",
-  "local.classes": "Model per class",
-  "local.classesHint":
-    "A step only names the class. Here you choose which model handles it, e.g. anthropic/claude-haiku-4.5, openai:gpt-5.4-mini or ollama:qwen3.",
-  "local.save": "Save",
-  "local.saved": "Saved",
+  "local.keyGet": "Get a key",
+  "local.keyWorks": "Works. Your wizards write with {model}.",
+  "local.keyWorksOther": "Works. Your wizards keep writing with {model}.",
+  "local.keyWorksPlain": "Works.",
+  "local.ollamaWhere": "on this computer",
+  "local.modelsLater": "Which model does which job can be changed later under Settings → Models.",
   "local.chat": "The studio chat uses",
   "local.chatModels": "Model class Highest",
   "local.chatClaude": "Claude subscription (Claude Code)",
@@ -2344,7 +2345,7 @@ const en = {
   "setup.ready": "All set.",
   "setup.noHarness":
     "No AI client is installed yet. Choose one and it installs right here, or enter your own keys.",
-  "setup.ownDesc": "AI Gateway, OpenAI, Anthropic or Ollama.",
+  "setup.ownDesc": "OpenAI, Anthropic, Google, AI Gateway or Ollama.",
   "setup.appleDesc": "The model on this Mac – no account, no internet.",
   "setup.appleHint":
     "Apple Intelligence handles short texts and decisions on this Mac; nothing leaves it. For research, long documents and code, add another option later under Settings → Models.",
