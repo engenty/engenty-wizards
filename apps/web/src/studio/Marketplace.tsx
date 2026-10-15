@@ -924,6 +924,7 @@ export function MarketplaceBrowser({
   busy,
   open: opened,
   search: searchFor,
+  onGuestOpen,
 }: {
   /** Makes a wizard of an entry; left out where nothing is made, the entries are only shown. */
   onUse?: (entry: MarketplaceEntry) => void;
@@ -932,6 +933,11 @@ export function MarketplaceBrowser({
   open?: string | null;
   /** Words to search for, handed in from outside (the wish on the start page); each hand-in sets the field. */
   search?: { text: string } | null;
+  /**
+   * Someone not signed in (the studio's start page for guests): the gallery's public list, no
+   * stars, and an entry opens by signing in first.
+   */
+  onGuestOpen?: (entry: MarketplaceEntry) => void;
 }) {
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -959,7 +965,7 @@ export function MarketplaceBrowser({
       if (starred) {
         params.set("starred", "1");
       }
-      return api.get<SearchPage>(`/api/studio/marketplace?${params}`);
+      return api.get<SearchPage>(`/api/${onGuestOpen ? "guest" : "studio"}/marketplace?${params}`);
     },
     initialPageParam: 0,
     getNextPageParam: (last, pages) => {
@@ -1090,15 +1096,17 @@ export function MarketplaceBrowser({
             {u.label}
           </button>
         ))}
-        <button
-          type="button"
-          aria-pressed={starred}
-          onClick={() => setStarred(!starred)}
-          className={chip(starred)}
-        >
-          <Star className={cn("size-3.5", starred && "fill-amber text-amber")} />
-          {t("market.starred")}
-        </button>
+        {onGuestOpen ? null : (
+          <button
+            type="button"
+            aria-pressed={starred}
+            onClick={() => setStarred(!starred)}
+            className={chip(starred)}
+          >
+            <Star className={cn("size-3.5", starred && "fill-amber text-amber")} />
+            {t("market.starred")}
+          </button>
+        )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-1 gap-y-2 sm:mt-6">
         {starred
@@ -1141,7 +1149,11 @@ export function MarketplaceBrowser({
       {shown.length ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((e) => (
-            <EntryCard key={e.id} entry={e} onOpen={() => setPicked(e.id)} />
+            <EntryCard
+              key={e.id}
+              entry={e}
+              onOpen={() => (onGuestOpen ? onGuestOpen(e) : setPicked(e.id))}
+            />
           ))}
         </div>
       ) : (

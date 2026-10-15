@@ -340,12 +340,26 @@ export async function searchMarketplace(search: MarketplaceSearch): Promise<Mark
   };
 }
 
+/**
+ * The gallery for someone not signed in (the studio's start page for guests): what the
+ * marketplace lists, without a tenant's stars and plugins. An entry that needs a plugin says so.
+ */
+export function searchMarketplaceAsGuest(
+  search: Omit<MarketplaceSearch, "starred">,
+): Promise<MarketplaceResult> {
+  return searchListed(search, true);
+}
+
 /** Searches the marketplace; without an answer, what is kept here, scored the same way. */
-async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResult> {
+async function searchListed(search: MarketplaceSearch, guest = false): Promise<MarketplaceResult> {
   const { q = "", lang, starred: onlyStarred, limit = 60, offset = 0, ...filters } = search;
-  const stars = await starredIds();
+  const stars = guest ? [] : await starredIds();
   const starred = new Set(stars);
-  const unavailable = await missingCapabilities();
+  const unavailable = guest ? new Set<Capability>() : await missingCapabilities();
+  const plugged = (entries: MarketplaceEntry[]) =>
+    guest
+      ? entries.map((e) => (e.plugins?.length ? { ...e, needs: e.plugins } : e))
+      : withPlugins(entries);
   const params = new URLSearchParams({ lang, limit: String(limit), offset: String(offset) });
   if (onlyStarred) {
     params.set("ids", stars.join(","));
@@ -371,7 +385,7 @@ async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResul
     );
     return {
       ...remote,
-      entries: await withPlugins(
+      entries: await plugged(
         remote.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
       ),
       offline: false,
@@ -389,7 +403,7 @@ async function searchListed(search: MarketplaceSearch): Promise<MarketplaceResul
   );
   return {
     ...page,
-    entries: await withPlugins(
+    entries: await plugged(
       page.entries.map((e) => asEntry(e, starred, unavailable, optional.get(e.id))),
     ),
     offline: true,

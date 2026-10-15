@@ -12,6 +12,7 @@ import {
   asLang,
   marketplaceDetail,
   searchMarketplace,
+  searchMarketplaceAsGuest,
   starEntry,
 } from "../services/marketplace.js";
 import { notFoundAnswer } from "./lang.js";
@@ -50,3 +51,9 @@ export const marketplaceStudio = new Hono<{ Variables: { user: SessionUser } }>(
     await starEntry(c.get("user").tenantId, c.req.param("id"), false);
     return c.json({ ok: true });
   });
+
+/** The gallery for someone not signed in (the studio's start page for guests): only the search. */
+export const marketplaceGuest = new Hono().get("/", async (c) => {
+  const { lang, starred: _starred, ...search } = searchSchema.parse(c.req.query());
+  return c.json(await searchMarketplaceAsGuest({ ...search, lang: asLang(lang) }));
+});

@@ -6,7 +6,7 @@ import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
 import { api } from "../lib/api";
 import { type Key, t } from "../lib/i18n";
-import { useCurrentProject, useMe } from "../lib/session";
+import { pendingWish, useCurrentProject, useMe } from "../lib/session";
 import { useGround } from "../lib/theme";
 import { cn } from "../ui";
 import { LangSwitch } from "./LangSwitch";
@@ -128,6 +128,8 @@ export function OnboardingPage() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  // A wish typed before signing in (GuestStartPage): in sight here, built on "new" right after.
+  const [wish] = useState(pendingWish);
 
   const rename = useMutation({
     mutationFn: (name: string) => api.put("/api/studio/team", { name }),
@@ -192,8 +194,19 @@ export function OnboardingPage() {
         <LangSwitch tone="ground" ink={GROUND_INK} />
       </header>
       <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 py-10 lg:grid-cols-[5fr_7fr] lg:gap-12">
-        <div className="flex justify-center max-lg:order-first">
+        <div className="flex flex-col items-center gap-8 max-lg:order-first">
           <Mascot kind="drop" size={240} fluffy coat="fur" />
+          {wish ? (
+            <figure className="w-full max-w-sm rounded-[18px] bg-white/15 px-5 py-4">
+              <figcaption className="font-medium text-[0.75rem] text-white/85 uppercase tracking-[0.14em]">
+                {t("onboard.wish")}
+              </figcaption>
+              <blockquote className="mt-1.5 line-clamp-6 whitespace-pre-line break-words text-[1rem] leading-relaxed">
+                {wish}
+              </blockquote>
+              <p className="mt-2 text-[0.8125rem] text-white/75">{t("onboard.wishNext")}</p>
+            </figure>
+          ) : null}
         </div>
         <div key={step} className="flex min-w-0 max-w-2xl animate-rise flex-col gap-5">
           {step === 1 ? (

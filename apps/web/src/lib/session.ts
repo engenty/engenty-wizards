@@ -452,7 +452,56 @@ export async function signOut() {
   form.submit();
 }
 
-/** Sign-in happens at the Manage-App; it sends the person back to `returnTo`. */
-export function signIn(returnTo = window.location.pathname) {
-  window.location.href = withBase(`/api/auth/login?return=${encodeURIComponent(returnTo)}`);
+/**
+ * Sign-in happens at the Manage-App; it sends the person back to `returnTo`. A `wish` (the
+ * guest start page's) goes along, so the sign-in page shows what is about to be built.
+ */
+export function signIn(returnTo = window.location.pathname, wish?: string) {
+  const query = new URLSearchParams({ return: returnTo });
+  if (wish?.trim()) {
+    query.set("wish", wish.trim());
+  }
+  window.location.href = withBase(`/api/auth/login?${query}`);
+}
+
+// What a guest asked to be built on the start page, kept in this browser across the sign-in
+// (and the team's first visit) until the new-wizard page has built it.
+const WISH_KEY = "wizards.wish";
+/** A wish older than this is not built any more: the person has moved on. */
+const WISH_DAYS = 1;
+
+export function keepWish(text: string) {
+  try {
+    localStorage.setItem(WISH_KEY, JSON.stringify({ text, at: Date.now() }));
+  } catch {
+    // Without storage the wish still travels in the sign-in's way back.
+  }
+}
+
+/** The wish a guest asked to be built, or null. */
+export function pendingWish(): string | null {
+  try {
+    const kept = JSON.parse(localStorage.getItem(WISH_KEY) ?? "null") as {
+      text?: unknown;
+      at?: unknown;
+    } | null;
+    if (
+      typeof kept?.text === "string" &&
+      typeof kept.at === "number" &&
+      Date.now() - kept.at < WISH_DAYS * 86_400_000
+    ) {
+      return kept.text;
+    }
+  } catch {
+    // Nothing readable is nothing kept.
+  }
+  return null;
+}
+
+export function dropWish() {
+  try {
+    localStorage.removeItem(WISH_KEY);
+  } catch {
+    // Nothing to drop.
+  }
 }

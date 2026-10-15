@@ -10,7 +10,13 @@ import { Mascot } from "../brand";
 import { api } from "../lib/api";
 import { withBase } from "../lib/base";
 import { lang, t } from "../lib/i18n";
-import { useCurrentProject, useMayCreate, type WizardSummary } from "../lib/session";
+import {
+  dropWish,
+  pendingWish,
+  useCurrentProject,
+  useMayCreate,
+  type WizardSummary,
+} from "../lib/session";
 import { useDictation, useDictationSettings } from "../lib/speech";
 import {
   Button,
@@ -213,7 +219,9 @@ export function NewWizardPage() {
   const build = useMayCreate();
   // A link from the gallery names the template to open; one from the home's search brings the wish.
   const [params] = useSearchParams();
-  const [prompt, setPrompt] = useState(params.get("wish") ?? "");
+  // A wish a guest typed before signing in (GuestStartPage) is here too, and is built at once.
+  const [prompt, setPrompt] = useState(() => params.get("wish") ?? pendingWish() ?? "");
+  const guestWish = useRef(pendingWish() !== null);
   const [channels, setChannels] = useState<ChannelId[]>(["steps"]);
   const [files, setFiles] = useState<File[]>([]);
   const [dropping, setDropping] = useState(false);
@@ -275,6 +283,7 @@ export function NewWizardPage() {
       return id;
     },
     onSuccess: async (id) => {
+      dropWish();
       await qc.invalidateQueries({ queryKey: ["projects"] });
       await qc.invalidateQueries({ queryKey: ["wizards"] });
       let message = prompt.trim();
@@ -296,6 +305,13 @@ export function NewWizardPage() {
       create.mutate();
     }
   };
+
+  useEffect(() => {
+    if (guestWish.current && project && build && !project.readOnly && prompt.trim()) {
+      guestWish.current = false;
+      create.mutate();
+    }
+  }, [project, build, prompt, create]);
 
   // Nothing is made here, or not in this project (a local install's): back to what there is.
   if (!build || project?.readOnly) {

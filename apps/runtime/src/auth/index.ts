@@ -87,6 +87,8 @@ function setLocalCookie(c: Context) {
 // --- signed in at the Manage-App ------------------------------------------------
 
 const SESSION_COOKIE = "wz_session";
+/** How much of a wish goes along to the account's sign-in page. */
+const WISH_MAX = 600;
 const STATE_COOKIE = "wz_oauth";
 const SESSION_DAYS = 30;
 const SCOPE =
@@ -328,6 +330,11 @@ export const authRoutes = new Hono()
       code_challenge_method: "S256",
       state: state.nonce,
     }).toString();
+    // What the person wants built (the studio's start page): the account's sign-in page shows it.
+    const wish = (c.req.query("wish") ?? "").trim().slice(0, WISH_MAX);
+    if (wish) {
+      url.searchParams.set("wish", wish);
+    }
     return c.redirect(url.toString());
   })
   .get("/auth/callback", async (c) => {

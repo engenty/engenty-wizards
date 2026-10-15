@@ -2,13 +2,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
 import { APP_VERSION } from "../about/AboutLinks";
 import { Mascot } from "../brand";
-import { EngentyLogoMark, EngentyWordmark } from "../engenty/logo";
+import { EngentyWordmark } from "../engenty/logo";
 import { ApiError, api } from "../lib/api";
 import { t } from "../lib/i18n";
 import { signIn } from "../lib/session";
 import { Button } from "../ui";
-import { LangSwitch } from "./LangSwitch";
-import { ThemeSwitch } from "./ThemeSwitch";
+import { DoorBar } from "./DoorBar";
+import { GuestStartPage } from "./GuestStartPage";
 
 const SIGNED_IN = /(?:^|;\s*)engenty_signed_in=1(?:;|$)/;
 
@@ -107,6 +107,12 @@ export function SignInPage() {
     );
   }
 
+  // Someone not signed in, in a browser, on the cloud studio: the start page, where a wish can
+  // be typed before signing in. The desktop app and the dev login keep the door.
+  if (config.data?.mode === "managed" && !config.data.devLogin && !hasDesktop()) {
+    return <GuestStartPage failed={failed} />;
+  }
+
   const local = config.data?.mode === "local" && !config.data.devLogin;
   // Opened under a name the app does not answer to (127.0.0.1 for localhost, the machine's IP).
   const refusal =
@@ -114,18 +120,7 @@ export function SignInPage() {
   const ownAddress = refusal ? String(refusal.body.appUrl ?? "") : null;
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-16">
-      <span className="absolute top-6 left-6 inline-flex items-center gap-2.5 sm:top-8 sm:left-10">
-        <EngentyLogoMark size={28} />
-        <span className="font-display font-semibold text-[1.0625rem] tracking-tight">
-          engenty
-          <span className="mr-[0.09em] ml-[0.06em] text-ember-strong">.</span>
-          <span className="font-normal text-ink-2">wizards</span>
-        </span>
-      </span>
-      <span className="absolute top-6 right-6 flex items-center gap-2 sm:top-8 sm:right-10">
-        <ThemeSwitch tone="surface" />
-        <LangSwitch tone="surface" />
-      </span>
+      <DoorBar className="absolute inset-x-6 top-6 sm:inset-x-10 sm:top-8" />
       <div className="flex w-full max-w-md animate-rise flex-col items-center text-center">
         <Mascot kind="round" size={local || config.isError ? 140 : 200} fluffy />
         <EngentyWordmark className="mt-2 font-display font-semibold text-[0.9375rem] text-ink-3 tracking-tight" />

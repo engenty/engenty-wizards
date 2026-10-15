@@ -630,6 +630,15 @@ describe("a plugin's starters", () => {
     expect(detail.files.sort()).toEqual(["data/bytes.bin", "notes/greeting.txt"]);
   });
 
+  it("are not shown to someone not signed in, who still gets the gallery", async () => {
+    const res = await get("/api/guest/marketplace?lang=de", "");
+    expect(res.status).toBe(200);
+    const page = await res.json();
+    expect(Array.isArray(page.entries)).toBe(true);
+    expect(page.entries.some((e: any) => e.plugin || e.starred)).toBe(false);
+    expect((await get("/api/studio/marketplace?lang=de", "")).status).toBe(401);
+  });
+
   it("make a wizard with their definition and files", async () => {
     const files = await import("../src/services/files");
     await client.withTenant(LOCAL, async () => {

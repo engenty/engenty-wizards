@@ -24,7 +24,7 @@ import { apiRoutes } from "./routes/api.js";
 import { browserReport, localDebugRoutes } from "./routes/debug.js";
 import { internalRoutes } from "./routes/internal.js";
 import { inLang, notFoundAnswer, requestLang } from "./routes/lang.js";
-import { marketplaceStudio } from "./routes/marketplace.js";
+import { marketplaceGuest, marketplaceStudio } from "./routes/marketplace.js";
 import { publicPluginRoutes } from "./routes/plugin-public.js";
 import { pluginRoutes } from "./routes/plugins.js";
 import { clientIp, connectCallback, publicRoutes, runRoutes, shareRoutes } from "./routes/runs.js";
@@ -273,6 +273,8 @@ app.use("/api/runs/*", (c, next) =>
 if (serves.studio) {
   app.route("/api/studio/wizards", wizardStream);
   app.route("/api/studio/marketplace", marketplaceStudio);
+  // The same gallery for someone not signed in: the studio's start page for guests.
+  app.route("/api/guest/marketplace", marketplaceGuest);
   app.route("/api/studio/plugins", pluginRoutes);
   app.route("/api/studio", studio);
   app.route("/api/v1", apiRoutes);

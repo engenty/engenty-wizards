@@ -566,6 +566,19 @@ describe("a runtime of a Manage-App", () => {
     expect(cookieOf(await handoff(windowCookie), "wz_session")).toBe("");
   });
 
+  it("takes a guest's wish along to the account's sign-in page", async () => {
+    const login = await app.fetch(
+      new Request(`${RUNTIME}/api/auth/login?return=/new&wish=${encodeURIComponent("Ein Quiz")}`),
+    );
+    expect(new URL(login.headers.get("location") ?? "").searchParams.get("wish")).toBe("Ein Quiz");
+    const long = await app.fetch(
+      new Request(`${RUNTIME}/api/auth/login?return=/new&wish=${"x".repeat(2000)}`),
+    );
+    expect(
+      new URL(long.headers.get("location") ?? "").searchParams.get("wish")?.length,
+    ).toBe(600);
+  });
+
   it("signs out here and names where the account's sign-in ends", async () => {
     const session = await signIn("code-a");
     const res = await post("/api/auth/sign-out", session, {});
