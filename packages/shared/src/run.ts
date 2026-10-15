@@ -686,7 +686,7 @@ const NOTES_DE: Partial<Record<RunNoteCode, Line>> = {
     other: "Ein Space hat höchstens {count} Tabellen.",
   },
   tableBelongsOneWizard:
-    "Diese Tabelle gehört zu einer Liste des Wizards. Ihre Spalten kommen aus dem Wizard.",
+    "Diese Tabelle gehört zu einer Liste des Wizards. Die Spalten kommen aus dem Wizard.",
   entryAlreadyExists: "Diesen Eintrag gibt es schon.",
   tableMostRows: {
     one: "Eine Tabelle hat höchstens {count} Zeile.",

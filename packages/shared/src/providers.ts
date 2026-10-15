@@ -100,7 +100,7 @@ const PROVIDER_EN = {
   expressive: "expressive",
   veryAccurate: "very accurate",
   "about.replicate": "Open image and video models, billed per run.",
-  "about.gateway": "One key for many providers' models, billed by Vercel.",
+  "about.gateway": "One key for many providers’ models, billed by Vercel.",
 } as const satisfies Record<string, Line>;
 /** A line about a provider or one of its models, in `PROVIDER_TEXTS`. */
 export type ProviderWords = keyof typeof PROVIDER_EN;

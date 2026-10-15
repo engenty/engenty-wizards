@@ -6,35 +6,53 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const FILES = ["apps/web/src/lib/i18n.ts", "packages/runner/src/i18n.ts"];
+// Every string table a person reads from: [file, where the English starts, where the German starts, a
+// prefix for its keys]. A start is the declaration the object literal follows; `.en` / `.de` after it
+// takes that half of one object holding both languages.
+const TABLES = [
+  ["apps/web/src/lib/i18n.ts", "const en", "const de", ""],
+  ["packages/runner/src/i18n.ts", "const en", "const de", ""],
+  ["apps/runtime/src/texts.ts", "const EN", "const DE", "server:"],
+  ["packages/shared/src/run.ts", "const NOTES_EN", "const NOTES_DE", "run:"],
+  ["packages/shared/src/marketplace.ts", "const MARKET_EN", "const MARKET_DE", "market:"],
+  ["packages/shared/src/providers.ts", "const PROVIDER_EN", "const PROVIDER_DE", "provider:"],
+  ["packages/plugin-sdk/src/thread.ts", "const texts.en", "const texts.de", "thread:"],
+  ["apps/runtime/src/engine/push.ts", "const TEXT.en", "const TEXT.de", "push:"],
+];
 
-/** The `const de` and `const en` object literals of a dictionary file, read without running it. */
-function dictionaries(file) {
+/** The object literal that follows `decl` in `src` (`const x = {` or `const x: T = {`), read without running it. */
+function objectAfter(src, decl, file) {
+  const start = new RegExp(`${decl}(?:: [^=]+)? = \\{`).exec(src);
+  if (!start) throw new Error(`${file}: no “${decl} = {”`);
+  const i = start.index + start[0].length - 1;
+  let depth = 0;
+  let quote = null;
+  let j = i;
+  for (; j < src.length; j++) {
+    const c = src[j];
+    if (quote) {
+      if (c === "\\") j++;
+      else if (c === quote) quote = null;
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) break;
+  }
+  const body = src.slice(i, j + 1).replace(/\.\.\.[A-Z_]+\.(de|en),?/g, "");
+  return Function(`return ${body}`)();
+}
+
+/** A table's English and German lines by key; a line with plural forms is checked form by form. */
+function dictionaries([file, en, de, prefix]) {
   const src = readFileSync(root + file, "utf8");
   const out = {};
-  for (const lang of ["de", "en"]) {
-    const start = new RegExp(`const ${lang}(?:: [^=]+)? = \\{`).exec(src);
-    if (!start) continue;
-    let i = start.index + start[0].length - 1;
-    let depth = 0;
-    let quote = null;
-    let j = i;
-    for (; j < src.length; j++) {
-      const c = src[j];
-      if (quote) {
-        if (c === "\\") j++;
-        else if (c === quote) quote = null;
-      } else if (c === '"' || c === "'" || c === "`") quote = c;
-      else if (c === "{") depth++;
-      else if (c === "}" && --depth === 0) break;
-    }
-    const body = src.slice(i, j + 1).replace(/\.\.\.[A-Z_]+\.(de|en),?/g, "");
-    // A line with plural forms is checked form by form.
+  for (const [lang, where] of [["en", en], ["de", de]]) {
+    const [decl, half] = where.split(".");
+    const table = half ? objectAfter(src, decl, file)[half] : objectAfter(src, decl, file);
     out[lang] = Object.fromEntries(
-      Object.entries(Function(`return ${body}`)()).flatMap(([key, line]) =>
+      Object.entries(table).flatMap(([key, line]) =>
         typeof line === "string"
-          ? [[key, line]]
-          : Object.entries(line).map(([form, text]) => [`${key}.${form}`, text]),
+          ? [[prefix + key, line]]
+          : Object.entries(line).map(([form, text]) => [`${prefix}${key}.${form}`, text]),
       ),
     );
   }
@@ -93,7 +111,7 @@ const strict = process.argv.includes("--strict");
 let total = 0;
 for (const lang of ["en", "de"]) {
   const strings = {};
-  for (const file of FILES) Object.assign(strings, dictionaries(file)[lang]);
+  for (const table of TABLES) Object.assign(strings, dictionaries(table)[lang]);
   for (const [rule, pattern, allowed = []] of RULES[lang]) {
     const hits = Object.entries(strings).filter(
       ([key, text]) => !allowed.includes(key) && pattern.test(text.replace(/\{\w+\}/g, "{}")),
@@ -168,6 +186,58 @@ for (const [rule, pattern, userOnly] of [
   console.log(`\nDocs · ${rule} (${hits.length})`);
   for (const hit of hits.slice(0, 8)) console.log(`  ${hit}`);
   if (hits.length > 8) console.log(`  … ${hits.length - 8} more`);
+}
+
+// Words a person reads, written straight into the code instead of a table: a string or JSX text with
+// German letters, or with two German words, in a file that holds no table.
+const SOURCE_DIRS = ["apps/web/src", "apps/runtime/src", "packages/runner/src", "packages/shared/src", "packages/plugin-sdk/src"];
+// German that is no UI copy: [file or folder, a piece of the line (none: all of it), why].
+const NOT_COPY = [
+  ["apps/web/src/dev", null, "the dev-only mascot builder, not shipped to people"],
+  ["apps/runtime/src/agents/architect.ts", "Neuer Schritt", "AI prompt: the German words the studio sends"],
+  ["apps/runtime/src/agents/studio-assistant.ts", "Primär", "AI prompt: an example colour name"],
+  ["apps/runtime/src/authoring/guide.ts", null, "AI prompt: German examples of what people write"],
+  ["apps/runtime/src/media/transcribe.ts", "ähm", "AI prompt: filler words to keep"],
+  ["apps/runtime/src/services/knowledge.ts", "Graz Süd", "AI tool hint: an example value"],
+  ["apps/runtime/src/tools/project.ts", "Graz Süd", "AI tool description: an example value"],
+  ["apps/runtime/src/services/project-index.ts", "der die das", "stop words for search"],
+  ["apps/runtime/src/browser/fast/span-picker.ts", "Jän|Mär", "month names a page may show"],
+  ["apps/runtime/src/connectors/index.ts", "App-Passwort", "FIELD_WORDS.de, the German half of a table"],
+];
+const GERMAN_WORD =
+  /\b(und|oder|nicht|noch|kein|keine|dein|deine|deinen|dich|dir|bitte|wird|werden|ist|sind|hier|jetzt|mit|für|auf|eine?|der|die|das|zum|zur|Schritt|Lauf|Datei|Dateien)\b/g;
+const LITERAL = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|>[^<>{}\n]*</g;
+// Words of the UI that are German on their own, one is enough.
+const GERMAN_UI =
+  /\b(Ablauf|aktualisiert|gespeichert|gelöscht|Abbrechen|Speichern|Weiter|Fertig|Ja|Nein|Fehler|Einstellungen|Anmelden|Abmelden|Hochladen|Bearbeiten|Suchen|Senden|Laden|Schritte?|Läufe|Ergebnis|Vorlage|Entwurf|Konto|Passwort|Teilen|Kopieren|Erneut)\b/;
+const looksGerman = (text) =>
+  /[äöüÄÖÜß]/.test(text) || GERMAN_UI.test(text) || (text.match(GERMAN_WORD) ?? []).length >= 2;
+const tables = new Set(TABLES.map(([file]) => file));
+const hardCoded = [];
+for (const dir of SOURCE_DIRS) {
+  for (const name of readdirSync(root + dir, { recursive: true })) {
+    const file = `${dir}/${name}`;
+    if (!/\.tsx?$/.test(file) || /\.(test|d)\.tsx?$/.test(file) || tables.has(file)) continue;
+    const allowed = NOT_COPY.filter(([path]) => file === path || file.startsWith(`${path}/`));
+    if (allowed.some(([, piece]) => !piece)) continue;
+    readFileSync(root + file, "utf8")
+      .split("\n")
+      .forEach((line, i) => {
+        const code = line.trimStart();
+        // Comments, a line the allowlist names, and `de: "…"` beside its English in one object.
+        if (/^(\/\/|\*|\/\*)/.test(code) || allowed.some(([, piece]) => code.includes(piece))) return;
+        if (/\bde: ["'`].*\ben: ["'`]/.test(code)) return;
+        for (const literal of code.match(LITERAL) ?? []) {
+          if (looksGerman(literal)) hardCoded.push(`${file}:${i + 1}: ${literal.slice(0, 90)}`);
+        }
+      });
+  }
+}
+if (hardCoded.length) {
+  total += hardCoded.length;
+  console.log(`\nCode · German outside a string table (${hardCoded.length})`);
+  for (const hit of hardCoded.slice(0, 8)) console.log(`  ${hit}`);
+  if (hardCoded.length > 8) console.log(`  … ${hardCoded.length - 8} more`);
 }
 
 console.log(total ? `\n${total} places break a rule of docs/copy-style.md.` : "Copy checks out.");
