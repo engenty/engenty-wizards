@@ -24,7 +24,8 @@ const home = join(
 );
 const runtime = join(home, "runtime");
 const wrapper = join(home, "bin", "wizards");
-const RUN_HERE = ["help", "validate", "mcp"];
+// uninstall: never installs or hands over first; the install it takes away may no longer run.
+const RUN_HERE = ["help", "validate", "mcp", "uninstall"];
 const tilde = (path) =>
   path.startsWith(homedir() + sep) ? `~${path.slice(homedir().length)}` : path;
 
@@ -164,7 +165,7 @@ if (process.platform === "win32" && !checkout && !RUN_HERE.includes(command)) {
   process.exit(1);
 }
 const fromNpm = process.platform !== "win32" && !checkout && !isInstall();
-if (fromNpm && (!currentNode || !RUN_HERE.includes(command))) {
+if (fromNpm && command !== "uninstall" && (!currentNode || !RUN_HERE.includes(command))) {
   const own = versionOf(root) || "0.0.0";
   const installed = existsSync(wrapper)
     ? versionOf(join(runtime, "node_modules", "wizards"))
@@ -194,6 +195,14 @@ if (fromNpm && (!currentNode || !RUN_HERE.includes(command))) {
     process.exit(await handOver());
   }
 }
+if (!currentNode && command === "uninstall") {
+  // The install's own Node, if it is still there, runs this copy's uninstall.
+  const node = join(home, "tools", "node", "bin", "node");
+  const result = existsSync(node)
+    ? spawnSync(node, [fileURLToPath(import.meta.url), ...args], { stdio: "inherit" })
+    : null;
+  process.exit(result?.status ?? 1);
+}
 if (!currentNode) {
   console.error(
     `engenty wizards needs Node.js 24.11 or newer. This is ${process.version}.\n` +
@@ -202,4 +211,9 @@ if (!currentNode) {
   );
   process.exit(1);
 }
-await import("../apps/runtime/dist/cli/main.js");
+// The uninstall has an entry of its own: main.js makes the install and data folders as it loads.
+await import(
+  command === "uninstall"
+    ? "../apps/runtime/dist/cli/uninstall-main.js"
+    : "../apps/runtime/dist/cli/main.js"
+);

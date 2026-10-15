@@ -50,6 +50,8 @@ ${more(
 )}
 ${line(`${command()} disconnect`, "remove your wizards from those apps (same names)")}
 ${line(`${command()} mcp`, "run the MCP server over stdio (AI apps start this)")}
+${line(`${command()} uninstall`, "take it off this computer: shows the plan, asks about your data (kept by default)")}
+${more("--dry-run only shows it; --yes asks nothing and keeps your data; --yes --delete-data")}
 ${line(`${command()} validate`, "check wizards without the studio: .wizard files, unpacked packages, wizard JSON")}
 ${more("--json prints the issues as JSON. A space’s connectors and plugins are checked on import.")}
 

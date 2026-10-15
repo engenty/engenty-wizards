@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import * as p from "@clack/prompts";
 import { accountStep } from "./account.js";
-import { autostartState, setAutostart } from "./autostart.js";
+import { autostartForStatus, setAutostart } from "./autostart.js";
 import { installClient, installCommand } from "./clients.js";
 import { appStates, connectApps } from "./connect.js";
 import { runLogged } from "./exec.js";
@@ -185,7 +185,7 @@ async function autostartStep(
   paths: Layout,
   interactive: boolean,
 ): Promise<"cancelled" | undefined> {
-  const state = await autostartState(paths);
+  const state = await autostartForStatus(paths);
   if ("unavailable" in state) {
     return;
   }
@@ -322,7 +322,7 @@ async function pathStep(interactive: boolean): Promise<"cancelled" | undefined> 
 async function howToUse(paths: Layout) {
   const [running, atLogin] = await Promise.all([
     runningRuntime(settings(paths).dataDir),
-    autostartState(paths),
+    autostartForStatus(paths),
   ]);
   const wizards = command();
   const row = (what: string, cmd: string, note = "") =>

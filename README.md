@@ -159,8 +159,12 @@ when a newer release is out and can run the same update from there or from its A
 From source: `git pull`, `pnpm install`, `pnpm build`. Your data is brought up to date at the
 next start.
 
-To remove engenty wizards, run `wizards stop`, `wizards autostart off` and `wizards disconnect`, then delete `~/.engenty/wizards` (your data is in its `data` folder) and
-`~/.local/bin/wizards`.
+To remove engenty wizards, run `wizards uninstall` (or `npx wizards uninstall` if the command no
+longer runs). It shows what it will remove first: your AI apps' entries, the login item, every
+running process, `~/.engenty/wizards` and `~/.local/bin/wizards`. Your data in
+`~/.engenty/wizards/data` is kept unless you choose to delete it, and a reinstall picks it up
+again. `--dry-run` only shows the plan, `--yes` runs it without questions and keeps your data,
+and `--yes --delete-data` deletes your data too.
 
 ## Run it on a server
 

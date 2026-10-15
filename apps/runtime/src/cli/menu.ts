@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import type { Running } from "../running.js";
 import { type UpdateStatus, updateStatus } from "../update.js";
 import { type AccountState, accountMenu, accountState, describeAccount } from "./account.js";
-import { type Autostart, autostartState, setAutostart } from "./autostart.js";
+import { type Autostart, autostartForStatus, setAutostart } from "./autostart.js";
 import { connectCommand } from "./connect.js";
 import { command, type Layout, packageVersion, readInstallNote } from "./home.js";
 import { type SetupOptions, setup } from "./setup.js";
@@ -37,7 +37,7 @@ async function look(paths: Layout): Promise<State> {
   const { dataDir } = settings(paths);
   const [running, atLogin, release, account] = await Promise.all([
     runningRuntime(dataDir),
-    autostartState(paths),
+    autostartForStatus(paths),
     updateStatus().catch(() => null),
     accountState(),
   ]);

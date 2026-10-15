@@ -18,13 +18,14 @@ version: 0.5.0
 | `wizards doctor` | Shows the status and checks for problems |
 | `wizards logs [n]` | Prints the last lines engenty wizards printed while running (100, or `n` up to 2000). Keys and tokens are taken out |
 | `wizards report` | Sends the status, the model settings (never a key) and the last 500 log lines to your [account](./models.md#account), so support can see what went wrong. Nothing is sent unless you run it. The command names the report’s ID. If this computer isn’t signed in, it tells you to sign in under Settings → Account or with `wizards account sign-in` |
-| `wizards stop` | Stops it. Your data is kept |
+| `wizards stop` | Stops it, with any other copy of it still running in the background. Your data is kept. AI apps that use your wizards start it again when you use one there |
 | `wizards restart` | Stops it and starts it again; after an update, that is the new version. If it isn’t running, it starts in the background |
 | `wizards update` | Installs the latest version |
 | `wizards autostart on` / `off` | Starts it when you log in, or stops doing so. It is a LaunchAgent on macOS and a systemd user service on Linux |
 | `wizards connect [app …]` | Adds your wizards to your [AI apps](./ai-apps.md): every app found, or the ones you name |
 | `wizards disconnect [app …]` | Takes them out again |
 | `wizards mcp` | Runs the MCP server over stdio. AI apps start it; you don’t |
+| `wizards uninstall` | Takes engenty wizards off this computer. It shows what it will remove first and asks about your data on its own; your data is kept unless you choose to delete it. `--dry-run` only shows the plan, `--yes` asks nothing and keeps your data, `--yes --delete-data` deletes it too. See [Remove](./install.md#remove) |
 | `wizards validate <path …>` | Checks wizards without the studio: `.wizard` files, unpacked wizard files, or a wizard’s JSON. `--json` prints the problems as JSON. A space’s connectors and plugins are checked when you import it |
 
 | Option | What it does |

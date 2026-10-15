@@ -27,7 +27,7 @@ Keychain (as `engenty-wizards`). On other systems they are stored encrypted in t
 |---|---|
 | Back up | Stop engenty wizards (`wizards stop`) and copy the folder |
 | Move to another computer | Install engenty wizards there, stop it and put the folder in place. On a Mac, enter your API keys and sign in to your account again: the Keychain doesn’t move |
-| Start over | Delete the folder. On a Mac, the keys in the Keychain stay and are used again. To remove them, delete the `engenty-wizards` entries in Keychain Access |
+| Start over | Run `wizards uninstall`, choose to delete your data, then install again. On a Mac, the keys in the Keychain stay and are used again. To remove them, delete the `engenty-wizards` entries in Keychain Access |
 | Keep it elsewhere | Set `ENGENTY_HOME` to another folder. engenty wizards then keeps everything in its `wizards` folder there |
 
 After an update, engenty wizards brings your data up to date the next time it starts.
