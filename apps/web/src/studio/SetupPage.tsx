@@ -87,7 +87,7 @@ const HOST = 220;
 const HOSTS: Record<Pick, string> = {
   codex: "dome",
   claude: "oval",
-  gemini: "wedge",
+  antigravity: "wedge",
   cursor: "sprout",
   own: "bean",
   account: "drop",

@@ -21,7 +21,7 @@ has a “Sign in” button that opens your browser for it. If you set engenty wi
 | engenty credits | Your account’s credits, as in the cloud | An account signed in. Shown only then |
 | Claude Code | Your Claude subscription | The client installed and signed in |
 | Codex | Your ChatGPT subscription | The client installed and signed in |
-| Gemini CLI | Your Google account | The client installed and signed in |
+| Antigravity | Your Google AI subscription | The client (`agy`) installed and signed in |
 | Cursor Agent | Your Cursor subscription | The client installed and signed in |
 | Apple Intelligence | The model on this Mac, without an account or the internet | A Mac with Apple silicon on macOS 26 or later, with Apple Intelligence switched on. Shown only on such a Mac |
 | Your own keys | OpenAI, Anthropic, Google or Vercel AI Gateway, or a model on your computer | One API key, or [Ollama](https://ollama.com) running |

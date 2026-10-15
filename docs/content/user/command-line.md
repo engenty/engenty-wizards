@@ -32,7 +32,7 @@ version: 0.5.0
 |---|---|
 | `--yes`, `-y` | Asks nothing and installs nothing optional |
 | `--local` | Sets up without an account, so nothing leaves this computer ([Local only](./local-only.md)) |
-| `--client <name>` | Installs this AI client without asking: `codex`, `claude`, `gemini`, `cursor` |
+| `--client <name>` | Installs this AI client without asking: `codex`, `claude`, `antigravity`, `cursor` |
 | `--no-open` | Starts without opening the browser |
 | `--background`, `-s` | Starts it in the background (`--service` still works): detached from the terminal, and the command returns. `wizards stop` stops it, and its output goes to `logs/runtime.log` |
 | `--version`, `-v` | Prints the version |

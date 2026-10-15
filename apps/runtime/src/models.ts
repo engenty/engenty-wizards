@@ -70,7 +70,7 @@ import { serverText } from "./texts.js";
 export { isHarnessVendor } from "./harness/index.js";
 /**
  * A step names a model class, never a model. Where the class runs is decided here, in this order:
- *  1. its own way: an AI client installed on the machine (Claude Code, Codex, Gemini CLI, Cursor
+ *  1. its own way: an AI client installed on the machine (Claude Code, Codex, Antigravity, Cursor
  *     Agent — on its subscription), an API key the person brought (OpenAI, Anthropic, Google,
  *     fal.ai, ElevenLabs, Replicate, AI Gateway) or a local model;
  *  2. credits: the model-gateway binds `wizards/<class>`, meters the call and books it — on the
