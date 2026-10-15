@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.6] - 2026-10-15
+- DOCS **[install]** Curly quotes around the menu entry, as the copy style wants
+
 ## [0.5.5] - 2026-10-15
 - FIXED **[studio]** Sign-out ends the account's sign-in too – the studio's sign-in page no longer signs the person in again by itself
 
