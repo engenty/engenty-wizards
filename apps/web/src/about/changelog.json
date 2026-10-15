@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.5.8",
+    "timestamp": 1792042344,
+    "commits": [
+      {
+        "id": "f17a541",
+        "message": "every line in a string table, a new language needs only translations – shared/texts (MIT) holds the table shape (English has every line, a language may lack some), plural forms by Intl.PluralRules on {count}/{n}, numbers written the language's way. RUN_NOTES becomes one table per language and takes the ~160 bilingual() lines as notes (note(code, params), gaps may hold other notes and lists); bilingual() and the \"text\" code are gone. The runtime gets its own table (apps/runtime/src/texts.ts, serverText, say(c, key) for inLang) for answers, assistant activity lines, first-space and new-wizard words. Marketplace labels, provider notes, basic facts and product credits move into language-first tables or the studio's strings; SPEECH_LOCALES joins LOCALES; the voice conversation's rules are written in English and name the language to speak. Studio and runner t() pick plural forms; copy-check reads them form by form",
+        "group": "Added",
+        "scope": "i18n",
+        "breaking": false
+      },
+      {
+        "id": "7e6e0b7",
+        "message": "one language list, the person's own language beside English – LANGS, Lang, LANG_NAMES, LOCALES, isLang, langOf and localLang in shared/definition replace every \"de\" | \"en\" and z.enum([\"de\", \"en\"]). The studio starts in the person's pick, else the first browser language engenty speaks other than English, else the language of the time zone's country, else English; requestLang reads the whole Accept-Language list the same way. Each language has its own strings, what one lacks is said in English (studio and runner). LangSwitch holds English and that own language and shows nothing without one; the account page picks among all languages (LangPick). JSON Schema v1 regenerated (enum order only); local-lang.test.ts covers the pick",
+        "group": "Added",
+        "scope": "i18n",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.7",
-    "timestamp": 1792040760,
+    "timestamp": 1792040765,
     "commits": [
       {
         "id": "b03a448",
