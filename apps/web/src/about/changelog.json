@@ -1,7 +1,27 @@
 [
   {
+    "version": "v0.5.9",
+    "timestamp": 1792042750,
+    "commits": [
+      {
+        "id": "085cfe3",
+        "message": "the npm package `wizards` is for macOS and Linux only (os in its package.json) – on Windows npm refuses within a minute or two instead of an install of twenty minutes that ends in a crash",
+        "group": "Fixed",
+        "scope": "cli",
+        "breaking": false
+      },
+      {
+        "id": "59adc45",
+        "message": "`npx wizards` on Windows says engenty wizards for Windows is coming soon and how to run it in WSL meanwhile, instead of an npm install of several minutes that ends in a crash (no libsql build for Windows on Arm; no installer, service or AI client lookup for Windows yet); --version, --help, validate and mcp still run",
+        "group": "Fixed",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.8",
-    "timestamp": 1792042344,
+    "timestamp": 1792042356,
     "commits": [
       {
         "id": "f17a541",
