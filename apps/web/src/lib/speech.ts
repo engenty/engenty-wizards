@@ -150,13 +150,17 @@ export function useDictation(
   draft: string,
   onDraft: (value: string) => void,
   options: {
-    /** Where a recording is written down: the studio's route, or a run's own. */
-    endpoint?: string;
+    /**
+     * Where a recording is written down: the studio's route, or a run's own. null: nowhere
+     * (someone not signed in), so only the browser's own recognition writes along.
+     */
+    endpoint?: string | null;
     /** A microphone of its own; the browser's recognition only hears the default one. */
     deviceId?: string;
   } = {},
 ) {
-  const endpoint = options.endpoint ?? "/api/studio/transcribe";
+  const endpoint = options.endpoint === undefined ? "/api/studio/transcribe" : options.endpoint;
+  const mayRecord = canRecord && endpoint !== null;
   const deviceId = options.deviceId ?? "";
   const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -199,7 +203,7 @@ export function useDictation(
       setListening(false);
       const mime = (recorder.mimeType || "audio/webm").split(";")[0];
       const file = new File(chunks, "dictation", { type: mime });
-      if (!file.size) {
+      if (!(file.size && endpoint)) {
         return;
       }
       setProcessing(true);
@@ -254,7 +258,7 @@ export function useDictation(
       }
       // No recognition service behind the API: from now on the recording goes to the server.
       recognitionBroken = true;
-      if (canRecord && !committed) {
+      if (mayRecord && !committed) {
         rec.onend = null;
         active.current = null;
         void record();
@@ -278,9 +282,9 @@ export function useDictation(
     setError(null);
     stopWhenStarted.current = false;
     const Recognition = recognition();
-    if (Recognition && !(deviceId && canRecord)) {
+    if (Recognition && !(deviceId && mayRecord)) {
       recognise(Recognition);
-    } else {
+    } else if (mayRecord) {
       void record();
     }
   };
@@ -300,7 +304,7 @@ export function useDictation(
   };
 
   return {
-    supported: Boolean(recognition()) || canRecord,
+    supported: Boolean(recognition()) || mayRecord,
     listening,
     processing,
     error,

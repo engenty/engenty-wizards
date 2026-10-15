@@ -4,7 +4,8 @@ import { APP_VERSION } from "../about/AboutLinks";
 import { Mascot } from "../brand";
 import { t } from "../lib/i18n";
 import { keepWish, pendingWish, signIn } from "../lib/session";
-import { Button, Textarea } from "../ui";
+import { useDictation } from "../lib/speech";
+import { Button, DictationButton, Textarea } from "../ui";
 import { DoorBar } from "./DoorBar";
 import { MarketplaceBrowser } from "./Marketplace";
 
@@ -17,11 +18,16 @@ import { MarketplaceBrowser } from "./Marketplace";
 export function GuestStartPage({ failed }: { failed: boolean }) {
   const [prompt, setPrompt] = useState(() => pendingWish() ?? "");
   const [busy, setBusy] = useState(false);
+  // Without an account nothing is written down on the server: the browser's own recognition.
+  const speech = useDictation(prompt, setPrompt, { endpoint: null });
 
   const submit = () => {
     const wish = prompt.trim();
     if (!wish || busy) {
       return;
+    }
+    if (speech.listening) {
+      speech.stop();
     }
     setBusy(true);
     keepWish(wish);
@@ -60,15 +66,21 @@ export function GuestStartPage({ failed }: { failed: boolean }) {
                 submit();
               }
             }}
-            placeholder={t("new.placeholder")}
+            placeholder={speech.listening ? t("editor.listening") : t("new.placeholder")}
             className="border-0 bg-transparent text-[1rem] shadow-none focus:ring-0"
           />
           <div className="flex items-center justify-end gap-2 px-1 pb-1">
+            {speech.supported ? <DictationButton speech={speech} /> : null}
             <Button size="md" onClick={submit} busy={busy} disabled={!prompt.trim()}>
               {t("new.build")} <ArrowRight className="size-4" />
             </Button>
           </div>
         </div>
+        {speech.error ? (
+          <p className="mt-2 px-3 text-[0.75rem] text-rose">
+            {speech.error === "denied" ? t("editor.micDenied") : speech.error}
+          </p>
+        ) : null}
         {failed ? (
           <p className="mt-3 text-center text-[0.875rem] text-rose">{t("auth.failed")}</p>
         ) : null}
