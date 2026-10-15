@@ -19,7 +19,7 @@ npx wizards
 ```
 
 Both do the same. `npx wizards` runs the installer it brings along, then the setup, then the
-`wizards` menu, where "Start as service" starts it and opens the studio. Run again, it hands over
+`wizards` menu, where “Start as service” starts it and opens the studio. Run again, it hands over
 to the installed `wizards`, and brings an older install up to its own version first.
 
 The installer needs nothing but `curl` and `tar`. It brings its own Node.js (a Node you already
