@@ -75,7 +75,7 @@ function refWhere(ref: ItemRef): SQL {
 
 // --- typed values ---------------------------------------------------------------
 
-/** A number as people write it, with what stands around it: `38 h`, `20.000 €`, `1,5`, `1.234,50`. */
+/** A number with what stands around it, as `readNumber` reads it: `38 h`, `19 %`, `1,5`. */
 export function numberOf(value: unknown): number | null {
   return readNumber(value, { units: true });
 }

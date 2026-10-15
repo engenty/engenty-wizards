@@ -7,12 +7,13 @@
  */
 
 /**
- * A number as people type and write it: `89,90` from a German number pad, `1.234,50`, `1,234.50`,
- * `20.000`, `1 234`. Where only one kind of mark is in it, a dot before groups of three digits
- * separates thousands (`1.234` is 1234) and a comma is the decimal point (`1,5`); several commas
- * between groups of three separate thousands (`1,234,567`). With `units`, what stands around the
- * number is dropped (`38 h`, `20.000 €`, `19 %`); without, anything but the number makes it none.
- * Null where there is no number.
+ * A number as a person types it: digits with at most one decimal mark, a point or a comma
+ * alike, as a phone's number pad gives it in either language (`1.5`, `1,5`, `89,90`). There are
+ * no thousands separators: `1.234` and `1,234` are 1.234, and anything with two marks
+ * (`1.234,50`, `1.234.567`) is no number, since only the writer's language could say which mark
+ * is which. Text that is not typed (a document, a website) is read by a model into numbers
+ * before it gets here. With `units`, what stands around the number is dropped (`38 h`,
+ * `19 %`); without, anything but the number makes it none. Null where there is no number.
  */
 export function readNumber(value: unknown, opts: { units?: boolean } = {}): number | null {
   if (typeof value === "number") {
@@ -21,21 +22,11 @@ export function readNumber(value: unknown, opts: { units?: boolean } = {}): numb
   if (typeof value !== "string") {
     return null;
   }
-  let s = opts.units ? value.replace(/[^\d,.-]/g, "") : value.replace(/[\s'’]/g, "");
-  if (!/^[-+]?[\d.,]*\d[\d.,]*$/.test(s)) {
+  const s = opts.units ? value.replace(/[^\d,.-]/g, "") : value.trim();
+  if (!/^-?(\d+([.,]\d*)?|[.,]\d+)$/.test(s)) {
     return null;
   }
-  if (s.includes(",") && s.includes(".")) {
-    s =
-      s.lastIndexOf(",") > s.lastIndexOf(".")
-        ? s.replace(/\./g, "").replace(",", ".")
-        : s.replace(/,/g, "");
-  } else if (s.includes(",")) {
-    s = /^[-+]?\d{1,3}(,\d{3}){2,}$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
-  } else if (/^[-+]?\d{1,3}(\.\d{3})+$/.test(s)) {
-    s = s.replace(/\./g, "");
-  }
-  const n = Number(s);
+  const n = Number(s.replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 

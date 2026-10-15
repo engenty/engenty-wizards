@@ -12,12 +12,13 @@ describe("cellValue", () => {
 
   it("reads numbers and durations as people write them", () => {
     expect(cellValue(col({ type: "number", format: {} }), "12,5")).toBe(12.5);
-    expect(cellValue(col({ type: "number", format: {} }), "1.234,50")).toBe(1234.5);
+    expect(cellValue(col({ type: "number", format: {} }), "1234.50")).toBe(1234.5);
     expect(cellValue(col({ type: "duration", format: { inputUnit: "hours" } }), "1,5")).toBe(1.5);
   });
 
   it("leaves what is no number for the runtime to refuse", () => {
     expect(cellValue(col({ type: "number", format: {} }), "zwölf")).toBe("zwölf");
+    expect(cellValue(col({ type: "number", format: {} }), "1.234,50")).toBe("1.234,50");
   });
 
   it("takes a checkbox's text as a boolean", () => {
