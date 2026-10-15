@@ -40,6 +40,9 @@ vi.mock("../src/models.js", () => ({
   attachTools: () => {},
   costOf: () => 0,
   isHarnessVendor: () => false,
+  agentModel: (resolved: { model: unknown }) => resolved.model,
+  totalUsage: async (out: { totalUsage?: unknown; usage?: unknown }) =>
+    (await out.totalUsage) ?? (await out.usage),
 }));
 vi.mock("../src/tools/index.js", () => ({
   buildStepTools: async () => ({ tools: {}, assets: [], close: async () => {} }),
