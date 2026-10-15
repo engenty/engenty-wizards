@@ -1,8 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { APP_VERSION } from "../about/AboutLinks";
 import { Mascot } from "../brand";
-import { t } from "../lib/i18n";
+import { t, useLang } from "../lib/i18n";
 import { keepWish, pendingWish, signIn } from "../lib/session";
 import { useDictation } from "../lib/speech";
 import { Button, DictationButton, Textarea } from "../ui";
@@ -15,7 +14,14 @@ import { MarketplaceBrowser } from "./Marketplace";
  * new-wizard page builds it once the person is in (NewWizardPage). A template signs in and
  * opens there.
  */
+/** The site's legal pages, at the root of the studio's own origin (engenty.ai). */
+const LEGAL = {
+  de: { imprint: "/de/impressum", privacy: "/de/datenschutz", terms: "/de/nutzungsbedingungen" },
+  en: { imprint: "/imprint", privacy: "/privacy", terms: "/terms" },
+} as const;
+
 export function GuestStartPage({ failed }: { failed: boolean }) {
+  const lang = useLang();
   const [prompt, setPrompt] = useState(() => pendingWish() ?? "");
   const [busy, setBusy] = useState(false);
   // Without an account nothing is written down on the server: the browser's own recognition.
@@ -95,8 +101,14 @@ export function GuestStartPage({ failed }: { failed: boolean }) {
           onGuestOpen={(entry) => signIn(`/new?starter=${encodeURIComponent(entry.id)}`)}
         />
       </section>
-      <footer className="mt-16 text-center text-[0.75rem] text-ink-3">
-        © engenty · {t("about.version", { v: APP_VERSION })}
+      {/* As on the landing page: the name and the legal pages, nothing more. */}
+      <footer className="mt-16 flex flex-wrap justify-center gap-x-5 gap-y-1 text-[0.75rem] text-ink-3">
+        <span>engenty</span>
+        {(["imprint", "privacy", "terms"] as const).map((page) => (
+          <a key={page} href={LEGAL[lang][page]} className="transition hover:text-ink-2">
+            {t(`legal.${page}`)}
+          </a>
+        ))}
       </footer>
     </div>
   );
