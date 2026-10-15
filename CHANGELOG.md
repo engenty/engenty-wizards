@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.7.1] - 2026-10-15
+- FIXED **[cli]** Clearer setup and menu wording, and an Uninstall menu entry (#37)
+
 ## [0.7.0] - 2026-10-15
 - ADDED **[cli]** Auto-update the installed wizards in the background (#34)
 - ADDED **[cli]** Wizards uninstall (#33)
