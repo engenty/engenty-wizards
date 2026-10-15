@@ -1,4 +1,9 @@
-import { type Field, type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
+import {
+  type Field,
+  type Lang,
+  type WizardDefinition,
+  wizardLang,
+} from "@engenty-wizards/shared/definition";
 import { standaloneEntry } from "@engenty-wizards/shared/fit";
 import { pluginsOf } from "@engenty-wizards/shared/marketplace";
 import { noteText } from "@engenty-wizards/shared/run";
@@ -9,6 +14,7 @@ import { env } from "../env.js";
 import { wizardUnavailable } from "../limits.js";
 import { codeOf } from "../tenants/control.js";
 import { currentTenant } from "../tenants/tenant.js";
+import { serverText } from "../texts.js";
 import { mayBuild, projectWritable, READ_ONLY_TENANT } from "./access.js";
 import { mainLogoId } from "./brand.js";
 import { notFound, ServiceError } from "./errors.js";
@@ -140,20 +146,20 @@ export async function apiWizards(userId: string, spaceId?: string | null) {
   );
 }
 
-/** A value as one line of text: what the person typed or picked. */
-function answerText(field: Field, value: unknown): string {
+/** A value as one line of text, in the wizard's language: what the person typed or picked. */
+function answerText(field: Field, value: unknown, lang: Lang): string {
   if (value === undefined || value === null || value === "") {
     return "";
   }
   if (typeof value === "boolean") {
-    return value ? "Ja" : "Nein";
+    return serverText(lang, value ? "yes" : "no");
   }
   if (typeof value === "string" || typeof value === "number") {
     return String(value);
   }
   if (Array.isArray(value)) {
     if (["file", "image", "audio", "signature"].includes(field.kind)) {
-      return value.length === 1 ? "1 Datei" : `${value.length} Dateien`;
+      return serverText(lang, "fileCount", { count: value.length });
     }
     return value
       .map((v) => (typeof v === "object" && v ? Object.values(v).join(" ") : String(v)))
@@ -170,12 +176,13 @@ function answerText(field: Field, value: unknown): string {
 /** What the person answered on the run's pages, by the fields' labels, in the order asked. */
 function answersOf(run: Pick<RunRow, "definition" | "state">) {
   const answers: { field: string; label: string; kind: string; value: string }[] = [];
+  const lang = wizardLang(run.definition);
   for (const step of run.definition.steps) {
     if (step.type !== "page") {
       continue;
     }
     for (const field of step.fields) {
-      const value = answerText(field, run.state.values[field.id]);
+      const value = answerText(field, run.state.values[field.id], lang);
       if (value) {
         answers.push({ field: field.id, label: field.label, kind: field.kind, value });
       }
