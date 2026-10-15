@@ -233,7 +233,7 @@ async function streamWithProgress(
   let told = 0;
   let written = "";
   let checked = 0;
-  const report = async (final: boolean) => {
+  const report = async () => {
     const start = written.lastIndexOf("```json");
     if (start < 0 || told >= MAX_FOUND) {
       return;
@@ -243,13 +243,15 @@ async function streamWithProgress(
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return;
     }
-    for (const [key, field] of Object.entries(shape.fields)) {
+    const keys = Object.keys(shape.fields);
+    for (const [index, [key, field]] of Object.entries(shape.fields).entries()) {
       const list = (value as Record<string, unknown>)[key];
       if (field.kind !== "list" || !Array.isArray(list)) {
         continue;
       }
-      // The last entry may still be half written, until the answer ends.
-      const done = final ? list.length : list.length - 1;
+      // The last entry may still be half written – until a later part has begun.
+      const later = keys.slice(index + 1).some((k) => k in (value as Record<string, unknown>));
+      const done = later ? list.length : list.length - 1;
       for (let i = reported.get(key) ?? 0; i < done && told < MAX_FOUND; i++) {
         const entry = list[i];
         const name =
@@ -268,20 +270,24 @@ async function streamWithProgress(
     }
   };
   const stream = await agent.stream(message, options);
+  // A model that answers in one piece (a local client) has nothing to report while it writes:
+  // its entries come with the result.
+  let whole = false;
   for await (const chunk of stream.fullStream as AsyncIterable<any>) {
     const payload = chunk.payload ?? chunk;
     if (chunk.type === "text-delta") {
-      written += payload.text ?? payload.delta ?? "";
+      const delta: string = payload.text ?? payload.delta ?? "";
+      whole ||= delta.length > 2_000;
+      written += delta;
       // Parsing the growing answer every few hundred characters is enough to keep up.
-      if (written.length - checked > 300) {
+      if (!whole && written.length - checked > 300) {
         checked = written.length;
-        await report(false);
+        await report();
       }
     } else if (chunk.type === "error") {
       throw payload.error ?? new Error("step stream error");
     }
   }
-  await report(true);
   const s = stream as any;
   return {
     text: (await s.text) ?? written,

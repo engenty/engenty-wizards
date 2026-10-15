@@ -11,7 +11,7 @@ import { fridgeShape } from "../../web/src/dev/data-shape";
 import { fridgePlan, fridgeView } from "../../web/src/dev/view-lab-sample";
 
 // The model answers with the plan in a fenced block, as an agent mostly does.
-const answer = vi.hoisted(() => ({ text: "" }));
+const answer = vi.hoisted(() => ({ text: "", chunk: 120 }));
 vi.mock("@mastra/core/agent", () => ({
   Agent: class {
     async generate() {
@@ -21,8 +21,8 @@ vi.mock("@mastra/core/agent", () => ({
     async stream() {
       const text = answer.text;
       async function* chunks() {
-        for (let i = 0; i < text.length; i += 120) {
-          yield { type: "text-delta", payload: { text: text.slice(i, i + 120) } };
+        for (let i = 0; i < text.length; i += answer.chunk) {
+          yield { type: "text-delta", payload: { text: text.slice(i, i + answer.chunk) } };
         }
       }
       return {
@@ -224,6 +224,25 @@ describe("a step with a schema, run", () => {
     const names = found.map((f) => `${f?.label}/${f?.name}`);
     expect(new Set(names).size).toBe(names.length);
     expect(found.length).toBeLessThanOrEqual(40);
+  });
+
+  it("tells nothing when the answer comes in one piece", async () => {
+    answer.text = `\`\`\`json\n${JSON.stringify(fridgePlan)}\n\`\`\``;
+    answer.chunk = 1_000_000;
+    const notes: { code: string }[] = [];
+    try {
+      await runAgentStep(cook as any, {
+        ...ctx(),
+        emit: async (_type: string, note: unknown) => {
+          if (note && typeof note === "object") {
+            notes.push(note as never);
+          }
+        },
+      } as any);
+    } finally {
+      answer.chunk = 120;
+    }
+    expect(notes.filter((n) => n.code === "found")).toEqual([]);
   });
 
   it("downloads as sheets per list, a CSV of flat entries and a document", () => {

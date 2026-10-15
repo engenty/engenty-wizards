@@ -26,8 +26,15 @@ interface Ctx {
   open: (view: string, row: unknown) => void;
 }
 
+// A yes/no without words of its own reads as yes or no, never as true or false.
 const text = (v: unknown): string =>
-  v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  v === null || v === undefined
+    ? ""
+    : typeof v === "boolean"
+      ? t(v ? "run.yes" : "run.no")
+      : typeof v === "object"
+        ? JSON.stringify(v)
+        : String(v);
 
 const num = (v: unknown): number => {
   const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
@@ -190,8 +197,17 @@ function ChecklistView({ c, ctx, row }: { c: SurfaceComponent; ctx: Ctx; row?: u
       ])
     : [["", indexed]];
   const detailOf = (item: unknown) => text(cell(item, detailKey));
+  const noteMap = p("noteMap");
   const noteOf = (item: unknown) => {
     const v = noteKey ? cell(item, noteKey) : undefined;
+    // A yes/no says something only in words of its own: "da", "einkaufen".
+    if (typeof v === "boolean") {
+      const words =
+        noteMap && typeof noteMap === "object"
+          ? (noteMap as Record<string, unknown>)[String(v)]
+          : "";
+      return text(words ?? "");
+    }
     const words = Array.isArray(v) ? v.map(text).join(", ") : text(v);
     return words && noteFormat ? noteFormat.replace("{}", words) : words;
   };

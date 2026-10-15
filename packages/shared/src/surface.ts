@@ -470,7 +470,7 @@ Components and props (a prop may be a literal or {"path": "/key/..."} into the d
 - Fold { title, open?, children: [ids] } — details that open on a tap
 - Group { children: {"path", "componentId"}, by: "<key>", order?: [values] } — entries under a heading per value of a key
 - Chips { items, labelKey?, flagKey?, flag? } — short things at a glance; flagKey marks some ("bald")
-- Checklist { items, labelKey?, detailKey?, noteKey?, noteFormat?, groupKey?, groupOrder?, share? } — things to get or do; ticks are kept
+- Checklist { items, labelKey?, detailKey?, noteKey?, noteFormat?, noteMap?, groupKey?, groupOrder?, share? } — things to get or do; ticks are kept; a yes/no note needs noteMap: {"true": "da", "false": "einkaufen"}
 - Steps { items, textKey?, minutesKey? } — ordered work, numbered, with times
 - Link { title, subtitle?, eyebrow?, meta?, look?: "row"|"card", items: {"path": "/recipes"}, key?: "id", value: {"path": "recipe_id"}, view: id } — opens the entry of items whose key is value in a sheet, drawn by view; title, subtitle and meta read that entry, eyebrow the row the Link sits in
 - Callout { text, title?, tone?: "tip"|"note"|"warning" }
