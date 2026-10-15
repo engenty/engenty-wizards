@@ -42,7 +42,7 @@ ${line(`${command()} restart`, "restart it, e.g. to switch to a newly installed 
 ${line(`${command()} update`, "install the latest version")}
 ${line(`${command()} autoupdate`, "updates by themselves: add on or off (WIZARDS_DISABLE_AUTOUPDATE=1 is off too)")}
 ${more("(downloaded in the background, used from the next start; never during a run)")}
-${line(`${command()} autostart`, "start it when you log in: add on or off")}
+${line(`${command()} autostart`, "start it when you log in to this computer: add on or off")}
 ${more("(macOS: a LaunchAgent; Linux: a systemd user service)")}
 ${line(`${command()} connect`, "add your wizards to your AI apps: every app found, or the ones you name:")}
 ${more(

@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { installedByScript, type Layout, packageRoot } from "./home.js";
-import { findOnPath } from "./machine.js";
+import { findOnPath, macAppPresent } from "./machine.js";
 import { bad, cmd, dim, ok, tilde } from "./ui.js";
 
 const run = promisify(execFile);
@@ -277,6 +277,11 @@ function jsonApp(def: {
   file: string;
   /** The folder whose presence says the app is on this machine. */
   marker: string;
+  /**
+   * On a Mac, the app's bundle name (`Windsurf` for Windsurf.app): the folder alone outlives an
+   * uninstalled app, so the bundle must be there too.
+   */
+  macApp?: string;
   at: string[];
   entry: (server: ServerCommand) => unknown;
   /**
@@ -305,7 +310,9 @@ function jsonApp(def: {
     name: def.name,
     widgets: def.widgets,
     where: def.file,
-    installed: () => existsSync(def.marker),
+    installed: () =>
+      existsSync(def.marker) &&
+      (process.platform !== "darwin" || !def.macApp || macAppPresent(def.macApp)),
     connected: async () => jsonHasServer(read(def.file) ?? "", def.at),
     async connect(server) {
       const busy = running();
@@ -509,6 +516,7 @@ export function apps(paths: Layout): App[] {
       widgets: true,
       file: join(appSupport("Claude"), "claude_desktop_config.json"),
       marker: appSupport("Claude"),
+      macApp: "Claude",
       at: ["mcpServers"],
       entry: stdioEntry,
       ownsFileWhileRunning: () => processRunning(CLAUDE_DESKTOP_PROCESS),
@@ -530,6 +538,7 @@ export function apps(paths: Layout): App[] {
       widgets: true,
       file: join(vscodeUser, "mcp.json"),
       marker: vscodeUser,
+      macApp: "Visual Studio Code",
       at: ["servers"],
       entry: (server) => ({ type: "stdio", ...stdioEntry(server) }),
     }),
@@ -539,6 +548,7 @@ export function apps(paths: Layout): App[] {
       widgets: false,
       file: join(home, ".codeium", "windsurf", "mcp_config.json"),
       marker: join(home, ".codeium", "windsurf"),
+      macApp: "Windsurf",
       at: ["mcpServers"],
       entry: stdioEntry,
     }),

@@ -87,7 +87,7 @@ main() {
   command_link
   old_command
   if [ "$SETUP" = 1 ]; then
-    printf '%s  %s\n\n' "${GRAY}└$RESET" "Installed. The setup follows."
+    printf '%s  %s\n\n' "${GRAY}└$RESET" "Installed. Next, a few questions to set it up."
     printf '%s' "$SHOW"
     trap - EXIT ERR
     # --local goes on to the setup: it is the setup's account step that keeps the install off
