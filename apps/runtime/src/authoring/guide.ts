@@ -295,9 +295,18 @@ A template may only use fields asked and steps run EARLIER.`;
 export const PRINCIPLES = `
 How good wizards look:
 - For non-technical end users. Plain words, friendly titles phrased as questions ("What is the post for?").
+- The wizard speaks for itself: the first page invites in its own voice ("Show me your fridge."), every field's help says in
+  one line why it is asked ("For the amounts in the recipes"), every step that takes a while has a "working" line that
+  names what happens ("Looking into your fridge…"). Choices with up to five options are buttons, not a dropdown.
+- The result is what people come for: design how it looks first, then the data it needs. A json step's result gets a view
+  (output.surface, written once) or a widget; give its data the fields only the view uses — a yes/no that picks a colour
+  ("in_fridge"), a key that groups ("category"), one human line (a summary, a tip, a theme per day) — and links instead of
+  copies (a meal names its recipe's id). Things are cards, ordered work is Steps, things to get or do are a Checklist;
+  never a table of things for a person — a table only for figures compared across columns (prices, dates).
 - A page whose fields depend on an earlier answer uses "when" on its fields, never one copy of the page per answer and a branch to each copy. Choices that depend on what an earlier step found use "optionsFrom", never one page per possible result.
 - Few pages, 1–5 fields each, one theme per page. Only ask what the result really needs; prefer selects with sensible defaults.
-- Put a review step before anything expensive (video) and before the final result, so people can correct or regenerate.
+- Put a review step before anything expensive (video) and before anything written elsewhere (mail, CRM), so people can
+  correct or regenerate. A result people can simply make again needs no review before it.
 - Money/totals: use an "items" field with vat — the runner computes totals; documents must use {{items}} verbatim. Never let a model compute totals.
 - Facts from the web need an agent step with web_search + web_fetch BEFORE writing; documents then cite those notes.
 - Live data with a free public JSON API (weather and wind: api.open-meteo.com; sunrise/sunset is in it too) → an agent step with the http tool and model "standard" that calls the API and returns json. Far cheaper and more exact than web research; use web research only when no API exists.

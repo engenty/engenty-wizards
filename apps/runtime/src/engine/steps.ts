@@ -12,16 +12,18 @@ import {
   templateRefs,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import { mainLogo, ruleLines } from "@engenty-wizards/shared/projects";
+import { mainLogo, ruleLines, runTheme } from "@engenty-wizards/shared/projects";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import { note as runNote } from "@engenty-wizards/shared/run";
 import {
   fitData,
+  labelOf,
   type ObjectShape,
   recordsOf,
   shapeJsonSchema,
   shapeLines,
   shapeZod,
+  titleKey,
 } from "@engenty-wizards/shared/shape";
 import {
   SURFACE_GUIDE,
@@ -31,7 +33,7 @@ import {
 } from "@engenty-wizards/shared/surface";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
-import { generateText, type JSONSchema7, jsonSchema, Output } from "ai";
+import { generateText, type JSONSchema7, jsonSchema, Output, parsePartialJson } from "ai";
 import type { z } from "zod";
 import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
 import { snapshotHtmlImages } from "../files/web-images.js";
@@ -209,6 +211,84 @@ export function ownJson(
     }
   }
   return null;
+}
+
+/** At most this many entries a step reports while it writes; the rest come with the result. */
+const MAX_FOUND = 40;
+
+/**
+ * Runs a json step's agent as a stream and reports each entry of a top-level list once it is
+ * complete in the JSON the agent is writing: "Rezepte: Shakshuka mit Feta". Returns what
+ * `generate` would: the text, the steps and the usage.
+ */
+async function streamWithProgress(
+  agent: Agent,
+  message: Parameters<Agent["stream"]>[0],
+  options: { maxSteps: number; abortSignal: AbortSignal },
+  step: AgentStep,
+  ctx: StepContext,
+): Promise<{ text: string; steps?: { text?: string }[]; usage?: unknown; totalUsage?: unknown }> {
+  const shape = outputSchema(step).shape;
+  const reported = new Map<string, number>();
+  let told = 0;
+  let written = "";
+  let checked = 0;
+  const report = async (final: boolean) => {
+    const start = written.lastIndexOf("```json");
+    if (start < 0 || told >= MAX_FOUND) {
+      return;
+    }
+    const body = written.slice(start + 7).replace(/```\s*$/, "");
+    const { value } = await parsePartialJson(body);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return;
+    }
+    for (const [key, field] of Object.entries(shape.fields)) {
+      const list = (value as Record<string, unknown>)[key];
+      if (field.kind !== "list" || !Array.isArray(list)) {
+        continue;
+      }
+      // The last entry may still be half written, until the answer ends.
+      const done = final ? list.length : list.length - 1;
+      for (let i = reported.get(key) ?? 0; i < done && told < MAX_FOUND; i++) {
+        const entry = list[i];
+        const name =
+          field.of.kind === "object"
+            ? String((entry as Record<string, unknown>)?.[titleKey(field.of) ?? ""] ?? "")
+            : String(entry ?? "");
+        if (name.trim()) {
+          told += 1;
+          await ctx.emit("info", {
+            code: "found",
+            params: { label: labelOf(key, field), name: name.trim().slice(0, 80) },
+          });
+        }
+        reported.set(key, i + 1);
+      }
+    }
+  };
+  const stream = await agent.stream(message, options);
+  for await (const chunk of stream.fullStream as AsyncIterable<any>) {
+    const payload = chunk.payload ?? chunk;
+    if (chunk.type === "text-delta") {
+      written += payload.text ?? payload.delta ?? "";
+      // Parsing the growing answer every few hundred characters is enough to keep up.
+      if (written.length - checked > 300) {
+        checked = written.length;
+        await report(false);
+      }
+    } else if (chunk.type === "error") {
+      throw payload.error ?? new Error("step stream error");
+    }
+  }
+  await report(true);
+  const s = stream as any;
+  return {
+    text: (await s.text) ?? written,
+    steps: await s.steps,
+    usage: await s.usage,
+    totalUsage: await s.totalUsage,
+  };
 }
 
 /** An agent step looks at this many photos itself; more are read one by one with read_document. */
@@ -510,7 +590,11 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
         ? "Answer with the finished result in clean Markdown — no preamble, no closing remarks."
         : step.output.format === "text"
           ? "Answer with the finished result as plain text — no Markdown, no preamble."
-          : "Finish with everything the result needs in your final answer; it is turned into structured data afterwards.";
+          : [
+              "Finish with everything the result needs in your final answer, ending with one ```json block in exactly this shape (keys as named, lists as lists):",
+              shapeLines(outputSchema(step).shape).join("\n"),
+              'Write the parts in this order, each entry complete before the next. Its values are read on a phone: short names without hedges (doubt goes into its own field, "ca. 1 Becher"), only the values a field allows, no filler entries ("if needed").',
+            ].join("\n");
     const system = [
       groundRules(ctx),
       step.tools.includes("browser") ? BROWSER_RULES : "",
@@ -579,7 +663,11 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
           },
         ]
       : prompt;
-    const result = await agent.generate(message, { maxSteps, abortSignal: ctx.signal });
+    // A json step streams, so the person sees its entries as they are written (`found`).
+    const result =
+      step.output.format === "json"
+        ? await streamWithProgress(agent, message, { maxSteps, abortSignal: ctx.signal }, step, ctx)
+        : await agent.generate(message, { maxSteps, abortSignal: ctx.signal });
     await ctx.chargeUsd(costOf(resolved, (result as any).totalUsage ?? result.usage));
     // `result.text` strings together what the model said between tool calls ("I open the page …").
     // A written result is its last message; structuring keeps everything, numbers may sit anywhere.
@@ -705,7 +793,8 @@ const DOCUMENT_GUIDES: Record<string, string> = {
   briefing:
     "A research briefing: title, a three-sentence executive summary, key findings with numbers, sections with headings, implications, and a numbered source list with links.",
   letter: "A business letter with sender, recipient, date, subject line, body and signature.",
-  report: "A structured report with title, summary, sections with headings, tables where useful.",
+  report:
+    "A structured report with title, summary and sections with headings; findings and items as short headed blocks, a table only for figures compared across columns.",
   free: "A well-structured document fitting the brief.",
 };
 
@@ -783,20 +872,30 @@ async function writeHtml(
 ): Promise<string> {
   const brief = renderTemplate(step.prompt, ctx.scope);
   const images = placeableImages(step, ctx);
-  const accent = ctx.scope.brand.colors?.[0]?.value ?? "#c4582c";
+  // The look comes from the space's brand, as on the run page; what it does not say, the runner's own.
+  const theme = runTheme(ctx.scope.brand);
+  const accent = theme.accent ?? "#e0531b";
+  const look = [
+    `headings in ${theme.display ? `"${theme.display}"` : "a characterful sans"}, text in ${theme.body ? `"${theme.body}"` : "a clean sans"} (each with a system font behind it)`,
+    `the accent ${accent} for marks and figures`,
+    theme.second ? `${theme.second} for what carries meaning (done, there, good)` : "",
+    theme.background ? `a ground in the tone of ${theme.background}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
   const guide =
     kind === "dashboard"
       ? [
           "Build a single self-contained HTML dashboard (one file).",
           "Charts are INLINE SVG you draw yourself — no external scripts, no CDN, no network requests. Bar, line and donut charts with axis labels and values.",
           "Interactivity (tabs, tooltips, a slider over time, filters) may use a small inline <script>. Everything must also read well without interacting.",
-          "Layout: a title row, 3–6 KPI tiles, then charts and a compact data table, and a 'Sources' list at the bottom.",
-          `Calm design: white background, generous whitespace, system font stack, one accent colour ${accent}, muted greys. Width-responsive with CSS grid.`,
+          "Layout: a title row with one plain sentence of what it shows, 3–6 key figures as tiles, then the charts; things (offers, products, places, people) as cards; a table only for figures compared across columns; a 'Sources' list at the bottom.",
+          `Design: ${look}; generous whitespace, cards for things, width-responsive with CSS grid.`,
         ].join("\n")
       : [
           "Write a single self-contained, print-ready HTML document (A4).",
           DOCUMENT_GUIDES[step.options?.template ?? "free"],
-          `Design: @page A4 margins 18mm, system/Inter font stack, 10.5pt body, clear hierarchy, thin rules, one accent colour ${accent}. No external assets, no scripts.`,
+          `Design: @page A4 margins 18mm, 10.5pt body, ${look}; a clear type scale, thin rules. No external assets, no scripts.`,
         ].join("\n");
   const system = [
     groundRules(ctx),

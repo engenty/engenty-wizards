@@ -175,6 +175,8 @@ const NOTES_EN = {
   },
   videoRendering: "Rendering the video – this usually takes 1–3 minutes.",
   photo: "Looking at photo {n} of {total}",
+  // An entry a step has just written, while it writes the rest: "Rezepte: Shakshuka mit Feta".
+  found: "{label}: {name}",
   listen: "Listening to “{label}”…",
   listenFailed: "“{label}” couldn’t be transcribed.",
   filmCutting: "Cutting the film – this takes about a minute.",
@@ -496,6 +498,7 @@ const NOTES_DE: Partial<Record<RunNoteCode, Line>> = {
   },
   videoRendering: "Das Video wird gerendert – das dauert meist 1–3 Minuten.",
   photo: "Sieht sich Foto {n} von {total} an",
+  found: "{label}: {name}",
   listen: "Hört „{label}“ an …",
   listenFailed: "„{label}“ konnte nicht verschriftlicht werden.",
   filmCutting: "Der Film wird geschnitten – das dauert etwa eine Minute.",

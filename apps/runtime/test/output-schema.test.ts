@@ -17,6 +17,22 @@ vi.mock("@mastra/core/agent", () => ({
     async generate() {
       return { text: answer.text, steps: [{ text: answer.text }], usage: {} };
     }
+    // A json step streams: the answer arrives in pieces, as from a model.
+    async stream() {
+      const text = answer.text;
+      async function* chunks() {
+        for (let i = 0; i < text.length; i += 120) {
+          yield { type: "text-delta", payload: { text: text.slice(i, i + 120) } };
+        }
+      }
+      return {
+        fullStream: chunks(),
+        text: Promise.resolve(text),
+        steps: Promise.resolve([{ text }]),
+        usage: Promise.resolve({}),
+        totalUsage: Promise.resolve({}),
+      };
+    }
   },
 }));
 vi.mock("../src/models.js", () => ({
@@ -189,6 +205,25 @@ describe("a step with a schema, run", () => {
     expect(bound({ path: "/recipes/0/steps/1/minutes", format: "{} Min" }, out.json)).toBe(
       "7 Min",
     );
+  });
+
+  it("tells what it has written while it writes, every entry once", async () => {
+    answer.text = `Los geht's.\n\n\`\`\`json\n${JSON.stringify(fridgePlan)}\n\`\`\``;
+    const notes: { code: string; params?: Record<string, unknown> }[] = [];
+    await runAgentStep(cook as any, {
+      ...ctx(),
+      emit: async (_type: string, note: unknown) => {
+        if (note && typeof note === "object") {
+          notes.push(note as never);
+        }
+      },
+    } as any);
+    const found = notes.filter((n) => n.code === "found").map((n) => n.params);
+    expect(found).toContainEqual({ label: "Rezepte", name: "Shakshuka mit Feta" });
+    expect(found).toContainEqual({ label: "Im Kühlschrank erkannt", name: "Eier" });
+    const names = found.map((f) => `${f?.label}/${f?.name}`);
+    expect(new Set(names).size).toBe(names.length);
+    expect(found.length).toBeLessThanOrEqual(40);
   });
 
   it("downloads as sheets per list, a CSV of flat entries and a document", () => {
