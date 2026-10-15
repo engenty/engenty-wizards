@@ -27,6 +27,7 @@ package that carry the line "SPDX-License-Identifier: FSL-1.1-MIT OR MIT":
   src/fit.ts
   src/numbers.ts
   src/run.ts
+  src/shape.ts
   src/store.ts
   src/surface.ts
   src/texts.ts
