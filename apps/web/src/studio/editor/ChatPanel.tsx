@@ -407,7 +407,7 @@ export function ChatPanel({
   avatar,
   hello = t("editor.chatHello"),
   placeholder = t("editor.composer"),
-  changedLabel = "Ablauf aktualisiert",
+  changedLabel = t("editor.flowChanged"),
   compact,
   intro,
   closed,
