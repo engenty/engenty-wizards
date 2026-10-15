@@ -61,16 +61,19 @@ export const CLIENTS: readonly Client[] = [
   },
 ];
 
+const APP_ROOTS = ["/Applications", join(homedir(), "Applications")];
+
+/** Whether `<name>.app` is in one of the Mac's Applications folders. */
+export function macAppPresent(name: string, roots = APP_ROOTS): boolean {
+  return roots.some((root) => existsSync(join(root, `${name}.app`)));
+}
+
 /** The client's desktop app, when it is on this Mac: its name, e.g. "Claude". */
-export function vendorApp(
-  client: Client,
-  roots = ["/Applications", join(homedir(), "Applications")],
-) {
+export function vendorApp(client: Client, roots = APP_ROOTS) {
   if (process.platform !== "darwin" || !client.app) {
     return null;
   }
-  const app = client.app;
-  return roots.some((root) => existsSync(join(root, `${app}.app`))) ? app : null;
+  return macAppPresent(client.app, roots) ? client.app : null;
 }
 
 /**

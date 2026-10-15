@@ -8,7 +8,7 @@ version: 0.5.0
 
 | Command | What it does |
 |---|---|
-| `wizards` | Shows what is running, and a menu. While it runs, you can open the studio, restart or stop it; while it doesn’t, “Start in the background” or “Start here” (in this terminal). Then “Update”, which restarts it into the new version, “Start at login”, “Connect AI apps”, “Account”, “Status”, “Setup” and “Help”. The first time, the setup runs first. It needs a terminal |
+| `wizards` | Shows what is running, and a menu. While it runs, you can open the studio, restart or stop it; while it doesn’t, “Start in the background” or “Start in this terminal”. Then “Update”, which restarts it into the new version, “Start at login”, “Connect AI apps”, “Account”, “Status”, “Setup”, “Uninstall” and “Help”. The first time, the setup runs first. It needs a terminal |
 | `wizards start` | Starts it and opens the studio. It runs in that terminal, and Ctrl-C stops it. The first time, the setup runs first |
 | `wizards studio` | Opens the studio in your browser. If it isn’t running, it starts in the background first |
 | `wizards setup` | Runs the guided setup again: your account, an AI client, the browser and ffmpeg, start at login, your AI apps. `--local` leaves the account out ([Local only](./local-only.md)) |

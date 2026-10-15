@@ -1,10 +1,12 @@
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 import * as p from "@clack/prompts";
 import type { Running } from "../running.js";
 import { type UpdateStatus, updateStatus } from "../update.js";
 import { type AccountState, accountMenu, accountState, describeAccount } from "./account.js";
 import { type Autostart, autostartForStatus, setAutostart } from "./autostart.js";
 import { connectCommand } from "./connect.js";
-import { command, type Layout, packageVersion, readInstallNote } from "./home.js";
+import { command, type Layout, packageRoot, packageVersion, readInstallNote } from "./home.js";
 import { type SetupOptions, setup } from "./setup.js";
 import { open, runningRuntime, settings, start } from "./start.js";
 import { restart, status, stop } from "./status.js";
@@ -23,6 +25,7 @@ type Action =
   | "account"
   | "status"
   | "setup"
+  | "uninstall"
   | "help"
   | "quit";
 
@@ -73,7 +76,7 @@ function choices({ running, atLogin, release, account }: State): p.Option<Action
       ]
     : [
         { value: "start", label: "Start in the background", hint: "and open the studio" },
-        { value: "foreground", label: "Start here", hint: "in this terminal (Ctrl-C stops it)" },
+        { value: "foreground", label: "Start in this terminal", hint: "Ctrl-C stops it" },
       ];
   options.push({
     value: "update",
@@ -91,7 +94,7 @@ function choices({ running, atLogin, release, account }: State): p.Option<Action
     {
       value: "connect",
       label: "Connect AI apps",
-      hint: "use your wizards in Claude, Cursor, Codex…",
+      hint: "add your wizards as an MCP server in Claude, Cursor, Codex…",
     },
     {
       value: "account",
@@ -103,6 +106,11 @@ function choices({ running, atLogin, release, account }: State): p.Option<Action
     },
     { value: "status", label: "Status", hint: "what’s installed, and any problems" },
     { value: "setup", label: "Setup", hint: "account, AI client, ffmpeg, start at login" },
+    {
+      value: "uninstall",
+      label: "Uninstall",
+      hint: "remove it from this computer; asks about your data first",
+    },
     { value: "help", label: "Help", hint: "every command" },
     { value: "quit", label: "Quit", hint: running ? "engenty wizards keeps running" : undefined },
   );
@@ -118,7 +126,11 @@ async function serviceSettings(paths: Layout, atLogin: Autostart) {
     message: "Start at login?",
     initialValue: atLogin.on,
     options: [
-      { value: true, label: "Yes", hint: "runs in the background whenever you log in" },
+      {
+        value: true,
+        label: "Yes",
+        hint: "runs in the background whenever you log in to this computer",
+      },
       { value: false, label: "No", hint: "only when you start it" },
     ],
   });
@@ -150,7 +162,7 @@ function commands(): string {
 
 /**
  * `wizards` on a terminal: what runs, and a menu of what the commands do. The first time, the
- * setup runs first. Returns the exit code; "Start here" ends it with the runtime in the
+ * setup runs first. Returns the exit code; "Start in this terminal" ends it with the runtime in the
  * foreground.
  */
 export async function menu(
@@ -219,6 +231,19 @@ export async function menu(
       case "setup":
         await setup(paths, setupOptions);
         break;
+      case "uninstall": {
+        // Its own process, as `wizards uninstall` is: this one's modules write to the install.
+        const { status: code } = spawnSync(
+          process.execPath,
+          [join(packageRoot, "bin", "wizards.mjs"), "uninstall"],
+          { stdio: "inherit" },
+        );
+        // 130: the person said no, so the menu goes on.
+        if (code !== 130) {
+          return code ?? 1;
+        }
+        break;
+      }
       case "help":
         console.log(help);
         break;

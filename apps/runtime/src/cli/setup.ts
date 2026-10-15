@@ -83,21 +83,22 @@ async function clientsStep(
 
   if (!installed.length) {
     p.log.message(
-      dim("engenty wizards uses an AI client to think, on a subscription you already have."),
+      dim(
+        "engenty wizards runs its AI through an AI client, like Claude Code or Codex, on a subscription you already have.",
+      ),
     );
   }
 
   let wanted: ClientState[] = missing.filter((s) => options.clients.includes(s.client.id));
-  if (interactive && missing.length && !wanted.length) {
+  // With a client already here, setup asks nothing more; another one is a `--client` away.
+  if (interactive && !installed.length && missing.length && !wanted.length) {
     const suggested = suggestedClient(missing);
     // A client whose app is on this Mac comes first: its subscription is most likely paid for.
     const offered = [...missing].sort(
       (a, b) => Number(!vendorApp(a.client)) - Number(!vendorApp(b.client)),
     );
     const answer = await p.multiselect({
-      message: installed.length
-        ? "Install another AI client? (space to choose, enter to continue)"
-        : "Which AI client should be installed?",
+      message: "Which AI client should be installed? (space to choose, enter to continue)",
       options: offered.map(({ client }) => {
         const app = vendorApp(client);
         return {
@@ -106,13 +107,13 @@ async function clientsStep(
           hint: [
             `${client.account} subscription`,
             app ? `the ${app} app is on this Mac` : "",
-            !installed.length && client.id === suggested?.client.id ? "recommended" : "",
+            client.id === suggested?.client.id ? "recommended" : "",
           ]
             .filter(Boolean)
             .join(", "),
         };
       }),
-      initialValues: installed.length || !suggested ? [] : [suggested.client.id],
+      initialValues: suggested ? [suggested.client.id] : [],
       required: false,
     });
     if (cancelled(answer)) {
@@ -139,7 +140,7 @@ async function clientsStep(
 async function toolsStep(interactive: boolean): Promise<"cancelled" | undefined> {
   const chrome = findChrome();
   if (chrome) {
-    p.log.success(`Browser for PDF and PNG: ${dim(tilde(chrome))}`);
+    p.log.success(`Browser for PDF and PNG exports: ${dim(tilde(chrome))}`);
   } else {
     p.log.warn(
       "No Chrome, Edge or Chromium found. PDF and PNG exports and browser steps need one.\nhttps://www.google.com/chrome",
@@ -190,16 +191,16 @@ async function autostartStep(
     return;
   }
   if (state.on) {
-    p.log.success(`Starts at login: ${dim(state.how)}`);
+    p.log.success(`Starts when you log in to this computer: ${dim(state.how)}`);
     return;
   }
   if (!interactive) {
-    p.log.info(dim(`To start it when you log in: ${cmd("autostart on")}`));
+    p.log.info(dim(`To start it when you log in to this computer: ${cmd("autostart on")}`));
     return;
   }
   const answer = await p.confirm({
     message:
-      "Start engenty wizards when you log in? It keeps running in the background, so links and your AI apps can always reach it.",
+      "Start engenty wizards when you log in to this computer? It runs as a background process, without a terminal window, so links and your AI apps can always reach it.",
     initialValue: true,
   });
   if (cancelled(answer)) {
@@ -212,12 +213,12 @@ async function autostartStep(
   try {
     const after = await setAutostart(paths, true);
     if ("on" in after && after.on) {
-      p.log.success(`Starts at login: ${dim(after.how)}`);
+      p.log.success(`Starts when you log in to this computer: ${dim(after.how)}`);
     } else {
-      p.log.warn("Couldn’t turn on start at login.");
+      p.log.warn("Couldn’t set it to start when you log in.");
     }
   } catch (error) {
-    p.log.warn(`Couldn’t turn on start at login. ${(error as Error).message}`);
+    p.log.warn(`Couldn’t set it to start when you log in. ${(error as Error).message}`);
   }
 }
 
@@ -230,7 +231,7 @@ async function appsStep(paths: Layout, interactive: boolean): Promise<"cancelled
   const connected = states.filter((s) => s.connected);
   const offered = states.filter((s) => s.installed && !s.connected);
   if (connected.length) {
-    p.log.success(`In your AI apps: ${connected.map((s) => s.name).join(", ")}`);
+    p.log.success(`Already in your AI apps: ${connected.map((s) => s.name).join(", ")}`);
   }
   if (!offered.length) {
     return;
@@ -242,12 +243,9 @@ async function appsStep(paths: Layout, interactive: boolean): Promise<"cancelled
     return;
   }
   const answer = await p.multiselect({
-    message: "Use your wizards in these AI apps? (space to choose, enter to continue)",
-    options: offered.map((s) => ({
-      value: s.id,
-      label: s.name,
-      hint: s.widgets ? "shows runs as a widget" : "shows runs as text",
-    })),
+    message:
+      "Add your wizards to these AI apps, as an MCP server in each app’s settings? (space to choose, enter to continue)",
+    options: offered.map((s) => ({ value: s.id, label: s.name })),
     initialValues: offered.map((s) => s.id),
     required: false,
   });
@@ -334,7 +332,7 @@ async function howToUse(paths: Layout) {
         : "engenty wizards isn’t running yet.",
       "unavailable" in atLogin || !atLogin.on
         ? ""
-        : dim("It starts automatically when you log in."),
+        : dim("It starts automatically when you log in to this computer."),
     ]
       .filter(Boolean)
       .join("\n"),
