@@ -8,8 +8,9 @@ company, run it, change it — just don't offer it to others as a competing prod
 Each release becomes MIT two years after it is published. Every package of the workspace names
 that licence in its `package.json`.
 
-The wizard format is open to everyone now: the nine files that define a wizard and read it
-(`packages/shared/src/definition.ts`, `fit.ts`, `run.ts`, `shape.ts`, `store.ts`, `surface.ts`, `texts.ts` and
+The wizard format is open to everyone now: the twelve files that define a wizard and read it
+(`packages/shared/src/definition.ts`, `fit.ts`, `numbers.ts`, `run.ts`, `runner-texts.ts`,
+`shape.ts`, `store.ts`, `surface.ts`, `texts.ts`, `translation.ts` and
 `engenty/data-tables/columns.ts`, `columns-format.ts`) are also under the MIT licence, at the
 choice of whoever uses them (`FSL-1.1-MIT OR MIT`, [packages/shared/LICENSE-MIT](packages/shared/LICENSE-MIT)).
 Each says so in its first line. The runner package (`packages/runner`, MIT) bundles them under MIT.

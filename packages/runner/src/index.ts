@@ -5,7 +5,7 @@
  */
 
 export { AskPanel } from "./AskPanel.js";
-export { type Api, ApiError, createApi, isOffline } from "./api.js";
+export { type Api, ApiError, createApi, isOffline, safeJson } from "./api.js";
 export { LiveBrowser } from "./browser-live.js";
 export { shrinkImage } from "./camera.js";
 export {

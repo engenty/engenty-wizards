@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { useMediaQuery } from "../lib/media";
 
 // The space sidebar's state, apart from the frame that draws it: a plugin page reaches it
 // through `MenuPage` without pulling the studio along.
@@ -42,18 +43,9 @@ export function useSpaceSidebar(): boolean {
   return useSpaceSidebarPick();
 }
 
-const WIDE = "(min-width: 1024px)";
 /** Wide enough for the sidebar beside the page (`lg`): below it, it stays closed. */
 function useWide(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      const query = window.matchMedia(WIDE);
-      query.addEventListener("change", listener);
-      return () => query.removeEventListener("change", listener);
-    },
-    () => window.matchMedia(WIDE).matches,
-    () => true,
-  );
+  return useMediaQuery("(min-width: 1024px)", true);
 }
 
 /** Whether the sidebar is there to see: picked, and the window wide enough. */

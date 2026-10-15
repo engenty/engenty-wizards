@@ -9,6 +9,7 @@ import {
   type Where,
   type WhereValue,
 } from "@engenty-wizards/shared/knowledge";
+import { readNumber } from "@engenty-wizards/shared/numbers";
 import { note } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull, or, type SQL, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -74,30 +75,9 @@ function refWhere(ref: ItemRef): SQL {
 
 // --- typed values ---------------------------------------------------------------
 
-/** A number as people write it: `38 h`, `20.000 €`, `1,5`, `1.234,50`. */
+/** A number with what stands around it, as `readNumber` reads it: `38 h`, `19 %`, `1,5`. */
 export function numberOf(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value !== "string") {
-    return null;
-  }
-  let s = value.replace(/[^\d,.-]/g, "");
-  if (!/\d/.test(s)) {
-    return null;
-  }
-  if (s.includes(",") && s.includes(".")) {
-    s =
-      s.lastIndexOf(",") > s.lastIndexOf(".")
-        ? s.replace(/\./g, "").replace(",", ".")
-        : s.replace(/,/g, "");
-  } else if (s.includes(",")) {
-    s = /^-?\d{1,3}(,\d{3}){2,}$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
-  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
-    s = s.replace(/\./g, "");
-  }
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return readNumber(value, { units: true });
 }
 
 /** A day, or a day and a time, as milliseconds (UTC, as written: no time zone is applied). */

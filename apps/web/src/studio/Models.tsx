@@ -1,4 +1,5 @@
 import { type ModelClass, TEXT_CLASSES, type TextClass } from "@engenty-wizards/shared/definition";
+import { featureOn } from "@engenty-wizards/shared/features";
 import {
   CAPABILITY_CLASSES,
   CREDITS,
@@ -155,7 +156,7 @@ function placeOf(me: Me, view: View): Place {
     topUp: billingUrl(me),
     harnesses: cloud ? [] : me.harnesses,
     canEdit: !cloud || me.tenant.role !== "member",
-    ownKeys: !cloud || me.features.ownKeys !== false,
+    ownKeys: !cloud || featureOn(me.features, "ownKeys"),
   };
 }
 

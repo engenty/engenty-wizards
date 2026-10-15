@@ -1,6 +1,7 @@
 import { isLang, LANG_NAMES, LANGS, langName } from "@engenty-wizards/shared/definition";
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { localSide, t, useLang } from "../lib/i18n";
+import { useMediaQuery } from "../lib/media";
 import { usePickLang } from "../lib/session";
 import { cn, Select } from "../ui";
 
@@ -8,19 +9,8 @@ import { cn, Select } from "../ui";
 const PAD_X = 12;
 const EASE = "cubic-bezier(0.3, 0.7, 0.2, 1)";
 
-const NARROW = "(max-width: 639px)";
-/** A phone's width: there the switch names both languages by their code, EN · DE. */
-function useNarrow(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      const query = window.matchMedia(NARROW);
-      query.addEventListener("change", listener);
-      return () => query.removeEventListener("change", listener);
-    },
-    () => window.matchMedia(NARROW).matches,
-    () => false,
-  );
-}
+/** A phone's width (below `sm`): there the switch names both languages by their code, EN · DE. */
+const PHONE = "(max-width: 639px)";
 
 /**
  * English and the person's own language (`localSide`), EN · DE as on the landing page: the
@@ -79,7 +69,7 @@ export function LangPill({
   /** What a side is named in full; default: the language's own name. */
   label?: (code: string) => string;
 }) {
-  const narrow = useNarrow();
+  const narrow = useMediaQuery(PHONE);
   const probes = useRef<Record<string, HTMLSpanElement | null>>({});
   const [sizes, setSizes] = useState<Record<string, number> | null>(null);
   const full = (code: string) => (label ? label(code) : langName(code));

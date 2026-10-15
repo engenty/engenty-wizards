@@ -7,10 +7,10 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
+import { useMediaQuery } from "../lib/media";
 import { cn } from "../ui";
 
 /**
@@ -53,17 +53,9 @@ export function useDetail(label: string | null) {
   }, [label, setDetail]);
 }
 
-const NARROW = "(max-width: 767px)";
-
-function onNarrowChange(listener: () => void) {
-  const query = window.matchMedia(NARROW);
-  query.addEventListener("change", listener);
-  return () => query.removeEventListener("change", listener);
-}
-
 /** Below `md` the menus and the page take turns. */
 export function useNarrow(): boolean {
-  return useSyncExternalStore(onNarrowChange, () => window.matchMedia(NARROW).matches);
+  return useMediaQuery("(max-width: 767px)");
 }
 
 /** The entrance of a level: deeper from the right, back from the left, as in engenty-pro. */

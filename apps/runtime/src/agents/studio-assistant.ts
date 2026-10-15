@@ -21,7 +21,6 @@ import {
   textStyleLine,
 } from "@engenty-wizards/shared/projects";
 import { Agent } from "@mastra/core/agent";
-import type { MastraModelConfig } from "@mastra/core/llm";
 import { createTool } from "@mastra/core/tools";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -31,15 +30,16 @@ import type { SessionUser } from "../auth/index.js";
 import type { AssistantCardRecord, AssistantToolCallRecord } from "../db/schema.js";
 import { currentFeatures } from "../features.js";
 import {
+  agentModel,
   attachTools,
   contextWindowOf,
   costOf,
   gatewayTools,
   textModel,
+  totalUsage,
   usageOf,
 } from "../models.js";
 import type { ChatRow, TurnHistory } from "../services/assistant-chats.js";
-import { ServiceError } from "../services/errors.js";
 import { knowledgeCounts } from "../services/knowledge.js";
 import {
   addProjectFileFromUrl,
@@ -53,6 +53,7 @@ import { categoryRows } from "../services/space-categories.js";
 import { currentTenant } from "../tenants/tenant.js";
 import { type ServerKey, serverText } from "../texts.js";
 import { assistantPageOf, assistantToolsOf } from "../tools/plugin.js";
+import { attempt as attemptTool, imageOutput } from "../tools/shared.js";
 import { readWebsite } from "./website.js";
 
 export interface AssistantInput {
@@ -194,13 +195,8 @@ function activity(tool: string, args: Record<string, unknown>, lang: Lang): stri
   return LABELS[key] ? serverText(lang, LABELS[key]) : null;
 }
 
-async function attempt<T>(run: () => Promise<T>): Promise<T | { error: string }> {
-  try {
-    return await run();
-  } catch (err) {
-    return { error: err instanceof ServiceError ? err.message : (err as Error).message };
-  }
-}
+/** A tool failure the model can read and fix, instead of a crashed turn: the whole message. */
+const attempt = <T>(run: () => Promise<T>) => attemptTool(run, { limit: Number.POSITIVE_INFINITY });
 
 async function projectState(userId: string, projectId: string) {
   const p = await ownedProject(userId, projectId);
@@ -770,18 +766,7 @@ function spaceTools(
           }
           return { name: row.name, image: data.toString("base64"), mime: row.mime };
         }),
-      toModelOutput: (out: any) => {
-        if (!out?.image) {
-          return { type: "json", value: out };
-        }
-        return {
-          type: "content",
-          value: [
-            { type: "text", text: out.name },
-            { type: "image-data", data: out.image, mediaType: out.mime },
-          ],
-        };
-      },
+      toModelOutput: imageOutput("image", (rest) => String(rest.name)),
     }),
   };
   if (!on.brandSections) {
@@ -965,7 +950,7 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
       content: SYSTEM,
       providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
     },
-    model: resolved.model as unknown as MastraModelConfig,
+    model: agentModel(resolved),
     tools,
   });
   const page = input.page;
@@ -1102,6 +1087,6 @@ export async function runStudioAssistant(input: AssistantInput): Promise<Assista
       throw payload.error ?? new Error("assistant stream error");
     }
   }
-  const usage: any = (await (stream as any).totalUsage) ?? (await stream.usage);
+  const usage = await totalUsage(stream);
   return { ...cut(), costUsd: costOf(resolved, usage) };
 }

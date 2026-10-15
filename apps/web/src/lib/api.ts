@@ -1,4 +1,4 @@
-import { ApiError, createApi, isOffline } from "@engenty-wizards/runner";
+import { ApiError, createApi, isOffline, safeJson } from "@engenty-wizards/runner";
 import { withBase } from "./base";
 import { lang } from "./i18n";
 import { report } from "./report";
@@ -7,14 +7,6 @@ export { ApiError, isOffline };
 
 /** JSON calls to this runtime, under the app's base path (and a remote runtime's ticket); a 5xx goes to the log. */
 export const api = createApi(withBase, {}, (line) => report("error", line));
-
-function safeJson(text: string) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { error: text };
-  }
-}
 
 /** POST that answers with Server-Sent Events. */
 export async function postStream(

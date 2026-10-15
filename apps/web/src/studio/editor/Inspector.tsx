@@ -25,6 +25,7 @@ import {
   WIZARD_LANGS,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
+import { readNumber } from "@engenty-wizards/shared/numbers";
 import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
 import { useQueryClient } from "@tanstack/react-query";
@@ -268,7 +269,7 @@ function ConditionEditor({
                   first.op === "in"
                     ? raw.split(",").map((x) => x.trim())
                     : first.op === "gt" || first.op === "lt"
-                      ? Number(raw.replace(",", ".")) || 0
+                      ? (readNumber(raw) ?? 0)
                       : raw === "true" || raw === "false"
                         ? raw === "true"
                         : raw;

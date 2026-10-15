@@ -392,6 +392,14 @@ export async function tenantChannels(id: string): Promise<TenantChannels> {
   return value;
 }
 
+/**
+ * Forgets what the Manage-App said of the tenant's numbers: the next `tenantChannels` asks.
+ * The runtime tests of the Manage-App's channel plugins (sms, calls, whatsapp) call it.
+ */
+export function forgetChannels(id: string) {
+  channels.delete(id);
+}
+
 /** A person of the tenant asks for its number; what the Manage-App answers with is the request. */
 export async function requestChannelNumber(
   id: string,

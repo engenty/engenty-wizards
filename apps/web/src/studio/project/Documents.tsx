@@ -1,4 +1,5 @@
 import { Markdown } from "@engenty-wizards/runner";
+import { formatBytes } from "@engenty-wizards/shared/numbers";
 import type { ProjectFileView } from "@engenty-wizards/shared/projects";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, Trash2 } from "lucide-react";
@@ -6,7 +7,7 @@ import { useState } from "react";
 import { api } from "../../lib/api";
 import { lang, t } from "../../lib/i18n";
 import { Card, cn, IconButton, Spinner } from "../../ui";
-import { fileSize, fileUrl, useFileActions, useProjectFiles } from "./data";
+import { fileUrl, useFileActions, useProjectFiles } from "./data";
 import { Description } from "./Files";
 import { KnowledgeHeader, useKnowledge } from "./Knowledge";
 
@@ -30,7 +31,11 @@ function typeLabel(file: ProjectFileView): string {
 }
 
 const meta = (file: ProjectFileView) =>
-  [typeLabel(file), file.pages ? t("project.pages", { n: file.pages }) : null, fileSize(file.size)]
+  [
+    typeLabel(file),
+    file.pages ? t("project.pages", { n: file.pages }) : null,
+    formatBytes(file.size),
+  ]
     .filter(Boolean)
     .join(" · ");
 

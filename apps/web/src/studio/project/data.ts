@@ -165,10 +165,3 @@ export function useAutosave<T>(value: T, save: (value: T) => Promise<unknown>, d
 
   return { state, error };
 }
-
-export function fileSize(bytes: number): string {
-  if (bytes < 1_000_000) {
-    return `${Math.max(1, Math.round(bytes / 1000))} KB`;
-  }
-  return `${(bytes / 1_000_000).toFixed(1)} MB`;
-}

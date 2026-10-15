@@ -1,3 +1,4 @@
+import { formatBytes } from "@engenty-wizards/shared/numbers";
 import {
   type AssetSection,
   PROJECT_LIMITS,
@@ -17,14 +18,7 @@ import {
 import { useRef, useState } from "react";
 import { t } from "../../lib/i18n";
 import { Button, Dialog, IconButton, Input, Label, Spinner, Tabs } from "../../ui";
-import {
-  fileSize,
-  fileUrl,
-  type ProjectFiles,
-  useAutosave,
-  useFileActions,
-  useLayout,
-} from "./data";
+import { fileUrl, type ProjectFiles, useAutosave, useFileActions, useLayout } from "./data";
 import { type Actions, CHECKER, Description, FromUrl, type MoveTo, Preview, Tiles } from "./Files";
 import {
   type AddEntry,
@@ -45,7 +39,7 @@ const assetMeta = (file: ProjectFileView) =>
     (file.name.includes(".") ? file.name.split(".").pop() : file.mime.split("/").pop())
       ?.toUpperCase()
       .slice(0, 5),
-    fileSize(file.size),
+    formatBytes(file.size),
   ]
     .filter(Boolean)
     .join(" · ");

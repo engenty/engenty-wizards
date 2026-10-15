@@ -1,4 +1,4 @@
-import { defaultFeatures, type FeatureName } from "@engenty-wizards/shared/features";
+import { defaultFeatures, type FeatureName, featureOn } from "@engenty-wizards/shared/features";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { setPublicBase } from "./base";
@@ -36,7 +36,10 @@ export function useFeatures(): Record<string, boolean> {
   return me.data?.features ?? config.data?.features ?? defaultFeatures();
 }
 
-/** A plugin's own switch is asked for by its full name: `contacts.leadScoring`. */
+/**
+ * A plugin's own switch is asked for by its full name: `contacts.leadScoring`. Outside a component,
+ * `featureOn(me.features, name)` reads the same way.
+ */
 export function useFeature(name: FeatureName | (string & {})): boolean {
-  return useFeatures()[name] === true;
+  return featureOn(useFeatures(), name);
 }
