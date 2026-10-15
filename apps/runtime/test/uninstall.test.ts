@@ -10,7 +10,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createClient } from "@libsql/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { present } from "../src/cli/autostart.js";
 import type { App } from "../src/cli/connect.js";
@@ -25,13 +24,12 @@ import {
 import {
   makePlan,
   parseUninstall,
-  readDataCounts,
   type UninstallSystem,
   uninstall,
 } from "../src/cli/uninstall.js";
 
 // Every test works in a home folder of its own under the temp folder, never the real one: the
-// system the uninstall talks to (apps, processes, launchctl, the Keychain) is a stand-in.
+// system the uninstall talks to (apps, processes, launchctl) is a stand-in.
 
 let user: string;
 let paths: ReturnType<typeof layout>;
@@ -92,7 +90,6 @@ function fakeSystem(
 ) {
   const running = over.running ?? [];
   const calls: string[] = [];
-  let keychain = true;
   const appList = [fakeApp("cursor", true), fakeApp("codex", false)];
   const system: UninstallSystem = {
     userHome: user,
@@ -114,20 +111,6 @@ function fakeSystem(
       calls.push("unit");
       rmSync(file, { force: true });
     },
-    keychain: {
-      present: async () => keychain,
-      clear: async () => {
-        calls.push("keychain");
-        keychain = false;
-      },
-    },
-    sizeOf: () => 2 * 1024 * 1024,
-    readData: async () => ({ wizards: 3, spaces: 2, onlyHere: 1, connections: 1 }),
-    backup: async (parts, file) => {
-      calls.push(`backup ${file} ${parts.length}`);
-      writeFileSync(file, "tar");
-    },
-    now: () => new Date("2026-10-15T12:00:00Z"),
     ...over,
   };
   return { system, calls, apps: appList };
@@ -154,9 +137,7 @@ describe("the plan of an uninstall", () => {
     expect(plan.program.sort()).toEqual(
       [paths.bin, paths.runtime, paths.tools, paths.logs, paths.installFile, paths.plugins].sort(),
     );
-    expect(plan.data?.dir).toBe(paths.data);
-    expect(plan.data?.extras).toEqual([paths.envFile]);
-    expect(plan.data?.keychain).toBe(true);
+    expect(plan.data.sort()).toEqual([paths.data, paths.envFile].sort());
   });
 
   it("finds the login item on Linux as a systemd user service", async () => {
@@ -173,7 +154,7 @@ describe("the plan of an uninstall", () => {
     const { system } = fakeSystem();
     const plan = await makePlan(paths, system);
     expect(plan.links).toEqual([]);
-    expect(plan.install).toBeNull();
+    expect(plan.program).toEqual([]);
   });
 });
 
@@ -183,7 +164,7 @@ describe("wizards uninstall", () => {
     const { system } = fakeSystem();
     const code = await uninstall(
       paths,
-      { dryRun: false, yes: false, deleteData: false, backup: false },
+      { dryRun: false, yes: false, deleteData: false},
       system,
     );
     expect(code).toBe(2);
@@ -195,7 +176,7 @@ describe("wizards uninstall", () => {
     const { system, calls, apps } = fakeSystem({ running: [proc(11, "start")] });
     const code = await uninstall(
       paths,
-      { dryRun: true, yes: false, deleteData: false, backup: false },
+      { dryRun: true, yes: false, deleteData: false},
       system,
     );
     expect(code).toBe(0);
@@ -212,14 +193,13 @@ describe("wizards uninstall", () => {
     });
     const code = await uninstall(
       paths,
-      { dryRun: false, yes: true, deleteData: false, backup: false },
+      { dryRun: false, yes: true, deleteData: false},
       system,
     );
     expect(code).toBe(0);
     expect(apps[0].on).toBe(false);
     expect(calls).toContain("bootout");
     expect(calls).toContain("stop 11,12,13");
-    expect(calls).not.toContain("keychain");
     expect(present(join(user, "Library", "LaunchAgents", "com.engenty.wizards.login.plist"))).toBe(
       false,
     );
@@ -231,39 +211,18 @@ describe("wizards uninstall", () => {
     expect(readFileSync(paths.envFile, "utf8")).toContain("API_PORT");
   });
 
-  it("deletes the data only with --yes --delete-data, after a backup with --backup", async () => {
+  it("deletes the data too with --yes --delete-data", async () => {
     installed();
     const { system, calls } = fakeSystem();
     const code = await uninstall(
       paths,
-      { dryRun: false, yes: true, deleteData: true, backup: true },
+      { dryRun: false, yes: true, deleteData: true },
       system,
     );
     expect(code).toBe(0);
-    const backup = join(user, "engenty-wizards-data-2026-10-15.tar.gz");
-    // The data folder and the settings that go with it.
-    expect(calls).toContain(`backup ${backup} 2`);
-    expect(existsSync(backup)).toBe(true);
-    expect(calls).toContain("keychain");
+    expect(calls).toContain("bootout");
     // Nothing is left, not even the empty ~/.engenty.
     expect(existsSync(join(user, ".engenty"))).toBe(false);
-  });
-
-  it("keeps the data when the backup fails", async () => {
-    installed();
-    const { system } = fakeSystem({
-      backup: async () => {
-        throw new Error("disk full");
-      },
-    });
-    const code = await uninstall(
-      paths,
-      { dryRun: false, yes: true, deleteData: true, backup: true },
-      system,
-    );
-    expect(code).toBe(1);
-    expect(existsSync(join(paths.data, "secret"))).toBe(true);
-    expect(existsSync(paths.runtime)).toBe(false);
   });
 
   it("fails when something is left: an app that can't be changed, a process that won't stop", async () => {
@@ -272,7 +231,7 @@ describe("wizards uninstall", () => {
     system.apps = () => [fakeApp("claude-desktop", true, false)];
     const code = await uninstall(
       paths,
-      { dryRun: false, yes: true, deleteData: false, backup: false },
+      { dryRun: false, yes: true, deleteData: false},
       system,
     );
     expect(code).toBe(1);
@@ -286,7 +245,7 @@ describe("wizards uninstall", () => {
     system.apps = () => [];
     const code = await uninstall(
       paths,
-      { dryRun: false, yes: true, deleteData: false, backup: false },
+      { dryRun: false, yes: true, deleteData: false},
       system,
     );
     expect(code).toBe(0);
@@ -299,49 +258,9 @@ describe("wizards uninstall", () => {
       dryRun: false,
       yes: true,
       deleteData: true,
-      backup: false,
     });
     expect(parseUninstall(["--dry-run"])).toMatchObject({ dryRun: true });
     expect(parseUninstall(["--force"])).toMatch(/Unknown option --force/);
-  });
-});
-
-describe("what the data folder holds", () => {
-  it("counts wizards, spaces, connected accounts and the wizards only on this computer", async () => {
-    mkdirSync(join(paths.data, "tenants"), { recursive: true });
-    const tenant = createClient({ url: `file:${join(paths.data, "tenants", "local.db")}` });
-    await tenant.executeMultiple(`
-      CREATE TABLE project (id TEXT PRIMARY KEY);
-      CREATE TABLE wizard (id TEXT PRIMARY KEY);
-      CREATE TABLE store_secret (id TEXT PRIMARY KEY);
-      INSERT INTO project VALUES ('p1'), ('p2');
-      INSERT INTO wizard VALUES ('w1'), ('w2'), ('w3');
-      INSERT INTO store_secret VALUES ('s1');
-    `);
-    tenant.close();
-    const control = createClient({ url: `file:${join(paths.data, "control.db")}` });
-    await control.executeMultiple(`
-      CREATE TABLE setting (key TEXT PRIMARY KEY, value TEXT);
-      INSERT INTO setting VALUES ('cloud:w1', '{"copy":{"version":1},"error":null}');
-      INSERT INTO setting VALUES ('cloud:w2', '{"copy":null,"error":{"message":"x"}}');
-    `);
-    control.close();
-    expect(await readDataCounts(paths.data)).toEqual({
-      wizards: 3,
-      spaces: 2,
-      onlyHere: 2,
-      connections: 1,
-    });
-  });
-
-  it("is empty for a data folder without databases", async () => {
-    mkdirSync(paths.data, { recursive: true });
-    expect(await readDataCounts(paths.data)).toEqual({
-      wizards: 0,
-      spaces: 0,
-      onlyHere: 0,
-      connections: 0,
-    });
   });
 });
 

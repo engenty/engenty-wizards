@@ -164,7 +164,7 @@ longer runs). It shows what it will remove first: your AI apps' entries, the log
 running process, `~/.engenty/wizards` and `~/.local/bin/wizards`. Your data in
 `~/.engenty/wizards/data` is kept unless you choose to delete it, and a reinstall picks it up
 again. `--dry-run` only shows the plan, `--yes` runs it without questions and keeps your data,
-and `--yes --delete-data` deletes your data too (`--backup` saves a copy first).
+and `--yes --delete-data` deletes your data too.
 
 ## Run it on a server
 

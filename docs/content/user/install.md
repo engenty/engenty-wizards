@@ -93,16 +93,9 @@ wizards uninstall
 
 First it shows what it will remove: your wizards in your AI apps, starting at login, everything of
 engenty wizards that is running, the program in `~/.engenty/wizards` and the command
-`~/.local/bin/wizards`. Then it asks about your data on its own.
-
-- **Your data is kept** unless you choose otherwise. It stays in `~/.engenty/wizards/data`, and
-  installing again picks it up.
-- **To delete it**, you confirm once more. If a wizard exists only on this computer, you type
-  `delete`. Before that, it offers to save a backup in your home folder. On a Mac, the keys in the
-  Keychain go with it.
-
-At the end it checks again and lists what it removed, what it kept and anything it couldn’t
-remove, with the command that does it.
+`~/.local/bin/wizards`. Your data in `~/.engenty/wizards/data` is kept unless you say to delete
+it, and installing again picks it up. [Back it up](./data.md) first if you delete it. At the end
+it lists anything it couldn’t remove.
 
 If the `wizards` command no longer runs, `npx wizards uninstall` does the same.
 
@@ -111,6 +104,5 @@ If the `wizards` command no longer runs, `npx wizards uninstall` does the same.
 | `--dry-run` | Only shows what it would remove |
 | `--yes` | Removes everything without asking and keeps your data |
 | `--yes --delete-data` | Deletes your data as well |
-| `--backup` | With `--delete-data`: saves a backup of your data first |
 
 Without a terminal, it asks for `--yes`.

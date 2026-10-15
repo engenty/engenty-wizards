@@ -12,7 +12,6 @@ import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
 import { cmd, cyan, tilde } from "./ui.js";
-import { uninstall } from "./uninstall.js";
 import { update } from "./update.js";
 import { validateCommand } from "./validate.js";
 
@@ -52,8 +51,7 @@ ${more(
 ${line(`${command()} disconnect`, "remove your wizards from those apps (same names)")}
 ${line(`${command()} mcp`, "run the MCP server over stdio (AI apps start this)")}
 ${line(`${command()} uninstall`, "take it off this computer: shows the plan, asks about your data (kept by default)")}
-${more("--dry-run only shows the plan; --yes runs it without asking and keeps your data;")}
-${more("--yes --delete-data deletes the data too (--backup saves a copy first)")}
+${more("--dry-run only shows it; --yes asks nothing and keeps your data; --yes --delete-data")}
 ${line(`${command()} validate`, "check wizards without the studio: .wizard files, unpacked packages, wizard JSON")}
 ${more("--json prints the issues as JSON. A space’s connectors and plugins are checked on import.")}
 
@@ -86,9 +84,6 @@ interface Args {
   open: boolean;
   service: boolean;
   print: boolean;
-  dryRun: boolean;
-  deleteData: boolean;
-  backup: boolean;
   clients: string[];
 }
 
@@ -104,9 +99,6 @@ function parse(argv: string[]): Args | string {
     open: true,
     service: false,
     print: false,
-    dryRun: false,
-    deleteData: false,
-    backup: false,
     clients: [],
   };
   for (let i = 0; i < argv.length; i++) {
@@ -121,12 +113,6 @@ function parse(argv: string[]): Args | string {
       args.service = true;
     } else if (arg === "--print") {
       args.print = true;
-    } else if (arg === "--dry-run") {
-      args.dryRun = true;
-    } else if (arg === "--delete-data") {
-      args.deleteData = true;
-    } else if (arg === "--backup") {
-      args.backup = true;
     } else if (arg === "--json") {
       args.json = true;
     } else if (arg === "--client") {
@@ -225,13 +211,6 @@ async function main(argv: string[]): Promise<number> {
       return connectCommand(paths, args.apps, args.command === "disconnect");
     case "mcp":
       return mcp(paths);
-    case "uninstall":
-      return uninstall(paths, {
-        dryRun: args.dryRun,
-        yes: args.yes,
-        deleteData: args.deleteData,
-        backup: args.backup,
-      });
     case "features":
       return featuresCommand(args.apps);
     case "validate":
