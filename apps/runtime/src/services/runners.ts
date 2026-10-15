@@ -3,7 +3,7 @@ import type {
   PluginRunnerProblem,
   PluginRunnerRequest,
 } from "@engenty-wizards/plugin-sdk";
-import { type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
+import { textLang, type WizardDefinition, wizardLang } from "@engenty-wizards/shared/definition";
 import { note, type PublicWizard } from "@engenty-wizards/shared/run";
 import {
   BUILT_IN_RUNNERS,
@@ -224,7 +224,7 @@ export async function publicRunners(
 ): Promise<PublicWizard["runners"]> {
   const available = await runnersOf();
   const settings = runnerSettingsOf(w, available);
-  const lang = wizardLang(def);
+  const lang = textLang(wizardLang(def));
   return settings.enabled
     .map((id) => available.find((r) => r.id === id))
     .filter((r): r is RunnerInfo => Boolean(r) && !r?.problem)

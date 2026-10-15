@@ -72,11 +72,14 @@ async function translate(
     chunks.push(keys.slice(i, i + size));
   }
   const model = await textModel("standard", { effort: "low" });
-  const call = async (chunk: string[]) => {
+  // The model sees short keys (t0, t1, …): some providers allow only letters, digits, "_", "."
+  // and "-" in a schema's property names, and a text's own key may hold anything.
+  const call = async (chunk: string[]): Promise<Record<string, string>> => {
+    const ids = chunk.map((_, i) => `t${i}`);
     const schema = jsonSchema<Record<string, string>>({
       type: "object",
-      properties: Object.fromEntries(chunk.map((k) => [k, { type: "string" }])),
-      required: chunk,
+      properties: Object.fromEntries(ids.map((id) => [id, { type: "string" }])),
+      required: ids,
       additionalProperties: false,
     });
     const result = await generateText({
@@ -91,9 +94,9 @@ async function translate(
       ]
         .filter(Boolean)
         .join("\n"),
-      prompt: JSON.stringify(Object.fromEntries(chunk.map((k) => [k, texts[k]])), null, 1),
+      prompt: JSON.stringify(Object.fromEntries(chunk.map((k, i) => [ids[i], texts[k]])), null, 1),
     });
-    return result.output;
+    return Object.fromEntries(chunk.map((k, i) => [k, result.output[ids[i]]]));
   };
   const out: Record<string, string> = {};
   const answers = await Promise.all(chunks.map(call));

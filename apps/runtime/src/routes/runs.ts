@@ -407,14 +407,16 @@ export const publicRoutes = new Hono()
       throw err;
     }
   })
-  // The runner's own words in a language outside LANGS, booked to this wizard's owner when new.
+  // The runner's own words in a language outside LANGS (the wizard's own or a viewer's), booked
+  // to this wizard's owner when new.
   .get("/wizards/:token/texts/:lang", async (c) => {
     const found = await publishedWizard(c.req.param("token"));
     const lang = c.req.param("lang");
     if (!found || !isLangCode(lang) || isLang(lang)) {
       return c.json(notFoundAnswer(c), 404);
     }
-    if (!wantsTranslation(found.w, found.def, lang)) {
+    // The wizard's own language needs the runner's words too, translation offered or not.
+    if (lang !== wizardLang(found.def) && !wantsTranslation(found.w, found.def, lang)) {
       return refuse(c, { code: "translationOff" }, 403);
     }
     try {

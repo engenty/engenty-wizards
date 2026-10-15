@@ -5,8 +5,8 @@ import {
   dataRef,
   type GenerateStep,
   isDecisionStep,
-  LOCALES,
   langNameEn,
+  localeOf,
   type Step,
   stepShape,
   templateRefs,
@@ -70,7 +70,7 @@ import { type StepContext, StepError } from "./types.js";
 
 /** Today's date as the wizard's people write it. */
 function today(ctx: StepContext): string {
-  return new Date().toLocaleDateString(LOCALES[wizardLang(ctx.def)], {
+  return new Date().toLocaleDateString(localeOf(wizardLang(ctx.def)), {
     year: "numeric",
     month: "long",
     day: "numeric",

@@ -20,7 +20,6 @@ import {
   FIELD_WAYS,
   type Field,
   isDecidedField,
-  type Lang,
   type LocationValue,
   type PageStep,
   type ResultStep,
@@ -119,7 +118,7 @@ const DockSlot = createContext<HTMLElement | null>(null);
  */
 const SpeechContext = createContext<{
   runId: string;
-  lang: Lang;
+  lang: string;
   readAloud: boolean;
   setReadAloud: (on: boolean) => void;
   /** The live conversation on the run, where the runtime has a model for it. */

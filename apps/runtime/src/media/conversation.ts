@@ -1,4 +1,4 @@
-import { LANG_NAMES } from "@engenty-wizards/shared/definition";
+import { langNameEn } from "@engenty-wizards/shared/definition";
 import type { RunView } from "@engenty-wizards/shared/run";
 import { NotedError } from "../model-errors.js";
 import { conversationAccess } from "../models.js";
@@ -127,7 +127,7 @@ export function conversationInstructions(view: RunView): string {
     .join(" ");
   const rules = [
     "You hold a conversation that fills in a wizard step by step. The person also sees the wizard on the screen.",
-    `Speak ${LANG_NAMES[view.lang]} (${view.lang}), short and friendly, as on the phone. One sentence, then the next question.`,
+    `Speak ${langNameEn(view.lang)} (${view.lang}), short and friendly, as on the phone. One sentence, then the next question.`,
     "Ask one field at a time, in the order of the state. After each answer call set_field. When every field you can fill by voice is answered, call submit_page.",
     "For a choice, name the options (at most four at a time) and pass exactly one of them on.",
     "Read e-mail addresses, links and numbers back before passing them on.",

@@ -879,8 +879,8 @@ export interface RunView {
   status: RunStatus;
   mode: "test" | "live";
   wizard: Pick<WizardDefinition, "title" | "description" | "avatar" | "intro">;
-  /** The language the wizard speaks: what is read aloud, and in which voice. */
-  lang: Lang;
+  /** The language the wizard speaks, by its code: what is read aloud, and in which voice. */
+  lang: string;
   /**
    * The run in the viewer's language (a wizard translated on request): every text of the view
    * is written in it, the choices keep their values and show `labels[value]`. Null: the
@@ -997,8 +997,8 @@ export interface PublicWizard {
    * beside "Let's go". A page runner has an address; a channel (a number, a bot) has none.
    */
   runners: { id: string; label: string; kind: "page" | "channel"; url: string | null }[];
-  /** The language the wizard is written in: the page opens in it. */
-  lang: Lang;
+  /** The language the wizard is written in, by its code: the page opens in it. */
+  lang: string;
   /** The author offers the wizard in the viewer's language, translated on request. */
   translatable: boolean;
   /** The page in the viewer's language, where it was asked for (`?lang=`); null: the original. */

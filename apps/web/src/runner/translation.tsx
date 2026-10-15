@@ -79,9 +79,11 @@ export function usePageLanguage(wizard: PublicWizard | undefined): PageLanguage 
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+  // The runner's own words, wherever the page's language is one engenty's strings lack: a
+  // viewer's, or the language the wizard is written in.
   const words = useQuery({
     queryKey: ["public-texts", token, wanted],
-    enabled: Boolean(token && wanted !== own && !isLang(wanted)),
+    enabled: Boolean(token && !isLang(wanted)),
     queryFn: () => api.get<UiTexts>(`/api/public/wizards/${token}/texts/${wanted}`),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
@@ -92,10 +94,10 @@ export function usePageLanguage(wizard: PublicWizard | undefined): PageLanguage 
   const shown = ready && !failed ? wanted : own;
   const table = useMemo<RunnerTable | null>(
     () =>
-      shown !== own && needsWords && words.data
+      !isLang(shown) && words.data?.lang === shown
         ? { lang: words.data.lang, runner: words.data.runner, notes: words.data.notes }
         : null,
-    [shown, own, needsWords, words.data],
+    [shown, words.data],
   );
 
   useEffect(() => {

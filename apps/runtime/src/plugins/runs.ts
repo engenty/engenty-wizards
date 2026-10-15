@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { PluginRunReport, PluginRunSignal, PluginRuns } from "@engenty-wizards/plugin-sdk";
-import { LANGS, type Lang, wizardLang } from "@engenty-wizards/shared/definition";
+import { LANGS, type Lang, textLang, wizardLang } from "@engenty-wizards/shared/definition";
 import { noteText, type RunNote } from "@engenty-wizards/shared/run";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema, withTenant } from "../db/client.js";
@@ -86,7 +86,10 @@ export function runsApiFor(pluginId: string): PluginRuns {
         runner: input.runner ?? pluginId,
       }).catch((err) => {
         if (err instanceof ModelUnavailableError) {
-          throw new ServiceError("refused", errorText(err, wizardLang(version.definition)));
+          throw new ServiceError(
+            "refused",
+            errorText(err, textLang(wizardLang(version.definition))),
+          );
         }
         if (err instanceof NoCreditsError) {
           throw new ServiceError(
@@ -146,7 +149,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
                 wizardId: w.id,
                 token: w.shareToken,
                 title: version.definition.title,
-                lang: wizardLang(version.definition),
+                lang: textLang(wizardLang(version.definition)),
               },
             ]
           : [];
@@ -247,7 +250,7 @@ export function runsApiFor(pluginId: string): PluginRuns {
         call: { runId: run.id },
       }).catch((err) => {
         if (err instanceof ModelUnavailableError) {
-          throw new ServiceError("refused", errorText(err, wizardLang(run.definition)));
+          throw new ServiceError("refused", errorText(err, textLang(wizardLang(run.definition))));
         }
         throw err;
       });

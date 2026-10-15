@@ -1,7 +1,7 @@
 ---
 title: The wizard format
 description: A wizard as JSON and as a .wizard file, its JSON Schema, and checking it with wizards validate.
-version: 0.5.0
+version: 0.5.13
 ---
 
 A wizard is one JSON document, its **definition**. The studio exports it as a `.wizard` file
@@ -30,9 +30,11 @@ tool may read and write wizards.
 lists the step types and their fields. The studio’s MCP tool `get_authoring_guide` explains them
 with a complete example.
 
-`lang` is the language the wizard speaks to people: `de` or `en`. It sets the runner’s own words
-and how numbers and dates are written. Without it, the language is read from the wizard’s own
-words, and English is the default where they are not clearly German.
+`lang` is the language the wizard speaks to people, as a two-letter code: `en`, `de`, `it`, `fr`
+and so on. The schema checks the shape of the code; `wizards validate` and the studio check that
+it names a real language. It sets the runner’s own words and how numbers and dates are written.
+Without it, the language is read from the wizard’s own words, and English is the default where
+they are not clearly German.
 
 `version` is the definition’s version. It changes only with a breaking change; the schemas of
 each version stay online in their own folder (`/schema/v1/`, `/schema/v2/`, …).

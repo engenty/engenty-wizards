@@ -93,6 +93,14 @@ const COUNTRY_LANGUAGE: Record<string, string> = {
   VA: "it",
 };
 
+/**
+ * The languages a wizard is offered in when its author picks one: English, German and the main
+ * languages of Europe. A wizard may name any other real language by its code as well.
+ */
+export const WIZARD_LANGS: readonly string[] = [
+  ...new Set(["en", "de", ...Object.values(COUNTRY_LANGUAGE)]),
+];
+
 /** The country of each European time zone (IANA names, as `Intl` gives them). */
 const ZONE_COUNTRY: Record<string, string> = {
   "Europe/Amsterdam": "NL",
@@ -168,6 +176,26 @@ export function langCodeOf(tag: string | null | undefined): string | null {
 }
 
 /**
+ * A real language, as the platform's own language data knows it: "it" and "nb" are, "xx" is
+ * not. The schema only checks the shape of a code; this checks that it names a language.
+ */
+export function isRealLanguage(code: string): boolean {
+  if (!LANG_CODE.test(code)) {
+    return false;
+  }
+  try {
+    return Boolean(new Intl.DisplayNames(["en"], { type: "language", fallback: "none" }).of(code));
+  } catch {
+    return false;
+  }
+}
+
+/** The language engenty's own strings are read in for any language: itself where they are written, else English. */
+export function textLang(code: string): Lang {
+  return isLang(code) ? code : "en";
+}
+
+/**
  * The language the person reads, for a wizard translated on request: the first of their
  * languages (the browser's, in its order), else the main language of the country their time
  * zone lies in. Any language, not only one engenty's own strings are written in.
@@ -208,6 +236,11 @@ export function langNameEn(code: string): string {
 /** The locale amounts, dates and plural forms are written in for any language. */
 export function localeOf(code: string): string {
   return isLang(code) ? LOCALES[code] : code;
+}
+
+/** The locale speech is recognised and read aloud in for any language. */
+export function speechLocaleOf(code: string): string {
+  return isLang(code) ? SPEECH_LOCALES[code] : code;
 }
 
 export const FIELD_KINDS = [
@@ -940,9 +973,14 @@ export const wizardSchema = z.object({
   intro: z.string().optional(),
   /**
    * The language the wizard speaks to people: its texts, the runner's words, its numbers and
-   * dates. Without one it is read from the wizard's own words (`wizardLang`).
+   * dates, by its two-letter code ("en", "de", "it"). Any language, not only those engenty's own
+   * strings are written in; `validateWizard` checks it names a real one. Without one it is read
+   * from the wizard's own words (`wizardLang`).
    */
-  lang: z.enum(LANGS).optional(),
+  lang: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional(),
   /** Tabular data the wizard keeps between runs, per person — or for all runs (`shared`). */
   lists: z.array(listSchema).max(12).optional(),
   /** Accounts the person connects; kept between runs, per person. */
@@ -1040,6 +1078,12 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
   const connectionIds = new Set<string>();
   const notShown = (id: string) =>
     `List "${id}" is shared: every run writes it, so the person running the wizard never sees it.`;
+
+  if (def.lang && !isRealLanguage(def.lang)) {
+    issues.push({
+      message: `"${def.lang}" isn't a language code. Use a two-letter code such as "en", "de" or "it".`,
+    });
+  }
 
   for (const list of def.lists ?? []) {
     if (listIds.has(list.id)) {
@@ -2030,12 +2074,12 @@ export function slotTime(iso: string): SlotTime | null {
 }
 
 /** The weekday and date of a slot's day: "Montag, 12. Oktober" / "Monday, 12 October". */
-export function slotDayText(iso: string, lang: Lang = "en"): string {
+export function slotDayText(iso: string, lang = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
   }
-  const locale = LOCALES[lang];
+  const locale = localeOf(lang);
   const weekday = slot.wall.toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });
   const date = slot.wall.toLocaleDateString(locale, {
     day: "numeric",
@@ -2046,12 +2090,12 @@ export function slotDayText(iso: string, lang: Lang = "en"): string {
 }
 
 /** A chosen slot as a person reads it back: "Di 13.10.2026, 10:30" / "Tue 13/10/2026, 10:30". */
-export function slotText(iso: string, lang: Lang = "en"): string {
+export function slotText(iso: string, lang = "en"): string {
   const slot = slotTime(iso);
   if (!slot) {
     return iso;
   }
-  const locale = LOCALES[lang];
+  const locale = localeOf(lang);
   const weekday = slot.wall
     .toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" })
     .replace(/\.$/, "");
@@ -2141,7 +2185,7 @@ const ENGLISH = /\b(and|the|is|not|for|with|a|an|your|you|we|what|how|or|to|of)\
  * The language a wizard speaks to people: the one it names, else read from its own words
  * (titles, labels, intro) — English where they are not clearly German.
  */
-export function wizardLang(def: WizardDefinition): Lang {
+export function wizardLang(def: WizardDefinition): string {
   if (def.lang) {
     return def.lang;
   }

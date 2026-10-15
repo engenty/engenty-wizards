@@ -11,10 +11,9 @@ import {
   type Format,
   formatsFor,
   isDecisionStep,
-  isLang,
   isOtherwise,
-  LANG_NAMES,
-  LANGS,
+  isRealLanguage,
+  langName,
   type NextRule,
   outputKeys,
   type PageStep,
@@ -23,6 +22,7 @@ import {
   TOOL_IDS,
   VIDEO_RESOLUTIONS,
   type VideoResolution,
+  WIZARD_LANGS,
   type WizardDefinition,
 } from "@engenty-wizards/shared/definition";
 import type { BranchDecision, RunEstimate } from "@engenty-wizards/shared/run";
@@ -1117,10 +1117,12 @@ export function WizardSettings({ def, update }: { def: WizardDefinition; update:
           <Label hint={t("inspector.langHint")}>{t("inspector.lang")}</Label>
           <Select
             value={def.lang ?? ""}
-            onChange={(v) => update({ ...def, lang: isLang(v) ? v : undefined })}
+            onChange={(v) => update({ ...def, lang: isRealLanguage(v) ? v : undefined })}
             options={[
               { value: "", label: t("inspector.langAuto") },
-              ...LANGS.map((code) => ({ value: code, label: LANG_NAMES[code] })),
+              ...[...new Set([...WIZARD_LANGS, ...(def.lang ? [def.lang] : [])])]
+                .map((code) => ({ value: code, label: langName(code) }))
+                .sort((a, b) => a.label.localeCompare(b.label)),
             ]}
           />
         </div>

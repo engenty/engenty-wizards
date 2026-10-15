@@ -1,6 +1,7 @@
 import {
   type Field,
   type Lang,
+  textLang,
   type WizardDefinition,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
@@ -176,7 +177,7 @@ function answerText(field: Field, value: unknown, lang: Lang): string {
 /** What the person answered on the run's pages, by the fields' labels, in the order asked. */
 function answersOf(run: Pick<RunRow, "definition" | "state">) {
   const answers: { field: string; label: string; kind: string; value: string }[] = [];
-  const lang = wizardLang(run.definition);
+  const lang = textLang(wizardLang(run.definition));
   for (const step of run.definition.steps) {
     if (step.type !== "page") {
       continue;

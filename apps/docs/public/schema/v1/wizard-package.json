@@ -147,10 +147,7 @@
         },
         "lang": {
           "type": "string",
-          "enum": [
-            "en",
-            "de"
-          ]
+          "pattern": "^[a-z]{2}$"
         },
         "lists": {
           "maxItems": 12,

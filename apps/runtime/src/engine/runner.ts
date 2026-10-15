@@ -22,6 +22,7 @@ import {
   type PageStep,
   pageNeeds,
   type Step,
+  textLang,
   type WizardDefinition,
   whenHolds,
   wizardLang,
@@ -215,7 +216,7 @@ function friendly(err: unknown): Said {
  */
 async function failRun(run: RunRow, stepId: string, err: unknown) {
   const said = noteOf(err) ?? friendly(err);
-  const message = saidText(said, wizardLang(run.definition));
+  const message = saidText(said, textLang(wizardLang(run.definition)));
   await emitEvent(run.id, stepId, "error", said);
   await updateRun(run.id, { status: "failed", error: message });
 }
@@ -331,7 +332,7 @@ async function take(runId: string, tenant: string): Promise<void> {
       console.error(`[run ${runId}]`, err);
       await withTenant(tenant, async () => {
         const run = await loadRun(runId);
-        const lang = run ? wizardLang(run.definition) : "en";
+        const lang = run ? textLang(wizardLang(run.definition)) : "en";
         await updateRun(runId, { status: "failed", error: saidText(friendly(err), lang) });
       }).catch((e) => console.error(`[run ${runId}] marking it failed:`, e));
     })
@@ -815,7 +816,7 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
         run.definition.connections ?? [],
         scopeOf(run),
         await projectIdOf(run),
-        wizardLang(run.definition),
+        textLang(wizardLang(run.definition)),
       )
     : [];
   for (const field of step.fields) {
@@ -1167,7 +1168,7 @@ export async function runView(run: RunRow, brand: RunView["brand"]): Promise<Run
             def.connections ?? [],
             scopeOf(run),
             await projectIdOf(run),
-            wizardLang(def),
+            textLang(wizardLang(def)),
           )
         : [],
     keeps: Boolean(def.lists?.length || def.connections?.length),
