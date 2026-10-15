@@ -1,9 +1,10 @@
-import { HtmlFrame } from "@engenty-wizards/runner";
+import { DataMenu, editableData, HtmlFrame, JsonSchemaDialog } from "@engenty-wizards/runner";
 import {
   ASPECT_RATIOS,
   CONDITION_OPS,
   type Condition,
   conditionsOf,
+  declaredShape,
   ENGENTY_KINDS,
   FIELD_KINDS,
   type Field,
@@ -15,8 +16,10 @@ import {
   LANG_NAMES,
   LANGS,
   type NextRule,
+  outputKeys,
   type PageStep,
   type Step,
+  stepShape,
   TOOL_IDS,
   VIDEO_RESOLUTIONS,
   type VideoResolution,
@@ -28,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  Braces,
   CalendarClock,
   ChevronDown,
   ChevronLeft,
@@ -150,7 +154,7 @@ function conditionSources(def: WizardDefinition, page: PageStep, field: Field): 
     if (s.type === "page") {
       out.push(...s.fields.map((f) => f.id));
     } else if (s.type === "agent") {
-      out.push(...(s.output.fields ?? []).map((f) => `steps.${s.id}.${f.id}`));
+      out.push(...outputKeys(s).map((k) => `steps.${s.id}.${k}`));
     }
   }
   out.push(...page.fields.filter((f) => f.id !== field.id).map((f) => f.id));
@@ -166,11 +170,15 @@ function optionSources(def: WizardDefinition, page: PageStep): string[] {
     if (s.type !== "agent") {
       continue;
     }
-    for (const f of s.output.fields ?? []) {
-      if (f.kind === "list") {
-        out.push(`steps.${s.id}.${f.id}`);
+    for (const [key, f] of Object.entries(declaredShape(s)?.fields ?? {})) {
+      if (f.kind === "list" && f.of.kind === "object") {
+        // A list of entries: one of their keys that holds a word or a number.
+        const flat = Object.entries(f.of.fields).filter(([, c]) => c.kind !== "list");
+        out.push(...flat.map(([c]) => `steps.${s.id}.${key}.${c}`));
+      } else if (f.kind === "list") {
+        out.push(`steps.${s.id}.${key}`);
       } else if (f.kind === "table") {
-        out.push(...(f.columns ?? []).map((c) => `steps.${s.id}.${f.id}.${c}`));
+        out.push(...(f.columns ?? []).map((c) => `steps.${s.id}.${key}.${c}`));
       }
     }
   }
@@ -517,7 +525,7 @@ function dataSources(def: WizardDefinition, index: number): string[] {
     if (s.type === "page") {
       out.push(...s.fields.map((f) => f.id));
     } else if (s.type === "agent") {
-      out.push(`steps.${s.id}`, ...(s.output.fields ?? []).map((f) => `steps.${s.id}.${f.id}`));
+      out.push(`steps.${s.id}`, ...outputKeys(s).map((k) => `steps.${s.id}.${k}`));
     } else if (s.type === "generate" || s.type === "widget" || s.type === "surface") {
       out.push(`steps.${s.id}`);
     }
@@ -1379,6 +1387,7 @@ function StepInspector({
   /** Where a step added here goes: after this one, or before the result. */
   const at = step.type === "result" ? index : index + 1;
   const [addOpen, setAddOpen] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(false);
   // Another step, another place: the panel starts closed.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset per step
   useEffect(() => setAddOpen(false), [step.id]);
@@ -1429,6 +1438,26 @@ function StepInspector({
           {typeLabel(step)}
         </span>
         <span className="ml-auto font-mono text-[0.6875rem] text-ink-4">{step.id}</span>
+        {/* For developers: the JSON Schema of the step's data, to read, copy or download. */}
+        {editableData(step) ? (
+          <>
+            <DataMenu
+              items={[
+                {
+                  label: t("data.schema"),
+                  icon: <Braces className="size-4 shrink-0" />,
+                  onClick: () => setSchemaOpen(true),
+                },
+              ]}
+            />
+            <JsonSchemaDialog
+              shape={stepShape(step)}
+              title={step.title}
+              open={schemaOpen}
+              onClose={() => setSchemaOpen(false)}
+            />
+          </>
+        ) : null}
       </div>
       {stepIssues.length ? (
         <div className="mx-5 mb-4 rounded-lg bg-rose-tint px-3 py-2 text-[0.8125rem] text-rose">
@@ -1553,10 +1582,10 @@ function branchSources(def: WizardDefinition, step: Step): string[] {
     if (s.type === "page") {
       out.push(...s.fields.map((f) => f.id));
     } else if (s.type === "agent") {
-      for (const f of s.output.fields ?? []) {
-        out.push(`steps.${s.id}.${f.id}`);
+      for (const key of outputKeys(s)) {
+        out.push(`steps.${s.id}.${key}`);
         if (isDecisionStep(s)) {
-          out.push(`steps.${s.id}.${f.id}.p`);
+          out.push(`steps.${s.id}.${key}.p`);
         }
       }
     }

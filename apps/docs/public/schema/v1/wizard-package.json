@@ -1390,6 +1390,1250 @@
                           "additionalProperties": false
                         }
                       },
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "object"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "fields": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                            },
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "text"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "long": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "number"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "yesno"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "yes": {
+                                      "type": "string"
+                                    },
+                                    "no": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "choice"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "minItems": 2,
+                                      "maxItems": 40,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "options"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "ref"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "to"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "list"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "of": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "text"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "long": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "number"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "unit": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "yesno"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "yes": {
+                                              "type": "string"
+                                            },
+                                            "no": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "choice"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "options": {
+                                              "minItems": 2,
+                                              "maxItems": 40,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "minLength": 1
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "options"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "ref"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "to": {
+                                              "type": "string",
+                                              "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "to"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "const": "object"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "description": {
+                                              "type": "string"
+                                            },
+                                            "fields": {
+                                              "type": "object",
+                                              "propertyNames": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                              },
+                                              "additionalProperties": {
+                                                "oneOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "text"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "long": {
+                                                        "type": "boolean"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "number"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "unit": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "yesno"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "yes": {
+                                                        "type": "string"
+                                                      },
+                                                      "no": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "choice"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "options": {
+                                                        "minItems": 2,
+                                                        "maxItems": 40,
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string",
+                                                          "minLength": 1
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "options"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "ref"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "to": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "to"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "list"
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "minLength": 1
+                                                      },
+                                                      "description": {
+                                                        "type": "string"
+                                                      },
+                                                      "of": {
+                                                        "oneOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "long": {
+                                                                "type": "boolean"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "number"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "unit": {
+                                                                "type": "string"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "yesno"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "yes": {
+                                                                "type": "string"
+                                                              },
+                                                              "no": {
+                                                                "type": "string"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "choice"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "options": {
+                                                                "minItems": 2,
+                                                                "maxItems": 40,
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string",
+                                                                  "minLength": 1
+                                                                }
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind",
+                                                              "options"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "ref"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "to": {
+                                                                "type": "string",
+                                                                "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind",
+                                                              "to"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "kind": {
+                                                                "type": "string",
+                                                                "const": "object"
+                                                              },
+                                                              "label": {
+                                                                "type": "string",
+                                                                "minLength": 1
+                                                              },
+                                                              "description": {
+                                                                "type": "string"
+                                                              },
+                                                              "fields": {
+                                                                "type": "object",
+                                                                "propertyNames": {
+                                                                  "type": "string",
+                                                                  "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                },
+                                                                "additionalProperties": {
+                                                                  "oneOf": [
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "text"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "long": {
+                                                                          "type": "boolean"
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    },
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "number"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "unit": {
+                                                                          "type": "string"
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    },
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "yesno"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "yes": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "no": {
+                                                                          "type": "string"
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    },
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "choice"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "options": {
+                                                                          "minItems": 2,
+                                                                          "maxItems": 40,
+                                                                          "type": "array",
+                                                                          "items": {
+                                                                            "type": "string",
+                                                                            "minLength": 1
+                                                                          }
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind",
+                                                                        "options"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    },
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "ref"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "to": {
+                                                                          "type": "string",
+                                                                          "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind",
+                                                                        "to"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    },
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "kind": {
+                                                                          "type": "string",
+                                                                          "const": "list"
+                                                                        },
+                                                                        "label": {
+                                                                          "type": "string",
+                                                                          "minLength": 1
+                                                                        },
+                                                                        "description": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "of": {
+                                                                          "oneOf": [
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "text"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "long": {
+                                                                                  "type": "boolean"
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            },
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "number"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "unit": {
+                                                                                  "type": "string"
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            },
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "yesno"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "yes": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "no": {
+                                                                                  "type": "string"
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            },
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "choice"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "options": {
+                                                                                  "minItems": 2,
+                                                                                  "maxItems": 40,
+                                                                                  "type": "array",
+                                                                                  "items": {
+                                                                                    "type": "string",
+                                                                                    "minLength": 1
+                                                                                  }
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind",
+                                                                                "options"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            },
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "ref"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "to": {
+                                                                                  "type": "string",
+                                                                                  "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind",
+                                                                                "to"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            },
+                                                                            {
+                                                                              "type": "object",
+                                                                              "properties": {
+                                                                                "kind": {
+                                                                                  "type": "string",
+                                                                                  "const": "object"
+                                                                                },
+                                                                                "label": {
+                                                                                  "type": "string",
+                                                                                  "minLength": 1
+                                                                                },
+                                                                                "description": {
+                                                                                  "type": "string"
+                                                                                },
+                                                                                "fields": {
+                                                                                  "type": "object",
+                                                                                  "propertyNames": {
+                                                                                    "type": "string",
+                                                                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                                  },
+                                                                                  "additionalProperties": {
+                                                                                    "oneOf": [
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "text"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "long": {
+                                                                                            "type": "boolean"
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      },
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "number"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "unit": {
+                                                                                            "type": "string"
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      },
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "yesno"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "yes": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "no": {
+                                                                                            "type": "string"
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      },
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "choice"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "options": {
+                                                                                            "minItems": 2,
+                                                                                            "maxItems": 40,
+                                                                                            "type": "array",
+                                                                                            "items": {
+                                                                                              "type": "string",
+                                                                                              "minLength": 1
+                                                                                            }
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind",
+                                                                                          "options"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      },
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "ref"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "to": {
+                                                                                            "type": "string",
+                                                                                            "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind",
+                                                                                          "to"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      },
+                                                                                      {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                          "kind": {
+                                                                                            "type": "string",
+                                                                                            "const": "list"
+                                                                                          },
+                                                                                          "label": {
+                                                                                            "type": "string",
+                                                                                            "minLength": 1
+                                                                                          },
+                                                                                          "description": {
+                                                                                            "type": "string"
+                                                                                          },
+                                                                                          "of": {
+                                                                                            "oneOf": [
+                                                                                              {
+                                                                                                "type": "object",
+                                                                                                "properties": {
+                                                                                                  "kind": {
+                                                                                                    "type": "string",
+                                                                                                    "const": "text"
+                                                                                                  },
+                                                                                                  "label": {
+                                                                                                    "type": "string",
+                                                                                                    "minLength": 1
+                                                                                                  },
+                                                                                                  "description": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "long": {
+                                                                                                    "type": "boolean"
+                                                                                                  }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                  "kind"
+                                                                                                ],
+                                                                                                "additionalProperties": false
+                                                                                              },
+                                                                                              {
+                                                                                                "type": "object",
+                                                                                                "properties": {
+                                                                                                  "kind": {
+                                                                                                    "type": "string",
+                                                                                                    "const": "number"
+                                                                                                  },
+                                                                                                  "label": {
+                                                                                                    "type": "string",
+                                                                                                    "minLength": 1
+                                                                                                  },
+                                                                                                  "description": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "unit": {
+                                                                                                    "type": "string"
+                                                                                                  }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                  "kind"
+                                                                                                ],
+                                                                                                "additionalProperties": false
+                                                                                              },
+                                                                                              {
+                                                                                                "type": "object",
+                                                                                                "properties": {
+                                                                                                  "kind": {
+                                                                                                    "type": "string",
+                                                                                                    "const": "yesno"
+                                                                                                  },
+                                                                                                  "label": {
+                                                                                                    "type": "string",
+                                                                                                    "minLength": 1
+                                                                                                  },
+                                                                                                  "description": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "yes": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "no": {
+                                                                                                    "type": "string"
+                                                                                                  }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                  "kind"
+                                                                                                ],
+                                                                                                "additionalProperties": false
+                                                                                              },
+                                                                                              {
+                                                                                                "type": "object",
+                                                                                                "properties": {
+                                                                                                  "kind": {
+                                                                                                    "type": "string",
+                                                                                                    "const": "choice"
+                                                                                                  },
+                                                                                                  "label": {
+                                                                                                    "type": "string",
+                                                                                                    "minLength": 1
+                                                                                                  },
+                                                                                                  "description": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "options": {
+                                                                                                    "minItems": 2,
+                                                                                                    "maxItems": 40,
+                                                                                                    "type": "array",
+                                                                                                    "items": {
+                                                                                                      "type": "string",
+                                                                                                      "minLength": 1
+                                                                                                    }
+                                                                                                  }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                  "kind",
+                                                                                                  "options"
+                                                                                                ],
+                                                                                                "additionalProperties": false
+                                                                                              },
+                                                                                              {
+                                                                                                "type": "object",
+                                                                                                "properties": {
+                                                                                                  "kind": {
+                                                                                                    "type": "string",
+                                                                                                    "const": "ref"
+                                                                                                  },
+                                                                                                  "label": {
+                                                                                                    "type": "string",
+                                                                                                    "minLength": 1
+                                                                                                  },
+                                                                                                  "description": {
+                                                                                                    "type": "string"
+                                                                                                  },
+                                                                                                  "to": {
+                                                                                                    "type": "string",
+                                                                                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,40}$"
+                                                                                                  }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                  "kind",
+                                                                                                  "to"
+                                                                                                ],
+                                                                                                "additionalProperties": false
+                                                                                              }
+                                                                                            ]
+                                                                                          }
+                                                                                        },
+                                                                                        "required": [
+                                                                                          "kind",
+                                                                                          "of"
+                                                                                        ],
+                                                                                        "additionalProperties": false
+                                                                                      }
+                                                                                    ]
+                                                                                  }
+                                                                                }
+                                                                              },
+                                                                              "required": [
+                                                                                "kind",
+                                                                                "fields"
+                                                                              ],
+                                                                              "additionalProperties": false
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "kind",
+                                                                        "of"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "kind",
+                                                              "fields"
+                                                            ],
+                                                            "additionalProperties": false
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "of"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "fields"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "of"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "fields"
+                        ],
+                        "additionalProperties": false
+                      },
                       "surface": {
                         "anyOf": [
                           {

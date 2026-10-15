@@ -156,7 +156,7 @@ export interface RunnerFit {
 export function outputKindOf(step: Step): OutputKind | null {
   switch (step.type) {
     case "agent":
-      return step.output?.fields?.length ? "data" : "text";
+      return step.output?.fields?.length || step.output?.schema ? "data" : "text";
     case "generate":
       return step.asset;
     case "widget":

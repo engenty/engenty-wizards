@@ -137,8 +137,9 @@ type AgentStep = {
   tools: ("web_search"|"web_fetch"|"browser"|"sandbox"|"image"|"http"|"pages")[]
   mcp?: string[]                // ids of the project's MCP servers this step may use
   connections?: string[]        // ids of wizard connections this step may read (mail → mail_search, mail_read, mail_save)
-  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[], surface?: SurfaceComponent[] | true }
+  output: { format: "text"|"markdown"|"json", fields?: { id, kind: "text"|"number"|"list"|"table"|"yesno"|"choice"|"score", description, columns?: string[], options?: string[] }[], schema?: Schema, surface?: SurfaceComponent[] | true }
                                 // "score" answers its description on the scale in options, lowest first ("low", "medium", "high")
+                                // fields: one level of keys (the short form). schema: nested data, below. One of the two, not both.
   each?: "steps.<id>.<key>" | "lists.<id>"
                                 // ONE RUN PER ENTRY (at most 20): the rows of a table output, the entries of a list output, or the
                                 //   rows of a stored list; the instructions read {{item.<column>}}, {{index}}, {{count}}. The output is
@@ -173,10 +174,44 @@ type SurfaceStep = {
   candidates?: { id, description, components: SurfaceComponent[] (the first has the piece's id), group?, required? }[]
   groups?: { id, instructions, optional? }[]
 }
+// SCHEMA (json only): nested data — lists of entries that hold lists of their own (days with meals, recipes with
+//   ingredients and steps). Its root is { kind: "object", label, fields: { <key>: Field } }; a Field is
+//     { kind: "text", label, description?, long?: true }           long: paragraphs, not a line
+//     { kind: "number", label, description?, unit?: "Min" }
+//     { kind: "yesno", label, description?, yes?: "da", no?: "einkaufen" }   (yes/no: the words people read)
+//     { kind: "choice", label, description?, options: string[] }
+//     { kind: "ref", label, description?, to: "<top-level list key>" }   the id of an entry of that list; its entries
+//                                                                          need { id: { kind: "text" } }
+//     { kind: "list", label, description?, of: Field-without-list | { kind: "object", label, fields: { … } } }
+//   Labels are in the wizard's language: column heads, part titles, "add <label>" in the admin's editor. Description:
+//   what the model is to put there. Objects nest at most 4 deep (the root counted), at most 100 keys in all.
+//   The model gets it as a strict JSON Schema: every key is always filled.
+//   DESIGN THE VIEW FIRST, then the schema it needs: write output.surface (Tabs, Card, Fold, Group, Chips, Checklist,
+//   Steps, Link, Callout …) for what the person should see, then give the schema exactly the lists and keys that
+//   view binds — nothing it does not show or a later step does not read. One step returns the whole tree.
+//   Paths: {"path": "/recipes"} from the data; inside a repeated entry "title" or "meals" reads the entry; a Link's
+//   view reads the entry it opens. The view is checked against the schema.
+//   Later steps read top-level keys ({{steps.id.key}}, optionsFrom, each, conditions); a list of entries is a table
+//   there ("steps.id.recipes.title"). Downloads: xlsx one sheet per top-level list, csv the first list of flat
+//   entries, md and pdf the whole tree.
+//   Example (Kühlschrank-Koch): { kind: "object", label: "Menüplan", fields: {
+//     summary: { kind: "text", label: "Zusammenfassung", long: true },
+//     days: { kind: "list", label: "Tage", of: { kind: "object", label: "Tag", fields: {
+//       label: { kind: "text", label: "Tag" }, theme: { kind: "text", label: "Motto" },
+//       meals: { kind: "list", label: "Mahlzeiten", of: { kind: "object", label: "Mahlzeit", fields: {
+//         slot: { kind: "choice", label: "Mahlzeit", options: ["Frühstück", "Mittag", "Abend"] },
+//         recipe_id: { kind: "ref", label: "Rezept", to: "recipes" } } } } } } },
+//     recipes: { kind: "list", label: "Rezepte", of: { kind: "object", label: "Rezept", fields: {
+//       id: { kind: "text", label: "Kennung" }, title: { kind: "text", label: "Titel" },
+//       time_minutes: { kind: "number", label: "Zeit", unit: "Min" },
+//       steps: { kind: "list", label: "Zubereitung", of: { kind: "object", label: "Schritt", fields: {
+//         text: { kind: "text", label: "Schritt", long: true }, minutes: { kind: "number", label: "Dauer", unit: "Min" } } } } } } } } }
+//   with a view: Tabs over a Grid of day Cards (each meal a Link to its recipe) and a Grid of recipe Links whose
+//   view is a Card, a Fold of ingredients and the Steps.
 // A SURFACE is a native view in the runner — facts, a list of results, key figures, a chart — themed, on phones, free per run.
 //   Prefer it to a widget for such views; a widget is for what the catalog cannot show (a map, an animation).
 //   An agent step with output.format "json" can also carry such a view of its own result: output.surface: [components],
-//   written once and bound to its fields by path ({"path": "/<field id>"}; a step with "each": "/rows"). Prefer it to
+//   written once and bound to its fields or schema by path ({"path": "/<key>"}; a step with "each": "/rows"). Prefer it to
 //   output.surface: true, which has a model compose a new view on every run.
 //   Reviews and the result show a step's view instead of its plain table.
 type GenerateStep = {
@@ -244,6 +279,7 @@ type ResultStep = { type: "result", message?: string, deliverables: { from: step
 //                     film widget (video: true)→mp4 png · film→mp4
 //                     widget→html png pdf mp4 json (mp4 only when the widget registers a timeline)
 //                     agent text/markdown→md txt docx pdf html · agent json→json csv xlsx md (xlsx: one sheet per table)
+//                     agent json with schema→json csv xlsx md pdf
 //                     agent, any format→zip: the FILES the step kept with mail_save / browser_download
 //                     lists.<id>→xlsx csv json md · zip (a list with check.file: the kept files its rows name, plus the list)
 

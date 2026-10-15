@@ -8,12 +8,21 @@ import {
   LOCALES,
   langNameEn,
   type Step,
+  stepShape,
   templateRefs,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
 import { mainLogo, ruleLines } from "@engenty-wizards/shared/projects";
 import type { AssetRef, StepOutput } from "@engenty-wizards/shared/run";
 import { note as runNote } from "@engenty-wizards/shared/run";
+import {
+  fitData,
+  type ObjectShape,
+  recordsOf,
+  shapeJsonSchema,
+  shapeLines,
+  shapeZod,
+} from "@engenty-wizards/shared/shape";
 import {
   SURFACE_GUIDE,
   type Surface,
@@ -22,8 +31,8 @@ import {
 } from "@engenty-wizards/shared/surface";
 import { Agent } from "@mastra/core/agent";
 import type { MastraModelConfig } from "@mastra/core/llm";
-import { generateText, Output } from "ai";
-import { z } from "zod";
+import { generateText, type JSONSchema7, jsonSchema, Output } from "ai";
+import type { z } from "zod";
 import { extFor, loadAsset, loadAssetText } from "../files/storage.js";
 import { snapshotHtmlImages } from "../files/web-images.js";
 import { runFilmStep } from "../film/step.js";
@@ -156,100 +165,25 @@ const BROWSER_RULES = [
 
 // --- agent -------------------------------------------------------------------
 
+/**
+ * What the step returns: its schema, its fields as one, or else one table. The model's
+ * structured output takes it as JSON Schema; its own JSON is checked against it.
+ */
 export function outputSchema(step: AgentStep) {
-  const fields: {
-    id: string;
-    kind: string;
-    description?: string;
-    columns?: string[];
-    options?: string[];
-  }[] = step.output.fields?.length
-    ? step.output.fields
-    : [{ id: "data", kind: "table", description: "The result as a table" }];
-  const shape: Record<string, z.ZodType> = {};
-  for (const f of fields) {
-    const d = f.description ?? f.id;
-    switch (f.kind) {
-      case "text":
-        shape[f.id] = z.string().describe(d);
-        break;
-      case "number":
-        shape[f.id] = z.number().describe(d);
-        break;
-      case "list":
-        shape[f.id] = z.array(z.string()).describe(d);
-        break;
-      case "yesno":
-        shape[f.id] = z.boolean().describe(d);
-        break;
-      case "choice":
-        shape[f.id] = z.enum(f.options as [string, ...string[]]).describe(d);
-        break;
-      case "score":
-        shape[f.id] = z
-          .enum(f.options as [string, ...string[]])
-          .describe(`${d} (lowest to highest)`);
-        break;
-      case "table":
-        shape[f.id] = f.columns?.length
-          ? z
-              .array(
-                z.object(
-                  Object.fromEntries(
-                    f.columns.map((c) => [c, z.union([z.string(), z.number(), z.null()])]),
-                  ),
-                ),
-              )
-              .describe(d)
-          : z
-              .object({
-                columns: z.array(z.string()),
-                rows: z.array(z.array(z.union([z.string(), z.number(), z.null()]))),
-              })
-              .describe(d);
-        break;
-    }
-  }
-  return { schema: z.object(shape), fields };
-}
-
-/** Tables come back as columns + rows (strict-schema friendly) and are stored as records. */
-function tablesToRecords(value: Record<string, unknown>, fields: { id: string; kind: string }[]) {
-  const out: Record<string, unknown> = { ...value };
-  for (const f of fields) {
-    const t = value[f.id] as { columns?: string[]; rows?: unknown[][] } | undefined;
-    if (f.kind === "table" && t?.columns && t.rows) {
-      out[f.id] = t.rows.map((row) =>
-        Object.fromEntries(t.columns!.map((c, i) => [c, row[i] ?? null])),
-      );
-    }
-  }
-  return out;
-}
-
-/** A table cell as the step's schema takes it: a list joined by spaces, anything else as text. */
-function fitCell(value: unknown): string | number | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    return value;
-  }
-  if (Array.isArray(value) && value.every((v) => typeof v === "string" || typeof v === "number")) {
-    return value.join(" ");
-  }
-  return typeof value === "boolean" ? String(value) : JSON.stringify(value);
+  const shape = stepShape(step);
+  return { schema: shapeZod(shape) as z.ZodType<Record<string, unknown>>, shape };
 }
 
 /**
  * What the agent wrote as JSON itself — its last fenced block, else its answer or the object in
- * it — fitted to the step's fields (a list in a table cell joined, a missing column empty) and
- * checked against the schema. Null where none fits; then a model structures the text.
+ * it — fitted to the step's shape (a number where text belongs as text; in a short-form table a
+ * list in a cell joined, a missing column empty) and checked against the schema. Null where none
+ * fits; then a model structures the text.
  */
 export function ownJson(
   text: string,
   schema: z.ZodType,
-  fields: { id: string; kind: string; columns?: string[] }[],
+  shape: ObjectShape,
 ): Record<string, unknown> | null {
   const blocks = [...text.matchAll(/```(?:json)?[ \t]*\n([\s\S]*?)```/g)].map((m) => m[1]);
   const open = text.indexOf("{");
@@ -269,29 +203,7 @@ export function ownJson(
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       continue;
     }
-    const fitted: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-    for (const f of fields) {
-      const v = fitted[f.id];
-      if (f.kind === "table" && f.columns?.length && Array.isArray(v)) {
-        fitted[f.id] = v.map((row) =>
-          row && typeof row === "object" && !Array.isArray(row)
-            ? Object.fromEntries(
-                f.columns!.map((c) => [c, fitCell((row as Record<string, unknown>)[c])]),
-              )
-            : row,
-        );
-      } else if (f.kind === "text" && typeof v === "number") {
-        fitted[f.id] = String(v);
-      } else if (
-        f.kind === "number" &&
-        typeof v === "string" &&
-        v.trim() &&
-        Number.isFinite(Number(v))
-      ) {
-        fitted[f.id] = Number(v);
-      }
-    }
-    const parsed = schema.safeParse(fitted);
+    const parsed = schema.safeParse(fitData(shape, value));
     if (parsed.success) {
       return parsed.data as Record<string, unknown>;
     }
@@ -416,13 +328,8 @@ async function composeSurface(
   json: Record<string, unknown>,
   ctx: StepContext,
 ): Promise<Surface | undefined> {
-  const keys = Object.keys(json);
-  const fields = (step.output.fields ?? [])
-    .map(
-      (f) =>
-        `- /${f.id} (${f.kind}${f.columns ? `: ${f.columns.join(", ")}` : ""}): ${f.description ?? ""}`,
-    )
-    .join("\n");
+  const shape = outputSchema(step).shape;
+  const fields = shapeLines(shape).join("\n");
   const sample = JSON.stringify(json).slice(0, 4000);
   try {
     const writer = await textModel("standard", ctx.call);
@@ -444,7 +351,7 @@ async function composeSurface(
       });
       await ctx.chargeUsd(costOf(writer, result.usage));
       const components = jsonArrayIn(result.text);
-      issues = validateSurface(components, keys).map((i) => i.message);
+      issues = validateSurface(components, shape).map((i) => i.message);
       if (!issues.length) {
         return { components: components as SurfaceComponent[], data: json };
       }
@@ -512,6 +419,7 @@ async function runAgentEach(step: AgentStep, ctx: StepContext): Promise<StepOutp
             ...step,
             output: {
               ...step.output,
+              schema: undefined,
               fields: [
                 {
                   id: "rows",
@@ -686,22 +594,32 @@ export async function runAgentStep(step: AgentStep, ctx: StepContext): Promise<S
       return { text, assets: assets.length ? assets : undefined, at: new Date().toISOString() };
     }
 
-    const { schema, fields } = outputSchema(step);
+    const { schema, shape } = outputSchema(step);
     // The agent mostly writes the JSON itself; a second model only structures what does not fit.
     // Having it copy kilobytes of JSON again is slow and can fail on its own.
-    let output = ownJson(text, schema, fields);
+    let output = ownJson(text, schema, shape);
     if (!output) {
       const structurer = await textModel("classifier", ctx.call);
       const structured = await generateText({
         model: structurer.model,
         abortSignal: ctx.signal,
-        output: Output.object({ schema }),
+        // The JSON Schema built from the shape, strict: every key required, no other keys.
+        output: Output.object({
+          schema: jsonSchema<Record<string, unknown>>(shapeJsonSchema(shape) as JSONSchema7, {
+            validate: (value) => {
+              const parsed = schema.safeParse(value);
+              return parsed.success
+                ? { success: true, value: parsed.data }
+                : { success: false, error: parsed.error };
+            },
+          }),
+        }),
         prompt: `Turn this result into the requested structure. Keep every number and source exactly.\n\n${text}`,
       });
       await ctx.chargeUsd(costOf(structurer, structured.usage));
       output = structured.output as Record<string, unknown>;
     }
-    const json = tablesToRecords(output, fields);
+    const json = recordsOf(shape, output) as Record<string, unknown>;
     // A view written once is bound to this run's data; `true` asks a model for one.
     const surface = Array.isArray(step.output.surface)
       ? { components: step.output.surface, data: json }

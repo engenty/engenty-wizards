@@ -802,6 +802,7 @@ export function EditorPage() {
               key={drawerRun}
               runId={drawerRun}
               compact
+              studio
               onRestart={() => testRun.mutate()}
               onView={onRunView}
             />

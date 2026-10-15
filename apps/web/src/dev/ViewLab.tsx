@@ -1,10 +1,16 @@
-import { HtmlFrame, SurfaceView } from "@engenty-wizards/runner";
+import {
+  DataEditor,
+  DataMenu,
+  HtmlFrame,
+  JsonSchemaDialog,
+  SurfaceView,
+} from "@engenty-wizards/runner";
 import type { RunTheme } from "@engenty-wizards/shared/run";
 import { validateSurface } from "@engenty-wizards/shared/surface";
+import { Braces } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Mascot } from "../brand";
 import { useRunTheme } from "../runner/theme";
-import { DataEditor } from "./DataEditor";
 import { fridgeShape } from "./data-shape";
 import { cookWidget } from "./view-lab-cook";
 import { fridgePlan, fridgeView } from "./view-lab-sample";
@@ -90,10 +96,11 @@ export function ViewLab() {
     document.head.append(link);
     return () => link.remove();
   }, []);
-  const issues = validateSurface(fridgeView, Object.keys(fridgePlan));
+  const issues = validateSurface(fridgeView, fridgeShape);
   const [ticks, setTicks] = useState<Record<string, unknown>>({});
   const [plan, setPlan] = useState<Record<string, unknown>>(fridgePlan);
   const [cook, setCook] = useState<Record<string, unknown>>({});
+  const [schemaOpen, setSchemaOpen] = useState(false);
   // The widget as the run would serve it: a file of its own, here a blob.
   const [cookUrl, setCookUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -110,8 +117,8 @@ export function ViewLab() {
           <p className="text-[0.75rem] text-ink-3">engenty wizards · development</p>
           <h1 className="font-display font-semibold text-[1.75rem] tracking-tight">View lab</h1>
           <p className="max-w-prose text-[0.9375rem] text-ink-3">
-            Kühlschrank-Koch's result with mock nested data: the shape steps will return once they
-            can. Components from the view catalog, themed from a brand.
+            Kühlschrank-Koch's result: nested data in the shape its output.schema gives
+            (data-shape.ts). Components from the view catalog, themed from a brand.
           </p>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Picker
@@ -161,7 +168,26 @@ export function ViewLab() {
           </div>
         </div>
         <section className="flex flex-col gap-3">
-          <h2 className="font-display font-semibold text-[1.25rem]">The same data in the admin</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display font-semibold text-[1.25rem]">
+              The same data in the admin
+            </h2>
+            <DataMenu
+              items={[
+                {
+                  label: "JSON Schema",
+                  icon: <Braces className="size-4 shrink-0" />,
+                  onClick: () => setSchemaOpen(true),
+                },
+              ]}
+            />
+            <JsonSchemaDialog
+              shape={fridgeShape}
+              title="Menüplan"
+              open={schemaOpen}
+              onClose={() => setSchemaOpen(false)}
+            />
+          </div>
           <p className="max-w-prose text-[0.875rem] text-ink-3">
             A run's step output as the studio would show it, drawn from the step's schema: flat
             lists as tables, entries with lists of their own as cards that open, words as chips, a

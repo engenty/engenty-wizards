@@ -9,6 +9,14 @@ export { type Api, ApiError, createApi, isOffline } from "./api.js";
 export { LiveBrowser } from "./browser-live.js";
 export { shrinkImage } from "./camera.js";
 export {
+  DataEditor,
+  DataMenu,
+  type DataMode,
+  editableData,
+  JsonSchemaDialog,
+  StudioData,
+} from "./data.js";
+export {
   canShareFiles,
   canUseMedia,
   isTouch,

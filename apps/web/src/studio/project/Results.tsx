@@ -203,7 +203,7 @@ export function Results({
           }
           onClose={() => setOpen(null)}
         >
-          <RunnerBody key={open.id} runId={open.id} compact />
+          <RunnerBody key={open.id} runId={open.id} compact studio />
         </RunDrawer>
       ) : null}
     </>

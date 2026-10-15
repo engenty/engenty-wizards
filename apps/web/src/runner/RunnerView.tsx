@@ -14,6 +14,7 @@ export function RunnerBody({
 }: {
   runId: string;
   compact?: boolean;
+  studio?: boolean;
   onRestart?: () => void;
   onView?: (view: RunView | null) => void;
   stickyProgress?: boolean;

@@ -2,8 +2,8 @@ import type { SurfaceComponent } from "@engenty-wizards/shared/surface";
 
 /**
  * Kühlschrank-Koch: what one agent step returns from photos of a fridge once steps can return
- * nested data, and the view its result shows. Mock data for the view lab: the shape the
- * structured output (`output.schema`) has to deliver.
+ * nested data, and the view its result shows: the shape its `output.schema` (data-shape.ts)
+ * delivers.
  */
 export const fridgePlan = {
   summary:
@@ -21,7 +21,6 @@ export const fridgePlan = {
   ],
   days: [
     {
-      day: 1,
       label: "Tag 1 · Do 15. Okt",
       theme: "Levantinischer Abend",
       meals: [
@@ -30,7 +29,6 @@ export const fridgePlan = {
       ],
     },
     {
-      day: 2,
       label: "Tag 2 · Fr 16. Okt",
       theme: "Alles vom Blech",
       meals: [
@@ -39,7 +37,6 @@ export const fridgePlan = {
       ],
     },
     {
-      day: 3,
       label: "Tag 3 · Sa 17. Okt",
       theme: "Resteküche deluxe",
       meals: [

@@ -26,7 +26,7 @@ import {
   whenHolds,
   wizardLang,
 } from "@engenty-wizards/shared/definition";
-import type { Said } from "@engenty-wizards/shared/run";
+import type { Said, StepOutput } from "@engenty-wizards/shared/run";
 import {
   type ClosedChoice,
   note,
@@ -36,6 +36,7 @@ import {
   saidText,
 } from "@engenty-wizards/shared/run";
 import { CONVERSATION_RUNNERS, DEFAULT_RUNNER_SETTINGS } from "@engenty-wizards/shared/runners";
+import { fitData } from "@engenty-wizards/shared/shape";
 import type { ListDef, ListRow } from "@engenty-wizards/shared/store";
 import { machineTranslated, translateDefinition } from "@engenty-wizards/shared/translation";
 import type { WorkspaceFile } from "@engenty-wizards/shared/workspace";
@@ -92,7 +93,7 @@ import {
   stepsWithoutModel,
 } from "./requirements.js";
 import { releaseResources, resourcesFor } from "./resources.js";
-import { runAutomaticStep } from "./steps.js";
+import { outputSchema, runAutomaticStep } from "./steps.js";
 import { answersAsText, resolveRef } from "./template.js";
 import type { ProjectRow, RunRow, StepContext } from "./types.js";
 import { StepError } from "./types.js";
@@ -856,8 +857,57 @@ export async function submitPage(runId: string, stepId: string, input: Record<st
   kick(runId);
 }
 
+/** Edited data of a json step is kept up to this size. */
+const MAX_EDITED_JSON = 500_000;
+
+/**
+ * A json step's output with data someone edited: checked against the step's schema, and what
+ * its view shows too. Refused when it does not fit.
+ */
+export function editedJson(
+  def: WizardDefinition,
+  stepId: string,
+  output: StepOutput,
+  data: Record<string, unknown>,
+): StepOutput {
+  const step = stepOf(def, stepId);
+  if (step?.type !== "agent" || step.output.format !== "json" || step.each || step.call) {
+    throw new RunConflict("Not a json step");
+  }
+  if (JSON.stringify(data).length > MAX_EDITED_JSON) {
+    throw new RunConflict("Too large");
+  }
+  const { schema, shape } = outputSchema(step);
+  const parsed = schema.safeParse(fitData(shape, data));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new RunConflict(`Does not fit the schema: ${issue?.path.join(".")} ${issue?.message}`);
+  }
+  const json = parsed.data;
+  return {
+    ...output,
+    json,
+    ...(output.surface ? { surface: { ...output.surface, data: json } } : {}),
+  };
+}
+
+/** Data of a finished or waiting run's json step, edited in the studio. */
+export async function editOutput(runId: string, stepId: string, data: Record<string, unknown>) {
+  const run = await loadRun(runId);
+  const output = run?.state.outputs[stepId];
+  if (!run || !output) {
+    throw new RunConflict("Unknown step");
+  }
+  if (run.status !== "waiting_input" && run.status !== "done") {
+    throw new RunConflict({ code: "runBusy" });
+  }
+  const state = structuredClone(run.state);
+  state.outputs[stepId] = editedJson(run.definition, stepId, output, data);
+  await updateRun(runId, { state });
+}
+
 export type ReviewAction =
-  | { type: "accept"; edits?: Record<string, string> }
+  | { type: "accept"; edits?: Record<string, string | Record<string, unknown>> }
   | { type: "regenerate"; target: string; note: string; items?: number[] };
 
 export async function reviewStep(runId: string, stepId: string, action: ReviewAction) {
@@ -868,9 +918,15 @@ export async function reviewStep(runId: string, stepId: string, action: ReviewAc
   }
   const state = structuredClone(run.state);
   if (action.type === "accept") {
-    for (const [target, text] of Object.entries(action.edits ?? {})) {
-      if (step.edit && step.show.includes(target) && state.outputs[target]) {
-        state.outputs[target] = { ...state.outputs[target], text: String(text).slice(0, 50_000) };
+    for (const [target, edit] of Object.entries(action.edits ?? {})) {
+      const output = state.outputs[target];
+      if (!step.edit || !step.show.includes(target) || !output) {
+        continue;
+      }
+      if (typeof edit === "string") {
+        state.outputs[target] = { ...output, text: edit.slice(0, 50_000) };
+      } else {
+        state.outputs[target] = editedJson(run.definition, target, output, edit);
       }
     }
     state.history.push(stepId);

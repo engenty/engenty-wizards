@@ -1,17 +1,9 @@
-/**
- * A mock of concept A's `output.schema`: what a step's nested data is, in the field kinds wizards
- * already use. The view lab draws the admin's view and edit of a run's data from it.
- */
-export type Shape =
-  | { kind: "text"; label: string; long?: boolean }
-  | { kind: "number"; label: string; unit?: string }
-  | { kind: "yesno"; label: string; yes?: string; no?: string }
-  | { kind: "choice"; label: string; options: string[] }
-  /** An entry of another list, by its `id`. */
-  | { kind: "ref"; label: string; to: string }
-  | { kind: "list"; label: string; of: Shape }
-  | { kind: "object"; label: string; fields: Record<string, Shape> };
+import type { ObjectShape } from "@engenty-wizards/shared/shape";
 
+/**
+ * Kühlschrank-Koch's `output.schema`: what its agent step returns from photos of a fridge, in
+ * the field kinds wizards already use. The view lab draws the admin's view and edit from it.
+ */
 const CATEGORIES = [
   "Obst & Gemüse",
   "Fleisch & Fisch",
@@ -22,7 +14,7 @@ const CATEGORIES = [
 ];
 
 /** Kühlschrank-Koch's plan, as the architect would write its schema. */
-export const fridgeShape: Shape = {
+export const fridgeShape: ObjectShape = {
   kind: "object",
   label: "Menüplan",
   fields: {
@@ -76,6 +68,7 @@ export const fridgeShape: Shape = {
         kind: "object",
         label: "Rezept",
         fields: {
+          id: { kind: "text", label: "Kennung", description: "Short and unique: r1, r2, …" },
           title: { kind: "text", label: "Titel" },
           description: { kind: "text", label: "Beschreibung", long: true },
           cuisine: { kind: "text", label: "Küche" },

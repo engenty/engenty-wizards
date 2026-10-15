@@ -5,6 +5,7 @@ import {
   type ReviewStep,
   type Step,
   shownFields,
+  stepShape,
 } from "@engenty-wizards/shared/definition";
 import type { RunView, StepOutput } from "@engenty-wizards/shared/run";
 import {
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AskPanel } from "./AskPanel.js";
+import { DataEditor, editableData, StudioData } from "./data.js";
 import {
   disableNotify,
   enableNotify,
@@ -47,7 +49,10 @@ export interface RunSource {
   busy: boolean;
   fieldErrors: Record<string, string>;
   submitPage(stepId: string, values: Record<string, unknown>): Promise<boolean>;
-  accept(stepId: string, edits?: Record<string, string>): Promise<boolean>;
+  accept(
+    stepId: string,
+    edits?: Record<string, string | Record<string, unknown>>,
+  ): Promise<boolean>;
   regenerate(stepId: string, target: string, note: string, items?: number[]): Promise<boolean>;
   back(): Promise<boolean>;
   retry(): Promise<boolean>;
@@ -415,8 +420,18 @@ export function useDoneSignal(view: RunView | null) {
   }, []);
 }
 
-function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep }) {
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+function Review({
+  view,
+  run,
+  step,
+  studio,
+}: {
+  view: RunView;
+  run: Run;
+  step: ReviewStep;
+  studio?: boolean;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, string | Record<string, unknown>>>({});
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   // What the person wants changed, and which of the shown results it is about.
   const [note, setNote] = useState("");
@@ -440,32 +455,52 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
         {view.shown
           .filter((x) => x.output)
           .map(({ step: s, output }) => {
-            const editable = Boolean(step.edit) && s.type === "agent" && s.output.format !== "json";
-            return (
-              <section key={s.id}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <h3 className="font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
-                    {s.title}
-                  </h3>
-                  <div className="flex items-center">
-                    {editable && !editing[s.id] ? (
-                      <button
-                        type="button"
-                        onClick={() => setEditing((e) => ({ ...e, [s.id]: true }))}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
-                      >
-                        <Pencil className="size-3.5" /> {t("run.edit")}
-                      </button>
-                    ) : null}
-                  </div>
+            // A json step's data is edited by its schema, a written one as its text.
+            const data = editableData(s) ? s : null;
+            const editable =
+              Boolean(step.edit) && s.type === "agent" && (s.output.format !== "json" || !!data);
+            const draft = drafts[s.id];
+            const heading = (menu: React.ReactNode) => (
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="font-medium text-[0.8125rem] text-ink-3 uppercase tracking-[0.06em]">
+                  {s.title}
+                </h3>
+                <div className="flex items-center">
+                  {editable && !editing[s.id] ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditing((e) => ({ ...e, [s.id]: true }))}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] text-ink-2 hover:bg-accent hover:text-ink coarse:h-11"
+                    >
+                      <Pencil className="size-3.5" /> {t("run.edit")}
+                    </button>
+                  ) : null}
+                  {menu}
                 </div>
+              </div>
+            );
+            const shown =
+              data && output && editable && editing[s.id] ? (
+                <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border-soft">
+                  <DataEditor
+                    shape={stepShape(data)}
+                    value={
+                      draft && typeof draft === "object"
+                        ? draft
+                        : ((output.json ?? {}) as Record<string, unknown>)
+                    }
+                    onChange={(next) => setDrafts((d) => ({ ...d, [s.id]: next }))}
+                    start="edit"
+                  />
+                </div>
+              ) : (
                 <OutputView
                   base={`${runBase(view.id)}`}
                   step={s}
                   output={output}
                   onView={keepView(view.id, s.id)}
-                  editable={editable && editing[s.id]}
-                  draft={drafts[s.id]}
+                  editable={editable && editing[s.id] && !data}
+                  draft={typeof draft === "string" ? draft : undefined}
                   onDraft={(text) => setDrafts((d) => ({ ...d, [s.id]: text }))}
                   picked={picked[s.id]}
                   onPick={
@@ -493,6 +528,19 @@ function Review({ view, run, step }: { view: RunView; run: Run; step: ReviewStep
                       : undefined
                   }
                 />
+              );
+            return (
+              <section key={s.id}>
+                {studio && data && output ? (
+                  <StudioData runId={view.id} step={data} output={output} header={heading}>
+                    {shown}
+                  </StudioData>
+                ) : (
+                  <>
+                    {heading(null)}
+                    {shown}
+                  </>
+                )}
               </section>
             );
           })}
@@ -596,11 +644,13 @@ function Result({
   run,
   step,
   onRestart,
+  studio,
 }: {
   view: RunView;
   run: Run;
   step: ResultStep;
   onRestart?: () => void;
+  studio?: boolean;
 }) {
   const made = view.shown.filter((x) => x.output);
   const { Mascot, ShareResultButton } = runnerEnv();
@@ -627,27 +677,52 @@ function Result({
       </div>
       <div className="flex flex-col gap-6">
         {/* A step the run skipped (a branch) has made nothing to hand over. */}
-        {made.map(({ step: s, output, formats, label }) => (
-          <Card key={s.id} className="p-4 sm:p-5">
+        {made.map(({ step: s, output, formats, label }) => {
+          const heading = (menu: React.ReactNode) => (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display font-semibold text-[1.0625rem]">{label ?? s.title}</h3>
-              <DownloadButtons
-                base={`${runBase(view.id)}`}
-                stepId={s.id}
-                formats={formats}
-                title={label ?? s.title}
-                step={s}
-                output={output ?? undefined}
-                foot={`${view.wizard.title} · ${new Date().toLocaleDateString(runnerEnv().lang)}`}
-              />
+              <div className="flex items-center gap-1">
+                <DownloadButtons
+                  base={`${runBase(view.id)}`}
+                  stepId={s.id}
+                  formats={formats}
+                  title={label ?? s.title}
+                  step={s}
+                  output={output ?? undefined}
+                  foot={`${view.wizard.title} · ${new Date().toLocaleDateString(runnerEnv().lang)}`}
+                />
+                {menu}
+              </div>
             </div>
-            <TranslatedOutput view={view} run={run} step={s} output={output} onView={keepView(view.id, s.id)} />
-            {output?.assets?.some((a) => a.ai) ? (
-              // Whoever publishes it has to say so too; the file already does, in its metadata.
-              <p className="mt-3 text-[0.75rem] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
-            ) : null}
-          </Card>
-        ))}
+          );
+          const shown = (
+            <TranslatedOutput
+              view={view}
+              run={run}
+              step={s}
+              output={output}
+              onView={keepView(view.id, s.id)}
+            />
+          );
+          return (
+            <Card key={s.id} className="p-4 sm:p-5">
+              {studio && editableData(s) && output ? (
+                <StudioData runId={view.id} step={s} output={output} header={heading}>
+                  {shown}
+                </StudioData>
+              ) : (
+                <>
+                  {heading(null)}
+                  {shown}
+                </>
+              )}
+              {output?.assets?.some((a) => a.ai) ? (
+                // Whoever publishes it has to say so too; the file already does, in its metadata.
+                <p className="mt-3 text-[0.75rem] text-ink-3 leading-relaxed">{t("ai.publish")}</p>
+              ) : null}
+            </Card>
+          );
+        })}
         {view.lists.map((list) => (
           <Card key={list.def.id} className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -761,9 +836,12 @@ export function RunnerBody({
   onRestart,
   onView,
   stickyProgress,
+  studio,
 }: {
   run: RunSource;
   compact?: boolean;
+  /** In the studio: a json step's data can be viewed, edited and its JSON Schema read. */
+  studio?: boolean;
   onRestart?: () => void;
   onView?: (view: RunView | null) => void;
   /** In a box of its own (an AI app's widget): the progress stays on top while the page scrolls. */
@@ -802,9 +880,11 @@ export function RunnerBody({
   } else if (step?.type === "review") {
     // A regenerated output is a fresh review: drafts and notes start over.
     const version = view.shown.map((x) => x.output?.at ?? "").join("|");
-    body = <Review key={`${step.id}:${version}`} view={view} run={run} step={step} />;
+    body = (
+      <Review key={`${step.id}:${version}`} view={view} run={run} step={step} studio={studio} />
+    );
   } else if (step?.type === "result") {
-    body = <Result view={view} run={run} step={step} onRestart={onRestart} />;
+    body = <Result view={view} run={run} step={step} onRestart={onRestart} studio={studio} />;
   }
   // Rows beside their files need the width of the screen.
   const wide =

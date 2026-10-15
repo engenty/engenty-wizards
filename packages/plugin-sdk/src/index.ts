@@ -773,9 +773,12 @@ export interface PluginRunner {
   }): PluginRunnerAddress | null | Promise<PluginRunnerAddress | null>;
 }
 
-/** How a run answers a review: accept it, with edited texts where the review allows, or ask for one of the shown steps again. */
+/**
+ * How a run answers a review: accept it, with edits where the review allows (a text, or the
+ * data of a json step), or ask for one of the shown steps again.
+ */
 export type PluginReviewAction =
-  | { type: "accept"; edits?: Record<string, string> }
+  | { type: "accept"; edits?: Record<string, string | Record<string, unknown>> }
   | { type: "regenerate"; target: string; note: string; items?: number[] };
 
 /** A field of the page a run waits for, as the report lists it. */

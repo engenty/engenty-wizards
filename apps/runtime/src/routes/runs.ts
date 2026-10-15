@@ -46,6 +46,7 @@ import { liveResources } from "../engine/resources.js";
 import {
   cancel,
   createRun,
+  editOutput,
   goBack,
   NoCreditsError,
   projectIdOf,
@@ -717,6 +718,23 @@ export const runRoutes = new Hono()
       .where(eq(schema.run.id, run.id));
     return c.json({ ok: true });
   })
+  // A json step's data, edited in the studio by someone of the team the run belongs to.
+  .put("/:id/outputs/:stepId", async (c) => {
+    const run = await accessibleRun(c, c.req.param("id"));
+    const user = await principalOf(c);
+    if (!run || !user || user.tenantId !== run.tenantId) {
+      return c.json(notFoundAnswer(c), 404);
+    }
+    const { json } = z
+      .object({ json: z.record(z.string(), z.unknown()) })
+      .parse(await c.req.json());
+    try {
+      await editOutput(run.id, c.req.param("stepId"), json);
+      return c.json({ ok: true });
+    } catch (err) {
+      return commandError(c, err);
+    }
+  })
   .post("/:id/reviews/:stepId", async (c) => {
     const run = await accessibleRun(c, c.req.param("id"));
     if (!run) {
@@ -724,7 +742,13 @@ export const runRoutes = new Hono()
     }
     const action = z
       .discriminatedUnion("type", [
-        z.object({ type: z.literal("accept"), edits: z.record(z.string(), z.string()).optional() }),
+        z.object({
+          type: z.literal("accept"),
+          // A text, or the data of a json step (checked against its schema).
+          edits: z
+            .record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())]))
+            .optional(),
+        }),
         z.object({
           type: z.literal("regenerate"),
           target: z.string(),

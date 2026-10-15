@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: FSL-1.1-MIT OR MIT
 import { z } from "zod";
 import { tableColumnsSchema } from "./engenty/data-tables/index.js";
+import { type ObjectShape, outputShapeSchema, shapeOfFields } from "./shape.js";
 import { CONNECTION_KINDS } from "./store.js";
 import { type SurfaceComponent, surfaceComponentsSchema, validateSurface } from "./surface.js";
 
@@ -614,7 +615,13 @@ export const agentStepSchema = z.object({
   output: z
     .object({
       format: z.enum(["text", "markdown", "json"]),
+      /** The short form: one level of keys. A step has `fields` or `schema`, not both. */
       fields: z.array(outputFieldSchema).optional(),
+      /**
+       * json only: nested data (lists of entries with lists of their own), in the kinds of
+       * `shape.ts`. Objects nest at most four deep, a hundred keys in all.
+       */
+      schema: outputShapeSchema.optional(),
       /**
        * json only: a view of the result from the surface catalog, bound to the step's own fields;
        * reviews and the result show it instead of a plain table. Components: written once, the
@@ -841,6 +848,7 @@ export function isDecisionStep(step: AgentStep): boolean {
   const fields = step.output.fields ?? [];
   return (
     !step.call &&
+    !step.output.schema &&
     step.model === "classifier" &&
     step.output.format === "json" &&
     fields.length > 0 &&
@@ -850,6 +858,32 @@ export function isDecisionStep(step: AgentStep): boolean {
     !step.mcp?.length &&
     !step.connections?.length
   );
+}
+
+/**
+ * What an agent step's json output holds: its schema, or its fields as one. Undefined when it
+ * names neither (the model then returns one table).
+ */
+export function declaredShape(step: AgentStep): ObjectShape | undefined {
+  if (step.output.schema) {
+    return step.output.schema;
+  }
+  return step.output.fields?.length ? shapeOfFields(step.output.fields) : undefined;
+}
+
+/** What an agent step's json output holds: its declared shape, or else one table. */
+export function stepShape(step: AgentStep): ObjectShape {
+  return (
+    declaredShape(step) ?? {
+      kind: "object",
+      fields: { data: { kind: "table", description: "The result as a table" } },
+    }
+  );
+}
+
+/** The top-level keys of an agent step's output: what `steps.<id>.<key>` may name. */
+export function outputKeys(step: AgentStep): string[] {
+  return Object.keys(declaredShape(step)?.fields ?? {});
 }
 export type GenerateStep = z.infer<typeof generateStepSchema>;
 export type WidgetStep = z.infer<typeof widgetStepSchema>;
@@ -946,7 +980,10 @@ export function formatsFor(step: Step): Format[] {
   }
   if (step.type === "agent") {
     if (step.output.format === "json") {
-      return ["json", "csv", "xlsx", "md", "zip"];
+      // Nested data reads as a document too.
+      return step.output.schema
+        ? ["json", "csv", "xlsx", "md", "pdf", "zip"]
+        : ["json", "csv", "xlsx", "md", "zip"];
     }
     return ["md", "txt", "docx", "pdf", "html", "zip"];
   }
@@ -1185,8 +1222,7 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
     return (
       source?.type === "agent" &&
       (!probability || isDecisionStep(source)) &&
-      ((source.output.fields ?? []).some((f) => f.id === key) ||
-        (Boolean(source.each) && key === "rows" && !probability))
+      (outputKeys(source).includes(key) || (Boolean(source.each) && key === "rows" && !probability))
     );
   };
 
@@ -1224,30 +1260,39 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
       if (source?.type === "agent" && source.each && key === "rows") {
         return column ? null : `"optionsFrom": "${from}.rows" is a table; name one of its columns.`;
       }
-      const out =
-        source?.type === "agent"
-          ? (source.output.fields ?? []).find((f) => f.id === key)
-          : undefined;
+      const out = source?.type === "agent" ? declaredShape(source)?.fields[key] : undefined;
       if (!out) {
         return `"optionsFrom" names "${from}.${key}", which is not an output of an earlier agent step.`;
       }
+      // The keys of a table's rows, or of a list's entries; undefined: any (free columns).
+      const columns =
+        out.kind === "table"
+          ? out.columns?.length
+            ? out.columns
+            : undefined
+          : out.kind === "list" && out.of.kind === "object"
+            ? Object.keys(out.of.fields)
+            : null;
+      if (columns === null) {
+        if (column || cards) {
+          return column
+            ? `"optionsFrom": "${from}.${key}" is not a table with the column "${column}".`
+            : `"cards": "${from}.${key}" is not a table.`;
+        }
+        return out.kind === "list"
+          ? null
+          : `"optionsFrom": "${from}.${key}" is not a list (a table takes a column, or "cards").`;
+      }
       if (column) {
-        return out.kind === "table" && (!out.columns?.length || out.columns.includes(column))
+        return !columns || columns.includes(column)
           ? null
           : `"optionsFrom": "${from}.${key}" is not a table with the column "${column}".`;
       }
       if (cards) {
-        if (out.kind !== "table") {
-          return `"cards": "${from}.${key}" is not a table.`;
-        }
-        const missing = Object.values(cards).find(
-          (c) => out.columns?.length && !out.columns.includes(c),
-        );
-        return missing ? `"cards": table "${from}.${key}" has no column "${missing}".` : null;
+        const missing = Object.values(cards).find((c) => columns && !columns.includes(c));
+        return missing ? `"cards": "${from}.${key}" has no column "${missing}".` : null;
       }
-      return out.kind === "list"
-        ? null
-        : `"optionsFrom": "${from}.${key}" is not a list (a table takes a column, or "cards").`;
+      return `"optionsFrom": "${from}.${key}" is not a list (a table takes a column, or "cards").`;
     }
     return `"optionsFrom" is "steps.<id>.<key>", "steps.<id>.<key>.<column>" or "lists.<id>.<column>".`;
   };
@@ -1355,12 +1400,27 @@ export function validateWizard(def: WizardDefinition, files?: string[]): Validat
             message: 'A step composes a view ("surface") of json output only.',
           });
         }
+        if (step.output.schema) {
+          if (step.output.fields?.length) {
+            issues.push({
+              stepId: step.id,
+              message: 'Output has "fields" or "schema", not both.',
+            });
+          }
+          if (step.output.format !== "json" || step.call) {
+            issues.push({
+              stepId: step.id,
+              message: step.call
+                ? 'A step with "call" keeps the tool\'s answer as it is: no "schema".'
+                : 'A "schema" describes json output: output format "json".',
+            });
+          }
+        }
         if (Array.isArray(step.output.surface)) {
           // A step with `each` hands over its entries as `rows`.
-          const keys = step.each ? ["rows"] : (step.output.fields ?? []).map((f) => f.id);
           for (const issue of validateSurface(
             step.output.surface,
-            keys.length ? keys : undefined,
+            step.each ? ["rows"] : declaredShape(step),
           )) {
             issues.push({ stepId: step.id, message: `View: ${issue.message}` });
           }

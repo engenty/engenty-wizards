@@ -154,7 +154,7 @@ export function useRun(runId: string | null) {
     fieldErrors,
     submitPage: (stepId: string, values: Record<string, unknown>) =>
       command(`pages/${stepId}`, { values }),
-    accept: (stepId: string, edits?: Record<string, string>) =>
+    accept: (stepId: string, edits?: Record<string, string | Record<string, unknown>>) =>
       command(`reviews/${stepId}`, { type: "accept", edits }),
     regenerate: (stepId: string, target: string, note: string, items?: number[]) =>
       command(`reviews/${stepId}`, {
