@@ -74,12 +74,6 @@ export const HIGHLIGHT_CREDITS: ProductCredit[] = [
     license: "Apache-2.0",
   },
   {
-    name: "agentOS",
-    description: "credit.agentos",
-    homepage: "https://github.com/rivet-dev/agentos",
-    license: "Apache-2.0",
-  },
-  {
     name: "React",
     description: "credit.react",
     homepage: "https://github.com/facebook/react",
