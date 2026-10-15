@@ -42,7 +42,11 @@ const option = (name) => {
 
 const run = (cmd, cmdArgs, cwd = root) => {
   console.log(`$ ${cmd} ${cmdArgs.join(" ")}`);
-  return execFileSync(cmd, cmdArgs, { cwd, stdio: ["ignore", "pipe", "inherit"], encoding: "utf8" });
+  return execFileSync(cmd, cmdArgs, {
+    cwd,
+    stdio: ["ignore", "pipe", "inherit"],
+    encoding: "utf8",
+  });
 };
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 
@@ -70,7 +74,14 @@ if (flag("skip-build")) {
 // --- 2. the files -----------------------------------------------------------------------
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
-for (const path of ["apps/runtime/dist", "apps/web/dist", "plugin", "bin", "LICENSE", "README.md"]) {
+for (const path of [
+  "apps/runtime/dist",
+  "apps/web/dist",
+  "plugin",
+  "bin",
+  "LICENSE",
+  "README.md",
+]) {
   cpSync(join(root, path), join(stage, path), { recursive: true });
 }
 // The plugins that ship with the runtime (modules/README.md): their files as they are, with the
@@ -97,7 +108,9 @@ if (apple) {
 const pkg = readJson("package.json");
 const version = option("version") ?? pkg.version;
 const resolved = (dir) => {
-  const [listed] = JSON.parse(run("pnpm", ["list", "--prod", "--depth", "0", "--json"], join(root, dir)));
+  const [listed] = JSON.parse(
+    run("pnpm", ["list", "--prod", "--depth", "0", "--json"], join(root, dir)),
+  );
   return listed.dependencies ?? {};
 };
 const dependencies = {};
@@ -123,7 +136,13 @@ const collect = (dir) => {
       writeFileSync(
         join(to, "package.json"),
         `${JSON.stringify(
-          { name, version: manifest.version, license: manifest.license, type: manifest.type, exports },
+          {
+            name,
+            version: manifest.version,
+            license: manifest.license,
+            type: manifest.type,
+            exports,
+          },
           null,
           2,
         )}\n`,
@@ -144,7 +163,9 @@ collect("apps/runtime");
 // not available here.
 const OPTIONAL = ["node-pty"];
 const sorted = (names) =>
-  Object.fromEntries(names.sort((a, b) => a.localeCompare(b)).map((name) => [name, dependencies[name]]));
+  Object.fromEntries(
+    names.sort((a, b) => a.localeCompare(b)).map((name) => [name, dependencies[name]]),
+  );
 
 writeFileSync(
   join(stage, "package.json"),
@@ -160,9 +181,6 @@ writeFileSync(
       type: "module",
       bin: { wizards: "bin/wizards.mjs" },
       engines: pkg.engines,
-      // Windows has no installer yet (bin/wizards.mjs says so): npm refuses at once instead of
-      // installing for many minutes first.
-      os: ["darwin", "linux"],
       // Windows has no installer yet (bin/wizards.mjs says so): npm refuses at once instead of
       // installing for many minutes first.
       os: ["darwin", "linux"],

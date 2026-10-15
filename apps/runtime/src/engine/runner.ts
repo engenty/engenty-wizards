@@ -125,7 +125,11 @@ async function concurrencyLimit(tenant: string): Promise<number> {
   if (!managed) {
     return env.limits.concurrentRuns;
   }
-  const info = await tenantInfo(tenant).catch(() => null);
+  // Out of reach, the Manage-App doesn't hold the line up: the runtime's own limit counts.
+  const info = await tenantInfo(tenant).catch((err) => {
+    console.warn(`[line] limit of tenant ${tenant}:`, err);
+    return null;
+  });
   return info?.limits.concurrentRuns || env.limits.concurrentRuns;
 }
 
@@ -306,14 +310,14 @@ async function take(runId: string, tenant: string): Promise<void> {
   active.set(runId, abort);
   // The heartbeat keeps the claim and hears of a cancel the web wrote while a step works.
   const beat = setInterval(() => {
-    void heartbeatRuns([runId]).catch(() => undefined);
+    void heartbeatRuns([runId]).catch((err) => console.warn(`[run ${runId}] heartbeat:`, err));
     void withTenant(tenant, () => loadRun(runId))
       .then((run) => {
         if (run && run.status !== "running") {
           abort.abort();
         }
       })
-      .catch(() => undefined);
+      .catch((err) => console.warn(`[run ${runId}] cancel check:`, err));
   }, HEARTBEAT_MS);
   beat.unref();
   await withTenant(tenant, () => drive(runId, abort.signal))
@@ -323,17 +327,22 @@ async function take(runId: string, tenant: string): Promise<void> {
         const run = await loadRun(runId);
         const lang = run ? wizardLang(run.definition) : "en";
         await updateRun(runId, { status: "failed", error: saidText(friendly(err), lang) });
-      }).catch(() => undefined);
+      }).catch((e) => console.error(`[run ${runId}] marking it failed:`, e));
     })
     .finally(async () => {
       clearInterval(beat);
       active.delete(runId);
-      await withTenant(tenant, () => releaseResources(runId));
+      // What fails here leaves the rest of the cleanup to run.
+      await withTenant(tenant, () => releaseResources(runId)).catch((err) =>
+        console.error(`[run ${runId}] releasing its resources:`, err),
+      );
       // A run the shutdown stopped goes back in line for the next runner; the rest is done for now.
       if (!stopping) {
-        await restRun(runId).catch(() => undefined);
+        await restRun(runId).catch((err) => console.error(`[run ${runId}] rest:`, err));
       }
-      withTenant(tenant, () => signalChanged(runId));
+      void withTenant(tenant, () => signalChanged(runId)).catch((err) =>
+        console.error(`[run ${runId}] signal:`, err),
+      );
       // A slot came free: the next run of the line need not wait for the poll.
       void lookAtLine();
     });

@@ -36,12 +36,16 @@ const plugin = resolve(folder);
 
 const manifestFile = join(plugin, "engenty.plugin.json");
 if (!existsSync(manifestFile)) {
-  console.error(`${manifestFile} is missing: a plugin with a studio half is a folder with a manifest.`);
+  console.error(
+    `${manifestFile} is missing: a plugin with a studio half is a folder with a manifest.`,
+  );
   process.exit(1);
 }
 const { id } = JSON.parse(readFileSync(manifestFile, "utf8"));
 if (!/^[a-z][a-z0-9-]{0,39}$/.test(id ?? "")) {
-  console.error(`${manifestFile}: "id" must be lower case, digits and "-", starting with a letter.`);
+  console.error(
+    `${manifestFile}: "id" must be lower case, digits and "-", starting with a letter.`,
+  );
   process.exit(1);
 }
 
@@ -131,7 +135,9 @@ try {
   });
   const size = (file) => `${(statSync(join(outDir, file)).size / 1024).toFixed(1)} kB`;
   const report = () =>
-    console.log(`${id}: dist/client.js ${size("client.js")}, dist/client.css ${size("client.css")}`);
+    console.log(
+      `${id}: dist/client.js ${size("client.js")}, dist/client.css ${size("client.css")}`,
+    );
   if (watch) {
     result.on("event", (event) => {
       if (event.code === "END") {

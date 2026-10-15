@@ -63,8 +63,7 @@ function writeSlimChangelog() {
     }))
     // Newest first; what is not released yet has no timestamp and leads.
     .sort(
-      (a, b) =>
-        (b.timestamp ?? Number.MAX_SAFE_INTEGER) - (a.timestamp ?? Number.MAX_SAFE_INTEGER),
+      (a, b) => (b.timestamp ?? Number.MAX_SAFE_INTEGER) - (a.timestamp ?? Number.MAX_SAFE_INTEGER),
     );
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(OUT_CHANGELOG, `${JSON.stringify(slim, null, 2)}\n`, "utf8");
@@ -264,7 +263,10 @@ if (writeCredits) {
 
 // `pnpm lint` reads these files too: leave them the way Biome formats them. Relative paths,
 // so a checkout under .claude/ (which biome.json skips) is formatted as well.
-const written = [...(writeChangelog ? [OUT_CHANGELOG] : []), ...(writeCredits ? [OUT_CREDITS] : [])];
+const written = [
+  ...(writeChangelog ? [OUT_CHANGELOG] : []),
+  ...(writeCredits ? [OUT_CREDITS] : []),
+];
 if (written.length > 0) {
   execFileSync(
     "pnpm",

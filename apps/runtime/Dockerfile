@@ -2,7 +2,7 @@
 # The build context is the repo root: docker build -f apps/runtime/Dockerfile .
 #
 # Built on GitHub's runners and pulled by the server (.github/workflows/ci.yml, job `images`;
-# compose.cloud.prebuilt.yaml). The stages are ordered so that a release reuses every layer whose
+# compose.cloud.yaml). The stages are ordered so that a release reuses every layer whose
 # inputs did not change: the system packages, both dependency installs, and in the final image
 # the large node_modules layers, so the server downloads only what is new.
 FROM node:24-bookworm-slim AS base
