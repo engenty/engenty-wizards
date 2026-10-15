@@ -181,7 +181,7 @@ async function main(argv: string[]): Promise<number> {
       const first = !readInstallNote(paths).setupAt;
       if (first && !args.yes && process.stdin.isTTY && process.stdout.isTTY) {
         // You asked to start it: once the setup is done, it starts.
-        if (!(await setup(paths, setupOptions))) {
+        if (!(await setup(paths, { ...setupOptions, next: "start" }))) {
           return 130;
         }
       }
