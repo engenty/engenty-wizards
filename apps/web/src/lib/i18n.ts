@@ -259,12 +259,12 @@ const de: Record<Key, Line> = {
   "setup.creditsChoice": "engenty-Guthaben",
   "setup.creditsDesc":
     "Läuft über das Guthaben deines Kontos, wie in der Cloud. Nichts zu installieren.",
-  "onboard.kicker1": "Willkommen, {name} · Wer du bist",
-  "onboard.kicker1Anon": "Willkommen · Wer du bist",
+  "onboard.kicker1": "Willkommen, {name}",
+  "onboard.kicker1Anon": "Willkommen",
   "onboard.team": "Wie heißt dein Team?",
   "onboard.teamSub":
     "Deine Firma, dein Verein oder einfach dein Name. Das Team ist dein Konto: Dort liegen dein Guthaben und deine Wizards. Umbenennen kannst du es jederzeit.",
-  "onboard.teamPlaceholder": "Platzer Fenster & Türen",
+  "onboard.teamPlaceholder": "Berger Fenster & Türen",
   "onboard.kind": "Wofür nutzt du engenty?",
   "onboard.kindSub": "Damit wir dir die passenden Vorlagen und Tipps zeigen.",
   "onboard.guess": "Aus {domain} geraten: {kind}. Stimmt das nicht, wähl einfach anders.",
@@ -317,10 +317,14 @@ const de: Record<Key, Line> = {
   "onboard.siteNameHint": "Keine Adresse? Ein Name genügt, wir merken ihn uns.",
   "onboard.back": "Zurück",
   "onboard.kicker2": "Über dich & deine Marke",
+  "onboard.kicker2Personal": "Über dich",
   "onboard.site": "Wo können die Wizards über dich lesen?",
   "onboard.siteSub":
     "Nenn deine Website, und engenty holt sich Namen, Tätigkeit, Logo und Farben von dort. Jeder Wizard klingt dann wie du und sieht aus wie du. Keine Website? Schreib stattdessen eine Zeile über dich.",
-  "onboard.sitePlaceholder": "platzer-fenster.at",
+  "onboard.siteSubPersonal":
+    "Hast du eine eigene Website? engenty liest dort, wer du bist und was du machst. Dann klingt jeder Wizard nach dir. Keine Website? Schreib eine Zeile über dich, oder lass es einfach weg.",
+  "onboard.sitePlaceholder": "berger-fenster.at",
+  "onboard.sitePlaceholderPersonal": "anna-berger.at",
   "onboard.read": "Einlesen",
   "onboard.reading": "Liest …",
   "onboard.readDone": "Gelesen: {name}{details}.",
@@ -332,6 +336,8 @@ const de: Record<Key, Line> = {
   "onboard.line": "Lieber eine Zeile schreiben",
   "onboard.linePlaceholder":
     "Wir fertigen und montieren Fenster und Türen in Oberösterreich, für Privathäuser und Bauträger. Freundlich, auf den Punkt.",
+  "onboard.linePlaceholderPersonal":
+    "Ich bin Lehrerin in Linz und schreibe gern kurz und freundlich, per Du.",
   "onboard.save": "Speichern",
   "onboard.skip": "Später",
   "onboard.kicker3": "Wissen",
@@ -2223,12 +2229,12 @@ const en = {
   "setup.accountCredits": "{credits} credits",
   "setup.creditsChoice": "engenty credits",
   "setup.creditsDesc": "Runs on your account’s credits, as in the cloud. Nothing to install.",
-  "onboard.kicker1": "Welcome, {name} · Who you are",
-  "onboard.kicker1Anon": "Welcome · Who you are",
+  "onboard.kicker1": "Welcome, {name}",
+  "onboard.kicker1Anon": "Welcome",
   "onboard.team": "What’s your team called?",
   "onboard.teamSub":
     "Your company, your club or just your name. The team is your account: it holds your credits and your wizards. You can rename it any time.",
-  "onboard.teamPlaceholder": "Platzer Windows & Doors",
+  "onboard.teamPlaceholder": "Berger Windows & Doors",
   "onboard.kind": "What will you use engenty for?",
   "onboard.kindSub": "So we can show you the templates and tips that fit.",
   "onboard.guess": "Guessed from {domain}: {kind}. If that’s not right, just pick another.",
@@ -2279,10 +2285,14 @@ const en = {
   "onboard.siteNameHint": "No address? A name is enough, we keep it in mind.",
   "onboard.back": "Back",
   "onboard.kicker2": "About you & your brand",
+  "onboard.kicker2Personal": "About you",
   "onboard.site": "Where can the wizards read about you?",
   "onboard.siteSub":
     "Enter your website and engenty picks up your name, what you do, your logo and colours from it. Every wizard then sounds like you and looks like you. No website? Write a line about yourself instead.",
-  "onboard.sitePlaceholder": "platzer-fenster.at",
+  "onboard.siteSubPersonal":
+    "Got a website of your own? engenty reads who you are and what you do there. Then every wizard sounds like you. No website? Write a line about yourself, or skip this.",
+  "onboard.sitePlaceholder": "berger-windows.com",
+  "onboard.sitePlaceholderPersonal": "annaberger.com",
   "onboard.read": "Read it",
   "onboard.reading": "Reading…",
   "onboard.readDone": "Got it: {name}{details}.",
@@ -2294,6 +2304,8 @@ const en = {
   "onboard.line": "Write a line instead",
   "onboard.linePlaceholder":
     "We make and fit windows and doors in Upper Austria, for private homes and builders. Friendly, to the point.",
+  "onboard.linePlaceholderPersonal":
+    "I teach at a school in Linz and like things short and friendly.",
   "onboard.save": "Save",
   "onboard.skip": "Skip for now",
   "onboard.kicker3": "Knowledge",

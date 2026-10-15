@@ -431,7 +431,7 @@ export async function accountStep(
     return;
   }
   const answer = await p.confirm({
-    message: "Sign in, or create your account, now?",
+    message: "Sign in or create your account now?",
     initialValue: true,
   });
   if (p.isCancel(answer)) {
