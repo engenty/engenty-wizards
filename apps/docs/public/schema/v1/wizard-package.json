@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://engenty.ai/schema/v1/wizard-package.json",
+  "$comment": "MIT License. Copyright (c) 2026 Matthias Platzer.",
   "title": "engenty.wizards package manifest (wizard.json)",
   "description": "wizard.json in a .wizard package — a zip with this file and the wizard's workspace under files/.",
   "type": "object",

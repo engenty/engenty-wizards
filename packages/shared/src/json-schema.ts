@@ -15,6 +15,9 @@ type JsonSchema = Record<string, unknown>;
 
 const DIALECT = "https://json-schema.org/draft/2020-12/schema";
 
+/** `$comment` is the one place a validator ignores; an unknown `$license` keyword would trip Ajv's strict mode. */
+const LICENSE_COMMENT = "MIT License. Copyright (c) 2026 Matthias Platzer.";
+
 const SCHEMA_PROPERTY = {
   type: "string",
   description: "The JSON Schema an editor checks this file against; the app does not read it.",
@@ -55,6 +58,7 @@ export function wizardJsonSchema(): JsonSchema {
   return {
     $schema: DIALECT,
     $id: WIZARD_SCHEMA_URL,
+    $comment: LICENSE_COMMENT,
     title: "engenty.wizards wizard definition",
     description: `A wizard's definition, version ${DEFINITION_VERSION}. Checked by \`wizards validate\`, which also checks what this schema cannot say: ids, references between steps and templates.`,
     ...withSchemaProperty(generate(wizardSchema)),
@@ -68,6 +72,7 @@ export function packageJsonSchema(): JsonSchema {
   return {
     $schema: DIALECT,
     $id: PACKAGE_SCHEMA_URL,
+    $comment: LICENSE_COMMENT,
     title: "engenty.wizards package manifest (wizard.json)",
     description:
       "wizard.json in a .wizard package — a zip with this file and the wizard's workspace under files/.",
