@@ -11,12 +11,7 @@ import { generateImageMedia } from "../media/generate.js";
 import { markMedia } from "../media/marking.js";
 import { gatewayTools, isHarnessVendor, type ResolvedModel } from "../models.js";
 import { htmlToMarkdown } from "../render/convert.js";
-import {
-  type ExecResult,
-  pythonToolDescription,
-  sandboxCapabilities,
-  shellToolDescription,
-} from "../sandbox/index.js";
+import { type ExecResult, sandboxCapabilities, shellToolDescription } from "../sandbox/index.js";
 import { snapshotFile } from "../services/files.js";
 import { hasStoreFiles } from "../store/index.js";
 import { browserTools } from "./browser.js";
@@ -224,26 +219,6 @@ export async function buildStepTools(
         );
       },
     });
-    if (sandbox.python === "tool") {
-      tools.run_python = createTool({
-        id: "run_python",
-        description: pythonToolDescription(sandbox),
-        inputSchema: z.object({
-          code: z.string(),
-          packages: z.array(z.string()).optional().describe("PyPI packages the code imports"),
-          timeoutSeconds: z.number().optional(),
-        }),
-        execute: async ({ code, packages, timeoutSeconds }) => {
-          await ctx.emit("tool", { code: "python" });
-          return report(
-            await ctx.resources.sandboxHandle().runPython!(code, {
-              packages,
-              timeoutMs: timeoutMs(timeoutSeconds),
-            }),
-          );
-        },
-      });
-    }
     tools.export_file = createTool({
       id: "export_file",
       description:

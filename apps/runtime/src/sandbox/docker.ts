@@ -9,8 +9,6 @@ const WRITE_CHUNK = 48 * 1024;
 /** What the engenty-sandbox image carries. The container sits on Docker's default bridge. */
 export const DOCKER_CAPABILITIES: SandboxCapabilities = {
   commands: ["bash", "python3", "pip", "uv", "node", "npm", "bun", "jq", "curl", "git", "unzip"],
-  python: "shell",
-  pythonPackages: "install what you need with pip or uv",
   network: "open internet",
   uses: "calculations, charts or file conversion",
   workdir: WORKDIR,

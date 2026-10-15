@@ -26,22 +26,18 @@ loadEnvFiles();
 const str = (key: string, fallback = ""): string => process.env[key]?.trim() || fallback;
 
 /**
- * Without `SANDBOX`: Docker when the sandbox image is on this machine, else agentOS when its
- * packages are installed (a checkout has them, the image and the desktop app do not), else none.
+ * Without `SANDBOX`: Docker when the sandbox image is on this machine, else none.
  * The image is not published, so a fresh install would otherwise offer a tool that cannot start.
  */
-function sandboxEngine(image: string): "docker" | "agentos" | "off" {
+function sandboxEngine(image: string): "docker" | "off" {
   const engine = str("SANDBOX");
   if (str("SANDBOX_ENABLED", "1") !== "1" || engine === "off") {
     return "off";
   }
   if (engine) {
-    return engine === "agentos" ? "agentos" : "docker";
-  }
-  if (dockerHasImage(image)) {
     return "docker";
   }
-  return agentOsInstalled() ? "agentos" : "off";
+  return dockerHasImage(image) ? "docker" : "off";
 }
 
 function dockerHasImage(image: string): boolean {
@@ -53,18 +49,6 @@ function dockerHasImage(image: string): boolean {
   }
 }
 
-/** agentOS ships its sidecar for macOS and Linux on arm64 and x64 only. */
-function agentOsInstalled(): boolean {
-  if (!["darwin", "linux"].includes(process.platform) || !["arm64", "x64"].includes(process.arch)) {
-    return false;
-  }
-  try {
-    import.meta.resolve("@rivet-dev/agentos-core");
-    return true;
-  } catch {
-    return false;
-  }
-}
 /** A comma-separated list. */
 const list = (key: string): string[] =>
   str(key)
@@ -257,7 +241,7 @@ export const env = {
   ),
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
-  /** What runs an agent's shell and code: a Docker container, an agentOS VM, or nothing. */
+  /** What runs an agent's shell and code: a Docker container or nothing. */
   sandbox: sandboxEngine(sandboxImage),
   sandboxImage,
 

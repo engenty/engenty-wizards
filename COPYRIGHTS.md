@@ -130,8 +130,6 @@ Used to build, check and test; not part of what people run:
 | Package | Version | Licence |
 |---|---|---|
 | [@biomejs/biome](https://biomejs.dev) | 2.5.0 | MIT OR Apache-2.0 |
-| [@rivet-dev/agentos-core](https://github.com/rivet-dev/agentos#readme) | 0.2.22 | Apache-2.0 |
-| [@rivet-dev/agentos-runtime-core](https://github.com/rivet-dev/agentos#readme) | 0.2.22 | Apache-2.0 |
 | [@tailwindcss/postcss](https://tailwindcss.com) | 4.3.3 | MIT |
 | [@tailwindcss/vite](https://tailwindcss.com) | 4.3.3 | MIT |
 | [@types/mdx](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdx) | 2.0.14 | MIT |
