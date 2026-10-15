@@ -4,6 +4,11 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.7.0] - 2026-10-15
+- ADDED **[cli]** Auto-update the installed wizards in the background (#34)
+- ADDED **[cli]** Wizards uninstall (#33)
+- CHANGED One implementation for helpers whose copies drifted (#29)
+
 ## [0.6.2] - 2026-10-15
 - ADDED **[format]** A wizard's own language is any real language – `lang` in the schema is a two-letter code (JSON Schema v1: pattern ^[a-z]{2}$, no longer en|de), validateWizard says when it names no real language (isRealLanguage, Intl.DisplayNames). wizardLang gives the code; engenty's own strings read it through textLang (English where they lack it), dates and numbers through localeOf, speech through speechLocaleOf. The studio's language menu offers the languages of Europe (WIZARD_LANGS). A wizard written in a language outside LANGS loads the runner's words in it. Fix: translations sent the texts' own keys as schema property names, which Claude refuses (only letters, digits, _ . -); calls now use t0, t1, … and map them back
 
