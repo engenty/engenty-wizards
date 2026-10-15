@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.11",
+    "timestamp": 1792044133,
+    "commits": [
+      {
+        "id": "c197da3",
+        "message": "on the new-wizard page (and the guests' start page) the mic is an outlined \"Sprechen\" button at the start of the row, its menu opening to the right; on a phone the guests' top bar shows the mark, the language and \"Anmelden\" only",
+        "group": "Added",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.10",
-    "timestamp": 1792043147,
+    "timestamp": 1792043151,
     "commits": [
       {
         "id": "c9d5d9c",

@@ -4,6 +4,9 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.5.11] - 2026-10-15
+- ADDED **[studio]** On the new-wizard page (and the guests' start page) the mic is an outlined "Sprechen" button at the start of the row, its menu opening to the right; on a phone the guests' top bar shows the mark, the language and "Anmelden" only
+
 ## [0.5.10] - 2026-10-15
 - ADDED **[studio]** Voice input on the start page for guests – the browser's own speech recognition, nothing sent to the server without an account; where the browser has none, no microphone button
 - FIXED **[studio]** The light/dark pick is shared with the account pages (cookie engenty_theme on the parent domain, also what a first visit shows), and the guests' start page ends like the landing page – engenty and the legal pages, no version
