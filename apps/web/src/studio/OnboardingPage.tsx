@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, FileText, Upload } from "lucide-react";
-import { type CSSProperties, type ReactNode, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Mascot } from "../brand";
 import { EngentyLogoMark } from "../engenty/logo";
@@ -276,6 +276,51 @@ interface Outcome {
 type UploadState = { name: string; state: "uploading" | "done" | "failed" };
 
 /**
+ * A state of the onboarding kept in the tab's session storage, so a reload or the browser's
+ * Back and Forward find the answers as they were typed: without it a page went back empty, and
+ * going on from it saved the blanks over what the team had already given. `forget` clears it
+ * all once the onboarding is done. Storage that refuses (a private window, a full quota) only
+ * means the answers live as long as the page.
+ */
+function useKept<T>(
+  user: string,
+  name: string,
+  initial: T,
+): [T, (value: T | ((old: T) => T)) => void] {
+  const key = `${KEPT}${user}:${name}`;
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      return raw === null ? initial : (JSON.parse(raw) as T);
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // kept in memory only
+    }
+  }, [key, value]);
+  return [value, setValue];
+}
+
+const KEPT = "wizards.onboarding:";
+
+function forgetKept() {
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(KEPT)) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // nothing kept
+  }
+}
+
+/**
  * The first visit of a team's studio in the cloud, as a wizard of the product's own kind: one
  * question per page, the engenty beside it. Who the team is, where its website is, what the
  * wizards should know, and what the space is that holds all of it. Every page but the first
@@ -287,16 +332,17 @@ export function OnboardingPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { project } = useCurrentProject();
-  const [team, setTeam] = useState("");
-  const [site, setSite] = useState("");
-  const [line, setLine] = useState<string | null>(null);
+  const user = me.data?.user.id ?? "";
+  const [team, setTeam] = useKept(user, "team", "");
+  const [site, setSite] = useKept(user, "site", "");
+  const [line, setLine] = useKept<string | null>(user, "line", null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   // A wish typed before signing in (GuestStartPage): in sight here, built on "new" right after.
   const [wish] = useState(pendingWish);
   const [guess] = useState(() => guessKind(me.data?.user.email ?? ""));
-  const [profile, setProfile] = useState<Profile>({
+  const [profile, setProfile] = useKept<Profile>(user, "profile", {
     kind: guess.kind,
     size: null,
     sector: "",
@@ -362,6 +408,7 @@ export function OnboardingPage() {
   const finish = useMutation({
     mutationFn: () => api.post("/api/studio/onboarding/done"),
     onSuccess: async () => {
+      forgetKept();
       await qc.invalidateQueries({ queryKey: ["me"] });
       navigate("/new", { replace: true });
     },
