@@ -5,7 +5,7 @@
 # compose.cloud.yaml). The stages are ordered so that a release reuses every layer whose
 # inputs did not change: the system packages, both dependency installs, and in the final image
 # the large node_modules layers, so the server downloads only what is new.
-FROM node:24-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 WORKDIR /app
 RUN corepack enable
 
@@ -39,7 +39,7 @@ ARG APP_BASE_PATH=""
 ENV APP_BASE_PATH=$APP_BASE_PATH
 RUN pnpm build
 
-FROM node:24-bookworm-slim
+FROM node:25-bookworm-slim
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium ffmpeg fonts-liberation fonts-noto-color-emoji fonts-inter ca-certificates \
   && rm -rf /var/lib/apt/lists/*
