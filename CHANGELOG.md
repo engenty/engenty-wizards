@@ -4,6 +4,13 @@ All notable changes to engenty wizards. Generated from [Conventional Commits](ht
 by [git-cliff](https://git-cliff.org) via `pnpm release`. Pre-`1.0`: a **minor**
 bump is a notable or breaking change, **patch** is fixes and small features.
 
+## [0.6.0] - 2026-10-15
+- ADDED **[runtime]** Prompts design results first; json steps report what they write
+- ADDED **[runner]** A json result without a view shows things as cards, not tables
+- ADDED **[results]** Agent steps return nested data through output.schema
+- ADDED **[runner]** Result views that read like an app, themed from the brand
+- FIXED **[runner]** A yes/no never reads true or false; progress only while an answer streams
+
 ## [0.5.13] - 2026-10-15
 - ADDED **[runner]** A wizard in the viewer's own language, translated on request – the page opens in the wizard's language (`wizardLang`) and, where the viewer reads another (`viewerLang`: any language, from the browser or the time zone), offers it in the studio's two-sided pill (LangPill, LangSwitch now built on it), the pick kept in the browser. One structured call per wizard and language on the `standard` class at effort low (gpt-6-luna today, measured against cheaper text models in docs/plans/wizard-translation.md), kept per wizard as original text → translation (`wizard_translation`, machine or author), so later viewers read it and a republish translates only changed texts; answers that lose a placeholder or a translated definition that fails the schema or the validator are not kept. Choices keep their values and show `labels[value]`; ids, branches, AI instructions and slot dates are never sent. The runner's words in languages outside LANGS are translated once per runtime (`ui_translation`, chunked calls, plural forms per Intl.PluralRules) – the runner table moves to shared/runner-texts with the runner pages' 57 studio lines. Runs carry `run.lang`: the view shows the translation, AI steps write in that language, a switch mid-run keeps what is made, a finished result can be translated (`state.translated`). Authors turn it off per wizard (`wizard.translate`, synced to the cloud copy) and correct a language line by line in Share → Settings. "The wizard doesn't match the schema." goes through the runtime's string table (ServerLine on NotedError)
 

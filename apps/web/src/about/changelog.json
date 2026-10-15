@@ -1,7 +1,48 @@
 [
   {
+    "version": "v0.6.0",
+    "timestamp": 1792048462,
+    "commits": [
+      {
+        "id": "99532b8",
+        "message": "a yes/no never reads true or false; progress only while an answer streams",
+        "group": "Fixed",
+        "scope": "runner",
+        "breaking": false
+      },
+      {
+        "id": "fb191d6",
+        "message": "prompts design results first; json steps report what they write",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      },
+      {
+        "id": "7e8c786",
+        "message": "a json result without a view shows things as cards, not tables",
+        "group": "Added",
+        "scope": "runner",
+        "breaking": false
+      },
+      {
+        "id": "fa87af4",
+        "message": "agent steps return nested data through output.schema",
+        "group": "Added",
+        "scope": "results",
+        "breaking": false
+      },
+      {
+        "id": "e6f3680",
+        "message": "result views that read like an app, themed from the brand",
+        "group": "Added",
+        "scope": "runner",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.13",
-    "timestamp": 1792047772,
+    "timestamp": 1792047776,
     "commits": [
       {
         "id": "cdb0308",
