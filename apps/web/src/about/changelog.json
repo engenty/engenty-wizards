@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.5.13",
+    "timestamp": 1792047772,
+    "commits": [
+      {
+        "id": "cdb0308",
+        "message": "a wizard in the viewer's own language, translated on request – the page opens in the wizard's language (`wizardLang`) and, where the viewer reads another (`viewerLang`: any language, from the browser or the time zone), offers it in the studio's two-sided pill (LangPill, LangSwitch now built on it), the pick kept in the browser. One structured call per wizard and language on the `standard` class at effort low (gpt-6-luna today, measured against cheaper text models in docs/plans/wizard-translation.md), kept per wizard as original text → translation (`wizard_translation`, machine or author), so later viewers read it and a republish translates only changed texts; answers that lose a placeholder or a translated definition that fails the schema or the validator are not kept. Choices keep their values and show `labels[value]`; ids, branches, AI instructions and slot dates are never sent. The runner's words in languages outside LANGS are translated once per runtime (`ui_translation`, chunked calls, plural forms per Intl.PluralRules) – the runner table moves to shared/runner-texts with the runner pages' 57 studio lines. Runs carry `run.lang`: the view shows the translation, AI steps write in that language, a switch mid-run keeps what is made, a finished result can be translated (`state.translated`). Authors turn it off per wizard (`wizard.translate`, synced to the cloud copy) and correct a language line by line in Share → Settings. \"The wizard doesn't match the schema.\" goes through the runtime's string table (ServerLine on NotedError)",
+        "group": "Added",
+        "scope": "runner",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.5.12",
-    "timestamp": 1792047429,
+    "timestamp": 1792047437,
     "commits": [
       {
         "id": "9727faf",
