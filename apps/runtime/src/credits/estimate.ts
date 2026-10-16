@@ -41,15 +41,72 @@ function textCredits(price: ClassPrice | null | undefined, [input, output]: read
   );
 }
 
+/** Entries a step with `each` stands in for until it has run. */
+const EACH_GUESS = 3;
+/** The most entries an image or video step makes with `each`. */
+const MEDIA_EACH_MAX = 8;
+
+/**
+ * How many images or clips a media step with `each` makes: as many as its image field allows
+ * (`max`), as many as the media step it repeats, else the guess. Without `each`, one.
+ */
+function mediaCount(step: Step, definition: WizardDefinition | undefined, depth = 0): number {
+  if (step.type !== "generate" || !step.each) {
+    return 1;
+  }
+  const source = definition?.steps.find((s) => s.id === step.each);
+  if (source) {
+    return source.type === "generate" && depth < 4
+      ? mediaCount(source, definition, depth + 1)
+      : EACH_GUESS;
+  }
+  const field = definition?.steps
+    .flatMap((s) => (s.type === "page" ? s.fields : []))
+    .find((f) => f.id === step.each);
+  const count = field ? (field.multiple ? (field.max ?? EACH_GUESS) : 1) : EACH_GUESS;
+  return Math.min(Math.max(count, 1), MEDIA_EACH_MAX);
+}
+
+/** The part of a step's formula that buys images and clips, at a known price per piece. */
+function mediaFormula(step: Step, catalog: GatewayCatalog, definition?: WizardDefinition): number {
+  const image = catalog.classes.image?.creditsPerImage ?? 0;
+  if (step.type === "agent" && !step.call && step.tools.includes("image")) {
+    return image * (step.each ? EACH_GUESS : 1);
+  }
+  if (step.type !== "generate") {
+    return 0;
+  }
+  const count = mediaCount(step, definition);
+  if (step.asset === "image") {
+    return count * image;
+  }
+  if (step.asset === "video") {
+    const seconds = Math.min(Math.max(Math.round(step.options?.duration ?? 8), 4), 10);
+    return count * seconds * (catalog.classes.video?.creditsPerSecond ?? 0);
+  }
+  return 0;
+}
+
+/**
+ * What to hold for a step the formula prices: twice its text calls, whose length nobody knows
+ * before they run, and a tenth more than its images and clips, whose price is fixed per piece.
+ */
+const MEDIA_HOLD = 1.1;
+function formulaHold(step: Step, catalog: GatewayCatalog, definition?: WizardDefinition): number {
+  const value = formula(step, catalog, definition);
+  const media = Math.min(mediaFormula(step, catalog, definition), value);
+  return (value - media) * 2 + media * MEDIA_HOLD;
+}
+
 /** A step's own work, and one decision where `ask` branches or a page's fields are decided. */
-function formula(step: Step, catalog: GatewayCatalog): number {
+function formula(step: Step, catalog: GatewayCatalog, definition?: WizardDefinition): number {
   const decides =
     step.next?.some((r) => r.ask) || (step.type === "page" && step.fields.some(isDecidedField));
   const decision = decides ? textCredits(catalog.classes.classifier, TOKENS.decision) : 0;
-  return decision + stepFormula(step, catalog);
+  return decision + stepFormula(step, catalog, definition);
 }
 
-function stepFormula(step: Step, catalog: GatewayCatalog): number {
+function stepFormula(step: Step, catalog: GatewayCatalog, definition?: WizardDefinition): number {
   const cls = (c: TextClass) => catalog.classes[c];
   if (step.type === "agent") {
     // A call runs one tool and no model: nothing to pay for.
@@ -66,7 +123,7 @@ function stepFormula(step: Step, catalog: GatewayCatalog): number {
         ? TOKENS.tools
         : TOKENS.plain;
     // A step with `each` runs once per entry; until it has run, three stand in.
-    let credits = textCredits(cls(step.model ?? "high"), shape) * (step.each ? 3 : 1);
+    let credits = textCredits(cls(step.model ?? "high"), shape) * (step.each ? EACH_GUESS : 1);
     if (step.tools.includes("web_search")) {
       credits += 4 * catalog.webSearchCredits;
     }
@@ -82,15 +139,19 @@ function stepFormula(step: Step, catalog: GatewayCatalog): number {
     return credits;
   }
   if (step.type === "generate") {
+    // With `each` every entry is its own image or clip; the prompt goes as written, so the one
+    // prompt call stays a stand-in for the rewriting a single result gets.
+    const count = mediaCount(step, definition);
     if (step.asset === "image") {
       return (
-        (catalog.classes.image?.creditsPerImage ?? 0) + textCredits(cls("standard"), TOKENS.prompt)
+        count * (catalog.classes.image?.creditsPerImage ?? 0) +
+        textCredits(cls("standard"), TOKENS.prompt)
       );
     }
     if (step.asset === "video") {
       const seconds = Math.min(Math.max(Math.round(step.options?.duration ?? 8), 4), 10);
       return (
-        seconds * (catalog.classes.video?.creditsPerSecond ?? 0) +
+        count * seconds * (catalog.classes.video?.creditsPerSecond ?? 0) +
         textCredits(cls("standard"), TOKENS.prompt)
       );
     }
@@ -108,8 +169,17 @@ export function formulaEstimate(
   catalog: GatewayCatalog,
   closed?: Set<string>,
 ): { credits: number; high: number } {
-  const credits = mostAlongOnePath(definition, (step) => formula(step, catalog), closed);
-  return { credits: round(credits), high: Math.ceil(credits * 2) };
+  const credits = mostAlongOnePath(
+    definition,
+    (step) => formula(step, catalog, definition),
+    closed,
+  );
+  const high = mostAlongOnePath(
+    definition,
+    (step) => formulaHold(step, catalog, definition),
+    closed,
+  );
+  return { credits: round(credits), high: Math.ceil(high) };
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -183,12 +253,16 @@ export async function estimateRun(
         measured: true,
       };
     } else {
-      const value = formula(step, catalog);
+      const value = formula(step, catalog, definition);
       if (value <= 0) {
         continue;
       }
-      // A formula knows little: hold twice as much as it says.
-      estimate = { credits: round(value), high: round(value * 2), measured: false };
+      // A formula knows little about text: hold twice what it says for that part.
+      estimate = {
+        credits: round(value),
+        high: round(formulaHold(step, catalog, definition)),
+        measured: false,
+      };
     }
     steps[step.id] = estimate;
   }
