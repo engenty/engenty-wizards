@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.7.6",
+    "timestamp": 1792250529,
+    "commits": [
+      {
+        "id": "b730bc5",
+        "message": "sandbox engines installed apart from the package, starting with agentOS 0.4 (#45)",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.7.5",
-    "timestamp": 1792246536,
+    "timestamp": 1792246541,
     "commits": [
       {
         "id": "4164d75",
