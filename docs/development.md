@@ -10,7 +10,7 @@ the user guide in [content/user](content/user/index.md).
 | What | one person, one tenant, on this machine: the local install (`wizards`), `pnpm dev`, your own server | the runtime of a Manage-App (`MANAGE_URL`): many tenants |
 | Sign-in | a one-time link at start (the command line opens it itself); an account is optional | at the Manage-App (OAuth 2.1 / OIDC); the token names user, tenant and role |
 | Database | `DATA_DIR/tenants/local.db` + `DATA_DIR/control.db` | one libSQL database per tenant + a control database (Turso) |
-| Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Gemini CLI, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
+| Models | an AI client installed on the machine, on its own subscription (Claude Code, Codex, Antigravity, Cursor Agent), own keys (AI Gateway, OpenAI, Anthropic), a local model (Ollama), or a linked account's credits | the Manage-App's model-gateway; the runtime holds no model keys |
 | Studio chat | a model of class `highest`, or the admin's own Claude subscription (the installed Claude Code runs headless) | a model of class `highest` |
 | Files | `DATA_DIR/objects` | an S3-compatible bucket (R2) |
 
@@ -44,7 +44,7 @@ A pnpm workspace:
 | `bin/` | the entry of the `wizards` command, and the launcher `npx wizards` runs |
 | `scripts/` | `npm-package.mjs` (the npm packages: the runtime and the launcher) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
-| `packages/plugin-sdk/` | the types a plugin of the runtime is written against: its server half and its studio half |
+| `packages/wizards/` | `@engenty/wizards`, the one package code outside this repo imports: `/plugin` (a plugin’s server half), `/plugin/studio`, `/plugin/thread` |
 | `modules/` | plugins that ship with the runtime |
 | `examples/plugins/` | example plugins; loaded with `PLUGINS_DIR=examples/plugins` |
 | `scripts/build-plugin.mjs` | builds a plugin's studio half |
@@ -52,6 +52,17 @@ A pnpm workspace:
 | `deploy/` | the Chromium container of the cloud runtime |
 | `apps/docs/` | the documentation site (Next.js + Fumadocs); not part of the product's build |
 | `docs/content/` | its pages: `user/` (the user guide), `dev/` (the developer docs: plugins) |
+
+### Package names
+
+| Name | What it is |
+|---|---|
+| `wizards` | The npm package people run with `npx wizards`, built by `scripts/npm-package.mjs` |
+| `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin` today. Inside the repo the runtime and the studio import it by the same name |
+| `@engenty-wizards/*` | The workspace’s own parts (`runtime`, `web`, `docs`, `shared`, `runner`). They are never published |
+
+A new thing for outside code goes into `packages/wizards/` as a subpath, not into a package of
+its own. `@engenty/wizards` is not on npm yet: it stays `private` until it is published.
 
 `.env.local` and the data folder (`data/`) stay in the repo root; `pnpm dev` and `pnpm start`
 run from there.
@@ -443,7 +454,7 @@ server's tools through the host. The widget is never less than 360px tall from i
 so a host that sizes the frame once still shows a usable page. Cursor folds a finished turn's tool
 calls, the widget among them, into its collapsed "Worked for …" group: the widget is still there
 when that group is opened (a known Cursor bug, not the widget). Hosts without MCP Apps (Claude
-Code, Codex, Gemini CLI, Windsurf, OpenClaw) get the same tools as text.
+Code, Codex, Antigravity, Windsurf, OpenClaw) get the same tools as text.
 
 **On the person's computer.** AI apps start MCP servers as commands, so a local install offers
 itself as one: `wizards mcp` (`apps/runtime/src/cli/mcp.ts`) speaks MCP over stdio and
@@ -469,7 +480,7 @@ keeps the file before it as `<file>.before-engenty`:
 | Cursor | `~/.cursor/mcp.json` | yes |
 | VS Code (Copilot) | user `mcp.json` | yes |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` | no |
-| Gemini CLI | `~/.gemini/settings.json` | no |
+| Antigravity | `~/.gemini/config/mcp_config.json` (app and `agy`) | no |
 | Goose | `~/.config/goose/config.yaml` | yes |
 | OpenClaw | `openclaw mcp set`, else `~/.openclaw/openclaw.json` | no |
 | LM Studio | `~/.lmstudio/mcp.json` | no |
@@ -507,7 +518,7 @@ reach only servers on the internet: for them a wizard runs on engenty.ai, not on
 | Tenants: context, one database each, the control database | `apps/runtime/src/tenants/tenant.ts`, `apps/runtime/src/db/client.ts`, `apps/runtime/src/tenants/control.ts` |
 | Sign-in: the one-time link alone, the Manage-App's tokens when managed; the linked account | `apps/runtime/src/auth/`, `apps/runtime/src/manage.ts` |
 | Model classes: gateway, own keys, local model | `apps/runtime/src/models.ts` |
-| Installed AI clients as models (Claude Code, Codex, Gemini CLI, Cursor Agent): headless calls, tools over MCP, sign-in in an inline terminal; first-start setup | `apps/runtime/src/harness/`, `apps/runtime/src/mcp/bridge.ts`, `apps/web/src/studio/{SetupPage,Harness,Terminal}.tsx` |
+| Installed AI clients as models (Claude Code, Codex, Antigravity, Cursor Agent): headless calls, tools over MCP, sign-in in an inline terminal; first-start setup | `apps/runtime/src/harness/`, `apps/runtime/src/mcp/bridge.ts`, `apps/web/src/studio/{SetupPage,Harness,Terminal}.tsx` |
 | Credits: balance, reservation, cost per step; estimate before a run | `apps/runtime/src/credits/credits.ts`, `apps/runtime/src/credits/estimate.ts` |
 | Studio chat on the Claude subscription | `apps/runtime/src/agents/subscription.ts` |
 | A local install's project in the cloud: what is sent on publish (alone), what takes it and runs it (managed), the import API | `docs/manage-contract.md` ("Spaces of a local install"), `apps/runtime/src/services/cloud.ts`, `apps/runtime/src/services/spaces.ts`, `apps/runtime/src/routes/api.ts` |

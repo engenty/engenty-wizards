@@ -63,7 +63,7 @@ const BUILT = [
   "apps/runtime/dist",
   "apps/web/dist",
   "packages/shared/dist",
-  "packages/plugin-sdk/dist",
+  "packages/wizards/dist",
 ];
 if (flag("skip-build")) {
   for (const dir of BUILT) {
