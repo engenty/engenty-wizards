@@ -32,7 +32,7 @@
     "lint": "biome check .",
     "fix": "biome check --write .",
     "templates:export": "tsx --conditions=wizards-source scripts/export-templates.ts",
-    "sandbox:add": "tsx apps/runtime/src/sandbox/agentos-install.ts"
+    "sandbox:add": "tsx apps/runtime/src/sandbox/install.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",

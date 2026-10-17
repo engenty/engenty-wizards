@@ -1,10 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join, resolve } from "node:path";
 import { findChrome } from "./render/browser-path.js";
-import { agentOsVersion, defaultAgentOsDir } from "./sandbox/agentos-install.js";
+import { enginesDir } from "./sandbox/install.js";
 
 /** Load `.env.local` then `.env` without overriding the real environment. */
 function loadEnvFiles() {
@@ -25,34 +24,6 @@ function loadEnvFiles() {
 loadEnvFiles();
 
 const str = (key: string, fallback = ""): string => process.env[key]?.trim() || fallback;
-
-/**
- * Without `SANDBOX`: Docker when the sandbox image is on this machine, else agentOS when
- * `wizards sandbox add` installed it, else none.
- * The image is not published, so a fresh install would otherwise offer a tool that cannot start.
- */
-function sandboxEngine(image: string, agentosDir: string): "docker" | "agentos" | "off" {
-  const engine = str("SANDBOX");
-  if (str("SANDBOX_ENABLED", "1") !== "1" || engine === "off") {
-    return "off";
-  }
-  if (engine) {
-    return engine === "agentos" ? "agentos" : "docker";
-  }
-  if (dockerHasImage(image)) {
-    return "docker";
-  }
-  return agentOsVersion(agentosDir) ? "agentos" : "off";
-}
-
-function dockerHasImage(image: string): boolean {
-  try {
-    execFileSync("docker", ["image", "inspect", image], { stdio: "ignore", timeout: 5000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** A comma-separated list. */
 const list = (key: string): string[] =>
@@ -89,7 +60,6 @@ const port = num("API_PORT", 24368);
 /** From source the Vite dev server on :5181 serves the pages; built, this server does. */
 const fromSource = import.meta.url.endsWith(".ts");
 const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
-const agentosDir = resolve(str("AGENTOS_DIR", defaultAgentOsDir()));
 
 const ROLES = ["studio", "doors", "web", "runner", "all"] as const;
 type Role = (typeof ROLES)[number];
@@ -247,11 +217,14 @@ export const env = {
   ),
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
-  /** What runs an agent's shell and code: a Docker container, an agentOS VM, or nothing. */
-  sandbox: sandboxEngine(sandboxImage, agentosDir),
+  /**
+   * The engine that runs an agent's shell and code (sandbox/index.ts): `off`, an engine's name,
+   * or empty for the first one that is ready here.
+   */
+  sandbox: str("SANDBOX_ENABLED", "1") === "1" ? str("SANDBOX").toLowerCase() : "off",
   sandboxImage,
-  /** Where `wizards sandbox add` installed agentOS (sandbox/agentos-install.ts). */
-  agentosDir,
+  /** Where `wizards sandbox add` installs the engines that aren't part of the runtime. */
+  sandboxEngines: enginesDir(),
   /** Hosts an agentOS sandbox reaches besides the npm and PyPI registries: `api.example.com`. */
   sandboxHosts: list("SANDBOX_ALLOW_HOSTS"),
 

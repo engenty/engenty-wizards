@@ -39,17 +39,18 @@ ARG APP_BASE_PATH=""
 ENV APP_BASE_PATH=$APP_BASE_PATH
 RUN pnpm build
 
-# The agentOS sandbox (docs/plans/agentos-sandbox.md), only with `--build-arg AGENTOS=1`: about
-# 340 MB. Its own stage, fed with just the installer, so a release that leaves the installer as it
-# was reuses the layer instead of downloading agentOS again.
-FROM base AS agentos
-ARG AGENTOS=""
-COPY --from=build /app/apps/runtime/dist/sandbox/agentos-install.js ./apps/runtime/dist/sandbox/
+# Sandbox engines that aren't part of the runtime (docs/plans/agentos-sandbox.md), only those
+# named: `--build-arg SANDBOX_ENGINES=agentos` (about 340 MB). Its own stage, fed with just the
+# installer, so a release that leaves the installer as it was reuses the layer instead of
+# downloading the engines again.
+FROM base AS engines
+ARG SANDBOX_ENGINES=""
+COPY --from=build /app/apps/runtime/dist/sandbox/install.js /app/apps/runtime/dist/sandbox/agentos-package.js ./apps/runtime/dist/sandbox/
 COPY --from=build /app/apps/runtime/dist/cli/home.js ./apps/runtime/dist/cli/
-RUN mkdir -p /opt/agentos \
-  && if [ -n "$AGENTOS" ]; then \
+RUN mkdir -p /opt/engines \
+  && if [ -n "$SANDBOX_ENGINES" ]; then \
     echo '{ "type": "module" }' > package.json \
-    && AGENTOS_DIR=/opt/agentos node apps/runtime/dist/sandbox/agentos-install.js; \
+    && SANDBOX_ENGINES_DIR=/opt/engines node apps/runtime/dist/sandbox/install.js "$SANDBOX_ENGINES"; \
   fi
 
 FROM node:24-bookworm-slim
@@ -62,9 +63,9 @@ ENV NODE_ENV=production \
     DATA_DIR=/data \
     CHROME_PATH=/usr/bin/chromium \
     SANDBOX_ENABLED=0 \
-    AGENTOS_DIR=/opt/agentos
-# Empty unless the image was built with AGENTOS=1; the sandbox stays off until SANDBOX_ENABLED=1.
-COPY --from=agentos /opt/agentos /opt/agentos
+    SANDBOX_ENGINES_DIR=/opt/engines
+# Empty unless the image was built with SANDBOX_ENGINES; the sandbox stays off until SANDBOX_ENABLED=1.
+COPY --from=engines /opt/engines /opt/engines
 # The checkout's layout: the runtime finds the SPA (apps/web/dist) and the Claude Code plugin
 # template (plugin/, filled with APP_URL at runtime) relative to its own files. The dependencies
 # first: they change least.

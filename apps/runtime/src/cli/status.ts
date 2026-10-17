@@ -1,13 +1,12 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { AGENTOS_VERSION, agentOsVersion } from "../sandbox/agentos-install.js";
 import { accountState, describeAccount } from "./account.js";
 import { type Autostart, autostartForStatus, autostartState, setAutostart } from "./autostart.js";
 import { autoUpdatePolicy, updateNotice } from "./autoupdate.js";
 import { installedByScript, isCheckout, type Layout, packageRoot, packageVersion } from "./home.js";
 import { detectClients, findChrome, findFfmpeg, nodeIsCurrent } from "./machine.js";
 import { findWizardsProcesses, stopProcesses } from "./processes.js";
-import { agentOsDir } from "./sandbox.js";
+import { installedEngines } from "./sandbox.js";
 import { entryUrl, runningRuntime, settings, startInBackground } from "./start.js";
 import { bad, badge, cmd, cyan, dim, no, ok, tilde } from "./ui.js";
 
@@ -64,14 +63,18 @@ export async function status(paths: Layout, checks: boolean): Promise<number> {
     chrome ? `${ok} ${dim(tilde(chrome))}` : `${no} not found (needed for PDF and PNG)`,
   );
   row("ffmpeg", ffmpeg.path ? `${ok} ${ffmpeg.version ?? ""}` : `${no} not found (needed for MP4)`);
-  const sandbox = agentOsVersion(agentOsDir(paths));
+  const engines = installedEngines(paths);
   row(
     "Sandbox",
-    !sandbox
-      ? `${no} not installed (${cmd("sandbox add")} lets AI steps run code)`
-      : sandbox === AGENTOS_VERSION
-        ? `${ok} agentOS ${sandbox}`
-        : `${no} agentOS ${sandbox} is outdated (${cmd("sandbox add")} installs ${AGENTOS_VERSION})`,
+    engines.length
+      ? engines
+          .map(({ label, version, current }) =>
+            version === current
+              ? `${ok} ${label} ${version}`
+              : `${no} ${label} ${version} is outdated (${cmd("sandbox add")} installs ${current})`,
+          )
+          .join(", ")
+      : `${no} not installed (${cmd("sandbox add")} lets AI steps run code)`,
   );
   const { updated, pending } = updateNotice(paths, packageVersion());
   if (updated) {

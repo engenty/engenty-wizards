@@ -1,8 +1,9 @@
 # agentOS as the sandbox without Docker
 
 Decided 2026-10-17 after a spike with agentOS 0.4.1. Built the same day: the engine
-(`apps/runtime/src/sandbox/agentos.ts`), its installer (`agentos-install.ts`), `wizards sandbox`,
-and the image's `AGENTOS` build argument.
+(`apps/runtime/src/sandbox/agentos.ts`), the installer of engines outside the package
+(`install.ts`, with agentOS's part in `agentos-package.ts`), `wizards sandbox`, and the image's
+`SANDBOX_ENGINES` build argument.
 
 ## Why it came back
 
@@ -10,9 +11,52 @@ and the image's `AGENTOS` build argument.
 four coding agents nobody here uses (Pi, Claude Code, Codex, opencode). agentOS 0.4.1
 (2026-10-12) no longer depends on them, and it runs a lot more than 0.2.22 did.
 
-It stays out of `package.json`. `wizards sandbox add`, `pnpm sandbox:add` or the image's
-`AGENTOS=1` install it into a folder of its own (`AGENTOS_DIR`), and the engine loads it from
-there with `import()`. A computer without it gets no sandbox, as before.
+It stays out of `package.json`. `wizards sandbox add`, `pnpm sandbox:add agentos` or the image's
+`SANDBOX_ENGINES=agentos` install it into a folder of its own (`engines/agentos` in
+`SANDBOX_ENGINES_DIR`), and the engine loads it from there with `import()`. A computer without it
+gets no sandbox, as before.
+
+## Engines
+
+agentOS is one engine among several. Each is a `SandboxEngine` (`sandbox/types.ts`): a name for
+`SANDBOX`, whether it is ready here, what it runs (the agent's tool descriptions are written from
+that) and a sandbox per run. `ENGINES` in `sandbox/index.ts` lists them in the order one is
+picked when `SANDBOX` names none: `docker`, then `agentos`.
+
+Mastra has the same idea, `WorkspaceSandbox`, with providers for Docker, E2B, Daytona and the
+local machine. `MastraRunSandbox` (`sandbox/mastra.ts`) makes any of them a run's sandbox; Docker
+already goes through it. agentOS has no Mastra provider, so it has its own class.
+
+An engine whose package is not a dependency of the runtime lists it in `ENGINE_PACKAGES`
+(`sandbox/install.ts`): its packages at exact versions, its size for the messages, and an
+optional `prepare` that runs after npm. `wizards sandbox add <name>` installs it, `wizards status`
+shows it and says when this release wants another version, and the engine loads it with
+`importFromEngine`. E2B, for example, would look like this:
+
+```ts
+// install.ts
+e2b: { label: "E2B", version: "0.14.1", packages: ["@mastra/e2b@0.14.1"], size: "about 170 MB" },
+
+// sandbox/e2b.ts, listed in ENGINES
+export const e2bEngine: SandboxEngine = {
+  name: "e2b",
+  ready: () => Boolean(process.env.E2B_API_KEY) && installedVersion(dir()) !== null,
+  capabilities: () => E2B_CAPABILITIES,
+  create: (runId) =>
+    new MastraRunSandbox(E2B_CAPABILITIES, async () => {
+      const { E2BSandbox } = (await importFromEngine("e2b", dir(), "@mastra/e2b")) as typeof import("@mastra/e2b");
+      return new E2BSandbox({ id: `wizards-${runId}`, template: "engenty-sandbox" });
+    }),
+};
+```
+
+A Mastra provider depends on `@mastra/core` as a peer; npm installs a copy of it into the
+engine's folder. The adapter only calls the provider's methods, so the second copy does no harm,
+but it is most of the size: `@mastra/e2b` 0.14.1 makes a folder of 172 MB, 90 MB of it Mastra
+(tried 2026-10-17: it loads from there, and without `E2B_API_KEY` it says so when it starts).
+Linking the runtime's own `@mastra/core` into the folder would save that; not done yet.
+E2B's own cloud keeps data in the US; for the EU it runs self-hosted or in our own cloud account,
+so it would be an engine people choose, never the default.
 
 ## What the spike found (Linux x64, 2026-10-17)
 
@@ -46,7 +90,8 @@ with its own tools.
 
 ## The cloud
 
-The image built with `AGENTOS=1` carries agentOS in `/opt/agentos`; it stays off until
+The image built with `SANDBOX_ENGINES=agentos` carries agentOS in `/opt/engines/agentos`; it
+stays off until
 `SANDBOX_ENABLED=1` and `SANDBOX=agentos`. `compose.cloud.yaml` keeps it off for now. Two things
 first:
 

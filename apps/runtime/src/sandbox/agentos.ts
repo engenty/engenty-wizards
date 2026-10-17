@@ -1,14 +1,20 @@
 import { existsSync } from "node:fs";
-import { posix } from "node:path";
-import { pathToFileURL } from "node:url";
+import { join, posix } from "node:path";
 import { env } from "../env.js";
 import {
+  AGENTOS_CORE,
   AGENTOS_EXTRA_COMMANDS,
-  agentOsEntry,
   agentOsExtras,
   agentOsSidecar,
-} from "./agentos-install.js";
-import type { ExecOptions, ExecResult, Sandbox, SandboxCapabilities } from "./types.js";
+} from "./agentos-package.js";
+import { importFromEngine, installedVersion } from "./install.js";
+import type {
+  ExecOptions,
+  ExecResult,
+  Sandbox,
+  SandboxCapabilities,
+  SandboxEngine,
+} from "./types.js";
 
 const WORKDIR = "/workspace";
 const EXEC_TIMEOUT_MS = 120_000;
@@ -101,9 +107,7 @@ function agentOsRuntime(dir: string): Promise<Runtime> {
     if (!process.env.AGENTOS_SIDECAR_BIN && existsSync(agentOsSidecar(dir))) {
       process.env.AGENTOS_SIDECAR_BIN = agentOsSidecar(dir);
     }
-    const mod = (await import(pathToFileURL(agentOsEntry(dir)).href).catch((err) => {
-      throw new Error(`agentOS isn’t installed in ${dir} (wizards sandbox add): ${err.message}`);
-    })) as AgentOsModule;
+    const mod = (await importFromEngine("agentos", dir, AGENTOS_CORE)) as AgentOsModule;
     return { agentOs: mod.AgentOs, sidecar: await mod.AgentOs.createSidecar() };
   })().catch((err) => {
     runtime = null;
@@ -130,13 +134,24 @@ function toResult(result: AgentOsResult): ExecResult {
   return { exitCode: result.exitCode ?? (result.outcome === "succeeded" ? 0 : 1), stdout, stderr };
 }
 
+/** Where `wizards sandbox add agentos` put it. */
+export const agentOsDir = () => join(env.sandboxEngines, "agentos");
+
+/** Ready once `wizards sandbox add agentos` installed it. */
+export const agentOsEngine: SandboxEngine = {
+  name: "agentos",
+  ready: () => installedVersion(agentOsDir()) !== null,
+  capabilities: () => agentOsCapabilities(env.sandboxHosts),
+  create: () => new AgentOsSandbox(),
+};
+
 /** One agentOS VM per run, in the server's helper process: no Docker, no container. */
 export class AgentOsSandbox implements Sandbox {
   readonly capabilities: SandboxCapabilities;
   private machine: Promise<AgentOsVm> | null = null;
 
   constructor(
-    private readonly dir: string = env.agentosDir,
+    private readonly dir: string = agentOsDir(),
     private readonly hosts: readonly string[] = env.sandboxHosts,
   ) {
     this.capabilities = agentOsCapabilities(hosts);

@@ -23,6 +23,23 @@ export interface SandboxCapabilities {
   workdir: string;
 }
 
+/**
+ * A way to run sandboxes: Docker, agentOS, a hosted one. The engines are listed in index.ts;
+ * one whose code is not part of engenty wizards installs it with `wizards sandbox add <name>`
+ * (install.ts) and loads it from there.
+ */
+export interface SandboxEngine {
+  /** What `SANDBOX` names it. Lower case. */
+  readonly name: string;
+  /**
+   * Whether it can run here without being asked for: the image is there, the package is
+   * installed. Without `SANDBOX` the first engine that is ready runs the sandboxes.
+   */
+  ready(): boolean;
+  capabilities(): SandboxCapabilities;
+  create(runId: string): Sandbox;
+}
+
 /** The private machine of one run: made on the first tool call, destroyed when the run stops. */
 export interface Sandbox {
   readonly capabilities: SandboxCapabilities;
