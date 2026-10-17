@@ -6,6 +6,11 @@ import { createFurRenderer, type FurRenderer } from "./fur-renderer";
 import type { EngentyCoat } from "./fur-stage";
 import { createGoggleGeometry } from "./goggle-geometry";
 import { GOGGLE_FRAGMENT_SHADER, GOGGLE_VERTEX_SHADER } from "./goggle-shaders";
+import { createGooseHelmetGeometry } from "./goose-helmet-geometry";
+import {
+  GOOSE_HELMET_FRAGMENT_SHADER,
+  GOOSE_HELMET_VERTEX_SHADER,
+} from "./goose-helmet-shaders";
 import { JELLY_FRAGMENT_SHADER } from "./jelly-shader";
 import { createStrandGeometry } from "./strand-geometry";
 import { STRAND_FRAGMENT_SHADER, STRAND_VERTEX_SHADER } from "./strand-shaders";
@@ -78,6 +83,18 @@ export function createStrandRenderer(
     return null;
   }
   passes.push(goggles);
+  const helmet = createFurRenderer(canvas, GOOSE_HELMET_FRAGMENT_SHADER, {
+    vertex: GOOSE_HELMET_VERTEX_SHADER,
+    geometry: (gl, program) => createGooseHelmetGeometry(gl, program, coat),
+    clear: false,
+  });
+  if (!helmet) {
+    for (const pass of passes) {
+      pass.dispose();
+    }
+    return null;
+  }
+  passes.push(helmet);
   return {
     render(u) {
       for (const pass of passes) {
