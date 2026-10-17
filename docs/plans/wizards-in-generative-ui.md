@@ -90,3 +90,6 @@ Decided on the way:
 - The run starts once the model's line has finished streaming: a half-written token never
   starts a run.
 - The run's id is kept in the message's OpenUI state, so the same message shows the same run.
+  The chat hears of a run it saw finish; a message shown again with a done run tells nothing.
+
+The developer docs describe the result: `docs/content/dev/openui.md`.

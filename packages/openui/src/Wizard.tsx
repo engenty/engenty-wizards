@@ -1,5 +1,4 @@
 import {
-  ApiError,
   api,
   configureRunner,
   type Lang,
@@ -7,26 +6,21 @@ import {
   RunnerBody,
 } from "@engenty-wizards/runner";
 import type { RunView } from "@engenty-wizards/shared/run";
-import {
-  defineComponent,
-  useGetFieldValue,
-  useIsStreaming,
-  useSetFieldValue,
-  useTriggerAction,
-} from "@openuidev/react-lang";
-import { useEffect, useRef, useState } from "react";
+import { defineComponent } from "@openuidev/react-lang";
+import { useEffect, useRef } from "react";
+import { useMessageRun, useReport } from "./message.js";
 import { WIZARD_COMPONENT, WIZARD_DESCRIPTION, type WizardProps, wizardProps } from "./prompt.js";
 import { useWizardRun } from "./run.js";
 
 export interface WizardsConfig {
   /**
    * Where the runtime answers, as the browser reaches it: a path the host proxies to it
-   * (`/wizards-runtime`, so its cookie stays first-party) or its address.
+   * (`/wizards-runtime`, so the runner's cookie stays first-party) or the runtime's address.
    */
   runtime: string;
-  /** The language of the runner's own words. */
+  /** The language of the runner's own words: `en` unless given. */
   lang?: Lang;
-  /** The wizard's mascot; a plain dot in the wizard's colour where none is given. */
+  /** The wizard's mascot above its pages; a plain dot in the wizard's colour unless given. */
   Mascot?: (props: MascotProps) => React.ReactNode;
 }
 
@@ -54,63 +48,39 @@ export function configureWizards(config: WizardsConfig) {
   });
 }
 
-/** What the chat hears when a run is done: the result's texts, short. */
+/** Starts a run of the published wizard behind `token`, as a visitor of the runtime. */
+const startRun = (token: string) =>
+  api
+    .post<{ runId: string }>(`/api/public/wizards/${encodeURIComponent(token)}/runs`, {})
+    .then((started) => started.runId);
+
+/** What the chat hears when a run is done: the result's texts, each cut short. */
 function resultContext(view: RunView) {
-  const texts = Object.entries(view.outputs)
+  const results = Object.entries(view.outputs)
     .filter(([, out]) => typeof out.text === "string" && out.text.trim())
     .map(([step, out]) => ({ step, text: (out.text ?? "").slice(0, 4000) }));
-  return { wizard: view.wizard.title, runId: view.id, results: texts };
+  return { wizard: view.wizard.title, runId: view.id, results };
 }
 
 function WizardRun({ props }: { props: WizardProps }) {
-  const streaming = useIsStreaming();
-  const getField = useGetFieldValue();
-  const setField = useSetFieldValue();
-  const trigger = useTriggerAction();
-  // The run lives with the message: shown again, the same run continues.
-  const key = `wizard:${props.wizard}`;
-  const kept = getField(undefined, key) as { runId?: string; reported?: boolean } | undefined;
-  const [runId, setRunId] = useState<string | null>(kept?.runId ?? null);
-  const [failed, setFailed] = useState<string | null>(null);
-  const reported = useRef(kept?.reported ?? false);
+  const { runId, failed } = useMessageRun(props.wizard, startRun);
   const run = useWizardRun(runId, props.prefill);
+  const report = useReport();
 
-  useEffect(() => {
-    // While the reply streams, the token can still be half written.
-    if (streaming || runId || failed || !props.wizard) {
-      return;
-    }
-    let cancelled = false;
-    api
-      .post<{ runId: string }>(`/api/public/wizards/${encodeURIComponent(props.wizard)}/runs`, {})
-      .then(({ runId: id }) => {
-        if (!cancelled) {
-          setRunId(id);
-          setField(undefined, WIZARD_COMPONENT, key, { runId: id }, true);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setFailed(err instanceof ApiError ? err.message : String(err));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [streaming, runId, failed, props.wizard, key, setField]);
-
+  // The chat hears of a run it saw finish. A message shown again with a done run tells nothing.
   const view = run.view;
+  const seenRunning = useRef(false);
   useEffect(() => {
-    if (view?.status !== "done" || reported.current) {
+    if (!view) {
       return;
     }
-    reported.current = true;
-    setField(undefined, WIZARD_COMPONENT, key, { runId: view.id, reported: true }, true);
-    void trigger(`The wizard “${view.wizard.title}” finished.`, undefined, {
-      type: "continue_conversation",
-      params: { context: resultContext(view) },
-    });
-  }, [view, key, setField, trigger]);
+    if (view.status !== "done") {
+      seenRunning.current = true;
+    } else if (seenRunning.current) {
+      seenRunning.current = false;
+      report(`The wizard “${view.wizard.title}” finished.`, resultContext(view));
+    }
+  }, [view, report]);
 
   return (
     <div className="engenty-runner overflow-hidden rounded-2xl border border-paper-3 bg-paper">

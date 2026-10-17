@@ -6,7 +6,8 @@ chat's model decides that a wizard fits and writes one line, `Wizard("<token>", 
 its pages, its AI steps, the review and the result with its downloads. When it is done, the
 chat hears about the result and goes on. No iframe: the steps are drawn in the chat's own page.
 
-The component is `@engenty-wizards/openui` (`packages/openui`). The concept is
+The component is `@engenty-wizards/openui` (`packages/openui`); the developer docs explain
+how it works (`docs/content/dev/openui.md`). The concept is
 `docs/plans/wizards-in-generative-ui.md`.
 
 ## Try it
@@ -60,3 +61,7 @@ You need Node 24 and pnpm, as for the rest of the repository.
 - **Runs spend credits** as on the wizard's own page.
 - **One runtime per page.** `configureWizards` names it once. The page reaches it through its own
   proxy (`/wizards-runtime`, see `vite.config.ts`), so the runner's cookie stays first-party.
+- **The “OpenUI Inspect” button** at the bottom right is OpenUI's own: `@openuidev/react-lang`
+  adds it to every page in development and loads it from jsDelivr. It lists the errors of the
+  model's answers, and its banner advertises OpenUI's cloud. A production build leaves it out,
+  and there is no switch for it in development.

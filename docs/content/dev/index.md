@@ -1,7 +1,7 @@
 ---
 title: Developer
 description: Extend engenty wizards with plugins – tools for AI steps, routes with their own tables, pages in the studio.
-version: 0.5.0
+version: 0.7.3
 ---
 
 You extend engenty wizards with **plugins**. A plugin adds to a runtime without changing its
@@ -20,6 +20,12 @@ code, and the runtime loads it from its files while it runs.
 
 A wizard is JSON, and it travels as a `.wizard` file. [The wizard format](./wizard-format.md)
 describes the format, the JSON Schema for your editor and `wizards validate`.
+
+## Wizards in other chats
+
+[Wizards in OpenUI chats](./openui.md) describes `@engenty-wizards/openui`: a component for
+[OpenUI](https://github.com/thesysdev/openui) chats that runs a published wizard inside the
+conversation, and the prompt half that tells the chat’s model which wizards exist.
 
 ## What you need
 

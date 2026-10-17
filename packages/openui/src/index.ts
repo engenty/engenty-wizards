@@ -1,6 +1,6 @@
 /**
  * Wizards in OpenUI chats: the Wizard component runs a published wizard inside the chat, page
- * by page, as its author defined it; the chat model only decides that it runs and what it
+ * by page, as its author defined it; the chat's model only decides that it runs and what it
  * already knows. `prompt.ts` is the server's half: the rules and the list of wizards.
  */
 

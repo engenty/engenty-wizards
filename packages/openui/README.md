@@ -27,6 +27,8 @@ const prompt = addWizard(openuiChatLibrary).prompt({
 
 What the model writes: `Wizard("<token>", "<note>", {plate: "W-12345"})`. The prefill starts
 the page's fields, and the person still sees and sends each page. When the run is done, the
-component sends a `continue_conversation` action with the result's texts as its context.
+component sends a `continue_conversation` action with the result's texts as its context, and
+the chat goes on with it.
 
-A whole chat to try it with: `examples/openui-chat`.
+The developer docs explain the whole of it: `docs/content/dev/openui.md`. A chat to try it
+with: `examples/openui-chat`.
