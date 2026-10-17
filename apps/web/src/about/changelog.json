@@ -1,7 +1,20 @@
 [
   {
+    "version": "v0.7.5",
+    "timestamp": 1792246536,
+    "commits": [
+      {
+        "id": "4164d75",
+        "message": "`npx wizards` downloads a small launcher; the runtime is published as @engenty/wizards-runtime (#39)",
+        "group": "Added",
+        "scope": "cli",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.7.4",
-    "timestamp": 1792239947,
+    "timestamp": 1792239952,
     "commits": [
       {
         "id": "dc773cd",
