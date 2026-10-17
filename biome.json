@@ -8,7 +8,7 @@
       "apps/web/*.ts",
       "apps/web/scripts/**",
       "packages/shared/src/**",
-      "packages/plugin-sdk/src/**",
+      "packages/wizards/src/**",
       "packages/runner/src/**",
       "packages/runner/*.ts",
       "packages/runner/scripts/**",
