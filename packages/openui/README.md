@@ -30,5 +30,5 @@ the page's fields, and the person still sees and sends each page. When the run i
 component sends a `continue_conversation` action with the result's texts as its context, and
 the chat goes on with it.
 
-The developer docs explain the whole of it: `docs/content/dev/openui.md`. A chat to try it
+The developer docs explain the whole of it: `docs/content/dev/integration/openui.md`. A chat to try it
 with: `examples/openui-chat`.

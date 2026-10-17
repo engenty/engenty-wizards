@@ -21,11 +21,10 @@ code, and the runtime loads it from its files while it runs.
 A wizard is JSON, and it travels as a `.wizard` file. [The wizard format](./wizard-format.md)
 describes the format, the JSON Schema for your editor and `wizards validate`.
 
-## Wizards in other chats
+## Wizards in other systems
 
-[Wizards in OpenUI chats](./openui.md) describes `@engenty-wizards/openui`: a component for
-[OpenUI](https://github.com/thesysdev/openui) chats that runs a published wizard inside the
-conversation, and the prompt half that tells the chat’s model which wizards exist.
+[Integration](./integration/index.md) shows how a published wizard reaches other systems: people
+over a link, a website or a channel, AI apps over MCP, and your own code.
 
 ## What you need
 

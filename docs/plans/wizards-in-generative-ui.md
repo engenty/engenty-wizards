@@ -92,4 +92,4 @@ Decided on the way:
 - The run's id is kept in the message's OpenUI state, so the same message shows the same run.
   The chat hears of a run it saw finish; a message shown again with a done run tells nothing.
 
-The developer docs describe the result: `docs/content/dev/openui.md`.
+The developer docs describe the result: `docs/content/dev/integration/openui.md`.
