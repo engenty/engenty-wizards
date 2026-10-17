@@ -1,7 +1,7 @@
 ---
 title: MCP Apps
 description: AI apps that support MCP Apps show the wizard itself as a widget, page by page.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

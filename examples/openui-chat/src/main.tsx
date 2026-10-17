@@ -1,6 +1,6 @@
 import "@openuidev/react-ui/index.css";
-import "@engenty-wizards/runner/runner.css";
-import { addWizard, configureWizards, Wizard } from "@engenty-wizards/openui";
+import "@engenty/wizards/openui/styles.css";
+import { addWizard, configureWizards, Wizard } from "@engenty/wizards/openui";
 import {
   AgentInterface,
   type ConversationStarterProps,

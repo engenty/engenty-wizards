@@ -4,7 +4,7 @@ import {
   loadWizards,
   type WizardInfo,
   wizardRules,
-} from "@engenty-wizards/openui/prompt";
+} from "@engenty/wizards/openui/server";
 import { openuiChatLibrary, openuiChatPromptOptions } from "@openuidev/react-ui/genui-lib";
 
 /**

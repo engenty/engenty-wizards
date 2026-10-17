@@ -1,7 +1,7 @@
 ---
 title: Link and QR code
 description: Hand out a published wizard as a link or a QR code.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

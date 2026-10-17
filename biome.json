@@ -12,7 +12,6 @@
       "packages/runner/src/**",
       "packages/runner/*.ts",
       "packages/runner/scripts/**",
-      "packages/openui/src/**",
       "examples/openui-chat/src/**",
       "examples/openui-chat/*.ts",
       "scripts/*.ts",

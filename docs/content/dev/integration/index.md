@@ -1,7 +1,7 @@
 ---
 title: Integration
 description: Bring a published wizard into other systems – for people, for AI apps and for your own code.
-version: 0.7.3
+version: 0.7.4
 ---
 
 A published wizard runs wherever a person can reach it. These pages show how to bring it into

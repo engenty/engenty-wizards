@@ -4,8 +4,8 @@ import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { z } from "zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useMessageRun, useReport } from "../src/message";
-import { addWizard, WIZARD_COMPONENT, WIZARD_DESCRIPTION, wizardProps } from "../src/prompt";
+import { useMessageRun, useReport } from "../../src/openui/message";
+import { addWizard, WIZARD_COMPONENT, WIZARD_DESCRIPTION, wizardProps } from "../../src/openui/server";
 
 /**
  * What the Wizard component keeps with its message, against OpenUI's own renderer: the run id

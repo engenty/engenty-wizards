@@ -1,19 +1,19 @@
 ---
 title: Wizards in OpenUI chats
 description: A Wizard component for OpenUI’s React renderer. The chat’s model decides that a wizard runs, and the wizard runs its own pages inside the conversation.
-version: 0.7.3
+version: 0.7.4
 ---
 
 A chat built with [OpenUI](https://github.com/thesysdev/openui) composes its answers as it
 goes: cards, charts, forms and buttons, whatever the model finds fitting. A wizard is the one
 thing in such a chat that runs the same way every time, with the pages, steps and result its
-author defined. `@engenty-wizards/openui` puts the two together: the chat decides that a wizard
+author defined. `@engenty/wizards/openui` puts the two together: the chat decides that a wizard
 fits and what it already knows, the wizard then runs inside the conversation, and the chat
 hears the result.
 
-The package is `packages/openui` in the
-[repository](https://github.com/engenty/wizards/tree/main/packages/openui), under the MIT
-licence. A whole chat to try it with is `examples/openui-chat`.
+It is part of `@engenty/wizards`, the package for code outside engenty wizards
+([`packages/wizards/src/openui`](https://github.com/engenty/wizards/tree/main/packages/wizards/src/openui)
+in the repository, under the MIT licence). A whole chat to try it with is `examples/openui-chat`.
 
 ## What OpenUI is
 
@@ -57,14 +57,14 @@ sequenceDiagram
     M-->>B: an answer in plain words
 ```
 
-The package has two halves, one for each side of the chat.
+It has two halves, one for each side of the chat.
 
-### The prompt half, on the chat server
+### The server half
 
-`@engenty-wizards/openui/prompt` draws nothing, so a server can import it alone.
+`@engenty/wizards/openui/server` draws nothing, so a server can import it alone.
 
 ```ts
-import { addWizard, loadWizards, wizardRules } from "@engenty-wizards/openui/prompt";
+import { addWizard, loadWizards, wizardRules } from "@engenty/wizards/openui/server";
 import { openuiChatLibrary, openuiChatPromptOptions } from "@openuidev/react-ui/genui-lib";
 
 const wizards = await loadWizards("http://localhost:24368", ["<token>", "<token>"]);
@@ -91,9 +91,9 @@ the conversation, by field id; the person still sees and sends each page.
 ### The component, in the browser
 
 ```tsx
-import { addWizard, configureWizards, Wizard } from "@engenty-wizards/openui";
+import "@engenty/wizards/openui/styles.css";
+import { addWizard, configureWizards, Wizard } from "@engenty/wizards/openui";
 import { openuiChatLibrary } from "@openuidev/react-ui/genui-lib";
-import "@engenty-wizards/runner/runner.css";
 
 configureWizards({ runtime: "/wizards-runtime" });
 const library = addWizard(openuiChatLibrary, Wizard);
@@ -156,15 +156,16 @@ things.
 
 | From | Export | What it is |
 |---|---|---|
-| `@engenty-wizards/openui/prompt` | `loadWizards(runtimeUrl, tokens)` | The published wizards behind the tokens, as `WizardInfo[]` |
+| `@engenty/wizards/openui/server` | `loadWizards(runtimeUrl, tokens)` | The published wizards behind the tokens, as `WizardInfo[]` |
 | | `wizardRules(wizards)` | The rules a system prompt adds |
 | | `addWizard(library, component?)` | The library with the Wizard component among a Card’s children |
 | | `WizardSpec`, `wizardProps`, `WizardProps` | The component as a prompt sees it, and its props |
 | | `WIZARD_COMPONENT`, `WIZARD_DESCRIPTION` | Its name and description |
-| `@engenty-wizards/openui` | all of the above | |
+| `@engenty/wizards/openui` | all of the above | |
 | | `configureWizards(config)` | Names the runtime, the language and the mascot |
 | | `Wizard` | The drawing component |
 | | `useWizardRun(runId, prefill)` | One run, live, for a host that draws runs itself |
+| `@engenty/wizards/openui/styles.css` | | The runner’s styles, scoped to the wizard |
 
 `@openuidev/react-lang`, `react`, `react-dom` and `zod` are peer dependencies: the chat brings
 them. The package is written against `@openuidev/react-lang` 1.0 and the chat kit

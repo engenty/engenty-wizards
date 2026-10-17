@@ -1,7 +1,7 @@
 ---
 title: MCP
 description: AI apps list, run and build wizards over the Model Context Protocol.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

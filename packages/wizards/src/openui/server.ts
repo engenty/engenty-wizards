@@ -43,7 +43,7 @@ export const WizardSpec = defineComponent({
 export function addWizard<L extends Library>(
   library: L,
   component: typeof WizardSpec = WizardSpec,
-) {
+): Library {
   if (!library.extend) {
     throw new Error("This OpenUI library cannot be extended.");
   }

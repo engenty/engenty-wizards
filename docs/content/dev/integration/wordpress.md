@@ -1,7 +1,7 @@
 ---
 title: WordPress
 description: Put published wizards on a WordPress site with the plugin “engenty wizards”.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

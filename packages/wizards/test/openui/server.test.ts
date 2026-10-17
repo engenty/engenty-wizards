@@ -1,7 +1,7 @@
 import { createLibrary, defineComponent } from "@openuidev/react-lang";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { addWizard, type WizardInfo, wizardRules } from "../src/prompt";
+import { addWizard, type WizardInfo, wizardRules } from "../../src/openui/server";
 
 const damage: WizardInfo = {
   token: "tok123",

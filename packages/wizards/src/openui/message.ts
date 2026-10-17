@@ -5,7 +5,7 @@ import {
   useTriggerAction,
 } from "@openuidev/react-lang";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WIZARD_COMPONENT } from "./prompt.js";
+import { WIZARD_COMPONENT } from "./server.js";
 
 /**
  * What the Wizard component keeps with its message, in OpenUI's state of the message.

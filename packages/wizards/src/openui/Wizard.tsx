@@ -9,8 +9,8 @@ import type { RunView } from "@engenty-wizards/shared/run";
 import { defineComponent } from "@openuidev/react-lang";
 import { useEffect, useRef } from "react";
 import { useMessageRun, useReport } from "./message.js";
-import { WIZARD_COMPONENT, WIZARD_DESCRIPTION, type WizardProps, wizardProps } from "./prompt.js";
 import { useWizardRun } from "./run.js";
+import { WIZARD_COMPONENT, WIZARD_DESCRIPTION, type WizardProps, wizardProps } from "./server.js";
 
 export interface WizardsConfig {
   /**

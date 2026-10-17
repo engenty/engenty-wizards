@@ -44,7 +44,7 @@ A pnpm workspace:
 | `bin/` | the entry of the `wizards` command |
 | `scripts/` | `npm-package.mjs` (the npm package) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
-| `packages/wizards/` | `@engenty/wizards`, the one package code outside this repo imports: `/plugin` (a plugin’s server half), `/plugin/studio`, `/plugin/thread` |
+| `packages/wizards/` | `@engenty/wizards`, the one package code outside this repo imports: `/plugin` (a plugin’s server half), `/plugin/studio`, `/plugin/thread`, `/openui` (wizards in OpenUI chats), `/openui/server` |
 | `modules/` | plugins that ship with the runtime |
 | `examples/plugins/` | example plugins; loaded with `PLUGINS_DIR=examples/plugins` |
 | `scripts/build-plugin.mjs` | builds a plugin's studio half |
@@ -58,7 +58,7 @@ A pnpm workspace:
 | Name | What it is |
 |---|---|
 | `wizards` | The npm package people run with `npx wizards`, built by `scripts/npm-package.mjs` |
-| `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin` today. Inside the repo the runtime and the studio import it by the same name |
+| `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin`, `/openui`. Inside the repo the runtime and the studio import it by the same name |
 | `@engenty-wizards/*` | The workspace’s own parts (`runtime`, `web`, `docs`, `shared`, `runner`). They are never published |
 
 A new thing for outside code goes into `packages/wizards/` as a subpath, not into a package of

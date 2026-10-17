@@ -70,7 +70,7 @@ can follow the same way.
 
 Built on 2026-10-17, as the first step this concept named:
 
-- `packages/openui` (`@engenty-wizards/openui`): the `Wizard` component for OpenUI's React
+- `packages/wizards/src/openui` (`@engenty/wizards/openui`): the `Wizard` component for OpenUI's React
   renderer, and its prompt half for the chat's server. It draws the run with the runner
   (`packages/runner`) and its scoped styles, over the runtime's public run routes.
 - `examples/openui-chat`: an OpenUI chat (Agent Interface) with any OpenAI-compatible model,

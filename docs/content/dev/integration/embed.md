@@ -1,7 +1,7 @@
 ---
 title: Embed
 description: Put a published wizard on your website with one script tag.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

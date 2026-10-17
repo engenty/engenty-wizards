@@ -6,7 +6,7 @@ chat's model decides that a wizard fits and writes one line, `Wizard("<token>", 
 its pages, its AI steps, the review and the result with its downloads. When it is done, the
 chat hears about the result and goes on. No iframe: the steps are drawn in the chat's own page.
 
-The component is `@engenty-wizards/openui` (`packages/openui`); the developer docs explain
+The component is `@engenty/wizards/openui` (`packages/wizards/src/openui`); the developer docs explain
 how it works (`docs/content/dev/integration/openui.md`). The concept is
 `docs/plans/wizards-in-generative-ui.md`.
 

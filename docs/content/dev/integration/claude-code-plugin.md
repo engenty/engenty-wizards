@@ -1,7 +1,7 @@
 ---
 title: Claude Code plugin
 description: Build and use wizards from Claude Code with the /wizard command and its skills.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.

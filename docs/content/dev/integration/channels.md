@@ -1,7 +1,7 @@
 ---
 title: Channels
 description: Run a wizard as a chat, a conversation or a call, and over WhatsApp, SMS or the phone.
-version: 0.7.3
+version: 0.7.4
 ---
 
 This page is not written yet.
