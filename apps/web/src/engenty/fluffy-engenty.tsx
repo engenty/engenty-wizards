@@ -12,6 +12,7 @@ import {
 import { furPalette } from "./fur-palette";
 import { FUR_ORIGIN, FUR_VIEW } from "./fur-shader";
 import { acquireFurStage, type EngentyCoat } from "./fur-stage";
+import { isGooseHelmetKind } from "./goose-helmet-fit";
 import { headTurn, MAX_HEAD_TURN } from "./head-turn";
 import { JELLY_DEFAULTS } from "./jelly-defaults";
 import { bindJellyDrag } from "./jelly-drag";
@@ -76,6 +77,8 @@ export interface FluffyEngentyProps {
   coat?: EngentyCoat;
   /** Old-school pilot goggles over the eye: the copilot's look. */
   goggles?: boolean;
+  /** Rigid red Goose flight helmet for round, dome or drop. */
+  gooseHelmet?: boolean;
   /** Pointer-driven lean and gaze. Off for purely decorative instances. */
   interactive?: boolean;
   kind?: EngentyKind;
@@ -115,6 +118,7 @@ export function FluffyEngenty({
   turn,
   coat = "fur",
   goggles = false,
+  gooseHelmet = false,
   interactive = true,
   look = null,
   kind = "round",
@@ -132,7 +136,32 @@ export function FluffyEngenty({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [supported, setSupported] = useState(true);
 
-  const form = ENGENTY_FORMS[kind];
+  const helmetKind = gooseHelmet && isGooseHelmetKind(kind) ? kind : undefined;
+  const form = useMemo(() => {
+    const base = ENGENTY_FORMS[kind];
+    if (!helmetKind) {
+      return base;
+    }
+    return {
+      ...base,
+      // Goose's one eye sits inside the shield rather than under its brow.
+      eye: {
+        ...base.eye,
+        y: helmetKind === "round" ? 65 : 64,
+      },
+      extras: [
+        ...(ENGENTY_FORMS.round.extras ?? []),
+        {
+          type: "smile" as const,
+          x: 53,
+          y: helmetKind === "round" ? 91 : 88,
+          len: 14,
+          amp: 2.5,
+          width: 1.7,
+        },
+      ],
+    };
+  }, [helmetKind, kind]);
   const blobs = useMemo(() => packFormBlobs(form), [form]);
   const extras = useMemo(() => packFormExtras(form), [form]);
   const scale = useMemo(() => formScale(form), [form]);
@@ -143,6 +172,7 @@ export function FluffyEngenty({
     motion,
     turn,
     goggles,
+    helmetKind,
     blobs,
     extras,
     form,
@@ -159,6 +189,7 @@ export function FluffyEngenty({
     motion,
     turn,
     goggles,
+    helmetKind,
     blobs,
     extras,
     form,
@@ -182,6 +213,7 @@ export function FluffyEngenty({
     interactive,
     look,
     goggles,
+    helmetKind,
     motion,
     animationSpeed,
     turn,
@@ -279,7 +311,10 @@ export function FluffyEngenty({
         dt * Math.max(0.1, Math.min(2, current.animationSpeed))
       );
 
-      const palette = furPalette(wrap, current.kind);
+      const palette = furPalette(
+        wrap,
+        current.helmetKind ? "round" : current.kind
+      );
       stage.drawInto(context, px, {
         blobs: current.blobs,
         clarity: current.overrides?.clarity ?? JELLY_DEFAULTS.clarity,
@@ -297,7 +332,9 @@ export function FluffyEngenty({
         extras: current.extras.geometry,
         eye: [current.form.eye.x, current.form.eye.y, current.form.eye.r],
         gaze: [gaze.x, gaze.y],
-        goggles: current.goggles,
+        goggles: current.goggles && !current.helmetKind,
+        gooseHelmet: Boolean(current.helmetKind),
+        helmetKind: current.helmetKind,
         turn: current.turn
           ? headTurn(
               current.turn.yaw / MAX_HEAD_TURN,
@@ -369,7 +406,7 @@ export function FluffyEngenty({
     return (
       <Engenty
         className={className}
-        goggles={goggles}
+        goggles={goggles && !helmetKind}
         kind={kind}
         size={size}
       />

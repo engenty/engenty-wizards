@@ -31,6 +31,12 @@ gaze within a combined ten-degree yaw/pitch limit; `turn={{ yaw, pitch }}` sets
 radians directly within that same limit. The full-orbit mode has been removed.
 Goggles use a raised gasket, brass torus, rivets and a convex translucent lens;
 the leather strap follows the body surface. The flat icon retains its SVG glasses.
+`gooseHelmet` currently shows the first Goose design stage: a rigid red flight
+helmet shell on round, dome or drop Fur and Jelly Engenties. Its fittings and
+smoke visor are intentionally absent while the shell shape is reviewed. Goose
+keeps a blue coat and friendly smile across those forms. The shell follows the
+head turn without inheriting Jelly deformation. It replaces goggles when both
+are passed.
 
 The Wizards builder starts gaze following, supports Fur/Jelly/Compare, and uses
 `stageFill` for the per-character dark backgrounds. Pause and manual turn sliders
@@ -45,6 +51,9 @@ import { FluffyEngenty } from "@engenty/ui-core";
 
 <FluffyEngenty kind="round" coat="fur" goggles size={280} />
 <FluffyEngenty kind="drop" coat="jelly" goggles size={280} />
+<FluffyEngenty kind="round" coat="fur" gooseHelmet size={280} />
+<FluffyEngenty kind="dome" coat="jelly" gooseHelmet size={280} />
+<FluffyEngenty kind="drop" coat="fur" gooseHelmet size={280} />
 ```
 
 Wizard pages can use the theme-aware brand wrapper. Large fluffy instances use

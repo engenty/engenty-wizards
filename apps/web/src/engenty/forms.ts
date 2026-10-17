@@ -73,6 +73,15 @@ export type EngentyExtra =
       amp: number;
       width: number;
       alpha?: number;
+    }
+  | {
+      type: "smile";
+      x: number;
+      y: number;
+      len: number;
+      amp: number;
+      width: number;
+      alpha?: number;
     };
 
 export interface EngentyForm {
@@ -293,11 +302,15 @@ export const ENGENTY_FORMS: Record<EngentyKind, EngentyForm> = {
  * inflation and the reach cut-off back into form units.
  */
 export function formScale(form: EngentyForm): number {
-  return Math.max(...form.blobs.map((b) => b.r * Math.min(b.rx ?? 1, b.ry ?? 1)));
+  return Math.max(
+    ...form.blobs.map((b) => b.r * Math.min(b.rx ?? 1, b.ry ?? 1))
+  );
 }
 
 /** Longest blob list across all kinds — the shader's fixed loop bound. */
-export const MAX_FORM_BLOBS = Math.max(...Object.values(ENGENTY_FORMS).map((f) => f.blobs.length));
+export const MAX_FORM_BLOBS = Math.max(
+  ...Object.values(ENGENTY_FORMS).map((f) => f.blobs.length)
+);
 
 /**
  * Flattens a form to the `vec4[]`-shaped uniform the fur shader expects:
@@ -324,9 +337,10 @@ export function packFormBlobs(form: EngentyForm): Float32Array {
   return packed;
 }
 
-/** Longest extras list across all kinds — the shader's fixed loop bound. */
+/** Shader loop bound includes Goose's smile after the round form's two bubbles. */
 export const MAX_FORM_EXTRAS = Math.max(
-  ...Object.values(ENGENTY_FORMS).map((f) => f.extras?.length ?? 0),
+  3,
+  ...Object.values(ENGENTY_FORMS).map((f) => f.extras?.length ?? 0)
 );
 
 const EXTRA_KIND = {
@@ -335,6 +349,7 @@ const EXTRA_KIND = {
   arc: 3,
   bar: 4,
   wave: 5,
+  smile: 6,
 } as const;
 
 /**
@@ -360,7 +375,10 @@ export function packFormExtras(form: EngentyForm): {
         geometry.set([extra.x, extra.y, extra.r, extra.bob ?? 0], g);
         break;
       case "arc":
-        geometry.set([extra.cx, extra.cy, extra.r, (extra.half * Math.PI) / 180], g);
+        geometry.set(
+          [extra.cx, extra.cy, extra.r, (extra.half * Math.PI) / 180],
+          g
+        );
         meta[g + 2] = extra.width;
         meta[g + 3] = extra.body ? 1 : 0;
         break;
@@ -369,6 +387,7 @@ export function packFormExtras(form: EngentyForm): {
         meta[g + 2] = extra.width;
         break;
       case "wave":
+      case "smile":
         geometry.set([extra.x, extra.y, extra.len, extra.amp], g);
         meta[g + 2] = extra.width;
         break;
