@@ -17,7 +17,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/runtime/package.json apps/runtime/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-COPY packages/plugin-sdk/package.json packages/plugin-sdk/
+COPY packages/wizards/package.json packages/wizards/
 COPY packages/runner/package.json packages/runner/
 RUN sed -i 's/"version": *"[^"]*"/"version": "0.0.0"/' package.json
 
@@ -59,8 +59,8 @@ COPY --from=build /app/apps/runtime/package.json ./apps/runtime/
 COPY --from=build /app/apps/runtime/dist ./apps/runtime/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
-COPY --from=build /app/packages/plugin-sdk/package.json ./packages/plugin-sdk/
-COPY --from=build /app/packages/plugin-sdk/dist ./packages/plugin-sdk/dist
+COPY --from=build /app/packages/wizards/package.json ./packages/wizards/
+COPY --from=build /app/packages/wizards/dist ./packages/wizards/dist
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/plugin ./plugin
 # The plugins that ship with the runtime. Further ones go into a folder of PLUGINS_DIR.

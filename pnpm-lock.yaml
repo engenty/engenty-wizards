@@ -119,12 +119,12 @@ importers:
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
-      '@engenty-wizards/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
       '@engenty-wizards/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@engenty/wizards':
+        specifier: workspace:*
+        version: link:../../packages/wizards
       '@executor-js/plugin-openapi':
         specifier: 1.6.10
         version: 1.6.10(@types/react@19.3.0)(drizzle-orm@0.45.3(@libsql/client@0.18.0)(better-sqlite3@12.11.1)(kysely@0.28.17))(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.3.0)(typeorm@0.3.31(better-sqlite3@12.11.1)(ioredis@5.11.1))
@@ -249,15 +249,15 @@ importers:
       '@dagrejs/dagre':
         specifier: ^3.1.1
         version: 3.1.1
-      '@engenty-wizards/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
       '@engenty-wizards/runner':
         specifier: workspace:*
         version: link:../../packages/runner
       '@engenty-wizards/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@engenty/wizards':
+        specifier: workspace:*
+        version: link:../../packages/wizards
       '@modelcontextprotocol/client':
         specifier: 2.2.0
         version: 2.2.0
@@ -331,12 +331,12 @@ importers:
 
   examples/plugins/run-log:
     devDependencies:
-      '@engenty-wizards/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../../packages/plugin-sdk
       '@engenty-wizards/web':
         specifier: workspace:*
         version: link:../../../apps/web
+      '@engenty/wizards':
+        specifier: workspace:*
+        version: link:../../../packages/wizards
       '@tanstack/react-query':
         specifier: ^5.104.0
         version: 5.104.0(react@19.3.0)
@@ -355,28 +355,6 @@ importers:
       react-router:
         specifier: ^7.18.4
         version: 7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      typescript:
-        specifier: ~7.0.2
-        version: 7.0.2
-      zod:
-        specifier: 4.6.5
-        version: 4.6.5
-
-  packages/plugin-sdk:
-    dependencies:
-      react:
-        specifier: ^19.3.0
-        version: 19.3.0
-    devDependencies:
-      '@libsql/client':
-        specifier: ^0.18.0
-        version: 0.18.0
-      '@types/react':
-        specifier: ^19.3.0
-        version: 19.3.0
-      drizzle-orm:
-        specifier: ^0.45.3
-        version: 0.45.3(@libsql/client@0.18.0)(better-sqlite3@12.11.1)(kysely@0.28.17)
       typescript:
         specifier: ~7.0.2
         version: 7.0.2
@@ -457,6 +435,28 @@ importers:
       typescript:
         specifier: ~7.0.2
         version: 7.0.2
+
+  packages/wizards:
+    dependencies:
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+    devDependencies:
+      '@libsql/client':
+        specifier: ^0.18.0
+        version: 0.18.0
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(@libsql/client@0.18.0)(better-sqlite3@12.11.1)(kysely@0.28.17)
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
 packages:
 
