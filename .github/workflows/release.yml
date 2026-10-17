@@ -184,7 +184,7 @@ jobs:
           npx --yes --package="$LAUNCHER_TGZ" wizards doctor
           test -x "$ENGENTY_HOME/wizards/bin/wizards"
 
-      # An update of 0.7.2 or older fetches `wizards`, now the launcher, into the install and
+      # An update of 0.7.4 or older fetches `wizards`, now the launcher, into the install and
       # switches to it at the next start: the launcher brings the runtime and starts it.
       - name: An older install's update completes
         run: |

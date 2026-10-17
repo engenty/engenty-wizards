@@ -34,7 +34,7 @@ NODE_VERSION="${ENGENTY_WIZARDS_NODE_VERSION:-24.14.0}"
 # The runtime's npm package, and its file on the GitHub release (npm pack names it so).
 PACKAGE_NAME="@engenty/wizards-runtime"
 PACKAGE_FILE="engenty-wizards-runtime"
-# What the runtime was called from 0.1.9 to 0.7.2; `wizards` is the launcher now (`npx wizards`).
+# What the runtime was called from 0.1.9 to 0.7.4; `wizards` is the launcher now (`npx wizards`).
 LEGACY_NAME="wizards"
 # What the package and the command were called up to 0.1.8.
 OLD_NAME="engenty-wizards"
@@ -474,7 +474,7 @@ package() {
     0.0.* | 0.1.[0-8])
       die "Version $VERSION holds the package under its old name, $OLD_NAME. This installer installs 0.1.9 and newer."
       ;;
-    0.[1-6].* | 0.7.[0-2]) SPEC="$RELEASES/download/v$VERSION/$LEGACY_NAME-$VERSION.tgz" ;;
+    0.[1-6].* | 0.7.[0-4]) SPEC="$RELEASES/download/v$VERSION/$LEGACY_NAME-$VERSION.tgz" ;;
     *) SPEC="$RELEASES/download/v$VERSION/$PACKAGE_FILE-$VERSION.tgz" ;;
   esac
 }
@@ -495,11 +495,11 @@ runtime() {
   spin "Installing engenty wizards (about 650 MB on disk, a minute or two)" \
     env PATH="$NODE_DIR/bin:$PATH" "$NODE_DIR/bin/npm" install --prefix "$stage" \
     --omit=dev --ignore-scripts --legacy-peer-deps --no-audit --no-fund --loglevel=error "$SPEC"
-  # The runtime under its name, or under the one it had up to 0.7.2 (`--version 0.7.2`). The
+  # The runtime under its name, or under the one it had up to 0.7.4 (`--version 0.7.4`). The
   # package `wizards` of now is only the launcher: no runtime in it.
   if [ -f "$stage/node_modules/$PACKAGE_NAME/package.json" ]; then
     PACKAGE="$PACKAGE_NAME"
-    # A command or an update of 0.7.2 or older looks for the runtime under its old name.
+    # A command or an update of 0.7.4 or older looks for the runtime under its old name.
     ln -s "$PACKAGE_NAME" "$stage/node_modules/$LEGACY_NAME"
   elif [ -d "$stage/node_modules/$LEGACY_NAME/apps/runtime" ]; then
     PACKAGE="$LEGACY_NAME"

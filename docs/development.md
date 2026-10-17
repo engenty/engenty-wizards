@@ -57,7 +57,8 @@ A pnpm workspace:
 
 | Name | What it is |
 |---|---|
-| `wizards` | The npm package people run with `npx wizards`, built by `scripts/npm-package.mjs` |
+| `wizards` | The launcher people run with `npx wizards`: it installs the runtime and hands over. Built by `scripts/npm-package.mjs` |
+| `@engenty/wizards-runtime` | The runtime the installer and the updates install. Built by `scripts/npm-package.mjs` beside the launcher |
 | `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin` today. Inside the repo the runtime and the studio import it by the same name |
 | `@engenty-wizards/*` | The workspace’s own parts (`runtime`, `web`, `docs`, `shared`, `runner`). They are never published |
 
@@ -283,7 +284,7 @@ which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.en
 `npx wizards` is a second way to the same install. The npm package `wizards` is only the
 launcher: `bin/wizards.mjs` and `install.sh`, no dependencies, a few dozen KB. It runs the
 installer for the runtime of its own version and hands every command but `--version` to the
-installed `wizards`. Up to 0.7.2 `wizards` was the runtime itself; an update of such an install
+installed `wizards`. Up to 0.7.4 `wizards` was the runtime itself; an update of such an install
 fetches the launcher into its version folder, and the launcher, started there, brings the runtime
 of its version with the installer and hands over (the installer also links
 `node_modules/wizards` to the runtime, for the commands of then).

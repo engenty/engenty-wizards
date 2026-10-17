@@ -28,7 +28,7 @@ const home = join(
 );
 const runtime = join(home, "runtime");
 const wrapper = join(home, "bin", "wizards");
-/** The runtime's npm package. Up to 0.7.2 it was `wizards` itself; that name is the launcher now. */
+/** The runtime's npm package. Up to 0.7.4 it was `wizards` itself; that name is the launcher now. */
 const RUNTIME = "@engenty/wizards-runtime";
 /** Whether this copy is the runtime, or the launcher without it. */
 const hasRuntime = existsSync(join(root, "apps", "runtime", "dist", "cli", "main.js"));
@@ -51,8 +51,8 @@ function versionOf(dir) {
 
 /**
  * The version of the runtime the installed command starts; null without one. `runtime/current`
- * since 0.6.3, `runtime/` itself before; the runtime under its name, or as `wizards` up to 0.7.2.
- * A `wizards` without the runtime is the launcher, which an update of 0.7.2 or older fetches.
+ * since 0.6.3, `runtime/` itself before; the runtime under its name, or as `wizards` up to 0.7.4.
+ * A `wizards` without the runtime is the launcher, which an update of 0.7.4 or older fetches.
  */
 function installedVersion() {
   if (!existsSync(wrapper)) {
@@ -198,7 +198,7 @@ if (process.platform === "win32" && !checkout && !(hasRuntime && RUN_HERE.includ
   process.exit(1);
 }
 if (isInstall() && !hasRuntime) {
-  // The launcher in the install's place: an update of 0.7.2 or older fetched `wizards`, the
+  // The launcher in the install's place: an update of 0.7.4 or older fetched `wizards`, the
   // runtime's name then, and its next start switched to it. The installer it carries brings the
   // runtime of this version, and the command it writes starts that one from now on.
   console.error(`Completing the update to engenty wizards ${own}…`);

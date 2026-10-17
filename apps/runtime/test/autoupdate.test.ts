@@ -41,7 +41,7 @@ afterEach(() => {
 
 /**
  * An npm prefix with the runtime of this version in it: under its name of now, or as `wizards`
- * (up to 0.7.2), or `launcher`: the package `wizards` of now, without the runtime.
+ * (up to 0.7.4), or `launcher`: the package `wizards` of now, without the runtime.
  */
 function fakePrefix(prefix: string, version: string, as: "runtime" | "legacy" | "launcher" = "runtime") {
   const name = as === "runtime" ? RUNTIME_PACKAGE : "wizards";
@@ -103,9 +103,9 @@ describe("the version folders", () => {
   });
 
   it("reads the runtime under its old name, and not the launcher that has that name now", () => {
-    fakePrefix(join(paths.runtime, "0.7.2"), "0.7.2", "legacy");
+    fakePrefix(join(paths.runtime, "0.7.4"), "0.7.4", "legacy");
     fakePrefix(join(paths.runtime, "0.8.0"), "0.8.0", "launcher");
-    expect(installedVersions(paths)).toEqual(["0.7.2"]);
+    expect(installedVersions(paths)).toEqual(["0.7.4"]);
     expect(() => switchTo(paths, "0.8.0")).toThrow(/no complete runtime/);
   });
 
@@ -168,7 +168,7 @@ describe("an update", () => {
     // Nothing switched yet: what runs keeps running.
     expect(currentVersion(paths)).toBe("0.6.2");
     expect(versionIn(join(paths.runtime, "0.7.0"))).toBe("0.7.0");
-    // A command of 0.7.2 or older finds the runtime under its old name.
+    // A command of 0.7.4 or older finds the runtime under its old name.
     expect(
       readFileSync(join(paths.runtime, "0.7.0", "node_modules", "wizards", "package.json"), "utf8"),
     ).toContain(RUNTIME_PACKAGE);
