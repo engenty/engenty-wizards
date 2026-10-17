@@ -16,6 +16,8 @@ export interface SandboxCapabilities {
   commands: readonly string[];
   /** What the sandbox reaches over the network, as told to the agent. */
   network: string;
+  /** What else the agent must know to use it, such as how Python packages get in. */
+  notes?: string;
   /** What the sandbox is good for, as told to whoever authors a wizard. */
   uses: string;
   workdir: string;

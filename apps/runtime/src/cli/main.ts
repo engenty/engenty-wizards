@@ -8,6 +8,7 @@ import { CLIENTS, nodeIsCurrent } from "./machine.js";
 import { mcp } from "./mcp.js";
 import { menu } from "./menu.js";
 import { logsCommand, reportCommand } from "./report.js";
+import { sandboxCommand } from "./sandbox.js";
 import { setup } from "./setup.js";
 import { open, start, studio } from "./start.js";
 import { autostart, restart, status, stop } from "./status.js";
@@ -42,6 +43,8 @@ ${line(`${command()} restart`, "restart it, e.g. to switch to a newly installed 
 ${line(`${command()} update`, "install the latest version")}
 ${line(`${command()} autoupdate`, "updates by themselves: add on or off (WIZARDS_DISABLE_AUTOUPDATE=1 is off too)")}
 ${more("(downloaded in the background, used from the next start; never during a run)")}
+${line(`${command()} sandbox`, "the sandbox where AI steps run code, without Docker: add or remove")}
+${more("(agentOS, about 340 MB; used from the next start)")}
 ${line(`${command()} autostart`, "start it when you log in to this computer: add on or off")}
 ${more("(macOS: a LaunchAgent; Linux: a systemd user service)")}
 ${line(`${command()} connect`, "add your wizards to your AI apps: every app found, or the ones you name:")}
@@ -130,7 +133,7 @@ function parse(argv: string[]): Args | string {
     } else if (arg.startsWith("-")) {
       return `Unknown option ${arg}.`;
     } else if (
-      ["autostart", "autoupdate", "logs", "account"].includes(args.command) &&
+      ["autostart", "autoupdate", "logs", "account", "sandbox"].includes(args.command) &&
       !args.value
     ) {
       args.value = arg;
@@ -213,6 +216,8 @@ async function main(argv: string[]): Promise<number> {
       return autoUpdateCommand(paths, args.value);
     case "account":
       return accountCommand(paths, args.value, { yes: args.yes });
+    case "sandbox":
+      return sandboxCommand(paths, args.value);
     case "connect":
     case "disconnect":
       return connectCommand(paths, args.apps, args.command === "disconnect");

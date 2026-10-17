@@ -82,8 +82,13 @@ prints a one-time link at start.
 Local Chrome renders PDFs/PNGs (`CHROME_PATH`), ffmpeg encodes widget animations to MP4
 (`FFMPEG_PATH`) and cuts films: a widget step with `video: true` draws clips and stills frame by
 frame and gets voice-over and clip sound mixed in. The shell/code tool runs in a sandbox per run, chosen with `SANDBOX`:
-`docker` needs Docker and the `engenty-sandbox` image; `off` removes the tool. Unset, it is
-`docker` when the image is on the machine, else `off`.
+`docker` needs Docker and the `engenty-sandbox` image; `agentos` runs an
+[agentOS](https://rivet.dev/agentos/) VM per run in a helper process (macOS and glibc Linux, no
+Docker): bash, coreutils, curl, git, jq, sqlite3, node, npm, and Python as Pyodide with numpy and
+pandas, but no native programs; `off` removes the tool. agentOS is not a dependency:
+`pnpm sandbox:add` (or `wizards sandbox add`) installs it into `AGENTOS_DIR`, and an image gets
+it with `--build-arg AGENTOS=1` ([plan](plans/agentos-sandbox.md)). Unset, `SANDBOX` is `docker`
+when the image is on the machine, else `agentos` when it is installed, else `off`.
 The agent is told what the chosen sandbox runs (`apps/runtime/src/sandbox`).
 
 `APP_URL` defaults to `http://localhost:5181` from source (the Vite dev server) and to
@@ -495,7 +500,7 @@ reach only servers on the internet: for them a wizard runs on engenty.ai, not on
 | Step runner (cursor over the definition, pages / back / regenerate / branches) | `apps/runtime/src/engine/runner.ts` |
 | Agent + generate steps (Mastra Agent, AI SDK media) | `apps/runtime/src/engine/steps.ts` |
 | Agent tools: web search/fetch, sandbox, HTTP, image, MCP | `apps/runtime/src/tools/index.ts` |
-| Sandbox engine (Docker) and what it runs | `apps/runtime/src/sandbox/` |
+| Sandbox engines (Docker, agentOS), what each runs, the agentOS installer | `apps/runtime/src/sandbox/` |
 | Browser tools: open/click/type, screenshot, sign-in handed to the person, downloads | `apps/runtime/src/tools/browser.ts`, `apps/runtime/src/engine/asks.ts` |
 | What a wizard keeps per person: lists, files, connected accounts, sign-ins | `packages/shared/src/store.ts`, `apps/runtime/src/store/`, `apps/runtime/src/tools/store.ts` |
 | Mail connectors (Gmail, Outlook, IMAP) in engenty's connector format | `apps/runtime/src/connectors/`, `apps/runtime/src/tools/mail.ts` |

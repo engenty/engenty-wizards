@@ -1,4 +1,5 @@
 import { env } from "../env.js";
+import { AgentOsSandbox, agentOsCapabilities } from "./agentos.js";
 import { DOCKER_CAPABILITIES, DockerRunSandbox } from "./docker.js";
 import type { Sandbox, SandboxCapabilities } from "./types.js";
 
@@ -14,18 +15,21 @@ export function sandboxCapabilities(): SandboxCapabilities | null {
   if (env.sandbox === "off") {
     return null;
   }
-  return DOCKER_CAPABILITIES;
+  return env.sandbox === "agentos" ? agentOsCapabilities(env.sandboxHosts) : DOCKER_CAPABILITIES;
 }
 
 export function createSandbox(runId: string): Sandbox {
   if (env.sandbox === "off") {
     throw new Error("The sandbox is switched off on this server.");
   }
-  return new DockerRunSandbox(runId, env.sandboxImage);
+  return env.sandbox === "agentos"
+    ? new AgentOsSandbox()
+    : new DockerRunSandbox(runId, env.sandboxImage);
 }
 
 export function shellToolDescription(caps: SandboxCapabilities): string {
-  return `Run a shell command in a private Linux sandbox (${caps.commands.join(", ")}). Working directory ${caps.workdir}. Network: ${caps.network}.`;
+  const notes = caps.notes ? ` ${caps.notes}` : "";
+  return `Run a shell command in a private Linux sandbox (${caps.commands.join(", ")}). Working directory ${caps.workdir}. Network: ${caps.network}.${notes}`;
 }
 
 /** The authoring guide's line about the sandbox tool. */

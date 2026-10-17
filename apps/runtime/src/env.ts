@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join, resolve } from "node:path";
 import { findChrome } from "./render/browser-path.js";
+import { agentOsVersion, defaultAgentOsDir } from "./sandbox/agentos-install.js";
 
 /** Load `.env.local` then `.env` without overriding the real environment. */
 function loadEnvFiles() {
@@ -26,18 +27,22 @@ loadEnvFiles();
 const str = (key: string, fallback = ""): string => process.env[key]?.trim() || fallback;
 
 /**
- * Without `SANDBOX`: Docker when the sandbox image is on this machine, else none.
+ * Without `SANDBOX`: Docker when the sandbox image is on this machine, else agentOS when
+ * `wizards sandbox add` installed it, else none.
  * The image is not published, so a fresh install would otherwise offer a tool that cannot start.
  */
-function sandboxEngine(image: string): "docker" | "off" {
+function sandboxEngine(image: string, agentosDir: string): "docker" | "agentos" | "off" {
   const engine = str("SANDBOX");
   if (str("SANDBOX_ENABLED", "1") !== "1" || engine === "off") {
     return "off";
   }
   if (engine) {
+    return engine === "agentos" ? "agentos" : "docker";
+  }
+  if (dockerHasImage(image)) {
     return "docker";
   }
-  return dockerHasImage(image) ? "docker" : "off";
+  return agentOsVersion(agentosDir) ? "agentos" : "off";
 }
 
 function dockerHasImage(image: string): boolean {
@@ -84,6 +89,7 @@ const port = num("API_PORT", 24368);
 /** From source the Vite dev server on :5181 serves the pages; built, this server does. */
 const fromSource = import.meta.url.endsWith(".ts");
 const sandboxImage = str("SANDBOX_IMAGE", "engenty-sandbox:latest");
+const agentosDir = resolve(str("AGENTOS_DIR", defaultAgentOsDir()));
 
 const ROLES = ["studio", "doors", "web", "runner", "all"] as const;
 type Role = (typeof ROLES)[number];
@@ -241,9 +247,13 @@ export const env = {
   ),
   /** Encodes widget animations to MP4; without it widgets offer no video. */
   ffmpegPath: str("FFMPEG_PATH", "ffmpeg"),
-  /** What runs an agent's shell and code: a Docker container or nothing. */
-  sandbox: sandboxEngine(sandboxImage),
+  /** What runs an agent's shell and code: a Docker container, an agentOS VM, or nothing. */
+  sandbox: sandboxEngine(sandboxImage, agentosDir),
   sandboxImage,
+  /** Where `wizards sandbox add` installed agentOS (sandbox/agentos-install.ts). */
+  agentosDir,
+  /** Hosts an agentOS sandbox reaches besides the npm and PyPI registries: `api.example.com`. */
+  sandboxHosts: list("SANDBOX_ALLOW_HOSTS"),
 
   /** Assets and workspace files in an S3-compatible bucket (R2); empty = the data folder. */
   s3: {
