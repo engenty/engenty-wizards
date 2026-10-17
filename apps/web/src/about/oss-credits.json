@@ -1,6 +1,11 @@
 {
   "shared": [
     {
+      "name": "@engenty/wizards",
+      "version": "",
+      "license": "Unknown"
+    },
+    {
       "name": "@modelcontextprotocol/client",
       "version": "2.2.0",
       "license": "MIT",
