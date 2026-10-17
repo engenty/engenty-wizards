@@ -41,8 +41,8 @@ A pnpm workspace:
 | `apps/web/` | the SPA: studio, public runner, share page |
 | `apps/runtime/src/cli/` | the `wizards` command of a local install: start, guided setup, status, update |
 | `apps/web/public/install.sh` | the installer, served by every runtime at `/install.sh` |
-| `bin/` | the entry of the `wizards` command |
-| `scripts/` | `npm-package.mjs` (the npm package) |
+| `bin/` | the entry of the `wizards` command, and the launcher `npx wizards` runs |
+| `scripts/` | `npm-package.mjs` (the npm packages: the runtime and the launcher) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
 | `packages/wizards/` | `@engenty/wizards`, the one package code outside this repo imports: `/plugin` (a plugin’s server half), `/plugin/studio`, `/plugin/thread` |
 | `modules/` | plugins that ship with the runtime |
@@ -57,7 +57,8 @@ A pnpm workspace:
 
 | Name | What it is |
 |---|---|
-| `wizards` | The npm package people run with `npx wizards`, built by `scripts/npm-package.mjs` |
+| `wizards` | The launcher people run with `npx wizards`: it installs the runtime and hands over. Built by `scripts/npm-package.mjs` |
+| `@engenty/wizards-runtime` | The runtime the installer and the updates install. Built by `scripts/npm-package.mjs` beside the launcher |
 | `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin` today. Inside the repo the runtime and the studio import it by the same name |
 | `@engenty-wizards/*` | The workspace’s own parts (`runtime`, `web`, `docs`, `shared`, `runner`). They are never published |
 
@@ -280,28 +281,35 @@ older one.
 
 ## Local install
 
-What people install is the package `wizards`, built like an npm package: the built
-runtime, the built SPA, the plugin template and the `wizards` command, with the shared
-package inside it. It is on npm as `wizards`, and the same tarball is attached to the GitHub
-release `v<version>`: the installer has npm install it from that address. It gets onto a machine
-through the installer, which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves
-`~/.engenty`):
+What people install is the runtime, built like an npm package: the built runtime, the built
+SPA, the plugin template and the `wizards` command, with the shared package inside it. It is on
+npm as `@engenty/wizards-runtime`, and the same tarball is attached to the GitHub release
+`v<version>`: the installer has npm install it from that address, the updates
+(`apps/runtime/src/cli/autoupdate.ts`) from npm. It gets onto a machine through the installer,
+which keeps their data in `~/.engenty/wizards/data` (`ENGENTY_HOME` moves `~/.engenty`):
 
 | | Code | Node |
 |---|---|---|
 | `curl -fsSL https://engenty.ai/install.sh \| bash` | `~/.engenty/wizards/runtime` | its own, pinned, in `~/.engenty/wizards/tools` |
 
-`npx wizards` is a second way: the code in npm's cache, on the person's own Node 24.11 or newer.
+`npx wizards` is a second way to the same install. The npm package `wizards` is only the
+launcher: `bin/wizards.mjs` and `install.sh`, no dependencies, a few dozen KB. It runs the
+installer for the runtime of its own version and hands every command but `--version` to the
+installed `wizards`. Up to 0.7.4 `wizards` was the runtime itself; an update of such an install
+fetches the launcher into its version folder, and the launcher, started there, brings the runtime
+of its version with the installer and hands over (the installer also links
+`node_modules/wizards` to the runtime, for the commands of then).
 
 ```bash
-pnpm package                       # node scripts/npm-package.mjs → dist/npm/wizards-<version>.tgz
+pnpm package                       # node scripts/npm-package.mjs → dist/npm/*.tgz, both packages
 pnpm wizards status                # the command from the checkout (node bin/wizards.mjs)
 ```
 
 `scripts/npm-package.mjs` stages `apps/runtime/dist`, `apps/web/dist`, `plugin/` and `bin/` in the
 checkout's layout and writes the package.json: the runtime's dependencies at the exact versions
 of the root lockfile, the shared package bundled. Dependencies of dependencies are resolved by
-npm at install time.
+npm at install time. Beside it, it stages the launcher. The release publishes the runtime first,
+then the launcher.
 
 `apps/web/public/install.sh` is the installer (bash 3.2, `shellcheck` clean). It downloads the
 pinned Node from nodejs.org and checks it against `SHASUMS256.txt`, asks GitHub for the newest
@@ -315,7 +323,7 @@ To try the installer against a checkout, without npm and without touching `~/.en
 
 ```bash
 pnpm package
-ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/wizards-<version>.tgz \
+ENGENTY_HOME=/tmp/engenty-try ENGENTY_WIZARDS_PACKAGE=$PWD/dist/npm/engenty-wizards-runtime-<version>.tgz \
   bash apps/web/public/install.sh --no-link
 ```
 
