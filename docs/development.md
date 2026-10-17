@@ -44,7 +44,7 @@ A pnpm workspace:
 | `bin/` | the entry of the `wizards` command |
 | `scripts/` | `npm-package.mjs` (the npm package) |
 | `packages/shared/` | types and schemas the server and the SPA both use |
-| `packages/plugin-sdk/` | the types a plugin of the runtime is written against: its server half and its studio half |
+| `packages/wizards/` | `@engenty/wizards`, the one package code outside this repo imports: `/plugin` (a plugin’s server half), `/plugin/studio`, `/plugin/thread` |
 | `modules/` | plugins that ship with the runtime |
 | `examples/plugins/` | example plugins; loaded with `PLUGINS_DIR=examples/plugins` |
 | `scripts/build-plugin.mjs` | builds a plugin's studio half |
@@ -52,6 +52,17 @@ A pnpm workspace:
 | `deploy/` | the Chromium container of the cloud runtime |
 | `apps/docs/` | the documentation site (Next.js + Fumadocs); not part of the product's build |
 | `docs/content/` | its pages: `user/` (the user guide), `dev/` (the developer docs: plugins) |
+
+### Package names
+
+| Name | What it is |
+|---|---|
+| `wizards` | The npm package people run with `npx wizards`, built by `scripts/npm-package.mjs` |
+| `@engenty/wizards` | What code outside this repo imports, one subpath per use: `/plugin` today. Inside the repo the runtime and the studio import it by the same name |
+| `@engenty-wizards/*` | The workspace’s own parts (`runtime`, `web`, `docs`, `shared`, `runner`). They are never published |
+
+A new thing for outside code goes into `packages/wizards/` as a subpath, not into a package of
+its own. `@engenty/wizards` is not on npm yet: it stays `private` until it is published.
 
 `.env.local` and the data folder (`data/`) stay in the repo root; `pnpm dev` and `pnpm start`
 run from there.

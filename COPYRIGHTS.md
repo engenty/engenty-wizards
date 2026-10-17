@@ -42,6 +42,7 @@ Declared by two or more of the workspaces below:
 
 | Package | Version | Licence |
 |---|---|---|
+| @engenty/wizards |  | Unknown |
 | [@modelcontextprotocol/client](https://modelcontextprotocol.io) | 2.2.0 | MIT |
 | [@modelcontextprotocol/ext-apps](https://github.com/modelcontextprotocol/ext-apps) | 2.0.3 | MIT |
 | [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) |

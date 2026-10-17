@@ -1,7 +1,48 @@
 [
   {
+    "version": "v0.7.4",
+    "timestamp": 1792239947,
+    "commits": [
+      {
+        "id": "dc773cd",
+        "message": "one package for code outside the repo, @engenty/wizards, with plugins at /plugin (#44)",
+        "group": "Changed",
+        "scope": null,
+        "breaking": false
+      },
+      {
+        "id": "a51221e",
+        "message": "wizards in generative UI chats",
+        "group": "Docs",
+        "scope": "plans",
+        "breaking": false
+      },
+      {
+        "id": "9c08359",
+        "message": "replace Gemini CLI with Antigravity as the Google AI client (#42)",
+        "group": "Added",
+        "scope": "runtime",
+        "breaking": false
+      },
+      {
+        "id": "4896ef8",
+        "message": "test each own key on its own, without picking models (#41)",
+        "group": "Added",
+        "scope": "setup",
+        "breaking": false
+      },
+      {
+        "id": "bcd9a04",
+        "message": "onboarding for people on their own, browser Back, and answers that survive a reload (#40)",
+        "group": "Fixed",
+        "scope": "studio",
+        "breaking": false
+      }
+    ]
+  },
+  {
     "version": "v0.7.3",
-    "timestamp": 1792067201,
+    "timestamp": 1792067211,
     "commits": [
       {
         "id": "85184a6",
