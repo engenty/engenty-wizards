@@ -6,6 +6,7 @@ import { keepWish, pendingWish, signIn } from "../lib/session";
 import { useDictation } from "../lib/speech";
 import { Button, DictationButton, Textarea } from "../ui";
 import { DoorBar } from "./DoorBar";
+import { FirstWizard } from "./FirstWizard";
 import { MarketplaceBrowser } from "./Marketplace";
 
 /**
@@ -21,6 +22,13 @@ const LEGAL = {
 } as const;
 
 export function GuestStartPage({ failed }: { failed: boolean }) {
+  // A first visit starts with a few questions and one suggested wizard; a wish already on its
+  // way, or a person who wants to describe their own, gets the wish box.
+  const [own, setOwn] = useState(() => Boolean(pendingWish()) || failed);
+  return own ? <WishStart failed={failed} /> : <FirstWizard onOwn={() => setOwn(true)} />;
+}
+
+function WishStart({ failed }: { failed: boolean }) {
   const lang = useLang();
   const [prompt, setPrompt] = useState(() => pendingWish() ?? "");
   const [busy, setBusy] = useState(false);
