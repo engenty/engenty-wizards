@@ -60,10 +60,11 @@ export class MastraRunSandbox implements Sandbox {
   }
 
   async readFile(path: string): Promise<Uint8Array> {
+    // No `-w0` and no file argument: macOS's base64 takes neither. Node skips the line breaks.
     const result = await this.must(
-      `base64 -w0 ${quote(posix.resolve(this.capabilities.workdir, path))}`,
+      `base64 < ${quote(posix.resolve(this.capabilities.workdir, path))}`,
     );
-    return Buffer.from(result.stdout.trim(), "base64");
+    return Buffer.from(result.stdout, "base64");
   }
 
   private async must(command: string): Promise<ExecResult> {
